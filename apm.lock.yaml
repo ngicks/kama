@@ -4,7 +4,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: go
   host: github.com
-  resolved_commit: b7991bb11499d1385d7e01c9369f22a700d08546
+  resolved_commit: a16b4dfa91ab78df0c6a5a7702bc6a40e7b1af19
   version: 1.0.0
   virtual_path: bundle/go
   is_virtual: true
@@ -13,7 +13,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: cc-workers
   host: github.com
-  resolved_commit: b7991bb11499d1385d7e01c9369f22a700d08546
+  resolved_commit: a16b4dfa91ab78df0c6a5a7702bc6a40e7b1af19
   version: 0.0.1
   virtual_path: pkg/cc-workers
   is_virtual: true
@@ -101,33 +101,31 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: agents-package-ngicks.go.basics
   host: github.com
-  resolved_commit: b7991bb11499d1385d7e01c9369f22a700d08546
+  resolved_commit: a16b4dfa91ab78df0c6a5a7702bc6a40e7b1af19
   version: 1.0.0
   virtual_path: vpkg/instructions/ngicks.go.basics.instructions.md
   is_virtual: true
   depth: 2
   resolved_by: ngicks/agents-package
-  package_type: apm_package
-  content_hash: sha256:9159ee0ea4f3bdbeb7f2fc8c7784f9f34e3f73b4ea35bad4dba7ae960e559dde
+  content_hash: sha256:c95e9a871723225a1024946ce9342a7c51495df1cc207b6421476d5fb8421f2d
   target_subset:
   - codex
 - repo_url: ngicks/agents-package
   name: agents-package-ngicks.go.design-preference
   host: github.com
-  resolved_commit: b7991bb11499d1385d7e01c9369f22a700d08546
+  resolved_commit: a16b4dfa91ab78df0c6a5a7702bc6a40e7b1af19
   version: 1.0.0
   virtual_path: vpkg/instructions/ngicks.go.design-preference.instructions.md
   is_virtual: true
   depth: 2
   resolved_by: ngicks/agents-package
-  package_type: apm_package
   content_hash: sha256:a0a4aaebbdc52604ce92ca7ade2397324d02a6fe37f61acf55988f0c7be22678
   target_subset:
   - codex
 - repo_url: ngicks/agents-package
   name: go-check-outdated-patterns
   host: github.com
-  resolved_commit: b7991bb11499d1385d7e01c9369f22a700d08546
+  resolved_commit: a16b4dfa91ab78df0c6a5a7702bc6a40e7b1af19
   version: unknown
   virtual_path: vpkg/skills/go-check-outdated-patterns
   is_virtual: true
@@ -146,7 +144,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: go-edit-cobra
   host: github.com
-  resolved_commit: b7991bb11499d1385d7e01c9369f22a700d08546
+  resolved_commit: a16b4dfa91ab78df0c6a5a7702bc6a40e7b1af19
   version: unknown
   virtual_path: vpkg/skills/go-edit-cobra
   is_virtual: true
@@ -241,7 +239,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: go-review-checklist
   host: github.com
-  resolved_commit: b7991bb11499d1385d7e01c9369f22a700d08546
+  resolved_commit: a16b4dfa91ab78df0c6a5a7702bc6a40e7b1af19
   version: unknown
   virtual_path: vpkg/skills/go-review-checklist
   is_virtual: true
@@ -254,9 +252,9 @@ dependencies:
   - .claude/skills/go-review-checklist
   - .claude/skills/go-review-checklist/SKILL.md
   deployed_file_hashes:
-    .agents/skills/go-review-checklist/SKILL.md: sha256:e2fef495863cf2b659a85487565e4941e432ed70cece376784ccaf09623098ca
-    .claude/skills/go-review-checklist/SKILL.md: sha256:e2fef495863cf2b659a85487565e4941e432ed70cece376784ccaf09623098ca
-  content_hash: sha256:93e21c50dfcc501028db5d55493424042187a224bbc8c6af7f041b667f3cb4de
+    .agents/skills/go-review-checklist/SKILL.md: sha256:9fee5610d4b131b061acfeae762814db3387e79aa0836ff4276a16b459c4c548
+    .claude/skills/go-review-checklist/SKILL.md: sha256:9fee5610d4b131b061acfeae762814db3387e79aa0836ff4276a16b459c4c548
+  content_hash: sha256:9056231457dd93b06fa42ae02734ee5c07c05a912537689bc2e902a4bbaa3d63
 deployments:
 - kind: project-relative
   target: claude
@@ -572,7 +570,7 @@ deployments:
   owners:
   - ngicks/agents-package/vpkg/skills/go-review-checklist
   active_owner: ngicks/agents-package/vpkg/skills/go-review-checklist
-  content_hash: sha256:e2fef495863cf2b659a85487565e4941e432ed70cece376784ccaf09623098ca
+  content_hash: sha256:9fee5610d4b131b061acfeae762814db3387e79aa0836ff4276a16b459c4c548
 - kind: project-relative
   target: claude
   value: .claude/skills/ng-command-invoker
@@ -905,7 +903,7 @@ deployments:
   owners:
   - ngicks/agents-package/vpkg/skills/go-review-checklist
   active_owner: ngicks/agents-package/vpkg/skills/go-review-checklist
-  content_hash: sha256:e2fef495863cf2b659a85487565e4941e432ed70cece376784ccaf09623098ca
+  content_hash: sha256:9fee5610d4b131b061acfeae762814db3387e79aa0836ff4276a16b459c4c548
 - kind: project-relative
   target: codex
   value: .agents/skills/ng-command-invoker
