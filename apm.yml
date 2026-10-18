@@ -1,0 +1,12 @@
+name: kama
+version: 0.0.1
+targets:
+  - claude
+  - codex
+dependencies:
+  apm:
+    - git: github.com/ngicks/agents-package
+      path: bundle/go
+    - git: github.com/ngicks/agents-package
+      path: pkg/cc-workers
+  mcp: []
