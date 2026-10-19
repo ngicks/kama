@@ -19,9 +19,9 @@ import (
 type Format string
 
 const (
-	FormatJSON Format = "json"
-	FormatYAML Format = "yaml"
-	FormatTOML Format = "toml"
+	FormatJson Format = "json"
+	FormatYaml Format = "yaml"
+	FormatToml Format = "toml"
 )
 
 var (
@@ -33,11 +33,11 @@ var (
 // dot, in the order they are probed.
 func (f Format) Extensions() []string {
 	switch f {
-	case FormatJSON:
+	case FormatJson:
 		return []string{".json"}
-	case FormatYAML:
+	case FormatYaml:
 		return []string{".yaml", ".yml"}
-	case FormatTOML:
+	case FormatToml:
 		return []string{".toml"}
 	default:
 		return nil
@@ -71,11 +71,11 @@ func (p PathInput) Candidates() ([]string, error) {
 // Decode decodes one document from r into v.
 func Decode(r io.Reader, format Format, v any) error {
 	switch format {
-	case FormatJSON:
+	case FormatJson:
 		return json.NewDecoder(r).Decode(v)
-	case FormatYAML:
+	case FormatYaml:
 		return yaml.NewDecoder(r).Decode(v)
-	case FormatTOML:
+	case FormatToml:
 		return toml.NewDecoder(r).Decode(v)
 	default:
 		return fmt.Errorf("%w: %q", ErrUnknownFormat, format)

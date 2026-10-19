@@ -21,9 +21,9 @@ func TestLoadPriority(t *testing.T) {
 		formats        []Format
 		wantName, want string
 	}{
-		{[]Format{FormatYAML, FormatJSON}, "meta.yml", "yaml"},
-		{[]Format{FormatJSON, FormatYAML}, "meta.json", "json"},
-		{[]Format{FormatTOML}, "meta.toml", "toml"},
+		{[]Format{FormatYaml, FormatJson}, "meta.yml", "yaml"},
+		{[]Format{FormatJson, FormatYaml}, "meta.json", "json"},
+		{[]Format{FormatToml}, "meta.toml", "toml"},
 	}
 	for _, c := range cases {
 		var d doc
@@ -40,7 +40,7 @@ func TestLoadPriority(t *testing.T) {
 func TestLoadErrors(t *testing.T) {
 	fsys := fstest.MapFS{}
 	var d doc
-	_, err := Load(fsys, PathInput{Base: "none", Formats: []Format{FormatJSON}}, &d)
+	_, err := Load(fsys, PathInput{Base: "none", Formats: []Format{FormatJson}}, &d)
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("missing: got %v, want ErrNotFound", err)
 	}
@@ -51,7 +51,7 @@ func TestLoadErrors(t *testing.T) {
 }
 
 func TestCandidates(t *testing.T) {
-	got, err := PathInput{Base: "a/meta", Formats: []Format{FormatYAML, FormatJSON}}.Candidates()
+	got, err := PathInput{Base: "a/meta", Formats: []Format{FormatYaml, FormatJson}}.Candidates()
 	if err != nil {
 		t.Fatal(err)
 	}
