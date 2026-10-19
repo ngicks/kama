@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"errors"
+	"slices"
 	"testing"
 	"testing/fstest"
 )
@@ -13,41 +14,49 @@ type doc struct {
 func TestLoadPriority(t *testing.T) {
 	fsys := fstest.MapFS{
 		"meta.json": {Data: []byte(`{"name":"json"}`)},
-		"meta.yaml": {Data: []byte("name: yaml\n")},
+		"meta.yml":  {Data: []byte("name: yaml\n")},
 		"meta.toml": {Data: []byte("name = \"toml\"\n")},
 	}
-	yamlFirst := []Candidate{{Name: "meta.yaml"}, {Name: "meta.json"}}
-	jsonFirst := []Candidate{{Name: "meta.json"}, {Name: "meta.yaml"}}
-
 	cases := []struct {
-		candidates     []Candidate
+		formats        []Format
 		wantName, want string
 	}{
-		{yamlFirst, "meta.yaml", "yaml"},
-		{jsonFirst, "meta.json", "json"},
-		{[]Candidate{{Name: "missing.yaml"}, {Name: "meta.toml"}}, "meta.toml", "toml"},
-		{[]Candidate{{Name: "meta.json", Format: FormatJSON}}, "meta.json", "json"},
+		{[]Format{FormatYAML, FormatJSON}, "meta.yml", "yaml"},
+		{[]Format{FormatJSON, FormatYAML}, "meta.json", "json"},
+		{[]Format{FormatTOML}, "meta.toml", "toml"},
 	}
 	for _, c := range cases {
 		var d doc
-		name, err := Load(fsys, c.candidates, &d)
+		name, err := Load(fsys, PathInput{Base: "meta", Formats: c.formats}, &d)
 		if err != nil {
-			t.Fatalf("Load(%v): %v", c.candidates, err)
+			t.Fatalf("Load(%v): %v", c.formats, err)
 		}
 		if name != c.wantName || d.Name != c.want {
-			t.Errorf("Load(%v) = %q/%q, want %q/%q", c.candidates, name, d.Name, c.wantName, c.want)
+			t.Errorf("Load(%v) = %q/%q, want %q/%q", c.formats, name, d.Name, c.wantName, c.want)
 		}
 	}
 }
 
 func TestLoadErrors(t *testing.T) {
-	fsys := fstest.MapFS{"meta.ini": {Data: []byte("x")}}
+	fsys := fstest.MapFS{}
 	var d doc
-	if _, err := Load(fsys, []Candidate{{Name: "none.json"}}, &d); !errors.Is(err, ErrNotFound) {
+	_, err := Load(fsys, PathInput{Base: "none", Formats: []Format{FormatJSON}}, &d)
+	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("missing: got %v, want ErrNotFound", err)
 	}
-	_, err := Load(fsys, []Candidate{{Name: "meta.ini"}}, &d)
+	_, err = Load(fsys, PathInput{Base: "none", Formats: []Format{"ini"}}, &d)
 	if !errors.Is(err, ErrUnknownFormat) {
-		t.Errorf("unknown ext: got %v, want ErrUnknownFormat", err)
+		t.Errorf("unknown format: got %v, want ErrUnknownFormat", err)
+	}
+}
+
+func TestCandidates(t *testing.T) {
+	got, err := PathInput{Base: "a/meta", Formats: []Format{FormatYAML, FormatJSON}}.Candidates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"a/meta.yaml", "a/meta.yml", "a/meta.json"}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
 	}
 }
