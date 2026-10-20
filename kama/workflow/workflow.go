@@ -148,8 +148,10 @@ func New(nodes ...Node) (*Pipeline, error) {
 	return &Pipeline{nodes: nodes, providers: providers}, nil
 }
 
-// Nodes returns the planned order, including inserted defaults.
-func (p *Pipeline) Nodes() []Node { return slices.Clone(p.nodes) }
+// Nodes returns the planned order, including inserted defaults. The slice is
+// shared with the pipeline; callers must not modify its elements. It is
+// clipped, so appending to it allocates instead of writing into the plan.
+func (p *Pipeline) Nodes() []Node { return slices.Clip(p.nodes) }
 
 // Run executes the pipeline once.
 func (p *Pipeline) Run(ctx context.Context, emit Emitter) error {
