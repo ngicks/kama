@@ -28,12 +28,12 @@ type NodeSpec struct {
 	// Kind selects the constructor in the Registry.
 	Kind string   `json:"kind" yaml:"kind" toml:"kind"`
 	Deps []string `json:"deps,omitzero" yaml:"deps,omitempty" toml:"deps,omitempty"`
-	// With holds kind-specific arguments the constructor decodes.
-	With map[string]any `json:"with,omitzero" yaml:"with,omitempty" toml:"with,omitempty"`
+	// Param holds kind-specific arguments the constructor decodes.
+	Param map[string]any `json:"param,omitzero" yaml:"param,omitempty" toml:"param,omitempty"`
 }
 
-// Constructor builds a node from its With arguments.
-type Constructor func(with map[string]any) (Node, error)
+// Constructor builds a node from its Param arguments.
+type Constructor func(param map[string]any) (Node, error)
 
 // Registry maps a kind to its constructor.
 type Registry map[string]Constructor
@@ -47,12 +47,12 @@ func (s Spec) Build(reg Registry) (*Graph, error) {
 	g := NewGraph()
 
 	for _, ns := range s.Nodes {
-		ctor, ok := reg[ns.Kind]
+		build, ok := reg[ns.Kind]
 		if !ok {
 			return nil, fmt.Errorf("%w: %q for node %q", ErrUnknownKind, ns.Kind, ns.Name)
 		}
 
-		n, err := ctor(ns.With)
+		n, err := build(ns.Param)
 		if err != nil {
 			return nil, fmt.Errorf("workflow: node %q: %w", ns.Name, err)
 		}

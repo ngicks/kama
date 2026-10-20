@@ -11,8 +11,8 @@ import (
 func testRegistry(seen *[]double) Registry {
 	return Registry{
 		"fs": func(map[string]any) (Node, error) { return targetNode(), nil },
-		"source": func(with map[string]any) (Node, error) {
-			v, ok := with["value"].(int)
+		"source": func(param map[string]any) (Node, error) {
+			v, ok := param["value"].(int)
 			if !ok {
 				return nil, errors.New("value must be an int")
 			}
@@ -30,7 +30,7 @@ func TestSpecBuild(t *testing.T) {
 		Version: SpecVersion,
 		Nodes: []NodeSpec{
 			{Name: "fs", Kind: "fs"},
-			{Name: "src", Kind: "source", Deps: []string{"fs"}, With: map[string]any{"value": 3}},
+			{Name: "src", Kind: "source", Deps: []string{"fs"}, Param: map[string]any{"value": 3}},
 			{Name: "dbl", Kind: "double", Deps: []string{"src"}},
 			{Name: "c", Kind: "consumer", Deps: []string{"dbl"}},
 		},
@@ -57,7 +57,7 @@ func TestSpecBuildErrors(t *testing.T) {
 
 	_, err = Spec{Version: SpecVersion, Nodes: []NodeSpec{
 		{Name: "fs", Kind: "fs"},
-		{Name: "src", Kind: "source", Deps: []string{"fs"}, With: map[string]any{"value": "3"}},
+		{Name: "src", Kind: "source", Deps: []string{"fs"}, Param: map[string]any{"value": "3"}},
 	}}.Build(reg)
 	assert.ErrorContains(t, err, `node "src": value must be an int`)
 
