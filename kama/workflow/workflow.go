@@ -77,10 +77,12 @@ type Inputs struct {
 // Get returns the value of type T. T must be in the node's Requires.
 func (in *Inputs) Get[T Value]() (T, error) {
 	var zero T
+
 	v, ok := in.values[reflect.TypeFor[T]()]
 	if !ok {
 		return zero, fmt.Errorf("%w: %v", ErrNotInRequires, reflect.TypeFor[T]())
 	}
+
 	return v.(T), nil
 }
 
@@ -96,6 +98,7 @@ func (out *Outputs) Set[T Value](v T) error {
 	if !out.allowed[t] {
 		return fmt.Errorf("%w: %v", ErrNotDeclared, t)
 	}
+
 	out.values[t] = v
 	return nil
 }
@@ -112,39 +115,48 @@ type Pipeline struct {
 // have no earlier provider.
 func New(nodes ...Node) (*Pipeline, error) {
 	nodes = slices.Clone(nodes)
+
 	latest := map[reflect.Type]int{}
 	var providers []map[reflect.Type]int
+
 	for i := 0; i < len(nodes); i++ {
 		n := nodes[i]
 		prov := map[reflect.Type]int{}
 		inserted := false
+
 		for _, k := range n.Requires() {
 			if _, dup := prov[k.Type()]; dup {
 				return nil, fmt.Errorf("%w: %v in %q", ErrDuplicateInput, k.Type(), n.Name())
 			}
+
 			if j, ok := latest[k.Type()]; ok {
 				prov[k.Type()] = j
 				continue
 			}
+
 			def := k.DefaultNode()
 			if def == nil {
 				return nil, fmt.Errorf("%w: %v required by %q", ErrNoProvider, k.Type(), n.Name())
 			}
+
 			// The default is planned at this position so its own requirements
 			// resolve against the same earlier nodes; node i is revisited after.
 			nodes = slices.Insert(nodes, i, def)
 			inserted = true
 			break
 		}
+
 		if inserted {
 			i--
 			continue
 		}
+
 		providers = append(providers, prov)
 		for _, k := range n.Provides() {
 			latest[k.Type()] = i
 		}
 	}
+
 	return &Pipeline{nodes: nodes, providers: providers}, nil
 }
 
@@ -160,11 +172,13 @@ func (p *Pipeline) Run(ctx context.Context, emit Emitter) error {
 		emit:    &countingEmitter{Emitter: emit},
 		results: make([]*result, len(p.nodes)),
 	}
+
 	for i := range p.nodes {
 		if err := r.ensure(ctx, i); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -192,14 +206,17 @@ type run struct {
 // providers first.
 func (r *run) ensure(ctx context.Context, i int) error {
 	n := r.p.nodes[i]
+
 	for _, k := range n.Requires() {
 		if err := r.ensure(ctx, r.p.providers[i][k.Type()]); err != nil {
 			return err
 		}
 	}
+
 	if r.fresh(i) {
 		return nil
 	}
+
 	return r.exec(ctx, i)
 }
 
@@ -208,21 +225,25 @@ func (r *run) fresh(i int) bool {
 	if res == nil {
 		return false
 	}
+
 	n := r.p.nodes[i]
 	if len(n.Requires()) == 0 {
 		return res.gen == r.emit.gen
 	}
+
 	for _, k := range n.Requires() {
 		cur := r.results[r.p.providers[i][k.Type()]].outputs[k.Type()]
 		if cur.version != res.inputs[k.Type()] {
 			return false
 		}
 	}
+
 	return true
 }
 
 func (r *run) exec(ctx context.Context, i int) error {
 	n := r.p.nodes[i]
+
 	in := &Inputs{values: map[reflect.Type]any{}}
 	res := &result{
 		gen:     r.emit.gen,
@@ -234,13 +255,16 @@ func (r *run) exec(ctx context.Context, i int) error {
 		in.values[k.Type()] = v.value
 		res.inputs[k.Type()] = v.version
 	}
+
 	out := &Outputs{allowed: map[reflect.Type]bool{}, values: map[reflect.Type]any{}}
 	for _, k := range n.Provides() {
 		out.allowed[k.Type()] = true
 	}
+
 	if err := n.Run(ctx, in, out, r.emit); err != nil {
 		return fmt.Errorf("workflow: node %q: %w", n.Name(), err)
 	}
+
 	for _, k := range n.Provides() {
 		v, ok := out.values[k.Type()]
 		if !ok {
@@ -249,6 +273,7 @@ func (r *run) exec(ctx context.Context, i int) error {
 		r.nextVersion++
 		res.outputs[k.Type()] = versioned{value: v, version: r.nextVersion}
 	}
+
 	r.results[i] = res
 	return nil
 }
@@ -262,6 +287,7 @@ func (e *countingEmitter) Emit(ctx context.Context, name string, src []byte) err
 	if err := e.Emitter.Emit(ctx, name, src); err != nil {
 		return err
 	}
+
 	e.gen++
 	return nil
 }
