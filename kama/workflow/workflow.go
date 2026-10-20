@@ -1,59 +1,58 @@
 // Package workflow runs an ordered list of nodes that exchange typed values
 // and emit files into a staging area.
 //
-// A node declares the keys it requires and the keys it provides. The pipeline
-// resolves each required key to the nearest earlier node providing it, or to
-// the key's default node when there is none. Nodes run in list order.
+// A node declares the value types it requires and the value types it
+// provides. The pipeline resolves each required type to the nearest earlier
+// node providing it, or to the type's default node when there is none. Nodes
+// run in list order.
 //
-// A node with no required keys is a source: it reads the staged project. Its
-// result is memoized against the emit generation, so when a later node needs
-// its key after something was emitted, the source runs again and every node
-// derived from it follows. This is how generated Go code becomes visible to
-// the nodes that run after the one that produced it.
+// A node with no required types is a source: it reads the staged project.
+// Its result is memoized against the emit generation, so when a later node
+// needs its value after something was emitted, the source runs again and
+// every node derived from it follows. This is how generated Go code becomes
+// visible to the nodes that run after the one that produced it.
 package workflow
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 )
 
 var (
 	ErrNoProvider     = errors.New("workflow: no provider")
-	ErrNotDeclared    = errors.New("workflow: key not declared")
+	ErrNotDeclared    = errors.New("workflow: type not declared")
 	ErrMissingOutput  = errors.New("workflow: declared output not set")
-	ErrTypeMismatch   = errors.New("workflow: value type mismatch")
-	ErrNotInRequires  = errors.New("workflow: key not in Requires")
-	ErrDuplicateInput = errors.New("workflow: key required twice")
+	ErrNotInRequires  = errors.New("workflow: type not in Requires")
+	ErrDuplicateInput = errors.New("workflow: type required twice")
 )
 
-// KeyRef is the untyped view of a Key, used in declarations.
-type KeyRef interface {
-	Name() string
-	// DefaultNode returns a node providing this key for a pipeline that has
-	// none, or nil when the key must be provided explicitly.
+// Value is what flows through the pipeline. Its type is its identity, so two
+// values with the same shape but different roles are two named types. A value
+// type knows how to load itself from the project when no node provides it.
+type Value interface {
+	// DefaultNode returns a node providing this value for a pipeline that
+	// has none, or nil when it must be provided explicitly. It is called on
+	// the zero value, so a pointer type must handle a nil receiver.
 	DefaultNode() Node
 }
 
-// Key identifies a value of type T. Keys compare by name.
-type Key[T any] struct {
-	name string
-	def  func() Node
+// KeyRef is the untyped view of a Key, used in declarations.
+type KeyRef interface {
+	Type() reflect.Type
+	DefaultNode() Node
 }
 
-// NewKey declares a key. def may be nil.
-func NewKey[T any](name string, def func() Node) Key[T] {
-	return Key[T]{name: name, def: def}
-}
+// Key names a value type in Requires and Provides.
+type Key[T Value] struct{}
 
-func (k Key[T]) Name() string { return k.name }
+func (Key[T]) Type() reflect.Type { return reflect.TypeFor[T]() }
 
-func (k Key[T]) DefaultNode() Node {
-	if k.def == nil {
-		return nil
-	}
-	return k.def()
+func (Key[T]) DefaultNode() Node {
+	var zero T
+	return zero.DefaultNode()
 }
 
 // Emitter receives generated files. The pipeline wraps the one passed to Run
@@ -72,66 +71,64 @@ type Node interface {
 
 // Inputs holds the values a node required.
 type Inputs struct {
-	values map[string]any
+	values map[reflect.Type]any
 }
 
-// Get returns the value for k. k must be in the node's Requires.
-func Get[T any](in *Inputs, k Key[T]) (T, error) {
+// Get returns the value of type T. T must be in the node's Requires.
+func Get[T Value](in *Inputs) (T, error) {
 	var zero T
-	v, ok := in.values[k.name]
+	v, ok := in.values[reflect.TypeFor[T]()]
 	if !ok {
-		return zero, fmt.Errorf("%w: %q", ErrNotInRequires, k.name)
+		return zero, fmt.Errorf("%w: %v", ErrNotInRequires, reflect.TypeFor[T]())
 	}
-	t, ok := v.(T)
-	if !ok {
-		return zero, fmt.Errorf("%w: %q holds %T", ErrTypeMismatch, k.name, v)
-	}
-	return t, nil
+	return v.(T), nil
 }
 
 // Outputs collects the values a node provides.
 type Outputs struct {
-	allowed map[string]bool
-	values  map[string]any
+	allowed map[reflect.Type]bool
+	values  map[reflect.Type]any
 }
 
-// Set records v for k. k must be in the node's Provides.
-func Set[T any](out *Outputs, k Key[T], v T) error {
-	if !out.allowed[k.name] {
-		return fmt.Errorf("%w: %q", ErrNotDeclared, k.name)
+// Set records v. T must be in the node's Provides.
+func Set[T Value](out *Outputs, v T) error {
+	t := reflect.TypeFor[T]()
+	if !out.allowed[t] {
+		return fmt.Errorf("%w: %v", ErrNotDeclared, t)
 	}
-	out.values[k.name] = v
+	out.values[t] = v
 	return nil
 }
 
 // Pipeline is a planned list of nodes.
 type Pipeline struct {
 	nodes []Node
-	// providers[i] maps each key node i requires to the index of its provider.
-	providers []map[string]int
+	// providers[i] maps each type node i requires to the index of its
+	// provider.
+	providers []map[reflect.Type]int
 }
 
-// New plans nodes in the given order, inserting default nodes for keys that
+// New plans nodes in the given order, inserting default nodes for types that
 // have no earlier provider.
 func New(nodes ...Node) (*Pipeline, error) {
 	nodes = slices.Clone(nodes)
-	latest := map[string]int{}
-	var providers []map[string]int
+	latest := map[reflect.Type]int{}
+	var providers []map[reflect.Type]int
 	for i := 0; i < len(nodes); i++ {
 		n := nodes[i]
-		prov := map[string]int{}
+		prov := map[reflect.Type]int{}
 		inserted := false
 		for _, k := range n.Requires() {
-			if _, dup := prov[k.Name()]; dup {
-				return nil, fmt.Errorf("%w: %q in %q", ErrDuplicateInput, k.Name(), n.Name())
+			if _, dup := prov[k.Type()]; dup {
+				return nil, fmt.Errorf("%w: %v in %q", ErrDuplicateInput, k.Type(), n.Name())
 			}
-			if j, ok := latest[k.Name()]; ok {
-				prov[k.Name()] = j
+			if j, ok := latest[k.Type()]; ok {
+				prov[k.Type()] = j
 				continue
 			}
 			def := k.DefaultNode()
 			if def == nil {
-				return nil, fmt.Errorf("%w: %q required by %q", ErrNoProvider, k.Name(), n.Name())
+				return nil, fmt.Errorf("%w: %v required by %q", ErrNoProvider, k.Type(), n.Name())
 			}
 			// The default is planned at this position so its own requirements
 			// resolve against the same earlier nodes; node i is revisited after.
@@ -145,7 +142,7 @@ func New(nodes ...Node) (*Pipeline, error) {
 		}
 		providers = append(providers, prov)
 		for _, k := range n.Provides() {
-			latest[k.Name()] = i
+			latest[k.Type()] = i
 		}
 	}
 	return &Pipeline{nodes: nodes, providers: providers}, nil
@@ -178,8 +175,8 @@ type result struct {
 	// gen is the emit generation the node ran at.
 	gen int
 	// inputs records the version of each consumed value.
-	inputs  map[string]int
-	outputs map[string]versioned
+	inputs  map[reflect.Type]int
+	outputs map[reflect.Type]versioned
 }
 
 type run struct {
@@ -194,7 +191,7 @@ type run struct {
 func (r *run) ensure(ctx context.Context, i int) error {
 	n := r.p.nodes[i]
 	for _, k := range n.Requires() {
-		if err := r.ensure(ctx, r.p.providers[i][k.Name()]); err != nil {
+		if err := r.ensure(ctx, r.p.providers[i][k.Type()]); err != nil {
 			return err
 		}
 	}
@@ -214,8 +211,8 @@ func (r *run) fresh(i int) bool {
 		return res.gen == r.emit.gen
 	}
 	for _, k := range n.Requires() {
-		cur := r.results[r.p.providers[i][k.Name()]].outputs[k.Name()]
-		if cur.version != res.inputs[k.Name()] {
+		cur := r.results[r.p.providers[i][k.Type()]].outputs[k.Type()]
+		if cur.version != res.inputs[k.Type()] {
 			return false
 		}
 	}
@@ -224,31 +221,31 @@ func (r *run) fresh(i int) bool {
 
 func (r *run) exec(ctx context.Context, i int) error {
 	n := r.p.nodes[i]
-	in := &Inputs{values: map[string]any{}}
+	in := &Inputs{values: map[reflect.Type]any{}}
 	res := &result{
 		gen:     r.emit.gen,
-		inputs:  map[string]int{},
-		outputs: map[string]versioned{},
+		inputs:  map[reflect.Type]int{},
+		outputs: map[reflect.Type]versioned{},
 	}
 	for _, k := range n.Requires() {
-		v := r.results[r.p.providers[i][k.Name()]].outputs[k.Name()]
-		in.values[k.Name()] = v.value
-		res.inputs[k.Name()] = v.version
+		v := r.results[r.p.providers[i][k.Type()]].outputs[k.Type()]
+		in.values[k.Type()] = v.value
+		res.inputs[k.Type()] = v.version
 	}
-	out := &Outputs{allowed: map[string]bool{}, values: map[string]any{}}
+	out := &Outputs{allowed: map[reflect.Type]bool{}, values: map[reflect.Type]any{}}
 	for _, k := range n.Provides() {
-		out.allowed[k.Name()] = true
+		out.allowed[k.Type()] = true
 	}
 	if err := n.Run(ctx, in, out, r.emit); err != nil {
 		return fmt.Errorf("workflow: node %q: %w", n.Name(), err)
 	}
 	for _, k := range n.Provides() {
-		v, ok := out.values[k.Name()]
+		v, ok := out.values[k.Type()]
 		if !ok {
-			return fmt.Errorf("%w: %q by %q", ErrMissingOutput, k.Name(), n.Name())
+			return fmt.Errorf("%w: %v by %q", ErrMissingOutput, k.Type(), n.Name())
 		}
 		r.nextVersion++
-		res.outputs[k.Name()] = versioned{value: v, version: r.nextVersion}
+		res.outputs[k.Type()] = versioned{value: v, version: r.nextVersion}
 	}
 	r.results[i] = res
 	return nil

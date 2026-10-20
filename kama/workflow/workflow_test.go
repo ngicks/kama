@@ -33,17 +33,21 @@ func (e *fakeEmitter) Emit(_ context.Context, name string, _ []byte) error {
 	return nil
 }
 
-var (
-	keySrc    = NewKey[int]("src", nil)
-	keyDouble = NewKey[int]("double", nil)
+// src and double have no default: a pipeline must provide them.
+type (
+	src    int
+	double int
 )
 
-// source provides keySrc with a value that changes on every run, so a rerun is
+func (src) DefaultNode() Node    { return nil }
+func (double) DefaultNode() Node { return nil }
+
+// source provides src with a value that changes on every run, so a rerun is
 // observable downstream.
 func source() *fakeNode {
-	n := &fakeNode{name: "source", provides: []KeyRef{keySrc}}
+	n := &fakeNode{name: "source", provides: []KeyRef{Key[src]{}}}
 	n.run = func(_ *Inputs, out *Outputs, _ Emitter) error {
-		return Set(out, keySrc, n.runs)
+		return Set(out, src(n.runs))
 	}
 	return n
 }
@@ -51,14 +55,14 @@ func source() *fakeNode {
 func doubler() *fakeNode {
 	return &fakeNode{
 		name:     "double",
-		requires: []KeyRef{keySrc},
-		provides: []KeyRef{keyDouble},
+		requires: []KeyRef{Key[src]{}},
+		provides: []KeyRef{Key[double]{}},
 		run: func(in *Inputs, out *Outputs, _ Emitter) error {
-			v, err := Get(in, keySrc)
+			v, err := Get[src](in)
 			if err != nil {
 				return err
 			}
-			return Set(out, keyDouble, v*2)
+			return Set(out, double(v*2))
 		},
 	}
 }
@@ -66,19 +70,19 @@ func doubler() *fakeNode {
 func emitter(name string) *fakeNode {
 	return &fakeNode{
 		name:     name,
-		requires: []KeyRef{keySrc},
+		requires: []KeyRef{Key[src]{}},
 		run: func(_ *Inputs, _ *Outputs, emit Emitter) error {
 			return emit.Emit(context.Background(), name+".go", nil)
 		},
 	}
 }
 
-func consumer(name string, k Key[int], seen *[]int) *fakeNode {
+func consumer[T Value](name string, seen *[]T) *fakeNode {
 	return &fakeNode{
 		name:     name,
-		requires: []KeyRef{k},
+		requires: []KeyRef{Key[T]{}},
 		run: func(in *Inputs, _ *Outputs, _ Emitter) error {
-			v, err := Get(in, k)
+			v, err := Get[T](in)
 			if err != nil {
 				return err
 			}
@@ -103,77 +107,86 @@ func mustRun(t *testing.T, nodes ...Node) *fakeEmitter {
 
 func TestBranchAndJoin(t *testing.T) {
 	var seen []int
-	src := source()
+	var seenSrc []src
+	s := source()
 	join := &fakeNode{
 		name:     "join",
-		requires: []KeyRef{keySrc, keyDouble},
+		requires: []KeyRef{Key[src]{}, Key[double]{}},
 		run: func(in *Inputs, _ *Outputs, _ Emitter) error {
-			a, _ := Get(in, keySrc)
-			b, _ := Get(in, keyDouble)
-			seen = append(seen, a, b)
+			a, _ := Get[src](in)
+			b, _ := Get[double](in)
+			seen = append(seen, int(a), int(b))
 			return nil
 		},
 	}
-	mustRun(t, src, doubler(), consumer("c", keySrc, &seen), join)
-	if src.runs != 1 {
-		t.Errorf("source ran %d times, want 1", src.runs)
+	mustRun(t, s, doubler(), consumer("c", &seenSrc), join)
+	if s.runs != 1 {
+		t.Errorf("source ran %d times, want 1", s.runs)
 	}
-	if want := []int{1, 1, 2}; !slices.Equal(seen, want) {
-		t.Errorf("seen %v, want %v", seen, want)
+	if want := []src{1}; !slices.Equal(seenSrc, want) {
+		t.Errorf("consumer saw %v, want %v", seenSrc, want)
+	}
+	if want := []int{1, 2}; !slices.Equal(seen, want) {
+		t.Errorf("join saw %v, want %v", seen, want)
 	}
 }
 
 func TestReloadAfterEmit(t *testing.T) {
-	var seen []int
-	src := source()
+	var seen []double
+	s := source()
 	dbl := doubler()
 	e := mustRun(t,
-		src,
+		s,
 		dbl,
-		consumer("before", keyDouble, &seen),
+		consumer("before", &seen),
 		emitter("gen"),
-		consumer("after", keyDouble, &seen),
-		consumer("again", keyDouble, &seen),
+		consumer("after", &seen),
+		consumer("again", &seen),
 	)
 	if want := []string{"gen.go"}; !slices.Equal(e.names, want) {
 		t.Errorf("emitted %v, want %v", e.names, want)
 	}
-	if src.runs != 2 || dbl.runs != 2 {
-		t.Errorf("source ran %d, doubler ran %d, want 2 and 2", src.runs, dbl.runs)
+	if s.runs != 2 || dbl.runs != 2 {
+		t.Errorf("source ran %d, doubler ran %d, want 2 and 2", s.runs, dbl.runs)
 	}
-	if want := []int{2, 4, 4}; !slices.Equal(seen, want) {
+	if want := []double{2, 4, 4}; !slices.Equal(seen, want) {
 		t.Errorf("seen %v, want %v", seen, want)
 	}
 }
 
 func TestNearestEarlierProvider(t *testing.T) {
-	var seen []int
+	var seen []src
 	override := &fakeNode{
 		name:     "override",
-		provides: []KeyRef{keySrc},
+		provides: []KeyRef{Key[src]{}},
 		run: func(_ *Inputs, out *Outputs, _ Emitter) error {
-			return Set(out, keySrc, 100)
+			return Set(out, src(100))
 		},
 	}
-	mustRun(t, source(), consumer("a", keySrc, &seen), override, consumer("b", keySrc, &seen))
-	if want := []int{1, 100}; !slices.Equal(seen, want) {
+	mustRun(t, source(), consumer("a", &seen), override, consumer("b", &seen))
+	if want := []src{1, 100}; !slices.Equal(seen, want) {
 		t.Errorf("seen %v, want %v", seen, want)
 	}
 }
 
+// withDefault loads itself when no node provides it.
+type withDefault int
+
+var defaultsMade []*fakeNode
+
+func (withDefault) DefaultNode() Node {
+	n := &fakeNode{name: "default", provides: []KeyRef{Key[withDefault]{}}}
+	n.run = func(_ *Inputs, out *Outputs, _ Emitter) error {
+		return Set(out, withDefault(7))
+	}
+	defaultsMade = append(defaultsMade, n)
+	return n
+}
+
 func TestDefaultInsertedOnce(t *testing.T) {
-	var (
-		defaults []*fakeNode
-		key      Key[int]
-	)
-	key = NewKey[int]("withdef", func() Node {
-		n := &fakeNode{name: "default", provides: []KeyRef{key}}
-		n.run = func(_ *Inputs, out *Outputs, _ Emitter) error { return Set(out, key, 7) }
-		defaults = append(defaults, n)
-		return n
-	})
-	var seen []int
-	p, err := New(consumer("a", key, &seen), consumer("b", key, &seen))
+	defaultsMade = nil
+	var seen []withDefault
+	p, err := New(consumer("a", &seen), consumer("b", &seen))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,22 +200,22 @@ func TestDefaultInsertedOnce(t *testing.T) {
 	if err := p.Run(context.Background(), &fakeEmitter{}); err != nil {
 		t.Fatal(err)
 	}
-	if len(defaults) != 1 || defaults[0].runs != 1 {
-		t.Errorf("default constructed %d times, want 1", len(defaults))
+	if len(defaultsMade) != 1 || defaultsMade[0].runs != 1 {
+		t.Errorf("default constructed %d times, want 1", len(defaultsMade))
 	}
-	if want := []int{7, 7}; !slices.Equal(seen, want) {
+	if want := []withDefault{7, 7}; !slices.Equal(seen, want) {
 		t.Errorf("seen %v, want %v", seen, want)
 	}
 }
 
 func TestErrors(t *testing.T) {
-	var seen []int
-	_, err := New(consumer("a", keySrc, &seen))
+	var seen []src
+	_, err := New(consumer("a", &seen))
 	if !errors.Is(err, ErrNoProvider) {
 		t.Errorf("no provider: got %v", err)
 	}
 
-	bad := &fakeNode{name: "bad", provides: []KeyRef{keySrc}}
+	bad := &fakeNode{name: "bad", provides: []KeyRef{Key[src]{}}}
 	p, err := New(bad)
 	if err != nil {
 		t.Fatal(err)
@@ -212,7 +225,7 @@ func TestErrors(t *testing.T) {
 	}
 
 	undeclared := &fakeNode{name: "undeclared"}
-	undeclared.run = func(_ *Inputs, out *Outputs, _ Emitter) error { return Set(out, keySrc, 1) }
+	undeclared.run = func(_ *Inputs, out *Outputs, _ Emitter) error { return Set(out, src(1)) }
 	p, err = New(undeclared)
 	if err != nil {
 		t.Fatal(err)
@@ -221,16 +234,16 @@ func TestErrors(t *testing.T) {
 		t.Errorf("not declared: got %v", err)
 	}
 
-	wrongType := &fakeNode{name: "wrong", requires: []KeyRef{keySrc}}
-	wrongType.run = func(in *Inputs, _ *Outputs, _ Emitter) error {
-		_, err := Get(in, NewKey[string]("src", nil))
+	notRequired := &fakeNode{name: "notrequired", requires: []KeyRef{Key[src]{}}}
+	notRequired.run = func(in *Inputs, _ *Outputs, _ Emitter) error {
+		_, err := Get[double](in)
 		return err
 	}
-	p, err = New(source(), wrongType)
+	p, err = New(source(), notRequired)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Run(context.Background(), &fakeEmitter{}); !errors.Is(err, ErrTypeMismatch) {
-		t.Errorf("type mismatch: got %v", err)
+	if err := p.Run(context.Background(), &fakeEmitter{}); !errors.Is(err, ErrNotInRequires) {
+		t.Errorf("not in requires: got %v", err)
 	}
 }
