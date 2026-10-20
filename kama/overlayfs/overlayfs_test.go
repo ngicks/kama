@@ -79,7 +79,7 @@ func TestSinkStagesThenFlushes(t *testing.T) {
 	_, err = os.Stat(filepath.Join(root, "orig.gen.go"))
 	assert.ErrorIs(t, err, fs.ErrNotExist)
 
-	assert.NilError(t, f.Flush(context.Background()))
+	assert.NilError(t, f.CopyDown(context.Background()))
 
 	onDisk, err := os.ReadFile(filepath.Join(root, "sub", "new.go"))
 	assert.NilError(t, err)

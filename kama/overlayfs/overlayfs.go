@@ -3,7 +3,7 @@
 // It stacks a writable in-memory layer over the project directory. Nodes read
 // the merged view, so generated output is visible to later nodes as if it
 // were on disk, and the sink node writes routed files into the writable
-// layer. Nothing reaches the project directory until Flush.
+// layer. Nothing reaches the project directory until CopyDown.
 package overlayfs
 
 import (
@@ -107,8 +107,8 @@ func (f *Fs) Overlay() (map[string][]byte, error) {
 	return out, nil
 }
 
-// Flush copies every staged file into the project directory.
-func (f *Fs) Flush(ctx context.Context) error {
+// CopyDown copies every staged file into the project directory.
+func (f *Fs) CopyDown(ctx context.Context) error {
 	dst, err := os.OpenRoot(f.root)
 	if err != nil {
 		return err
