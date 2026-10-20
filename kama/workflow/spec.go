@@ -28,6 +28,8 @@ type NodeSpec struct {
 	// Kind selects the constructor in the Registry.
 	Kind string   `json:"kind" yaml:"kind" toml:"kind"`
 	Deps []string `json:"deps,omitzero" yaml:"deps,omitempty" toml:"deps,omitempty"`
+	// Output names the node this node's emitted files go to.
+	Output string `json:"output,omitzero" yaml:"output,omitempty" toml:"output,omitempty"`
 	// Param holds kind-specific arguments the constructor decodes.
 	Param map[string]any `json:"param,omitzero" yaml:"param,omitempty" toml:"param,omitempty"`
 }
@@ -57,7 +59,7 @@ func (s Spec) Build(reg Registry) (*Graph, error) {
 			return nil, fmt.Errorf("workflow: node %q: %w", ns.Name, err)
 		}
 
-		if err := g.Add(ns.Name, n, ns.Deps...); err != nil {
+		if err := g.Add(ns.Name, n, Edges{Deps: ns.Deps, Output: ns.Output}); err != nil {
 			return nil, err
 		}
 	}

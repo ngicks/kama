@@ -21,7 +21,26 @@ func testRegistry(seen *[]double) Registry {
 		},
 		"double":   func(map[string]any) (Node, error) { return doubler(), nil },
 		"consumer": func(map[string]any) (Node, error) { return consumer(seen), nil },
+		"gen":      func(map[string]any) (Node, error) { return generator("g"), nil },
+		"sink":     func(map[string]any) (Node, error) { return sink(), nil },
 	}
+}
+
+func TestSpecOutput(t *testing.T) {
+	var seen []double
+	spec := Spec{
+		Version: SpecVersion,
+		Nodes: []NodeSpec{
+			{Name: "fs", Kind: "fs"},
+			{Name: "src", Kind: "source", Deps: []string{"fs"}, Param: map[string]any{"value": 3}},
+			{Name: "g", Kind: "gen", Deps: []string{"src"}, Output: "out"},
+			{Name: "out", Kind: "sink", Deps: []string{"fs"}},
+		},
+	}
+
+	g, err := spec.Build(testRegistry(&seen))
+	assert.NilError(t, err)
+	assert.NilError(t, g.Run(context.Background()))
 }
 
 func TestSpecBuild(t *testing.T) {

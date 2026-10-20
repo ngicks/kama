@@ -41,6 +41,8 @@ type (
 func (src) DefaultNode() Node    { return nil }
 func (double) DefaultNode() Node { return nil }
 
+func deps(names ...string) Edges { return Edges{Deps: names} }
+
 func targetNode() *fakeNode {
 	return &fakeNode{
 		provides: []KeyRef{Key[*target]{}},
@@ -50,8 +52,8 @@ func targetNode() *fakeNode {
 	}
 }
 
-// source reads the target and provides src with a value that changes on every
-// run, so a second instance is observable downstream.
+// source reads the target and provides src with a fixed value, so a second
+// instance is observable downstream.
 func source(v int) *fakeNode {
 	return &fakeNode{
 		requires: []KeyRef{Key[*target]{}},
@@ -77,10 +79,25 @@ func doubler() *fakeNode {
 	}
 }
 
-// output writes into the target and provides it again.
-func output(name string) *fakeNode {
+// generator emits one file named after the src value it reads.
+func generator(prefix string) *fakeNode {
 	return &fakeNode{
-		requires: []KeyRef{Key[*target]{}, Key[src]{}},
+		requires: []KeyRef{Key[src]{}},
+		run: func(in *Inputs, out *Outputs) error {
+			v, err := in.Get[src]()
+			if err != nil {
+				return err
+			}
+
+			return out.Emit(prefix+".gen.go", []byte{byte(v)})
+		},
+	}
+}
+
+// sink writes routed files into the target and provides it again.
+func sink() *fakeNode {
+	return &fakeNode{
+		requires: []KeyRef{Key[*target]{}},
 		provides: []KeyRef{Key[*target]{}},
 		run: func(in *Inputs, out *Outputs) error {
 			t, err := in.Get[*target]()
@@ -88,7 +105,10 @@ func output(name string) *fakeNode {
 				return err
 			}
 
-			t.written = append(t.written, name+".go")
+			for _, f := range in.Emitted() {
+				t.written = append(t.written, f.Path)
+			}
+
 			return out.Set(t)
 		},
 	}
@@ -125,11 +145,11 @@ func TestBranchAndJoin(t *testing.T) {
 	}
 
 	g := NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode()))
-	assert.NilError(t, g.Add("src", s, "fs"))
-	assert.NilError(t, g.Add("dbl", doubler(), "src"))
-	assert.NilError(t, g.Add("c", consumer(&seenSrc), "src"))
-	assert.NilError(t, g.Add("join", join, "src", "dbl"))
+	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
+	assert.NilError(t, g.Add("src", s, deps("fs")))
+	assert.NilError(t, g.Add("dbl", doubler(), deps("src")))
+	assert.NilError(t, g.Add("c", consumer(&seenSrc), deps("src")))
+	assert.NilError(t, g.Add("join", join, deps("src", "dbl")))
 	assert.NilError(t, g.Run(context.Background()))
 
 	assert.Equal(t, s.runs, 1)
@@ -137,29 +157,52 @@ func TestBranchAndJoin(t *testing.T) {
 	assert.DeepEqual(t, seen, []int{1, 2})
 }
 
-func TestExplicitReload(t *testing.T) {
+func TestOutputRouting(t *testing.T) {
 	var seen []double
 	var targets []*target
-	first := source(1)
-	second := source(2)
 
 	g := NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode()))
-	assert.NilError(t, g.Add("src1", first, "fs"))
-	assert.NilError(t, g.Add("dbl1", doubler(), "src1"))
-	assert.NilError(t, g.Add("before", consumer(&seen), "dbl1"))
-	assert.NilError(t, g.Add("out", output("gen"), "fs", "src1"))
-	assert.NilError(t, g.Add("src2", second, "out"))
-	assert.NilError(t, g.Add("dbl2", doubler(), "src2"))
-	assert.NilError(t, g.Add("after", consumer(&seen), "dbl2"))
-	assert.NilError(t, g.Add("target", consumer(&targets), "out"))
+	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
+	assert.NilError(t, g.Add("src1", source(1), deps("fs")))
+	assert.NilError(t, g.Add("a", generator("a"), Edges{Deps: []string{"src1"}, Output: "out"}))
+	assert.NilError(t, g.Add("b", generator("b"), Edges{Deps: []string{"src1"}, Output: "out"}))
+	assert.NilError(t, g.Add("out", sink(), deps("fs")))
+	assert.NilError(t, g.Add("src2", source(2), deps("out")))
+	assert.NilError(t, g.Add("dbl", doubler(), deps("src2")))
+	assert.NilError(t, g.Add("after", consumer(&seen), deps("dbl")))
+	assert.NilError(t, g.Add("target", consumer(&targets), deps("out")))
+
+	assert.DeepEqual(t, g.Names(), []string{
+		"fs", "src1", "a", "b", "out", "src2", "dbl", "after", "target",
+	})
+
 	assert.NilError(t, g.Run(context.Background()))
 
-	assert.Equal(t, first.runs, 1)
-	assert.Equal(t, second.runs, 1)
-	assert.DeepEqual(t, seen, []double{2, 4})
+	assert.DeepEqual(t, seen, []double{4})
 	assert.Equal(t, len(targets), 1)
-	assert.DeepEqual(t, targets[0].written, []string{"gen.go"})
+	assert.DeepEqual(t, targets[0].written, []string{"a.gen.go", "b.gen.go"})
+}
+
+func TestOutputErrors(t *testing.T) {
+	g := NewGraph()
+	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
+	assert.NilError(t, g.Add("src", source(1), deps("fs")))
+
+	// An output must come after the nodes routed to it.
+	assert.NilError(t, g.Add("early", sink(), deps("fs")))
+	err := g.Add("g", generator("g"), Edges{Deps: []string{"src"}, Output: "early"})
+	assert.ErrorIs(t, err, ErrUnknownNode)
+
+	// Emitting without a declared output fails at run time.
+	assert.NilError(t, g.Add("noout", generator("noout"), deps("src")))
+	assert.ErrorIs(t, g.Run(context.Background()), ErrNoOutputNode)
+
+	// An output declared but never added fails before anything runs.
+	g = NewGraph()
+	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
+	assert.NilError(t, g.Add("src", source(1), deps("fs")))
+	assert.NilError(t, g.Add("g", generator("g"), Edges{Deps: []string{"src"}, Output: "never"}))
+	assert.ErrorIs(t, g.Run(context.Background()), ErrUnknownNode)
 }
 
 // withDefault loads itself when no dependency provides it.
@@ -190,10 +233,10 @@ func TestDefaultResolvesAgainstSameDeps(t *testing.T) {
 	var seen []withDefault
 
 	g := NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode()))
-	assert.NilError(t, g.Add("src", source(1), "fs"))
-	assert.NilError(t, g.Add("a", consumer(&seen), "src"))
-	assert.NilError(t, g.Add("b", consumer(&seen), "src"))
+	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
+	assert.NilError(t, g.Add("src", source(1), deps("fs")))
+	assert.NilError(t, g.Add("a", consumer(&seen), deps("src")))
+	assert.NilError(t, g.Add("b", consumer(&seen), deps("src")))
 
 	assert.DeepEqual(t, g.Names(), []string{
 		"fs", "src", "a/workflow.withDefault", "a", "b/workflow.withDefault", "b",
@@ -209,31 +252,31 @@ func TestAddErrors(t *testing.T) {
 	var seen []src
 
 	g := NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode()))
-	assert.NilError(t, g.Add("src1", source(1), "fs"))
-	assert.NilError(t, g.Add("src2", source(2), "fs"))
+	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
+	assert.NilError(t, g.Add("src1", source(1), deps("fs")))
+	assert.NilError(t, g.Add("src2", source(2), deps("fs")))
 
-	assert.ErrorIs(t, g.Add("fs", targetNode()), ErrDuplicateNode)
-	assert.ErrorIs(t, g.Add("c", consumer(&seen), "nope"), ErrUnknownNode)
-	assert.ErrorIs(t, g.Add("c", consumer(&seen)), ErrNoProvider)
-	assert.ErrorIs(t, g.Add("c", consumer(&seen), "src1", "src2"), ErrAmbiguousProvider)
+	assert.ErrorIs(t, g.Add("fs", targetNode(), Edges{}), ErrDuplicateNode)
+	assert.ErrorIs(t, g.Add("c", consumer(&seen), deps("nope")), ErrUnknownNode)
+	assert.ErrorIs(t, g.Add("c", consumer(&seen), Edges{}), ErrNoProvider)
+	assert.ErrorIs(t, g.Add("c", consumer(&seen), deps("src1", "src2")), ErrAmbiguousProvider)
 
 	// Only dependencies resolve types: fs provides nothing a consumer of src
 	// wants, even though src1 is in the graph.
-	assert.ErrorIs(t, g.Add("c", consumer(&seen), "fs"), ErrNoProvider)
+	assert.ErrorIs(t, g.Add("c", consumer(&seen), deps("fs")), ErrNoProvider)
 }
 
 func TestRunErrors(t *testing.T) {
 	bad := &fakeNode{provides: []KeyRef{Key[src]{}}}
 
 	g := NewGraph()
-	assert.NilError(t, g.Add("bad", bad))
+	assert.NilError(t, g.Add("bad", bad, Edges{}))
 	assert.ErrorIs(t, g.Run(context.Background()), ErrMissingOutput)
 
 	undeclared := &fakeNode{run: func(_ *Inputs, out *Outputs) error { return out.Set(src(1)) }}
 
 	g = NewGraph()
-	assert.NilError(t, g.Add("undeclared", undeclared))
+	assert.NilError(t, g.Add("undeclared", undeclared, Edges{}))
 	assert.ErrorIs(t, g.Run(context.Background()), ErrNotDeclared)
 
 	notRequired := &fakeNode{
@@ -245,8 +288,8 @@ func TestRunErrors(t *testing.T) {
 	}
 
 	g = NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode()))
-	assert.NilError(t, g.Add("src", source(1), "fs"))
-	assert.NilError(t, g.Add("nr", notRequired, "src"))
+	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
+	assert.NilError(t, g.Add("src", source(1), deps("fs")))
+	assert.NilError(t, g.Add("nr", notRequired, deps("src")))
 	assert.ErrorIs(t, g.Run(context.Background()), ErrNotInRequires)
 }
