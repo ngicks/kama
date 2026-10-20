@@ -1,17 +1,11 @@
-// Package workflow runs an ordered list of nodes that exchange typed values.
+// Package workflow runs a dependency graph of nodes that exchange typed
+// values.
 //
-// A node declares the value types it requires and the value types it
-// provides. The list order is time: a value seen at some position comes from
-// the latest earlier node providing it.
-//
-// Nodes come in two kinds. An anchored node is an event: it consumes nothing,
-// or it provides a type it also requires, as an output node that writes into
-// the target filesystem and provides it again does. It runs once, at its own
-// position, with the inputs visible there. Every other node is a function of
-// its inputs: when a later node needs its value, its inputs are resolved at
-// that later position and it runs again if they changed. The target
-// filesystem is itself a value, so a node that reads it reruns on demand after
-// an output node and sees the generated code.
+// The user names every node and declares its dependencies. A node's required
+// value types are resolved among its declared dependencies only, so the graph
+// states exactly when expensive work such as loading Go packages happens: a
+// second load after generated output is a second node, depending on the node
+// that wrote the output. Nothing is reloaded implicitly.
 package workflow
 
 import (
@@ -23,21 +17,23 @@ import (
 )
 
 var (
-	ErrNoProvider     = errors.New("workflow: no provider")
-	ErrNotDeclared    = errors.New("workflow: type not declared")
-	ErrMissingOutput  = errors.New("workflow: declared output not set")
-	ErrNotInRequires  = errors.New("workflow: type not in Requires")
-	ErrDuplicateInput = errors.New("workflow: type required twice")
-	ErrCycle          = errors.New("workflow: dependency cycle")
+	ErrNoProvider        = errors.New("workflow: no provider")
+	ErrAmbiguousProvider = errors.New("workflow: ambiguous provider")
+	ErrUnknownNode       = errors.New("workflow: unknown node")
+	ErrDuplicateNode     = errors.New("workflow: duplicate node")
+	ErrNotDeclared       = errors.New("workflow: type not declared")
+	ErrMissingOutput     = errors.New("workflow: declared output not set")
+	ErrNotInRequires     = errors.New("workflow: type not in Requires")
+	ErrDuplicateInput    = errors.New("workflow: type required twice")
 )
 
-// Value is what flows through the pipeline. Its type is its identity, so two
+// Value is what flows through the graph. Its type is its identity, so two
 // values with the same shape but different roles are two named types. A value
-// type knows how to load itself from the project when no node provides it.
+// type knows how to load itself when no dependency provides it.
 type Value interface {
-	// DefaultNode returns a node providing this value for a pipeline that
-	// has none, or nil when it must be provided explicitly. It is called on
-	// the zero value, so a pointer type must handle a nil receiver.
+	// DefaultNode returns a node providing this value for a node whose
+	// dependencies do not, or nil when it must be provided explicitly. It is
+	// called on the zero value, so a pointer type must handle a nil receiver.
 	DefaultNode() Node
 }
 
@@ -59,7 +55,6 @@ func (Key[T]) DefaultNode() Node {
 
 // Node is one unit of work.
 type Node interface {
-	Name() string
 	Requires() []KeyRef
 	Provides() []KeyRef
 	Run(ctx context.Context, in *Inputs, out *Outputs) error
@@ -99,209 +94,132 @@ func (out *Outputs) Set[T Value](v T) error {
 	return nil
 }
 
-// Pipeline is a planned list of nodes.
-type Pipeline struct {
-	nodes []Node
-	// providers lists, per type, the indices of the nodes providing it in
-	// ascending order.
-	providers map[reflect.Type][]int
-	anchored  []bool
+type entry struct {
+	name string
+	node Node
+	// providers maps each required type to the name of the dependency
+	// providing it.
+	providers map[reflect.Type]string
 }
 
-// New plans nodes in the given order, inserting default nodes for types that
-// have no earlier provider.
-func New(nodes ...Node) (*Pipeline, error) {
-	nodes = slices.Clone(nodes)
+// Graph is a set of named nodes with explicit dependencies.
+type Graph struct {
+	entries map[string]*entry
+	// order is insertion order, which is a topological order because a
+	// dependency must be added before the nodes that depend on it.
+	order []string
+}
 
-	providers := map[reflect.Type][]int{}
-	var anchored []bool
+func NewGraph() *Graph {
+	return &Graph{entries: map[string]*entry{}}
+}
 
-	for i := 0; i < len(nodes); i++ {
-		n := nodes[i]
-		seen := map[reflect.Type]bool{}
-		inserted := false
+// Add registers node n under name, depending on the named nodes deps, which
+// must already be in the graph. Each type n requires must be provided by
+// exactly one of deps; a type none of them provides is served by its default
+// node, added under name/<type> with the same deps.
+func (g *Graph) Add(name string, n Node, deps ...string) error {
+	if _, dup := g.entries[name]; dup {
+		return fmt.Errorf("%w: %q", ErrDuplicateNode, name)
+	}
 
-		for _, k := range n.Requires() {
-			if seen[k.Type()] {
-				return nil, fmt.Errorf("%w: %v in %q", ErrDuplicateInput, k.Type(), n.Name())
-			}
-			seen[k.Type()] = true
+	for _, d := range deps {
+		if _, ok := g.entries[d]; !ok {
+			return fmt.Errorf("%w: %q depends on %q", ErrUnknownNode, name, d)
+		}
+	}
 
-			if len(providers[k.Type()]) > 0 {
+	e := &entry{name: name, node: n, providers: map[reflect.Type]string{}}
+
+	for _, k := range n.Requires() {
+		t := k.Type()
+		if _, dup := e.providers[t]; dup {
+			return fmt.Errorf("%w: %v in %q", ErrDuplicateInput, t, name)
+		}
+
+		found := ""
+		for _, d := range deps {
+			if !provides(g.entries[d].node, t) {
 				continue
 			}
+			if found != "" {
+				return fmt.Errorf(
+					"%w: %v for %q from %q and %q",
+					ErrAmbiguousProvider,
+					t,
+					name,
+					found,
+					d,
+				)
+			}
+			found = d
+		}
 
+		if found == "" {
 			def := k.DefaultNode()
 			if def == nil {
-				return nil, fmt.Errorf("%w: %v required by %q", ErrNoProvider, k.Type(), n.Name())
+				return fmt.Errorf("%w: %v required by %q", ErrNoProvider, t, name)
 			}
 
-			// The default is planned at this position so its own requirements
-			// resolve against the same earlier nodes; node i is revisited after.
-			nodes = slices.Insert(nodes, i, def)
-			inserted = true
-			break
+			found = name + "/" + t.String()
+			if err := g.Add(found, def, deps...); err != nil {
+				return err
+			}
 		}
 
-		if inserted {
-			i--
-			continue
-		}
-
-		anchored = append(anchored, isAnchored(n))
-		for _, k := range n.Provides() {
-			providers[k.Type()] = append(providers[k.Type()], i)
-		}
+		e.providers[t] = found
 	}
 
-	return &Pipeline{nodes: nodes, providers: providers, anchored: anchored}, nil
+	g.entries[name] = e
+	g.order = append(g.order, name)
+	return nil
 }
 
-// isAnchored reports whether n is an event rather than a function of its
-// inputs: it provides nothing, or it provides a type it also requires.
-func isAnchored(n Node) bool {
-	if len(n.Provides()) == 0 {
-		return true
-	}
-
-	for _, p := range n.Provides() {
-		for _, r := range n.Requires() {
-			if p.Type() == r.Type() {
-				return true
-			}
+func provides(n Node, t reflect.Type) bool {
+	for _, k := range n.Provides() {
+		if k.Type() == t {
+			return true
 		}
 	}
 
 	return false
 }
 
-// provider returns the latest node before position h providing t.
-func (p *Pipeline) provider(t reflect.Type, h int) (int, bool) {
-	idx := p.providers[t]
-	j, _ := slices.BinarySearch(idx, h)
-	if j == 0 {
-		return 0, false
-	}
+// Names returns the node names in execution order, including default nodes
+// added by Add. The slice is shared with the graph; callers must not modify
+// it. It is clipped, so appending to it allocates instead of writing into
+// the graph.
+func (g *Graph) Names() []string { return slices.Clip(g.order) }
 
-	return idx[j-1], true
-}
+// Run executes every node once, in dependency order.
+func (g *Graph) Run(ctx context.Context) error {
+	results := map[string]map[reflect.Type]any{}
 
-// Nodes returns the planned order, including inserted defaults. The slice is
-// shared with the pipeline; callers must not modify its elements. It is
-// clipped, so appending to it allocates instead of writing into the plan.
-func (p *Pipeline) Nodes() []Node { return slices.Clip(p.nodes) }
+	for _, name := range g.order {
+		e := g.entries[name]
 
-// Run executes the pipeline once.
-func (p *Pipeline) Run(ctx context.Context) error {
-	r := &run{
-		p:       p,
-		results: make([]map[string]*result, len(p.nodes)),
-		active:  map[[2]int]bool{},
-	}
-	for i := range r.results {
-		r.results[i] = map[string]*result{}
-	}
-
-	for i := range p.nodes {
-		if _, err := r.eval(ctx, i, i); err != nil {
-			return err
+		in := &Inputs{values: map[reflect.Type]any{}}
+		for t, p := range e.providers {
+			in.values[t] = results[p][t]
 		}
+
+		out := &Outputs{allowed: map[reflect.Type]bool{}, values: map[reflect.Type]any{}}
+		for _, k := range e.node.Provides() {
+			out.allowed[k.Type()] = true
+		}
+
+		if err := e.node.Run(ctx, in, out); err != nil {
+			return fmt.Errorf("workflow: node %q: %w", name, err)
+		}
+
+		for _, k := range e.node.Provides() {
+			if _, ok := out.values[k.Type()]; !ok {
+				return fmt.Errorf("%w: %v by %q", ErrMissingOutput, k.Type(), name)
+			}
+		}
+
+		results[name] = out.values
 	}
 
 	return nil
-}
-
-type versioned struct {
-	value   any
-	version int
-}
-
-type result struct {
-	outputs map[reflect.Type]versioned
-}
-
-type run struct {
-	p *Pipeline
-	// results memoizes each node's runs by the versions of its inputs. A
-	// reader is evaluated at several positions during one run, before and
-	// after an output node, and must not thrash between them.
-	results []map[string]*result
-	// active holds the (node, position) evaluations in progress. The same
-	// node may legitimately be evaluated at two positions at once: an output
-	// node resolves its inputs at its own position while a later consumer
-	// resolves the same reader after it.
-	active      map[[2]int]bool
-	nextVersion int
-}
-
-// value resolves type t as seen at position h.
-func (r *run) value(ctx context.Context, t reflect.Type, h int) (versioned, error) {
-	i, ok := r.p.provider(t, h)
-	if !ok {
-		return versioned{}, fmt.Errorf("%w: %v at %d", ErrNoProvider, t, h)
-	}
-
-	if r.p.anchored[i] {
-		h = i
-	}
-
-	res, err := r.eval(ctx, i, h)
-	if err != nil {
-		return versioned{}, err
-	}
-
-	return res.outputs[t], nil
-}
-
-// eval returns node i's result with its inputs resolved at position h,
-// running it unless the last result was computed from the same input
-// versions.
-func (r *run) eval(ctx context.Context, i, h int) (*result, error) {
-	n := r.p.nodes[i]
-
-	at := [2]int{i, h}
-	if r.active[at] {
-		return nil, fmt.Errorf("%w: through %q", ErrCycle, n.Name())
-	}
-	r.active[at] = true
-	defer delete(r.active, at)
-
-	in := &Inputs{values: map[reflect.Type]any{}}
-	var key []byte
-	for _, k := range n.Requires() {
-		v, err := r.value(ctx, k.Type(), h)
-		if err != nil {
-			return nil, err
-		}
-
-		in.values[k.Type()] = v.value
-		key = fmt.Appendf(key, "%d,", v.version)
-	}
-
-	if res, ok := r.results[i][string(key)]; ok {
-		return res, nil
-	}
-
-	out := &Outputs{allowed: map[reflect.Type]bool{}, values: map[reflect.Type]any{}}
-	for _, k := range n.Provides() {
-		out.allowed[k.Type()] = true
-	}
-
-	if err := n.Run(ctx, in, out); err != nil {
-		return nil, fmt.Errorf("workflow: node %q: %w", n.Name(), err)
-	}
-
-	res := &result{outputs: map[reflect.Type]versioned{}}
-	for _, k := range n.Provides() {
-		v, ok := out.values[k.Type()]
-		if !ok {
-			return nil, fmt.Errorf("%w: %v by %q", ErrMissingOutput, k.Type(), n.Name())
-		}
-
-		r.nextVersion++
-		res.outputs[k.Type()] = versioned{value: v, version: r.nextVersion}
-	}
-
-	r.results[i][string(key)] = res
-	return res, nil
 }

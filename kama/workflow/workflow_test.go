@@ -8,14 +8,12 @@ import (
 )
 
 type fakeNode struct {
-	name     string
 	requires []KeyRef
 	provides []KeyRef
 	run      func(in *Inputs, out *Outputs) error
 	runs     int
 }
 
-func (n *fakeNode) Name() string       { return n.name }
 func (n *fakeNode) Requires() []KeyRef { return n.requires }
 func (n *fakeNode) Provides() []KeyRef { return n.provides }
 func (n *fakeNode) Run(_ context.Context, in *Inputs, out *Outputs) error {
@@ -34,7 +32,7 @@ type target struct{ written []string }
 
 func (*target) DefaultNode() Node { return nil }
 
-// src and double have no default: a pipeline must provide them.
+// src and double have no default: a dependency must provide them.
 type (
 	src    int
 	double int
@@ -45,7 +43,6 @@ func (double) DefaultNode() Node { return nil }
 
 func targetNode() *fakeNode {
 	return &fakeNode{
-		name:     "target",
 		provides: []KeyRef{Key[*target]{}},
 		run: func(_ *Inputs, out *Outputs) error {
 			return out.Set(&target{})
@@ -54,23 +51,19 @@ func targetNode() *fakeNode {
 }
 
 // source reads the target and provides src with a value that changes on every
-// run, so a rerun is observable downstream.
-func source() *fakeNode {
-	n := &fakeNode{
-		name:     "source",
+// run, so a second instance is observable downstream.
+func source(v int) *fakeNode {
+	return &fakeNode{
 		requires: []KeyRef{Key[*target]{}},
 		provides: []KeyRef{Key[src]{}},
+		run: func(_ *Inputs, out *Outputs) error {
+			return out.Set(src(v))
+		},
 	}
-	n.run = func(_ *Inputs, out *Outputs) error {
-		return out.Set(src(n.runs))
-	}
-
-	return n
 }
 
 func doubler() *fakeNode {
 	return &fakeNode{
-		name:     "double",
 		requires: []KeyRef{Key[src]{}},
 		provides: []KeyRef{Key[double]{}},
 		run: func(in *Inputs, out *Outputs) error {
@@ -87,7 +80,6 @@ func doubler() *fakeNode {
 // output writes into the target and provides it again.
 func output(name string) *fakeNode {
 	return &fakeNode{
-		name:     name,
 		requires: []KeyRef{Key[*target]{}, Key[src]{}},
 		provides: []KeyRef{Key[*target]{}},
 		run: func(in *Inputs, out *Outputs) error {
@@ -102,9 +94,8 @@ func output(name string) *fakeNode {
 	}
 }
 
-func consumer[T Value](name string, seen *[]T) *fakeNode {
+func consumer[T Value](seen *[]T) *fakeNode {
 	return &fakeNode{
-		name:     name,
 		requires: []KeyRef{Key[T]{}},
 		run: func(in *Inputs, _ *Outputs) error {
 			v, err := in.Get[T]()
@@ -118,21 +109,12 @@ func consumer[T Value](name string, seen *[]T) *fakeNode {
 	}
 }
 
-func mustRun(t *testing.T, nodes ...Node) {
-	t.Helper()
-
-	p, err := New(nodes...)
-	assert.NilError(t, err)
-	assert.NilError(t, p.Run(context.Background()))
-}
-
 func TestBranchAndJoin(t *testing.T) {
 	var seen []int
 	var seenSrc []src
 
-	s := source()
+	s := source(1)
 	join := &fakeNode{
-		name:     "join",
 		requires: []KeyRef{Key[src]{}, Key[double]{}},
 		run: func(in *Inputs, _ *Outputs) error {
 			a, _ := in.Get[src]()
@@ -142,149 +124,129 @@ func TestBranchAndJoin(t *testing.T) {
 		},
 	}
 
-	mustRun(t, targetNode(), s, doubler(), consumer("c", &seenSrc), join)
+	g := NewGraph()
+	assert.NilError(t, g.Add("fs", targetNode()))
+	assert.NilError(t, g.Add("src", s, "fs"))
+	assert.NilError(t, g.Add("dbl", doubler(), "src"))
+	assert.NilError(t, g.Add("c", consumer(&seenSrc), "src"))
+	assert.NilError(t, g.Add("join", join, "src", "dbl"))
+	assert.NilError(t, g.Run(context.Background()))
 
 	assert.Equal(t, s.runs, 1)
 	assert.DeepEqual(t, seenSrc, []src{1})
 	assert.DeepEqual(t, seen, []int{1, 2})
 }
 
-func TestReloadAfterOutput(t *testing.T) {
+func TestExplicitReload(t *testing.T) {
 	var seen []double
 	var targets []*target
-	s := source()
-	dbl := doubler()
+	first := source(1)
+	second := source(2)
 
-	mustRun(t,
-		targetNode(),
-		s,
-		dbl,
-		consumer("before", &seen),
-		output("gen"),
-		consumer("after", &seen),
-		consumer("again", &seen),
-		consumer("target", &targets),
-	)
+	g := NewGraph()
+	assert.NilError(t, g.Add("fs", targetNode()))
+	assert.NilError(t, g.Add("src1", first, "fs"))
+	assert.NilError(t, g.Add("dbl1", doubler(), "src1"))
+	assert.NilError(t, g.Add("before", consumer(&seen), "dbl1"))
+	assert.NilError(t, g.Add("out", output("gen"), "fs", "src1"))
+	assert.NilError(t, g.Add("src2", second, "out"))
+	assert.NilError(t, g.Add("dbl2", doubler(), "src2"))
+	assert.NilError(t, g.Add("after", consumer(&seen), "dbl2"))
+	assert.NilError(t, g.Add("target", consumer(&targets), "out"))
+	assert.NilError(t, g.Run(context.Background()))
 
-	assert.Equal(t, s.runs, 2)
-	assert.Equal(t, dbl.runs, 2)
-	assert.DeepEqual(t, seen, []double{2, 4, 4})
+	assert.Equal(t, first.runs, 1)
+	assert.Equal(t, second.runs, 1)
+	assert.DeepEqual(t, seen, []double{2, 4})
 	assert.Equal(t, len(targets), 1)
 	assert.DeepEqual(t, targets[0].written, []string{"gen.go"})
 }
 
-func TestNearestEarlierProvider(t *testing.T) {
-	var seen []src
-	override := &fakeNode{
-		name:     "override",
-		provides: []KeyRef{Key[src]{}},
-		run: func(_ *Inputs, out *Outputs) error {
-			return out.Set(src(100))
-		},
-	}
-
-	mustRun(t, targetNode(), source(), consumer("a", &seen), override, consumer("b", &seen))
-
-	assert.DeepEqual(t, seen, []src{1, 100})
-}
-
-// withDefault loads itself when no node provides it.
+// withDefault loads itself when no dependency provides it.
 type withDefault int
 
 var defaultsMade []*fakeNode
 
 func (withDefault) DefaultNode() Node {
-	n := &fakeNode{name: "default", provides: []KeyRef{Key[withDefault]{}}}
-	n.run = func(_ *Inputs, out *Outputs) error {
-		return out.Set(withDefault(7))
+	n := &fakeNode{
+		requires: []KeyRef{Key[src]{}},
+		provides: []KeyRef{Key[withDefault]{}},
+		run: func(in *Inputs, out *Outputs) error {
+			v, err := in.Get[src]()
+			if err != nil {
+				return err
+			}
+
+			return out.Set(withDefault(v + 6))
+		},
 	}
 
 	defaultsMade = append(defaultsMade, n)
 	return n
 }
 
-func TestDefaultInsertedOnce(t *testing.T) {
+func TestDefaultResolvesAgainstSameDeps(t *testing.T) {
 	defaultsMade = nil
 	var seen []withDefault
 
-	p, err := New(consumer("a", &seen), consumer("b", &seen))
-	assert.NilError(t, err)
+	g := NewGraph()
+	assert.NilError(t, g.Add("fs", targetNode()))
+	assert.NilError(t, g.Add("src", source(1), "fs"))
+	assert.NilError(t, g.Add("a", consumer(&seen), "src"))
+	assert.NilError(t, g.Add("b", consumer(&seen), "src"))
 
-	names := make([]string, 0, 3)
-	for _, n := range p.Nodes() {
-		names = append(names, n.Name())
-	}
-	assert.DeepEqual(t, names, []string{"default", "a", "b"})
+	assert.DeepEqual(t, g.Names(), []string{
+		"fs", "src", "a/workflow.withDefault", "a", "b/workflow.withDefault", "b",
+	})
 
-	assert.NilError(t, p.Run(context.Background()))
+	assert.NilError(t, g.Run(context.Background()))
 
-	assert.Equal(t, len(defaultsMade), 1)
-	assert.Equal(t, defaultsMade[0].runs, 1)
+	assert.Equal(t, len(defaultsMade), 2)
 	assert.DeepEqual(t, seen, []withDefault{7, 7})
 }
 
-// ping and pong are mutually derived, which only a cycle through time can
-// satisfy.
-type (
-	ping int
-	pong int
-)
-
-func (ping) DefaultNode() Node { return nil }
-func (pong) DefaultNode() Node { return nil }
-
-func TestCycle(t *testing.T) {
-	seed := &fakeNode{
-		name:     "seed",
-		provides: []KeyRef{Key[ping]{}},
-		run:      func(_ *Inputs, out *Outputs) error { return out.Set(ping(0)) },
-	}
-	toPong := &fakeNode{
-		name:     "topong",
-		requires: []KeyRef{Key[ping]{}},
-		provides: []KeyRef{Key[pong]{}},
-		run:      func(_ *Inputs, out *Outputs) error { return out.Set(pong(0)) },
-	}
-	toPing := &fakeNode{
-		name:     "toping",
-		requires: []KeyRef{Key[pong]{}},
-		provides: []KeyRef{Key[ping]{}},
-		run:      func(_ *Inputs, out *Outputs) error { return out.Set(ping(0)) },
-	}
-	var seen []pong
-
-	p, err := New(seed, toPong, toPing, consumer("c", &seen))
-	assert.NilError(t, err)
-
-	assert.ErrorIs(t, p.Run(context.Background()), ErrCycle)
-}
-
-func TestErrors(t *testing.T) {
+func TestAddErrors(t *testing.T) {
 	var seen []src
 
-	_, err := New(consumer("a", &seen))
-	assert.ErrorIs(t, err, ErrNoProvider)
+	g := NewGraph()
+	assert.NilError(t, g.Add("fs", targetNode()))
+	assert.NilError(t, g.Add("src1", source(1), "fs"))
+	assert.NilError(t, g.Add("src2", source(2), "fs"))
 
-	bad := &fakeNode{name: "bad", provides: []KeyRef{Key[src]{}}}
+	assert.ErrorIs(t, g.Add("fs", targetNode()), ErrDuplicateNode)
+	assert.ErrorIs(t, g.Add("c", consumer(&seen), "nope"), ErrUnknownNode)
+	assert.ErrorIs(t, g.Add("c", consumer(&seen)), ErrNoProvider)
+	assert.ErrorIs(t, g.Add("c", consumer(&seen), "src1", "src2"), ErrAmbiguousProvider)
 
-	p, err := New(bad)
-	assert.NilError(t, err)
-	assert.ErrorIs(t, p.Run(context.Background()), ErrMissingOutput)
+	// Only dependencies resolve types: fs provides nothing a consumer of src
+	// wants, even though src1 is in the graph.
+	assert.ErrorIs(t, g.Add("c", consumer(&seen), "fs"), ErrNoProvider)
+}
 
-	undeclared := &fakeNode{name: "undeclared"}
-	undeclared.run = func(_ *Inputs, out *Outputs) error { return out.Set(src(1)) }
+func TestRunErrors(t *testing.T) {
+	bad := &fakeNode{provides: []KeyRef{Key[src]{}}}
 
-	p, err = New(undeclared)
-	assert.NilError(t, err)
-	assert.ErrorIs(t, p.Run(context.Background()), ErrNotDeclared)
+	g := NewGraph()
+	assert.NilError(t, g.Add("bad", bad))
+	assert.ErrorIs(t, g.Run(context.Background()), ErrMissingOutput)
 
-	notRequired := &fakeNode{name: "notrequired", requires: []KeyRef{Key[src]{}}}
-	notRequired.run = func(in *Inputs, _ *Outputs) error {
-		_, err := in.Get[double]()
-		return err
+	undeclared := &fakeNode{run: func(_ *Inputs, out *Outputs) error { return out.Set(src(1)) }}
+
+	g = NewGraph()
+	assert.NilError(t, g.Add("undeclared", undeclared))
+	assert.ErrorIs(t, g.Run(context.Background()), ErrNotDeclared)
+
+	notRequired := &fakeNode{
+		requires: []KeyRef{Key[src]{}},
+		run: func(in *Inputs, _ *Outputs) error {
+			_, err := in.Get[double]()
+			return err
+		},
 	}
 
-	p, err = New(targetNode(), source(), notRequired)
-	assert.NilError(t, err)
-	assert.ErrorIs(t, p.Run(context.Background()), ErrNotInRequires)
+	g = NewGraph()
+	assert.NilError(t, g.Add("fs", targetNode()))
+	assert.NilError(t, g.Add("src", source(1), "fs"))
+	assert.NilError(t, g.Add("nr", notRequired, "src"))
+	assert.ErrorIs(t, g.Run(context.Background()), ErrNotInRequires)
 }
