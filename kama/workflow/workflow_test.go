@@ -11,29 +11,28 @@ type fakeNode struct {
 	name     string
 	requires []KeyRef
 	provides []KeyRef
-	run      func(in *Inputs, out *Outputs, emit Emitter) error
+	run      func(in *Inputs, out *Outputs) error
 	runs     int
 }
 
 func (n *fakeNode) Name() string       { return n.name }
 func (n *fakeNode) Requires() []KeyRef { return n.requires }
 func (n *fakeNode) Provides() []KeyRef { return n.provides }
-func (n *fakeNode) Run(_ context.Context, in *Inputs, out *Outputs, emit Emitter) error {
+func (n *fakeNode) Run(_ context.Context, in *Inputs, out *Outputs) error {
 	n.runs++
 
 	if n.run == nil {
 		return nil
 	}
 
-	return n.run(in, out, emit)
+	return n.run(in, out)
 }
 
-type fakeEmitter struct{ names []string }
+// target stands in for the target filesystem: a value a source reads through
+// and an output node provides again after writing.
+type target struct{ written []string }
 
-func (e *fakeEmitter) Emit(_ context.Context, name string, _ []byte) error {
-	e.names = append(e.names, name)
-	return nil
-}
+func (*target) DefaultNode() Node { return nil }
 
 // src and double have no default: a pipeline must provide them.
 type (
@@ -44,13 +43,28 @@ type (
 func (src) DefaultNode() Node    { return nil }
 func (double) DefaultNode() Node { return nil }
 
-// source provides src with a value that changes on every run, so a rerun is
-// observable downstream.
+func targetNode() *fakeNode {
+	return &fakeNode{
+		name:     "target",
+		provides: []KeyRef{Key[*target]{}},
+		run: func(_ *Inputs, out *Outputs) error {
+			return out.Set(&target{})
+		},
+	}
+}
+
+// source reads the target and provides src with a value that changes on every
+// run, so a rerun is observable downstream.
 func source() *fakeNode {
-	n := &fakeNode{name: "source", provides: []KeyRef{Key[src]{}}}
-	n.run = func(_ *Inputs, out *Outputs, _ Emitter) error {
+	n := &fakeNode{
+		name:     "source",
+		requires: []KeyRef{Key[*target]{}},
+		provides: []KeyRef{Key[src]{}},
+	}
+	n.run = func(_ *Inputs, out *Outputs) error {
 		return out.Set(src(n.runs))
 	}
+
 	return n
 }
 
@@ -59,7 +73,7 @@ func doubler() *fakeNode {
 		name:     "double",
 		requires: []KeyRef{Key[src]{}},
 		provides: []KeyRef{Key[double]{}},
-		run: func(in *Inputs, out *Outputs, _ Emitter) error {
+		run: func(in *Inputs, out *Outputs) error {
 			v, err := in.Get[src]()
 			if err != nil {
 				return err
@@ -70,12 +84,20 @@ func doubler() *fakeNode {
 	}
 }
 
-func emitter(name string) *fakeNode {
+// output writes into the target and provides it again.
+func output(name string) *fakeNode {
 	return &fakeNode{
 		name:     name,
-		requires: []KeyRef{Key[src]{}},
-		run: func(_ *Inputs, _ *Outputs, emit Emitter) error {
-			return emit.Emit(context.Background(), name+".go", nil)
+		requires: []KeyRef{Key[*target]{}, Key[src]{}},
+		provides: []KeyRef{Key[*target]{}},
+		run: func(in *Inputs, out *Outputs) error {
+			t, err := in.Get[*target]()
+			if err != nil {
+				return err
+			}
+
+			t.written = append(t.written, name+".go")
+			return out.Set(t)
 		},
 	}
 }
@@ -84,7 +106,7 @@ func consumer[T Value](name string, seen *[]T) *fakeNode {
 	return &fakeNode{
 		name:     name,
 		requires: []KeyRef{Key[T]{}},
-		run: func(in *Inputs, _ *Outputs, _ Emitter) error {
+		run: func(in *Inputs, _ *Outputs) error {
 			v, err := in.Get[T]()
 			if err != nil {
 				return err
@@ -96,7 +118,7 @@ func consumer[T Value](name string, seen *[]T) *fakeNode {
 	}
 }
 
-func mustRun(t *testing.T, nodes ...Node) *fakeEmitter {
+func mustRun(t *testing.T, nodes ...Node) {
 	t.Helper()
 
 	p, err := New(nodes...)
@@ -104,12 +126,9 @@ func mustRun(t *testing.T, nodes ...Node) *fakeEmitter {
 		t.Fatal(err)
 	}
 
-	e := &fakeEmitter{}
-	if err := p.Run(context.Background(), e); err != nil {
+	if err := p.Run(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-
-	return e
 }
 
 func TestBranchAndJoin(t *testing.T) {
@@ -120,7 +139,7 @@ func TestBranchAndJoin(t *testing.T) {
 	join := &fakeNode{
 		name:     "join",
 		requires: []KeyRef{Key[src]{}, Key[double]{}},
-		run: func(in *Inputs, _ *Outputs, _ Emitter) error {
+		run: func(in *Inputs, _ *Outputs) error {
 			a, _ := in.Get[src]()
 			b, _ := in.Get[double]()
 			seen = append(seen, int(a), int(b))
@@ -128,7 +147,7 @@ func TestBranchAndJoin(t *testing.T) {
 		},
 	}
 
-	mustRun(t, s, doubler(), consumer("c", &seenSrc), join)
+	mustRun(t, targetNode(), s, doubler(), consumer("c", &seenSrc), join)
 
 	if s.runs != 1 {
 		t.Errorf("source ran %d times, want 1", s.runs)
@@ -141,28 +160,31 @@ func TestBranchAndJoin(t *testing.T) {
 	}
 }
 
-func TestReloadAfterEmit(t *testing.T) {
+func TestReloadAfterOutput(t *testing.T) {
 	var seen []double
+	var targets []*target
 	s := source()
 	dbl := doubler()
 
-	e := mustRun(t,
+	mustRun(t,
+		targetNode(),
 		s,
 		dbl,
 		consumer("before", &seen),
-		emitter("gen"),
+		output("gen"),
 		consumer("after", &seen),
 		consumer("again", &seen),
+		consumer("target", &targets),
 	)
 
-	if want := []string{"gen.go"}; !slices.Equal(e.names, want) {
-		t.Errorf("emitted %v, want %v", e.names, want)
-	}
 	if s.runs != 2 || dbl.runs != 2 {
 		t.Errorf("source ran %d, doubler ran %d, want 2 and 2", s.runs, dbl.runs)
 	}
 	if want := []double{2, 4, 4}; !slices.Equal(seen, want) {
 		t.Errorf("seen %v, want %v", seen, want)
+	}
+	if len(targets) != 1 || !slices.Equal(targets[0].written, []string{"gen.go"}) {
+		t.Errorf("target written %v, want [gen.go]", targets)
 	}
 }
 
@@ -171,12 +193,12 @@ func TestNearestEarlierProvider(t *testing.T) {
 	override := &fakeNode{
 		name:     "override",
 		provides: []KeyRef{Key[src]{}},
-		run: func(_ *Inputs, out *Outputs, _ Emitter) error {
+		run: func(_ *Inputs, out *Outputs) error {
 			return out.Set(src(100))
 		},
 	}
 
-	mustRun(t, source(), consumer("a", &seen), override, consumer("b", &seen))
+	mustRun(t, targetNode(), source(), consumer("a", &seen), override, consumer("b", &seen))
 
 	if want := []src{1, 100}; !slices.Equal(seen, want) {
 		t.Errorf("seen %v, want %v", seen, want)
@@ -190,7 +212,7 @@ var defaultsMade []*fakeNode
 
 func (withDefault) DefaultNode() Node {
 	n := &fakeNode{name: "default", provides: []KeyRef{Key[withDefault]{}}}
-	n.run = func(_ *Inputs, out *Outputs, _ Emitter) error {
+	n.run = func(_ *Inputs, out *Outputs) error {
 		return out.Set(withDefault(7))
 	}
 
@@ -215,7 +237,7 @@ func TestDefaultInsertedOnce(t *testing.T) {
 		t.Fatalf("planned %v, want %v", names, want)
 	}
 
-	if err := p.Run(context.Background(), &fakeEmitter{}); err != nil {
+	if err := p.Run(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -241,32 +263,32 @@ func TestErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Run(context.Background(), &fakeEmitter{}); !errors.Is(err, ErrMissingOutput) {
+	if err := p.Run(context.Background()); !errors.Is(err, ErrMissingOutput) {
 		t.Errorf("missing output: got %v", err)
 	}
 
 	undeclared := &fakeNode{name: "undeclared"}
-	undeclared.run = func(_ *Inputs, out *Outputs, _ Emitter) error { return out.Set(src(1)) }
+	undeclared.run = func(_ *Inputs, out *Outputs) error { return out.Set(src(1)) }
 
 	p, err = New(undeclared)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Run(context.Background(), &fakeEmitter{}); !errors.Is(err, ErrNotDeclared) {
+	if err := p.Run(context.Background()); !errors.Is(err, ErrNotDeclared) {
 		t.Errorf("not declared: got %v", err)
 	}
 
 	notRequired := &fakeNode{name: "notrequired", requires: []KeyRef{Key[src]{}}}
-	notRequired.run = func(in *Inputs, _ *Outputs, _ Emitter) error {
+	notRequired.run = func(in *Inputs, _ *Outputs) error {
 		_, err := in.Get[double]()
 		return err
 	}
 
-	p, err = New(source(), notRequired)
+	p, err = New(targetNode(), source(), notRequired)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Run(context.Background(), &fakeEmitter{}); !errors.Is(err, ErrNotInRequires) {
+	if err := p.Run(context.Background()); !errors.Is(err, ErrNotInRequires) {
 		t.Errorf("not in requires: got %v", err)
 	}
 }

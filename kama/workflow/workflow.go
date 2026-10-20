@@ -1,16 +1,15 @@
-// Package workflow runs an ordered list of nodes that exchange typed values
-// and emit files into a staging area.
+// Package workflow runs an ordered list of nodes that exchange typed values.
 //
 // A node declares the value types it requires and the value types it
 // provides. The pipeline resolves each required type to the nearest earlier
 // node providing it, or to the type's default node when there is none. Nodes
 // run in list order.
 //
-// A node with no required types is a source: it reads the staged project.
-// Its result is memoized against the emit generation, so when a later node
-// needs its value after something was emitted, the source runs again and
-// every node derived from it follows. This is how generated Go code becomes
-// visible to the nodes that run after the one that produced it.
+// Every provided value carries a version. A node whose last run consumed an
+// older version of some input is run again when its value is needed, and the
+// nodes derived from it follow. The target filesystem is itself a value: a
+// node that writes generated output into it provides it again, so the nodes
+// that read the filesystem rerun on demand and see the generated code.
 package workflow
 
 import (
@@ -55,18 +54,12 @@ func (Key[T]) DefaultNode() Node {
 	return zero.DefaultNode()
 }
 
-// Emitter receives generated files. The pipeline wraps the one passed to Run
-// so it can count emits.
-type Emitter interface {
-	Emit(ctx context.Context, name string, src []byte) error
-}
-
 // Node is one unit of work.
 type Node interface {
 	Name() string
 	Requires() []KeyRef
 	Provides() []KeyRef
-	Run(ctx context.Context, in *Inputs, out *Outputs, emit Emitter) error
+	Run(ctx context.Context, in *Inputs, out *Outputs) error
 }
 
 // Inputs holds the values a node required.
@@ -166,10 +159,9 @@ func New(nodes ...Node) (*Pipeline, error) {
 func (p *Pipeline) Nodes() []Node { return slices.Clip(p.nodes) }
 
 // Run executes the pipeline once.
-func (p *Pipeline) Run(ctx context.Context, emit Emitter) error {
+func (p *Pipeline) Run(ctx context.Context) error {
 	r := &run{
 		p:       p,
-		emit:    &countingEmitter{Emitter: emit},
 		results: make([]*result, len(p.nodes)),
 	}
 
@@ -188,8 +180,6 @@ type versioned struct {
 }
 
 type result struct {
-	// gen is the emit generation the node ran at.
-	gen int
 	// inputs records the version of each consumed value.
 	inputs  map[reflect.Type]int
 	outputs map[reflect.Type]versioned
@@ -197,7 +187,6 @@ type result struct {
 
 type run struct {
 	p           *Pipeline
-	emit        *countingEmitter
 	results     []*result
 	nextVersion int
 }
@@ -227,10 +216,6 @@ func (r *run) fresh(i int) bool {
 	}
 
 	n := r.p.nodes[i]
-	if len(n.Requires()) == 0 {
-		return res.gen == r.emit.gen
-	}
-
 	for _, k := range n.Requires() {
 		cur := r.results[r.p.providers[i][k.Type()]].outputs[k.Type()]
 		if cur.version != res.inputs[k.Type()] {
@@ -246,7 +231,6 @@ func (r *run) exec(ctx context.Context, i int) error {
 
 	in := &Inputs{values: map[reflect.Type]any{}}
 	res := &result{
-		gen:     r.emit.gen,
 		inputs:  map[reflect.Type]int{},
 		outputs: map[reflect.Type]versioned{},
 	}
@@ -261,7 +245,7 @@ func (r *run) exec(ctx context.Context, i int) error {
 		out.allowed[k.Type()] = true
 	}
 
-	if err := n.Run(ctx, in, out, r.emit); err != nil {
+	if err := n.Run(ctx, in, out); err != nil {
 		return fmt.Errorf("workflow: node %q: %w", n.Name(), err)
 	}
 
@@ -275,19 +259,5 @@ func (r *run) exec(ctx context.Context, i int) error {
 	}
 
 	r.results[i] = res
-	return nil
-}
-
-type countingEmitter struct {
-	Emitter
-	gen int
-}
-
-func (e *countingEmitter) Emit(ctx context.Context, name string, src []byte) error {
-	if err := e.Emitter.Emit(ctx, name, src); err != nil {
-		return err
-	}
-
-	e.gen++
 	return nil
 }
