@@ -2,9 +2,9 @@ package workflow
 
 import (
 	"context"
-	"errors"
-	"slices"
 	"testing"
+
+	"gotest.tools/v3/assert"
 )
 
 type fakeNode struct {
@@ -122,13 +122,8 @@ func mustRun(t *testing.T, nodes ...Node) {
 	t.Helper()
 
 	p, err := New(nodes...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := p.Run(context.Background()); err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
+	assert.NilError(t, p.Run(context.Background()))
 }
 
 func TestBranchAndJoin(t *testing.T) {
@@ -149,15 +144,9 @@ func TestBranchAndJoin(t *testing.T) {
 
 	mustRun(t, targetNode(), s, doubler(), consumer("c", &seenSrc), join)
 
-	if s.runs != 1 {
-		t.Errorf("source ran %d times, want 1", s.runs)
-	}
-	if want := []src{1}; !slices.Equal(seenSrc, want) {
-		t.Errorf("consumer saw %v, want %v", seenSrc, want)
-	}
-	if want := []int{1, 2}; !slices.Equal(seen, want) {
-		t.Errorf("join saw %v, want %v", seen, want)
-	}
+	assert.Equal(t, s.runs, 1)
+	assert.DeepEqual(t, seenSrc, []src{1})
+	assert.DeepEqual(t, seen, []int{1, 2})
 }
 
 func TestReloadAfterOutput(t *testing.T) {
@@ -177,18 +166,11 @@ func TestReloadAfterOutput(t *testing.T) {
 		consumer("target", &targets),
 	)
 
-	if s.runs != 2 || dbl.runs != 2 {
-		t.Errorf("source ran %d, doubler ran %d, want 2 and 2", s.runs, dbl.runs)
-	}
-	if want := []double{2, 4, 4}; !slices.Equal(seen, want) {
-		t.Errorf("seen %v, want %v", seen, want)
-	}
-	if len(targets) != 1 {
-		t.Fatalf("target seen %d times, want 1", len(targets))
-	}
-	if want := []string{"gen.go"}; !slices.Equal(targets[0].written, want) {
-		t.Errorf("target written %v, want %v", targets[0].written, want)
-	}
+	assert.Equal(t, s.runs, 2)
+	assert.Equal(t, dbl.runs, 2)
+	assert.DeepEqual(t, seen, []double{2, 4, 4})
+	assert.Equal(t, len(targets), 1)
+	assert.DeepEqual(t, targets[0].written, []string{"gen.go"})
 }
 
 func TestNearestEarlierProvider(t *testing.T) {
@@ -203,9 +185,7 @@ func TestNearestEarlierProvider(t *testing.T) {
 
 	mustRun(t, targetNode(), source(), consumer("a", &seen), override, consumer("b", &seen))
 
-	if want := []src{1, 100}; !slices.Equal(seen, want) {
-		t.Errorf("seen %v, want %v", seen, want)
-	}
+	assert.DeepEqual(t, seen, []src{1, 100})
 }
 
 // withDefault loads itself when no node provides it.
@@ -228,28 +208,19 @@ func TestDefaultInsertedOnce(t *testing.T) {
 	var seen []withDefault
 
 	p, err := New(consumer("a", &seen), consumer("b", &seen))
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
 
 	names := make([]string, 0, 3)
 	for _, n := range p.Nodes() {
 		names = append(names, n.Name())
 	}
-	if want := []string{"default", "a", "b"}; !slices.Equal(names, want) {
-		t.Fatalf("planned %v, want %v", names, want)
-	}
+	assert.DeepEqual(t, names, []string{"default", "a", "b"})
 
-	if err := p.Run(context.Background()); err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, p.Run(context.Background()))
 
-	if len(defaultsMade) != 1 || defaultsMade[0].runs != 1 {
-		t.Errorf("default constructed %d times, want 1", len(defaultsMade))
-	}
-	if want := []withDefault{7, 7}; !slices.Equal(seen, want) {
-		t.Errorf("seen %v, want %v", seen, want)
-	}
+	assert.Equal(t, len(defaultsMade), 1)
+	assert.Equal(t, defaultsMade[0].runs, 1)
+	assert.DeepEqual(t, seen, []withDefault{7, 7})
 }
 
 // ping and pong are mutually derived, which only a cycle through time can
@@ -283,43 +254,29 @@ func TestCycle(t *testing.T) {
 	var seen []pong
 
 	p, err := New(seed, toPong, toPing, consumer("c", &seen))
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
 
-	if err := p.Run(context.Background()); !errors.Is(err, ErrCycle) {
-		t.Errorf("cycle: got %v", err)
-	}
+	assert.ErrorIs(t, p.Run(context.Background()), ErrCycle)
 }
 
 func TestErrors(t *testing.T) {
 	var seen []src
 
 	_, err := New(consumer("a", &seen))
-	if !errors.Is(err, ErrNoProvider) {
-		t.Errorf("no provider: got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrNoProvider)
 
 	bad := &fakeNode{name: "bad", provides: []KeyRef{Key[src]{}}}
 
 	p, err := New(bad)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Run(context.Background()); !errors.Is(err, ErrMissingOutput) {
-		t.Errorf("missing output: got %v", err)
-	}
+	assert.NilError(t, err)
+	assert.ErrorIs(t, p.Run(context.Background()), ErrMissingOutput)
 
 	undeclared := &fakeNode{name: "undeclared"}
 	undeclared.run = func(_ *Inputs, out *Outputs) error { return out.Set(src(1)) }
 
 	p, err = New(undeclared)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Run(context.Background()); !errors.Is(err, ErrNotDeclared) {
-		t.Errorf("not declared: got %v", err)
-	}
+	assert.NilError(t, err)
+	assert.ErrorIs(t, p.Run(context.Background()), ErrNotDeclared)
 
 	notRequired := &fakeNode{name: "notrequired", requires: []KeyRef{Key[src]{}}}
 	notRequired.run = func(in *Inputs, _ *Outputs) error {
@@ -328,10 +285,6 @@ func TestErrors(t *testing.T) {
 	}
 
 	p, err = New(targetNode(), source(), notRequired)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Run(context.Background()); !errors.Is(err, ErrNotInRequires) {
-		t.Errorf("not in requires: got %v", err)
-	}
+	assert.NilError(t, err)
+	assert.ErrorIs(t, p.Run(context.Background()), ErrNotInRequires)
 }

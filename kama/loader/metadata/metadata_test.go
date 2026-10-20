@@ -1,10 +1,10 @@
 package metadata
 
 import (
-	"errors"
-	"slices"
 	"testing"
 	"testing/fstest"
+
+	"gotest.tools/v3/assert"
 )
 
 type doc struct {
@@ -25,38 +25,32 @@ func TestLoadPriority(t *testing.T) {
 		{[]Format{FormatJson, FormatYaml}, "meta.json", "json"},
 		{[]Format{FormatToml}, "meta.toml", "toml"},
 	}
+
 	for _, c := range cases {
 		var d doc
+
 		name, err := Load(fsys, PathInput{Base: "meta", Formats: c.formats}, &d)
-		if err != nil {
-			t.Fatalf("Load(%v): %v", c.formats, err)
-		}
-		if name != c.wantName || d.Name != c.want {
-			t.Errorf("Load(%v) = %q/%q, want %q/%q", c.formats, name, d.Name, c.wantName, c.want)
-		}
+		assert.NilError(t, err)
+
+		assert.Equal(t, name, c.wantName)
+		assert.Equal(t, d.Name, c.want)
 	}
 }
 
 func TestLoadErrors(t *testing.T) {
 	fsys := fstest.MapFS{}
 	var d doc
+
 	_, err := Load(fsys, PathInput{Base: "none", Formats: []Format{FormatJson}}, &d)
-	if !errors.Is(err, ErrNotFound) {
-		t.Errorf("missing: got %v, want ErrNotFound", err)
-	}
+	assert.ErrorIs(t, err, ErrNotFound)
+
 	_, err = Load(fsys, PathInput{Base: "none", Formats: []Format{"ini"}}, &d)
-	if !errors.Is(err, ErrUnknownFormat) {
-		t.Errorf("unknown format: got %v, want ErrUnknownFormat", err)
-	}
+	assert.ErrorIs(t, err, ErrUnknownFormat)
 }
 
 func TestCandidates(t *testing.T) {
 	got, err := PathInput{Base: "a/meta", Formats: []Format{FormatYaml, FormatJson}}.Candidates()
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []string{"a/meta.yaml", "a/meta.yml", "a/meta.json"}
-	if !slices.Equal(got, want) {
-		t.Errorf("got %v, want %v", got, want)
-	}
+	assert.NilError(t, err)
+
+	assert.DeepEqual(t, got, []string{"a/meta.yaml", "a/meta.yml", "a/meta.json"})
 }
