@@ -183,8 +183,11 @@ func TestReloadAfterOutput(t *testing.T) {
 	if want := []double{2, 4, 4}; !slices.Equal(seen, want) {
 		t.Errorf("seen %v, want %v", seen, want)
 	}
-	if len(targets) != 1 || !slices.Equal(targets[0].written, []string{"gen.go"}) {
-		t.Errorf("target written %v, want [gen.go]", targets)
+	if len(targets) != 1 {
+		t.Fatalf("target seen %d times, want 1", len(targets))
+	}
+	if want := []string{"gen.go"}; !slices.Equal(targets[0].written, want) {
+		t.Errorf("target written %v, want %v", targets[0].written, want)
 	}
 }
 
@@ -246,6 +249,46 @@ func TestDefaultInsertedOnce(t *testing.T) {
 	}
 	if want := []withDefault{7, 7}; !slices.Equal(seen, want) {
 		t.Errorf("seen %v, want %v", seen, want)
+	}
+}
+
+// ping and pong are mutually derived, which only a cycle through time can
+// satisfy.
+type (
+	ping int
+	pong int
+)
+
+func (ping) DefaultNode() Node { return nil }
+func (pong) DefaultNode() Node { return nil }
+
+func TestCycle(t *testing.T) {
+	seed := &fakeNode{
+		name:     "seed",
+		provides: []KeyRef{Key[ping]{}},
+		run:      func(_ *Inputs, out *Outputs) error { return out.Set(ping(0)) },
+	}
+	toPong := &fakeNode{
+		name:     "topong",
+		requires: []KeyRef{Key[ping]{}},
+		provides: []KeyRef{Key[pong]{}},
+		run:      func(_ *Inputs, out *Outputs) error { return out.Set(pong(0)) },
+	}
+	toPing := &fakeNode{
+		name:     "toping",
+		requires: []KeyRef{Key[pong]{}},
+		provides: []KeyRef{Key[ping]{}},
+		run:      func(_ *Inputs, out *Outputs) error { return out.Set(ping(0)) },
+	}
+	var seen []pong
+
+	p, err := New(seed, toPong, toPing, consumer("c", &seen))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := p.Run(context.Background()); !errors.Is(err, ErrCycle) {
+		t.Errorf("cycle: got %v", err)
 	}
 }
 

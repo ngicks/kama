@@ -1,15 +1,17 @@
 // Package workflow runs an ordered list of nodes that exchange typed values.
 //
 // A node declares the value types it requires and the value types it
-// provides. The pipeline resolves each required type to the nearest earlier
-// node providing it, or to the type's default node when there is none. Nodes
-// run in list order.
+// provides. The list order is time: a value seen at some position comes from
+// the latest earlier node providing it.
 //
-// Every provided value carries a version. A node whose last run consumed an
-// older version of some input is run again when its value is needed, and the
-// nodes derived from it follow. The target filesystem is itself a value: a
-// node that writes generated output into it provides it again, so the nodes
-// that read the filesystem rerun on demand and see the generated code.
+// Nodes come in two kinds. An anchored node is an event: it consumes nothing,
+// or it provides a type it also requires, as an output node that writes into
+// the target filesystem and provides it again does. It runs once, at its own
+// position, with the inputs visible there. Every other node is a function of
+// its inputs: when a later node needs its value, its inputs are resolved at
+// that later position and it runs again if they changed. The target
+// filesystem is itself a value, so a node that reads it reruns on demand after
+// an output node and sees the generated code.
 package workflow
 
 import (
@@ -26,6 +28,7 @@ var (
 	ErrMissingOutput  = errors.New("workflow: declared output not set")
 	ErrNotInRequires  = errors.New("workflow: type not in Requires")
 	ErrDuplicateInput = errors.New("workflow: type required twice")
+	ErrCycle          = errors.New("workflow: dependency cycle")
 )
 
 // Value is what flows through the pipeline. Its type is its identity, so two
@@ -99,9 +102,10 @@ func (out *Outputs) Set[T Value](v T) error {
 // Pipeline is a planned list of nodes.
 type Pipeline struct {
 	nodes []Node
-	// providers[i] maps each type node i requires to the index of its
-	// provider.
-	providers []map[reflect.Type]int
+	// providers lists, per type, the indices of the nodes providing it in
+	// ascending order.
+	providers map[reflect.Type][]int
+	anchored  []bool
 }
 
 // New plans nodes in the given order, inserting default nodes for types that
@@ -109,21 +113,21 @@ type Pipeline struct {
 func New(nodes ...Node) (*Pipeline, error) {
 	nodes = slices.Clone(nodes)
 
-	latest := map[reflect.Type]int{}
-	var providers []map[reflect.Type]int
+	providers := map[reflect.Type][]int{}
+	var anchored []bool
 
 	for i := 0; i < len(nodes); i++ {
 		n := nodes[i]
-		prov := map[reflect.Type]int{}
+		seen := map[reflect.Type]bool{}
 		inserted := false
 
 		for _, k := range n.Requires() {
-			if _, dup := prov[k.Type()]; dup {
+			if seen[k.Type()] {
 				return nil, fmt.Errorf("%w: %v in %q", ErrDuplicateInput, k.Type(), n.Name())
 			}
+			seen[k.Type()] = true
 
-			if j, ok := latest[k.Type()]; ok {
-				prov[k.Type()] = j
+			if len(providers[k.Type()]) > 0 {
 				continue
 			}
 
@@ -144,13 +148,42 @@ func New(nodes ...Node) (*Pipeline, error) {
 			continue
 		}
 
-		providers = append(providers, prov)
+		anchored = append(anchored, isAnchored(n))
 		for _, k := range n.Provides() {
-			latest[k.Type()] = i
+			providers[k.Type()] = append(providers[k.Type()], i)
 		}
 	}
 
-	return &Pipeline{nodes: nodes, providers: providers}, nil
+	return &Pipeline{nodes: nodes, providers: providers, anchored: anchored}, nil
+}
+
+// isAnchored reports whether n is an event rather than a function of its
+// inputs: it provides nothing, or it provides a type it also requires.
+func isAnchored(n Node) bool {
+	if len(n.Provides()) == 0 {
+		return true
+	}
+
+	for _, p := range n.Provides() {
+		for _, r := range n.Requires() {
+			if p.Type() == r.Type() {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// provider returns the latest node before position h providing t.
+func (p *Pipeline) provider(t reflect.Type, h int) (int, bool) {
+	idx := p.providers[t]
+	j, _ := slices.BinarySearch(idx, h)
+	if j == 0 {
+		return 0, false
+	}
+
+	return idx[j-1], true
 }
 
 // Nodes returns the planned order, including inserted defaults. The slice is
@@ -162,11 +195,15 @@ func (p *Pipeline) Nodes() []Node { return slices.Clip(p.nodes) }
 func (p *Pipeline) Run(ctx context.Context) error {
 	r := &run{
 		p:       p,
-		results: make([]*result, len(p.nodes)),
+		results: make([]map[string]*result, len(p.nodes)),
+		active:  map[[2]int]bool{},
+	}
+	for i := range r.results {
+		r.results[i] = map[string]*result{}
 	}
 
 	for i := range p.nodes {
-		if err := r.ensure(ctx, i); err != nil {
+		if _, err := r.eval(ctx, i, i); err != nil {
 			return err
 		}
 	}
@@ -180,64 +217,69 @@ type versioned struct {
 }
 
 type result struct {
-	// inputs records the version of each consumed value.
-	inputs  map[reflect.Type]int
 	outputs map[reflect.Type]versioned
 }
 
 type run struct {
-	p           *Pipeline
-	results     []*result
+	p *Pipeline
+	// results memoizes each node's runs by the versions of its inputs. A
+	// reader is evaluated at several positions during one run, before and
+	// after an output node, and must not thrash between them.
+	results []map[string]*result
+	// active holds the (node, position) evaluations in progress. The same
+	// node may legitimately be evaluated at two positions at once: an output
+	// node resolves its inputs at its own position while a later consumer
+	// resolves the same reader after it.
+	active      map[[2]int]bool
 	nextVersion int
 }
 
-// ensure runs node i unless its last result is still valid, refreshing its
-// providers first.
-func (r *run) ensure(ctx context.Context, i int) error {
-	n := r.p.nodes[i]
-
-	for _, k := range n.Requires() {
-		if err := r.ensure(ctx, r.p.providers[i][k.Type()]); err != nil {
-			return err
-		}
+// value resolves type t as seen at position h.
+func (r *run) value(ctx context.Context, t reflect.Type, h int) (versioned, error) {
+	i, ok := r.p.provider(t, h)
+	if !ok {
+		return versioned{}, fmt.Errorf("%w: %v at %d", ErrNoProvider, t, h)
 	}
 
-	if r.fresh(i) {
-		return nil
+	if r.p.anchored[i] {
+		h = i
 	}
 
-	return r.exec(ctx, i)
+	res, err := r.eval(ctx, i, h)
+	if err != nil {
+		return versioned{}, err
+	}
+
+	return res.outputs[t], nil
 }
 
-func (r *run) fresh(i int) bool {
-	res := r.results[i]
-	if res == nil {
-		return false
-	}
-
+// eval returns node i's result with its inputs resolved at position h,
+// running it unless the last result was computed from the same input
+// versions.
+func (r *run) eval(ctx context.Context, i, h int) (*result, error) {
 	n := r.p.nodes[i]
-	for _, k := range n.Requires() {
-		cur := r.results[r.p.providers[i][k.Type()]].outputs[k.Type()]
-		if cur.version != res.inputs[k.Type()] {
-			return false
-		}
+
+	at := [2]int{i, h}
+	if r.active[at] {
+		return nil, fmt.Errorf("%w: through %q", ErrCycle, n.Name())
 	}
-
-	return true
-}
-
-func (r *run) exec(ctx context.Context, i int) error {
-	n := r.p.nodes[i]
+	r.active[at] = true
+	defer delete(r.active, at)
 
 	in := &Inputs{values: map[reflect.Type]any{}}
-	res := &result{
-		inputs:  map[reflect.Type]int{},
-		outputs: map[reflect.Type]versioned{},
-	}
+	var key []byte
 	for _, k := range n.Requires() {
-		v := r.results[r.p.providers[i][k.Type()]].outputs[k.Type()]
+		v, err := r.value(ctx, k.Type(), h)
+		if err != nil {
+			return nil, err
+		}
+
 		in.values[k.Type()] = v.value
-		res.inputs[k.Type()] = v.version
+		key = fmt.Appendf(key, "%d,", v.version)
+	}
+
+	if res, ok := r.results[i][string(key)]; ok {
+		return res, nil
 	}
 
 	out := &Outputs{allowed: map[reflect.Type]bool{}, values: map[reflect.Type]any{}}
@@ -246,18 +288,20 @@ func (r *run) exec(ctx context.Context, i int) error {
 	}
 
 	if err := n.Run(ctx, in, out); err != nil {
-		return fmt.Errorf("workflow: node %q: %w", n.Name(), err)
+		return nil, fmt.Errorf("workflow: node %q: %w", n.Name(), err)
 	}
 
+	res := &result{outputs: map[reflect.Type]versioned{}}
 	for _, k := range n.Provides() {
 		v, ok := out.values[k.Type()]
 		if !ok {
-			return fmt.Errorf("%w: %v by %q", ErrMissingOutput, k.Type(), n.Name())
+			return nil, fmt.Errorf("%w: %v by %q", ErrMissingOutput, k.Type(), n.Name())
 		}
+
 		r.nextVersion++
 		res.outputs[k.Type()] = versioned{value: v, version: r.nextVersion}
 	}
 
-	r.results[i] = res
-	return nil
+	r.results[i][string(key)] = res
+	return res, nil
 }
