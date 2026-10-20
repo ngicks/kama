@@ -75,7 +75,7 @@ type Inputs struct {
 }
 
 // Get returns the value of type T. T must be in the node's Requires.
-func Get[T Value](in *Inputs) (T, error) {
+func (in *Inputs) Get[T Value]() (T, error) {
 	var zero T
 	v, ok := in.values[reflect.TypeFor[T]()]
 	if !ok {
@@ -91,7 +91,7 @@ type Outputs struct {
 }
 
 // Set records v. T must be in the node's Provides.
-func Set[T Value](out *Outputs, v T) error {
+func (out *Outputs) Set[T Value](v T) error {
 	t := reflect.TypeFor[T]()
 	if !out.allowed[t] {
 		return fmt.Errorf("%w: %v", ErrNotDeclared, t)

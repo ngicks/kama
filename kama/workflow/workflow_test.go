@@ -47,7 +47,7 @@ func (double) DefaultNode() Node { return nil }
 func source() *fakeNode {
 	n := &fakeNode{name: "source", provides: []KeyRef{Key[src]{}}}
 	n.run = func(_ *Inputs, out *Outputs, _ Emitter) error {
-		return Set(out, src(n.runs))
+		return out.Set(src(n.runs))
 	}
 	return n
 }
@@ -58,11 +58,11 @@ func doubler() *fakeNode {
 		requires: []KeyRef{Key[src]{}},
 		provides: []KeyRef{Key[double]{}},
 		run: func(in *Inputs, out *Outputs, _ Emitter) error {
-			v, err := Get[src](in)
+			v, err := in.Get[src]()
 			if err != nil {
 				return err
 			}
-			return Set(out, double(v*2))
+			return out.Set(double(v * 2))
 		},
 	}
 }
@@ -82,7 +82,7 @@ func consumer[T Value](name string, seen *[]T) *fakeNode {
 		name:     name,
 		requires: []KeyRef{Key[T]{}},
 		run: func(in *Inputs, _ *Outputs, _ Emitter) error {
-			v, err := Get[T](in)
+			v, err := in.Get[T]()
 			if err != nil {
 				return err
 			}
@@ -113,8 +113,8 @@ func TestBranchAndJoin(t *testing.T) {
 		name:     "join",
 		requires: []KeyRef{Key[src]{}, Key[double]{}},
 		run: func(in *Inputs, _ *Outputs, _ Emitter) error {
-			a, _ := Get[src](in)
-			b, _ := Get[double](in)
+			a, _ := in.Get[src]()
+			b, _ := in.Get[double]()
 			seen = append(seen, int(a), int(b))
 			return nil
 		},
@@ -160,7 +160,7 @@ func TestNearestEarlierProvider(t *testing.T) {
 		name:     "override",
 		provides: []KeyRef{Key[src]{}},
 		run: func(_ *Inputs, out *Outputs, _ Emitter) error {
-			return Set(out, src(100))
+			return out.Set(src(100))
 		},
 	}
 	mustRun(t, source(), consumer("a", &seen), override, consumer("b", &seen))
@@ -177,7 +177,7 @@ var defaultsMade []*fakeNode
 func (withDefault) DefaultNode() Node {
 	n := &fakeNode{name: "default", provides: []KeyRef{Key[withDefault]{}}}
 	n.run = func(_ *Inputs, out *Outputs, _ Emitter) error {
-		return Set(out, withDefault(7))
+		return out.Set(withDefault(7))
 	}
 	defaultsMade = append(defaultsMade, n)
 	return n
@@ -225,7 +225,7 @@ func TestErrors(t *testing.T) {
 	}
 
 	undeclared := &fakeNode{name: "undeclared"}
-	undeclared.run = func(_ *Inputs, out *Outputs, _ Emitter) error { return Set(out, src(1)) }
+	undeclared.run = func(_ *Inputs, out *Outputs, _ Emitter) error { return out.Set(src(1)) }
 	p, err = New(undeclared)
 	if err != nil {
 		t.Fatal(err)
@@ -236,7 +236,7 @@ func TestErrors(t *testing.T) {
 
 	notRequired := &fakeNode{name: "notrequired", requires: []KeyRef{Key[src]{}}}
 	notRequired.run = func(in *Inputs, _ *Outputs, _ Emitter) error {
-		_, err := Get[double](in)
+		_, err := in.Get[double]()
 		return err
 	}
 	p, err = New(source(), notRequired)
