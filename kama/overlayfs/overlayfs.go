@@ -46,13 +46,15 @@ func New(root string) (*Fs, error) {
 		return nil, err
 	}
 
-	lowerFs, err := osfs.NewRoot(root)
+	// An os.Root-backed lower confines traversal and keeps a rename after
+	// open from escaping the project directory.
+	lowerRoot, err := osfs.NewRoot(root)
 	if err != nil {
 		return nil, fmt.Errorf("overlayfs: open %q: %w", root, err)
 	}
-	lower := upstream.NewDataSource(vroot.NewReadOnlyRoot(lowerFs))
+	lower := upstream.NewDataSource(lowerRoot)
 
-	top, err := upstream.NewDataSourceCanonicalStore(memfs.New("top"), newMemStore())
+	top, err := upstream.NewDataSourceCanonical(memfs.New("top"))
 	if err != nil {
 		lower.Close()
 		return nil, fmt.Errorf("overlayfs: top layer: %w", err)
