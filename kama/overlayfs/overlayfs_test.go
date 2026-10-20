@@ -38,7 +38,7 @@ func (c *capture) Run(_ context.Context, in *workflow.Inputs, _ *workflow.Output
 	return err
 }
 
-func TestSinkStagesThenFlushes(t *testing.T) {
+func TestSinkStagesThenCopiesDown(t *testing.T) {
 	root := t.TempDir()
 	assert.NilError(t, os.WriteFile(filepath.Join(root, "orig.go"), []byte("package x\n"), 0o644))
 
