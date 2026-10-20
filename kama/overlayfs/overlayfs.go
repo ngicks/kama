@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path"
 	"path/filepath"
 
@@ -29,7 +28,10 @@ var ErrClosed = errors.New("overlayfs: closed")
 // loaders, written by Sink, and flushed by the caller once the graph
 // succeeded.
 type Fs struct {
-	root   string
+	root string
+	// lower is the project directory, opened once. CopyDown writes through
+	// it so a rename of the directory after open cannot redirect the write.
+	lower  *osfs.Root
 	top    *upstream.DataSource
 	merged *upstream.Fs
 }
@@ -67,7 +69,7 @@ func New(root string) (*Fs, error) {
 		return nil, fmt.Errorf("overlayfs: mount: %w", err)
 	}
 
-	return &Fs{root: root, top: top, merged: merged}, nil
+	return &Fs{root: root, lower: lowerRoot, top: top, merged: merged}, nil
 }
 
 // Root is the absolute project directory.
@@ -107,13 +109,12 @@ func (f *Fs) Overlay() (map[string][]byte, error) {
 	return out, nil
 }
 
-// CopyDown copies every staged file into the project directory.
+// CopyDown copies every staged file into the project directory through the
+// lower Root opened by New.
 func (f *Fs) CopyDown(ctx context.Context) error {
-	dst, err := os.OpenRoot(f.root)
-	if err != nil {
-		return err
+	if f.lower == nil {
+		return ErrClosed
 	}
-	defer dst.Close()
 
 	return f.walkTop(func(name string, content []byte) error {
 		if err := ctx.Err(); err != nil {
@@ -121,12 +122,12 @@ func (f *Fs) CopyDown(ctx context.Context) error {
 		}
 
 		if dir := path.Dir(name); dir != "." {
-			if err := dst.MkdirAll(filepath.FromSlash(dir), 0o755); err != nil {
+			if err := f.lower.MkdirAll(dir, 0o755); err != nil {
 				return err
 			}
 		}
 
-		return dst.WriteFile(filepath.FromSlash(name), content, 0o644)
+		return vroot.WriteFile(f.lower, name, content, 0o644)
 	})
 }
 
@@ -176,6 +177,6 @@ func (f *Fs) Close() error {
 	}
 
 	err := f.merged.Close()
-	f.merged, f.top = nil, nil
+	f.merged, f.top, f.lower = nil, nil, nil
 	return err
 }
