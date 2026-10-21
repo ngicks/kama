@@ -1,4 +1,4 @@
-module github.com/ngicks/kama/kama
+module github.com/ngicks/kama/kamalib
 
 go 1.27.0
 

@@ -1,6 +1,6 @@
 # Tasks spanning the Go modules listed in go.work.
 
-modules := "kama cli proto"
+modules := "kamalib cli proto"
 
 default:
     @just --list
@@ -12,7 +12,7 @@ tidy:
 
 # Regenerate generated sources.
 generate:
-    cd kama && go generate ./...
+    cd kamalib && go generate ./...
 
 build:
     for m in {{modules}}; do (cd $m && go build ./...); done

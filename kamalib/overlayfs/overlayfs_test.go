@@ -9,7 +9,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kama/workflow"
+	"github.com/ngicks/kama/kamalib/workflow"
 )
 
 // generator emits fixed files.

@@ -19,7 +19,7 @@ import (
 	"github.com/ngicks/go-fsys-helper/vroot/memfs"
 	"github.com/ngicks/go-fsys-helper/vroot/osfs"
 
-	"github.com/ngicks/kama/kama/workflow"
+	"github.com/ngicks/kama/kamalib/workflow"
 )
 
 var ErrClosed = errors.New("overlayfs: closed")

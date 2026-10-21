@@ -3,7 +3,7 @@ package overlayfs
 import (
 	"context"
 
-	"github.com/ngicks/kama/kama/workflow"
+	"github.com/ngicks/kama/kamalib/workflow"
 )
 
 // Provide returns the node that opens root and provides *Fs.
