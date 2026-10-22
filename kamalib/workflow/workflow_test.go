@@ -2,294 +2,305 @@ package workflow
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/ngicks/kama/kamalib/loader/metadata"
 )
 
-type fakeNode struct {
-	requires []KeyRef
-	provides []KeyRef
-	run      func(in *Inputs, out *Outputs) error
-	runs     int
-}
-
-func (n *fakeNode) Requires() []KeyRef { return n.requires }
-func (n *fakeNode) Provides() []KeyRef { return n.provides }
-func (n *fakeNode) Run(_ context.Context, in *Inputs, out *Outputs) error {
-	n.runs++
-
-	if n.run == nil {
-		return nil
-	}
-
-	return n.run(in, out)
-}
-
-// target stands in for the target filesystem: a value a source reads through
-// and an output node provides again after writing.
-type target struct{ written []string }
-
-func (*target) DefaultNode() Node { return nil }
-
-// src and double have no default: a dependency must provide them.
+// counter and doubled are slot types; a loader writes into one and later
+// steps read it.
 type (
-	src    int
-	double int
+	counter struct{ n int }
+	doubled struct{ n int }
 )
 
-func (src) DefaultNode() Node    { return nil }
-func (double) DefaultNode() Node { return nil }
-
-func deps(names ...string) Edges { return Edges{Deps: names} }
-
-func targetNode() *fakeNode {
-	return &fakeNode{
-		provides: []KeyRef{Key[*target]{}},
-		run: func(_ *Inputs, out *Outputs) error {
-			return out.Set(&target{})
-		},
-	}
+type seedParam struct {
+	Value int `json:"value"`
 }
 
-// source reads the target and provides src with a fixed value, so a second
-// instance is observable downstream.
-func source(v int) *fakeNode {
-	return &fakeNode{
-		requires: []KeyRef{Key[*target]{}},
-		provides: []KeyRef{Key[src]{}},
-		run: func(_ *Inputs, out *Outputs) error {
-			return out.Set(src(v))
-		},
-	}
+func seed(_ context.Context, out *counter, p seedParam) error {
+	out.n = p.Value
+	return nil
 }
 
-func doubler() *fakeNode {
-	return &fakeNode{
-		requires: []KeyRef{Key[src]{}},
-		provides: []KeyRef{Key[double]{}},
-		run: func(in *Inputs, out *Outputs) error {
-			v, err := in.Get[src]()
-			if err != nil {
-				return err
-			}
-
-			return out.Set(double(v * 2))
-		},
-	}
+func double(_ context.Context, in *counter, out *doubled, _ struct{}) error {
+	out.n = in.n * 2
+	return nil
 }
 
-// generator emits one file named after the src value it reads.
-func generator(prefix string) *fakeNode {
-	return &fakeNode{
-		requires: []KeyRef{Key[src]{}},
-		run: func(in *Inputs, out *Outputs) error {
-			v, err := in.Get[src]()
-			if err != nil {
-				return err
-			}
-
-			return out.Emit(prefix+".gen.go", []byte{byte(v)})
-		},
-	}
+// bump writes into an existing counter slot.
+func bump(_ context.Context, out *counter, p seedParam) error {
+	out.n += p.Value
+	return nil
 }
 
-// sink writes routed files into the target and provides it again.
-func sink() *fakeNode {
-	return &fakeNode{
-		requires: []KeyRef{Key[*target]{}},
-		provides: []KeyRef{Key[*target]{}},
-		run: func(in *Inputs, out *Outputs) error {
-			t, err := in.Get[*target]()
-			if err != nil {
-				return err
-			}
-
-			for _, f := range in.Emitted() {
-				t.written = append(t.written, f.Path)
-			}
-
-			return out.Set(t)
-		},
-	}
+func failing(context.Context, *counter, struct{}) error {
+	return errors.New("boom")
 }
 
-func consumer[T Value](seen *[]T) *fakeNode {
-	return &fakeNode{
-		requires: []KeyRef{Key[T]{}},
-		run: func(in *Inputs, _ *Outputs) error {
-			v, err := in.Get[T]()
-			if err != nil {
-				return err
-			}
+type recorder struct{ seen []int }
 
-			*seen = append(*seen, v)
-			return nil
-		},
-	}
+func (r *recorder) counter(_ context.Context, in *counter, _ struct{}) error {
+	r.seen = append(r.seen, in.n)
+	return nil
 }
 
-func TestBranchAndJoin(t *testing.T) {
-	var seen []int
-	var seenSrc []src
-
-	s := source(1)
-	join := &fakeNode{
-		requires: []KeyRef{Key[src]{}, Key[double]{}},
-		run: func(in *Inputs, _ *Outputs) error {
-			a, _ := in.Get[src]()
-			b, _ := in.Get[double]()
-			seen = append(seen, int(a), int(b))
-			return nil
-		},
-	}
-
-	g := NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
-	assert.NilError(t, g.Add("src", s, deps("fs")))
-	assert.NilError(t, g.Add("dbl", doubler(), deps("src")))
-	assert.NilError(t, g.Add("c", consumer(&seenSrc), deps("src")))
-	assert.NilError(t, g.Add("join", join, deps("src", "dbl")))
-	assert.NilError(t, g.Run(context.Background()))
-
-	assert.Equal(t, s.runs, 1)
-	assert.DeepEqual(t, seenSrc, []src{1})
-	assert.DeepEqual(t, seen, []int{1, 2})
+func (r *recorder) doubled(_ context.Context, in *doubled, _ struct{}) error {
+	r.seen = append(r.seen, in.n)
+	return nil
 }
 
-func TestOutputRouting(t *testing.T) {
-	var seen []double
-	var targets []*target
+func testRegistry(t *testing.T, rec *recorder) *Registry {
+	t.Helper()
 
-	g := NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
-	assert.NilError(t, g.Add("src1", source(1), deps("fs")))
-	assert.NilError(t, g.Add("a", generator("a"), Edges{Deps: []string{"src1"}, Output: "out"}))
-	assert.NilError(t, g.Add("b", generator("b"), Edges{Deps: []string{"src1"}, Output: "out"}))
-	assert.NilError(t, g.Add("out", sink(), deps("fs")))
-	assert.NilError(t, g.Add("src2", source(2), deps("out")))
-	assert.NilError(t, g.Add("dbl", doubler(), deps("src2")))
-	assert.NilError(t, g.Add("after", consumer(&seen), deps("dbl")))
-	assert.NilError(t, g.Add("target", consumer(&targets), deps("out")))
+	reg := NewRegistry()
+	assert.NilError(t, reg.Loader("seed", seed))
+	assert.NilError(t, reg.Loader("double", double))
+	assert.NilError(t, reg.Loader("bump", bump))
+	assert.NilError(t, reg.Loader("failing", failing))
+	assert.NilError(t, reg.Sink("counter", rec.counter))
+	assert.NilError(t, reg.Sink("doubled", rec.doubled))
 
-	assert.DeepEqual(t, g.Names(), []string{
-		"fs", "src1", "a", "b", "out", "src2", "dbl", "after", "target",
+	return reg
+}
+
+func build(t *testing.T, rec *recorder, steps map[string]Step) (*Plan, error) {
+	t.Helper()
+
+	return Spec{Version: SpecVersion, Steps: steps}.Build(testRegistry(t, rec))
+}
+
+func TestDefaultSlotChain(t *testing.T) {
+	rec := &recorder{}
+
+	p, err := build(t, rec, map[string]Step{
+		"src":  {Loader: "seed", Param: map[string]any{"value": 3}},
+		"dbl":  {Loader: "double", Input: Names{"src"}},
+		"show": {Sink: "doubled", Input: Names{"dbl"}},
 	})
+	assert.NilError(t, err)
 
-	assert.NilError(t, g.Run(context.Background()))
+	assert.DeepEqual(t, p.Names(), []string{"src", "dbl", "show"})
 
-	assert.DeepEqual(t, seen, []double{4})
-	assert.Equal(t, len(targets), 1)
-	assert.DeepEqual(t, targets[0].written, []string{"a.gen.go", "b.gen.go"})
+	assert.NilError(t, p.Run(context.Background()))
+	assert.DeepEqual(t, rec.seen, []int{6})
 }
 
-func TestOutputErrors(t *testing.T) {
-	g := NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
-	assert.NilError(t, g.Add("src", source(1), deps("fs")))
+func TestOutputWritesIntoNamedSlot(t *testing.T) {
+	rec := &recorder{}
 
-	// An output must come after the nodes routed to it.
-	assert.NilError(t, g.Add("early", sink(), deps("fs")))
-	err := g.Add("g", generator("g"), Edges{Deps: []string{"src"}, Output: "early"})
-	assert.ErrorIs(t, err, ErrUnknownNode)
-
-	// Emitting without a declared output fails at run time.
-	assert.NilError(t, g.Add("noout", generator("noout"), deps("src")))
-	assert.ErrorIs(t, g.Run(context.Background()), ErrNoOutputNode)
-
-	// An output declared but never added fails before anything runs.
-	g = NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
-	assert.NilError(t, g.Add("src", source(1), deps("fs")))
-	assert.NilError(t, g.Add("g", generator("g"), Edges{Deps: []string{"src"}, Output: "never"}))
-	assert.ErrorIs(t, g.Run(context.Background()), ErrUnknownNode)
-}
-
-// withDefault loads itself when no dependency provides it.
-type withDefault int
-
-var defaultsMade []*fakeNode
-
-func (withDefault) DefaultNode() Node {
-	n := &fakeNode{
-		requires: []KeyRef{Key[src]{}},
-		provides: []KeyRef{Key[withDefault]{}},
-		run: func(in *Inputs, out *Outputs) error {
-			v, err := in.Get[src]()
-			if err != nil {
-				return err
-			}
-
-			return out.Set(withDefault(v + 6))
-		},
-	}
-
-	defaultsMade = append(defaultsMade, n)
-	return n
-}
-
-func TestDefaultResolvesAgainstSameDeps(t *testing.T) {
-	defaultsMade = nil
-	var seen []withDefault
-
-	g := NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
-	assert.NilError(t, g.Add("src", source(1), deps("fs")))
-	assert.NilError(t, g.Add("a", consumer(&seen), deps("src")))
-	assert.NilError(t, g.Add("b", consumer(&seen), deps("src")))
-
-	assert.DeepEqual(t, g.Names(), []string{
-		"fs", "src", "a/workflow.withDefault", "a", "b/workflow.withDefault", "b",
+	p, err := build(t, rec, map[string]Step{
+		"src":    {Loader: "seed", Param: map[string]any{"value": 3}},
+		"bump":   {Loader: "bump", Output: "src", Param: map[string]any{"value": 4}},
+		"before": {Sink: "counter", Input: Names{"src"}},
+		"after":  {Sink: "counter", Input: Names{"src"}, After: Names{"bump"}},
+		// Reading the writer gives its slot, which is the slot it wrote into.
+		"via": {Sink: "counter", Input: Names{"bump"}},
 	})
+	assert.NilError(t, err)
 
-	assert.NilError(t, g.Run(context.Background()))
+	// before has no edge to bump, so name order puts it first.
+	assert.DeepEqual(t, p.Names(), []string{"src", "before", "bump", "after", "via"})
 
-	assert.Equal(t, len(defaultsMade), 2)
-	assert.DeepEqual(t, seen, []withDefault{7, 7})
+	assert.NilError(t, p.Run(context.Background()))
+	assert.DeepEqual(t, rec.seen, []int{3, 7, 7})
 }
 
-func TestAddErrors(t *testing.T) {
-	var seen []src
+func TestRunIsRepeatable(t *testing.T) {
+	rec := &recorder{}
 
-	g := NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
-	assert.NilError(t, g.Add("src1", source(1), deps("fs")))
-	assert.NilError(t, g.Add("src2", source(2), deps("fs")))
+	p, err := build(t, rec, map[string]Step{
+		"src":  {Loader: "seed", Param: map[string]any{"value": 1}},
+		"bump": {Loader: "bump", Output: "src", Param: map[string]any{"value": 1}},
+		"show": {Sink: "counter", Input: Names{"src"}, After: Names{"bump"}},
+	})
+	assert.NilError(t, err)
 
-	assert.ErrorIs(t, g.Add("fs", targetNode(), Edges{}), ErrDuplicateNode)
-	assert.ErrorIs(t, g.Add("c", consumer(&seen), deps("nope")), ErrUnknownNode)
-	assert.ErrorIs(t, g.Add("c", consumer(&seen), Edges{}), ErrNoProvider)
-	assert.ErrorIs(t, g.Add("c", consumer(&seen), deps("src1", "src2")), ErrAmbiguousProvider)
+	assert.NilError(t, p.Run(context.Background()))
+	assert.NilError(t, p.Run(context.Background()))
 
-	// Only dependencies resolve types: fs provides nothing a consumer of src
-	// wants, even though src1 is in the graph.
-	assert.ErrorIs(t, g.Add("c", consumer(&seen), deps("fs")), ErrNoProvider)
+	// Each run allocates fresh slots.
+	assert.DeepEqual(t, rec.seen, []int{2, 2})
 }
 
-func TestRunErrors(t *testing.T) {
-	bad := &fakeNode{provides: []KeyRef{Key[src]{}}}
-
-	g := NewGraph()
-	assert.NilError(t, g.Add("bad", bad, Edges{}))
-	assert.ErrorIs(t, g.Run(context.Background()), ErrMissingOutput)
-
-	undeclared := &fakeNode{run: func(_ *Inputs, out *Outputs) error { return out.Set(src(1)) }}
-
-	g = NewGraph()
-	assert.NilError(t, g.Add("undeclared", undeclared, Edges{}))
-	assert.ErrorIs(t, g.Run(context.Background()), ErrNotDeclared)
-
-	notRequired := &fakeNode{
-		requires: []KeyRef{Key[src]{}},
-		run: func(in *Inputs, _ *Outputs) error {
-			_, err := in.Get[double]()
-			return err
+func TestBuildErrors(t *testing.T) {
+	cases := []struct {
+		name  string
+		steps map[string]Step
+		want  error
+	}{
+		{
+			"neither loader nor sink",
+			map[string]Step{"x": {}},
+			ErrInvalidStep,
+		},
+		{
+			"both loader and sink",
+			map[string]Step{"x": {Loader: "seed", Sink: "counter"}},
+			ErrInvalidStep,
+		},
+		{
+			"unknown loader",
+			map[string]Step{"x": {Loader: "nope"}},
+			ErrUnknownKind,
+		},
+		{
+			"unknown step",
+			map[string]Step{"x": {Loader: "double", Input: Names{"nope"}}},
+			ErrUnknownStep,
+		},
+		{
+			"too many inputs",
+			map[string]Step{
+				"a": {Loader: "seed"},
+				"x": {Loader: "seed", Input: Names{"a"}},
+			},
+			ErrArity,
+		},
+		{
+			"input type mismatch",
+			map[string]Step{
+				"a": {Loader: "seed"},
+				"x": {Sink: "doubled", Input: Names{"a"}},
+			},
+			ErrTypeMismatch,
+		},
+		{
+			"output type mismatch",
+			map[string]Step{
+				"a": {Loader: "seed"},
+				"d": {Loader: "double", Input: Names{"a"}},
+				"x": {Loader: "bump", Output: "d"},
+			},
+			ErrTypeMismatch,
+		},
+		{
+			"sink as input",
+			map[string]Step{
+				"a": {Loader: "seed"},
+				"s": {Sink: "counter", Input: Names{"a"}},
+				"x": {Sink: "counter", Input: Names{"s"}},
+			},
+			ErrInvalidStep,
+		},
+		{
+			"sink with output",
+			map[string]Step{
+				"a": {Loader: "seed"},
+				"x": {Sink: "counter", Input: Names{"a"}, Output: "a"},
+			},
+			ErrInvalidStep,
+		},
+		{
+			"cycle",
+			map[string]Step{
+				"a": {Loader: "seed", After: Names{"b"}},
+				"b": {Loader: "seed", After: Names{"a"}},
+			},
+			ErrCycle,
+		},
+		{
+			"unknown param field",
+			map[string]Step{"x": {Loader: "seed", Param: map[string]any{"valeu": 1}}},
+			ErrParam,
+		},
+		{
+			"param of wrong shape",
+			map[string]Step{"x": {Loader: "seed", Param: []any{"./..."}}},
+			ErrParam,
 		},
 	}
 
-	g = NewGraph()
-	assert.NilError(t, g.Add("fs", targetNode(), Edges{}))
-	assert.NilError(t, g.Add("src", source(1), deps("fs")))
-	assert.NilError(t, g.Add("nr", notRequired, deps("src")))
-	assert.ErrorIs(t, g.Run(context.Background()), ErrNotInRequires)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := build(t, &recorder{}, c.steps)
+			assert.ErrorIs(t, err, c.want)
+		})
+	}
+
+	_, err := Spec{Version: 2}.Build(NewRegistry())
+	assert.ErrorIs(t, err, ErrUnsupportedVersion)
+}
+
+func TestRunError(t *testing.T) {
+	p, err := build(t, &recorder{}, map[string]Step{
+		"a": {Loader: "seed"},
+		"x": {Loader: "failing", Output: "a"},
+	})
+	assert.NilError(t, err)
+
+	assert.ErrorContains(t, p.Run(context.Background()), `step "x": boom`)
+}
+
+func TestRegistryRejects(t *testing.T) {
+	reg := NewRegistry()
+
+	assert.ErrorIs(t, reg.Loader("a", 1), ErrInvalidFunc)
+	assert.ErrorIs(
+		t,
+		reg.Loader("a", func(*counter, struct{}) error { return nil }),
+		ErrInvalidFunc,
+	)
+	assert.ErrorIs(
+		t,
+		reg.Loader("a", func(context.Context, counter, struct{}) error { return nil }),
+		ErrInvalidFunc,
+	)
+	assert.ErrorIs(t, reg.Loader("a", func(context.Context, *counter, struct{}) {}), ErrInvalidFunc)
+	assert.ErrorIs(
+		t,
+		reg.Sink("a", func(context.Context, ...int) error { return nil }),
+		ErrInvalidFunc,
+	)
+
+	assert.NilError(t, reg.Loader("a", seed))
+	assert.ErrorIs(t, reg.Loader("a", seed), ErrDuplicateKind)
+}
+
+func TestDecodeYaml(t *testing.T) {
+	src := `
+version: 1
+steps:
+  src:
+    loader: seed
+    param:
+      value: 5
+  dbl:
+    loader: double
+    input: src
+  show:
+    sink: doubled
+    input: [dbl]
+`
+	var spec Spec
+	assert.NilError(t, metadata.Decode(strings.NewReader(src), metadata.FormatYaml, &spec))
+
+	assert.DeepEqual(t, spec.Steps["dbl"].Input, Names{"src"})
+
+	rec := &recorder{}
+	p, err := spec.Build(testRegistry(t, rec))
+	assert.NilError(t, err)
+
+	assert.NilError(t, p.Run(context.Background()))
+	assert.DeepEqual(t, rec.seen, []int{10})
+}
+
+func TestDecodeJson(t *testing.T) {
+	src := `{"version":1,"steps":{
+		"src":{"loader":"seed","param":{"value":2}},
+		"show":{"sink":"counter","input":"src"}
+	}}`
+	var spec Spec
+	assert.NilError(t, metadata.Decode(strings.NewReader(src), metadata.FormatJson, &spec))
+
+	rec := &recorder{}
+	p, err := spec.Build(testRegistry(t, rec))
+	assert.NilError(t, err)
+
+	assert.NilError(t, p.Run(context.Background()))
+	assert.DeepEqual(t, rec.seen, []int{2})
 }

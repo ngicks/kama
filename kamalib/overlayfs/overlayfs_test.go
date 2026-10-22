@@ -12,76 +12,91 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-// generator emits fixed files.
-type generator struct{ files []workflow.File }
-
-func (generator) Requires() []workflow.KeyRef { return nil }
-func (generator) Provides() []workflow.KeyRef { return nil }
-func (g generator) Run(_ context.Context, _ *workflow.Inputs, out *workflow.Outputs) error {
-	for _, f := range g.files {
-		if err := out.Emit(f.Path, f.Content); err != nil {
-			return err
-		}
+// generate writes fixed files into the filesystem it is given as output.
+func generate(_ context.Context, out *Fs, _ struct{}) error {
+	if err := out.Write("orig.gen.go", []byte("package x // gen\n")); err != nil {
+		return err
 	}
 
-	return nil
+	return out.Write("sub/new.go", []byte("package sub\n"))
 }
 
-// capture keeps the *Fs for the test to inspect.
-type capture struct{ fs *Fs }
-
-func (*capture) Requires() []workflow.KeyRef { return []workflow.KeyRef{workflow.Key[*Fs]{}} }
-func (*capture) Provides() []workflow.KeyRef { return nil }
-func (c *capture) Run(_ context.Context, in *workflow.Inputs, _ *workflow.Outputs) error {
-	f, err := in.Get[*Fs]()
-	c.fs = f
-	return err
-}
-
-func TestSinkStagesThenCopiesDown(t *testing.T) {
+func TestStagesThenCopiesDown(t *testing.T) {
 	root := t.TempDir()
 	assert.NilError(t, os.WriteFile(filepath.Join(root, "orig.go"), []byte("package x\n"), 0o644))
 
-	gen := generator{files: []workflow.File{
-		{Path: "orig.gen.go", Content: []byte("package x // gen\n")},
-		{Path: "sub/new.go", Content: []byte("package sub\n")},
-	}}
-	cap := &capture{}
+	var checked bool
+	check := func(_ context.Context, f *Fs, _ struct{}) error {
+		checked = true
 
-	g := workflow.NewGraph()
-	assert.NilError(t, g.Add("fs", Provide(root), workflow.Edges{}))
-	assert.NilError(t, g.Add("gen", gen, workflow.Edges{Output: "out"}))
-	assert.NilError(t, g.Add("out", Sink(), workflow.Edges{Deps: []string{"fs"}}))
-	assert.NilError(t, g.Add("cap", cap, workflow.Edges{Deps: []string{"out"}}))
-	assert.NilError(t, g.Run(context.Background()))
+		// The merged view shows originals and staged files together.
+		got, err := fs.ReadFile(f.FS(), "orig.gen.go")
+		assert.NilError(t, err)
+		assert.Equal(t, string(got), "package x // gen\n")
 
-	f := cap.fs
-	defer f.Close()
+		got, err = fs.ReadFile(f.FS(), "orig.go")
+		assert.NilError(t, err)
+		assert.Equal(t, string(got), "package x\n")
 
-	// The merged view shows originals and staged files together.
-	got, err := fs.ReadFile(f.FS(), "orig.gen.go")
+		// The overlay map holds only staged files, keyed by absolute path.
+		ov, err := f.Overlay()
+		assert.NilError(t, err)
+		assert.DeepEqual(t, ov, map[string][]byte{
+			filepath.Join(root, "orig.gen.go"):   []byte("package x // gen\n"),
+			filepath.Join(root, "sub", "new.go"): []byte("package sub\n"),
+		})
+
+		// Nothing reached disk yet.
+		_, err = os.Stat(filepath.Join(root, "orig.gen.go"))
+		assert.ErrorIs(t, err, fs.ErrNotExist)
+
+		return nil
+	}
+
+	var opened *Fs
+	keep := func(_ context.Context, f *Fs, _ struct{}) error {
+		opened = f
+		return nil
+	}
+
+	reg := workflow.NewRegistry()
+	assert.NilError(t, reg.Loader("fs", Load))
+	assert.NilError(t, reg.Loader("gen", generate))
+	assert.NilError(t, reg.Sink("check", check))
+	assert.NilError(t, reg.Sink("keep", keep))
+	assert.NilError(t, reg.Sink("copy_down", CopyDownSink))
+
+	spec := workflow.Spec{
+		Version: workflow.SpecVersion,
+		Steps: map[string]workflow.Step{
+			"root":  {Loader: "fs", Param: map[string]any{"root": root}},
+			"gen":   {Loader: "gen", Output: "root"},
+			"check": {Sink: "check", Input: workflow.Names{"root"}, After: workflow.Names{"gen"}},
+			"down": {
+				Sink:  "copy_down",
+				Input: workflow.Names{"root"},
+				After: workflow.Names{"check"},
+			},
+			"keep": {Sink: "keep", Input: workflow.Names{"root"}},
+		},
+	}
+
+	p, err := spec.Build(reg)
 	assert.NilError(t, err)
-	assert.Equal(t, string(got), "package x // gen\n")
+	assert.NilError(t, p.Run(context.Background()))
+	defer opened.Close()
 
-	got, err = fs.ReadFile(f.FS(), "orig.go")
-	assert.NilError(t, err)
-	assert.Equal(t, string(got), "package x\n")
-
-	// The overlay map holds only staged files, keyed by absolute path.
-	ov, err := f.Overlay()
-	assert.NilError(t, err)
-	assert.DeepEqual(t, ov, map[string][]byte{
-		filepath.Join(root, "orig.gen.go"):   []byte("package x // gen\n"),
-		filepath.Join(root, "sub", "new.go"): []byte("package sub\n"),
-	})
-
-	// Nothing reached disk yet.
-	_, err = os.Stat(filepath.Join(root, "orig.gen.go"))
-	assert.ErrorIs(t, err, fs.ErrNotExist)
-
-	assert.NilError(t, f.CopyDown(context.Background()))
+	assert.Assert(t, checked)
 
 	onDisk, err := os.ReadFile(filepath.Join(root, "sub", "new.go"))
 	assert.NilError(t, err)
 	assert.Equal(t, string(onDisk), "package sub\n")
+}
+
+func TestOpenTwice(t *testing.T) {
+	f, err := New(t.TempDir())
+	assert.NilError(t, err)
+	defer f.Close()
+
+	assert.ErrorIs(t, f.Open(t.TempDir()), ErrAlreadyOpen)
 }

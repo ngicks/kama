@@ -1,68 +1,73 @@
 package workflow
 
 import (
-	"errors"
-	"fmt"
-)
-
-var (
-	ErrUnsupportedVersion = errors.New("workflow: unsupported spec version")
-	ErrUnknownKind        = errors.New("workflow: unknown node kind")
+	"encoding/json"
+	"slices"
 )
 
 // SpecVersion is the file format version this package reads.
 const SpecVersion = 1
 
-// Spec is the serialized form of a graph. Nodes is a slice so the file order
-// is the insertion order, which is the execution order.
+// Spec is the serialized form of a graph.
 type Spec struct {
-	Version int        `json:"version" yaml:"version" toml:"version"`
-	Nodes   []NodeSpec `json:"nodes" yaml:"nodes" toml:"nodes"`
+	Version int             `json:"version" yaml:"version" toml:"version"`
+	Steps   map[string]Step `json:"steps" yaml:"steps" toml:"steps"`
 }
 
-// NodeSpec is one node in a Spec.
+// Step is one named step in a Spec. Exactly one of Loader and Sink is set.
 //
 //nolint:lll // triple json/yaml/toml tags; one field per line, never wrap tags
-type NodeSpec struct {
-	Name string `json:"name" yaml:"name" toml:"name"`
-	// Kind selects the constructor in the Registry.
-	Kind string   `json:"kind" yaml:"kind" toml:"kind"`
-	Deps []string `json:"deps,omitzero" yaml:"deps,omitempty" toml:"deps,omitempty"`
-	// Output names the node this node's emitted files go to.
+type Step struct {
+	// Loader is the kind of a registered loader function.
+	Loader string `json:"loader,omitzero" yaml:"loader,omitempty" toml:"loader,omitempty"`
+	// Sink is the kind of a registered sink function.
+	Sink string `json:"sink,omitzero" yaml:"sink,omitempty" toml:"sink,omitempty"`
+	// Input names the steps whose slots are passed as the function's input
+	// arguments, by position.
+	Input Names `json:"input,omitzero" yaml:"input,omitempty" toml:"input,omitempty"`
+	// Output names the step whose slot a loader writes into. Empty means the
+	// loader gets a fresh slot of its own.
 	Output string `json:"output,omitzero" yaml:"output,omitempty" toml:"output,omitempty"`
-	// Param holds kind-specific arguments the constructor decodes.
-	Param map[string]any `json:"param,omitzero" yaml:"param,omitempty" toml:"param,omitempty"`
+	// After names steps that must run first without passing a value.
+	After Names `json:"after,omitzero" yaml:"after,omitempty" toml:"after,omitempty"`
+	// Param is decoded into the function's param argument.
+	Param any `json:"param,omitzero" yaml:"param,omitempty" toml:"param,omitempty"`
 }
 
-// Constructor builds a node from its Param arguments.
-type Constructor func(param map[string]any) (Node, error)
-
-// Registry maps a kind to its constructor.
-type Registry map[string]Constructor
-
-// Build constructs the graph a spec describes, resolving kinds through reg.
-func (s Spec) Build(reg Registry) (*Graph, error) {
-	if s.Version != SpecVersion {
-		return nil, fmt.Errorf("%w: %d", ErrUnsupportedVersion, s.Version)
+// deps returns every step s must run after, without duplicates.
+func (s Step) deps() []string {
+	deps := slices.Concat(s.Input, s.After)
+	if s.Output != "" {
+		deps = append(deps, s.Output)
 	}
 
-	g := NewGraph()
+	slices.Sort(deps)
+	return slices.Compact(deps)
+}
 
-	for _, ns := range s.Nodes {
-		build, ok := reg[ns.Kind]
-		if !ok {
-			return nil, fmt.Errorf("%w: %q for node %q", ErrUnknownKind, ns.Kind, ns.Name)
-		}
+// Names is a list of step names. A single name may be written as a scalar.
+type Names []string
 
-		n, err := build(ns.Param)
-		if err != nil {
-			return nil, fmt.Errorf("workflow: node %q: %w", ns.Name, err)
-		}
+func (n *Names) UnmarshalJSON(b []byte) error {
+	return n.decode(func(v any) error { return json.Unmarshal(b, v) })
+}
 
-		if err := g.Add(ns.Name, n, Edges{Deps: ns.Deps, Output: ns.Output}); err != nil {
-			return nil, err
-		}
+func (n *Names) UnmarshalYAML(unmarshal func(any) error) error {
+	return n.decode(unmarshal)
+}
+
+func (n *Names) decode(unmarshal func(any) error) error {
+	var one string
+	if err := unmarshal(&one); err == nil {
+		*n = Names{one}
+		return nil
 	}
 
-	return g, nil
+	var many []string
+	if err := unmarshal(&many); err != nil {
+		return err
+	}
+
+	*n = many
+	return nil
 }

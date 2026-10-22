@@ -1,51 +1,26 @@
 package overlayfs
 
-import (
-	"context"
+import "context"
 
-	"github.com/ngicks/kama/kamalib/workflow"
-)
-
-// Provide returns the node that opens root and provides *Fs.
-func Provide(root string) workflow.Node { return &provider{root: root} }
-
-type provider struct {
-	root string
+// LoadParam configures Load.
+type LoadParam struct {
+	// Root is the project directory. Empty means the working directory.
+	Root string `json:"root"`
 }
 
-func (*provider) Requires() []workflow.KeyRef { return nil }
-func (*provider) Provides() []workflow.KeyRef { return []workflow.KeyRef{workflow.Key[*Fs]{}} }
-
-func (p *provider) Run(_ context.Context, _ *workflow.Inputs, out *workflow.Outputs) error {
-	f, err := New(p.root)
-	if err != nil {
-		return err
+// Load is the workflow loader that opens the project directory into its
+// output slot.
+func Load(_ context.Context, out *Fs, p LoadParam) error {
+	root := p.Root
+	if root == "" {
+		root = "."
 	}
 
-	return out.Set(f)
+	return out.Open(root)
 }
 
-// Sink returns the output node: it writes every file routed to it into the
-// top layer and provides *Fs again so later nodes can depend on the written
-// state.
-func Sink() workflow.Node { return sink{} }
-
-type sink struct{}
-
-func (sink) Requires() []workflow.KeyRef { return []workflow.KeyRef{workflow.Key[*Fs]{}} }
-func (sink) Provides() []workflow.KeyRef { return []workflow.KeyRef{workflow.Key[*Fs]{}} }
-
-func (sink) Run(_ context.Context, in *workflow.Inputs, out *workflow.Outputs) error {
-	f, err := in.Get[*Fs]()
-	if err != nil {
-		return err
-	}
-
-	for _, file := range in.Emitted() {
-		if err := f.Write(file.Path, file.Content); err != nil {
-			return err
-		}
-	}
-
-	return out.Set(f)
+// CopyDownSink is the workflow sink that copies every staged file into the
+// project directory.
+func CopyDownSink(ctx context.Context, f *Fs, _ struct{}) error {
+	return f.CopyDown(ctx)
 }

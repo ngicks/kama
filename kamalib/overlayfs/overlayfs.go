@@ -1,9 +1,9 @@
 // Package overlayfs is the rooted target filesystem a graph runs against.
 //
-// It stacks a writable in-memory layer over the project directory. Nodes read
-// the merged view, so generated output is visible to later nodes as if it
-// were on disk, and the sink node writes routed files into the writable
-// layer. Nothing reaches the project directory until CopyDown.
+// It stacks a writable in-memory layer over the project directory. Steps read
+// the merged view, so generated output is visible to later steps as if it
+// were on disk, and steps that output to the filesystem write into the
+// writable layer. Nothing reaches the project directory until CopyDown.
 package overlayfs
 
 import (
@@ -18,15 +18,15 @@ import (
 	upstream "github.com/ngicks/go-fsys-helper/vroot-adapter/overlayfs"
 	"github.com/ngicks/go-fsys-helper/vroot/memfs"
 	"github.com/ngicks/go-fsys-helper/vroot/osfs"
-
-	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-var ErrClosed = errors.New("overlayfs: closed")
+var (
+	ErrClosed      = errors.New("overlayfs: closed")
+	ErrAlreadyOpen = errors.New("overlayfs: already open")
+)
 
-// Fs is the target filesystem value. It is provided by Provide, read by
-// loaders, written by Sink, and flushed by the caller once the graph
-// succeeded.
+// Fs is the target filesystem. Its zero value is closed; Open fills it in
+// place so a workflow can allocate it as a step's slot.
 type Fs struct {
 	root string
 	// lower is the project directory, opened once. CopyDown writes through
@@ -36,40 +36,51 @@ type Fs struct {
 	merged *upstream.Fs
 }
 
-// DefaultNode returns nil: the project root must be given, so a graph
-// provides *Fs explicitly.
-func (*Fs) DefaultNode() workflow.Node { return nil }
-
-// New opens the project directory root as the read-only lower layer with an
-// empty in-memory top.
+// New opens the project directory root as the lower layer with an empty
+// in-memory top.
 func New(root string) (*Fs, error) {
+	f := &Fs{}
+	if err := f.Open(root); err != nil {
+		return nil, err
+	}
+
+	return f, nil
+}
+
+// Open opens the project directory root into f, which must be closed.
+func (f *Fs) Open(root string) error {
+	if f.merged != nil {
+		return ErrAlreadyOpen
+	}
+
 	root, err := filepath.Abs(root)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// An os.Root-backed lower confines traversal and keeps a rename after
 	// open from escaping the project directory.
 	lowerRoot, err := osfs.NewRoot(root)
 	if err != nil {
-		return nil, fmt.Errorf("overlayfs: open %q: %w", root, err)
+		return fmt.Errorf("overlayfs: open %q: %w", root, err)
 	}
 	lower := upstream.NewDataSource(lowerRoot)
 
 	top, err := upstream.NewDataSourceCanonical(memfs.New("top"))
 	if err != nil {
 		lower.Close()
-		return nil, fmt.Errorf("overlayfs: top layer: %w", err)
+		return fmt.Errorf("overlayfs: top layer: %w", err)
 	}
 
 	merged, err := upstream.New(top, []*upstream.DataSource{lower}, nil)
 	if err != nil {
 		top.Close()
 		lower.Close()
-		return nil, fmt.Errorf("overlayfs: mount: %w", err)
+		return fmt.Errorf("overlayfs: mount: %w", err)
 	}
 
-	return &Fs{root: root, lower: lowerRoot, top: top, merged: merged}, nil
+	*f = Fs{root: root, lower: lowerRoot, top: top, merged: merged}
+	return nil
 }
 
 // Root is the absolute project directory.
