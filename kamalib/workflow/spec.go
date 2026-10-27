@@ -14,33 +14,30 @@ type Spec struct {
 	Steps   map[string]Step `json:"steps" yaml:"steps" toml:"steps"`
 }
 
-// Step is one named step in a Spec. Exactly one of Loader and Sink is set.
+// Step is one named step in a Spec.
+//
+// In and Out list step names. A name stands for every slot that step's outs
+// refer to, in order, and the lists are flattened before they are matched to
+// the proc's InTypes and OutTypes by position.
 //
 //nolint:lll // triple json/yaml/toml tags; one field per line, never wrap tags
 type Step struct {
-	// Loader is the kind of a registered loader function.
-	Loader string `json:"loader,omitzero" yaml:"loader,omitempty" toml:"loader,omitempty"`
-	// Sink is the kind of a registered sink function.
-	Sink string `json:"sink,omitzero" yaml:"sink,omitempty" toml:"sink,omitempty"`
-	// Input names the steps whose slots are passed as the function's input
-	// arguments, by position.
-	Input Names `json:"input,omitzero" yaml:"input,omitempty" toml:"input,omitempty"`
-	// Output names the step whose slot a loader writes into. Empty means the
-	// loader gets a fresh slot of its own.
-	Output string `json:"output,omitzero" yaml:"output,omitempty" toml:"output,omitempty"`
+	// Proc is the kind of a registered Proc.
+	Proc string `json:"proc" yaml:"proc" toml:"proc"`
+	// In names the steps whose slots are passed to the instance's In method.
+	In Names `json:"in,omitzero" yaml:"in,omitempty" toml:"in,omitempty"`
+	// Out names the steps whose slots are passed to the instance's Out
+	// method. Empty means the step gets fresh slots of its own, one per out.
+	Out Names `json:"out,omitzero" yaml:"out,omitempty" toml:"out,omitempty"`
 	// After names steps that must run first without passing a value.
 	After Names `json:"after,omitzero" yaml:"after,omitempty" toml:"after,omitempty"`
-	// Param is decoded into the function's param argument.
+	// Param is handed to the proc's BuildContext.
 	Param any `json:"param,omitzero" yaml:"param,omitempty" toml:"param,omitempty"`
 }
 
 // deps returns every step s must run after, without duplicates.
 func (s Step) deps() []string {
-	deps := slices.Concat(s.Input, s.After)
-	if s.Output != "" {
-		deps = append(deps, s.Output)
-	}
-
+	deps := slices.Concat(s.In, s.Out, s.After)
 	slices.Sort(deps)
 	return slices.Compact(deps)
 }

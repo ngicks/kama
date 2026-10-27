@@ -1,113 +1,129 @@
 package workflow
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 )
 
 var (
-	ErrInvalidFunc   = errors.New("workflow: invalid step function")
+	ErrInvalidProc   = errors.New("workflow: invalid proc")
 	ErrDuplicateKind = errors.New("workflow: duplicate kind")
 )
 
-var (
-	contextType = reflect.TypeFor[context.Context]()
-	errorType   = reflect.TypeFor[error]()
-)
+// Proc is a kind of step, registered under a name and instantiated once per
+// step that uses it.
+//
+// An instance returned by BuildContext has two methods besides Run:
+//
+//	In(in1 I1, ..., inN IN)
+//	Out(out1 *O1, ..., outM *OM)
+//
+// Their argument types equal InTypes and OutTypes, in order. The types are
+// concrete per proc, so the methods cannot be part of the Instance interface.
+// The executor calls them through reflection before Run: In with the slots
+// named by the step's in list, Out with the slots named by its out list. A
+// method may be omitted when its type list is empty.
+//
+// Because InTypes and OutTypes are known before anything runs, graph
+// formation checks every edge in the spec against them. A wrong number of
+// ins or outs, or a slot whose type does not fit an argument, fails formation
+// and no step is executed.
+type Proc interface {
+	// InTypes returns the argument types of the instance's In method.
+	InTypes() []reflect.Type
+	// OutTypes returns the argument types of the instance's Out method.
+	// Each must be a pointer: for a step with an empty out list, the executor
+	// allocates one fresh value per out and passes a pointer to it.
+	OutTypes() []reflect.Type
+	// BuildContext returns a new instance configured by param.
+	//
+	// Graph formation calls it with dryRun set, to sanity-check the graph:
+	// the instance is inspected for In and Out and dropped without Run. A
+	// dry-run build must decode and validate param, but it must not open
+	// files, start processes or otherwise touch state outside the process.
+	// Checks that need such state belong in the build with dryRun unset,
+	// which immediately precedes Run.
+	BuildContext(ctx context.Context, param Param, dryRun bool) (Instance, error)
+}
 
-// Registry maps kinds to step functions.
-//
-// A loader has the shape
-//
-//	func(ctx context.Context, in1 I1, ..., inN IN, out *O, param P) error
-//
-// and a sink the shape
-//
-//	func(ctx context.Context, in1 I1, ..., inN IN, param P) error
-//
-// The number of inputs is fixed by the function and must match the step's
-// input list. A function without parameters takes struct{} as P.
+// Instance is a configured proc ready to run once. See Proc for the In and
+// Out methods it also has.
+type Instance interface {
+	Run(ctx context.Context) error
+}
+
+// Param is a step's raw param, as produced by a JSON, YAML or TOML decoder.
+type Param struct {
+	raw any
+}
+
+func NewParam(raw any) Param { return Param{raw: raw} }
+
+// Decode decodes the param into v. Unknown fields are rejected so a typo in
+// a spec fails at graph formation. A missing param leaves v untouched.
+func (p Param) Decode(v any) error {
+	if p.raw == nil {
+		return nil
+	}
+
+	// Re-encoding as JSON gives every source format one decoding path.
+	b, err := json.Marshal(p.raw)
+	if err != nil {
+		return err
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	return dec.Decode(v)
+}
+
+// Registry maps kinds to procs.
 type Registry struct {
-	loaders map[string]reflect.Value
-	sinks   map[string]reflect.Value
+	procs map[string]Proc
 }
 
 func NewRegistry() *Registry {
-	return &Registry{loaders: map[string]reflect.Value{}, sinks: map[string]reflect.Value{}}
+	return &Registry{procs: map[string]Proc{}}
 }
 
-// Loader registers fn as the loader for kind.
-func (r *Registry) Loader(kind string, fn any) error {
-	// ctx, out, param
-	v, err := checkFunc(fn, 3)
-	if err != nil {
-		return fmt.Errorf("loader %q: %w", kind, err)
+// Register adds p under kind.
+func (r *Registry) Register(kind string, p Proc) error {
+	if p == nil {
+		return fmt.Errorf("%w: %q is nil", ErrInvalidProc, kind)
 	}
 
-	t := v.Type()
-	if t.In(t.NumIn()-2).Kind() != reflect.Pointer {
-		return fmt.Errorf(
-			"loader %q: %w: output must be a pointer, got %v",
-			kind,
-			ErrInvalidFunc,
-			t.In(t.NumIn()-2),
-		)
+	for i, t := range p.InTypes() {
+		if t == nil {
+			return fmt.Errorf("%w: %q: in %d is nil", ErrInvalidProc, kind, i)
+		}
 	}
 
-	if _, dup := r.loaders[kind]; dup {
-		return fmt.Errorf("%w: loader %q", ErrDuplicateKind, kind)
+	for i, t := range p.OutTypes() {
+		if t == nil || t.Kind() != reflect.Pointer {
+			return fmt.Errorf(
+				"%w: %q: out %d must be a pointer, got %v",
+				ErrInvalidProc,
+				kind,
+				i,
+				t,
+			)
+		}
 	}
 
-	r.loaders[kind] = v
+	if _, dup := r.procs[kind]; dup {
+		return fmt.Errorf("%w: %q", ErrDuplicateKind, kind)
+	}
+
+	r.procs[kind] = p
 	return nil
 }
 
-// Sink registers fn as the sink for kind.
-func (r *Registry) Sink(kind string, fn any) error {
-	// ctx, param
-	v, err := checkFunc(fn, 2)
-	if err != nil {
-		return fmt.Errorf("sink %q: %w", kind, err)
-	}
-
-	if _, dup := r.sinks[kind]; dup {
-		return fmt.Errorf("%w: sink %q", ErrDuplicateKind, kind)
-	}
-
-	r.sinks[kind] = v
-	return nil
-}
-
-func checkFunc(fn any, minIn int) (reflect.Value, error) {
-	v := reflect.ValueOf(fn)
-	if v.Kind() != reflect.Func {
-		return reflect.Value{}, fmt.Errorf("%w: %T is not a function", ErrInvalidFunc, fn)
-	}
-
-	t := v.Type()
-	if t.IsVariadic() {
-		return reflect.Value{}, fmt.Errorf("%w: variadic %v", ErrInvalidFunc, t)
-	}
-	if t.NumIn() < minIn {
-		return reflect.Value{}, fmt.Errorf(
-			"%w: %v takes fewer than %d arguments",
-			ErrInvalidFunc,
-			t,
-			minIn,
-		)
-	}
-	if t.In(0) != contextType {
-		return reflect.Value{}, fmt.Errorf(
-			"%w: first argument of %v is not context.Context",
-			ErrInvalidFunc,
-			t,
-		)
-	}
-	if t.NumOut() != 1 || t.Out(0) != errorType {
-		return reflect.Value{}, fmt.Errorf("%w: %v must return only error", ErrInvalidFunc, t)
-	}
-
-	return v, nil
+// Lookup returns the proc registered under kind.
+func (r *Registry) Lookup(kind string) (Proc, bool) {
+	p, ok := r.procs[kind]
+	return p, ok
 }

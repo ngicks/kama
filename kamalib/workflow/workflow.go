@@ -1,24 +1,22 @@
-// Package workflow runs a graph of steps described by a Spec.
+// Package workflow forms a graph of steps from a Spec.
 //
-// A step is a Go function registered under a kind; see Registry for its
-// shape. The function's signature declares everything the executor needs, and
-// Build checks it against the spec before anything runs.
+// Each step names a registered Proc. Values flow between steps through
+// slots: a step's outs refer to slots it allocates or to slots of the steps
+// named in its out list, and a step's ins refer to the slots of the steps
+// named in its in list. See Proc for how an instance receives them.
 //
-// Inputs are matched to the step's input names by position. A loader's output
-// argument is a pointer. Without an explicit output the executor allocates a
-// fresh one for the step, its default slot. With output naming another step,
-// the loader receives that step's slot and writes into it. A step's value, as
-// seen by the steps that list it as input, is the slot it writes into.
+// Build forms the graph and checks it without running anything. It matches
+// every in and out list against the proc's declared types and then builds
+// every instance with dryRun set, so a spec naming the wrong inputs or
+// outputs, or carrying a bad param, fails before any step executes.
 //
-// Order follows input, output and after edges. A step that reads a slot does
-// not wait for other steps writing into the same slot unless it lists them in
-// after. Steps with no ordering between them run in name order.
+// Order follows in, out and after edges. A step that reads a slot does not
+// wait for other steps writing into the same slot unless it lists them in
+// after. Steps with no ordering between them come in name order.
 package workflow
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -32,42 +30,64 @@ var (
 	ErrUnknownStep        = errors.New("workflow: unknown step")
 	ErrArity              = errors.New("workflow: argument count mismatch")
 	ErrTypeMismatch       = errors.New("workflow: type mismatch")
-	ErrParam              = errors.New("workflow: invalid param")
 	ErrCycle              = errors.New("workflow: dependency cycle")
+	ErrBuild              = errors.New("workflow: build failed")
 )
 
-type planned struct {
-	name string
-	fn   reflect.Value
-	// inputs are the names of the steps owning each input slot.
-	inputs []string
-	// output is the name of the step owning the output slot; empty for sinks.
-	output string
-	// slot is the element type of the default slot this step owns, or nil.
-	slot  reflect.Type
-	param reflect.Value
+// Slot is a value passed between steps.
+type Slot struct {
+	// Type is the pointer type of the slot.
+	Type reflect.Type
+	// Owner is the step that allocates the slot.
+	Owner string
 }
 
-// Plan is a checked, ordered graph ready to run.
-type Plan struct {
-	steps []planned
-	names []string
+// Node is a step in a formed graph.
+type Node struct {
+	Name  string
+	Kind  string
+	Proc  Proc
+	Param Param
+	// In and Out are indices into Graph.Slots, in argument order.
+	In    []int
+	Out   []int
+	After []string
 }
 
-// Build checks s against the functions in reg and orders its steps.
-func (s Spec) Build(reg *Registry) (*Plan, error) {
+// Graph is a formed, checked graph in execution order.
+type Graph struct {
+	nodes []Node
+	slots []Slot
+}
+
+// Nodes returns the nodes in execution order. The slice is shared with the
+// graph; callers must not modify it. It is clipped, so appending to it
+// allocates instead of writing into the graph.
+func (g *Graph) Nodes() []Node { return slices.Clip(g.nodes) }
+
+// Slots returns every slot, indexed by Node.In and Node.Out. The slice is
+// shared and clipped the same way as Nodes.
+func (g *Graph) Slots() []Slot { return slices.Clip(g.slots) }
+
+// Build forms the graph s describes from the procs in reg and dry-runs every
+// proc's BuildContext.
+func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 	if s.Version != SpecVersion {
 		return nil, fmt.Errorf("%w: %d", ErrUnsupportedVersion, s.Version)
 	}
 
-	fns := map[string]reflect.Value{}
+	procs := map[string]Proc{}
 	for name, st := range s.Steps {
-		fn, err := resolve(reg, name, st)
-		if err != nil {
-			return nil, err
+		if st.Proc == "" {
+			return nil, fmt.Errorf("%w: %q names no proc", ErrInvalidStep, name)
 		}
 
-		fns[name] = fn
+		p, ok := reg.Lookup(st.Proc)
+		if !ok {
+			return nil, fmt.Errorf("%w: %q for step %q", ErrUnknownKind, st.Proc, name)
+		}
+
+		procs[name] = p
 	}
 
 	order, err := sortSteps(s.Steps)
@@ -75,133 +95,182 @@ func (s Spec) Build(reg *Registry) (*Plan, error) {
 		return nil, err
 	}
 
-	owner := map[string]string{}
-	// slotType maps a slot owner to the pointer type of its slot.
-	slotType := map[string]reflect.Type{}
-	steps := make([]planned, 0, len(order))
+	g := &Graph{}
+	// refers maps a step to the slots its outs refer to.
+	refers := map[string][]int{}
 
 	for _, name := range order {
 		st := s.Steps[name]
-		fn := fns[name]
-		t := fn.Type()
-		p := planned{name: name, fn: fn}
+		p := procs[name]
 
-		for i, in := range st.Input {
-			if s.Steps[in].Sink != "" {
-				return nil, fmt.Errorf("%w: %q takes sink %q as input", ErrInvalidStep, name, in)
-			}
-
-			o := owner[in]
-			if want := t.In(1 + i); !slotType[o].AssignableTo(want) {
-				return nil, fmt.Errorf(
-					"%w: input %d of %q: %q holds %v, want %v",
-					ErrTypeMismatch, i, name, in, slotType[o], want,
-				)
-			}
-
-			p.inputs = append(p.inputs, o)
-		}
-
-		if st.Loader != "" {
-			out := t.In(t.NumIn() - 2)
-
-			if st.Output == "" {
-				owner[name] = name
-				slotType[name] = out
-				p.output = name
-				p.slot = out.Elem()
-			} else {
-				if s.Steps[st.Output].Sink != "" {
-					return nil, fmt.Errorf(
-						"%w: %q outputs to sink %q",
-						ErrInvalidStep,
-						name,
-						st.Output,
-					)
-				}
-
-				o := owner[st.Output]
-				if slotType[o] != out {
-					return nil, fmt.Errorf(
-						"%w: output of %q: %q holds %v, want %v",
-						ErrTypeMismatch, name, st.Output, slotType[o], out,
-					)
-				}
-
-				owner[name] = o
-				p.output = o
-			}
-		}
-
-		param, err := decodeParam(st.Param, t.In(t.NumIn()-1))
+		in, err := flatten(name, "in", st.In, refers)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %q: %w", ErrParam, name, err)
+			return nil, err
 		}
-		p.param = param
+		if err := matchIn(name, g.slots, in, p.InTypes()); err != nil {
+			return nil, err
+		}
 
-		steps = append(steps, p)
+		var out []int
+		if len(st.Out) == 0 {
+			for _, t := range p.OutTypes() {
+				out = append(out, len(g.slots))
+				g.slots = append(g.slots, Slot{Type: t, Owner: name})
+			}
+		} else {
+			out, err = flatten(name, "out", st.Out, refers)
+			if err != nil {
+				return nil, err
+			}
+			if err := matchOut(name, g.slots, out, p.OutTypes()); err != nil {
+				return nil, err
+			}
+		}
+
+		refers[name] = out
+		g.nodes = append(g.nodes, Node{
+			Name:  name,
+			Kind:  st.Proc,
+			Proc:  p,
+			Param: NewParam(st.Param),
+			In:    in,
+			Out:   out,
+			After: st.After,
+		})
 	}
 
-	return &Plan{steps: steps, names: order}, nil
+	if err := g.dryRun(ctx); err != nil {
+		return nil, err
+	}
+
+	return g, nil
 }
 
-// resolve looks up the function for st and checks its argument count.
-func resolve(reg *Registry, name string, st Step) (reflect.Value, error) {
-	var (
-		fn    reflect.Value
-		ok    bool
-		fixed int
-	)
+// flatten expands step names into the slots their outs refer to.
+func flatten(name, list string, refs Names, refers map[string][]int) ([]int, error) {
+	var slots []int
 
-	switch {
-	case st.Loader != "" && st.Sink != "":
-		return reflect.Value{}, fmt.Errorf("%w: %q sets both loader and sink", ErrInvalidStep, name)
-	case st.Loader != "":
-		fn, ok = reg.loaders[st.Loader]
-		if !ok {
-			return reflect.Value{}, fmt.Errorf(
-				"%w: loader %q for %q",
-				ErrUnknownKind,
-				st.Loader,
+	for _, r := range refs {
+		s := refers[r]
+		if len(s) == 0 {
+			return nil, fmt.Errorf(
+				"%w: %s of %q names %q, which has no outs",
+				ErrInvalidStep,
+				list,
 				name,
+				r,
 			)
 		}
-		// ctx, out, param
-		fixed = 3
-	case st.Sink != "":
-		if st.Output != "" {
-			return reflect.Value{}, fmt.Errorf("%w: sink %q has an output", ErrInvalidStep, name)
-		}
 
-		fn, ok = reg.sinks[st.Sink]
-		if !ok {
-			return reflect.Value{}, fmt.Errorf("%w: sink %q for %q", ErrUnknownKind, st.Sink, name)
-		}
-		// ctx, param
-		fixed = 2
-	default:
-		return reflect.Value{}, fmt.Errorf(
-			"%w: %q sets neither loader nor sink",
-			ErrInvalidStep,
-			name,
-		)
+		slots = append(slots, s...)
 	}
 
-	if got, want := fn.Type().NumIn()-fixed, len(st.Input); got != want {
-		return reflect.Value{}, fmt.Errorf(
-			"%w: %q lists %d inputs, function takes %d",
-			ErrArity,
-			name,
-			want,
-			got,
-		)
-	}
-
-	return fn, nil
+	return slots, nil
 }
 
-// sortSteps orders steps so each runs after its input, output and after
-// steps. Among steps ready at the same time, the smaller name runs first.
+func matchIn(name string, slots []Slot, in []int, want []reflect.Type) error {
+	if len(in) != len(want) {
+		return fmt.Errorf(
+			"%w: in of %q gives %d slots, proc takes %d",
+			ErrArity,
+			name,
+			len(in),
+			len(want),
+		)
+	}
+
+	for i, id := range in {
+		if got := slots[id].Type; !got.AssignableTo(want[i]) {
+			return fmt.Errorf(
+				"%w: in %d of %q: slot of %q holds %v, want %v",
+				ErrTypeMismatch, i, name, slots[id].Owner, got, want[i],
+			)
+		}
+	}
+
+	return nil
+}
+
+func matchOut(name string, slots []Slot, out []int, want []reflect.Type) error {
+	if len(out) != len(want) {
+		return fmt.Errorf(
+			"%w: out of %q gives %d slots, proc takes %d",
+			ErrArity,
+			name,
+			len(out),
+			len(want),
+		)
+	}
+
+	for i, id := range out {
+		// A step writes into the slot itself, so the type must be exact.
+		if got := slots[id].Type; got != want[i] {
+			return fmt.Errorf(
+				"%w: out %d of %q: slot of %q holds %v, want %v",
+				ErrTypeMismatch, i, name, slots[id].Owner, got, want[i],
+			)
+		}
+	}
+
+	return nil
+}
+
+// dryRun builds every instance with dryRun set and checks its In and Out
+// methods against the proc's declared types. It reports every failing step.
+func (g *Graph) dryRun(ctx context.Context) error {
+	var errs []error
+
+	for _, n := range g.nodes {
+		inst, err := n.Proc.BuildContext(ctx, n.Param, true)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%w: step %q: %w", ErrBuild, n.Name, err))
+			continue
+		}
+
+		if inst == nil {
+			errs = append(errs, fmt.Errorf("%w: step %q: nil instance", ErrInvalidProc, n.Name))
+			continue
+		}
+
+		if err := checkMethod(inst, "In", n.Proc.InTypes()); err != nil {
+			errs = append(errs, fmt.Errorf("step %q: %w", n.Name, err))
+		}
+		if err := checkMethod(inst, "Out", n.Proc.OutTypes()); err != nil {
+			errs = append(errs, fmt.Errorf("step %q: %w", n.Name, err))
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func checkMethod(inst Instance, name string, want []reflect.Type) error {
+	m := reflect.ValueOf(inst).MethodByName(name)
+	if !m.IsValid() {
+		if len(want) == 0 {
+			return nil
+		}
+
+		return fmt.Errorf("%w: %T has no %s method", ErrInvalidProc, inst, name)
+	}
+
+	t := m.Type()
+	if t.IsVariadic() || t.NumOut() != 0 || t.NumIn() != len(want) {
+		return fmt.Errorf("%w: %T.%s is %v, want %d arguments and no results",
+			ErrInvalidProc, inst, name, t, len(want))
+	}
+
+	for i, w := range want {
+		if t.In(i) != w {
+			return fmt.Errorf("%w: %T.%s argument %d is %v, declared %v",
+				ErrInvalidProc, inst, name, i, t.In(i), w)
+		}
+	}
+
+	return nil
+}
+
+// sortSteps orders steps so each comes after its in, out and after steps.
+// Among steps ready at the same time, the smaller name comes first.
 func sortSteps(steps map[string]Step) ([]string, error) {
 	pending := map[string]int{}
 	dependents := map[string][]string{}
@@ -254,60 +323,4 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 	}
 
 	return order, nil
-}
-
-// decodeParam decodes raw, as produced by a JSON, YAML or TOML decoder, into
-// a value of type t. Unknown fields are rejected so a typo in a spec fails at
-// build time.
-func decodeParam(raw any, t reflect.Type) (reflect.Value, error) {
-	v := reflect.New(t)
-	if raw == nil {
-		return v.Elem(), nil
-	}
-
-	// Re-encoding as JSON gives every format one decoding path into P.
-	b, err := json.Marshal(raw)
-	if err != nil {
-		return reflect.Value{}, err
-	}
-
-	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(v.Interface()); err != nil {
-		return reflect.Value{}, err
-	}
-
-	return v.Elem(), nil
-}
-
-// Names returns the step names in execution order. The slice is shared with
-// the plan; callers must not modify it. It is clipped, so appending to it
-// allocates instead of writing into the plan.
-func (p *Plan) Names() []string { return slices.Clip(p.names) }
-
-// Run executes every step once, in order.
-func (p *Plan) Run(ctx context.Context) error {
-	slots := map[string]reflect.Value{}
-
-	for _, st := range p.steps {
-		if st.slot != nil {
-			slots[st.name] = reflect.New(st.slot)
-		}
-
-		args := make([]reflect.Value, 0, len(st.inputs)+3)
-		args = append(args, reflect.ValueOf(&ctx).Elem())
-		for _, in := range st.inputs {
-			args = append(args, slots[in])
-		}
-		if st.output != "" {
-			args = append(args, slots[st.output])
-		}
-		args = append(args, st.param)
-
-		if err, _ := reflect.TypeAssert[error](st.fn.Call(args)[0]); err != nil {
-			return fmt.Errorf("workflow: step %q: %w", st.name, err)
-		}
-	}
-
-	return nil
 }
