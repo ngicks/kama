@@ -11,7 +11,8 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-// counter and doubled are slot types. Formation only looks at their types.
+// counter and doubled are values steps hand over. Formation only looks at
+// their types.
 type (
 	counter struct{}
 	doubled struct{}
@@ -22,75 +23,85 @@ var (
 	doubledType = reflect.TypeFor[*doubled]()
 )
 
+type seedParam struct {
+	Value int `json:"value"`
+}
+
+var seedParamType = reflect.TypeFor[seedParam]()
+
 type noop struct{}
 
 func (noop) Run(context.Context) error { return nil }
 
-// Instances whose In and Out match the procs declared below.
+// Instances whose methods match the procs declared in newProcs.
 type (
 	seedInst   struct{ noop }
 	doubleInst struct{ noop }
 	showInst   struct{ noop }
-	pairInst   struct{ noop }
+	bumpInst   struct{ noop }
 	sumInst    struct{ noop }
 	// wrongInst declares In with the wrong argument type.
 	wrongInst struct{ noop }
 )
 
-func (seedInst) Out(*counter)           {}
-func (doubleInst) In(*counter)          {}
-func (doubleInst) Out(*doubled)         {}
-func (showInst) In(*doubled)            {}
-func (pairInst) Out(*counter, *doubled) {}
-func (sumInst) In(*counter, *doubled)   {}
-func (wrongInst) In(*doubled)           {}
-
-type seedParam struct {
-	Value int `json:"value"`
-}
-
-type fakeProc struct {
-	ins, outs []reflect.Type
-	inst      Instance
-	buildErr  error
-	dryRuns   []bool
-}
-
-func (p *fakeProc) InTypes() []reflect.Type  { return p.ins }
-func (p *fakeProc) OutTypes() []reflect.Type { return p.outs }
-
-func (p *fakeProc) BuildContext(_ context.Context, param Param, dryRun bool) (Instance, error) {
-	p.dryRuns = append(p.dryRuns, dryRun)
-
-	if p.buildErr != nil {
-		return nil, p.buildErr
+func (seedInst) Param(p seedParam) error {
+	if p.Value < 0 {
+		return errors.New("value must not be negative")
 	}
 
-	var sp seedParam
-	if err := param.Decode(&sp); err != nil {
-		return nil, err
+	return nil
+}
+
+func (seedInst) AsInput() *counter    { return &counter{} }
+func (doubleInst) In(*counter)        {}
+func (doubleInst) AsInput() *doubled  { return &doubled{} }
+func (showInst) In(*doubled)          {}
+func (bumpInst) Out(*counter)         {}
+func (sumInst) In(*counter, *doubled) {}
+func (wrongInst) In(*doubled)         {}
+
+type fakeProc struct {
+	param   reflect.Type
+	ins     []reflect.Type
+	outs    []reflect.Type
+	asInput reflect.Type
+	inst    Instance
+	instErr error
+	dryRuns []bool
+}
+
+func (p *fakeProc) ParamType() reflect.Type   { return p.param }
+func (p *fakeProc) InTypes() []reflect.Type   { return p.ins }
+func (p *fakeProc) OutTypes() []reflect.Type  { return p.outs }
+func (p *fakeProc) AsInputType() reflect.Type { return p.asInput }
+
+func (p *fakeProc) Instantiate(_ context.Context, dryRun bool) (Instance, error) {
+	p.dryRuns = append(p.dryRuns, dryRun)
+
+	if p.instErr != nil {
+		return nil, p.instErr
 	}
 
 	return p.inst, nil
 }
 
-type procs struct {
-	seed, double, show, pair, sum, wrong, broken *fakeProc
-}
+type procs map[string]*fakeProc
 
 func newProcs() procs {
 	return procs{
-		seed: &fakeProc{outs: []reflect.Type{counterType}, inst: seedInst{}},
-		double: &fakeProc{
-			ins:  []reflect.Type{counterType},
-			outs: []reflect.Type{doubledType},
-			inst: doubleInst{},
+		"seed": {param: seedParamType, asInput: counterType, inst: seedInst{}},
+		"double": {
+			ins:     []reflect.Type{counterType},
+			asInput: doubledType,
+			inst:    doubleInst{},
 		},
-		show:   &fakeProc{ins: []reflect.Type{doubledType}, inst: showInst{}},
-		pair:   &fakeProc{outs: []reflect.Type{counterType, doubledType}, inst: pairInst{}},
-		sum:    &fakeProc{ins: []reflect.Type{counterType, doubledType}, inst: sumInst{}},
-		wrong:  &fakeProc{ins: []reflect.Type{counterType}, inst: wrongInst{}},
-		broken: &fakeProc{outs: []reflect.Type{counterType}, buildErr: errors.New("boom")},
+		"show":   {ins: []reflect.Type{doubledType}, inst: showInst{}},
+		"bump":   {outs: []reflect.Type{counterType}, inst: bumpInst{}},
+		"sum":    {ins: []reflect.Type{counterType, doubledType}, inst: sumInst{}},
+		"wrong":  {ins: []reflect.Type{counterType}, inst: wrongInst{}},
+		"broken": {asInput: counterType, instErr: errors.New("boom")},
+		// noAsInput declares an AsInput its instance lacks.
+		"noAsInput": {asInput: counterType, inst: showInst{}},
 	}
 }
 
@@ -98,10 +109,7 @@ func (p procs) registry(t *testing.T) *Registry {
 	t.Helper()
 
 	reg := NewRegistry()
-	for kind, proc := range map[string]*fakeProc{
-		"seed": p.seed, "double": p.double, "show": p.show,
-		"pair": p.pair, "sum": p.sum, "wrong": p.wrong, "broken": p.broken,
-	} {
+	for kind, proc := range p {
 		assert.NilError(t, reg.Register(kind, proc))
 	}
 
@@ -123,17 +131,6 @@ func names(g *Graph) []string {
 	return out
 }
 
-// slots renders each slot as owner:type, since go-cmp cannot compare
-// reflect.Type values.
-func slots(g *Graph) []string {
-	var out []string
-	for _, s := range g.Slots() {
-		out = append(out, s.Owner+":"+s.Type.String())
-	}
-
-	return out
-}
-
 func node(t *testing.T, g *Graph, name string) Node {
 	t.Helper()
 
@@ -147,64 +144,43 @@ func node(t *testing.T, g *Graph, name string) Node {
 	return Node{}
 }
 
-func TestDefaultSlots(t *testing.T) {
+func TestFormation(t *testing.T) {
 	p := newProcs()
 
 	g, err := build(t, p, map[string]Step{
 		"src":  {Proc: "seed", Param: map[string]any{"value": 3}},
 		"dbl":  {Proc: "double", In: Names{"src"}},
 		"show": {Proc: "show", In: Names{"dbl"}},
+		"sum":  {Proc: "sum", In: Names{"src", "dbl"}},
 	})
 	assert.NilError(t, err)
 
-	assert.DeepEqual(t, names(g), []string{"src", "dbl", "show"})
-	assert.DeepEqual(t, slots(g), []string{"src:*workflow.counter", "dbl:*workflow.doubled"})
+	assert.DeepEqual(t, names(g), []string{"src", "dbl", "show", "sum"})
+	assert.DeepEqual(t, node(t, g, "sum").In, []string{"src", "dbl"})
 
-	assert.DeepEqual(t, node(t, g, "src").Out, []int{0})
-	assert.DeepEqual(t, node(t, g, "dbl").In, []int{0})
-	assert.DeepEqual(t, node(t, g, "dbl").Out, []int{1})
-	assert.DeepEqual(t, node(t, g, "show").In, []int{1})
+	param, ok := reflect.TypeAssert[seedParam](node(t, g, "src").Param)
+	assert.Assert(t, ok)
+	assert.Equal(t, param.Value, 3)
+	assert.Assert(t, !node(t, g, "dbl").Param.IsValid())
 
-	// Formation builds every proc once, as a dry run.
-	assert.DeepEqual(t, p.seed.dryRuns, []bool{true})
-	assert.DeepEqual(t, p.double.dryRuns, []bool{true})
-	assert.DeepEqual(t, p.show.dryRuns, []bool{true})
+	// Formation instantiates every step once, as a dry run.
+	assert.DeepEqual(t, p["seed"].dryRuns, []bool{true})
+	assert.DeepEqual(t, p["double"].dryRuns, []bool{true})
+	assert.DeepEqual(t, p["show"].dryRuns, []bool{true})
 }
 
-func TestOutIntoNamedSlot(t *testing.T) {
+func TestOutWritesIntoNamedStep(t *testing.T) {
 	g, err := build(t, newProcs(), map[string]Step{
 		"src":    {Proc: "seed"},
-		"bump":   {Proc: "seed", Out: Names{"src"}},
+		"bump":   {Proc: "bump", Out: Names{"src"}},
 		"before": {Proc: "double", In: Names{"src"}},
 		"after":  {Proc: "double", In: Names{"src"}, After: Names{"bump"}},
-		// Naming the writer refers to the slot it writes into.
-		"via": {Proc: "double", In: Names{"bump"}},
 	})
 	assert.NilError(t, err)
 
 	// before has no edge to bump, so name order puts it first.
-	assert.DeepEqual(t, names(g), []string{"src", "before", "bump", "after", "via"})
-
-	assert.DeepEqual(t, node(t, g, "bump").Out, []int{0})
-	assert.DeepEqual(t, node(t, g, "after").In, []int{0})
-	assert.DeepEqual(t, node(t, g, "via").In, []int{0})
-	assert.Equal(t, g.Slots()[0].Owner, "src")
-}
-
-func TestNamesFlatten(t *testing.T) {
-	g, err := build(t, newProcs(), map[string]Step{
-		"pair": {Proc: "pair"},
-		// pair refers to two slots, which fill both of sum's ins.
-		"sum1": {Proc: "sum", In: Names{"pair"}},
-		"src":  {Proc: "seed"},
-		"dbl":  {Proc: "double", In: Names{"src"}},
-		"sum2": {Proc: "sum", In: Names{"src", "dbl"}},
-	})
-	assert.NilError(t, err)
-
-	assert.DeepEqual(t, node(t, g, "pair").Out, []int{0, 1})
-	assert.DeepEqual(t, node(t, g, "sum1").In, []int{0, 1})
-	assert.DeepEqual(t, node(t, g, "sum2").In, []int{2, 3})
+	assert.DeepEqual(t, names(g), []string{"src", "before", "bump", "after"})
+	assert.DeepEqual(t, node(t, g, "bump").Out, []string{"src"})
 }
 
 func TestFormationErrors(t *testing.T) {
@@ -247,7 +223,7 @@ func TestFormationErrors(t *testing.T) {
 		{
 			"too many outs",
 			map[string]Step{
-				"a": {Proc: "pair"},
+				"a": {Proc: "seed"},
 				"x": {Proc: "seed", Out: Names{"a"}},
 			},
 			ErrArity,
@@ -265,12 +241,12 @@ func TestFormationErrors(t *testing.T) {
 			map[string]Step{
 				"a": {Proc: "seed"},
 				"d": {Proc: "double", In: Names{"a"}},
-				"x": {Proc: "seed", Out: Names{"d"}},
+				"x": {Proc: "bump", Out: Names{"d"}},
 			},
 			ErrTypeMismatch,
 		},
 		{
-			"step without outs as in",
+			"step without AsInput named",
 			map[string]Step{
 				"a": {Proc: "seed"},
 				"d": {Proc: "double", In: Names{"a"}},
@@ -296,8 +272,8 @@ func TestFormationErrors(t *testing.T) {
 			_, err := build(t, p, c.steps)
 			assert.ErrorIs(t, err, c.want)
 
-			// Formation errors stop before any build.
-			assert.Equal(t, len(p.seed.dryRuns), 0)
+			// Formation errors stop before any instantiation.
+			assert.Equal(t, len(p["seed"].dryRuns), 0)
 		})
 	}
 
@@ -312,19 +288,32 @@ func TestDryRunErrors(t *testing.T) {
 		want  error
 	}{
 		{
-			"build error",
+			"instantiate error",
 			map[string]Step{"x": {Proc: "broken"}},
-			ErrBuild,
+			ErrInstantiate,
 		},
 		{
 			"unknown param field",
 			map[string]Step{"x": {Proc: "seed", Param: map[string]any{"valeu": 1}}},
-			ErrBuild,
+			ErrParam,
 		},
 		{
 			"param of wrong shape",
 			map[string]Step{"x": {Proc: "seed", Param: []any{"./..."}}},
-			ErrBuild,
+			ErrParam,
+		},
+		{
+			"param for a proc without ParamType",
+			map[string]Step{
+				"a": {Proc: "seed"},
+				"x": {Proc: "bump", Out: Names{"a"}, Param: map[string]any{"a": 1}},
+			},
+			ErrParam,
+		},
+		{
+			"param rejected by Param",
+			map[string]Step{"x": {Proc: "seed", Param: map[string]any{"value": -1}}},
+			ErrParam,
 		},
 		{
 			"In does not match declared types",
@@ -332,6 +321,11 @@ func TestDryRunErrors(t *testing.T) {
 				"a": {Proc: "seed"},
 				"x": {Proc: "wrong", In: Names{"a"}},
 			},
+			ErrInvalidProc,
+		},
+		{
+			"AsInput missing",
+			map[string]Step{"x": {Proc: "noAsInput"}},
 			ErrInvalidProc,
 		},
 	}
@@ -354,34 +348,12 @@ func TestDryRunReportsEveryStep(t *testing.T) {
 	assert.ErrorContains(t, err, `step "b"`)
 }
 
-func TestMissingMethod(t *testing.T) {
-	reg := NewRegistry()
-	assert.NilError(
-		t,
-		reg.Register("seed", &fakeProc{outs: []reflect.Type{counterType}, inst: seedInst{}}),
-	)
-	// showInst has no Out method, but this proc declares an out.
-	assert.NilError(
-		t,
-		reg.Register("bad", &fakeProc{outs: []reflect.Type{counterType}, inst: showInst{}}),
-	)
-
-	_, err := Spec{Version: SpecVersion, Steps: map[string]Step{
-		"x": {Proc: "bad"},
-	}}.Build(context.Background(), reg)
-	assert.ErrorIs(t, err, ErrInvalidProc)
-}
-
 func TestRegistryRejects(t *testing.T) {
 	reg := NewRegistry()
 
 	assert.ErrorIs(t, reg.Register("a", nil), ErrInvalidProc)
-	assert.ErrorIs(
-		t,
-		reg.Register("a", &fakeProc{outs: []reflect.Type{reflect.TypeFor[counter]()}}),
-		ErrInvalidProc,
-	)
 	assert.ErrorIs(t, reg.Register("a", &fakeProc{ins: []reflect.Type{nil}}), ErrInvalidProc)
+	assert.ErrorIs(t, reg.Register("a", &fakeProc{outs: []reflect.Type{nil}}), ErrInvalidProc)
 
 	assert.NilError(t, reg.Register("a", &fakeProc{}))
 	assert.ErrorIs(t, reg.Register("a", &fakeProc{}), ErrDuplicateKind)

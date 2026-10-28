@@ -22,36 +22,41 @@ type Document struct {
 type ProcParam struct {
 	// Base is the file path without extension, relative to the project root.
 	Base string `json:"base"`
-	// Formats are tried in order; earlier entries take priority.
+	// Formats are tried in order; earlier entries take priority. Empty means
+	// yaml, json, toml.
 	Formats []Format `json:"formats"`
 }
 
 // Proc decodes the first file of a PathInput found in the project.
 //
+//	Param(ProcParam) error
 //	In(*overlayfs.Fs)
-//	Out(*Document)
+//	AsInput() *Document
 type Proc struct{}
+
+func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParam]() }
 
 func (Proc) InTypes() []reflect.Type {
 	return []reflect.Type{reflect.TypeFor[*overlayfs.Fs]()}
 }
 
-func (Proc) OutTypes() []reflect.Type {
-	return []reflect.Type{reflect.TypeFor[*Document]()}
+func (Proc) OutTypes() []reflect.Type { return nil }
+
+func (Proc) AsInputType() reflect.Type { return reflect.TypeFor[*Document]() }
+
+func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
+	return &instance{}, nil
 }
 
-func (Proc) BuildContext(
-	_ context.Context,
-	param workflow.Param,
-	_ bool,
-) (workflow.Instance, error) {
-	var p ProcParam
-	if err := param.Decode(&p); err != nil {
-		return nil, err
-	}
+type instance struct {
+	input PathInput
+	fs    *overlayfs.Fs
+	doc   Document
+}
 
+func (i *instance) Param(p ProcParam) error {
 	if p.Base == "" {
-		return nil, errors.New("metadata: base is required")
+		return errors.New("metadata: base is required")
 	}
 
 	in := PathInput(p)
@@ -61,28 +66,23 @@ func (Proc) BuildContext(
 
 	// Candidates reports unknown formats without touching the filesystem.
 	if _, err := in.Candidates(); err != nil {
-		return nil, fmt.Errorf("metadata: %w", err)
+		return fmt.Errorf("metadata: %w", err)
 	}
 
-	return &instance{input: in}, nil
-}
-
-type instance struct {
-	input PathInput
-	fs    *overlayfs.Fs
-	out   *Document
+	i.input = in
+	return nil
 }
 
 func (i *instance) In(fs *overlayfs.Fs) { i.fs = fs }
 
-func (i *instance) Out(out *Document) { i.out = out }
-
 func (i *instance) Run(context.Context) error {
-	name, err := Load(i.fs.FS(), i.input, &i.out.Data)
+	name, err := Load(i.fs.FS(), i.input, &i.doc.Data)
 	if err != nil {
 		return err
 	}
 
-	i.out.Path = name
+	i.doc.Path = name
 	return nil
 }
+
+func (i *instance) AsInput() *Document { return &i.doc }

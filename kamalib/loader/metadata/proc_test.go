@@ -9,7 +9,6 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/overlayfs"
-	"github.com/ngicks/kama/kamalib/workflow"
 )
 
 func TestProcRun(t *testing.T) {
@@ -28,31 +27,25 @@ func TestProcRun(t *testing.T) {
 	// A staged yaml file wins over the json file on disk.
 	assert.NilError(t, f.Write("codegen/meta.yaml", []byte("name: yaml\n")))
 
-	param := workflow.NewParam(
-		map[string]any{"base": "codegen/meta", "formats": []any{"yaml", "json"}},
-	)
-	inst, err := Proc{}.BuildContext(ctx, param, false)
+	inst, err := Proc{}.Instantiate(ctx, false)
 	assert.NilError(t, err)
 
-	var doc Document
-	inst.(*instance).In(f)
-	inst.(*instance).Out(&doc)
-	assert.NilError(t, inst.Run(ctx))
+	i := inst.(*instance)
+	assert.NilError(
+		t,
+		i.Param(ProcParam{Base: "codegen/meta", Formats: []Format{FormatYaml, FormatJson}}),
+	)
+	i.In(f)
+	assert.NilError(t, i.Run(ctx))
 
+	doc := i.AsInput()
 	assert.Equal(t, doc.Path, "codegen/meta.yaml")
 	assert.DeepEqual(t, doc.Data, map[string]any{"name": "yaml"})
 }
 
 func TestProcParamErrors(t *testing.T) {
-	ctx := context.Background()
+	i := &instance{}
 
-	_, err := Proc{}.BuildContext(ctx, workflow.NewParam(map[string]any{}), true)
-	assert.ErrorContains(t, err, "base is required")
-
-	_, err = Proc{}.BuildContext(
-		ctx,
-		workflow.NewParam(map[string]any{"base": "m", "formats": []any{"ini"}}),
-		true,
-	)
-	assert.ErrorIs(t, err, ErrUnknownFormat)
+	assert.ErrorContains(t, i.Param(ProcParam{}), "base is required")
+	assert.ErrorIs(t, i.Param(ProcParam{Base: "m", Formats: []Format{"ini"}}), ErrUnknownFormat)
 }

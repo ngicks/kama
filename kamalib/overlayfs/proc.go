@@ -18,57 +18,57 @@ type OpenParam struct {
 	Root string `json:"root"`
 }
 
-// OpenProc opens the project directory into its out slot.
+// OpenProc opens the project directory and offers it to other steps.
 //
-//	Out(*Fs)
+//	Param(OpenParam) error
+//	AsInput() *Fs
 type OpenProc struct{}
 
-func (OpenProc) InTypes() []reflect.Type  { return nil }
-func (OpenProc) OutTypes() []reflect.Type { return []reflect.Type{fsType} }
+func (OpenProc) ParamType() reflect.Type   { return reflect.TypeFor[OpenParam]() }
+func (OpenProc) InTypes() []reflect.Type   { return nil }
+func (OpenProc) OutTypes() []reflect.Type  { return nil }
+func (OpenProc) AsInputType() reflect.Type { return fsType }
 
-func (OpenProc) BuildContext(
-	_ context.Context,
-	param workflow.Param,
-	dryRun bool,
-) (workflow.Instance, error) {
-	var p OpenParam
-	if err := param.Decode(&p); err != nil {
-		return nil, err
-	}
+func (OpenProc) Instantiate(_ context.Context, dryRun bool) (workflow.Instance, error) {
+	return &openInstance{dryRun: dryRun, fs: &Fs{}}, nil
+}
 
+type openInstance struct {
+	dryRun bool
+	root   string
+	fs     *Fs
+}
+
+func (i *openInstance) Param(p OpenParam) error {
 	root := p.Root
 	if root == "" {
 		root = "."
 	}
 
-	if !dryRun {
+	if !i.dryRun {
 		abs, err := filepath.Abs(root)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		info, err := os.Stat(abs)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if !info.IsDir() {
-			return nil, fmt.Errorf("overlayfs: %q is not a directory", abs)
+			return fmt.Errorf("overlayfs: %q is not a directory", abs)
 		}
 
 		root = abs
 	}
 
-	return &openInstance{root: root}, nil
+	i.root = root
+	return nil
 }
 
-type openInstance struct {
-	root string
-	out  *Fs
-}
+func (i *openInstance) Run(context.Context) error { return i.fs.Open(i.root) }
 
-func (i *openInstance) Out(out *Fs) { i.out = out }
-
-func (i *openInstance) Run(context.Context) error { return i.out.Open(i.root) }
+func (i *openInstance) AsInput() *Fs { return i.fs }
 
 // CopyDownProc copies every staged file of its in into the project
 // directory.
@@ -76,18 +76,12 @@ func (i *openInstance) Run(context.Context) error { return i.out.Open(i.root) }
 //	In(*Fs)
 type CopyDownProc struct{}
 
-func (CopyDownProc) InTypes() []reflect.Type  { return []reflect.Type{fsType} }
-func (CopyDownProc) OutTypes() []reflect.Type { return nil }
+func (CopyDownProc) ParamType() reflect.Type   { return nil }
+func (CopyDownProc) InTypes() []reflect.Type   { return []reflect.Type{fsType} }
+func (CopyDownProc) OutTypes() []reflect.Type  { return nil }
+func (CopyDownProc) AsInputType() reflect.Type { return nil }
 
-func (CopyDownProc) BuildContext(
-	_ context.Context,
-	param workflow.Param,
-	_ bool,
-) (workflow.Instance, error) {
-	if err := param.Decode(&struct{}{}); err != nil {
-		return nil, err
-	}
-
+func (CopyDownProc) Instantiate(context.Context, bool) (workflow.Instance, error) {
 	return &copyDownInstance{}, nil
 }
 

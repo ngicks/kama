@@ -16,22 +16,21 @@ type Spec struct {
 
 // Step is one named step in a Spec.
 //
-// In and Out list step names. A name stands for every slot that step's outs
-// refer to, in order, and the lists are flattened before they are matched to
-// the proc's InTypes and OutTypes by position.
+// In and Out list step names. Each name stands for that step's AsInput value,
+// and the lists are matched to the proc's InTypes and OutTypes by position.
 //
 //nolint:lll // triple json/yaml/toml tags; one field per line, never wrap tags
 type Step struct {
 	// Proc is the kind of a registered Proc.
 	Proc string `json:"proc" yaml:"proc" toml:"proc"`
-	// In names the steps whose slots are passed to the instance's In method.
+	// In names the steps whose AsInput values are passed to In.
 	In Names `json:"in,omitzero" yaml:"in,omitempty" toml:"in,omitempty"`
-	// Out names the steps whose slots are passed to the instance's Out
-	// method. Empty means the step gets fresh slots of its own, one per out.
+	// Out names the steps whose AsInput values are passed to Out, for the
+	// step to write into.
 	Out Names `json:"out,omitzero" yaml:"out,omitempty" toml:"out,omitempty"`
 	// After names steps that must run first without passing a value.
 	After Names `json:"after,omitzero" yaml:"after,omitempty" toml:"after,omitempty"`
-	// Param is handed to the proc's BuildContext.
+	// Param is decoded into the proc's ParamType and passed to Param.
 	Param any `json:"param,omitzero" yaml:"param,omitempty" toml:"param,omitempty"`
 }
 

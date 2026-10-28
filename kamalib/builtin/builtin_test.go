@@ -87,7 +87,18 @@ version: 1
 steps:
   root: {proc: fs, param: ["./"]}
 `,
-			workflow.ErrBuild,
+			workflow.ErrParam,
+		},
+		{
+			"copy_down named as a value",
+			`
+version: 1
+steps:
+  root: {proc: fs}
+  final: {proc: copy_down, in: root}
+  again: {proc: copy_down, in: final}
+`,
+			workflow.ErrInvalidStep,
 		},
 		{
 			"gopackages without in",

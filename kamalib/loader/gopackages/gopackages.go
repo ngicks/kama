@@ -43,48 +43,47 @@ type ProcParam struct {
 // Proc loads packages from the project as its in shows it, generated files
 // included.
 //
+//	Param(ProcParam) error
 //	In(*overlayfs.Fs)
-//	Out(*Packages)
+//	AsInput() *Packages
 type Proc struct{}
+
+func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParam]() }
 
 func (Proc) InTypes() []reflect.Type {
 	return []reflect.Type{reflect.TypeFor[*overlayfs.Fs]()}
 }
 
-func (Proc) OutTypes() []reflect.Type {
-	return []reflect.Type{reflect.TypeFor[*Packages]()}
+func (Proc) OutTypes() []reflect.Type { return nil }
+
+func (Proc) AsInputType() reflect.Type { return reflect.TypeFor[*Packages]() }
+
+func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
+	return &instance{}, nil
 }
 
-func (Proc) BuildContext(
-	_ context.Context,
-	param workflow.Param,
-	_ bool,
-) (workflow.Instance, error) {
-	var p ProcParam
-	if err := param.Decode(&p); err != nil {
-		return nil, err
-	}
+type instance struct {
+	param ProcParam
+	fs    *overlayfs.Fs
+	out   Packages
+}
 
+func (i *instance) Param(p ProcParam) error {
 	if slices.Contains(p.Patterns, "") {
-		return nil, errors.New("gopackages: empty pattern")
+		return errors.New("gopackages: empty pattern")
 	}
 
 	if len(p.Patterns) == 0 {
 		p.Patterns = []string{"./..."}
 	}
 
-	return &instance{param: p}, nil
-}
-
-type instance struct {
-	param ProcParam
-	fs    *overlayfs.Fs
-	out   *Packages
+	i.param = p
+	return nil
 }
 
 func (i *instance) In(fs *overlayfs.Fs) { i.fs = fs }
 
-func (i *instance) Out(out *Packages) { i.out = out }
+func (i *instance) AsInput() *Packages { return &i.out }
 
 func (i *instance) Run(ctx context.Context) error {
 	overlay, err := i.fs.Overlay()

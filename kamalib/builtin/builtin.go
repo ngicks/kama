@@ -1,9 +1,9 @@
 // Package builtin registers kama's built-in procs.
 //
-//	fs          overlayfs.OpenProc       Out(*overlayfs.Fs)
+//	fs          overlayfs.OpenProc       AsInput() *overlayfs.Fs
 //	copy_down   overlayfs.CopyDownProc   In(*overlayfs.Fs)
-//	gopackages  gopackages.Proc          In(*overlayfs.Fs) Out(*gopackages.Packages)
-//	metadata    metadata.Proc            In(*overlayfs.Fs) Out(*metadata.Document)
+//	gopackages  gopackages.Proc          In(*overlayfs.Fs) AsInput() *gopackages.Packages
+//	metadata    metadata.Proc            In(*overlayfs.Fs) AsInput() *metadata.Document
 package builtin
 
 import (

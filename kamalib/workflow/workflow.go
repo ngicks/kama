@@ -1,26 +1,30 @@
 // Package workflow forms a graph of steps from a Spec.
 //
-// Each step names a registered Proc. Values flow between steps through
-// slots: a step's outs refer to slots it allocates or to slots of the steps
-// named in its out list, and a step's ins refer to the slots of the steps
-// named in its in list. See Proc for how an instance receives them.
+// Each step names a registered Proc. Values flow between steps through their
+// instances: a step named in another step's in or out list hands over its
+// AsInput value. See Proc for the methods an instance has and when the
+// executor calls them.
 //
 // Build forms the graph and checks it without running anything. It matches
-// every in and out list against the proc's declared types and then builds
-// every instance with dryRun set, so a spec naming the wrong inputs or
-// outputs, or carrying a bad param, fails before any step executes.
+// every in and out list against the procs' declared types and then
+// instantiates every step with dryRun set, checking its methods and passing
+// it its param. A spec naming the wrong steps, or carrying a bad param, fails
+// before any step executes.
 //
-// Order follows in, out and after edges. A step that reads a slot does not
-// wait for other steps writing into the same slot unless it lists them in
+// Order follows in, out and after edges. A step that reads a value does not
+// wait for other steps writing into the same value unless it lists them in
 // after. Steps with no ordering between them come in name order.
 package workflow
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 )
 
 var (
@@ -31,33 +35,28 @@ var (
 	ErrArity              = errors.New("workflow: argument count mismatch")
 	ErrTypeMismatch       = errors.New("workflow: type mismatch")
 	ErrCycle              = errors.New("workflow: dependency cycle")
-	ErrBuild              = errors.New("workflow: build failed")
+	ErrParam              = errors.New("workflow: invalid param")
+	ErrInstantiate        = errors.New("workflow: instantiation failed")
 )
 
-// Slot is a value passed between steps.
-type Slot struct {
-	// Type is the pointer type of the slot.
-	Type reflect.Type
-	// Owner is the step that allocates the slot.
-	Owner string
-}
+var errorType = reflect.TypeFor[error]()
 
 // Node is a step in a formed graph.
 type Node struct {
-	Name  string
-	Kind  string
-	Proc  Proc
-	Param Param
-	// In and Out are indices into Graph.Slots, in argument order.
-	In    []int
-	Out   []int
+	Name string
+	Kind string
+	Proc Proc
+	// Param is the step's param decoded into the proc's ParamType. It is the
+	// zero Value when the proc takes no param.
+	Param reflect.Value
+	In    []string
+	Out   []string
 	After []string
 }
 
 // Graph is a formed, checked graph in execution order.
 type Graph struct {
 	nodes []Node
-	slots []Slot
 }
 
 // Nodes returns the nodes in execution order. The slice is shared with the
@@ -65,12 +64,8 @@ type Graph struct {
 // allocates instead of writing into the graph.
 func (g *Graph) Nodes() []Node { return slices.Clip(g.nodes) }
 
-// Slots returns every slot, indexed by Node.In and Node.Out. The slice is
-// shared and clipped the same way as Nodes.
-func (g *Graph) Slots() []Slot { return slices.Clip(g.slots) }
-
 // Build forms the graph s describes from the procs in reg and dry-runs every
-// proc's BuildContext.
+// step.
 func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 	if s.Version != SpecVersion {
 		return nil, fmt.Errorf("%w: %d", ErrUnsupportedVersion, s.Version)
@@ -96,65 +91,54 @@ func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 	}
 
 	g := &Graph{}
-	// refers maps a step to the slots its outs refer to.
-	refers := map[string][]int{}
 
 	for _, name := range order {
 		st := s.Steps[name]
 		p := procs[name]
 
-		in, err := flatten(name, "in", st.In, refers)
-		if err != nil {
+		if err := matchRefs(name, "in", st.In, p.InTypes(), procs); err != nil {
 			return nil, err
 		}
-		if err := matchIn(name, g.slots, in, p.InTypes()); err != nil {
+		if err := matchRefs(name, "out", st.Out, p.OutTypes(), procs); err != nil {
 			return nil, err
 		}
 
-		var out []int
-		if len(st.Out) == 0 {
-			for _, t := range p.OutTypes() {
-				out = append(out, len(g.slots))
-				g.slots = append(g.slots, Slot{Type: t, Owner: name})
-			}
-		} else {
-			out, err = flatten(name, "out", st.Out, refers)
-			if err != nil {
-				return nil, err
-			}
-			if err := matchOut(name, g.slots, out, p.OutTypes()); err != nil {
-				return nil, err
-			}
-		}
-
-		refers[name] = out
 		g.nodes = append(g.nodes, Node{
 			Name:  name,
 			Kind:  st.Proc,
 			Proc:  p,
-			Param: NewParam(st.Param),
-			In:    in,
-			Out:   out,
+			In:    st.In,
+			Out:   st.Out,
 			After: st.After,
 		})
 	}
 
-	if err := g.dryRun(ctx); err != nil {
+	if err := g.dryRun(ctx, s.Steps); err != nil {
 		return nil, err
 	}
 
 	return g, nil
 }
 
-// flatten expands step names into the slots their outs refer to.
-func flatten(name, list string, refs Names, refers map[string][]int) ([]int, error) {
-	var slots []int
+// matchRefs checks that the AsInput values of the steps named in refs fit
+// the argument types want, by position.
+func matchRefs(name, list string, refs Names, want []reflect.Type, procs map[string]Proc) error {
+	if len(refs) != len(want) {
+		return fmt.Errorf(
+			"%w: %s of %q names %d steps, proc takes %d",
+			ErrArity,
+			list,
+			name,
+			len(refs),
+			len(want),
+		)
+	}
 
-	for _, r := range refs {
-		s := refers[r]
-		if len(s) == 0 {
-			return nil, fmt.Errorf(
-				"%w: %s of %q names %q, which has no outs",
+	for i, r := range refs {
+		got := procs[r].AsInputType()
+		if got == nil {
+			return fmt.Errorf(
+				"%w: %s of %q names %q, which has no AsInput",
 				ErrInvalidStep,
 				list,
 				name,
@@ -162,28 +146,10 @@ func flatten(name, list string, refs Names, refers map[string][]int) ([]int, err
 			)
 		}
 
-		slots = append(slots, s...)
-	}
-
-	return slots, nil
-}
-
-func matchIn(name string, slots []Slot, in []int, want []reflect.Type) error {
-	if len(in) != len(want) {
-		return fmt.Errorf(
-			"%w: in of %q gives %d slots, proc takes %d",
-			ErrArity,
-			name,
-			len(in),
-			len(want),
-		)
-	}
-
-	for i, id := range in {
-		if got := slots[id].Type; !got.AssignableTo(want[i]) {
+		if !got.AssignableTo(want[i]) {
 			return fmt.Errorf(
-				"%w: in %d of %q: slot of %q holds %v, want %v",
-				ErrTypeMismatch, i, name, slots[id].Owner, got, want[i],
+				"%w: %s %d of %q: %q gives %v, want %v",
+				ErrTypeMismatch, list, i, name, r, got, want[i],
 			)
 		}
 	}
@@ -191,51 +157,23 @@ func matchIn(name string, slots []Slot, in []int, want []reflect.Type) error {
 	return nil
 }
 
-func matchOut(name string, slots []Slot, out []int, want []reflect.Type) error {
-	if len(out) != len(want) {
-		return fmt.Errorf(
-			"%w: out of %q gives %d slots, proc takes %d",
-			ErrArity,
-			name,
-			len(out),
-			len(want),
-		)
-	}
-
-	for i, id := range out {
-		// A step writes into the slot itself, so the type must be exact.
-		if got := slots[id].Type; got != want[i] {
-			return fmt.Errorf(
-				"%w: out %d of %q: slot of %q holds %v, want %v",
-				ErrTypeMismatch, i, name, slots[id].Owner, got, want[i],
-			)
-		}
-	}
-
-	return nil
-}
-
-// dryRun builds every instance with dryRun set and checks its In and Out
-// methods against the proc's declared types. It reports every failing step.
-func (g *Graph) dryRun(ctx context.Context) error {
+// dryRun instantiates every step with dryRun set, checks its methods against
+// the proc's declared types and passes it its decoded param. It reports
+// every failing step.
+func (g *Graph) dryRun(ctx context.Context, steps map[string]Step) error {
 	var errs []error
 
-	for _, n := range g.nodes {
-		inst, err := n.Proc.BuildContext(ctx, n.Param, true)
+	for i := range g.nodes {
+		n := &g.nodes[i]
+
+		param, err := decodeParam(steps[n.Name].Param, n.Proc.ParamType())
 		if err != nil {
-			errs = append(errs, fmt.Errorf("%w: step %q: %w", ErrBuild, n.Name, err))
+			errs = append(errs, fmt.Errorf("%w: step %q: %w", ErrParam, n.Name, err))
 			continue
 		}
+		n.Param = param
 
-		if inst == nil {
-			errs = append(errs, fmt.Errorf("%w: step %q: nil instance", ErrInvalidProc, n.Name))
-			continue
-		}
-
-		if err := checkMethod(inst, "In", n.Proc.InTypes()); err != nil {
-			errs = append(errs, fmt.Errorf("step %q: %w", n.Name, err))
-		}
-		if err := checkMethod(inst, "Out", n.Proc.OutTypes()); err != nil {
+		if err := checkInstance(ctx, n); err != nil {
 			errs = append(errs, fmt.Errorf("step %q: %w", n.Name, err))
 		}
 	}
@@ -243,30 +181,122 @@ func (g *Graph) dryRun(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func checkMethod(inst Instance, name string, want []reflect.Type) error {
-	m := reflect.ValueOf(inst).MethodByName(name)
-	if !m.IsValid() {
-		if len(want) == 0 {
-			return nil
-		}
-
-		return fmt.Errorf("%w: %T has no %s method", ErrInvalidProc, inst, name)
+func checkInstance(ctx context.Context, n *Node) error {
+	inst, err := n.Proc.Instantiate(ctx, true)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInstantiate, err)
+	}
+	if inst == nil {
+		return fmt.Errorf("%w: nil instance", ErrInvalidProc)
 	}
 
-	t := m.Type()
-	if t.IsVariadic() || t.NumOut() != 0 || t.NumIn() != len(want) {
-		return fmt.Errorf("%w: %T.%s is %v, want %d arguments and no results",
-			ErrInvalidProc, inst, name, t, len(want))
+	p := n.Proc
+
+	var paramIn []reflect.Type
+	if t := p.ParamType(); t != nil {
+		paramIn = []reflect.Type{t}
 	}
 
-	for i, w := range want {
-		if t.In(i) != w {
-			return fmt.Errorf("%w: %T.%s argument %d is %v, declared %v",
-				ErrInvalidProc, inst, name, i, t.In(i), w)
+	var asInputOut []reflect.Type
+	if t := p.AsInputType(); t != nil {
+		asInputOut = []reflect.Type{t}
+	}
+
+	param, err := method(inst, "Param", paramIn, nil, []reflect.Type{errorType})
+	if err != nil {
+		return err
+	}
+	if _, err := method(inst, "In", p.InTypes(), nil); err != nil {
+		return err
+	}
+	if _, err := method(inst, "Out", p.OutTypes(), nil); err != nil {
+		return err
+	}
+	if _, err := method(inst, "AsInput", nil, asInputOut); err != nil {
+		return err
+	}
+
+	if param.IsValid() {
+		res := param.Call([]reflect.Value{n.Param})
+		if len(res) == 1 {
+			if err, _ := reflect.TypeAssert[error](res[0]); err != nil {
+				return fmt.Errorf("%w: %w", ErrParam, err)
+			}
 		}
 	}
 
 	return nil
+}
+
+// method returns inst's method name if its signature takes in and returns
+// one of results. A method that takes nothing and returns nothing may be
+// absent, and then the zero Value is returned.
+func method(
+	inst Instance,
+	name string,
+	in []reflect.Type,
+	results ...[]reflect.Type,
+) (reflect.Value, error) {
+	m := reflect.ValueOf(inst).MethodByName(name)
+	if !m.IsValid() {
+		if len(in) == 0 &&
+			slices.ContainsFunc(results, func(r []reflect.Type) bool { return len(r) == 0 }) {
+			return reflect.Value{}, nil
+		}
+
+		return reflect.Value{}, fmt.Errorf("%w: %T has no %s method", ErrInvalidProc, inst, name)
+	}
+
+	t := m.Type()
+	if !t.IsVariadic() && slices.Equal(slices.Collect(t.Ins()), in) &&
+		slices.ContainsFunc(
+			results,
+			func(r []reflect.Type) bool { return slices.Equal(slices.Collect(t.Outs()), r) },
+		) {
+		return m, nil
+	}
+
+	want := make([]string, 0, len(results))
+	for _, r := range results {
+		want = append(want, reflect.FuncOf(in, r, false).String())
+	}
+
+	return reflect.Value{}, fmt.Errorf(
+		"%w: %T.%s is %v, want %s",
+		ErrInvalidProc, inst, name, t, strings.Join(want, " or "),
+	)
+}
+
+// decodeParam decodes raw, as produced by a JSON, YAML or TOML decoder, into
+// a value of type t. Unknown fields are rejected so a typo in a spec fails
+// at graph formation.
+func decodeParam(raw any, t reflect.Type) (reflect.Value, error) {
+	if t == nil {
+		if raw != nil {
+			return reflect.Value{}, errors.New("proc takes no param")
+		}
+
+		return reflect.Value{}, nil
+	}
+
+	v := reflect.New(t)
+	if raw == nil {
+		return v.Elem(), nil
+	}
+
+	// Re-encoding as JSON gives every source format one decoding path.
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(v.Interface()); err != nil {
+		return reflect.Value{}, err
+	}
+
+	return v.Elem(), nil
 }
 
 // sortSteps orders steps so each comes after its in, out and after steps.

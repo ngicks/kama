@@ -10,7 +10,6 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/overlayfs"
-	"github.com/ngicks/kama/kamalib/workflow"
 )
 
 func TestProcSeesStagedFiles(t *testing.T) {
@@ -40,14 +39,15 @@ func TestProcSeesStagedFiles(t *testing.T) {
 	// B exists only in the staged layer; type checking a.go needs it.
 	assert.NilError(t, f.Write("b.gen.go", []byte("package x\n\nfunc B() int { return 1 }\n")))
 
-	inst, err := Proc{}.BuildContext(ctx, workflow.NewParam(nil), false)
+	inst, err := Proc{}.Instantiate(ctx, false)
 	assert.NilError(t, err)
 
-	var out Packages
-	inst.(*instance).In(f)
-	inst.(*instance).Out(&out)
-	assert.NilError(t, inst.Run(ctx))
+	i := inst.(*instance)
+	assert.NilError(t, i.Param(ProcParam{}))
+	i.In(f)
+	assert.NilError(t, i.Run(ctx))
 
+	out := i.AsInput()
 	assert.Equal(t, len(out.Pkgs), 1)
 	pkg := out.Pkgs[0]
 	assert.Equal(t, len(pkg.Errors), 0, "errors: %v", pkg.Errors)
@@ -61,24 +61,10 @@ func TestProcSeesStagedFiles(t *testing.T) {
 }
 
 func TestProcParam(t *testing.T) {
-	ctx := context.Background()
+	i := &instance{}
 
-	inst, err := Proc{}.BuildContext(ctx, workflow.NewParam(map[string]any{
-		"patterns":    []any{"./a/...", "./b"},
-		"build_flags": []any{"-tags=gen"},
-		"tests":       true,
-	}), true)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, inst.(*instance).param, ProcParam{
-		Patterns:   []string{"./a/...", "./b"},
-		BuildFlags: []string{"-tags=gen"},
-		Tests:      true,
-	})
+	assert.NilError(t, i.Param(ProcParam{}))
+	assert.DeepEqual(t, i.param.Patterns, []string{"./..."})
 
-	_, err = Proc{}.BuildContext(
-		ctx,
-		workflow.NewParam(map[string]any{"pattern": []any{"./..."}}),
-		true,
-	)
-	assert.ErrorContains(t, err, `unknown field "pattern"`)
+	assert.ErrorContains(t, i.Param(ProcParam{Patterns: []string{""}}), "empty pattern")
 }

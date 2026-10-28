@@ -3,7 +3,6 @@ package workflow
 import (
 	"errors"
 	"fmt"
-	"reflect"
 )
 
 var ErrDuplicateKind = errors.New("workflow: duplicate kind")
@@ -30,14 +29,8 @@ func (r *Registry) Register(kind string, p Proc) error {
 	}
 
 	for i, t := range p.OutTypes() {
-		if t == nil || t.Kind() != reflect.Pointer {
-			return fmt.Errorf(
-				"%w: %q: out %d must be a pointer, got %v",
-				ErrInvalidProc,
-				kind,
-				i,
-				t,
-			)
+		if t == nil {
+			return fmt.Errorf("%w: %q: out %d is nil", ErrInvalidProc, kind, i)
 		}
 	}
 
