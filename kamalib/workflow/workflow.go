@@ -11,6 +11,9 @@
 // it its param. A spec naming the wrong steps, or carrying a bad param, fails
 // before any step executes.
 //
+// Graph.Run then executes the steps one at a time and closes the procs it
+// used.
+//
 // Order follows in, out and after edges. A step that reads a value does not
 // wait for other steps writing into the same value unless it lists them in
 // after. Steps with no ordering between them come in name order.
@@ -188,8 +191,34 @@ func checkInstance(ctx context.Context, n *Node) error {
 		return fmt.Errorf("%w: nil instance", ErrInvalidProc)
 	}
 
-	p := n.Proc
+	m, err := methods(inst, n.Proc)
+	if err != nil {
+		return err
+	}
 
+	var args []reflect.Value
+	if n.Param.IsValid() {
+		args = []reflect.Value{n.Param}
+	}
+	if err, _ := reflect.TypeAssert[error](m.param.Call(args)[0]); err != nil {
+		return fmt.Errorf("%w: %w", ErrParam, err)
+	}
+
+	return nil
+}
+
+// instanceMethods are an instance's reflected Param, In, Out and AsInput.
+// asInput is the zero Value when the proc has no AsInputType.
+type instanceMethods struct {
+	param   reflect.Value
+	in      reflect.Value
+	out     reflect.Value
+	asInput reflect.Value
+}
+
+// methods looks up inst's methods and checks them against the types p
+// declares.
+func methods(inst Instance, p Proc) (instanceMethods, error) {
 	var paramIn []reflect.Type
 	if t := p.ParamType(); t != nil {
 		paramIn = []reflect.Type{t}
@@ -200,29 +229,29 @@ func checkInstance(ctx context.Context, n *Node) error {
 		asInputOut = []reflect.Type{t}
 	}
 
-	param, err := method(inst, "Param", paramIn, []reflect.Type{errorType}, false)
+	var (
+		m   instanceMethods
+		err error
+	)
+
+	if m.param, err = method(inst, "Param", paramIn, []reflect.Type{errorType}, false); err != nil {
+		return instanceMethods{}, err
+	}
+	if m.in, err = method(inst, "In", p.InTypes(), nil, false); err != nil {
+		return instanceMethods{}, err
+	}
+	if m.out, err = method(inst, "Out", p.OutTypes(), nil, false); err != nil {
+		return instanceMethods{}, err
+	}
+	asInput, err := method(inst, "AsInput", nil, asInputOut, len(asInputOut) == 0)
 	if err != nil {
-		return err
+		return instanceMethods{}, err
 	}
-	if _, err := method(inst, "In", p.InTypes(), nil, false); err != nil {
-		return err
-	}
-	if _, err := method(inst, "Out", p.OutTypes(), nil, false); err != nil {
-		return err
-	}
-	if _, err := method(inst, "AsInput", nil, asInputOut, len(asInputOut) == 0); err != nil {
-		return err
+	if len(asInputOut) > 0 {
+		m.asInput = asInput
 	}
 
-	var args []reflect.Value
-	if n.Param.IsValid() {
-		args = []reflect.Value{n.Param}
-	}
-	if err, _ := reflect.TypeAssert[error](param.Call(args)[0]); err != nil {
-		return fmt.Errorf("%w: %w", ErrParam, err)
-	}
-
-	return nil
+	return m, nil
 }
 
 // method returns inst's method name if its signature takes in and returns
