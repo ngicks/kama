@@ -81,10 +81,11 @@ type fakeProc struct {
 	dryRuns []bool
 }
 
-func (p *fakeProc) ParamType() reflect.Type   { return p.param }
-func (p *fakeProc) InTypes() []reflect.Type   { return p.ins }
-func (p *fakeProc) OutTypes() []reflect.Type  { return p.outs }
-func (p *fakeProc) AsInputType() reflect.Type { return p.asInput }
+func (p *fakeProc) ParamType() reflect.Type     { return p.param }
+func (p *fakeProc) InTypes() []reflect.Type     { return p.ins }
+func (p *fakeProc) OutTypes() []reflect.Type    { return p.outs }
+func (p *fakeProc) AsInputType() reflect.Type   { return p.asInput }
+func (p *fakeProc) Close(context.Context) error { return nil }
 
 func (p *fakeProc) Instantiate(_ context.Context, dryRun bool) (Instance, error) {
 	p.dryRuns = append(p.dryRuns, dryRun)
@@ -306,11 +307,6 @@ func TestDryRunErrors(t *testing.T) {
 			ErrInstantiate,
 		},
 		{
-			"unknown param field",
-			map[string]Step{"x": {Proc: "seed", Param: map[string]any{"valeu": 1}}},
-			ErrParam,
-		},
-		{
 			"param of wrong shape",
 			map[string]Step{"x": {Proc: "seed", Param: []any{"./..."}}},
 			ErrParam,
@@ -361,10 +357,21 @@ func TestDryRunErrors(t *testing.T) {
 	}
 }
 
+func TestParamIgnoresUnknownFields(t *testing.T) {
+	g, err := build(t, newProcs(), map[string]Step{
+		"x": {Proc: "seed", Param: map[string]any{"value": 1, "extra": true}},
+	})
+	assert.NilError(t, err)
+
+	got, ok := reflect.TypeAssert[seedParam](g.Nodes()[0].Param)
+	assert.Assert(t, ok)
+	assert.Equal(t, got, seedParam{Value: 1})
+}
+
 func TestDryRunReportsEveryStep(t *testing.T) {
 	_, err := build(t, newProcs(), map[string]Step{
 		"a": {Proc: "broken"},
-		"b": {Proc: "seed", Param: map[string]any{"valeu": 1}},
+		"b": {Proc: "seed", Param: map[string]any{"value": -1}},
 	})
 
 	assert.ErrorContains(t, err, `step "a"`)

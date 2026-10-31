@@ -1,4 +1,4 @@
-package metadata
+package fileloader
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/metadata"
+	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
@@ -37,7 +37,7 @@ func TestProcRun(t *testing.T) {
 		i.Param(
 			ProcParam{
 				Base:    "codegen/meta",
-				Formats: []metadata.Format{metadata.FormatYaml, metadata.FormatJson},
+				Formats: []fileloader.Format{fileloader.FormatYaml, fileloader.FormatJson},
 			},
 		),
 	)
@@ -55,7 +55,7 @@ func TestProcParamErrors(t *testing.T) {
 	assert.ErrorContains(t, i.Param(ProcParam{}), "base is required")
 	assert.ErrorIs(
 		t,
-		i.Param(ProcParam{Base: "m", Formats: []metadata.Format{"ini"}}),
-		metadata.ErrUnknownFormat,
+		i.Param(ProcParam{Base: "m", Formats: []fileloader.Format{"ini"}}),
+		fileloader.ErrUnknownFormat,
 	)
 }

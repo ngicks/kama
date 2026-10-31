@@ -42,7 +42,7 @@ var ErrInvalidProc = errors.New("workflow: invalid proc")
 // does not fit an argument fails formation, and no step is executed.
 type Proc interface {
 	// ParamType returns the type a step's param is decoded into. Unknown
-	// fields are rejected. Nil means the proc takes no param.
+	// fields are ignored. Nil means the proc takes no param.
 	ParamType() reflect.Type
 	// InTypes returns the argument types of the instance's In method.
 	InTypes() []reflect.Type
@@ -61,6 +61,10 @@ type Proc interface {
 	// the process. Checks that need such state belong in an instance created
 	// with dryRun unset, which is the one that runs.
 	Instantiate(ctx context.Context, dryRun bool) (Instance, error)
+	// Close releases what the proc holds for its instances once every step
+	// is done, such as values handed out through AsInput. An instance's own
+	// per-run state is dropped with the instance after its Run.
+	Close(ctx context.Context) error
 }
 
 // Instance is a configured proc ready to run once. See Proc for the Param,

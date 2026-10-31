@@ -1,6 +1,6 @@
-// Package metadata provides the proc that decodes a metadata file from an
+// Package fileloader provides the proc that decodes a metadata file from an
 // overlayfs.Fs.
-package metadata
+package fileloader
 
 import (
 	"context"
@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ngicks/kama/kamalib/pkg/metadata"
+	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
+
+func init() { workflow.Register("file.load", Proc{}) }
 
 // Document is a decoded metadata file.
 type Document struct {
@@ -27,10 +29,10 @@ type ProcParam struct {
 	Base string `json:"base"`
 	// Formats are tried in order; earlier entries take priority. Empty means
 	// yaml, json, toml.
-	Formats []metadata.Format `json:"formats"`
+	Formats []fileloader.Format `json:"formats"`
 }
 
-// Proc decodes the first file of a metadata.PathInput found in the project.
+// Proc decodes the first file of a fileloader.PathInput found in the project.
 //
 //	Param(ProcParam) error
 //	In(*overlayfs.Fs)
@@ -52,29 +54,31 @@ func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
 	return &instance{}, nil
 }
 
+func (Proc) Close(context.Context) error { return nil }
+
 type instance struct {
-	input metadata.PathInput
+	input fileloader.PathInput
 	fs    *overlayfs.Fs
 	doc   Document
 }
 
 func (i *instance) Param(p ProcParam) error {
 	if p.Base == "" {
-		return errors.New("metadata: base is required")
+		return errors.New("fileloader: base is required")
 	}
 
-	in := metadata.PathInput(p)
+	in := fileloader.PathInput(p)
 	if len(in.Formats) == 0 {
-		in.Formats = []metadata.Format{
-			metadata.FormatYaml,
-			metadata.FormatJson,
-			metadata.FormatToml,
+		in.Formats = []fileloader.Format{
+			fileloader.FormatYaml,
+			fileloader.FormatJson,
+			fileloader.FormatToml,
 		}
 	}
 
 	// Candidates reports unknown formats without touching the filesystem.
 	if _, err := in.Candidates(); err != nil {
-		return fmt.Errorf("metadata: %w", err)
+		return fmt.Errorf("fileloader: %w", err)
 	}
 
 	i.input = in
@@ -86,7 +90,7 @@ func (i *instance) In(fs *overlayfs.Fs) { i.fs = fs }
 func (i *instance) Out() {}
 
 func (i *instance) Run(context.Context) error {
-	name, err := metadata.Load(i.fs.FS(), i.input, &i.doc.Data)
+	name, err := fileloader.Load(i.fs.FS(), i.input, &i.doc.Data)
 	if err != nil {
 		return err
 	}

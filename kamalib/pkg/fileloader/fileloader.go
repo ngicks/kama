@@ -1,8 +1,8 @@
-// Package metadata decodes structured metadata files in JSON, YAML or TOML.
+// Package fileloader decodes structured metadata files in JSON, YAML or TOML.
 //
 // Callers name one base path and the formats they accept, in priority order.
 // The first format whose file is present is decoded.
-package metadata
+package fileloader
 
 import (
 	"encoding/json"
@@ -25,8 +25,8 @@ const (
 )
 
 var (
-	ErrUnknownFormat = errors.New("metadata: unknown format")
-	ErrNotFound      = errors.New("metadata: no file found")
+	ErrUnknownFormat = errors.New("fileloader: unknown format")
+	ErrNotFound      = errors.New("fileloader: no file found")
 )
 
 // Extensions returns the file extensions a format is read from, including the
@@ -97,12 +97,12 @@ func Load(fsys fs.FS, in PathInput, v any) (string, error) {
 				if errors.Is(err, fs.ErrNotExist) {
 					continue
 				}
-				return "", fmt.Errorf("metadata: open %q: %w", name, err)
+				return "", fmt.Errorf("fileloader: open %q: %w", name, err)
 			}
 			err = Decode(f, format, v)
 			f.Close()
 			if err != nil {
-				return "", fmt.Errorf("metadata: decode %q: %w", name, err)
+				return "", fmt.Errorf("fileloader: decode %q: %w", name, err)
 			}
 			return name, nil
 		}

@@ -17,7 +17,6 @@
 package workflow
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -257,8 +256,8 @@ func method(
 }
 
 // decodeParam decodes raw, as produced by a JSON, YAML or TOML decoder, into
-// a value of type t. Unknown fields are rejected so a typo in a spec fails
-// at graph formation.
+// a value of type t. Unknown fields are ignored, so a spec written for a
+// newer or older version of a proc still decodes.
 func decodeParam(raw any, t reflect.Type) (reflect.Value, error) {
 	if t == nil {
 		if raw != nil {
@@ -279,9 +278,7 @@ func decodeParam(raw any, t reflect.Type) (reflect.Value, error) {
 		return reflect.Value{}, err
 	}
 
-	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(v.Interface()); err != nil {
+	if err := json.Unmarshal(b, v.Interface()); err != nil {
 		return reflect.Value{}, err
 	}
 
