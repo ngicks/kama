@@ -60,6 +60,31 @@ type Proc interface {
 	// Param may open files, start processes or otherwise touch state outside
 	// the process. Checks that need such state belong in an instance created
 	// with dryRun unset, which is the one that runs.
+	//
+	// The instance's methods must match the types the proc declares. See
+	// Instance for the methods of readInstance:
+	//
+	//	type ReadProc struct{}
+	//
+	//	func (ReadProc) ParamType() reflect.Type {
+	//		return reflect.TypeFor[ReadParam]()
+	//	}
+	//
+	//	func (ReadProc) InTypes() []reflect.Type {
+	//		return []reflect.Type{reflect.TypeFor[*Source]()}
+	//	}
+	//
+	//	func (ReadProc) OutTypes() []reflect.Type {
+	//		return []reflect.Type{reflect.TypeFor[*Sink]()}
+	//	}
+	//
+	//	func (ReadProc) AsInputType() reflect.Type {
+	//		return reflect.TypeFor[*[]byte]()
+	//	}
+	//
+	//	func (ReadProc) Instantiate(context.Context, bool) (workflow.Instance, error) {
+	//		return &readInstance{}, nil
+	//	}
 	Instantiate(ctx context.Context, dryRun bool) (Instance, error)
 	// Close releases what the proc holds for its instances once every step
 	// is done, such as values handed out through AsInput. An instance's own
@@ -69,6 +94,18 @@ type Proc interface {
 
 // Instance is a configured proc ready to run once. See Proc for the Param,
 // In, Out and AsInput methods it also has.
+//
+// The argument and result types of the concrete methods must match the
+// types the proc declares. For ReadProc, shown under Proc.Instantiate:
+//
+//	func (i *readInstance) Param(p ReadParam) error          // ParamType
+//	func (i *readInstance) In(src *Source)                   // InTypes
+//	func (i *readInstance) Out(dst *Sink)                    // OutTypes
+//	func (i *readInstance) Run(ctx context.Context) error
+//	func (i *readInstance) AsInput() *[]byte                 // AsInputType
+//
+// With a nil ParamType, Param is Param() error. With empty InTypes or
+// OutTypes, In or Out takes no argument.
 type Instance interface {
 	Run(ctx context.Context) error
 }
