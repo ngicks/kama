@@ -1,5 +1,5 @@
-// Package gopackages loads Go packages through golang.org/x/tools/go/packages
-// with the target filesystem's staged files applied as an overlay.
+// Package gopackages provides the proc that loads Go packages from an
+// overlayfs.Fs.
 package gopackages
 
 import (
@@ -10,20 +10,10 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
-	"github.com/ngicks/kama/kamalib/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/gopackages"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
-
-// Mode is the load mode Proc uses: enough for type-checked syntax trees.
-const Mode = packages.NeedName |
-	packages.NeedFiles |
-	packages.NeedCompiledGoFiles |
-	packages.NeedImports |
-	packages.NeedDeps |
-	packages.NeedTypes |
-	packages.NeedSyntax |
-	packages.NeedTypesInfo |
-	packages.NeedModule
 
 // Packages is the result of a load.
 type Packages struct {
@@ -45,6 +35,7 @@ type ProcParam struct {
 //
 //	Param(ProcParam) error
 //	In(*overlayfs.Fs)
+//	Out()
 //	AsInput() *Packages
 type Proc struct{}
 
@@ -83,24 +74,16 @@ func (i *instance) Param(p ProcParam) error {
 
 func (i *instance) In(fs *overlayfs.Fs) { i.fs = fs }
 
+func (i *instance) Out() {}
+
 func (i *instance) AsInput() *Packages { return &i.out }
 
 func (i *instance) Run(ctx context.Context) error {
-	overlay, err := i.fs.Overlay()
-	if err != nil {
-		return err
-	}
-
-	cfg := &packages.Config{
-		Context:    ctx,
-		Mode:       Mode,
-		Dir:        i.fs.Root(),
+	pkgs, err := gopackages.Load(ctx, i.fs, gopackages.Options{
+		Patterns:   i.param.Patterns,
 		BuildFlags: i.param.BuildFlags,
 		Tests:      i.param.Tests,
-		Overlay:    overlay,
-	}
-
-	pkgs, err := packages.Load(cfg, i.param.Patterns...)
+	})
 	if err != nil {
 		return err
 	}

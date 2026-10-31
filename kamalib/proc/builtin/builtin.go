@@ -7,9 +7,9 @@
 package builtin
 
 import (
-	"github.com/ngicks/kama/kamalib/loader/gopackages"
-	"github.com/ngicks/kama/kamalib/loader/metadata"
-	"github.com/ngicks/kama/kamalib/overlayfs"
+	"github.com/ngicks/kama/kamalib/proc/gopackages"
+	"github.com/ngicks/kama/kamalib/proc/metadata"
+	"github.com/ngicks/kama/kamalib/proc/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 

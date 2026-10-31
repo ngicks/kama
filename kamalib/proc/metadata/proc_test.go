@@ -8,7 +8,8 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/metadata"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
 func TestProcRun(t *testing.T) {
@@ -33,7 +34,12 @@ func TestProcRun(t *testing.T) {
 	i := inst.(*instance)
 	assert.NilError(
 		t,
-		i.Param(ProcParam{Base: "codegen/meta", Formats: []Format{FormatYaml, FormatJson}}),
+		i.Param(
+			ProcParam{
+				Base:    "codegen/meta",
+				Formats: []metadata.Format{metadata.FormatYaml, metadata.FormatJson},
+			},
+		),
 	)
 	i.In(f)
 	assert.NilError(t, i.Run(ctx))
@@ -47,5 +53,9 @@ func TestProcParamErrors(t *testing.T) {
 	i := &instance{}
 
 	assert.ErrorContains(t, i.Param(ProcParam{}), "base is required")
-	assert.ErrorIs(t, i.Param(ProcParam{Base: "m", Formats: []Format{"ini"}}), ErrUnknownFormat)
+	assert.ErrorIs(
+		t,
+		i.Param(ProcParam{Base: "m", Formats: []metadata.Format{"ini"}}),
+		metadata.ErrUnknownFormat,
+	)
 }

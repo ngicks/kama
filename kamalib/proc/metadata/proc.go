@@ -1,3 +1,5 @@
+// Package metadata provides the proc that decodes a metadata file from an
+// overlayfs.Fs.
 package metadata
 
 import (
@@ -6,7 +8,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ngicks/kama/kamalib/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/metadata"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
@@ -24,13 +27,14 @@ type ProcParam struct {
 	Base string `json:"base"`
 	// Formats are tried in order; earlier entries take priority. Empty means
 	// yaml, json, toml.
-	Formats []Format `json:"formats"`
+	Formats []metadata.Format `json:"formats"`
 }
 
-// Proc decodes the first file of a PathInput found in the project.
+// Proc decodes the first file of a metadata.PathInput found in the project.
 //
 //	Param(ProcParam) error
 //	In(*overlayfs.Fs)
+//	Out()
 //	AsInput() *Document
 type Proc struct{}
 
@@ -49,7 +53,7 @@ func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
 }
 
 type instance struct {
-	input PathInput
+	input metadata.PathInput
 	fs    *overlayfs.Fs
 	doc   Document
 }
@@ -59,9 +63,13 @@ func (i *instance) Param(p ProcParam) error {
 		return errors.New("metadata: base is required")
 	}
 
-	in := PathInput(p)
+	in := metadata.PathInput(p)
 	if len(in.Formats) == 0 {
-		in.Formats = []Format{FormatYaml, FormatJson, FormatToml}
+		in.Formats = []metadata.Format{
+			metadata.FormatYaml,
+			metadata.FormatJson,
+			metadata.FormatToml,
+		}
 	}
 
 	// Candidates reports unknown formats without touching the filesystem.
@@ -75,8 +83,10 @@ func (i *instance) Param(p ProcParam) error {
 
 func (i *instance) In(fs *overlayfs.Fs) { i.fs = fs }
 
+func (i *instance) Out() {}
+
 func (i *instance) Run(context.Context) error {
-	name, err := Load(i.fs.FS(), i.input, &i.doc.Data)
+	name, err := metadata.Load(i.fs.FS(), i.input, &i.doc.Data)
 	if err != nil {
 		return err
 	}

@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 )
 
 var (
@@ -202,45 +201,43 @@ func checkInstance(ctx context.Context, n *Node) error {
 		asInputOut = []reflect.Type{t}
 	}
 
-	param, err := method(inst, "Param", paramIn, nil, []reflect.Type{errorType})
+	param, err := method(inst, "Param", paramIn, []reflect.Type{errorType}, false)
 	if err != nil {
 		return err
 	}
-	if _, err := method(inst, "In", p.InTypes(), nil); err != nil {
+	if _, err := method(inst, "In", p.InTypes(), nil, false); err != nil {
 		return err
 	}
-	if _, err := method(inst, "Out", p.OutTypes(), nil); err != nil {
+	if _, err := method(inst, "Out", p.OutTypes(), nil, false); err != nil {
 		return err
 	}
-	if _, err := method(inst, "AsInput", nil, asInputOut); err != nil {
+	if _, err := method(inst, "AsInput", nil, asInputOut, len(asInputOut) == 0); err != nil {
 		return err
 	}
 
-	if param.IsValid() {
-		res := param.Call([]reflect.Value{n.Param})
-		if len(res) == 1 {
-			if err, _ := reflect.TypeAssert[error](res[0]); err != nil {
-				return fmt.Errorf("%w: %w", ErrParam, err)
-			}
-		}
+	var args []reflect.Value
+	if n.Param.IsValid() {
+		args = []reflect.Value{n.Param}
+	}
+	if err, _ := reflect.TypeAssert[error](param.Call(args)[0]); err != nil {
+		return fmt.Errorf("%w: %w", ErrParam, err)
 	}
 
 	return nil
 }
 
 // method returns inst's method name if its signature takes in and returns
-// one of results. A method that takes nothing and returns nothing may be
-// absent, and then the zero Value is returned.
+// out. With optional set, the method may be absent, and then the zero Value
+// is returned.
 func method(
 	inst Instance,
 	name string,
-	in []reflect.Type,
-	results ...[]reflect.Type,
+	in, out []reflect.Type,
+	optional bool,
 ) (reflect.Value, error) {
 	m := reflect.ValueOf(inst).MethodByName(name)
 	if !m.IsValid() {
-		if len(in) == 0 &&
-			slices.ContainsFunc(results, func(r []reflect.Type) bool { return len(r) == 0 }) {
+		if optional {
 			return reflect.Value{}, nil
 		}
 
@@ -249,21 +246,13 @@ func method(
 
 	t := m.Type()
 	if !t.IsVariadic() && slices.Equal(slices.Collect(t.Ins()), in) &&
-		slices.ContainsFunc(
-			results,
-			func(r []reflect.Type) bool { return slices.Equal(slices.Collect(t.Outs()), r) },
-		) {
+		slices.Equal(slices.Collect(t.Outs()), out) {
 		return m, nil
 	}
 
-	want := make([]string, 0, len(results))
-	for _, r := range results {
-		want = append(want, reflect.FuncOf(in, r, false).String())
-	}
-
 	return reflect.Value{}, fmt.Errorf(
-		"%w: %T.%s is %v, want %s",
-		ErrInvalidProc, inst, name, t, strings.Join(want, " or "),
+		"%w: %T.%s is %v, want %v",
+		ErrInvalidProc, inst, name, t, reflect.FuncOf(in, out, false),
 	)
 }
 

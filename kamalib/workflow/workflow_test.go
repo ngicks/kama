@@ -31,7 +31,15 @@ var seedParamType = reflect.TypeFor[seedParam]()
 
 type noop struct{}
 
+func (noop) Param() error              { return nil }
+func (noop) In()                       {}
+func (noop) Out()                      {}
 func (noop) Run(context.Context) error { return nil }
+
+// runOnly has none of the mandatory Param, In and Out methods.
+type runOnly struct{}
+
+func (runOnly) Run(context.Context) error { return nil }
 
 // Instances whose methods match the procs declared in newProcs.
 type (
@@ -42,6 +50,8 @@ type (
 	sumInst    struct{ noop }
 	// wrongInst declares In with the wrong argument type.
 	wrongInst struct{ noop }
+	// paramNoErrInst declares Param without the error result.
+	paramNoErrInst struct{ noop }
 )
 
 func (seedInst) Param(p seedParam) error {
@@ -52,13 +62,14 @@ func (seedInst) Param(p seedParam) error {
 	return nil
 }
 
-func (seedInst) AsInput() *counter    { return &counter{} }
-func (doubleInst) In(*counter)        {}
-func (doubleInst) AsInput() *doubled  { return &doubled{} }
-func (showInst) In(*doubled)          {}
-func (bumpInst) Out(*counter)         {}
-func (sumInst) In(*counter, *doubled) {}
-func (wrongInst) In(*doubled)         {}
+func (seedInst) AsInput() *counter     { return &counter{} }
+func (doubleInst) In(*counter)         {}
+func (doubleInst) AsInput() *doubled   { return &doubled{} }
+func (showInst) In(*doubled)           {}
+func (bumpInst) Out(*counter)          {}
+func (sumInst) In(*counter, *doubled)  {}
+func (wrongInst) In(*doubled)          {}
+func (paramNoErrInst) Param(seedParam) {}
 
 type fakeProc struct {
 	param   reflect.Type
@@ -101,7 +112,9 @@ func newProcs() procs {
 		"wrong":  {ins: []reflect.Type{counterType}, inst: wrongInst{}},
 		"broken": {asInput: counterType, instErr: errors.New("boom")},
 		// noAsInput declares an AsInput its instance lacks.
-		"noAsInput": {asInput: counterType, inst: showInst{}},
+		"noAsInput":  {asInput: counterType, inst: showInst{}},
+		"runOnly":    {inst: runOnly{}},
+		"paramNoErr": {param: seedParamType, inst: paramNoErrInst{}},
 	}
 }
 
@@ -326,6 +339,16 @@ func TestDryRunErrors(t *testing.T) {
 		{
 			"AsInput missing",
 			map[string]Step{"x": {Proc: "noAsInput"}},
+			ErrInvalidProc,
+		},
+		{
+			"Param, In and Out missing",
+			map[string]Step{"x": {Proc: "runOnly"}},
+			ErrInvalidProc,
+		},
+		{
+			"Param without error result",
+			map[string]Step{"x": {Proc: "paramNoErr"}},
 			ErrInvalidProc,
 		},
 	}

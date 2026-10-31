@@ -9,10 +9,10 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
-func TestProcSeesStagedFiles(t *testing.T) {
+func TestLoadSeesStagedFiles(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
 	assert.NilError(
@@ -39,17 +39,11 @@ func TestProcSeesStagedFiles(t *testing.T) {
 	// B exists only in the staged layer; type checking a.go needs it.
 	assert.NilError(t, f.Write("b.gen.go", []byte("package x\n\nfunc B() int { return 1 }\n")))
 
-	inst, err := Proc{}.Instantiate(ctx, false)
+	pkgs, err := Load(ctx, f, Options{Patterns: []string{"./..."}})
 	assert.NilError(t, err)
 
-	i := inst.(*instance)
-	assert.NilError(t, i.Param(ProcParam{}))
-	i.In(f)
-	assert.NilError(t, i.Run(ctx))
-
-	out := i.AsInput()
-	assert.Equal(t, len(out.Pkgs), 1)
-	pkg := out.Pkgs[0]
+	assert.Equal(t, len(pkgs), 1)
+	pkg := pkgs[0]
 	assert.Equal(t, len(pkg.Errors), 0, "errors: %v", pkg.Errors)
 
 	var files []string
@@ -58,13 +52,4 @@ func TestProcSeesStagedFiles(t *testing.T) {
 	}
 	slices.Sort(files)
 	assert.DeepEqual(t, files, []string{"a.go", "b.gen.go"})
-}
-
-func TestProcParam(t *testing.T) {
-	i := &instance{}
-
-	assert.NilError(t, i.Param(ProcParam{}))
-	assert.DeepEqual(t, i.param.Patterns, []string{"./..."})
-
-	assert.ErrorContains(t, i.Param(ProcParam{Patterns: []string{""}}), "empty pattern")
 }

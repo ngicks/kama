@@ -89,11 +89,3 @@ func TestProcsFormGraph(t *testing.T) {
 	}.Build(context.Background(), reg)
 	assert.NilError(t, err)
 }
-
-func TestOpenTwice(t *testing.T) {
-	f, err := New(t.TempDir())
-	assert.NilError(t, err)
-	defer f.Close()
-
-	assert.ErrorIs(t, f.Open(t.TempDir()), ErrAlreadyOpen)
-}

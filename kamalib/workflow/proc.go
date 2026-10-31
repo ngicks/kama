@@ -11,8 +11,8 @@ var ErrInvalidProc = errors.New("workflow: invalid proc")
 // Proc is a kind of step, registered under a name and instantiated once per
 // step that uses it.
 //
-// An instance returned by Instantiate has, besides Run, up to four methods
-// whose types are concrete per proc, so they cannot be part of the Instance
+// An instance returned by Instantiate has, besides Run, four methods whose
+// types are concrete per proc, so they cannot be part of the Instance
 // interface:
 //
 //	Param(p P) error
@@ -21,8 +21,9 @@ var ErrInvalidProc = errors.New("workflow: invalid proc")
 //	AsInput() A
 //
 // P is ParamType, I1 to IN are InTypes, O1 to OM are OutTypes and A is
-// AsInputType. Param may omit its error result. A method may be omitted when
-// its type is nil or its type list is empty.
+// AsInputType. Param, In and Out are mandatory. Param takes no argument when
+// ParamType is nil, and In and Out take none when their type lists are
+// empty. AsInput may be omitted when AsInputType is nil.
 //
 // The executor calls these methods through reflection, in this order:
 //
