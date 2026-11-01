@@ -10,8 +10,8 @@ hooks {
   ["pre-commit"] {
     steps {
       ...go_golangci_lint.steps
-      // go.work lists several modules, and hk runs the step once per go.mod in
-      // parallel. golangci-lint refuses to run concurrently unless told to.
+      // The repository has several modules, and hk runs the step once per
+      // go.mod in parallel. golangci-lint refuses to run concurrently unless told to.
       ["golangci-lint"] = (go_golangci_lint.steps["golangci-lint"]) {
         check {
           command = "golangci-lint run --fix=false --allow-parallel-runners ./..."

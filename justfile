@@ -1,14 +1,19 @@
-# Tasks spanning the Go modules listed in go.work.
+# Tasks spanning the Go modules of this repository.
 
 modules := "kamalib cli proto"
 
 default:
     @just --list
 
+# Create or update a local go.work using every module. go.work is not
+# committed, so each checkout creates its own.
+work:
+    test -f go.work || go work init
+    go work use {{modules}}
+
 # Tidy every module.
 tidy:
     for m in {{modules}}; do (cd $m && go mod tidy); done
-    go work sync
 
 # Regenerate generated sources.
 generate:
