@@ -13,7 +13,7 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register("file.load", func() workflow.Proc { return Proc{} }) }
+func init() { workflow.Register("file.load", NewProc) }
 
 // Document is a decoded metadata file.
 type Document struct {
@@ -33,13 +33,15 @@ type ProcParam struct {
 }
 
 // Proc decodes the first file of a fileloader.PathInput found in the project.
-// The zero value is ready to use.
 //
 //	Param(ProcParam) error
 //	In(*overlayfs.Fs)
 //	Out()
 //	AsInput() *Document
 type Proc struct{}
+
+// NewProc returns a new Proc.
+func NewProc() workflow.Proc { return Proc{} }
 
 func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParam]() }
 

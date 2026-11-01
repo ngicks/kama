@@ -15,8 +15,8 @@ import (
 )
 
 func init() {
-	workflow.Register("overlayfs.open", func() workflow.Proc { return &OpenProc{} })
-	workflow.Register("overlayfs.copy_down", func() workflow.Proc { return CopyDownProc{} })
+	workflow.Register("overlayfs.open", NewOpenProc)
+	workflow.Register("overlayfs.copy_down", NewCopyDownProc)
 }
 
 var fsType = reflect.TypeFor[*overlayfs.Fs]()
@@ -34,8 +34,8 @@ type OpenParam struct {
 // staged through any of them reach the final copy down. A later step naming
 // another root fails. CleanUp closes the filesystem.
 //
-// The zero value is ready to use. A graph must have an OpenProc of its own,
-// so register a constructor returning a new one rather than a shared value.
+// A graph must have an OpenProc of its own, so register NewOpenProc rather
+// than a shared value.
 //
 //	Param(OpenParam) error
 //	In()
@@ -46,6 +46,9 @@ type OpenProc struct {
 	root string
 	fs   *overlayfs.Fs
 }
+
+// NewOpenProc returns a new OpenProc.
+func NewOpenProc() workflow.Proc { return &OpenProc{} }
 
 func (*OpenProc) ParamType() reflect.Type   { return reflect.TypeFor[OpenParam]() }
 func (*OpenProc) InTypes() []reflect.Type   { return nil }
@@ -142,12 +145,15 @@ func (i *openInstance) Run(context.Context) error {
 func (i *openInstance) AsInput() *overlayfs.Fs { return i.fs }
 
 // CopyDownProc copies every staged file of its in into the project
-// directory. The zero value is ready to use.
+// directory.
 //
 //	Param() error
 //	In(*overlayfs.Fs)
 //	Out()
 type CopyDownProc struct{}
+
+// NewCopyDownProc returns a new CopyDownProc.
+func NewCopyDownProc() workflow.Proc { return CopyDownProc{} }
 
 func (CopyDownProc) ParamType() reflect.Type   { return nil }
 func (CopyDownProc) InTypes() []reflect.Type   { return []reflect.Type{fsType} }

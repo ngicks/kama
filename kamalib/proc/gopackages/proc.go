@@ -15,7 +15,7 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register("packages.load", func() workflow.Proc { return Proc{} }) }
+func init() { workflow.Register("packages.load", NewProc) }
 
 // Packages is the result of a load.
 type Packages struct {
@@ -33,13 +33,16 @@ type ProcParam struct {
 }
 
 // Proc loads packages from the project as its in shows it, generated files
-// included. The zero value is ready to use.
+// included.
 //
 //	Param(ProcParam) error
 //	In(*overlayfs.Fs)
 //	Out()
 //	AsInput() *Packages
 type Proc struct{}
+
+// NewProc returns a new Proc.
+func NewProc() workflow.Proc { return Proc{} }
 
 func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParam]() }
 
