@@ -34,6 +34,9 @@ type OpenParam struct {
 // staged through any of them reach the final copy down. A later step naming
 // another root fails. CleanUp closes the filesystem.
 //
+// The zero value is ready to use. A graph must have an OpenProc of its own,
+// so register a constructor returning a new one rather than a shared value.
+//
 //	Param(OpenParam) error
 //	In()
 //	Out()
@@ -139,7 +142,7 @@ func (i *openInstance) Run(context.Context) error {
 func (i *openInstance) AsInput() *overlayfs.Fs { return i.fs }
 
 // CopyDownProc copies every staged file of its in into the project
-// directory.
+// directory. The zero value is ready to use.
 //
 //	Param() error
 //	In(*overlayfs.Fs)

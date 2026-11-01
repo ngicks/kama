@@ -33,7 +33,7 @@ type ProcParam struct {
 }
 
 // Proc loads packages from the project as its in shows it, generated files
-// included.
+// included. The zero value is ready to use.
 //
 //	Param(ProcParam) error
 //	In(*overlayfs.Fs)

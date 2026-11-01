@@ -33,6 +33,7 @@ type ProcParam struct {
 }
 
 // Proc decodes the first file of a fileloader.PathInput found in the project.
+// The zero value is ready to use.
 //
 //	Param(ProcParam) error
 //	In(*overlayfs.Fs)
