@@ -15,7 +15,7 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register("packages.load", Proc{}) }
+func init() { workflow.Register("packages.load", func() workflow.Proc { return Proc{} }) }
 
 // Packages is the result of a load.
 type Packages struct {
@@ -55,7 +55,7 @@ func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
 	return &instance{}, nil
 }
 
-func (Proc) Close(context.Context) error { return nil }
+func (Proc) CleanUp(context.Context) error { return nil }
 
 type instance struct {
 	param ProcParam

@@ -30,14 +30,14 @@ func (r *recorder) add(s string) { r.log = append(r.log, s) }
 
 // runProc is a proc whose instances come from newInst.
 type runProc struct {
-	kind     string
-	rec      *recorder
-	param    reflect.Type
-	ins      []reflect.Type
-	outs     []reflect.Type
-	asInput  reflect.Type
-	newInst  func(dryRun bool) Instance
-	closeErr error
+	kind       string
+	rec        *recorder
+	param      reflect.Type
+	ins        []reflect.Type
+	outs       []reflect.Type
+	asInput    reflect.Type
+	newInst    func(dryRun bool) Instance
+	cleanUpErr error
 }
 
 func (p *runProc) ParamType() reflect.Type   { return p.param }
@@ -49,9 +49,9 @@ func (p *runProc) Instantiate(_ context.Context, dryRun bool) (Instance, error) 
 	return p.newInst(dryRun), nil
 }
 
-func (p *runProc) Close(context.Context) error {
-	p.rec.add("close " + p.kind)
-	return p.closeErr
+func (p *runProc) CleanUp(context.Context) error {
+	p.rec.add("clean up " + p.kind)
+	return p.cleanUpErr
 }
 
 // numInst hands over a *num holding its param. A negative param passes the
@@ -164,7 +164,7 @@ func buildRun(
 	for kind, proc := range p {
 		proc.kind = kind
 		proc.rec = rec
-		assert.NilError(t, reg.Register(kind, proc))
+		assert.NilError(t, reg.Register(kind, func() Proc { return proc }))
 	}
 
 	g, err := Spec{Version: SpecVersion, Steps: steps}.Build(context.Background(), reg)
@@ -188,7 +188,7 @@ func TestRunPassesValues(t *testing.T) {
 	assert.Equal(t, got, 15)
 	assert.DeepEqual(t, rec.log, []string{
 		"run num", "run num", "run add", "run sum",
-		"close sum", "close add", "close num",
+		"clean up sum", "clean up add", "clean up num",
 	})
 }
 
@@ -206,8 +206,8 @@ func TestRunStopsAtFirstError(t *testing.T) {
 	assert.ErrorIs(t, err, errBoom)
 	assert.ErrorContains(t, err, `step "f"`)
 
-	// z is not run, but every proc used so far is closed.
-	assert.DeepEqual(t, rec.log, []string{"run num", "run fail", "close fail", "close num"})
+	// z is not run, but every proc used so far is cleaned up.
+	assert.DeepEqual(t, rec.log, []string{"run num", "run fail", "clean up fail", "clean up num"})
 }
 
 func TestRunParamFailsOnlyForReal(t *testing.T) {
@@ -219,14 +219,14 @@ func TestRunParamFailsOnlyForReal(t *testing.T) {
 
 	err := g.Run(context.Background())
 	assert.ErrorIs(t, err, ErrParam)
-	assert.DeepEqual(t, rec.log, []string{"close num"})
+	assert.DeepEqual(t, rec.log, []string{"clean up num"})
 }
 
-func TestRunJoinsCloseErrors(t *testing.T) {
+func TestRunJoinsCleanUpErrors(t *testing.T) {
 	rec := &recorder{}
 	p := runProcs(rec, new(int))
-	closeErr := errors.New("close failed")
-	p["num"].closeErr = closeErr
+	cleanUpErr := errors.New("clean up failed")
+	p["num"].cleanUpErr = cleanUpErr
 
 	g := buildRun(t, p, rec, map[string]Step{
 		"a": {Proc: "num"},
@@ -235,7 +235,7 @@ func TestRunJoinsCloseErrors(t *testing.T) {
 
 	err := g.Run(context.Background())
 	assert.ErrorIs(t, err, errBoom)
-	assert.ErrorIs(t, err, closeErr)
+	assert.ErrorIs(t, err, cleanUpErr)
 }
 
 func TestRunCanceled(t *testing.T) {

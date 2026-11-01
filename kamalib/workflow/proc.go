@@ -8,8 +8,9 @@ import (
 
 var ErrInvalidProc = errors.New("workflow: invalid proc")
 
-// Proc is a kind of step, registered under a name and instantiated once per
-// step that uses it.
+// Proc is a kind of step, registered under a name as a constructor. Build
+// constructs one Proc per kind a graph uses, and the Proc instantiates once
+// per step of that kind.
 //
 // An instance returned by Instantiate has, besides Run, four methods whose
 // types are concrete per proc, so they cannot be part of the Instance
@@ -86,10 +87,10 @@ type Proc interface {
 	//		return &readInstance{}, nil
 	//	}
 	Instantiate(ctx context.Context, dryRun bool) (Instance, error)
-	// Close releases what the proc holds for its instances once every step
+	// CleanUp releases what the proc holds for its instances once every step
 	// is done, such as values handed out through AsInput. An instance's own
 	// per-run state is dropped with the instance after its Run.
-	Close(ctx context.Context) error
+	CleanUp(ctx context.Context) error
 }
 
 // Instance is a configured proc ready to run once. See Proc for the Param,

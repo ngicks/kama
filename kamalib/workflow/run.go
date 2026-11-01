@@ -15,9 +15,9 @@ var ErrRun = errors.New("workflow: step failed")
 // Each step is instantiated with dryRun unset and has its Param, In, Out,
 // Run and AsInput called as Proc describes. Run stops at the first failing
 // step and does not start the rest. Once no step is left to run, every proc
-// that was instantiated is closed, in reverse order of first use, even when
-// a step failed. The returned error joins the step failure with any Close
-// errors.
+// that was instantiated is cleaned up, in reverse order of first use, even
+// when a step failed. The returned error joins the step failure with any
+// CleanUp errors.
 func (g *Graph) Run(ctx context.Context) error {
 	values := map[string]reflect.Value{}
 
@@ -54,8 +54,8 @@ func (g *Graph) Run(ctx context.Context) error {
 
 	errs := []error{runErr}
 	for _, p := range slices.Backward(used) {
-		if err := p.Close(ctx); err != nil {
-			errs = append(errs, fmt.Errorf("workflow: close: %w", err))
+		if err := p.CleanUp(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("workflow: clean up: %w", err))
 		}
 	}
 

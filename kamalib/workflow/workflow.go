@@ -11,8 +11,8 @@
 // it its param. A spec naming the wrong steps, or carrying a bad param, fails
 // before any step executes.
 //
-// Graph.Run then executes the steps one at a time and closes the procs it
-// used.
+// Graph.Run then executes the steps one at a time and cleans up the procs
+// it used.
 //
 // Order follows in, out and after edges. A step that reads a value does not
 // wait for other steps writing into the same value unless it lists them in
@@ -72,15 +72,25 @@ func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 		return nil, fmt.Errorf("%w: %d", ErrUnsupportedVersion, s.Version)
 	}
 
+	byKind := map[string]Proc{}
 	procs := map[string]Proc{}
 	for name, st := range s.Steps {
 		if st.Proc == "" {
 			return nil, fmt.Errorf("%w: %q names no proc", ErrInvalidStep, name)
 		}
 
-		p, ok := reg.Lookup(st.Proc)
+		p, ok := byKind[st.Proc]
 		if !ok {
-			return nil, fmt.Errorf("%w: %q for step %q", ErrUnknownKind, st.Proc, name)
+			newProc, ok := reg.Lookup(st.Proc)
+			if !ok {
+				return nil, fmt.Errorf("%w: %q for step %q", ErrUnknownKind, st.Proc, name)
+			}
+
+			p = newProc()
+			if err := checkProc(st.Proc, p); err != nil {
+				return nil, err
+			}
+			byKind[st.Proc] = p
 		}
 
 		procs[name] = p
@@ -119,6 +129,27 @@ func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 	}
 
 	return g, nil
+}
+
+// checkProc checks that p, constructed for kind, declares usable types.
+func checkProc(kind string, p Proc) error {
+	if p == nil {
+		return fmt.Errorf("%w: %q constructs nil", ErrInvalidProc, kind)
+	}
+
+	for i, t := range p.InTypes() {
+		if t == nil {
+			return fmt.Errorf("%w: %q: in %d is nil", ErrInvalidProc, kind, i)
+		}
+	}
+
+	for i, t := range p.OutTypes() {
+		if t == nil {
+			return fmt.Errorf("%w: %q: out %d is nil", ErrInvalidProc, kind, i)
+		}
+	}
+
+	return nil
 }
 
 // matchRefs checks that the AsInput values of the steps named in refs fit

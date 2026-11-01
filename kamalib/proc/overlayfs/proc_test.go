@@ -59,7 +59,7 @@ func TestStagesThenCopiesDown(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, string(onDisk), "package sub\n")
 
-	assert.NilError(t, openProc.Close(ctx))
+	assert.NilError(t, openProc.CleanUp(ctx))
 	assert.ErrorIs(t, f.Write("late.go", nil), overlayfs.ErrClosed)
 }
 
@@ -76,4 +76,42 @@ func TestOpenDryRunTouchesNothing(t *testing.T) {
 	real, err := (&OpenProc{}).Instantiate(ctx, false)
 	assert.NilError(t, err)
 	assert.ErrorIs(t, real.(*openInstance).Param(param), fs.ErrNotExist)
+}
+
+func TestOpenSharesFs(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	p := &OpenProc{}
+
+	open := func(root string) (*overlayfs.Fs, error) {
+		t.Helper()
+
+		inst, err := p.Instantiate(ctx, false)
+		assert.NilError(t, err)
+		i := inst.(*openInstance)
+		assert.NilError(t, i.Param(OpenParam{Root: root}))
+		if err := i.Run(ctx); err != nil {
+			return nil, err
+		}
+
+		return i.AsInput(), nil
+	}
+
+	f1, err := open(root)
+	assert.NilError(t, err)
+	f2, err := open(root)
+	assert.NilError(t, err)
+
+	// A file staged through one step is seen by the other.
+	assert.NilError(t, f1.Write("gen.go", []byte("package x\n")))
+	got, err := fs.ReadFile(f2.FS(), "gen.go")
+	assert.NilError(t, err)
+	assert.Equal(t, string(got), "package x\n")
+	assert.Assert(t, f1 == f2)
+
+	_, err = open(t.TempDir())
+	assert.ErrorContains(t, err, "is open")
+
+	assert.NilError(t, p.CleanUp(ctx))
+	assert.ErrorIs(t, f1.Write("late.go", nil), overlayfs.ErrClosed)
 }

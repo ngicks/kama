@@ -81,11 +81,11 @@ type fakeProc struct {
 	dryRuns []bool
 }
 
-func (p *fakeProc) ParamType() reflect.Type     { return p.param }
-func (p *fakeProc) InTypes() []reflect.Type     { return p.ins }
-func (p *fakeProc) OutTypes() []reflect.Type    { return p.outs }
-func (p *fakeProc) AsInputType() reflect.Type   { return p.asInput }
-func (p *fakeProc) Close(context.Context) error { return nil }
+func (p *fakeProc) ParamType() reflect.Type       { return p.param }
+func (p *fakeProc) InTypes() []reflect.Type       { return p.ins }
+func (p *fakeProc) OutTypes() []reflect.Type      { return p.outs }
+func (p *fakeProc) AsInputType() reflect.Type     { return p.asInput }
+func (p *fakeProc) CleanUp(context.Context) error { return nil }
 
 func (p *fakeProc) Instantiate(_ context.Context, dryRun bool) (Instance, error) {
 	p.dryRuns = append(p.dryRuns, dryRun)
@@ -124,7 +124,7 @@ func (p procs) registry(t *testing.T) *Registry {
 
 	reg := NewRegistry()
 	for kind, proc := range p {
-		assert.NilError(t, reg.Register(kind, proc))
+		assert.NilError(t, reg.Register(kind, func() Proc { return proc }))
 	}
 
 	return reg
@@ -382,11 +382,61 @@ func TestRegistryRejects(t *testing.T) {
 	reg := NewRegistry()
 
 	assert.ErrorIs(t, reg.Register("a", nil), ErrInvalidProc)
-	assert.ErrorIs(t, reg.Register("a", &fakeProc{ins: []reflect.Type{nil}}), ErrInvalidProc)
-	assert.ErrorIs(t, reg.Register("a", &fakeProc{outs: []reflect.Type{nil}}), ErrInvalidProc)
 
-	assert.NilError(t, reg.Register("a", &fakeProc{}))
-	assert.ErrorIs(t, reg.Register("a", &fakeProc{}), ErrDuplicateKind)
+	newProc := func() Proc { return &fakeProc{} }
+	assert.NilError(t, reg.Register("a", newProc))
+	assert.ErrorIs(t, reg.Register("a", newProc), ErrDuplicateKind)
+}
+
+func TestBuildRejectsInvalidProc(t *testing.T) {
+	cases := []struct {
+		name    string
+		newProc func() Proc
+	}{
+		{"nil proc", func() Proc { return nil }},
+		{"nil in type", func() Proc { return &fakeProc{ins: []reflect.Type{nil}} }},
+		{"nil out type", func() Proc { return &fakeProc{outs: []reflect.Type{nil}} }},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			reg := NewRegistry()
+			assert.NilError(t, reg.Register("a", c.newProc))
+
+			_, err := Spec{
+				Version: SpecVersion,
+				Steps:   map[string]Step{"x": {Proc: "a"}},
+			}.Build(context.Background(), reg)
+			assert.ErrorIs(t, err, ErrInvalidProc)
+		})
+	}
+}
+
+func TestBuildConstructsProcsPerGraph(t *testing.T) {
+	var built int
+	reg := NewRegistry()
+	assert.NilError(t, reg.Register("show", func() Proc {
+		built++
+		return &fakeProc{inst: noop{}}
+	}))
+
+	spec := Spec{
+		Version: SpecVersion,
+		Steps: map[string]Step{
+			"a": {Proc: "show"},
+			"b": {Proc: "show"},
+		},
+	}
+
+	g1, err := spec.Build(context.Background(), reg)
+	assert.NilError(t, err)
+	g2, err := spec.Build(context.Background(), reg)
+	assert.NilError(t, err)
+
+	// Steps of one graph share a proc; graphs do not.
+	assert.Equal(t, built, 2)
+	assert.Equal(t, g1.Nodes()[0].Proc, g1.Nodes()[1].Proc)
+	assert.Assert(t, g1.Nodes()[0].Proc != g2.Nodes()[0].Proc)
 }
 
 func TestDecodeYaml(t *testing.T) {

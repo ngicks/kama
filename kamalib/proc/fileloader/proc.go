@@ -13,7 +13,7 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register("file.load", Proc{}) }
+func init() { workflow.Register("file.load", func() workflow.Proc { return Proc{} }) }
 
 // Document is a decoded metadata file.
 type Document struct {
@@ -54,7 +54,7 @@ func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
 	return &instance{}, nil
 }
 
-func (Proc) Close(context.Context) error { return nil }
+func (Proc) CleanUp(context.Context) error { return nil }
 
 type instance struct {
 	input fileloader.PathInput
