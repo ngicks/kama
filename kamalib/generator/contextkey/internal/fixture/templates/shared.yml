@@ -1,0 +1,5 @@
+entries:
+  - file_name: tenant
+    name: Tenant
+    type: string
+    default_expr: '"default"'

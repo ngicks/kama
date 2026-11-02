@@ -1,0 +1,30 @@
+entries:
+  - file_name: slog_logger
+    name: SlogLogger
+    type: "*slog.Logger"
+    default_expr: slog.Default()
+    imports: [log/slog]
+  - file_name: sync_map
+    name: SyncMap
+    type: "*sync.Map"
+    default_expr: new(sync.Map)
+    imports: [sync]
+  - file_name: request_id
+    name: RequestId
+    type: string
+    default_expr: '""'
+  # TraceId shares its type with RequestId.
+  - file_name: trace_id
+    name: TraceId
+    type: string
+    default_expr: '"none"'
+  - file_name: slog_attrs
+    name: SlogAttrs
+    type: "[]slog.Attr"
+    default_expr: "[]slog.Attr(nil)"
+    imports: [log/slog]
+  - file_name: signal_chan
+    name: SignalChan
+    type: chan os.Signal
+    default_expr: (chan os.Signal)(nil)
+    imports: [os]

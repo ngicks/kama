@@ -1,0 +1,10 @@
+entries:
+  - file_name: verbose
+    name: Verbose
+    type: bool
+    default_expr: "false"
+  - file_name: http_header
+    name: HttpHeader
+    type: http.Header
+    default_expr: http.Header(nil)
+    imports: [net/http]

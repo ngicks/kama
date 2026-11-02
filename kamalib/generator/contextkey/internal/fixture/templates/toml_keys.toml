@@ -1,0 +1,11 @@
+[[entries]]
+file_name = "retry_count"
+name = "RetryCount"
+type = "int"
+default_expr = "3"
+
+[[entries]]
+file_name = "tags"
+name = "Tags"
+type = "map[string]string"
+default_expr = "map[string]string{}"

@@ -1,0 +1,22 @@
+version: 1
+steps:
+  root:
+    proc: overlayfs.open
+  template:
+    proc: file.load
+    in: root
+    param:
+      base: contextkey
+      formats: [yaml]
+  generate:
+    proc: contextkey.generate
+    in: template
+    out: root
+    param:
+      package: inline
+      key_type_func: keyTypeFunc
+  final:
+    proc: overlayfs.copy_down
+    in: root
+    # copy_down reads root but does not wait for steps writing into it.
+    after: generate

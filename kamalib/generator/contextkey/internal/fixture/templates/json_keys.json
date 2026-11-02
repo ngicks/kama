@@ -1,0 +1,17 @@
+{
+  "entries": [
+    {
+      "file_name": "user_name",
+      "name": "UserName",
+      "type": "string",
+      "default_expr": "\"anonymous\""
+    },
+    {
+      "file_name": "deadline",
+      "name": "Deadline",
+      "type": "time.Time",
+      "default_expr": "time.Time{}",
+      "imports": ["time"]
+    }
+  ]
+}
