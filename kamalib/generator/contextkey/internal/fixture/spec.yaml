@@ -2,6 +2,9 @@ version: 1
 steps:
   root:
     proc: overlayfs.open
+    # inline/spec.yaml leaves formatter out and gets the in-process default.
+    param:
+      formatter: [gofmt]
 
   json_template:
     proc: file.load

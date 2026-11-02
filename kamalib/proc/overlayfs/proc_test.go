@@ -4,11 +4,13 @@ import (
 	"context"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/pkg/goformat"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
@@ -26,8 +28,8 @@ func TestStagesThenCopiesDown(t *testing.T) {
 
 	f := open.AsInput()
 
-	assert.NilError(t, f.Write("orig.gen.go", []byte("package x // gen\n")))
-	assert.NilError(t, f.Write("sub/new.go", []byte("package sub\n")))
+	assert.NilError(t, f.Write(ctx, "orig.gen.go", []byte("package x // gen\n")))
+	assert.NilError(t, f.Write(ctx, "sub/new.go", []byte("package sub\n")))
 
 	// The merged view shows originals and staged files together.
 	got, err := fs.ReadFile(f.FS(), "orig.gen.go")
@@ -60,7 +62,7 @@ func TestStagesThenCopiesDown(t *testing.T) {
 	assert.Equal(t, string(onDisk), "package sub\n")
 
 	assert.NilError(t, openProc.CleanUp(ctx))
-	assert.ErrorIs(t, f.Write("late.go", nil), overlayfs.ErrClosed)
+	assert.ErrorIs(t, f.Write(ctx, "late.go", nil), overlayfs.ErrClosed)
 }
 
 func TestOpenDryRunTouchesNothing(t *testing.T) {
@@ -103,7 +105,7 @@ func TestOpenSharesFs(t *testing.T) {
 	assert.NilError(t, err)
 
 	// A file staged through one step is seen by the other.
-	assert.NilError(t, f1.Write("gen.go", []byte("package x\n")))
+	assert.NilError(t, f1.Write(ctx, "gen.go", []byte("package x\n")))
 	got, err := fs.ReadFile(f2.FS(), "gen.go")
 	assert.NilError(t, err)
 	assert.Equal(t, string(got), "package x\n")
@@ -113,5 +115,61 @@ func TestOpenSharesFs(t *testing.T) {
 	assert.ErrorContains(t, err, "is open")
 
 	assert.NilError(t, p.CleanUp(ctx))
-	assert.ErrorIs(t, f1.Write("late.go", nil), overlayfs.ErrClosed)
+	assert.ErrorIs(t, f1.Write(ctx, "late.go", nil), overlayfs.ErrClosed)
+}
+
+func TestOpenFormatter(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	p := &OpenProc{}
+
+	open := func(formatter []string) (*overlayfs.Fs, error) {
+		t.Helper()
+
+		inst, err := p.Instantiate(ctx, false)
+		assert.NilError(t, err)
+		i := inst.(*openInstance)
+		assert.NilError(t, i.Param(OpenParam{Root: root, Formatter: formatter}))
+		if err := i.Run(ctx); err != nil {
+			return nil, err
+		}
+
+		return i.AsInput(), nil
+	}
+
+	// The command runs in root and its stdout replaces the content.
+	formatter := []string{"sh", "-c", `echo "// $(basename "$PWD")"; cat`}
+	f, err := open(formatter)
+	assert.NilError(t, err)
+
+	assert.NilError(t, f.Write(ctx, "x.go", []byte("package x\n")))
+	got, err := fs.ReadFile(f.FS(), "x.go")
+	assert.NilError(t, err)
+	assert.Equal(t, string(got), "// "+filepath.Base(root)+"\npackage x\n")
+
+	_, err = open(formatter)
+	assert.NilError(t, err)
+
+	_, err = open(nil)
+	assert.ErrorContains(t, err, "formatter")
+
+	assert.NilError(t, p.CleanUp(ctx))
+}
+
+func TestOpenFormatterParam(t *testing.T) {
+	ctx := context.Background()
+	missing := OpenParam{Root: t.TempDir(), Formatter: []string{"kama-no-such-formatter"}}
+
+	dry, err := (&OpenProc{}).Instantiate(ctx, true)
+	assert.NilError(t, err)
+	assert.NilError(t, dry.(*openInstance).Param(missing))
+	assert.ErrorIs(
+		t,
+		dry.(*openInstance).Param(OpenParam{Formatter: []string{""}}),
+		goformat.ErrEmptyArgv,
+	)
+
+	real, err := (&OpenProc{}).Instantiate(ctx, false)
+	assert.NilError(t, err)
+	assert.ErrorIs(t, real.(*openInstance).Param(missing), exec.ErrNotFound)
 }

@@ -6,10 +6,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
+	"strings"
 	"sync"
 
+	"github.com/ngicks/kama/kamalib/pkg/goformat"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
@@ -25,6 +29,10 @@ var fsType = reflect.TypeFor[*overlayfs.Fs]()
 type OpenParam struct {
 	// Root is the project directory. Empty means the working directory.
 	Root string `json:"root"`
+	// Formatter is the argv of the command that formats Go files on write.
+	// It reads the source on stdin and writes the result to stdout, and it
+	// runs in Root. Empty means goformat.Imports, in process.
+	Formatter []string `json:"formatter"`
 }
 
 // OpenProc opens the project directory and offers it to other steps.
@@ -32,7 +40,7 @@ type OpenParam struct {
 // A graph constructs one OpenProc, and it holds one filesystem. The first
 // step to run opens it, and every later step gets the same one, so files
 // staged through any of them reach the final copy down. A later step naming
-// another root fails. CleanUp closes the filesystem.
+// another root or formatter fails. CleanUp closes the filesystem.
 //
 // A graph must have an OpenProc of its own, so register NewOpenProc rather
 // than a shared value.
@@ -42,9 +50,10 @@ type OpenParam struct {
 //	Out()
 //	AsInput() *overlayfs.Fs
 type OpenProc struct {
-	mu   sync.Mutex
-	root string
-	fs   *overlayfs.Fs
+	mu        sync.Mutex
+	root      string
+	formatter []string
+	fs        *overlayfs.Fs
 }
 
 // NewOpenProc returns a new OpenProc.
@@ -68,12 +77,12 @@ func (p *OpenProc) CleanUp(context.Context) error {
 	}
 
 	err := p.fs.Close()
-	p.root, p.fs = "", nil
+	p.root, p.formatter, p.fs = "", nil, nil
 	return err
 }
 
 // open returns the filesystem for root, opening it on first use.
-func (p *OpenProc) open(root string) (*overlayfs.Fs, error) {
+func (p *OpenProc) open(root string, formatter []string) (*overlayfs.Fs, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -81,24 +90,36 @@ func (p *OpenProc) open(root string) (*overlayfs.Fs, error) {
 		if root != p.root {
 			return nil, fmt.Errorf("overlayfs: %q is open, cannot open %q", p.root, root)
 		}
+		if !slices.Equal(formatter, p.formatter) {
+			return nil, fmt.Errorf(
+				"overlayfs: %q is open with formatter %q, cannot use %q",
+				p.root, p.formatter, formatter,
+			)
+		}
 
 		return p.fs, nil
 	}
 
-	f, err := overlayfs.New(root)
+	var opts []overlayfs.Option
+	if len(formatter) > 0 {
+		opts = append(opts, overlayfs.WithFormatter(goformat.Command{Argv: formatter, Dir: root}))
+	}
+
+	f, err := overlayfs.New(root, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	p.root, p.fs = root, f
+	p.root, p.formatter, p.fs = root, formatter, f
 	return f, nil
 }
 
 type openInstance struct {
-	proc   *OpenProc
-	dryRun bool
-	root   string
-	fs     *overlayfs.Fs
+	proc      *OpenProc
+	dryRun    bool
+	root      string
+	formatter []string
+	fs        *overlayfs.Fs
 }
 
 func (i *openInstance) Param(p OpenParam) error {
@@ -107,7 +128,19 @@ func (i *openInstance) Param(p OpenParam) error {
 		root = "."
 	}
 
+	if len(p.Formatter) > 0 && p.Formatter[0] == "" {
+		return fmt.Errorf("overlayfs: formatter: %w", goformat.ErrEmptyArgv)
+	}
+
 	if !i.dryRun {
+		// A path with a separator is resolved against Root when the command
+		// runs, so only a bare name can be looked up here.
+		if len(p.Formatter) > 0 && !strings.ContainsRune(p.Formatter[0], filepath.Separator) {
+			if _, err := exec.LookPath(p.Formatter[0]); err != nil {
+				return fmt.Errorf("overlayfs: formatter: %w", err)
+			}
+		}
+
 		abs, err := filepath.Abs(root)
 		if err != nil {
 			return err
@@ -124,7 +157,7 @@ func (i *openInstance) Param(p OpenParam) error {
 		root = abs
 	}
 
-	i.root = root
+	i.root, i.formatter = root, p.Formatter
 	return nil
 }
 
@@ -133,7 +166,7 @@ func (i *openInstance) In() {}
 func (i *openInstance) Out() {}
 
 func (i *openInstance) Run(context.Context) error {
-	f, err := i.proc.open(i.root)
+	f, err := i.proc.open(i.root, i.formatter)
 	if err != nil {
 		return err
 	}

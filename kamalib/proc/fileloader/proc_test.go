@@ -26,7 +26,7 @@ func TestProcRun(t *testing.T) {
 	defer f.Close()
 
 	// A staged yaml file wins over the json file on disk.
-	assert.NilError(t, f.Write("codegen/meta.yaml", []byte("name: yaml\n")))
+	assert.NilError(t, f.Write(ctx, "codegen/meta.yaml", []byte("name: yaml\n")))
 
 	inst, err := Proc{}.Instantiate(ctx, false)
 	assert.NilError(t, err)

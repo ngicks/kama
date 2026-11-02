@@ -88,7 +88,7 @@ func (i *instance) In(doc *fileloader.Document) { i.doc = doc }
 
 func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
 
-func (i *instance) Run(context.Context) error {
+func (i *instance) Run(ctx context.Context) error {
 	tmpl, err := decodeTemplate(i.doc.Data)
 	if err != nil {
 		return fmt.Errorf("contextkey: %s: %w", i.doc.Path, err)
@@ -103,7 +103,7 @@ func (i *instance) Run(context.Context) error {
 	}
 
 	for _, name := range slices.Sorted(maps.Keys(files)) {
-		if err := i.fs.Write(path.Join(i.dir, name), files[name]); err != nil {
+		if err := i.fs.Write(ctx, path.Join(i.dir, name), files[name]); err != nil {
 			return fmt.Errorf("contextkey: write %q: %w", name, err)
 		}
 	}

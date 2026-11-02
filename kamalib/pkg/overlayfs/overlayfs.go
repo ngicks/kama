@@ -4,6 +4,10 @@
 // the merged view, so generated output is visible to later steps as if it
 // were on disk, and steps that output to the filesystem write into the
 // writable layer. Nothing reaches the project directory until CopyDown.
+//
+// Write runs a formatter on every Go file before staging it. The default
+// formatter rejects source that does not parse, so generators must emit
+// valid Go.
 package overlayfs
 
 import (
@@ -13,11 +17,14 @@ import (
 	"io/fs"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/ngicks/go-fsys-helper/vroot"
 	upstream "github.com/ngicks/go-fsys-helper/vroot-adapter/overlayfs"
 	"github.com/ngicks/go-fsys-helper/vroot/memfs"
 	"github.com/ngicks/go-fsys-helper/vroot/osfs"
+
+	"github.com/ngicks/kama/kamalib/pkg/goformat"
 )
 
 var (
@@ -25,22 +32,42 @@ var (
 	ErrAlreadyOpen = errors.New("overlayfs: already open")
 )
 
+// Formatter formats the content of a Go file. path is the file's absolute
+// path in the project directory.
+type Formatter interface {
+	Format(ctx context.Context, path string, src []byte) ([]byte, error)
+}
+
+// Option configures an Fs on open.
+type Option func(*Fs)
+
+// WithFormatter sets the formatter Write runs on Go files. The default is
+// goformat.Imports, and a nil fm keeps it.
+func WithFormatter(fm Formatter) Option {
+	return func(f *Fs) {
+		if fm != nil {
+			f.formatter = fm
+		}
+	}
+}
+
 // Fs is the target filesystem. Its zero value is closed; Open fills it in
 // place so a workflow can allocate it as a step's slot.
 type Fs struct {
 	root string
 	// lower is the project directory, opened once. CopyDown writes through
 	// it so a rename of the directory after open cannot redirect the write.
-	lower  *osfs.Root
-	top    *upstream.DataSource
-	merged *upstream.Fs
+	lower     *osfs.Root
+	top       *upstream.DataSource
+	merged    *upstream.Fs
+	formatter Formatter
 }
 
 // New opens the project directory root as the lower layer with an empty
 // in-memory top.
-func New(root string) (*Fs, error) {
+func New(root string, opts ...Option) (*Fs, error) {
 	f := &Fs{}
-	if err := f.Open(root); err != nil {
+	if err := f.Open(root, opts...); err != nil {
 		return nil, err
 	}
 
@@ -48,7 +75,7 @@ func New(root string) (*Fs, error) {
 }
 
 // Open opens the project directory root into f, which must be closed.
-func (f *Fs) Open(root string) error {
+func (f *Fs) Open(root string, opts ...Option) error {
 	if f.merged != nil {
 		return ErrAlreadyOpen
 	}
@@ -79,7 +106,16 @@ func (f *Fs) Open(root string) error {
 		return fmt.Errorf("overlayfs: mount: %w", err)
 	}
 
-	*f = Fs{root: root, lower: lowerRoot, top: top, merged: merged}
+	*f = Fs{
+		root:      root,
+		lower:     lowerRoot,
+		top:       top,
+		merged:    merged,
+		formatter: goformat.Imports{},
+	}
+	for _, opt := range opts {
+		opt(f)
+	}
 	return nil
 }
 
@@ -90,9 +126,20 @@ func (f *Fs) Root() string { return f.root }
 func (f *Fs) FS() fs.FS { return vroot.ToIoFsRoot(f.merged) }
 
 // Write stages content at name, a slash-separated path relative to Root.
-func (f *Fs) Write(name string, content []byte) error {
+// A name ending in .go is formatted first, and a formatter error stages
+// nothing.
+func (f *Fs) Write(ctx context.Context, name string, content []byte) error {
 	if f.merged == nil {
 		return ErrClosed
+	}
+
+	if strings.HasSuffix(name, ".go") {
+		abs := filepath.Join(f.root, filepath.FromSlash(name))
+		formatted, err := f.formatter.Format(ctx, abs, content)
+		if err != nil {
+			return fmt.Errorf("overlayfs: format %q: %w", name, err)
+		}
+		content = formatted
 	}
 
 	if dir := path.Dir(name); dir != "." {
@@ -188,6 +235,6 @@ func (f *Fs) Close() error {
 	}
 
 	err := f.merged.Close()
-	f.merged, f.top, f.lower = nil, nil, nil
+	f.merged, f.top, f.lower, f.formatter = nil, nil, nil, nil
 	return err
 }

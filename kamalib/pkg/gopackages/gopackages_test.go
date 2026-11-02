@@ -37,7 +37,7 @@ func TestLoadSeesStagedFiles(t *testing.T) {
 	defer f.Close()
 
 	// B exists only in the staged layer; type checking a.go needs it.
-	assert.NilError(t, f.Write("b.gen.go", []byte("package x\n\nfunc B() int { return 1 }\n")))
+	assert.NilError(t, f.Write(ctx, "b.gen.go", []byte("package x\n\nfunc B() int { return 1 }\n")))
 
 	pkgs, err := Load(ctx, f, Options{Patterns: []string{"./..."}})
 	assert.NilError(t, err)

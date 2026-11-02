@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go/format"
 	"go/parser"
 	"go/token"
 	"slices"
@@ -81,7 +80,8 @@ func (o Options) validate() error {
 	return nil
 }
 
-// Render returns the formatted source of every entry keyed by file name.
+// Render returns the source of every entry keyed by file name. The source
+// parses but is left unformatted; overlayfs.Fs formats it on write.
 func Render(entries []Entry, opts Options) (map[string][]byte, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
@@ -127,7 +127,16 @@ func renderEntry(e Entry, opts Options) ([]byte, error) {
 		return nil, err
 	}
 
-	return format.Source(buf.Bytes())
+	if _, err := parser.ParseFile(
+		token.NewFileSet(),
+		"",
+		buf.Bytes(),
+		parser.SkipObjectResolution,
+	); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 type templateData struct {
