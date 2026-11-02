@@ -4,6 +4,10 @@ package gopackages
 
 import (
 	"context"
+	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
 	"golang.org/x/tools/go/packages"
 
@@ -33,6 +37,9 @@ type Options struct {
 
 // Load loads the packages opts names from the project fsys shows, staged
 // files included.
+//
+// Unlike packages.Load, Load fails if any loaded package, dependencies
+// included, has errors. The returned error then wraps PackageErrors.
 func Load(ctx context.Context, fsys *overlayfs.Fs, opts Options) ([]*packages.Package, error) {
 	overlay, err := fsys.Overlay()
 	if err != nil {
@@ -48,5 +55,42 @@ func Load(ctx context.Context, fsys *overlayfs.Fs, opts Options) ([]*packages.Pa
 		Overlay:    overlay,
 	}
 
-	return packages.Load(cfg, opts.Patterns...)
+	pkgs, err := packages.Load(cfg, opts.Patterns...)
+	if err != nil {
+		return nil, err
+	}
+
+	errs := PackageErrors{}
+	packages.Visit(pkgs, nil, func(p *packages.Package) {
+		for _, e := range p.Errors {
+			// With Tests, a package and its test variants share PkgPath and
+			// report the same errors.
+			if !slices.Contains(errs[p.PkgPath], e) {
+				errs[p.PkgPath] = append(errs[p.PkgPath], e)
+			}
+		}
+	})
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("gopackages: %w", errs)
+	}
+
+	return pkgs, nil
+}
+
+// PackageErrors maps a package path to the errors reported for that package.
+type PackageErrors map[string][]packages.Error
+
+func (e PackageErrors) Error() string {
+	var b strings.Builder
+	for i, path := range slices.Sorted(maps.Keys(e)) {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		fmt.Fprintf(&b, "%s:", path)
+		for _, pe := range e[path] {
+			b.WriteString("\n\t")
+			b.WriteString(pe.Error())
+		}
+	}
+	return b.String()
 }
