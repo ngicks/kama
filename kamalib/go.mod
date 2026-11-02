@@ -3,6 +3,7 @@ module github.com/ngicks/kama/kamalib
 go 1.27.0
 
 require (
+	github.com/dave/dst v0.27.3
 	github.com/ngicks/go-fsys-helper/vroot v0.0.1
 	github.com/ngicks/go-fsys-helper/vroot-adapter/overlayfs v0.0.0-20260820002924-4f04f83b610e
 	github.com/pelletier/go-toml/v2 v2.4.3
