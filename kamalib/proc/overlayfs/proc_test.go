@@ -10,8 +10,8 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/goformat"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs/goformat"
 )
 
 func TestStagesThenCopiesDown(t *testing.T) {

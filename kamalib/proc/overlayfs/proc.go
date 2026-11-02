@@ -13,8 +13,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ngicks/kama/kamalib/pkg/goformat"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs/goformat"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 

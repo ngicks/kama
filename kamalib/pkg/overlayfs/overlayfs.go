@@ -24,7 +24,7 @@ import (
 	"github.com/ngicks/go-fsys-helper/vroot/memfs"
 	"github.com/ngicks/go-fsys-helper/vroot/osfs"
 
-	"github.com/ngicks/kama/kamalib/pkg/goformat"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs/goformat"
 )
 
 var (
