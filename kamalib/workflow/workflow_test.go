@@ -31,15 +31,15 @@ var seedParamType = reflect.TypeFor[seedParam]()
 
 type noop struct{}
 
-func (noop) Param() error              { return nil }
-func (noop) In()                       {}
-func (noop) Out()                      {}
-func (noop) Run(context.Context) error { return nil }
+func (noop) Param() error                        { return nil }
+func (noop) In()                                 {}
+func (noop) Out()                                {}
+func (noop) Run(context.Context, Reporter) error { return nil }
 
 // runOnly has none of the mandatory Param, In and Out methods.
 type runOnly struct{}
 
-func (runOnly) Run(context.Context) error { return nil }
+func (runOnly) Run(context.Context, Reporter) error { return nil }
 
 // Instances whose methods match the procs declared in newProcs.
 type (

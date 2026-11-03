@@ -88,7 +88,7 @@ func (i *instance) In(doc *fileloader.Document) { i.doc = doc }
 
 func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
 
-func (i *instance) Run(ctx context.Context) error {
+func (i *instance) Run(ctx context.Context, _ workflow.Reporter) error {
 	tmpl, err := decodeTemplate(i.doc.Data)
 	if err != nil {
 		return fmt.Errorf("contextkey: %s: %w", i.doc.Path, err)

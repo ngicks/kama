@@ -41,5 +41,9 @@ func run(ctx context.Context, specPath string) error {
 		return err
 	}
 
-	return g.Run(ctx)
+	return g.Run(ctx, workflow.ProgressControl{
+		OnWarning: func(step string, w error) {
+			fmt.Fprintf(os.Stderr, "warning: %s: %v\n", step, w)
+		},
+	})
 }

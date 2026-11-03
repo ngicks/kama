@@ -85,7 +85,7 @@ func (i *instance) Out() {}
 
 func (i *instance) AsInput() *Packages { return &i.out }
 
-func (i *instance) Run(ctx context.Context) error {
+func (i *instance) Run(ctx context.Context, _ workflow.Reporter) error {
 	pkgs, err := gopackages.Load(ctx, i.fs, gopackages.Options{
 		Patterns:   i.param.Patterns,
 		BuildFlags: i.param.BuildFlags,

@@ -510,7 +510,7 @@ func TestProcOptionFile(t *testing.T) {
 		assert.NilError(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{Base: base}}))
 		i.In(&procgopackages.Packages{Pkgs: pkgs})
 		i.Out(f)
-		return i.Run(ctx)
+		return i.Run(ctx, nopReporter{})
 	}
 	err = run(dir + "/missing")
 	assert.ErrorIs(t, err, fileloader.ErrNotFound)

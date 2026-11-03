@@ -72,7 +72,7 @@ func TestFixtureUpToDate(t *testing.T) {
 			assert.NilError(t, i.Param(fx.param))
 			i.In(&gopackages.Packages{Pkgs: pkgs})
 			i.Out(f)
-			assert.NilError(t, i.Run(ctx))
+			assert.NilError(t, i.Run(ctx, nopReporter{}))
 
 			staged, err := f.Overlay()
 			assert.NilError(t, err)
@@ -144,3 +144,9 @@ func TestFixtureExternalParity(t *testing.T) {
 		assert.Equal(t, string(got), replacer.Replace(string(want)), name)
 	}
 }
+
+// nopReporter drops what an instance reports.
+type nopReporter struct{}
+
+func (nopReporter) Warn(error)      {}
+func (nopReporter) Progress(string) {}

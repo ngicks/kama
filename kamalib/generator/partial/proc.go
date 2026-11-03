@@ -98,7 +98,7 @@ func (i *instance) In(pkgs *gopackages.Packages) { i.pkgs = pkgs }
 
 func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
 
-func (i *instance) Run(ctx context.Context) error {
+func (i *instance) Run(ctx context.Context, _ workflow.Reporter) error {
 	opts := i.opts
 	if i.optionFile != nil {
 		f, err := LoadOptionFile(i.fs.FS(), *i.optionFile)

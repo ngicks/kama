@@ -24,7 +24,7 @@ func TestStagesThenCopiesDown(t *testing.T) {
 	assert.NilError(t, err)
 	open := inst.(*openInstance)
 	assert.NilError(t, open.Param(OpenParam{Root: root}))
-	assert.NilError(t, open.Run(ctx))
+	assert.NilError(t, open.Run(ctx, nopReporter{}))
 
 	f := open.AsInput()
 
@@ -55,7 +55,7 @@ func TestStagesThenCopiesDown(t *testing.T) {
 	down, err := CopyDownProc{}.Instantiate(ctx, false)
 	assert.NilError(t, err)
 	down.(*copyDownInstance).In(f)
-	assert.NilError(t, down.Run(ctx))
+	assert.NilError(t, down.Run(ctx, nopReporter{}))
 
 	onDisk, err := os.ReadFile(filepath.Join(root, "sub", "new.go"))
 	assert.NilError(t, err)
@@ -92,7 +92,7 @@ func TestOpenSharesFs(t *testing.T) {
 		assert.NilError(t, err)
 		i := inst.(*openInstance)
 		assert.NilError(t, i.Param(OpenParam{Root: root}))
-		if err := i.Run(ctx); err != nil {
+		if err := i.Run(ctx, nopReporter{}); err != nil {
 			return nil, err
 		}
 
@@ -130,7 +130,7 @@ func TestOpenFormatter(t *testing.T) {
 		assert.NilError(t, err)
 		i := inst.(*openInstance)
 		assert.NilError(t, i.Param(OpenParam{Root: root, Formatter: formatter}))
-		if err := i.Run(ctx); err != nil {
+		if err := i.Run(ctx, nopReporter{}); err != nil {
 			return nil, err
 		}
 
@@ -173,3 +173,9 @@ func TestOpenFormatterParam(t *testing.T) {
 	assert.NilError(t, err)
 	assert.ErrorIs(t, real.(*openInstance).Param(missing), exec.ErrNotFound)
 }
+
+// nopReporter drops what an instance reports.
+type nopReporter struct{}
+
+func (nopReporter) Warn(error)      {}
+func (nopReporter) Progress(string) {}

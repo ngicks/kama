@@ -99,7 +99,7 @@ entries:
 	assert.NilError(t, i.Param(ProcParam{Dir: "gen", Package: "p", KeyTypeFunc: "k"}))
 	i.In(&fileloader.Document{Path: "t.yaml", Data: data})
 	i.Out(f)
-	assert.NilError(t, i.Run(ctx))
+	assert.NilError(t, i.Run(ctx, nopReporter{}))
 
 	ov, err := f.Overlay()
 	assert.NilError(t, err)
@@ -113,7 +113,7 @@ func TestProcRunNoEntries(t *testing.T) {
 	i := &instance{}
 	assert.NilError(t, i.Param(ProcParam{Package: "p", KeyTypeFunc: "k"}))
 	i.In(&fileloader.Document{Path: "t.yaml", Data: map[string]any{}})
-	assert.ErrorIs(t, i.Run(context.Background()), ErrNoEntries)
+	assert.ErrorIs(t, i.Run(context.Background(), nopReporter{}), ErrNoEntries)
 }
 
 func TestFixtureSpecsBuild(t *testing.T) {
@@ -134,3 +134,9 @@ func TestFixtureSpecsBuild(t *testing.T) {
 		})
 	}
 }
+
+// nopReporter drops what an instance reports.
+type nopReporter struct{}
+
+func (nopReporter) Warn(error)      {}
+func (nopReporter) Progress(string) {}

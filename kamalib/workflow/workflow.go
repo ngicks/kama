@@ -12,7 +12,8 @@
 // before any step executes.
 //
 // Graph.Run then executes the steps one at a time and cleans up the procs
-// it used.
+// it used. It reports each step's start and end, and the warnings and
+// progress the instances report, to a ProgressControl.
 //
 // Order follows in, out and after edges. A step that reads a value does not
 // wait for other steps writing into the same value unless it lists them in

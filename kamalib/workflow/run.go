@@ -18,8 +18,15 @@ var ErrRun = errors.New("workflow: step failed")
 // that was instantiated is cleaned up, in reverse order of first use, even
 // when a step failed. The returned error joins the step failure with any
 // CleanUp errors.
-func (g *Graph) Run(ctx context.Context) error {
+//
+// Run reports each step it executes to pc.OnProgress: "start" before the
+// step is instantiated, then "done" once its AsInput is taken, or "failed"
+// when the step fails. The end of a step is reported before Run moves on or
+// returns. Between the two, the instance reports through the Reporter its
+// Run is given, tagged with the step name. Warnings never fail the run.
+func (g *Graph) Run(ctx context.Context, pc ProgressControl) error {
 	values := map[string]reflect.Value{}
+	prog := &progress{pc: pc}
 
 	// Procs are tracked by kind: a Proc's dynamic type need not be
 	// comparable, so it cannot be a map key itself.
@@ -42,11 +49,14 @@ func (g *Graph) Run(ctx context.Context) error {
 			used = append(used, n.Proc)
 		}
 
-		v, err := runNode(ctx, n, values)
+		prog.progress(n.Name, progressStart)
+		v, err := runNode(ctx, n, values, prog)
 		if err != nil {
+			prog.progress(n.Name, progressFailed)
 			runErr = fmt.Errorf("%w: step %q: %w", ErrRun, n.Name, err)
 			break
 		}
+		prog.progress(n.Name, progressDone)
 		if v.IsValid() {
 			values[n.Name] = v
 		}
@@ -64,7 +74,12 @@ func (g *Graph) Run(ctx context.Context) error {
 
 // runNode runs one step and returns its AsInput value, or the zero Value
 // when the proc has no AsInput.
-func runNode(ctx context.Context, n *Node, values map[string]reflect.Value) (reflect.Value, error) {
+func runNode(
+	ctx context.Context,
+	n *Node,
+	values map[string]reflect.Value,
+	prog *progress,
+) (reflect.Value, error) {
 	inst, err := n.Proc.Instantiate(ctx, false)
 	if err != nil {
 		return reflect.Value{}, fmt.Errorf("%w: %w", ErrInstantiate, err)
@@ -89,7 +104,10 @@ func runNode(ctx context.Context, n *Node, values map[string]reflect.Value) (ref
 	m.in.Call(refValues(n.In, values))
 	m.out.Call(refValues(n.Out, values))
 
-	if err := inst.Run(ctx); err != nil {
+	r := &stepReporter{p: prog, step: n.Name}
+	err = inst.Run(ctx, r)
+	r.close()
+	if err != nil {
 		return reflect.Value{}, err
 	}
 

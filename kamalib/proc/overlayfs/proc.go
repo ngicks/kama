@@ -165,7 +165,7 @@ func (i *openInstance) In() {}
 
 func (i *openInstance) Out() {}
 
-func (i *openInstance) Run(context.Context) error {
+func (i *openInstance) Run(context.Context, workflow.Reporter) error {
 	f, err := i.proc.open(i.root, i.formatter)
 	if err != nil {
 		return err
@@ -209,4 +209,6 @@ func (i *copyDownInstance) In(in *overlayfs.Fs) { i.in = in }
 
 func (i *copyDownInstance) Out() {}
 
-func (i *copyDownInstance) Run(ctx context.Context) error { return i.in.CopyDown(ctx) }
+func (i *copyDownInstance) Run(ctx context.Context, _ workflow.Reporter) error {
+	return i.in.CopyDown(ctx)
+}

@@ -92,7 +92,7 @@ func (i *instance) In(fs *overlayfs.Fs) { i.fs = fs }
 
 func (i *instance) Out() {}
 
-func (i *instance) Run(context.Context) error {
+func (i *instance) Run(context.Context, workflow.Reporter) error {
 	name, err := fileloader.Load(i.fs.FS(), i.input, &i.doc.Data)
 	if err != nil {
 		return err

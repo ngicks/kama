@@ -42,7 +42,7 @@ func TestProcRun(t *testing.T) {
 		),
 	)
 	i.In(f)
-	assert.NilError(t, i.Run(ctx))
+	assert.NilError(t, i.Run(ctx, nopReporter{}))
 
 	doc := i.AsInput()
 	assert.Equal(t, doc.Path, "codegen/meta.yaml")
@@ -59,3 +59,9 @@ func TestProcParamErrors(t *testing.T) {
 		fileloader.ErrUnknownFormat,
 	)
 }
+
+// nopReporter drops what an instance reports.
+type nopReporter struct{}
+
+func (nopReporter) Warn(error)      {}
+func (nopReporter) Progress(string) {}

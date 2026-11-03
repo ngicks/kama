@@ -32,7 +32,7 @@ var ErrInvalidProc = errors.New("workflow: invalid proc")
 //   - In with the AsInput values of the steps named in the step's in list.
 //   - Out with the AsInput values of the steps named in its out list. The
 //     step writes its results into them.
-//   - Run.
+//   - Run, with a Reporter for the step's warnings and progress.
 //   - AsInput, once. The result is passed to every step that names this one
 //     in its in or out list. Steps writing into it through Out mutate it, so
 //     a value others write into must be a pointer or another reference.
@@ -102,11 +102,15 @@ type Proc interface {
 //	func (i *readInstance) Param(p ReadParam) error          // ParamType
 //	func (i *readInstance) In(src *Source)                   // InTypes
 //	func (i *readInstance) Out(dst *Sink)                    // OutTypes
-//	func (i *readInstance) Run(ctx context.Context) error
+//	func (i *readInstance) Run(ctx context.Context, r workflow.Reporter) error
 //	func (i *readInstance) AsInput() *[]byte                 // AsInputType
 //
 // With a nil ParamType, Param is Param() error. With empty InTypes or
 // OutTypes, In or Out takes no argument.
+//
+// Run reports through r what the caller should hear about without the step
+// failing, such as a skipped input, and how far it has got. r is valid only
+// until Run returns.
 type Instance interface {
-	Run(ctx context.Context) error
+	Run(ctx context.Context, r Reporter) error
 }
