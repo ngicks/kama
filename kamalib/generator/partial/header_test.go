@@ -123,9 +123,9 @@ type procEnv struct {
 	dir string
 }
 
-func newProcEnv(t *testing.T, files map[string]string) *procEnv {
+func newProcEnv(t *testing.T, files map[string]string, opts ...overlayfs.Option) *procEnv {
 	t.Helper()
-	f, err := overlayfs.New(".")
+	f, err := overlayfs.New(".", opts...)
 	assert.NilError(t, err)
 	t.Cleanup(func() { f.Close() })
 	e := &procEnv{t: t, f: f, dir: "testdata/inline/" + strings.ReplaceAll(t.Name(), "/", "_")}
@@ -221,4 +221,53 @@ func TestProcKeepsUnchanged(t *testing.T) {
 	delete(before, "a.kama_partial.go")
 	assert.DeepEqual(t, slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(before)))
 	assert.DeepEqual(t, got, before)
+}
+
+// prefixFormatter prepends a line to every file it formats, so formatting
+// a file twice is visible.
+type prefixFormatter struct{}
+
+const formattedPrefix = "// formatted\n"
+
+func (prefixFormatter) Format(_ context.Context, _ string, src []byte) ([]byte, error) {
+	return append([]byte(formattedPrefix), src...), nil
+}
+
+func TestProcKeepsUnchangedNonIdempotentFormatter(t *testing.T) {
+	e := newProcEnv(
+		t,
+		map[string]string{"a.go": staleSources["a.go"]},
+		overlayfs.WithFormatter(prefixFormatter{}),
+	)
+	names := []string{"a.kama_partial.go", HelpersFile, FlagSetFile}
+	singlePrefix := func(name, src string) {
+		t.Helper()
+		assert.Assert(t, strings.HasPrefix(src, formattedPrefix), name)
+		assert.Assert(t, !strings.HasPrefix(src, formattedPrefix+formattedPrefix), name)
+	}
+
+	r := e.run(time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC))
+	assert.DeepEqual(t, r.progress, []string{"3 files written, 0 files unchanged"})
+	before := map[string]string{}
+	for _, name := range names {
+		before[name] = e.read(name)
+		singlePrefix(name, before[name])
+	}
+
+	r = e.run(time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC))
+	assert.DeepEqual(t, r.progress, []string{"0 files written, 3 files unchanged"})
+	for _, name := range names {
+		assert.Equal(t, e.read(name), before[name], name)
+	}
+
+	e.write("a.go", "package x\n\n//kama:partial\ntype A struct{ X, Y int }\n")
+	r = e.run(time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
+	assert.DeepEqual(t, r.progress, []string{"1 file written, 2 files unchanged"})
+	got := e.read("a.kama_partial.go")
+	singlePrefix("a.kama_partial.go", got)
+	assert.Assert(t, strings.Contains(got, "// generated: 2026-11-06T00:00:00Z\n"))
+	assert.Assert(t, strings.Contains(got, "Y und.Und[int]"))
+	for _, name := range names[1:] {
+		assert.Equal(t, e.read(name), before[name], name)
+	}
 }

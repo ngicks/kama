@@ -1,7 +1,6 @@
 package partial
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -35,7 +34,7 @@ type ProcParam struct {
 // stages the files in its out. The packages must lie under the root of
 // its out. The option file is read from its out, so a file staged by an
 // earlier step is read too. A file of its out that would change in the
-// generated: line of its header only is staged unchanged. Proc reports the
+// generated: line of its header only is not staged. Proc reports the
 // warnings of Generate and the number of files written and unchanged.
 //
 //	Param(ProcParam) error
@@ -104,16 +103,7 @@ func (i *instance) In(pkgs *gopackages.Packages) { i.pkgs = pkgs }
 func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
 
 func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
-	opts := i.opts
-	if i.optionFile != nil {
-		f, err := LoadOptionFile(i.fs.FS(), *i.optionFile)
-		if err != nil {
-			return err
-		}
-		opts.OptionFile = f
-	}
-
-	files, warnings, err := Generate(i.pkgs.Pkgs, opts)
+	files, warnings, err := i.generate()
 	if err != nil {
 		return err
 	}
@@ -144,6 +134,19 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 	return nil
 }
 
+// generate runs Generate with the options of i and its option file.
+func (i *instance) generate() ([]File, []error, error) {
+	opts := i.opts
+	if i.optionFile != nil {
+		f, err := LoadOptionFile(i.fs.FS(), *i.optionFile)
+		if err != nil {
+			return nil, nil, err
+		}
+		opts.OptionFile = f
+	}
+	return Generate(i.pkgs.Pkgs, opts)
+}
+
 func fileCount(n int) string {
 	if n == 1 {
 		return "1 file"
@@ -151,35 +154,30 @@ func fileCount(n int) string {
 	return fmt.Sprintf("%d files", n)
 }
 
-// write stages content at name and reports whether it changed the file.
-// The existing file is staged again in place of content when the two
-// differ in the generated: line only.
+// write stages content at name unless the file in fs differs from it in
+// the generated: line only, and reports whether it staged content.
 //
-// Generate returns unformatted content, while the file in fs is formatted
-// by fs.Write. Comparing the staged result, rather than content, keeps the
-// comparison right for any formatter fs runs.
+// Generate returns unformatted content, while fs.Write formats what it
+// stages. The comparison uses the formatted content so it holds for any
+// formatter fs runs. An unchanged file is left untouched rather than
+// restored with fs.Write, since that would format the existing, already
+// formatted file again, and not every formatter is idempotent.
 func (i *instance) write(ctx context.Context, name string, content []byte) (bool, error) {
 	existing, err := fs.ReadFile(i.fs.FS(), name)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return false, fmt.Errorf("partial: read %q: %w", name, err)
 	}
+	if existing != nil {
+		formatted, err := i.fs.Format(ctx, name, content)
+		if err != nil {
+			return false, fmt.Errorf("partial: format %q: %w", name, err)
+		}
+		if SameExceptGenerated(existing, formatted) {
+			return false, nil
+		}
+	}
 	if err := i.fs.Write(ctx, name, content); err != nil {
 		return false, fmt.Errorf("partial: write %q: %w", name, err)
 	}
-	if existing == nil {
-		return true, nil
-	}
-	staged, err := fs.ReadFile(i.fs.FS(), name)
-	if err != nil {
-		return false, fmt.Errorf("partial: read %q: %w", name, err)
-	}
-	if !SameExceptGenerated(existing, staged) {
-		return true, nil
-	}
-	if !bytes.Equal(existing, staged) {
-		if err := i.fs.Write(ctx, name, existing); err != nil {
-			return false, fmt.Errorf("partial: write %q: %w", name, err)
-		}
-	}
-	return false, nil
+	return true, nil
 }

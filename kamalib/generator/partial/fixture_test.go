@@ -3,7 +3,6 @@ package partial
 import (
 	"context"
 	"io/fs"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -52,8 +51,10 @@ func TestFixtureSpecBuild(t *testing.T) {
 }
 
 // TestFixtureUpToDate regenerates each fixture, whose generated files are
-// loaded as input like any other file, and compares the staged output with
-// the files on disk.
+// loaded as input like any other file, and compares the files Generate
+// produces, as the merged view holds them after Run, with the files on
+// disk. Run stages only the files that changed beyond the generated: line,
+// so a staged file differs from disk and fails the comparison.
 func TestFixtureUpToDate(t *testing.T) {
 	for _, fx := range fixtures {
 		t.Run(fx.dir, func(t *testing.T) {
@@ -72,17 +73,25 @@ func TestFixtureUpToDate(t *testing.T) {
 			assert.NilError(t, i.Param(fx.param))
 			i.In(&gopackages.Packages{Pkgs: pkgs})
 			i.Out(f)
+			files, _, err := i.generate()
+			assert.NilError(t, err)
 			assert.NilError(t, i.Run(ctx, nopReporter{}))
 
-			staged, err := f.Overlay()
-			assert.NilError(t, err)
+			var produced []string
+			for _, file := range files {
+				produced = append(produced, file.Path)
+			}
+			slices.Sort(produced)
+			assert.DeepEqual(t, produced, generatedFiles(t, f.Root()))
 
-			assert.DeepEqual(t, slices.Sorted(maps.Keys(staged)), generatedFiles(t, f.Root()))
-
-			for name, content := range staged {
+			for _, name := range produced {
+				rel, err := filepath.Rel(f.Root(), name)
+				assert.NilError(t, err)
+				got, err := fs.ReadFile(f.FS(), filepath.ToSlash(rel))
+				assert.NilError(t, err)
 				want, err := os.ReadFile(name)
 				assert.NilError(t, err)
-				assert.Equal(t, string(content), string(want), "run go generate ./%s", fx.dir)
+				assert.Equal(t, string(got), string(want), "run go generate ./%s", fx.dir)
 			}
 
 			// Load fails on any package error, so this checks the staged
