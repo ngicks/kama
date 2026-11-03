@@ -36,8 +36,9 @@ type mapper struct {
 	// refs are the identifiers of partial types of the package the
 	// expressions refer to unqualified.
 	refs map[string]bool
-	// helpers are the helpers the methods call.
-	helpers map[string]bool
+	// flagSet are the methods of the flag set interface the methods call,
+	// keyed by name.
+	flagSet map[string]string
 }
 
 func (p *mapper) position(pos token.Pos) token.Position { return p.pkg.Fset.Position(pos) }
@@ -143,6 +144,8 @@ type fieldInfo struct {
 	source types.Type
 	// strategy is the merge strategy of the field.
 	strategy string
+	// flag is the flag of the field, or nil.
+	flag *flagField
 }
 
 func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fieldInfo, error) {
@@ -151,6 +154,19 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 	seen := map[string]*types.Var{}
 	for i := range s.NumFields() {
 		v := s.Field(i)
+		// A target defined on a struct type of another package, as in
+		// type A sub.S, has the fields of sub.S, and the methods cannot
+		// spell an unexported one.
+		if v.Name() != "_" && !v.Exported() && v.Pkg() != nil && v.Pkg().Path() != p.pkg.PkgPath {
+			return nil, nil, fmt.Errorf(
+				"field %s (%s): %w: unexported field of package %s cannot be converted in package %s",
+				v.Name(),
+				p.position(v.Pos()),
+				ErrUnsupported,
+				v.Pkg().Path(),
+				p.pkg.PkgPath,
+			)
+		}
 		f, info, err := p.field(n, v, s.Tag(i))
 		if err == nil && info.partial != "_" {
 			switch prev := seen[info.partial]; {
@@ -159,7 +175,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 					"%w: partial field %s is given by %s too (%s)",
 					ErrConflict, info.partial, prev.Name(), p.position(prev.Pos()),
 				)
-			case slices.Contains(methodNames, info.partial):
+			case slices.Contains(p.sel.partialMethodNames(n), info.partial):
 				err = fmt.Errorf(
 					"%w: partial field %s collides with the method %s",
 					ErrConflict, info.partial, info.partial,
@@ -172,6 +188,9 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 		}
 		fields.List = append(fields.List, f)
 		infos = append(infos, info)
+	}
+	if err := checkFlags(n, infos); err != nil {
+		return nil, nil, err
 	}
 	return &dst.StructType{Fields: fields}, infos, nil
 }
@@ -221,6 +240,10 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 
 	key := kamaopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: v.Name()}
 	info.strategy, err = p.strategy(info.class, p.sel.merges[key])
+	if err != nil {
+		return nil, fieldInfo{}, err
+	}
+	info.flag, err = p.flag(n, info, p.sel.flags[key])
 	if err != nil {
 		return nil, fieldInfo{}, err
 	}

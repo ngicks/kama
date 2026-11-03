@@ -30,6 +30,10 @@ type selection struct {
 	targets map[typegraph.QualifiedType]*typegraph.Node
 	// merges are the //kama:partial:merge directives keyed by field.
 	merges map[kamaopt.Key]kamaopt.Raw
+	// flags are the //kama:partial:flag directives keyed by field.
+	flags map[kamaopt.Key]flagOption
+	// flagged are the targets with a field holding a flag directive.
+	flagged map[typegraph.QualifiedType]bool
 	// refs are the pointer fields mapped to und.Und[*MPartial] since they
 	// close a cycle of partial variants.
 	refs map[*types.Var]bool
@@ -79,6 +83,7 @@ func (s *selection) sorted() []*typegraph.Node {
 // marks are the //kama:partial directives of the source packages.
 type marks struct {
 	merges map[kamaopt.Key]kamaopt.Raw
+	flags  map[kamaopt.Key]flagOption
 	// explicit are the type-scoped directives without args, in source
 	// order.
 	explicit []kamaopt.Raw
@@ -91,6 +96,7 @@ type marks struct {
 func collectMarks(pkgs []*packages.Package) (marks, error) {
 	m := marks{
 		merges:  map[kamaopt.Key]kamaopt.Raw{},
+		flags:   map[kamaopt.Key]flagOption{},
 		ignored: map[typegraph.QualifiedType]bool{},
 		files:   map[string]bool{},
 		pkgs:    map[string]bool{},
@@ -156,8 +162,7 @@ func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
 	pos := r.Origin.Pos
 	switch sub {
 	case "flag":
-		// Flags are decoded by a later stage of the generator.
-		return nil
+		return m.flag(r)
 	case "merge":
 	default:
 		return fmt.Errorf("%w: %s: unknown directive //kama:%s", ErrDirective, pos, r.Directive)
@@ -184,6 +189,36 @@ func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
 		)
 	}
 	m.merges[r.Key] = r
+	return nil
+}
+
+// flag records //kama:partial:flag.
+func (m *marks) flag(r kamaopt.Raw) error {
+	pos := r.Origin.Pos
+	if r.Key.Field == "" {
+		return fmt.Errorf(
+			"%w: %s: //kama:partial:flag applies to struct fields only", ErrDirective, pos,
+		)
+	}
+	field := r.Key.PkgPath + "." + r.Key.Type + "." + r.Key.Field
+	if prev, ok := m.flags[r.Key]; ok {
+		return fmt.Errorf(
+			"%w: %s: second //kama:partial:flag on field %s; the first is at %s",
+			ErrDirective, pos, field, prev.raw.Origin.Pos,
+		)
+	}
+	o, err := parseFlag(r.Args)
+	if err != nil {
+		return fmt.Errorf(
+			"%w: %s: //kama:partial:flag on field %s: %w",
+			ErrDirective,
+			pos,
+			field,
+			err,
+		)
+	}
+	o.raw = r
+	m.flags[r.Key] = o
 	return nil
 }
 
@@ -270,6 +305,8 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 		opts:    opts,
 		targets: map[typegraph.QualifiedType]*typegraph.Node{},
 		merges:  m.merges,
+		flags:   m.flags,
+		flagged: map[typegraph.QualifiedType]bool{},
 		refs:    map[*types.Var]bool{},
 	}
 
@@ -334,6 +371,9 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	if err := sel.checkMerges(); err != nil {
 		return nil, err
 	}
+	if err := sel.checkFlagTargets(); err != nil {
+		return nil, err
+	}
 	if err := sel.checkNames(pkgs, generated); err != nil {
 		return nil, err
 	}
@@ -359,6 +399,24 @@ func (s *selection) checkMerges() error {
 	return errors.Join(errs...)
 }
 
+// checkFlagTargets reports //kama:partial:flag on fields of types without
+// partial variants and records the targets with flags in s.flagged.
+func (s *selection) checkFlagTargets() error {
+	var errs []error
+	for _, k := range slices.SortedFunc(maps.Keys(s.flags), compareKey) {
+		id := typegraph.NewQualifiedType(k.PkgPath, k.Type)
+		if s.targets[id] != nil {
+			s.flagged[id] = true
+			continue
+		}
+		errs = append(errs, fmt.Errorf(
+			"%w: %s: //kama:partial:flag on field %s.%s.%s; %s has no partial variant",
+			ErrDirective, s.flags[k].raw.Origin.Pos, k.PkgPath, k.Type, k.Field, k.Type,
+		))
+	}
+	return errors.Join(errs...)
+}
+
 func compareKey(a, b kamaopt.Key) int {
 	return cmp.Or(
 		cmp.Compare(a.PkgPath, b.PkgPath),
@@ -378,10 +436,11 @@ func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Obje
 }
 
 // checkNames reports names the generated declarations would collide with:
-// a partial type name, a method of a partial type or a helper function
-// declared by something other than a generator, a field of a partial type
-// named like one of its methods, and a helpers file the generator did not
-// write.
+// a partial type name, a method of a partial type, a helper function or
+// the flag set interface declared by something other than a generator,
+// and a helpers or flag set file holding a declaration the generator did
+// not write. A field of a partial type named like one of its methods is
+// reported while mapping the fields.
 func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Object]bool) error {
 	var errs []error
 	conflict := func(fset *token.FileSet, pos token.Pos, format string, args ...any) {
@@ -392,9 +451,11 @@ func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Obj
 	}
 
 	targetPkgs := map[string]*packages.Package{}
+	flagPkgs := map[string]bool{}
 	for _, n := range s.sorted() {
 		pkg := n.Detail.Pkg
 		targetPkgs[pkg.PkgPath] = pkg
+		flagPkgs[pkg.PkgPath] = flagPkgs[pkg.PkgPath] || s.flagged[n.Id]
 		name := partialName(n.Id.TypeName)
 		obj := pkg.Types.Scope().Lookup(name)
 		if obj == nil {
@@ -412,7 +473,7 @@ func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Obj
 			continue
 		}
 		for m := range named.Methods() {
-			if slices.Contains(methodNames, m.Name()) && !generated[m] {
+			if slices.Contains(s.partialMethodNames(n), m.Name()) && !generated[m] {
 				conflict(pkg.Fset, m.Pos(),
 					"method %s of %s.%s is declared by something other than the generator",
 					m.Name(), n.Id.PackagePath, name,
@@ -430,26 +491,47 @@ func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Obj
 				)
 			}
 		}
+		if obj := pkg.Types.Scope().Lookup(flagSetName); flagPkgs[pkgPath] && obj != nil &&
+			!generated[obj] {
+			conflict(pkg.Fset, obj.Pos(),
+				"%s.%s is already declared for the flag set of the generated methods",
+				pkgPath, flagSetName,
+			)
+		}
 		for _, f := range pkg.Syntax {
-			if filepath.Base(pkg.Fset.Position(f.FileStart).Filename) != HelpersFile {
+			base := filepath.Base(pkg.Fset.Position(f.FileStart).Filename)
+			if base != HelpersFile && base != FlagSetFile {
 				continue
 			}
 			for _, decl := range f.Decls {
-				if fd, ok := decl.(*ast.FuncDecl); ok {
-					if _, ok := s.opts.Registry.Generated(fd.Doc); ok {
-						continue
-					}
-				}
-				if gd, ok := decl.(*ast.GenDecl); ok && gd.Tok == token.IMPORT {
+				if s.ownDecl(base, decl) {
 					continue
 				}
 				conflict(pkg.Fset, decl.Pos(),
-					"%s holds a declaration the generator did not write", HelpersFile,
+					"%s holds a declaration the generator did not write", base,
 				)
 			}
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// ownDecl reports whether decl of the generated file base is one the
+// generator writes there: imports, and marked functions in HelpersFile or
+// marked types in FlagSetFile.
+func (s *selection) ownDecl(base string, decl ast.Decl) bool {
+	switch decl := decl.(type) {
+	case *ast.FuncDecl:
+		_, ok := s.opts.Registry.Generated(decl.Doc)
+		return ok && base == HelpersFile
+	case *ast.GenDecl:
+		if decl.Tok == token.IMPORT {
+			return true
+		}
+		_, ok := s.opts.Registry.Generated(decl.Doc)
+		return ok && decl.Tok == token.TYPE && base == FlagSetFile
+	}
+	return false
 }
 
 // mapCycles finds the pointer fields that close a cycle of partial

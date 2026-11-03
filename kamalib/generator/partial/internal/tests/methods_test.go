@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"maps"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -282,6 +284,42 @@ func TestMergeAppend(t *testing.T) {
 	gotEmpty := model.MergingPartial{Tags: und.Defined([]string{})}.
 		Merge(model.MergingPartial{Tags: und.Defined([]string{})})
 	equal(t, gotEmpty.Tags, und.Defined([]string{}))
+}
+
+// TestMergeAppendFresh checks a merge of two defined sides shares storage
+// with neither side, even when one of them is nil or empty.
+func TestMergeAppendFresh(t *testing.T) {
+	for _, c := range []struct{ l, r []string }{
+		{nil, []string{"r"}},
+		{[]string{"l"}, nil},
+		{[]string{}, []string{"r"}},
+		{[]string{"l"}, []string{}},
+	} {
+		l, r := slices.Clone(c.l), slices.Clone(c.r)
+		got := model.MergingPartial{Tags: und.Defined(l)}.
+			Merge(model.MergingPartial{Tags: und.Defined(r)}).Tags.Value()
+		got[0] = "x"
+		equal(t, l, c.l)
+		equal(t, r, c.r)
+	}
+
+	for _, c := range []struct{ l, r map[string]int }{
+		{nil, map[string]int{"r": 1}},
+		{map[string]int{"l": 1}, nil},
+		{map[string]int{}, map[string]int{"r": 1}},
+		{map[string]int{"l": 1}, map[string]int{}},
+	} {
+		l, r := maps.Clone(c.l), maps.Clone(c.r)
+		got := model.MergingPartial{Attrs: und.Defined(l)}.
+			Merge(model.MergingPartial{Attrs: und.Defined(r)}).Attrs.Value()
+		got["x"] = 1
+		equal(t, l, c.l)
+		equal(t, r, c.r)
+	}
+
+	got := model.MergingPartial{Tags: und.Defined([]string(nil))}.
+		Merge(model.MergingPartial{Tags: und.Defined([]string(nil))})
+	equal(t, got.Tags, und.Defined([]string(nil)))
 }
 
 func TestMergeNested(t *testing.T) {

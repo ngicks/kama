@@ -3,6 +3,7 @@
 package model
 
 import (
+	"fmt"
 	"maps"
 	"reflect"
 
@@ -15,7 +16,7 @@ import (
 // of l with the entries of r set otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialAppendMap[M ~map[K]V, K comparable, V any](l, r M) M {
+func kamaPartialAppendMap[M ~map[K]V, K comparable, V interface{}](l, r M) M {
 	if r == nil {
 		return l
 	}
@@ -32,7 +33,7 @@ func kamaPartialAppendMap[M ~map[K]V, K comparable, V any](l, r M) M {
 // elements of l then r otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialAppendSlice[S ~[]E, E any](l, r S) S {
+func kamaPartialAppendSlice[S ~[]E, E interface{}](l, r S) S {
 	if r == nil {
 		return l
 	}
@@ -44,10 +45,17 @@ func kamaPartialAppendSlice[S ~[]E, E any](l, r S) S {
 	return append(out, r...)
 }
 
+// kamaPartialFlagError wraps err with the flag name.
+//
+//kama:generated kama-partial
+func kamaPartialFlagError(name string, err error) error {
+	return fmt.Errorf("flag --%s: %w", name, err)
+}
+
 // kamaPartialFromEmbeddedPointer sets d to the partial value of *v, or to the zero partial value for a nil v.
 //
 //kama:generated kama-partial
-func kamaPartialFromEmbeddedPointer[V any, P any, PP interface {
+func kamaPartialFromEmbeddedPointer[V interface{}, P interface{}, PP interface {
 	*P
 	FromValue(V)
 }](d *P, v *V) {
@@ -61,7 +69,7 @@ func kamaPartialFromEmbeddedPointer[V any, P any, PP interface {
 // kamaPartialFromMap returns a nil v as null and any other v as a defined value.
 //
 //kama:generated kama-partial
-func kamaPartialFromMap[M ~map[K]V, K comparable, V any](v M) und.Und[M] {
+func kamaPartialFromMap[M ~map[K]V, K comparable, V interface{}](v M) und.Und[M] {
 	if v == nil {
 		return und.Null[M]()
 	}
@@ -71,10 +79,13 @@ func kamaPartialFromMap[M ~map[K]V, K comparable, V any](v M) und.Und[M] {
 // kamaPartialFromMapTarget sets d to null for a nil v and to the defined partial value of v otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialFromMapTarget[V ~map[K]E, K comparable, E any, P any, PP interface {
-	*P
-	FromValue(V)
-}](d *und.Und[P], v V) {
+func kamaPartialFromMapTarget[
+	V ~map[K]E, K comparable, E interface{}, P interface{},
+	PP interface {
+		*P
+		FromValue(V)
+	},
+](d *und.Und[P], v V) {
 	if v == nil {
 		*d = und.Null[P]()
 		return
@@ -87,14 +98,14 @@ func kamaPartialFromMapTarget[V ~map[K]E, K comparable, E any, P any, PP interfa
 // kamaPartialFromOption returns a none o as null and a some o as a defined value.
 //
 //kama:generated kama-partial
-func kamaPartialFromOption[T any](o opt.Option[T]) und.Und[T] {
+func kamaPartialFromOption[T interface{}](o opt.Option[T]) und.Und[T] {
 	return und.FromOption(o, true)
 }
 
 // kamaPartialFromPointer returns a nil v as null and any other v as its defined pointee.
 //
 //kama:generated kama-partial
-func kamaPartialFromPointer[T any](v *T) und.Und[T] {
+func kamaPartialFromPointer[T interface{}](v *T) und.Und[T] {
 	if v == nil {
 		return und.Null[T]()
 	}
@@ -104,7 +115,7 @@ func kamaPartialFromPointer[T any](v *T) und.Und[T] {
 // kamaPartialFromSlice returns a nil v as null and any other v as a defined value.
 //
 //kama:generated kama-partial
-func kamaPartialFromSlice[S ~[]E, E any](v S) und.Und[S] {
+func kamaPartialFromSlice[S ~[]E, E interface{}](v S) und.Und[S] {
 	if v == nil {
 		return und.Null[S]()
 	}
@@ -114,7 +125,7 @@ func kamaPartialFromSlice[S ~[]E, E any](v S) und.Und[S] {
 // kamaPartialFromSliceTarget sets d to null for a nil v and to the defined partial value of v otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialFromSliceTarget[V ~[]E, E any, P any, PP interface {
+func kamaPartialFromSliceTarget[V ~[]E, E interface{}, P interface{}, PP interface {
 	*P
 	FromValue(V)
 }](d *und.Und[P], v V) {
@@ -130,7 +141,7 @@ func kamaPartialFromSliceTarget[V ~[]E, E any, P any, PP interface {
 // kamaPartialFromTarget sets d to the defined partial value of v.
 //
 //kama:generated kama-partial
-func kamaPartialFromTarget[V any, P any, PP interface {
+func kamaPartialFromTarget[V interface{}, P interface{}, PP interface {
 	*P
 	FromValue(V)
 }](d *und.Und[P], v V) {
@@ -142,7 +153,7 @@ func kamaPartialFromTarget[V any, P any, PP interface {
 // kamaPartialFromTargetPointer sets d to null for a nil v and to the defined partial value of *v otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialFromTargetPointer[V any, P any, PP interface {
+func kamaPartialFromTargetPointer[V interface{}, P interface{}, PP interface {
 	*P
 	FromValue(V)
 }](d *und.Und[P], v *V) {
@@ -158,7 +169,7 @@ func kamaPartialFromTargetPointer[V any, P any, PP interface {
 // kamaPartialFromTargetRef sets d to null for a nil v and to a new defined partial value of *v otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialFromTargetRef[V any, P any, PP interface {
+func kamaPartialFromTargetRef[V interface{}, P interface{}, PP interface {
 	*P
 	FromValue(V)
 }](d *und.Und[*P], v *V) {
@@ -171,17 +182,34 @@ func kamaPartialFromTargetRef[V any, P any, PP interface {
 	*d = und.Defined((*P)(p))
 }
 
+// kamaPartialFromText sets d to the defined value s unmarshals to as text.
+//
+//kama:generated kama-partial
+func kamaPartialFromText[T interface{}, PT interface {
+	*T
+	UnmarshalText([]byte) error
+}](d *und.Und[T], s string) error {
+	var v T
+	if err := PT(&v).UnmarshalText([]byte(s)); err != nil {
+		return err
+	}
+	*d = und.Defined(v)
+	return nil
+}
+
 // kamaPartialFromValue returns v as a defined value.
 //
 //kama:generated kama-partial
-func kamaPartialFromValue[T any](v T) und.Und[T] {
+func kamaPartialFromValue[T interface{}](v T) und.Und[T] {
 	return und.Defined(v)
 }
 
 // kamaPartialMakeMap sets d to nil for a nil s and to a new empty map otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialMakeMap[D ~map[K]DV, S ~map[K]SV, K comparable, DV, SV any](d *D, s S) {
+func kamaPartialMakeMap[D ~map[K]DV, S ~map[K]SV, K comparable, DV, SV interface{}](
+	d *D, s S,
+) {
 	if s == nil {
 		*d = nil
 		return
@@ -192,7 +220,7 @@ func kamaPartialMakeMap[D ~map[K]DV, S ~map[K]SV, K comparable, DV, SV any](d *D
 // kamaPartialMakeSlice sets d to nil for a nil s and to a new slice of the length of s otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialMakeSlice[D ~[]DE, S ~[]SE, DE, SE any](d *D, s S) {
+func kamaPartialMakeSlice[D ~[]DE, S ~[]SE, DE, SE interface{}](d *D, s S) {
 	if s == nil {
 		*d = nil
 		return
@@ -201,10 +229,14 @@ func kamaPartialMakeSlice[D ~[]DE, S ~[]SE, DE, SE any](d *D, s S) {
 }
 
 // kamaPartialMergeAppendMap returns l when r is undefined, a new map of the entries of l with the
-// entries of r set when both are defined, and r otherwise.
+// entries of r set when both are defined, and r otherwise. Two nil maps
+// give nil.
+//
+// A defined nil or empty side is not returned in place of the new map, so
+// the result never shares storage with l or r.
 //
 //kama:generated kama-partial
-func kamaPartialMergeAppendMap[M ~map[K]V, K comparable, V any](
+func kamaPartialMergeAppendMap[M ~map[K]V, K comparable, V interface{}](
 	l, r und.Und[M],
 ) und.Und[M] {
 	if r.IsUndefined() {
@@ -213,27 +245,43 @@ func kamaPartialMergeAppendMap[M ~map[K]V, K comparable, V any](
 	if !l.IsDefined() || !r.IsDefined() {
 		return r
 	}
-	return und.Defined(kamaPartialAppendMap(l.Value(), r.Value()))
+	lv, rv := l.Value(), r.Value()
+	if lv == nil && rv == nil {
+		return r
+	}
+	out := make(M, len(lv)+len(rv))
+	maps.Copy(out, lv)
+	maps.Copy(out, rv)
+	return und.Defined(out)
 }
 
 // kamaPartialMergeAppendSlice returns l when r is undefined, a new slice of the elements of l then r
-// when both are defined, and r otherwise.
+// when both are defined, and r otherwise. Two nil slices give nil.
+//
+// A defined nil or empty side is not returned in place of the new slice,
+// so the result never shares storage with l or r.
 //
 //kama:generated kama-partial
-func kamaPartialMergeAppendSlice[S ~[]E, E any](l, r und.Und[S]) und.Und[S] {
+func kamaPartialMergeAppendSlice[S ~[]E, E interface{}](l, r und.Und[S]) und.Und[S] {
 	if r.IsUndefined() {
 		return l
 	}
 	if !l.IsDefined() || !r.IsDefined() {
 		return r
 	}
-	return und.Defined(kamaPartialAppendSlice(l.Value(), r.Value()))
+	lv, rv := l.Value(), r.Value()
+	if lv == nil && rv == nil {
+		return r
+	}
+	out := make(S, 0, len(lv)+len(rv))
+	out = append(out, lv...)
+	return und.Defined(append(out, rv...))
 }
 
 // kamaPartialMergeOverwrite returns l when r is undefined and r otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialMergeOverwrite[T any](l, r und.Und[T]) und.Und[T] {
+func kamaPartialMergeOverwrite[T interface{}](l, r und.Und[T]) und.Und[T] {
 	if r.IsUndefined() {
 		return l
 	}
@@ -243,7 +291,7 @@ func kamaPartialMergeOverwrite[T any](l, r und.Und[T]) und.Und[T] {
 // kamaPartialMergeOverwriteElastic returns l when r is undefined and r otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialMergeOverwriteElastic[T any](
+func kamaPartialMergeOverwriteElastic[T interface{}](
 	l, r elastic.Elastic[T],
 ) elastic.Elastic[T] {
 	if r.IsUndefined() {
@@ -286,7 +334,7 @@ func kamaPartialMergeRecursiveRef[P interface{ Merge(P) P }](
 // kamaPartialOverwriteMap returns l when r is nil and r otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialOverwriteMap[M ~map[K]V, K comparable, V any](l, r M) M {
+func kamaPartialOverwriteMap[M ~map[K]V, K comparable, V interface{}](l, r M) M {
 	if r == nil {
 		return l
 	}
@@ -296,7 +344,7 @@ func kamaPartialOverwriteMap[M ~map[K]V, K comparable, V any](l, r M) M {
 // kamaPartialOverwriteSlice returns l when r is nil and r otherwise.
 //
 //kama:generated kama-partial
-func kamaPartialOverwriteSlice[S ~[]E, E any](l, r S) S {
+func kamaPartialOverwriteSlice[S ~[]E, E interface{}](l, r S) S {
 	if r == nil {
 		return l
 	}
@@ -309,7 +357,7 @@ func kamaPartialOverwriteSlice[S ~[]E, E any](l, r S) S {
 // types are not comparable in general, so reflect tells the zero value.
 //
 //kama:generated kama-partial
-func kamaPartialToEmbeddedPointer[V any, P interface{ ToValue() V }](d **V, p P) {
+func kamaPartialToEmbeddedPointer[V interface{}, P interface{ ToValue() V }](d **V, p P) {
 	if reflect.ValueOf(&p).Elem().IsZero() {
 		*d = nil
 		return
@@ -321,14 +369,14 @@ func kamaPartialToEmbeddedPointer[V any, P interface{ ToValue() V }](d **V, p P)
 // kamaPartialToOption returns a defined u as some and any other u as none.
 //
 //kama:generated kama-partial
-func kamaPartialToOption[T any](u und.Und[T]) opt.Option[T] {
+func kamaPartialToOption[T interface{}](u und.Und[T]) opt.Option[T] {
 	return u.Flatten()
 }
 
 // kamaPartialToPointer returns a pointer to a copy of the value of u, or nil when u is undefined or null.
 //
 //kama:generated kama-partial
-func kamaPartialToPointer[T any](u und.Und[T]) *T {
+func kamaPartialToPointer[T interface{}](u und.Und[T]) *T {
 	if !u.IsDefined() {
 		return nil
 	}
@@ -339,7 +387,7 @@ func kamaPartialToPointer[T any](u und.Und[T]) *T {
 // kamaPartialToTarget sets d to the value u describes, or to the zero value when u is undefined or null.
 //
 //kama:generated kama-partial
-func kamaPartialToTarget[V any, P interface{ ToValue() V }](d *V, u und.Und[P]) {
+func kamaPartialToTarget[V interface{}, P interface{ ToValue() V }](d *V, u und.Und[P]) {
 	if !u.IsDefined() {
 		var zero V
 		*d = zero
@@ -351,7 +399,9 @@ func kamaPartialToTarget[V any, P interface{ ToValue() V }](d *V, u und.Und[P]) 
 // kamaPartialToTargetPointer sets d to a new value u describes, or to nil when u is undefined or null.
 //
 //kama:generated kama-partial
-func kamaPartialToTargetPointer[V any, P interface{ ToValue() V }](d **V, u und.Und[P]) {
+func kamaPartialToTargetPointer[V interface{}, P interface{ ToValue() V }](
+	d **V, u und.Und[P],
+) {
 	if !u.IsDefined() {
 		*d = nil
 		return
@@ -363,7 +413,9 @@ func kamaPartialToTargetPointer[V any, P interface{ ToValue() V }](d **V, u und.
 // kamaPartialToTargetRef sets d to a new value u describes, or to nil when u is undefined, null or nil.
 //
 //kama:generated kama-partial
-func kamaPartialToTargetRef[V any, P interface{ ToValue() V }](d **V, u und.Und[*P]) {
+func kamaPartialToTargetRef[V interface{}, P interface{ ToValue() V }](
+	d **V, u und.Und[*P],
+) {
 	if !u.IsDefined() || u.Value() == nil {
 		*d = nil
 		return
@@ -375,6 +427,6 @@ func kamaPartialToTargetRef[V any, P interface{ ToValue() V }](d **V, u und.Und[
 // kamaPartialToValue returns the value of u, or the zero value when u is undefined or null.
 //
 //kama:generated kama-partial
-func kamaPartialToValue[T any](u und.Und[T]) T {
+func kamaPartialToValue[T interface{}](u und.Und[T]) T {
 	return u.Value()
 }

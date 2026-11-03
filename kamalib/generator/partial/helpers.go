@@ -3,6 +3,7 @@ package partial
 import (
 	"bytes"
 	"fmt"
+	"go/types"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -22,6 +23,7 @@ import (
 const HelpersFile = "kama_partial_helpers.go"
 
 const (
+	fmtPath     = "fmt"
 	mapsPath    = "maps"
 	reflectPath = "reflect"
 )
@@ -38,8 +40,8 @@ type helper struct {
 // helperIdents are the identifiers the helper sources declare inside
 // their functions, which import names must not shadow.
 var helperIdents = []string{
-	"D", "DE", "DV", "E", "K", "M", "P", "PP", "S", "SE", "SV", "T", "V", "zero",
-	"d", "l", "o", "out", "p", "r", "s", "u", "v", "x",
+	"D", "DE", "DV", "E", "K", "M", "P", "PP", "PT", "S", "SE", "SV", "T", "V", "zero",
+	"d", "err", "l", "name", "o", "out", "p", "r", "s", "u", "v", "x",
 }
 
 // helpers are keyed by name. Helpers writing into a destination pointer
@@ -48,21 +50,21 @@ var helpers = map[string]helper{
 	"kamaPartialFromValue": {
 		imports: []string{undPath},
 		doc:     "returns v as a defined value.",
-		src: `func kamaPartialFromValue[T any](v T) $und.Und[T] {
+		src: `func kamaPartialFromValue[T interface{}](v T) $und.Und[T] {
 	return $und.Defined(v)
 }`,
 	},
 	"kamaPartialToValue": {
 		imports: []string{undPath},
 		doc:     "returns the value of u, or the zero value when u is undefined or null.",
-		src: `func kamaPartialToValue[T any](u $und.Und[T]) T {
+		src: `func kamaPartialToValue[T interface{}](u $und.Und[T]) T {
 	return u.Value()
 }`,
 	},
 	"kamaPartialFromSlice": {
 		imports: []string{undPath},
 		doc:     "returns a nil v as null and any other v as a defined value.",
-		src: `func kamaPartialFromSlice[S ~[]E, E any](v S) $und.Und[S] {
+		src: `func kamaPartialFromSlice[S ~[]E, E interface{}](v S) $und.Und[S] {
 	if v == nil {
 		return $und.Null[S]()
 	}
@@ -72,7 +74,7 @@ var helpers = map[string]helper{
 	"kamaPartialFromMap": {
 		imports: []string{undPath},
 		doc:     "returns a nil v as null and any other v as a defined value.",
-		src: `func kamaPartialFromMap[M ~map[K]V, K comparable, V any](v M) $und.Und[M] {
+		src: `func kamaPartialFromMap[M ~map[K]V, K comparable, V interface{}](v M) $und.Und[M] {
 	if v == nil {
 		return $und.Null[M]()
 	}
@@ -82,7 +84,7 @@ var helpers = map[string]helper{
 	"kamaPartialFromPointer": {
 		imports: []string{undPath},
 		doc:     "returns a nil v as null and any other v as its defined pointee.",
-		src: `func kamaPartialFromPointer[T any](v *T) $und.Und[T] {
+		src: `func kamaPartialFromPointer[T interface{}](v *T) $und.Und[T] {
 	if v == nil {
 		return $und.Null[T]()
 	}
@@ -92,7 +94,7 @@ var helpers = map[string]helper{
 	"kamaPartialToPointer": {
 		imports: []string{undPath},
 		doc:     "returns a pointer to a copy of the value of u, or nil when u is undefined or null.",
-		src: `func kamaPartialToPointer[T any](u $und.Und[T]) *T {
+		src: `func kamaPartialToPointer[T interface{}](u $und.Und[T]) *T {
 	if !u.IsDefined() {
 		return nil
 	}
@@ -103,21 +105,21 @@ var helpers = map[string]helper{
 	"kamaPartialFromOption": {
 		imports: []string{undPath, optPath},
 		doc:     "returns a none o as null and a some o as a defined value.",
-		src: `func kamaPartialFromOption[T any](o $opt.Option[T]) $und.Und[T] {
+		src: `func kamaPartialFromOption[T interface{}](o $opt.Option[T]) $und.Und[T] {
 	return $und.FromOption(o, true)
 }`,
 	},
 	"kamaPartialToOption": {
 		imports: []string{undPath, optPath},
 		doc:     "returns a defined u as some and any other u as none.",
-		src: `func kamaPartialToOption[T any](u $und.Und[T]) $opt.Option[T] {
+		src: `func kamaPartialToOption[T interface{}](u $und.Und[T]) $opt.Option[T] {
 	return u.Flatten()
 }`,
 	},
 	"kamaPartialFromTarget": {
 		imports: []string{undPath},
 		doc:     "sets d to the defined partial value of v.",
-		src: `func kamaPartialFromTarget[V any, P any, PP interface {
+		src: `func kamaPartialFromTarget[V interface{}, P interface{}, PP interface {
 	*P
 	FromValue(V)
 }](d *$und.Und[P], v V) {
@@ -129,7 +131,7 @@ var helpers = map[string]helper{
 	"kamaPartialFromSliceTarget": {
 		imports: []string{undPath},
 		doc:     "sets d to null for a nil v and to the defined partial value of v otherwise.",
-		src: `func kamaPartialFromSliceTarget[V ~[]E, E any, P any, PP interface {
+		src: `func kamaPartialFromSliceTarget[V ~[]E, E interface{}, P interface{}, PP interface {
 	*P
 	FromValue(V)
 }](d *$und.Und[P], v V) {
@@ -145,10 +147,13 @@ var helpers = map[string]helper{
 	"kamaPartialFromMapTarget": {
 		imports: []string{undPath},
 		doc:     "sets d to null for a nil v and to the defined partial value of v otherwise.",
-		src: `func kamaPartialFromMapTarget[V ~map[K]E, K comparable, E any, P any, PP interface {
-	*P
-	FromValue(V)
-}](d *$und.Und[P], v V) {
+		src: `func kamaPartialFromMapTarget[
+	V ~map[K]E, K comparable, E interface{}, P interface{},
+	PP interface {
+		*P
+		FromValue(V)
+	},
+](d *$und.Und[P], v V) {
 	if v == nil {
 		*d = $und.Null[P]()
 		return
@@ -161,7 +166,7 @@ var helpers = map[string]helper{
 	"kamaPartialToTarget": {
 		imports: []string{undPath},
 		doc:     "sets d to the value u describes, or to the zero value when u is undefined or null.",
-		src: `func kamaPartialToTarget[V any, P interface{ ToValue() V }](d *V, u $und.Und[P]) {
+		src: `func kamaPartialToTarget[V interface{}, P interface{ ToValue() V }](d *V, u $und.Und[P]) {
 	if !u.IsDefined() {
 		var zero V
 		*d = zero
@@ -173,7 +178,7 @@ var helpers = map[string]helper{
 	"kamaPartialFromTargetPointer": {
 		imports: []string{undPath},
 		doc:     "sets d to null for a nil v and to the defined partial value of *v otherwise.",
-		src: `func kamaPartialFromTargetPointer[V any, P any, PP interface {
+		src: `func kamaPartialFromTargetPointer[V interface{}, P interface{}, PP interface {
 	*P
 	FromValue(V)
 }](d *$und.Und[P], v *V) {
@@ -189,7 +194,9 @@ var helpers = map[string]helper{
 	"kamaPartialToTargetPointer": {
 		imports: []string{undPath},
 		doc:     "sets d to a new value u describes, or to nil when u is undefined or null.",
-		src: `func kamaPartialToTargetPointer[V any, P interface{ ToValue() V }](d **V, u $und.Und[P]) {
+		src: `func kamaPartialToTargetPointer[V interface{}, P interface{ ToValue() V }](
+	d **V, u $und.Und[P],
+) {
 	if !u.IsDefined() {
 		*d = nil
 		return
@@ -201,7 +208,7 @@ var helpers = map[string]helper{
 	"kamaPartialFromTargetRef": {
 		imports: []string{undPath},
 		doc:     "sets d to null for a nil v and to a new defined partial value of *v otherwise.",
-		src: `func kamaPartialFromTargetRef[V any, P any, PP interface {
+		src: `func kamaPartialFromTargetRef[V interface{}, P interface{}, PP interface {
 	*P
 	FromValue(V)
 }](d *$und.Und[*P], v *V) {
@@ -217,7 +224,9 @@ var helpers = map[string]helper{
 	"kamaPartialToTargetRef": {
 		imports: []string{undPath},
 		doc:     "sets d to a new value u describes, or to nil when u is undefined, null or nil.",
-		src: `func kamaPartialToTargetRef[V any, P interface{ ToValue() V }](d **V, u $und.Und[*P]) {
+		src: `func kamaPartialToTargetRef[V interface{}, P interface{ ToValue() V }](
+	d **V, u $und.Und[*P],
+) {
 	if !u.IsDefined() || u.Value() == nil {
 		*d = nil
 		return
@@ -228,7 +237,7 @@ var helpers = map[string]helper{
 	},
 	"kamaPartialFromEmbeddedPointer": {
 		doc: "sets d to the partial value of *v, or to the zero partial value for a nil v.",
-		src: `func kamaPartialFromEmbeddedPointer[V any, P any, PP interface {
+		src: `func kamaPartialFromEmbeddedPointer[V interface{}, P interface{}, PP interface {
 	*P
 	FromValue(V)
 }](d *P, v *V) {
@@ -245,7 +254,7 @@ var helpers = map[string]helper{
 			"//\n" +
 			"// The zero value of a partial type has every field undefined, and partial\n" +
 			"// types are not comparable in general, so reflect tells the zero value.",
-		src: `func kamaPartialToEmbeddedPointer[V any, P interface{ ToValue() V }](d **V, p P) {
+		src: `func kamaPartialToEmbeddedPointer[V interface{}, P interface{ ToValue() V }](d **V, p P) {
 	if $reflect.ValueOf(&p).Elem().IsZero() {
 		*d = nil
 		return
@@ -256,7 +265,7 @@ var helpers = map[string]helper{
 	},
 	"kamaPartialMakeSlice": {
 		doc: "sets d to nil for a nil s and to a new slice of the length of s otherwise.",
-		src: `func kamaPartialMakeSlice[D ~[]DE, S ~[]SE, DE, SE any](d *D, s S) {
+		src: `func kamaPartialMakeSlice[D ~[]DE, S ~[]SE, DE, SE interface{}](d *D, s S) {
 	if s == nil {
 		*d = nil
 		return
@@ -266,7 +275,9 @@ var helpers = map[string]helper{
 	},
 	"kamaPartialMakeMap": {
 		doc: "sets d to nil for a nil s and to a new empty map otherwise.",
-		src: `func kamaPartialMakeMap[D ~map[K]DV, S ~map[K]SV, K comparable, DV, SV any](d *D, s S) {
+		src: `func kamaPartialMakeMap[D ~map[K]DV, S ~map[K]SV, K comparable, DV, SV interface{}](
+	d *D, s S,
+) {
 	if s == nil {
 		*d = nil
 		return
@@ -277,7 +288,7 @@ var helpers = map[string]helper{
 	"kamaPartialMergeOverwrite": {
 		imports: []string{undPath},
 		doc:     "returns l when r is undefined and r otherwise.",
-		src: `func kamaPartialMergeOverwrite[T any](l, r $und.Und[T]) $und.Und[T] {
+		src: `func kamaPartialMergeOverwrite[T interface{}](l, r $und.Und[T]) $und.Und[T] {
 	if r.IsUndefined() {
 		return l
 	}
@@ -287,7 +298,7 @@ var helpers = map[string]helper{
 	"kamaPartialMergeOverwriteElastic": {
 		imports: []string{elasticPath},
 		doc:     "returns l when r is undefined and r otherwise.",
-		src: `func kamaPartialMergeOverwriteElastic[T any](
+		src: `func kamaPartialMergeOverwriteElastic[T interface{}](
 	l, r $elastic.Elastic[T],
 ) $elastic.Elastic[T] {
 	if r.IsUndefined() {
@@ -299,22 +310,35 @@ var helpers = map[string]helper{
 	"kamaPartialMergeAppendSlice": {
 		imports: []string{undPath},
 		doc: "returns l when r is undefined, a new slice of the elements of l then r\n" +
-			"// when both are defined, and r otherwise.",
-		src: `func kamaPartialMergeAppendSlice[S ~[]E, E any](l, r $und.Und[S]) $und.Und[S] {
+			"// when both are defined, and r otherwise. Two nil slices give nil.\n" +
+			"//\n" +
+			"// A defined nil or empty side is not returned in place of the new slice,\n" +
+			"// so the result never shares storage with l or r.",
+		src: `func kamaPartialMergeAppendSlice[S ~[]E, E interface{}](l, r $und.Und[S]) $und.Und[S] {
 	if r.IsUndefined() {
 		return l
 	}
 	if !l.IsDefined() || !r.IsDefined() {
 		return r
 	}
-	return $und.Defined(kamaPartialAppendSlice(l.Value(), r.Value()))
+	lv, rv := l.Value(), r.Value()
+	if lv == nil && rv == nil {
+		return r
+	}
+	out := make(S, 0, len(lv)+len(rv))
+	out = append(out, lv...)
+	return $und.Defined(append(out, rv...))
 }`,
 	},
 	"kamaPartialMergeAppendMap": {
-		imports: []string{undPath},
+		imports: []string{undPath, mapsPath},
 		doc: "returns l when r is undefined, a new map of the entries of l with the\n" +
-			"// entries of r set when both are defined, and r otherwise.",
-		src: `func kamaPartialMergeAppendMap[M ~map[K]V, K comparable, V any](
+			"// entries of r set when both are defined, and r otherwise. Two nil maps\n" +
+			"// give nil.\n" +
+			"//\n" +
+			"// A defined nil or empty side is not returned in place of the new map, so\n" +
+			"// the result never shares storage with l or r.",
+		src: `func kamaPartialMergeAppendMap[M ~map[K]V, K comparable, V interface{}](
 	l, r $und.Und[M],
 ) $und.Und[M] {
 	if r.IsUndefined() {
@@ -323,7 +347,14 @@ var helpers = map[string]helper{
 	if !l.IsDefined() || !r.IsDefined() {
 		return r
 	}
-	return $und.Defined(kamaPartialAppendMap(l.Value(), r.Value()))
+	lv, rv := l.Value(), r.Value()
+	if lv == nil && rv == nil {
+		return r
+	}
+	out := make(M, len(lv)+len(rv))
+	$maps.Copy(out, lv)
+	$maps.Copy(out, rv)
+	return $und.Defined(out)
 }`,
 	},
 	"kamaPartialMergeRecursive": {
@@ -359,7 +390,7 @@ var helpers = map[string]helper{
 	},
 	"kamaPartialOverwriteSlice": {
 		doc: "returns l when r is nil and r otherwise.",
-		src: `func kamaPartialOverwriteSlice[S ~[]E, E any](l, r S) S {
+		src: `func kamaPartialOverwriteSlice[S ~[]E, E interface{}](l, r S) S {
 	if r == nil {
 		return l
 	}
@@ -368,7 +399,7 @@ var helpers = map[string]helper{
 	},
 	"kamaPartialOverwriteMap": {
 		doc: "returns l when r is nil and r otherwise.",
-		src: `func kamaPartialOverwriteMap[M ~map[K]V, K comparable, V any](l, r M) M {
+		src: `func kamaPartialOverwriteMap[M ~map[K]V, K comparable, V interface{}](l, r M) M {
 	if r == nil {
 		return l
 	}
@@ -378,7 +409,7 @@ var helpers = map[string]helper{
 	"kamaPartialAppendSlice": {
 		doc: "returns l when r is nil, r when l is nil, and a new slice of the\n" +
 			"// elements of l then r otherwise.",
-		src: `func kamaPartialAppendSlice[S ~[]E, E any](l, r S) S {
+		src: `func kamaPartialAppendSlice[S ~[]E, E interface{}](l, r S) S {
 	if r == nil {
 		return l
 	}
@@ -390,11 +421,33 @@ var helpers = map[string]helper{
 	return append(out, r...)
 }`,
 	},
+	"kamaPartialFromText": {
+		imports: []string{undPath},
+		doc:     "sets d to the defined value s unmarshals to as text.",
+		src: `func kamaPartialFromText[T interface{}, PT interface {
+	*T
+	UnmarshalText([]byte) error
+}](d *$und.Und[T], s string) error {
+	var v T
+	if err := PT(&v).UnmarshalText([]byte(s)); err != nil {
+		return err
+	}
+	*d = $und.Defined(v)
+	return nil
+}`,
+	},
+	"kamaPartialFlagError": {
+		imports: []string{fmtPath},
+		doc:     "wraps err with the flag name.",
+		src: `func kamaPartialFlagError(name string, err error) error {
+	return $fmt.Errorf("flag --%s: %w", name, err)
+}`,
+	},
 	"kamaPartialAppendMap": {
 		imports: []string{mapsPath},
 		doc: "returns l when r is nil, r when l is nil, and a new map of the entries\n" +
 			"// of l with the entries of r set otherwise.",
-		src: `func kamaPartialAppendMap[M ~map[K]V, K comparable, V any](l, r M) M {
+		src: `func kamaPartialAppendMap[M ~map[K]V, K comparable, V interface{}](l, r M) M {
 	if r == nil {
 		return l
 	}
@@ -409,33 +462,26 @@ var helpers = map[string]helper{
 	},
 }
 
-// helperDeps are the helpers other helpers call.
-var helperDeps = map[string][]string{
-	"kamaPartialMergeAppendSlice": {"kamaPartialAppendSlice"},
-	"kamaPartialMergeAppendMap":   {"kamaPartialAppendMap"},
-}
-
 func helperNames() []string { return slices.Sorted(maps.Keys(helpers)) }
 
-// renderHelpers prints the helpers file of pkg holding used and the
-// helpers they call, sorted by name.
-func renderHelpers(pkg *packages.Package, used map[string]bool) ([]byte, error) {
-	names := map[string]bool{}
-	for name := range used {
-		names[name] = true
-		for _, dep := range helperDeps[name] {
-			names[dep] = true
-		}
-	}
-
+// renderHelpers prints the helpers file of pkg holding every helper,
+// sorted by name.
+//
+// The file has no build constraint, while the partial files calling the
+// helpers keep those of their sources. A run loads one build variant only,
+// so a helper used by a partial file of another variant would be dropped
+// if the file held only the helpers the loaded targets use. Holding every
+// helper keeps the file the same across variants.
+func renderHelpers(pkg *packages.Package) ([]byte, error) {
 	paths := map[string]bool{}
-	for name := range names {
+	for name := range helpers {
 		for _, path := range helpers[name].imports {
 			paths[path] = true
 		}
 	}
 
 	parser := importdecl.NewParser(pkg.Types)
+	parser.Reserve(types.Universe.Names()...)
 	parser.Reserve(pkg.Types.Scope().Names()...)
 	parser.Reserve(helperIdents...)
 	for _, path := range slices.Sorted(maps.Keys(paths)) {
@@ -463,7 +509,7 @@ func renderHelpers(pkg *packages.Package, used map[string]bool) ([]byte, error) 
 
 	var src strings.Builder
 	src.WriteString("package " + pkg.Name + "\n")
-	for _, name := range slices.Sorted(maps.Keys(names)) {
+	for _, name := range helperNames() {
 		h := helpers[name]
 		fmt.Fprintf(&src, "\n// %s %s\n//\n%s\n%s\n",
 			name, h.doc, genmark.Marker(GeneratorName), replacer.Replace(h.src))

@@ -365,31 +365,15 @@ func TestHelpersFile(t *testing.T) {
 		names = append(names, name)
 	}
 	slices.Sort(names)
-	assert.DeepEqual(t, names, []string{
-		"kamaPartialFromSlice",
-		"kamaPartialFromValue",
-		"kamaPartialMergeOverwrite",
-		"kamaPartialToValue",
-	})
-
-	// Every helper the methods call is declared.
-	for _, name := range []string{"a.kama_partial.go", "b.kama_partial.go"} {
-		for _, n := range helperNames() {
-			if strings.Contains(files[name], n+"(") {
-				assert.Assert(t, slices.Contains(names, n), "%s calls %s", name, n)
-			}
-		}
-	}
-
-	// A helper calling another brings it along.
-	files = generatedWith(t, map[string]string{
-		"a.go": "package x\n\n//kama:partial\ntype A struct{ X map[string]int }\n",
-	}, Options{Merge: MergeAppend})
-	h = files[HelpersFile]
-	assert.Assert(t, strings.Contains(h, "func kamaPartialMergeAppendMap["), h)
-	assert.Assert(t, strings.Contains(h, "func kamaPartialAppendMap["), h)
+	// The file holds every helper, used or not, so it does not depend on
+	// the build variant loaded.
+	assert.DeepEqual(t, names, helperNames())
 	assert.Assert(t, strings.Contains(h, `import (
+	"fmt"
+	"github.com/ngicks/option/elastic"
+	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 	"maps"
+	"reflect"
 )`), h)
 }

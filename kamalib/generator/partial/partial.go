@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/build/constraint"
+	"go/parser"
 	"go/token"
 	"go/types"
 	"maps"
@@ -152,9 +153,11 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 	}
 
 	type pkgHelpers struct {
-		pkg  *packages.Package
-		dir  string
-		used map[string]bool
+		pkg     *packages.Package
+		dir     string
+		flagSet map[string]string
+		// contents are the files generated into the package.
+		contents [][]byte
 	}
 	byPkg := map[string]*pkgHelpers{}
 
@@ -165,7 +168,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 			return cmp.Compare(a.Detail.Ts.Pos(), b.Detail.Ts.Pos())
 		})
 
-		content, used, err := renderFile(sel, nodes)
+		content, flagSet, err := renderFile(sel, nodes)
 		if err != nil {
 			return nil, err
 		}
@@ -180,19 +183,36 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 		pkg := nodes[0].Detail.Pkg
 		h := byPkg[pkg.PkgPath]
 		if h == nil {
-			h = &pkgHelpers{pkg: pkg, dir: filepath.Dir(name), used: map[string]bool{}}
+			h = &pkgHelpers{
+				pkg:     pkg,
+				dir:     filepath.Dir(name),
+				flagSet: map[string]string{},
+			}
 			byPkg[pkg.PkgPath] = h
 		}
-		maps.Copy(h.used, used)
+		maps.Copy(h.flagSet, flagSet)
+		h.contents = append(h.contents, content)
 	}
 
 	for _, pkgPath := range slices.Sorted(maps.Keys(byPkg)) {
 		h := byPkg[pkgPath]
-		content, err := renderHelpers(h.pkg, h.used)
+		content, err := renderHelpers(h.pkg)
 		if err != nil {
 			return nil, err
 		}
 		files = append(files, File{Path: filepath.Join(h.dir, HelpersFile), Content: content})
+		h.contents = append(h.contents, content)
+		if len(h.flagSet) > 0 {
+			content, err = renderFlagSet(h.pkg, h.flagSet)
+			if err != nil {
+				return nil, err
+			}
+			files = append(files, File{Path: filepath.Join(h.dir, FlagSetFile), Content: content})
+			h.contents = append(h.contents, content)
+		}
+		if err := checkPredeclared(h.pkg, h.contents); err != nil {
+			return nil, err
+		}
 	}
 	slices.SortFunc(files, func(a, b File) int { return cmp.Compare(a.Path, b.Path) })
 	return files, nil
@@ -214,8 +234,9 @@ func sourcePackages(pkgs []*packages.Package) []*packages.Package {
 }
 
 // renderFile prints the partial declarations of nodes, which share a
-// source file, and returns the helpers their methods call.
-func renderFile(sel *selection, nodes []*typegraph.Node) ([]byte, map[string]bool, error) {
+// source file, and returns the methods of the flag set interface their
+// methods call, keyed by name.
+func renderFile(sel *selection, nodes []*typegraph.Node) ([]byte, map[string]string, error) {
 	pkg := nodes[0].Detail.Pkg
 
 	// The und import is required up front because a package that does not
@@ -224,17 +245,17 @@ func renderFile(sel *selection, nodes []*typegraph.Node) ([]byte, map[string]boo
 	// without.
 	b, p, err := renderFileWith(sel, pkg, nodes, true)
 	if err != nil || p.usedUnd {
-		return b, helpersOf(p), err
+		return b, flagSetOf(p), err
 	}
 	b, p, err = renderFileWith(sel, pkg, nodes, false)
-	return b, helpersOf(p), err
+	return b, flagSetOf(p), err
 }
 
-func helpersOf(p *mapper) map[string]bool {
+func flagSetOf(p *mapper) map[string]string {
 	if p == nil {
 		return nil
 	}
-	return p.helpers
+	return p.flagSet
 }
 
 func renderFileWith(
@@ -246,7 +267,10 @@ func renderFileWith(
 	parser := importdecl.NewParser(pkg.Types)
 	// Import names must not be taken by declarations of the package, nor
 	// by the type parameters and locals of the generated declarations,
-	// which would shadow them.
+	// which would shadow them. A predeclared name taken by an import would
+	// shadow the predeclared identifier the declarations spell, as a
+	// package named string would for und.Und[string].
+	parser.Reserve(types.Universe.Names()...)
 	parser.Reserve(pkg.Types.Scope().Names()...)
 	for _, n := range nodes {
 		for tp := range n.Detail.Type.TypeParams().TypeParams() {
@@ -255,6 +279,7 @@ func renderFileWith(
 		for _, l := range locals(pkg.Types.Scope(), n.Detail.Type.TypeParams()) {
 			parser.Reserve(l)
 		}
+		parser.Reserve(methodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams())...)
 	}
 	if requireUnd {
 		err := parser.Require(importdecl.Import{
@@ -269,7 +294,9 @@ func renderFileWith(
 		return nil, nil, err
 	}
 
-	p := &mapper{sel: sel, pkg: pkg, m: m, helpers: map[string]bool{}}
+	p := &mapper{
+		sel: sel, pkg: pkg, m: m, flagSet: map[string]string{},
+	}
 	f := &dst.File{Name: dst.NewIdent(pkg.Name)}
 	f.Decs.Start = dst.Decorations{header, "\n"}
 	// The partial types refer to the source types, so they must build under
@@ -380,6 +407,60 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: type parameter %s shadows %s the partial declarations refer to",
 				ErrConflict, p.position(tp.Obj().Pos()), tp.Obj().Name(), tp.Obj().Name(),
+			))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// checkPredeclared reports package-level declarations of pkg named like a
+// predeclared identifier the generated files contents spell, which the
+// declaration would shadow there.
+//
+// Every identifier the files use other than selected names, field and
+// parameter names and declared names is taken as a use, so a predeclared
+// name spelled for a type of pkg itself, as und.Und[string] for a field of
+// a package-level type string, is reported too.
+func checkPredeclared(pkg *packages.Package, contents [][]byte) error {
+	used := map[string]bool{}
+	for _, c := range contents {
+		f, err := parser.ParseFile(token.NewFileSet(), "", c, parser.SkipObjectResolution)
+		if err != nil {
+			return fmt.Errorf("partial: parse generated file of %s: %w", pkg.PkgPath, err)
+		}
+		declared := map[*ast.Ident]bool{}
+		ast.Inspect(f, func(n ast.Node) bool {
+			switch n := n.(type) {
+			case *ast.SelectorExpr:
+				declared[n.Sel] = true
+			case *ast.Field:
+				for _, name := range n.Names {
+					declared[name] = true
+				}
+			case *ast.FuncDecl:
+				declared[n.Name] = true
+			case *ast.TypeSpec:
+				declared[n.Name] = true
+			case *ast.ImportSpec:
+				return false
+			case *ast.Ident:
+				if !declared[n] {
+					used[n.Name] = true
+				}
+			}
+			return true
+		})
+	}
+
+	var errs []error
+	for _, name := range slices.Sorted(maps.Keys(used)) {
+		if types.Universe.Lookup(name) == nil {
+			continue
+		}
+		if obj := pkg.Types.Scope().Lookup(name); obj != nil {
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: %s.%s shadows the predeclared %s the generated code spells",
+				ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, name, name,
 			))
 		}
 	}

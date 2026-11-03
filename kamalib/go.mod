@@ -8,6 +8,7 @@ require (
 	github.com/ngicks/go-fsys-helper/vroot-adapter/overlayfs v0.0.0-20260820002924-4f04f83b610e
 	github.com/ngicks/option v0.0.2
 	github.com/pelletier/go-toml/v2 v2.4.3
+	github.com/spf13/pflag v1.0.10
 	go.yaml.in/yaml/v4 v4.0.0-rc.5
 	golang.org/x/sync v0.24.0
 	golang.org/x/tools v0.52.0

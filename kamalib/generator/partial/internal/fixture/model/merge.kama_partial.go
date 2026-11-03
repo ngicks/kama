@@ -84,6 +84,32 @@ func (p MergingPartial) ApplyTo(v Merging) Merging {
 	return base.Merge(p).ToValue()
 }
 
+// RegisterFlags defines on f a flag for each field of p with a flag
+// option. Every flag defaults to the zero value; FromFlagSet reads the
+// flags back after f is parsed.
+//
+//kama:generated kama-partial
+func (p *MergingPartial) RegisterFlags(f PartialFlagSet) {
+	f.IntP("flagged", "", 0, "")
+}
+
+// FromFlagSet sets each field of p with a flag option to the value of
+// its flag when the flag was set on f. Other fields are left as they
+// are, so merging p onto another partial value keeps the fields of the
+// flags not set.
+//
+//kama:generated kama-partial
+func (p *MergingPartial) FromFlagSet(f PartialFlagSet) error {
+	if f.Changed("flagged") {
+		v, err := f.GetInt("flagged")
+		if err != nil {
+			return kamaPartialFlagError("flagged", err)
+		}
+		p.Flagged = kamaPartialFromValue(v)
+	}
+	return nil
+}
+
 // EmbedsPartial is the partial variant of Embeds.
 //
 //kama:generated kama-partial

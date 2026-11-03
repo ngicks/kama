@@ -32,8 +32,8 @@
 // read like any other file and regenerated. Options.Registry tells the
 // registered generators. Other args of //kama:partial, or //kama:partial
 // on a field, are errors. //kama:partial:merge is described under Merge,
-// //kama:partial:flag is left alone, and any other //kama:partial:<name>
-// is an error.
+// //kama:partial:flag under Flags, and any other //kama:partial:<name> is
+// an error.
 //
 // # Type mapping
 //
@@ -77,8 +77,17 @@
 // Two fields of a partial struct with one name, as for an embedded M next
 // to a field MPartial, a field named like one of the methods, and a type
 // parameter named like a partial type or helper the declarations refer to
-// are errors. Import names avoid package-level identifiers, type
-// parameters and the identifiers the methods declare.
+// are errors. Import names avoid predeclared and package-level
+// identifiers, type parameters and the identifiers the methods declare. A
+// package-level declaration named like a predeclared identifier the
+// generated code spells, such as make, len, string or error, is an error;
+// the generated code spells interface{} rather than any. The methods spell
+// a blank type parameter by a fresh name, and the partial type declaration
+// keeps it blank.
+//
+// A target whose underlying struct type is declared in another package,
+// as in type A sub.S, is an error when that struct has an unexported
+// field, which the methods could not spell.
 //
 // A target with an underlying []T or map[K]V maps to []T' or map[K]V',
 // where T' and V' map T and V as a struct field type.
@@ -129,7 +138,8 @@
 //
 //   - overwrite: the field of r replaces the field of p.
 //   - append: when both are defined, a new slice holds the elements of p
-//     then r, or a new map holds the entries of p with those of r set.
+//     then r, or a new map holds the entries of p with those of r set,
+//     even when one of them is nil or empty. Two nil values give nil.
 //     Otherwise as overwrite.
 //   - recursive: when both are defined, the Merge of their partial values.
 //     Otherwise as overwrite. An embedded partial has no undefined state
@@ -154,6 +164,65 @@
 // Merge writes to neither p nor r. Its result shares the slices, maps and
 // pointers it does not build anew.
 //
+// # Flags
+//
+// A source struct field opts in to a command-line flag with
+//
+//	//kama:partial:flag name=<name> short=<c> usage="<text>"
+//
+// The args are parsed by kamaopt.ParseArgs. name is required, and has no
+// leading -, no space and no =. short is optional and is a single ASCII
+// character. usage is optional. An unknown key, a second directive on a
+// field, the directive on a type or a file, the directive on a field of a
+// type without partial variant, and two fields of one partial type with
+// one flag name or shorthand are errors.
+//
+// A partial type with at least one flagged field gets these methods:
+//
+//	func (p *XPartial) RegisterFlags(f PartialFlagSet)
+//	func (p *XPartial) FromFlagSet(f PartialFlagSet) error
+//
+// RegisterFlags defines the flags on f, each with the zero value as
+// default. FromFlagSet sets a field to the defined value of its flag when
+// f.Changed reports the flag as set, and leaves every other field as it
+// is. Merging the result onto a partial value read from a file therefore
+// keeps the fields of the flags not given. RegisterFlags keeps nothing of
+// what it defines, so the partial type holds no fields beyond those of
+// the source: FromFlagSet reads the flags back through the Get methods of
+// f, such as GetString. A second RegisterFlags on one f redefines the
+// flags, which pflag rejects.
+//
+// The flag sets the partial field, so the field type is taken after its
+// mapping: *T, opt.Option[T] and und.Und[T] give T. T is then one of
+//
+//	string, bool, int, int64, uint, uint64, float64   StringP, BoolP, ...
+//	time.Duration                                     DurationP
+//	[]string                                          StringSliceP
+//	map[string]string                                 StringToStringP
+//	a type whose pointer implements encoding.TextUnmarshaler
+//
+// A TextUnmarshaler is checked before the underlying type. It is defined
+// with StringP and FromFlagSet parses it with UnmarshalText, returning an
+// error naming the flag on failure. Another named type converts from the
+// flag of its underlying type, so a type defined as time.Duration takes an
+// int64 flag. Any other type, *opt.Option[T] and elastic.Elastic included,
+// is an error. Flags apply to the direct fields of a partial type only: a
+// flag on a field holding a partial value, embedded or not, is an error,
+// and the flags of nested partial types are not registered by their
+// owner. A named slice or map type declared in a loaded package and
+// reached from a target is a target too, so a field of such a type needs
+// //kama:partial ignore on the type to take a flag.
+//
+// PartialFlagSet is declared in the file kama_partial_flagset.go of each
+// package whose partial types have flags. It holds only the methods the
+// generated methods of the package call, with signatures of basic and
+// time types, so *pflag.FlagSet of github.com/spf13/pflag implements it
+// and the generated code imports no flag package. The file is written
+// again on every run that generates flags in the package; a declaration
+// in it the generator did not mark is an error, and so is PartialFlagSet
+// declared elsewhere in the package. A file left from an earlier run whose
+// package no longer has flags is left in place.
+//
 // # Output
 //
 // Each source file declaring targets gets a file of the same package next
@@ -161,8 +230,10 @@
 // suffixes of its name, as in x.kama_partial_linux.go for x_linux.go, and
 // the //go:build line of the source file. The methods call unexported
 // generic helper functions, declared in the file kama_partial_helpers.go
-// of each package holding targets. The file holds the helpers the package
-// uses, has no build constraint, and is written again on every run; a
+// of each package holding targets. The file holds every helper whether the
+// package uses it or not, so that partial files of build variants other
+// than the one loaded keep finding theirs. It has no build constraint and
+// is written again on every run; a
 // declaration in it the generator did not mark is an error, and so is a
 // helper name declared elsewhere in the package. Every generated
 // declaration carries the marker //kama:generated kama-partial.

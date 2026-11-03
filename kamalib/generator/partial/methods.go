@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
+	"slices"
 	"strings"
 
 	"github.com/dave/dst"
@@ -18,7 +19,15 @@ import (
 var methodNames = []string{"FromValue", "ToValue", "Merge", "ApplyTo"}
 
 // localNames are the identifiers the generated methods declare.
-var localNames = []string{"p", "v", "r", "base", "i", "k", "e", "x"}
+var localNames = []string{"p", "v", "r", "base", "i", "k", "e", "x", "f", "err"}
+
+// partialMethodNames returns the methods the partial type of n gets.
+func (s *selection) partialMethodNames(n *typegraph.Node) []string {
+	if s.flagged[n.Id] {
+		return slices.Concat(methodNames, flagMethodNames)
+	}
+	return methodNames
+}
 
 // locals maps each of localNames to an identifier that shadows neither a
 // type parameter of the receiver nor a package-level identifier of scope,
@@ -42,6 +51,41 @@ func locals(scope *types.Scope, tparams *types.TypeParamList) map[string]string 
 	return out
 }
 
+// methodTypeParams returns the names the methods spell the type parameters
+// of tparams by. A named parameter keeps its name. A blank one, which the
+// methods cannot spell, gets a name taken by no package-level identifier
+// of scope, no other type parameter, no local and no predeclared
+// identifier. No field type refers to a blank parameter, so only the
+// receiver and the source type spell the new name.
+func methodTypeParams(scope *types.Scope, tparams *types.TypeParamList) []string {
+	taken := map[string]bool{}
+	for _, name := range scope.Names() {
+		taken[name] = true
+	}
+	for _, name := range types.Universe.Names() {
+		taken[name] = true
+	}
+	for tp := range tparams.TypeParams() {
+		taken[tp.Obj().Name()] = true
+	}
+	for _, l := range locals(scope, tparams) {
+		taken[l] = true
+	}
+	var out []string
+	for i, tp := range slices.Collect(tparams.TypeParams()) {
+		name := tp.Obj().Name()
+		if name == "_" {
+			name = fmt.Sprintf("T%d", i)
+			for taken[name] {
+				name += "_"
+			}
+			taken[name] = true
+		}
+		out = append(out, name)
+	}
+	return out
+}
+
 // methodWriter writes the methods of one partial type as source text.
 type methodWriter struct {
 	p *mapper
@@ -57,10 +101,7 @@ func (p *mapper) newMethodWriter(n *typegraph.Node) *methodWriter {
 	named := n.Detail.Type
 	var targs string
 	if named.TypeParams().Len() > 0 {
-		var names []string
-		for tp := range named.TypeParams().TypeParams() {
-			names = append(names, tp.Obj().Name())
-		}
+		names := methodTypeParams(p.pkg.Types.Scope(), named.TypeParams())
 		targs = "[" + strings.Join(names, ", ") + "]"
 	}
 	return &methodWriter{
@@ -75,9 +116,8 @@ func (w *methodWriter) line(format string, args ...any) {
 	fmt.Fprintf(&w.b, format+"\n", args...)
 }
 
-// call writes a call of the helper name and records it as used.
+// call writes a call of the helper name.
 func (w *methodWriter) call(name string, args ...string) string {
-	w.p.helpers[name] = true
 	return name + "(" + strings.Join(args, ", ") + ")"
 }
 
@@ -228,6 +268,7 @@ func (w *methodWriter) structMethods(fields []fieldInfo) {
 	w.line("}")
 
 	w.applyTo()
+	w.flagMethods(fields)
 }
 
 // collectionMethods writes the methods of a slice or map partial type,

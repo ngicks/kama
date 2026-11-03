@@ -75,7 +75,8 @@ func TestFixtureUpToDate(t *testing.T) {
 			var onDisk []string
 			err = filepath.WalkDir(f.Root(), func(p string, d fs.DirEntry, err error) error {
 				if err == nil && !d.IsDir() &&
-					(strings.HasSuffix(p, FileSuffix+".go") || filepath.Base(p) == HelpersFile) {
+					(strings.HasSuffix(p, FileSuffix+".go") || filepath.Base(p) == HelpersFile ||
+						filepath.Base(p) == FlagSetFile) {
 					onDisk = append(onDisk, p)
 				}
 				return err
