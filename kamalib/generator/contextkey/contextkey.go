@@ -2,7 +2,9 @@
 //
 // Each Entry yields one file holding a key variable and the functions
 // WithName, ValueName, ValueNameFallback, ValueNameFallbackFn and
-// ValueNameDefault for a value of the entry's type.
+// ValueNameDefault for a value of the entry's type. Every generated
+// declaration carries the genmark marker naming GeneratorName in its doc
+// comment.
 //
 // Lifted from github.com/ngicks/go-common/contextkey/generate.
 package contextkey
@@ -17,7 +19,18 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
+
+// GeneratorName is the name the generator marks its declarations with.
+const GeneratorName = "kama-contextkey"
+
+func init() {
+	if err := genmark.DefaultRegistry.Register(GeneratorName); err != nil {
+		panic(err)
+	}
+}
 
 var ErrInvalidEntry = errors.New("contextkey: invalid entry")
 
@@ -122,6 +135,7 @@ func renderEntry(e Entry, opts Options) ([]byte, error) {
 		Package:     opts.Package,
 		KeyTypeFunc: opts.KeyTypeFunc,
 		Imports:     imports,
+		Marker:      genmark.Marker(GeneratorName),
 	})
 	if err != nil {
 		return nil, err
@@ -145,6 +159,7 @@ type templateData struct {
 	KeyTypeFunc string
 	// Imports are quoted import paths.
 	Imports []string
+	Marker  string
 }
 
 var fileTemplate = template.Must(template.New("contextkey").Parse(
@@ -158,15 +173,22 @@ import (
 {{- end}}
 )
 
+// Key{{.Name}} is the context key for a {{.Type}} value.
+//
+{{.Marker}}
 var Key{{.Name}} = {{.KeyTypeFunc}}({{printf "%q" .Type}})
 
 // With{{.Name}} returns a copy of ctx in which Key{{.Name}} is associated with v.
+//
+{{.Marker}}
 func With{{.Name}}(ctx context.Context, v {{.Type}}) context.Context {
 	return context.WithValue(ctx, Key{{.Name}}, v)
 }
 
 // Value{{.Name}} returns the {{.Type}} associated with Key{{.Name}} in ctx.
 // ok is false if no value is associated or the value is not a {{.Type}}.
+//
+{{.Marker}}
 func Value{{.Name}}(ctx context.Context) (v {{.Type}}, ok bool) {
 	v, ok = ctx.Value(Key{{.Name}}).({{.Type}})
 	return v, ok
@@ -174,6 +196,8 @@ func Value{{.Name}}(ctx context.Context) (v {{.Type}}, ok bool) {
 
 // Value{{.Name}}Fallback returns the {{.Type}} associated with Key{{.Name}} in ctx,
 // or fallback if Value{{.Name}} reports none.
+//
+{{.Marker}}
 func Value{{.Name}}Fallback(ctx context.Context, fallback {{.Type}}) {{.Type}} {
 	if v, ok := Value{{.Name}}(ctx); ok {
 		return v
@@ -183,6 +207,8 @@ func Value{{.Name}}Fallback(ctx context.Context, fallback {{.Type}}) {{.Type}} {
 
 // Value{{.Name}}FallbackFn returns the {{.Type}} associated with Key{{.Name}} in ctx,
 // or the result of fallbackFn if Value{{.Name}} reports none.
+//
+{{.Marker}}
 func Value{{.Name}}FallbackFn(ctx context.Context, fallbackFn func() {{.Type}}) {{.Type}} {
 	if v, ok := Value{{.Name}}(ctx); ok {
 		return v
@@ -192,6 +218,8 @@ func Value{{.Name}}FallbackFn(ctx context.Context, fallbackFn func() {{.Type}}) 
 
 // Value{{.Name}}Default returns the {{.Type}} associated with Key{{.Name}} in ctx,
 // or {{.DefaultExpr}} if Value{{.Name}} reports none.
+//
+{{.Marker}}
 func Value{{.Name}}Default(ctx context.Context) {{.Type}} {
 	return Value{{.Name}}FallbackFn(ctx, func() {{.Type}} { return {{.DefaultExpr}} })
 }

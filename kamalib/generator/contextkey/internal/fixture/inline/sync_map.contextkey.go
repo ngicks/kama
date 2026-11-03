@@ -7,15 +7,22 @@ import (
 	"sync"
 )
 
+// KeySyncMap is the context key for a *sync.Map value.
+//
+//kama:generated kama-contextkey
 var KeySyncMap = keyTypeFunc("*sync.Map")
 
 // WithSyncMap returns a copy of ctx in which KeySyncMap is associated with v.
+//
+//kama:generated kama-contextkey
 func WithSyncMap(ctx context.Context, v *sync.Map) context.Context {
 	return context.WithValue(ctx, KeySyncMap, v)
 }
 
 // ValueSyncMap returns the *sync.Map associated with KeySyncMap in ctx.
 // ok is false if no value is associated or the value is not a *sync.Map.
+//
+//kama:generated kama-contextkey
 func ValueSyncMap(ctx context.Context) (v *sync.Map, ok bool) {
 	v, ok = ctx.Value(KeySyncMap).(*sync.Map)
 	return v, ok
@@ -23,6 +30,8 @@ func ValueSyncMap(ctx context.Context) (v *sync.Map, ok bool) {
 
 // ValueSyncMapFallback returns the *sync.Map associated with KeySyncMap in ctx,
 // or fallback if ValueSyncMap reports none.
+//
+//kama:generated kama-contextkey
 func ValueSyncMapFallback(ctx context.Context, fallback *sync.Map) *sync.Map {
 	if v, ok := ValueSyncMap(ctx); ok {
 		return v
@@ -32,6 +41,8 @@ func ValueSyncMapFallback(ctx context.Context, fallback *sync.Map) *sync.Map {
 
 // ValueSyncMapFallbackFn returns the *sync.Map associated with KeySyncMap in ctx,
 // or the result of fallbackFn if ValueSyncMap reports none.
+//
+//kama:generated kama-contextkey
 func ValueSyncMapFallbackFn(ctx context.Context, fallbackFn func() *sync.Map) *sync.Map {
 	if v, ok := ValueSyncMap(ctx); ok {
 		return v
@@ -41,6 +52,8 @@ func ValueSyncMapFallbackFn(ctx context.Context, fallbackFn func() *sync.Map) *s
 
 // ValueSyncMapDefault returns the *sync.Map associated with KeySyncMap in ctx,
 // or new(sync.Map) if ValueSyncMap reports none.
+//
+//kama:generated kama-contextkey
 func ValueSyncMapDefault(ctx context.Context) *sync.Map {
 	return ValueSyncMapFallbackFn(ctx, func() *sync.Map { return new(sync.Map) })
 }

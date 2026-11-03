@@ -7,15 +7,22 @@ import (
 	"log/slog"
 )
 
+// KeySlogAttrs is the context key for a []slog.Attr value.
+//
+//kama:generated kama-contextkey
 var KeySlogAttrs = keyTypeFunc("[]slog.Attr")
 
 // WithSlogAttrs returns a copy of ctx in which KeySlogAttrs is associated with v.
+//
+//kama:generated kama-contextkey
 func WithSlogAttrs(ctx context.Context, v []slog.Attr) context.Context {
 	return context.WithValue(ctx, KeySlogAttrs, v)
 }
 
 // ValueSlogAttrs returns the []slog.Attr associated with KeySlogAttrs in ctx.
 // ok is false if no value is associated or the value is not a []slog.Attr.
+//
+//kama:generated kama-contextkey
 func ValueSlogAttrs(ctx context.Context) (v []slog.Attr, ok bool) {
 	v, ok = ctx.Value(KeySlogAttrs).([]slog.Attr)
 	return v, ok
@@ -23,6 +30,8 @@ func ValueSlogAttrs(ctx context.Context) (v []slog.Attr, ok bool) {
 
 // ValueSlogAttrsFallback returns the []slog.Attr associated with KeySlogAttrs in ctx,
 // or fallback if ValueSlogAttrs reports none.
+//
+//kama:generated kama-contextkey
 func ValueSlogAttrsFallback(ctx context.Context, fallback []slog.Attr) []slog.Attr {
 	if v, ok := ValueSlogAttrs(ctx); ok {
 		return v
@@ -32,6 +41,8 @@ func ValueSlogAttrsFallback(ctx context.Context, fallback []slog.Attr) []slog.At
 
 // ValueSlogAttrsFallbackFn returns the []slog.Attr associated with KeySlogAttrs in ctx,
 // or the result of fallbackFn if ValueSlogAttrs reports none.
+//
+//kama:generated kama-contextkey
 func ValueSlogAttrsFallbackFn(ctx context.Context, fallbackFn func() []slog.Attr) []slog.Attr {
 	if v, ok := ValueSlogAttrs(ctx); ok {
 		return v
@@ -41,6 +52,8 @@ func ValueSlogAttrsFallbackFn(ctx context.Context, fallbackFn func() []slog.Attr
 
 // ValueSlogAttrsDefault returns the []slog.Attr associated with KeySlogAttrs in ctx,
 // or []slog.Attr(nil) if ValueSlogAttrs reports none.
+//
+//kama:generated kama-contextkey
 func ValueSlogAttrsDefault(ctx context.Context) []slog.Attr {
 	return ValueSlogAttrsFallbackFn(ctx, func() []slog.Attr { return []slog.Attr(nil) })
 }

@@ -6,15 +6,22 @@ import (
 	"context"
 )
 
+// KeyTenant is the context key for a string value.
+//
+//kama:generated kama-contextkey
 var KeyTenant = newKey("string")
 
 // WithTenant returns a copy of ctx in which KeyTenant is associated with v.
+//
+//kama:generated kama-contextkey
 func WithTenant(ctx context.Context, v string) context.Context {
 	return context.WithValue(ctx, KeyTenant, v)
 }
 
 // ValueTenant returns the string associated with KeyTenant in ctx.
 // ok is false if no value is associated or the value is not a string.
+//
+//kama:generated kama-contextkey
 func ValueTenant(ctx context.Context) (v string, ok bool) {
 	v, ok = ctx.Value(KeyTenant).(string)
 	return v, ok
@@ -22,6 +29,8 @@ func ValueTenant(ctx context.Context) (v string, ok bool) {
 
 // ValueTenantFallback returns the string associated with KeyTenant in ctx,
 // or fallback if ValueTenant reports none.
+//
+//kama:generated kama-contextkey
 func ValueTenantFallback(ctx context.Context, fallback string) string {
 	if v, ok := ValueTenant(ctx); ok {
 		return v
@@ -31,6 +40,8 @@ func ValueTenantFallback(ctx context.Context, fallback string) string {
 
 // ValueTenantFallbackFn returns the string associated with KeyTenant in ctx,
 // or the result of fallbackFn if ValueTenant reports none.
+//
+//kama:generated kama-contextkey
 func ValueTenantFallbackFn(ctx context.Context, fallbackFn func() string) string {
 	if v, ok := ValueTenant(ctx); ok {
 		return v
@@ -40,6 +51,8 @@ func ValueTenantFallbackFn(ctx context.Context, fallbackFn func() string) string
 
 // ValueTenantDefault returns the string associated with KeyTenant in ctx,
 // or "default" if ValueTenant reports none.
+//
+//kama:generated kama-contextkey
 func ValueTenantDefault(ctx context.Context) string {
 	return ValueTenantFallbackFn(ctx, func() string { return "default" })
 }

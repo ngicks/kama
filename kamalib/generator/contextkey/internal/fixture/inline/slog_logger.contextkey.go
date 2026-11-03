@@ -7,15 +7,22 @@ import (
 	"log/slog"
 )
 
+// KeySlogLogger is the context key for a *slog.Logger value.
+//
+//kama:generated kama-contextkey
 var KeySlogLogger = keyTypeFunc("*slog.Logger")
 
 // WithSlogLogger returns a copy of ctx in which KeySlogLogger is associated with v.
+//
+//kama:generated kama-contextkey
 func WithSlogLogger(ctx context.Context, v *slog.Logger) context.Context {
 	return context.WithValue(ctx, KeySlogLogger, v)
 }
 
 // ValueSlogLogger returns the *slog.Logger associated with KeySlogLogger in ctx.
 // ok is false if no value is associated or the value is not a *slog.Logger.
+//
+//kama:generated kama-contextkey
 func ValueSlogLogger(ctx context.Context) (v *slog.Logger, ok bool) {
 	v, ok = ctx.Value(KeySlogLogger).(*slog.Logger)
 	return v, ok
@@ -23,6 +30,8 @@ func ValueSlogLogger(ctx context.Context) (v *slog.Logger, ok bool) {
 
 // ValueSlogLoggerFallback returns the *slog.Logger associated with KeySlogLogger in ctx,
 // or fallback if ValueSlogLogger reports none.
+//
+//kama:generated kama-contextkey
 func ValueSlogLoggerFallback(ctx context.Context, fallback *slog.Logger) *slog.Logger {
 	if v, ok := ValueSlogLogger(ctx); ok {
 		return v
@@ -32,6 +41,8 @@ func ValueSlogLoggerFallback(ctx context.Context, fallback *slog.Logger) *slog.L
 
 // ValueSlogLoggerFallbackFn returns the *slog.Logger associated with KeySlogLogger in ctx,
 // or the result of fallbackFn if ValueSlogLogger reports none.
+//
+//kama:generated kama-contextkey
 func ValueSlogLoggerFallbackFn(ctx context.Context, fallbackFn func() *slog.Logger) *slog.Logger {
 	if v, ok := ValueSlogLogger(ctx); ok {
 		return v
@@ -41,6 +52,8 @@ func ValueSlogLoggerFallbackFn(ctx context.Context, fallbackFn func() *slog.Logg
 
 // ValueSlogLoggerDefault returns the *slog.Logger associated with KeySlogLogger in ctx,
 // or slog.Default() if ValueSlogLogger reports none.
+//
+//kama:generated kama-contextkey
 func ValueSlogLoggerDefault(ctx context.Context) *slog.Logger {
 	return ValueSlogLoggerFallbackFn(ctx, func() *slog.Logger { return slog.Default() })
 }

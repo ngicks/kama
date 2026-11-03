@@ -7,15 +7,22 @@ import (
 	"net/http"
 )
 
+// KeyHttpHeader is the context key for a http.Header value.
+//
+//kama:generated kama-contextkey
 var KeyHttpHeader = keyTypeFunc("http.Header")
 
 // WithHttpHeader returns a copy of ctx in which KeyHttpHeader is associated with v.
+//
+//kama:generated kama-contextkey
 func WithHttpHeader(ctx context.Context, v http.Header) context.Context {
 	return context.WithValue(ctx, KeyHttpHeader, v)
 }
 
 // ValueHttpHeader returns the http.Header associated with KeyHttpHeader in ctx.
 // ok is false if no value is associated or the value is not a http.Header.
+//
+//kama:generated kama-contextkey
 func ValueHttpHeader(ctx context.Context) (v http.Header, ok bool) {
 	v, ok = ctx.Value(KeyHttpHeader).(http.Header)
 	return v, ok
@@ -23,6 +30,8 @@ func ValueHttpHeader(ctx context.Context) (v http.Header, ok bool) {
 
 // ValueHttpHeaderFallback returns the http.Header associated with KeyHttpHeader in ctx,
 // or fallback if ValueHttpHeader reports none.
+//
+//kama:generated kama-contextkey
 func ValueHttpHeaderFallback(ctx context.Context, fallback http.Header) http.Header {
 	if v, ok := ValueHttpHeader(ctx); ok {
 		return v
@@ -32,6 +41,8 @@ func ValueHttpHeaderFallback(ctx context.Context, fallback http.Header) http.Hea
 
 // ValueHttpHeaderFallbackFn returns the http.Header associated with KeyHttpHeader in ctx,
 // or the result of fallbackFn if ValueHttpHeader reports none.
+//
+//kama:generated kama-contextkey
 func ValueHttpHeaderFallbackFn(ctx context.Context, fallbackFn func() http.Header) http.Header {
 	if v, ok := ValueHttpHeader(ctx); ok {
 		return v
@@ -41,6 +52,8 @@ func ValueHttpHeaderFallbackFn(ctx context.Context, fallbackFn func() http.Heade
 
 // ValueHttpHeaderDefault returns the http.Header associated with KeyHttpHeader in ctx,
 // or http.Header(nil) if ValueHttpHeader reports none.
+//
+//kama:generated kama-contextkey
 func ValueHttpHeaderDefault(ctx context.Context) http.Header {
 	return ValueHttpHeaderFallbackFn(ctx, func() http.Header { return http.Header(nil) })
 }

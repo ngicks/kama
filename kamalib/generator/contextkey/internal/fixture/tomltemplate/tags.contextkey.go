@@ -6,15 +6,22 @@ import (
 	"context"
 )
 
+// KeyTags is the context key for a map[string]string value.
+//
+//kama:generated kama-contextkey
 var KeyTags = keyTypeFunc("map[string]string")
 
 // WithTags returns a copy of ctx in which KeyTags is associated with v.
+//
+//kama:generated kama-contextkey
 func WithTags(ctx context.Context, v map[string]string) context.Context {
 	return context.WithValue(ctx, KeyTags, v)
 }
 
 // ValueTags returns the map[string]string associated with KeyTags in ctx.
 // ok is false if no value is associated or the value is not a map[string]string.
+//
+//kama:generated kama-contextkey
 func ValueTags(ctx context.Context) (v map[string]string, ok bool) {
 	v, ok = ctx.Value(KeyTags).(map[string]string)
 	return v, ok
@@ -22,6 +29,8 @@ func ValueTags(ctx context.Context) (v map[string]string, ok bool) {
 
 // ValueTagsFallback returns the map[string]string associated with KeyTags in ctx,
 // or fallback if ValueTags reports none.
+//
+//kama:generated kama-contextkey
 func ValueTagsFallback(ctx context.Context, fallback map[string]string) map[string]string {
 	if v, ok := ValueTags(ctx); ok {
 		return v
@@ -31,6 +40,8 @@ func ValueTagsFallback(ctx context.Context, fallback map[string]string) map[stri
 
 // ValueTagsFallbackFn returns the map[string]string associated with KeyTags in ctx,
 // or the result of fallbackFn if ValueTags reports none.
+//
+//kama:generated kama-contextkey
 func ValueTagsFallbackFn(ctx context.Context, fallbackFn func() map[string]string) map[string]string {
 	if v, ok := ValueTags(ctx); ok {
 		return v
@@ -40,6 +51,8 @@ func ValueTagsFallbackFn(ctx context.Context, fallbackFn func() map[string]strin
 
 // ValueTagsDefault returns the map[string]string associated with KeyTags in ctx,
 // or map[string]string{} if ValueTags reports none.
+//
+//kama:generated kama-contextkey
 func ValueTagsDefault(ctx context.Context) map[string]string {
 	return ValueTagsFallbackFn(ctx, func() map[string]string { return map[string]string{} })
 }

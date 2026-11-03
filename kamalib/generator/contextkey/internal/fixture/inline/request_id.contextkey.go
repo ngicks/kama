@@ -6,15 +6,22 @@ import (
 	"context"
 )
 
+// KeyRequestId is the context key for a string value.
+//
+//kama:generated kama-contextkey
 var KeyRequestId = keyTypeFunc("string")
 
 // WithRequestId returns a copy of ctx in which KeyRequestId is associated with v.
+//
+//kama:generated kama-contextkey
 func WithRequestId(ctx context.Context, v string) context.Context {
 	return context.WithValue(ctx, KeyRequestId, v)
 }
 
 // ValueRequestId returns the string associated with KeyRequestId in ctx.
 // ok is false if no value is associated or the value is not a string.
+//
+//kama:generated kama-contextkey
 func ValueRequestId(ctx context.Context) (v string, ok bool) {
 	v, ok = ctx.Value(KeyRequestId).(string)
 	return v, ok
@@ -22,6 +29,8 @@ func ValueRequestId(ctx context.Context) (v string, ok bool) {
 
 // ValueRequestIdFallback returns the string associated with KeyRequestId in ctx,
 // or fallback if ValueRequestId reports none.
+//
+//kama:generated kama-contextkey
 func ValueRequestIdFallback(ctx context.Context, fallback string) string {
 	if v, ok := ValueRequestId(ctx); ok {
 		return v
@@ -31,6 +40,8 @@ func ValueRequestIdFallback(ctx context.Context, fallback string) string {
 
 // ValueRequestIdFallbackFn returns the string associated with KeyRequestId in ctx,
 // or the result of fallbackFn if ValueRequestId reports none.
+//
+//kama:generated kama-contextkey
 func ValueRequestIdFallbackFn(ctx context.Context, fallbackFn func() string) string {
 	if v, ok := ValueRequestId(ctx); ok {
 		return v
@@ -40,6 +51,8 @@ func ValueRequestIdFallbackFn(ctx context.Context, fallbackFn func() string) str
 
 // ValueRequestIdDefault returns the string associated with KeyRequestId in ctx,
 // or "" if ValueRequestId reports none.
+//
+//kama:generated kama-contextkey
 func ValueRequestIdDefault(ctx context.Context) string {
 	return ValueRequestIdFallbackFn(ctx, func() string { return "" })
 }

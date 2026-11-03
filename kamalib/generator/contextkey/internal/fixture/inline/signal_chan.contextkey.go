@@ -7,15 +7,22 @@ import (
 	"os"
 )
 
+// KeySignalChan is the context key for a chan os.Signal value.
+//
+//kama:generated kama-contextkey
 var KeySignalChan = keyTypeFunc("chan os.Signal")
 
 // WithSignalChan returns a copy of ctx in which KeySignalChan is associated with v.
+//
+//kama:generated kama-contextkey
 func WithSignalChan(ctx context.Context, v chan os.Signal) context.Context {
 	return context.WithValue(ctx, KeySignalChan, v)
 }
 
 // ValueSignalChan returns the chan os.Signal associated with KeySignalChan in ctx.
 // ok is false if no value is associated or the value is not a chan os.Signal.
+//
+//kama:generated kama-contextkey
 func ValueSignalChan(ctx context.Context) (v chan os.Signal, ok bool) {
 	v, ok = ctx.Value(KeySignalChan).(chan os.Signal)
 	return v, ok
@@ -23,6 +30,8 @@ func ValueSignalChan(ctx context.Context) (v chan os.Signal, ok bool) {
 
 // ValueSignalChanFallback returns the chan os.Signal associated with KeySignalChan in ctx,
 // or fallback if ValueSignalChan reports none.
+//
+//kama:generated kama-contextkey
 func ValueSignalChanFallback(ctx context.Context, fallback chan os.Signal) chan os.Signal {
 	if v, ok := ValueSignalChan(ctx); ok {
 		return v
@@ -32,6 +41,8 @@ func ValueSignalChanFallback(ctx context.Context, fallback chan os.Signal) chan 
 
 // ValueSignalChanFallbackFn returns the chan os.Signal associated with KeySignalChan in ctx,
 // or the result of fallbackFn if ValueSignalChan reports none.
+//
+//kama:generated kama-contextkey
 func ValueSignalChanFallbackFn(ctx context.Context, fallbackFn func() chan os.Signal) chan os.Signal {
 	if v, ok := ValueSignalChan(ctx); ok {
 		return v
@@ -41,6 +52,8 @@ func ValueSignalChanFallbackFn(ctx context.Context, fallbackFn func() chan os.Si
 
 // ValueSignalChanDefault returns the chan os.Signal associated with KeySignalChan in ctx,
 // or (chan os.Signal)(nil) if ValueSignalChan reports none.
+//
+//kama:generated kama-contextkey
 func ValueSignalChanDefault(ctx context.Context) chan os.Signal {
 	return ValueSignalChanFallbackFn(ctx, func() chan os.Signal { return (chan os.Signal)(nil) })
 }

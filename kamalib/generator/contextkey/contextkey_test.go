@@ -2,6 +2,9 @@ package contextkey
 
 import (
 	"context"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"maps"
 	"os"
 	"path/filepath"
@@ -12,6 +15,7 @@ import (
 	"go.yaml.in/yaml/v4"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/fileloader"
 	_ "github.com/ngicks/kama/kamalib/proc/overlayfs"
@@ -67,6 +71,60 @@ func TestRenderImports(t *testing.T) {
 )
 `
 	assert.Assert(t, strings.Contains(src, want), src)
+}
+
+func TestRenderMarksDeclarations(t *testing.T) {
+	files, err := Render([]Entry{{
+		FileName:    "f",
+		Name:        "N",
+		Type:        "string",
+		DefaultExpr: `""`,
+	}}, opts)
+	assert.NilError(t, err)
+
+	file, err := parser.ParseFile(
+		token.NewFileSet(),
+		"",
+		files["f.contextkey.go"],
+		parser.ParseComments|parser.SkipObjectResolution,
+	)
+	assert.NilError(t, err)
+
+	var names []string
+	for _, decl := range file.Decls {
+		var (
+			name string
+			doc  *ast.CommentGroup
+		)
+		switch d := decl.(type) {
+		case *ast.GenDecl:
+			if d.Tok == token.IMPORT {
+				continue
+			}
+			name, doc = d.Tok.String(), d.Doc
+			if vs, ok := d.Specs[0].(*ast.ValueSpec); ok {
+				name = vs.Names[0].Name
+			}
+		case *ast.FuncDecl:
+			name, doc = d.Name.Name, d.Doc
+		}
+		names = append(names, name)
+
+		assert.Assert(t, doc != nil, "%s has no doc comment", name)
+		assert.Equal(t, doc.List[len(doc.List)-1].Text, genmark.Marker(GeneratorName), name)
+		gen, ok := genmark.DefaultRegistry.Generated(doc)
+		assert.Assert(t, ok, name)
+		assert.Equal(t, gen, GeneratorName, name)
+	}
+
+	assert.DeepEqual(t, names, []string{
+		"KeyN",
+		"WithN",
+		"ValueN",
+		"ValueNFallback",
+		"ValueNFallbackFn",
+		"ValueNDefault",
+	})
 }
 
 func TestProcParamErrors(t *testing.T) {

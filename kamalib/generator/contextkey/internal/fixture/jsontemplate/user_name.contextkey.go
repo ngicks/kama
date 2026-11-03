@@ -6,15 +6,22 @@ import (
 	"context"
 )
 
+// KeyUserName is the context key for a string value.
+//
+//kama:generated kama-contextkey
 var KeyUserName = keyTypeFunc("string")
 
 // WithUserName returns a copy of ctx in which KeyUserName is associated with v.
+//
+//kama:generated kama-contextkey
 func WithUserName(ctx context.Context, v string) context.Context {
 	return context.WithValue(ctx, KeyUserName, v)
 }
 
 // ValueUserName returns the string associated with KeyUserName in ctx.
 // ok is false if no value is associated or the value is not a string.
+//
+//kama:generated kama-contextkey
 func ValueUserName(ctx context.Context) (v string, ok bool) {
 	v, ok = ctx.Value(KeyUserName).(string)
 	return v, ok
@@ -22,6 +29,8 @@ func ValueUserName(ctx context.Context) (v string, ok bool) {
 
 // ValueUserNameFallback returns the string associated with KeyUserName in ctx,
 // or fallback if ValueUserName reports none.
+//
+//kama:generated kama-contextkey
 func ValueUserNameFallback(ctx context.Context, fallback string) string {
 	if v, ok := ValueUserName(ctx); ok {
 		return v
@@ -31,6 +40,8 @@ func ValueUserNameFallback(ctx context.Context, fallback string) string {
 
 // ValueUserNameFallbackFn returns the string associated with KeyUserName in ctx,
 // or the result of fallbackFn if ValueUserName reports none.
+//
+//kama:generated kama-contextkey
 func ValueUserNameFallbackFn(ctx context.Context, fallbackFn func() string) string {
 	if v, ok := ValueUserName(ctx); ok {
 		return v
@@ -40,6 +51,8 @@ func ValueUserNameFallbackFn(ctx context.Context, fallbackFn func() string) stri
 
 // ValueUserNameDefault returns the string associated with KeyUserName in ctx,
 // or "anonymous" if ValueUserName reports none.
+//
+//kama:generated kama-contextkey
 func ValueUserNameDefault(ctx context.Context) string {
 	return ValueUserNameFallbackFn(ctx, func() string { return "anonymous" })
 }
