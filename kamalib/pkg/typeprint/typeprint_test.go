@@ -225,6 +225,32 @@ func TestMissingImport(t *testing.T) {
 	}
 }
 
+func TestUnexportedNameInDeclaringPackage(t *testing.T) {
+	pkgs, all := load(t)
+	other := pkgs[otherPath]
+
+	for _, tc := range []struct {
+		name string
+		want string
+	}{
+		{"UnexportedField", "struct{ x int }"},
+		{"UnexportedEmbedded", "struct{ int }"},
+		{"UnexportedMethod", "interface{ seal() }"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ty := lookup(other, tc.name)
+
+			astExpr, err := Ast(ty, newMap(t, all, other), otherPath)
+			assert.NilError(t, err)
+			assert.Equal(t, tokens(t, formatAst(t, astExpr)), tokens(t, tc.want))
+
+			dstExpr, err := Dst(ty, newMap(t, all, other), otherPath)
+			assert.NilError(t, err)
+			assert.Equal(t, formatDst(t, dstExpr), tc.want)
+		})
+	}
+}
+
 func TestErrors(t *testing.T) {
 	pkgs, all := load(t)
 	model, other := pkgs[modelPath], pkgs[otherPath]
@@ -257,6 +283,12 @@ func TestErrors(t *testing.T) {
 		{"unknown package", unknown, ErrUnknownPackage},
 		{"unknown package in element", types.NewSlice(unknown), ErrUnknownPackage},
 		{"unexported", lookup(other, "Unexported"), ErrUnexported},
+		{"unexported field", lookup(other, "UnexportedField"), ErrUnexported},
+		{"unexported embedded field", lookup(other, "UnexportedEmbedded"), ErrUnexported},
+		{"unexported method", lookup(other, "UnexportedMethod"), ErrUnexported},
+		{"uninstantiated generic", lookup(model, "G"), ErrUnsupported},
+		{"uninstantiated generic alias", lookup(model, "AG"), ErrUnsupported},
+		{"uninstantiated generic in element", types.NewSlice(lookup(model, "G")), ErrUnsupported},
 		{"untyped", types.Typ[types.UntypedInt], ErrUnsupported},
 		{"untyped nil", types.Typ[types.UntypedNil], ErrUnsupported},
 		{"invalid", types.Typ[types.Invalid], ErrUnsupported},

@@ -18,3 +18,11 @@ type Holder struct {
 type unexported int
 
 var Unexported unexported
+
+// The names below are unexported, so they denote other names when spelled
+// in another package.
+var (
+	UnexportedField    struct{ x int }
+	UnexportedEmbedded struct{ int }
+	UnexportedMethod   interface{ seal() }
+)

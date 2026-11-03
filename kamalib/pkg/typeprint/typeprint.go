@@ -21,12 +21,12 @@ var (
 	// ErrUnknownPackage reports a type whose package the importdecl.Map
 	// does not know.
 	ErrUnknownPackage = errors.New("typeprint: unknown package")
-	// ErrUnexported reports an unexported type declared in a package other
-	// than the current one.
-	ErrUnexported = errors.New("typeprint: unexported type of another package")
+	// ErrUnexported reports an unexported type, struct field or interface
+	// method declared in a package other than the current one.
+	ErrUnexported = errors.New("typeprint: unexported name of another package")
 	// ErrUnsupported reports a type no type expression spells, such as an
-	// untyped constant type, a tuple, a generic signature or a type
-	// declared inside a function.
+	// untyped constant type, a tuple, a generic signature, a generic type
+	// without type arguments or a type declared inside a function.
 	ErrUnsupported = errors.New("typeprint: unsupported type")
 )
 
@@ -61,6 +61,36 @@ func (p printer) typeName(obj *types.TypeName) (qual, name string, err error) {
 		return "", "", err
 	}
 	return qual, obj.Name(), nil
+}
+
+// checkInstantiated rejects a generic type spelled without type arguments,
+// which is no type expression.
+func checkInstantiated(
+	obj *types.TypeName,
+	tparams *types.TypeParamList,
+	targs *types.TypeList,
+) error {
+	if tparams.Len() > 0 && targs.Len() == 0 {
+		return fmt.Errorf("%w: generic type %s without type arguments", ErrUnsupported, obj.Name())
+	}
+	return nil
+}
+
+// checkMemberName rejects the unexported name of a struct field or an
+// interface method declared in a package other than the current one.
+// Spelled in the current package, the name would belong to it and denote a
+// different field or method.
+//
+// The check covers embedded fields too. An embedded field is named after
+// its type, and typeName already rejects an unexported named type of
+// another package, but an embedded predeclared type such as int gives an
+// unexported field name only this check catches.
+func (p printer) checkMemberName(obj types.Object) error {
+	pkg := obj.Pkg()
+	if obj.Exported() || pkg == nil || pkg.Path() == p.currentPkgPath {
+		return nil
+	}
+	return fmt.Errorf("%w: %s.%s", ErrUnexported, pkg.Path(), obj.Name())
 }
 
 // basicName returns the qualifier and the name of b.

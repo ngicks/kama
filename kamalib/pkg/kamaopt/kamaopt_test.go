@@ -21,7 +21,7 @@ func TestCollect(t *testing.T) {
 
 	dir, err := filepath.Abs("internal/fixture")
 	assert.NilError(t, err)
-	a, b := filepath.Join(dir, "a.go"), filepath.Join(dir, "b.go")
+	a, b, c := filepath.Join(dir, "a.go"), filepath.Join(dir, "b.go"), filepath.Join(dir, "c.go")
 
 	raw := func(key Key, directive, args, file string, line, column int) Raw {
 		return Raw{
@@ -36,6 +36,7 @@ func TestCollect(t *testing.T) {
 	}
 	fileA := Key{PkgPath: fixturePath, File: a}
 	fileB := Key{PkgPath: fixturePath, File: b}
+	fileC := Key{PkgPath: fixturePath, File: c}
 	typ := func(name string) Key { return Key{PkgPath: fixturePath, Type: name} }
 	field := func(typ, name string) Key { return Key{PkgPath: fixturePath, Type: typ, Field: name} }
 
@@ -56,6 +57,11 @@ func TestCollect(t *testing.T) {
 		raw(field("WithGeneric", "Generic"), "partial:gen", "", a, 46, 2),
 		raw(fileB, "partial", "file", b, 5, 1),
 		raw(fileB, "partial:other", "x=1", b, 6, 1),
+		// A parenthesized struct type keeps its field directives.
+		raw(field("Paren", "X"), "partial:paren", "", c, 4, 2),
+		// Line comments of declarations are not file-scoped; the group
+		// on the line after one is.
+		raw(fileC, "partial", "next line", c, 9, 1),
 	}
 
 	got, err := Collect(pkgs, "kama")

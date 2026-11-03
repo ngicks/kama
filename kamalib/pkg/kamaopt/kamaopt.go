@@ -79,12 +79,16 @@ type Raw struct {
 //   - a type, in the doc comment of a top-level type spec, or of its type
 //     declaration when the declaration has a single spec.
 //   - a field, in the doc comment or the line comment of a field of a
-//     top-level struct type. A field with several names gives one Raw per
-//     name, and an embedded field is named after its type.
+//     top-level struct type, parenthesized or not. A field with several
+//     names gives one Raw per name, and an embedded field is named after
+//     its type.
 //   - a file, in a top-level comment group that is not the doc or line
 //     comment of any declaration or spec. The package clause doc comment
 //     is such a group too: a package doc usually lives in a single file,
-//     so it marks that file like any other free-floating comment.
+//     so it marks that file like any other free-floating comment. A group
+//     starting after a top-level declaration on the line the declaration
+//     ends on is the line comment of the declaration, for every kind of
+//     declaration, and marks no file.
 //
 // Collect returns no package scope; a generator gives a file-scoped
 // directive package meaning by its args.
@@ -146,7 +150,7 @@ func (c *collector) file(f *ast.File) {
 
 	fileKey := Key{PkgPath: c.pkgPath, File: c.fset.Position(f.FileStart).Filename}
 	for _, cg := range f.Comments {
-		if attached[cg] || insideDecl(f.Decls, cg) {
+		if attached[cg] || insideDecl(f.Decls, cg) || c.declLineComment(f.Decls, cg) {
 			continue
 		}
 		c.add(fileKey, cg.List)
@@ -164,7 +168,7 @@ func (c *collector) typeDecl(decl *ast.GenDecl) {
 			c.add(key, ts.Doc.List)
 		}
 
-		st, ok := ts.Type.(*ast.StructType)
+		st, ok := unparen(ts.Type).(*ast.StructType)
 		if !ok {
 			continue
 		}
@@ -174,6 +178,16 @@ func (c *collector) typeDecl(decl *ast.GenDecl) {
 				c.add(Key{PkgPath: c.pkgPath, Type: ts.Name.Name, Field: name}, comments)
 			}
 		}
+	}
+}
+
+func unparen(expr ast.Expr) ast.Expr {
+	for {
+		p, ok := expr.(*ast.ParenExpr)
+		if !ok {
+			return expr
+		}
+		expr = p.X
 	}
 }
 
@@ -243,6 +257,27 @@ func insideDecl(decls []ast.Decl, cg *ast.CommentGroup) bool {
 		return 0
 	})
 	return found
+}
+
+// declLineComment reports whether cg starts after a top-level declaration
+// on the line the declaration ends on.
+//
+// go/ast keeps such a group as the Comment of the last spec of a GenDecl
+// without parentheses, but FuncDecl has no Comment field and a grouped
+// GenDecl keeps none for its closing parenthesis. Checking the line for
+// every kind of declaration keeps them all out of the file scope alike.
+func (c *collector) declLineComment(decls []ast.Decl, cg *ast.CommentGroup) bool {
+	// i is the number of declarations ending at or before cg.
+	i, _ := slices.BinarySearchFunc(decls, cg.Pos(), func(d ast.Decl, p token.Pos) int {
+		if d.End() <= p {
+			return -1
+		}
+		return 1
+	})
+	if i == 0 {
+		return false
+	}
+	return c.fset.Position(decls[i-1].End()).Line == c.fset.Position(cg.Pos()).Line
 }
 
 // ParseArgs parses args as space-separated name=value pairs.

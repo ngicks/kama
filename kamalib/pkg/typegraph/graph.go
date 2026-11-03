@@ -174,6 +174,8 @@ func listTypes(
 					return err
 				}
 				if !ok {
+					// Pos counts every type spec of the file, filtered or not.
+					pos += len(genDecl.Specs)
 					continue
 				}
 				for _, s := range genDecl.Specs {

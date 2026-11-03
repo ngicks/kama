@@ -785,6 +785,51 @@ func TestNew_Edges_TypeDetail(t *testing.T) {
 	})
 }
 
+func TestNew_PosCountsFilteredSpecs(t *testing.T) {
+	pkgs := loadPackages(t, "./testdata/edges")
+	edgesPkgPath := pkgPathOf(t, pkgs, "edges")
+
+	pos := func(t *testing.T, g *Graph, name string) int {
+		t.Helper()
+		n, ok := g.Get(NewQualifiedType(edgesPkgPath, name))
+		assert.Assert(t, ok, "%s", name)
+		return n.Detail.Pos
+	}
+
+	t.Run("no filter", func(t *testing.T) {
+		g, err := New(pkgs, nil, nil)
+		assert.NilError(t, err)
+		assert.Equal(t, pos(t, g, "Target"), 0)
+		assert.Equal(t, pos(t, g, "SliceType"), 1)
+		assert.Equal(t, pos(t, g, "PointerType"), 5)
+		assert.Equal(t, pos(t, g, "StructType"), 6)
+		assert.Equal(t, pos(t, g, "InstantiatedType"), 9)
+	})
+
+	t.Run("rejected GenDecl", func(t *testing.T) {
+		g, err := New(pkgs, func(gd *ast.GenDecl) (bool, error) {
+			return len(gd.Specs) == 1, nil
+		}, nil)
+		assert.NilError(t, err)
+		_, ok := g.Get(NewQualifiedType(edgesPkgPath, "SliceType"))
+		assert.Assert(t, !ok)
+		assert.Equal(t, pos(t, g, "Target"), 0)
+		assert.Equal(t, pos(t, g, "StructType"), 6)
+		assert.Equal(t, pos(t, g, "InstantiatedType"), 9)
+	})
+
+	t.Run("rejected TypeSpec", func(t *testing.T) {
+		g, err := New(pkgs, nil, func(ts *ast.TypeSpec, _ types.Object) (bool, error) {
+			return ts.Name.Name != "SliceType", nil
+		})
+		assert.NilError(t, err)
+		_, ok := g.Get(NewQualifiedType(edgesPkgPath, "SliceType"))
+		assert.Assert(t, !ok)
+		assert.Equal(t, pos(t, g, "ArrayType"), 2)
+		assert.Equal(t, pos(t, g, "StructType"), 6)
+	})
+}
+
 func TestNew_NamedCollection(t *testing.T) {
 	pkgs := loadPackages(t, "./testdata/collection")
 

@@ -29,9 +29,9 @@ func (p dstPrinter) expr(ty types.Type) (dst.Expr, error) {
 		}
 		return dstName(qual, name), nil
 	case *types.Alias:
-		return p.named(ty.Obj(), ty.TypeArgs())
+		return p.named(ty.Obj(), ty.TypeParams(), ty.TypeArgs())
 	case *types.Named:
-		return p.named(ty.Obj(), ty.TypeArgs())
+		return p.named(ty.Obj(), ty.TypeParams(), ty.TypeArgs())
 	case *types.TypeParam:
 		return dst.NewIdent(ty.Obj().Name()), nil
 	case *types.Pointer:
@@ -88,7 +88,14 @@ func dstName(qual, name string) dst.Expr {
 	return &dst.SelectorExpr{X: dst.NewIdent(qual), Sel: dst.NewIdent(name)}
 }
 
-func (p dstPrinter) named(obj *types.TypeName, targs *types.TypeList) (dst.Expr, error) {
+func (p dstPrinter) named(
+	obj *types.TypeName,
+	tparams *types.TypeParamList,
+	targs *types.TypeList,
+) (dst.Expr, error) {
+	if err := checkInstantiated(obj, tparams, targs); err != nil {
+		return nil, err
+	}
 	qual, name, err := p.typeName(obj)
 	if err != nil {
 		return nil, err
@@ -192,6 +199,9 @@ func (p dstPrinter) structType(s *types.Struct) (*dst.StructType, error) {
 	fields := &dst.FieldList{Opening: true, Closing: true}
 	for i := range s.NumFields() {
 		v := s.Field(i)
+		if err := p.checkMemberName(v); err != nil {
+			return nil, err
+		}
 		ty, err := p.expr(v.Type())
 		if err != nil {
 			return nil, err
@@ -218,6 +228,9 @@ func (p dstPrinter) interfaceType(iface *types.Interface) (*dst.InterfaceType, e
 		methods.List = append(methods.List, &dst.Field{Type: ty})
 	}
 	for fn := range iface.ExplicitMethods() {
+		if err := p.checkMemberName(fn); err != nil {
+			return nil, err
+		}
 		sig, err := p.signature(fn.Signature())
 		if err != nil {
 			return nil, err
