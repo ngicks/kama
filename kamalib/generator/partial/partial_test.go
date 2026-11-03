@@ -16,6 +16,7 @@ import (
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
@@ -45,17 +46,41 @@ func load(t *testing.T, files map[string]string) []*packages.Package {
 	return pkgs
 }
 
-// generated returns the generated files keyed by base name.
-func generated(t *testing.T, files map[string]string) map[string]string {
+// registry returns a registry of this generator only.
+func registry(t *testing.T) *genmark.Registry {
+	t.Helper()
+	r := genmark.NewRegistry()
+	assert.NilError(t, r.Register(GeneratorName))
+	return r
+}
+
+// generate runs Generate on files with opts and a registry of this
+// generator only.
+func generate(t *testing.T, files map[string]string, opts Options) ([]File, error) {
+	t.Helper()
+	if opts.Registry == nil {
+		opts.Registry = registry(t)
+	}
+	return Generate(load(t, files), opts)
+}
+
+// generatedWith returns the files generated with opts keyed by base name.
+func generatedWith(t *testing.T, files map[string]string, opts Options) map[string]string {
 	t.Helper()
 
-	out, err := Generate(load(t, files), Options{})
+	out, err := generate(t, files, opts)
 	assert.NilError(t, err)
 	m := map[string]string{}
 	for _, f := range out {
 		m[filepath.Base(f.Path)] = string(f.Content)
 	}
 	return m
+}
+
+// generated returns the generated files keyed by base name.
+func generated(t *testing.T, files map[string]string) map[string]string {
+	t.Helper()
+	return generatedWith(t, files, Options{})
 }
 
 // partialTypes returns the type names declared in src.
@@ -80,16 +105,20 @@ func TestOptions(t *testing.T) {
 	assert.NilError(t, Options{Merge: MergeAppend, MergeNested: MergeNestedOverwrite}.Validate())
 	assert.ErrorIs(t, Options{Merge: "x"}.Validate(), ErrOption)
 	assert.ErrorIs(t, Options{MergeNested: "x"}.Validate(), ErrOption)
-	assert.DeepEqual(t, Options{}.WithDefaults(), Options{
-		Merge:       MergeOverwrite,
-		MergeNested: MergeNestedRecursive,
-	})
+	def := Options{}.WithDefaults()
+	assert.Equal(t, def.Merge, MergeOverwrite)
+	assert.Equal(t, def.MergeNested, MergeNestedRecursive)
+	assert.Equal(t, def.Registry, genmark.DefaultRegistry)
+	r := genmark.NewRegistry()
+	assert.Equal(t, Options{Registry: r}.WithDefaults().Registry, r)
 
 	i := &instance{}
 	assert.ErrorContains(t, i.Param(ProcParam{Merge: "replace"}), "merge")
 	assert.ErrorContains(t, i.Param(ProcParam{MergeNested: "deep"}), "merge_nested")
 	assert.NilError(t, i.Param(ProcParam{Merge: "append"}))
-	assert.Equal(t, i.opts, Options{Merge: MergeAppend, MergeNested: MergeNestedRecursive})
+	assert.Equal(t, i.opts.Merge, MergeAppend)
+	assert.Equal(t, i.opts.MergeNested, MergeNestedRecursive)
+	assert.Equal(t, i.opts.Registry, genmark.DefaultRegistry)
 }
 
 func TestTargetErrors(t *testing.T) {
@@ -166,17 +195,119 @@ func TestTargetErrors(t *testing.T) {
 			},
 		},
 		{
-			name: "recursive",
-			src: "package x\n\n//kama:partial\ntype A struct {\n\tB *B\n}\n\n" +
-				"type B struct {\n\tA *A\n}\n",
+			name:     "embedded recursive",
+			src:      "package x\n\n//kama:partial\ntype A struct {\n\t*A\n}\n",
 			is:       ErrUnsupported,
-			contains: []string{"A -> B -> A", "x.go:4:6"},
+			contains: []string{"A -> A", "embedded", "x.go:4:6"},
 		},
 		{
-			name:     "self recursive",
-			src:      "package x\n\n//kama:partial\ntype A struct {\n\tNext *A\n}\n",
+			name: "embedded recursive through a value",
+			src: "package x\n\n//kama:partial\ntype A struct {\n\tB B\n}\n\n" +
+				"type B struct {\n\t*A\n}\n",
 			is:       ErrUnsupported,
-			contains: []string{"A -> A"},
+			contains: []string{"A -> B -> A"},
+		},
+		{
+			name:     "unknown sub-directive",
+			src:      "package x\n\n//kama:partial\n//kama:partial:name B\ntype A struct{}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:4:1", "partial:name"},
+		},
+		{
+			name:     "merge on a type",
+			src:      "package x\n\n//kama:partial\n//kama:partial:merge append\ntype A struct{}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:4:1", "struct fields only"},
+		},
+		{
+			name: "unknown merge strategy",
+			src: "package x\n\n//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:merge deep\n\tB []int\n}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:5:2", `"deep"`, "_unknown_merge_strategy.A.B"},
+		},
+		{
+			name: "second merge",
+			src: "package x\n\n//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:merge append\n\tB []int //kama:partial:merge overwrite\n}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:6:10", "x.go:5:2", "second"},
+		},
+		{
+			name: "append on a plain field",
+			src: "package x\n\n//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:merge append\n\tB int\n}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:5:2", "_append_on_a_plain_field.A.B", "want overwrite"},
+		},
+		{
+			name: "append on a nested field",
+			src: "package x\n\n//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:merge append\n\tB B\n}\n\ntype B struct{ I int }\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:5:2", "A.B", "want recursive or overwrite"},
+		},
+		{
+			name: "recursive on a slice field",
+			src: "package x\n\n//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:merge recursive\n\tB []B\n}\n\ntype B struct{ I int }\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:5:2", "want overwrite or append"},
+		},
+		{
+			name: "append on an elastic field",
+			src: "package x\n\nimport \"github.com/ngicks/option/elastic\"\n\n" +
+				"//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:merge append\n\tB elastic.Elastic[int]\n}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:7:2", "want overwrite"},
+		},
+		{
+			name: "merge on a type without partial variant",
+			src: "package x\n\n//kama:partial\ntype A struct{}\n\n" +
+				"type B struct {\n\t//kama:partial:merge append\n\tC []int\n}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:7:2", "B has no partial variant"},
+		},
+		{
+			name: "type parameter shadows a partial",
+			src: "package x\n\n//kama:partial\ntype A[BPartial any] struct{ X B }\n\n" +
+				"type B struct{ I int }\n",
+			is:       ErrConflict,
+			contains: []string{"x.go:4:8", "type parameter BPartial", "_partial.A"},
+		},
+		{
+			name:     "type parameter shadows its own partial",
+			src:      "package x\n\n//kama:partial\ntype A[APartial any] struct{ X int }\n",
+			is:       ErrConflict,
+			contains: []string{"type parameter APartial"},
+		},
+		{
+			name: "duplicate partial field",
+			src: "package x\n\n//kama:partial\ntype A struct {\n\tM\n\tMPartial int\n}\n\n" +
+				"type M struct{ I int }\n",
+			is:       ErrConflict,
+			contains: []string{"field MPartial (", "x.go:6:2", "given by M too", "x.go:5:2"},
+		},
+		{
+			name: "duplicate embedded through an alias",
+			src: "package x\n\n//kama:partial\ntype A struct {\n\tM\n\tAlias\n}\n\n" +
+				"type M struct{ I int }\n\ntype Alias = M\n",
+			is:       ErrConflict,
+			contains: []string{"field Alias", "MPartial"},
+		},
+		{
+			name:     "field named like a method",
+			src:      "package x\n\n//kama:partial\ntype A struct {\n\tMerge int\n}\n",
+			is:       ErrConflict,
+			contains: []string{"x.go:5:2", "method Merge"},
+		},
+		{
+			name: "helper declared",
+			src: "package x\n\n//kama:partial\ntype A struct{ X int }\n\n" +
+				"func kamaPartialFromValue() {}\n",
+			is:       ErrConflict,
+			contains: []string{"x.go:6:6", "kamaPartialFromValue"},
 		},
 		{
 			name:     "name conflict",
@@ -188,7 +319,7 @@ func TestTargetErrors(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := Generate(load(t, map[string]string{"x.go": c.src}), Options{})
+			_, err := generate(t, map[string]string{"x.go": c.src}, Options{})
 			assert.ErrorIs(t, err, c.is)
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)
@@ -261,6 +392,7 @@ type L []S
 	assert.DeepEqual(t, slices.Sorted(maps.Keys(files)), []string{
 		"a.kama_partial.go",
 		"file.kama_partial.go",
+		HelpersFile,
 		"types.kama_partial.go",
 	})
 	assert.DeepEqual(t, partialTypes(t, files["a.kama_partial.go"]), []string{
@@ -426,9 +558,11 @@ func TestImports(t *testing.T) {
 		strings.Contains(files["b.kama_partial.go"], `import "github.com/ngicks/option/und"`),
 		files["b.kama_partial.go"],
 	)
-	for _, src := range files {
+	for name, src := range files {
 		assert.Assert(t, strings.HasPrefix(src, header+"\n\npackage x\n"), src)
-		assert.Assert(t, strings.Contains(src, "\n//kama:generated kama-partial\ntype "), src)
+		if name != HelpersFile {
+			assert.Assert(t, strings.Contains(src, "\n//kama:generated kama-partial\ntype "), src)
+		}
 	}
 }
 

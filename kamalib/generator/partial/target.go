@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"go/types"
 	"maps"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -25,7 +26,13 @@ const (
 
 // selection is the set of types to generate partial variants of.
 type selection struct {
+	opts    Options
 	targets map[typegraph.QualifiedType]*typegraph.Node
+	// merges are the //kama:partial:merge directives keyed by field.
+	merges map[kamaopt.Key]kamaopt.Raw
+	// refs are the pointer fields mapped to und.Und[*MPartial] since they
+	// close a cycle of partial variants.
+	refs map[*types.Var]bool
 }
 
 func (s *selection) filename(n *typegraph.Node) string {
@@ -43,6 +50,22 @@ func (s *selection) target(t types.Type) (*types.Named, bool) {
 	return named, ok
 }
 
+// partialOf reports the target t refers to when a declaration of the
+// package at pkgPath can refer to its partial variant. The partial
+// variant of an unexported type of another package, reached through an
+// exported alias, cannot be spelled there.
+func (s *selection) partialOf(t types.Type, pkgPath string) (*types.Named, bool) {
+	named, ok := s.target(t)
+	if !ok {
+		return nil, false
+	}
+	return named, named.Obj().Exported() || named.Obj().Pkg().Path() == pkgPath
+}
+
+func (s *selection) node(named *types.Named) *typegraph.Node {
+	return s.targets[typegraph.QualifiedTypeFromObject(named.Obj())]
+}
+
 // sorted returns the targets ordered by package path and type name.
 func (s *selection) sorted() []*typegraph.Node {
 	return slices.SortedFunc(maps.Values(s.targets), func(a, b *typegraph.Node) int {
@@ -55,6 +78,7 @@ func (s *selection) sorted() []*typegraph.Node {
 
 // marks are the //kama:partial directives of the source packages.
 type marks struct {
+	merges map[kamaopt.Key]kamaopt.Raw
 	// explicit are the type-scoped directives without args, in source
 	// order.
 	explicit []kamaopt.Raw
@@ -66,6 +90,7 @@ type marks struct {
 
 func collectMarks(pkgs []*packages.Package) (marks, error) {
 	m := marks{
+		merges:  map[kamaopt.Key]kamaopt.Raw{},
 		ignored: map[typegraph.QualifiedType]bool{},
 		files:   map[string]bool{},
 		pkgs:    map[string]bool{},
@@ -78,8 +103,12 @@ func collectMarks(pkgs []*packages.Package) (marks, error) {
 
 	var errs []error
 	for _, r := range raws {
-		// Sub-directives such as //kama:partial:merge are left to the
-		// option decoding of the methods.
+		if sub, ok := strings.CutPrefix(r.Directive, directive+":"); ok {
+			if err := m.subDirective(sub, r); err != nil {
+				errs = append(errs, err)
+			}
+			continue
+		}
 		if r.Directive != directive {
 			continue
 		}
@@ -122,21 +151,65 @@ func collectMarks(pkgs []*packages.Package) (marks, error) {
 	return m, errors.Join(errs...)
 }
 
-// generatedTypes returns the type names declared by declarations carrying
-// the marker of a registered generator.
-func generatedTypes(pkgs []*packages.Package) map[types.Object]bool {
+// subDirective records //kama:partial:<sub>.
+func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
+	pos := r.Origin.Pos
+	switch sub {
+	case "flag":
+		// Flags are decoded by a later stage of the generator.
+		return nil
+	case "merge":
+	default:
+		return fmt.Errorf("%w: %s: unknown directive //kama:%s", ErrDirective, pos, r.Directive)
+	}
+
+	if r.Key.Field == "" {
+		return fmt.Errorf(
+			"%w: %s: //kama:partial:merge applies to struct fields only", ErrDirective, pos,
+		)
+	}
+	field := r.Key.PkgPath + "." + r.Key.Type + "." + r.Key.Field
+	switch strings.TrimSpace(r.Args) {
+	case string(MergeOverwrite), string(MergeAppend), string(MergeNestedRecursive):
+	default:
+		return fmt.Errorf(
+			"%w: %s: unknown strategy %q on field %s; want overwrite, append or recursive",
+			ErrDirective, pos, strings.TrimSpace(r.Args), field,
+		)
+	}
+	if prev, ok := m.merges[r.Key]; ok {
+		return fmt.Errorf(
+			"%w: %s: second //kama:partial:merge on field %s; the first is at %s",
+			ErrDirective, pos, field, prev.Origin.Pos,
+		)
+	}
+	m.merges[r.Key] = r
+	return nil
+}
+
+// generatedObjects returns the types, functions and methods declared by
+// declarations carrying the marker of a generator registered in reg.
+func generatedObjects(pkgs []*packages.Package, reg *genmark.Registry) map[types.Object]bool {
 	out := map[types.Object]bool{}
 	for _, pkg := range pkgs {
 		for _, f := range pkg.Syntax {
 			for _, decl := range f.Decls {
+				if fd, ok := decl.(*ast.FuncDecl); ok {
+					if _, generated := reg.Generated(fd.Doc); generated {
+						if obj := pkg.TypesInfo.Defs[fd.Name]; obj != nil {
+							out[obj] = true
+						}
+					}
+					continue
+				}
 				gd, ok := decl.(*ast.GenDecl)
 				if !ok || gd.Tok != token.TYPE {
 					continue
 				}
-				_, declGenerated := genmark.DefaultRegistry.Generated(gd.Doc)
+				_, declGenerated := reg.Generated(gd.Doc)
 				for _, spec := range gd.Specs {
 					ts := spec.(*ast.TypeSpec)
-					_, generated := genmark.DefaultRegistry.Generated(ts.Doc)
+					_, generated := reg.Generated(ts.Doc)
 					if !declGenerated && !generated {
 						continue
 					}
@@ -179,8 +252,8 @@ func followed(r *typegraph.EdgeRoute) bool {
 	return true
 }
 
-func selectTargets(pkgs []*packages.Package) (*selection, error) {
-	generated := generatedTypes(pkgs)
+func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
+	generated := generatedObjects(pkgs, opts.Registry)
 	g, err := typegraph.New(pkgs, nil, func(_ *ast.TypeSpec, obj types.Object) (bool, error) {
 		return !generated[obj], nil
 	})
@@ -193,7 +266,12 @@ func selectTargets(pkgs []*packages.Package) (*selection, error) {
 		return nil, err
 	}
 
-	sel := &selection{targets: map[typegraph.QualifiedType]*typegraph.Node{}}
+	sel := &selection{
+		opts:    opts,
+		targets: map[typegraph.QualifiedType]*typegraph.Node{},
+		merges:  m.merges,
+		refs:    map[*types.Var]bool{},
+	}
 
 	var errs []error
 	for _, r := range m.explicit {
@@ -253,13 +331,41 @@ func selectTargets(pkgs []*packages.Package) (*selection, error) {
 		}
 	}
 
-	if err := sel.checkNames(generated); err != nil {
+	if err := sel.checkMerges(); err != nil {
 		return nil, err
 	}
-	if err := sel.checkCycles(); err != nil {
+	if err := sel.checkNames(pkgs, generated); err != nil {
+		return nil, err
+	}
+	if err := sel.mapCycles(); err != nil {
 		return nil, err
 	}
 	return sel, nil
+}
+
+// checkMerges reports //kama:partial:merge on fields of types without
+// partial variants, where it would have no effect.
+func (s *selection) checkMerges() error {
+	var errs []error
+	for _, k := range slices.SortedFunc(maps.Keys(s.merges), compareKey) {
+		if s.targets[typegraph.NewQualifiedType(k.PkgPath, k.Type)] != nil {
+			continue
+		}
+		errs = append(errs, fmt.Errorf(
+			"%w: %s: //kama:partial:merge on field %s.%s.%s; %s has no partial variant",
+			ErrDirective, s.merges[k].Origin.Pos, k.PkgPath, k.Type, k.Field, k.Type,
+		))
+	}
+	return errors.Join(errs...)
+}
+
+func compareKey(a, b kamaopt.Key) int {
+	return cmp.Or(
+		cmp.Compare(a.PkgPath, b.PkgPath),
+		cmp.Compare(a.File, b.File),
+		cmp.Compare(a.Type, b.Type),
+		cmp.Compare(a.Field, b.Field),
+	)
 }
 
 func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Object {
@@ -271,32 +377,99 @@ func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Obje
 	return nil
 }
 
-// checkNames reports a partial name declared by something other than a
-// generator, which the generated declaration would collide with.
-func (s *selection) checkNames(generated map[types.Object]bool) error {
+// checkNames reports names the generated declarations would collide with:
+// a partial type name, a method of a partial type or a helper function
+// declared by something other than a generator, a field of a partial type
+// named like one of its methods, and a helpers file the generator did not
+// write.
+func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Object]bool) error {
 	var errs []error
+	conflict := func(fset *token.FileSet, pos token.Pos, format string, args ...any) {
+		errs = append(errs, fmt.Errorf(
+			"%w: %s: "+format,
+			append([]any{ErrConflict, fset.Position(pos)}, args...)...,
+		))
+	}
+
+	targetPkgs := map[string]*packages.Package{}
 	for _, n := range s.sorted() {
+		pkg := n.Detail.Pkg
+		targetPkgs[pkg.PkgPath] = pkg
 		name := partialName(n.Id.TypeName)
-		obj := n.Detail.Pkg.Types.Scope().Lookup(name)
-		if obj == nil || generated[obj] {
+		obj := pkg.Types.Scope().Lookup(name)
+		if obj == nil {
 			continue
 		}
-		errs = append(errs, fmt.Errorf(
-			"%w: %s: %s.%s is already declared for the partial variant of %s",
-			ErrConflict,
-			n.Detail.Pkg.Fset.Position(obj.Pos()),
-			n.Id.PackagePath,
-			name,
-			n.Id.TypeName,
-		))
+		if !generated[obj] {
+			conflict(pkg.Fset, obj.Pos(),
+				"%s.%s is already declared for the partial variant of %s",
+				n.Id.PackagePath, name, n.Id.TypeName,
+			)
+			continue
+		}
+		named, ok := obj.Type().(*types.Named)
+		if !ok {
+			continue
+		}
+		for m := range named.Methods() {
+			if slices.Contains(methodNames, m.Name()) && !generated[m] {
+				conflict(pkg.Fset, m.Pos(),
+					"method %s of %s.%s is declared by something other than the generator",
+					m.Name(), n.Id.PackagePath, name,
+				)
+			}
+		}
+	}
+
+	for _, pkgPath := range slices.Sorted(maps.Keys(targetPkgs)) {
+		pkg := targetPkgs[pkgPath]
+		for _, h := range helperNames() {
+			if obj := pkg.Types.Scope().Lookup(h); obj != nil && !generated[obj] {
+				conflict(pkg.Fset, obj.Pos(),
+					"%s.%s is already declared for a helper of the generated methods", pkgPath, h,
+				)
+			}
+		}
+		for _, f := range pkg.Syntax {
+			if filepath.Base(pkg.Fset.Position(f.FileStart).Filename) != HelpersFile {
+				continue
+			}
+			for _, decl := range f.Decls {
+				if fd, ok := decl.(*ast.FuncDecl); ok {
+					if _, ok := s.opts.Registry.Generated(fd.Doc); ok {
+						continue
+					}
+				}
+				if gd, ok := decl.(*ast.GenDecl); ok && gd.Tok == token.IMPORT {
+					continue
+				}
+				conflict(pkg.Fset, decl.Pos(),
+					"%s holds a declaration the generator did not write", HelpersFile,
+				)
+			}
+		}
 	}
 	return errors.Join(errs...)
 }
 
-// checkCycles reports targets that would hold their own partial variant by
-// value. und.Und holds its value directly, so a pointer cycle in the source,
-// such as a linked list node, becomes an invalid recursive type.
-func (s *selection) checkCycles() error {
+// mapCycles finds the pointer fields that close a cycle of partial
+// variants held by value and records them in s.refs.
+//
+// Every pointer field whose owner and target lie in one strongly connected
+// component of the graph of struct fields holding partial variants by value
+// is recorded, so the choice does not depend on the order types are
+// visited in. A cycle left without such a field goes through embedded
+// pointers, whose partial variants stay embedded by value, and is an error.
+func (s *selection) mapCycles() error {
+	comp := s.components()
+	for _, n := range s.sorted() {
+		for _, e := range s.valueChildren(n) {
+			if comp[e.child.Id] == comp[n.Id] && e.pointer && !e.field.Embedded() {
+				s.refs[e.field] = true
+			}
+		}
+	}
+
 	const (
 		visiting = iota + 1
 		done
@@ -314,7 +487,7 @@ func (s *selection) checkCycles() error {
 				names = append(names, id.TypeName)
 			}
 			return fmt.Errorf(
-				"%w: %s (%s): partial variants would be recursive: %s",
+				"%w: %s (%s): partial variants would be recursive through embedded fields: %s",
 				ErrUnsupported, nodeName(n),
 				n.Detail.Pkg.Fset.Position(n.Detail.Ts.Pos()), strings.Join(names, " -> "),
 			)
@@ -324,8 +497,11 @@ func (s *selection) checkCycles() error {
 
 		state[n.Id] = visiting
 		path = append(path, n.Id)
-		for _, child := range s.valueChildren(n) {
-			if err := visit(child); err != nil {
+		for _, e := range s.valueChildren(n) {
+			if s.refs[e.field] {
+				continue
+			}
+			if err := visit(e.child); err != nil {
 				return err
 			}
 		}
@@ -342,21 +518,77 @@ func (s *selection) checkCycles() error {
 	return nil
 }
 
-// valueChildren returns the targets whose partial variants the partial
-// variant of n holds by value: fields of a target type or a pointer to
-// one.
-func (s *selection) valueChildren(n *typegraph.Node) []*typegraph.Node {
+// components returns the strongly connected components of the targets
+// under valueChildren, numbered by Tarjan's algorithm.
+func (s *selection) components() map[typegraph.QualifiedType]int {
+	var (
+		index   = map[typegraph.QualifiedType]int{}
+		low     = map[typegraph.QualifiedType]int{}
+		onStack = map[typegraph.QualifiedType]bool{}
+		stack   []typegraph.QualifiedType
+		comp    = map[typegraph.QualifiedType]int{}
+		next    int
+	)
+	var visit func(n *typegraph.Node)
+	visit = func(n *typegraph.Node) {
+		index[n.Id], low[n.Id] = next, next
+		next++
+		stack = append(stack, n.Id)
+		onStack[n.Id] = true
+		for _, e := range s.valueChildren(n) {
+			c := e.child.Id
+			if _, seen := index[c]; !seen {
+				visit(e.child)
+				low[n.Id] = min(low[n.Id], low[c])
+			} else if onStack[c] {
+				low[n.Id] = min(low[n.Id], index[c])
+			}
+		}
+		if low[n.Id] != index[n.Id] {
+			return
+		}
+		for {
+			id := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			onStack[id] = false
+			comp[id] = index[n.Id]
+			if id == n.Id {
+				return
+			}
+		}
+	}
+	for _, n := range s.sorted() {
+		if _, seen := index[n.Id]; !seen {
+			visit(n)
+		}
+	}
+	return comp
+}
+
+// valueEdge is a struct field of a target holding the partial variant of
+// child.
+type valueEdge struct {
+	field   *types.Var
+	child   *typegraph.Node
+	pointer bool
+}
+
+// valueChildren returns the fields whose partial values the partial
+// variant of n holds without indirection: fields of a target type or a
+// pointer to one.
+func (s *selection) valueChildren(n *typegraph.Node) []valueEdge {
 	st, ok := n.Detail.Type.Underlying().(*types.Struct)
 	if !ok {
 		return nil
 	}
-	var out []*typegraph.Node
+	var out []valueEdge
 	for v := range st.Fields() {
-		named, ok := s.target(deref(v.Type()))
+		elem := deref(v.Type())
+		named, ok := s.partialOf(elem, n.Id.PackagePath)
 		if !ok {
 			continue
 		}
-		out = append(out, s.targets[typegraph.QualifiedTypeFromObject(named.Obj())])
+		out = append(out, valueEdge{field: v, child: s.node(named), pointer: elem != v.Type()})
 	}
 	return out
 }

@@ -13,9 +13,89 @@ type ConfigPartial struct {
 	Meta   und.Und[Meta]          `yaml:"meta,omitempty" json:",omitzero"`
 }
 
+// FromValue sets every field of p to the partial form of the field of v.
+// A nil pointer, slice or map and a none option become null.
+//
+//kama:generated kama-partial
+func (p *ConfigPartial) FromValue(v Config) {
+	kamaPartialFromTarget(&p.Limits, v.Limits)
+	p.Level = kamaPartialFromValue(v.Level)
+	p.Meta = kamaPartialFromValue(v.Meta)
+}
+
+// ToValue returns the value p describes. An undefined or null field
+// gives the zero value of the field.
+//
+//kama:generated kama-partial
+func (p ConfigPartial) ToValue() Config {
+	var v Config
+	kamaPartialToTarget(&v.Limits, p.Limits)
+	v.Level = kamaPartialToValue(p.Level)
+	v.Meta = kamaPartialToValue(p.Meta)
+	return v
+}
+
+// Merge returns p with the fields of r merged onto it. An undefined
+// field of r keeps the field of p. Merge writes to neither p nor r.
+//
+//kama:generated kama-partial
+func (p ConfigPartial) Merge(r ConfigPartial) ConfigPartial {
+	p.Limits = kamaPartialMergeRecursive(p.Limits, r.Limits)
+	p.Level = kamaPartialMergeOverwrite(p.Level, r.Level)
+	p.Meta = kamaPartialMergeOverwrite(p.Meta, r.Meta)
+	return p
+}
+
+// ApplyTo returns v with the change p describes applied. It is
+// FromValue of v merged with p, converted back with ToValue.
+//
+//kama:generated kama-partial
+func (p ConfigPartial) ApplyTo(v Config) Config {
+	var base ConfigPartial
+	base.FromValue(v)
+	return base.Merge(p).ToValue()
+}
+
 // LimitsPartial is the partial variant of Limits.
 //
 //kama:generated kama-partial
 type LimitsPartial struct {
 	Max und.Und[int] `yaml:"max,omitempty" json:",omitzero"`
+}
+
+// FromValue sets every field of p to the partial form of the field of v.
+// A nil pointer, slice or map and a none option become null.
+//
+//kama:generated kama-partial
+func (p *LimitsPartial) FromValue(v Limits) {
+	p.Max = kamaPartialFromValue(v.Max)
+}
+
+// ToValue returns the value p describes. An undefined or null field
+// gives the zero value of the field.
+//
+//kama:generated kama-partial
+func (p LimitsPartial) ToValue() Limits {
+	var v Limits
+	v.Max = kamaPartialToValue(p.Max)
+	return v
+}
+
+// Merge returns p with the fields of r merged onto it. An undefined
+// field of r keeps the field of p. Merge writes to neither p nor r.
+//
+//kama:generated kama-partial
+func (p LimitsPartial) Merge(r LimitsPartial) LimitsPartial {
+	p.Max = kamaPartialMergeOverwrite(p.Max, r.Max)
+	return p
+}
+
+// ApplyTo returns v with the change p describes applied. It is
+// FromValue of v merged with p, converted back with ToValue.
+//
+//kama:generated kama-partial
+func (p LimitsPartial) ApplyTo(v Limits) Limits {
+	var base LimitsPartial
+	base.FromValue(v)
+	return base.Merge(p).ToValue()
 }

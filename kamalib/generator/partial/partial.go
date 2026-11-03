@@ -76,20 +76,29 @@ const (
 
 // Options configures Generate.
 //
-// The merge modes select how partial values combine with the values they
-// are merged onto. Generate validates them; they do not affect the type
-// declarations it emits.
+// The merge modes are the defaults of the Merge methods, which a field
+// overrides with //kama:partial:merge. They do not affect the type
+// declarations.
 type Options struct {
-	// Merge is MergeOverwrite when empty.
+	// Merge is the strategy of slice and map fields and of the Merge
+	// methods of slice and map partial types. It is MergeOverwrite when
+	// empty.
 	Merge MergeMode
-	// MergeNested is MergeNestedRecursive when empty.
+	// MergeNested is the strategy of fields holding partial values. It is
+	// MergeNestedRecursive when empty.
 	MergeNested MergeNestedMode
+	// Registry tells the declarations emitted by generators. It is
+	// genmark.DefaultRegistry when nil.
+	Registry *genmark.Registry
 }
 
 // WithDefaults returns o with empty fields set to their defaults.
 func (o Options) WithDefaults() Options {
 	o.Merge = cmp.Or(o.Merge, MergeOverwrite)
 	o.MergeNested = cmp.Or(o.MergeNested, MergeNestedRecursive)
+	if o.Registry == nil {
+		o.Registry = genmark.DefaultRegistry
+	}
 	return o
 }
 
@@ -116,9 +125,11 @@ type File struct {
 	Content []byte
 }
 
-// Generate returns the partial type declarations for the targets in pkgs,
-// one file per source file declaring targets, sorted by path. See the
-// package documentation for target selection and the type mapping.
+// Generate returns the partial type declarations and their methods for
+// the targets in pkgs, one file per source file declaring targets, and the
+// helpers file of each package holding targets, sorted by path. See the
+// package documentation for target selection, the type mapping and the
+// methods.
 //
 // pkgs must be loaded as gopackages.Load does. Test variants are skipped.
 // The returned content is not formatted beyond what printing the syntax
@@ -127,8 +138,9 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
+	opts = opts.WithDefaults()
 
-	sel, err := selectTargets(sourcePackages(pkgs))
+	sel, err := selectTargets(sourcePackages(pkgs), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -139,6 +151,13 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 		byFile[name] = append(byFile[name], n)
 	}
 
+	type pkgHelpers struct {
+		pkg  *packages.Package
+		dir  string
+		used map[string]bool
+	}
+	byPkg := map[string]*pkgHelpers{}
+
 	files := make([]File, 0, len(byFile))
 	for _, name := range slices.Sorted(maps.Keys(byFile)) {
 		nodes := byFile[name]
@@ -146,7 +165,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 			return cmp.Compare(a.Detail.Ts.Pos(), b.Detail.Ts.Pos())
 		})
 
-		content, err := renderFile(sel, nodes)
+		content, used, err := renderFile(sel, nodes)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +176,25 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 			),
 			Content: content,
 		})
+
+		pkg := nodes[0].Detail.Pkg
+		h := byPkg[pkg.PkgPath]
+		if h == nil {
+			h = &pkgHelpers{pkg: pkg, dir: filepath.Dir(name), used: map[string]bool{}}
+			byPkg[pkg.PkgPath] = h
+		}
+		maps.Copy(h.used, used)
 	}
+
+	for _, pkgPath := range slices.Sorted(maps.Keys(byPkg)) {
+		h := byPkg[pkgPath]
+		content, err := renderHelpers(h.pkg, h.used)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, File{Path: filepath.Join(h.dir, HelpersFile), Content: content})
+	}
+	slices.SortFunc(files, func(a, b File) int { return cmp.Compare(a.Path, b.Path) })
 	return files, nil
 }
 
@@ -177,20 +214,27 @@ func sourcePackages(pkgs []*packages.Package) []*packages.Package {
 }
 
 // renderFile prints the partial declarations of nodes, which share a
-// source file.
-func renderFile(sel *selection, nodes []*typegraph.Node) ([]byte, error) {
+// source file, and returns the helpers their methods call.
+func renderFile(sel *selection, nodes []*typegraph.Node) ([]byte, map[string]bool, error) {
 	pkg := nodes[0].Detail.Pkg
 
 	// The und import is required up front because a package that does not
 	// import it, directly or not, is unknown to the Parser. Requiring it
 	// imports it unconditionally, so a file not using it is rendered again
 	// without.
-	b, usedUnd, err := renderFileWith(sel, pkg, nodes, true)
-	if err != nil || usedUnd {
-		return b, err
+	b, p, err := renderFileWith(sel, pkg, nodes, true)
+	if err != nil || p.usedUnd {
+		return b, helpersOf(p), err
 	}
-	b, _, err = renderFileWith(sel, pkg, nodes, false)
-	return b, err
+	b, p, err = renderFileWith(sel, pkg, nodes, false)
+	return b, helpersOf(p), err
+}
+
+func helpersOf(p *mapper) map[string]bool {
+	if p == nil {
+		return nil
+	}
+	return p.helpers
 }
 
 func renderFileWith(
@@ -198,22 +242,34 @@ func renderFileWith(
 	pkg *packages.Package,
 	nodes []*typegraph.Node,
 	requireUnd bool,
-) ([]byte, bool, error) {
+) ([]byte, *mapper, error) {
 	parser := importdecl.NewParser(pkg.Types)
+	// Import names must not be taken by declarations of the package, nor
+	// by the type parameters and locals of the generated declarations,
+	// which would shadow them.
+	parser.Reserve(pkg.Types.Scope().Names()...)
+	for _, n := range nodes {
+		for tp := range n.Detail.Type.TypeParams().TypeParams() {
+			parser.Reserve(tp.Obj().Name())
+		}
+		for _, l := range locals(pkg.Types.Scope(), n.Detail.Type.TypeParams()) {
+			parser.Reserve(l)
+		}
+	}
 	if requireUnd {
 		err := parser.Require(importdecl.Import{
 			Package: importdecl.Package{Path: undPath, Name: "und"},
 		})
 		if err != nil {
-			return nil, false, err
+			return nil, nil, err
 		}
 	}
 	m, err := parser.ParseDst(nil)
 	if err != nil {
-		return nil, false, err
+		return nil, nil, err
 	}
 
-	p := &mapper{sel: sel, pkg: pkg, m: m}
+	p := &mapper{sel: sel, pkg: pkg, m: m, helpers: map[string]bool{}}
 	f := &dst.File{Name: dst.NewIdent(pkg.Name)}
 	f.Decs.Start = dst.Decorations{header, "\n"}
 	// The partial types refer to the source types, so they must build under
@@ -223,44 +279,60 @@ func renderFileWith(
 		f.Decs.Start = append(f.Decs.Start, line, "\n")
 	}
 	for _, n := range nodes {
-		decl, err := p.decl(n)
+		decls, err := p.decl(n)
 		if err != nil {
-			return nil, false, err
+			return nil, nil, err
 		}
-		f.Decls = append(f.Decls, decl)
+		f.Decls = append(f.Decls, decls...)
 	}
 	m.AddMissingDst(f)
 
 	var buf bytes.Buffer
 	if err := decorator.Fprint(&buf, f); err != nil {
-		return nil, false, fmt.Errorf("partial: print %s: %w", nodeName(nodes[0]), err)
+		return nil, nil, fmt.Errorf("partial: print %s: %w", nodeName(nodes[0]), err)
 	}
-	return buf.Bytes(), p.usedUnd, nil
+	return buf.Bytes(), p, nil
 }
 
-// decl returns the partial declaration of n.
-func (p *mapper) decl(n *typegraph.Node) (*dst.GenDecl, error) {
+// decl returns the partial declaration of n and its methods.
+func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 	named := n.Detail.Type
+	p.refs = map[string]bool{}
 	tparams, err := p.typeParams(n, named.TypeParams())
 	if err != nil {
 		return nil, err
 	}
 
+	w := p.newMethodWriter(n)
 	var ty dst.Expr
 	switch u := named.Underlying().(type) {
 	case *types.Struct:
-		ty, err = p.structType(n, u)
+		var fields []fieldInfo
+		ty, fields, err = p.structType(n, u)
+		if err == nil {
+			w.structMethods(fields)
+		}
 	case *types.Slice:
-		var elem dst.Expr
-		elem, err = p.value(u.Elem())
-		ty = &dst.ArrayType{Elt: elem}
+		var elem mapped
+		elem, err = p.value(u.Elem(), false)
+		ty = &dst.ArrayType{Elt: elem.expr}
+		if err == nil {
+			err = w.collectionMethods(false, elem, u.Elem())
+		}
 	case *types.Map:
-		var key, value dst.Expr
+		var key dst.Expr
+		var value mapped
 		key, err = p.print(u.Key())
 		if err == nil {
-			value, err = p.value(u.Elem())
+			value, err = p.value(u.Elem(), false)
 		}
-		ty = &dst.MapType{Key: key, Value: value}
+		ty = &dst.MapType{Key: key, Value: value.expr}
+		if err == nil {
+			err = w.collectionMethods(true, value, u.Elem())
+		}
+	}
+	if err == nil {
+		err = p.checkTypeParams(named)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("%s (%s): %w", nodeName(n), p.position(named.Obj().Pos()), err)
@@ -284,7 +356,34 @@ func (p *mapper) decl(n *typegraph.Node) (*dst.GenDecl, error) {
 		"//",
 		genmark.Marker(GeneratorName),
 	}
-	return decl, nil
+
+	methods, err := w.decls(p.pkg.Name)
+	if err != nil {
+		return nil, err
+	}
+	return append([]dst.Decl{decl}, methods...), nil
+}
+
+// checkTypeParams reports a type parameter of named sharing its name with
+// a package-level identifier the generated declarations refer to, which
+// the parameter would shadow. Import names avoid type parameters instead.
+func (p *mapper) checkTypeParams(named *types.Named) error {
+	refs := maps.Clone(p.refs)
+	refs[named.Obj().Name()] = true
+	refs[partialName(named.Obj().Name())] = true
+	for _, h := range helperNames() {
+		refs[h] = true
+	}
+	var errs []error
+	for tp := range named.TypeParams().TypeParams() {
+		if refs[tp.Obj().Name()] {
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: type parameter %s shadows %s the partial declarations refer to",
+				ErrConflict, p.position(tp.Obj().Pos()), tp.Obj().Name(), tp.Obj().Name(),
+			))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // buildConstraint returns the //go:build line of f.

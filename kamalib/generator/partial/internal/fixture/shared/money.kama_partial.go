@@ -11,3 +11,43 @@ type MoneyPartial struct {
 	Amount   und.Und[int64]  `json:"amount,omitzero"`
 	Currency und.Und[string] `json:"currency,omitzero"`
 }
+
+// FromValue sets every field of p to the partial form of the field of v.
+// A nil pointer, slice or map and a none option become null.
+//
+//kama:generated kama-partial
+func (p *MoneyPartial) FromValue(v Money) {
+	p.Amount = kamaPartialFromValue(v.Amount)
+	p.Currency = kamaPartialFromValue(v.Currency)
+}
+
+// ToValue returns the value p describes. An undefined or null field
+// gives the zero value of the field.
+//
+//kama:generated kama-partial
+func (p MoneyPartial) ToValue() Money {
+	var v Money
+	v.Amount = kamaPartialToValue(p.Amount)
+	v.Currency = kamaPartialToValue(p.Currency)
+	return v
+}
+
+// Merge returns p with the fields of r merged onto it. An undefined
+// field of r keeps the field of p. Merge writes to neither p nor r.
+//
+//kama:generated kama-partial
+func (p MoneyPartial) Merge(r MoneyPartial) MoneyPartial {
+	p.Amount = kamaPartialMergeOverwrite(p.Amount, r.Amount)
+	p.Currency = kamaPartialMergeOverwrite(p.Currency, r.Currency)
+	return p
+}
+
+// ApplyTo returns v with the change p describes applied. It is
+// FromValue of v merged with p, converted back with ToValue.
+//
+//kama:generated kama-partial
+func (p MoneyPartial) ApplyTo(v Money) Money {
+	var base MoneyPartial
+	base.FromValue(v)
+	return base.Merge(p).ToValue()
+}

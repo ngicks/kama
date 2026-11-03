@@ -20,60 +20,81 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-const fixtureDir = "internal/fixture"
-
-func TestFixtureSpecBuild(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join(fixtureDir, "spec.yaml"))
-	assert.NilError(t, err)
-
-	var spec workflow.Spec
-	assert.NilError(t, yaml.Unmarshal(b, &spec))
-
-	// Build only dry-runs, so the fixture directory is not touched.
-	_, err = spec.Build(context.Background(), workflow.DefaultRegistry)
-	assert.NilError(t, err)
+// fixtures are the fixture directories with the params their spec.yaml
+// gives the generate step.
+var fixtures = []struct {
+	dir   string
+	param ProcParam
+}{
+	{dir: "internal/fixture"},
+	{dir: "internal/fixturemerge", param: ProcParam{Merge: "append", MergeNested: "overwrite"}},
 }
 
-// TestFixtureUpToDate regenerates the fixture, whose generated files are
+func TestFixtureSpecBuild(t *testing.T) {
+	for _, fx := range fixtures {
+		t.Run(fx.dir, func(t *testing.T) {
+			b, err := os.ReadFile(filepath.Join(fx.dir, "spec.yaml"))
+			assert.NilError(t, err)
+
+			var spec workflow.Spec
+			assert.NilError(t, yaml.Unmarshal(b, &spec))
+
+			// Build only dry-runs, so the fixture directory is not touched.
+			_, err = spec.Build(context.Background(), workflow.DefaultRegistry)
+			assert.NilError(t, err)
+		})
+	}
+}
+
+// TestFixtureUpToDate regenerates each fixture, whose generated files are
 // loaded as input like any other file, and compares the staged output with
 // the files on disk.
 func TestFixtureUpToDate(t *testing.T) {
-	ctx := context.Background()
+	for _, fx := range fixtures {
+		t.Run(fx.dir, func(t *testing.T) {
+			ctx := context.Background()
 
-	f, err := overlayfs.New(fixtureDir)
-	assert.NilError(t, err)
-	defer f.Close()
+			f, err := overlayfs.New(fx.dir)
+			assert.NilError(t, err)
+			defer f.Close()
 
-	pkgs, err := pkggopackages.Load(ctx, f, pkggopackages.Options{Patterns: []string{"./..."}})
-	assert.NilError(t, err)
+			pkgs, err := pkggopackages.Load(
+				ctx, f, pkggopackages.Options{Patterns: []string{"./..."}},
+			)
+			assert.NilError(t, err)
 
-	i := &instance{}
-	assert.NilError(t, i.Param(ProcParam{}))
-	i.In(&gopackages.Packages{Pkgs: pkgs})
-	i.Out(f)
-	assert.NilError(t, i.Run(ctx))
+			i := &instance{}
+			assert.NilError(t, i.Param(fx.param))
+			i.In(&gopackages.Packages{Pkgs: pkgs})
+			i.Out(f)
+			assert.NilError(t, i.Run(ctx))
 
-	staged, err := f.Overlay()
-	assert.NilError(t, err)
+			staged, err := f.Overlay()
+			assert.NilError(t, err)
 
-	var onDisk []string
-	err = filepath.WalkDir(f.Root(), func(p string, d fs.DirEntry, err error) error {
-		if err == nil && !d.IsDir() && strings.HasSuffix(p, FileSuffix+".go") {
-			onDisk = append(onDisk, p)
-		}
-		return err
-	})
-	assert.NilError(t, err)
-	assert.DeepEqual(t, slices.Sorted(maps.Keys(staged)), onDisk)
+			var onDisk []string
+			err = filepath.WalkDir(f.Root(), func(p string, d fs.DirEntry, err error) error {
+				if err == nil && !d.IsDir() &&
+					(strings.HasSuffix(p, FileSuffix+".go") || filepath.Base(p) == HelpersFile) {
+					onDisk = append(onDisk, p)
+				}
+				return err
+			})
+			assert.NilError(t, err)
+			assert.DeepEqual(t, slices.Sorted(maps.Keys(staged)), onDisk)
 
-	for name, content := range staged {
-		want, err := os.ReadFile(name)
-		assert.NilError(t, err)
-		assert.Equal(t, string(content), string(want), "run go generate ./%s", fixtureDir)
+			for name, content := range staged {
+				want, err := os.ReadFile(name)
+				assert.NilError(t, err)
+				assert.Equal(t, string(content), string(want), "run go generate ./%s", fx.dir)
+			}
+
+			// Load fails on any package error, so this checks the staged
+			// output compiles.
+			_, err = pkggopackages.Load(
+				ctx, f, pkggopackages.Options{Patterns: []string{"./..."}},
+			)
+			assert.NilError(t, err)
+		})
 	}
-
-	// Load fails on any package error, so this checks the staged output
-	// compiles.
-	_, err = pkggopackages.Load(ctx, f, pkggopackages.Options{Patterns: []string{"./..."}})
-	assert.NilError(t, err)
 }
