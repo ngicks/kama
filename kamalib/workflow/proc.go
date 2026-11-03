@@ -110,7 +110,7 @@ type Proc interface {
 //
 // Run reports through r what the caller should hear about without the step
 // failing, such as a skipped input, and how far it has got. r is valid only
-// until Run returns.
+// until Run returns. See Reporter for what happens to later calls.
 type Instance interface {
 	Run(ctx context.Context, r Reporter) error
 }

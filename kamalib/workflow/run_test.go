@@ -4,8 +4,13 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"runtime"
+	"slices"
+	"sync/atomic"
 	"testing"
+	"time"
 
+	"golang.org/x/sync/errgroup"
 	"gotest.tools/v3/assert"
 )
 
@@ -143,15 +148,68 @@ func (i *reportInst) Run(_ context.Context, r Reporter) error {
 	r.Progress("half")
 	r.Warn(nil)
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
+	var eg errgroup.Group
+	eg.Go(func() error {
 		r.Warn(errWarn)
-	}()
-	<-done
+		return nil
+	})
+	_ = eg.Wait()
 
 	r.Progress("all")
 	return nil
+}
+
+// burstInst reports from several goroutines at once.
+type burstInst struct{}
+
+func (i *burstInst) Param() error { return nil }
+func (i *burstInst) In()          {}
+func (i *burstInst) Out()         {}
+
+const (
+	burstGoroutines = 8
+	burstReports    = 100
+)
+
+func (i *burstInst) Run(_ context.Context, r Reporter) error {
+	var eg errgroup.Group
+	for range burstGoroutines {
+		eg.Go(func() error {
+			for range burstReports {
+				r.Warn(errWarn)
+				r.Progress("tick")
+			}
+			return nil
+		})
+	}
+	return eg.Wait()
+}
+
+// blockInst reports "blocked" from a goroutine that outlives its Run, and
+// returns once the callback for that report has been entered. The goroutine
+// reports "late" after the callback is released.
+type blockInst struct {
+	entered  <-chan struct{}
+	returned chan<- struct{}
+	bg       *errgroup.Group
+	err      error
+}
+
+func (i *blockInst) Param() error { return nil }
+func (i *blockInst) In()          {}
+func (i *blockInst) Out()         {}
+
+func (i *blockInst) Run(_ context.Context, r Reporter) error {
+	defer close(i.returned)
+
+	i.bg.Go(func() error {
+		r.Progress("blocked")
+		r.Progress("late")
+		return nil
+	})
+	<-i.entered
+
+	return i.err
 }
 
 // leakInst keeps its Reporter and reports after its Run returned.
@@ -381,4 +439,104 @@ func TestRunDropsReportsAfterRun(t *testing.T) {
 	leaked.Warn(errWarn)
 	leaked.Progress("late")
 	assert.DeepEqual(t, log, []string{"l: start", "l: done"})
+}
+
+func TestRunSerializesCallbacks(t *testing.T) {
+	var (
+		active     atomic.Int32
+		overlapped atomic.Bool
+		calls      atomic.Int32
+	)
+	enter := func() {
+		calls.Add(1)
+		if active.Add(1) > 1 {
+			overlapped.Store(true)
+		}
+		// Yielding widens the window in which an unserialized call would
+		// enter alongside this one.
+		runtime.Gosched()
+		active.Add(-1)
+	}
+
+	g := buildRun(t, map[string]*runProc{
+		"burst": {newInst: func(bool) Instance { return &burstInst{} }},
+	}, &recorder{}, map[string]Step{
+		"b": {Proc: "burst"},
+	})
+
+	assert.NilError(t, g.Run(context.Background(), ProgressControl{
+		OnWarning:  func(string, error) { enter() },
+		OnProgress: func(string, string) { enter() },
+	}))
+	assert.Assert(t, !overlapped.Load())
+	// start and done, plus a warning and a progress per report round.
+	assert.Equal(t, calls.Load(), int32(2+burstGoroutines*burstReports*2))
+}
+
+func TestRunEndsStepAfterCallbackInFlight(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		err      error
+		terminal string
+	}{
+		{name: "done", terminal: "b: done"},
+		{name: "failed", err: errBoom, terminal: "b: failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var (
+				log      []string
+				bg       errgroup.Group
+				entered  = make(chan struct{})
+				returned = make(chan struct{})
+				release  = make(chan struct{})
+			)
+
+			g := buildRun(t, map[string]*runProc{
+				"block": {newInst: func(bool) Instance {
+					return &blockInst{entered: entered, returned: returned, bg: &bg, err: tc.err}
+				}},
+			}, &recorder{}, map[string]Step{
+				"b": {Proc: "block"},
+			})
+
+			pc := ProgressControl{
+				OnProgress: func(step, msg string) {
+					log = append(log, step+": "+msg)
+					if msg == "blocked" {
+						close(entered)
+						<-release
+						log = append(log, step+": released")
+					}
+				},
+			}
+
+			var eg errgroup.Group
+			eg.Go(func() error { return g.Run(context.Background(), pc) })
+
+			<-returned
+			// The sleep gives the executor time to reach the reporter's close
+			// while the callback is still blocked. The assertions hold however
+			// long it takes.
+			time.Sleep(10 * time.Millisecond)
+			close(release)
+
+			err := eg.Wait()
+			if tc.err != nil {
+				assert.ErrorIs(t, err, tc.err)
+			} else {
+				assert.NilError(t, err)
+			}
+			assert.NilError(t, bg.Wait())
+
+			// "late" races with the reporter's close, so it may or may not be
+			// delivered. When it is, it comes before the terminal progress.
+			trimmed := slices.DeleteFunc(slices.Clone(log), func(s string) bool {
+				return s == "b: late"
+			})
+			assert.DeepEqual(t, trimmed, []string{
+				"b: start", "b: blocked", "b: released", tc.terminal,
+			})
+			assert.Equal(t, log[len(log)-1], tc.terminal)
+		})
+	}
 }

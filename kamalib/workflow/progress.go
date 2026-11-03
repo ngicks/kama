@@ -23,8 +23,10 @@ type ProgressControl struct {
 // reports with the step name and passes it to the run's ProgressControl.
 //
 // A Reporter is safe for concurrent use, so an instance may report from
-// goroutines it starts. Calls made after the instance's Run returns are
-// dropped.
+// goroutines it starts. The executor closes the Reporter after the
+// instance's Run returns. Closing waits for calls in flight to finish and
+// makes later calls no-ops. No report from the instance reaches
+// ProgressControl after the step's "done" or "failed" progress.
 type Reporter interface {
 	// Warn reports a problem that does not fail the step. A nil w is
 	// ignored.
