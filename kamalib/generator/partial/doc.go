@@ -196,7 +196,8 @@
 // undefined, so it keeps the embedded partial of p under every strategy.
 // Otherwise recursive gives the Merge of both, and overwrite gives the
 // embedded partial of r whole. ApplyTo of the zero partial value therefore
-// returns v unchanged.
+// returns v unchanged, except that a non-nil embedded *M whose fields all
+// give undefined still converts back to nil, as described above.
 //
 // Options.Merge, overwrite or append, is the strategy of fields whose
 // value is a slice or a map, as for []T, *[]T and opt.Option[map[K]V].
