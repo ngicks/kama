@@ -508,3 +508,30 @@ func TestFallbackSkipsTakenNames(t *testing.T) {
 		assert.Equal(t, got, "p_3")
 	})
 }
+
+func TestReserve(t *testing.T) {
+	p := NewParser(types.NewPackage("example.com/p", "p"))
+	p.Reserve("foo", "foo_2", "bar")
+	assert.NilError(t, p.Require(
+		Import{Package: Package{Path: "example.com/foo", Name: "foo"}},
+	))
+	m, err := p.ParseAst([]*ast.ImportSpec{{
+		// The file's own import keeps a reserved name.
+		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/bar"`},
+		Name: ast.NewIdent("bar"),
+	}})
+	assert.NilError(t, err)
+
+	assert.DeepEqual(t, missing(m), []Import{
+		{Name: "foo_3", Package: Package{Path: "example.com/foo", Name: "foo"}},
+	})
+	got, ok := m.Ident("example.com/bar")
+	assert.Assert(t, ok)
+	assert.Equal(t, got, "bar")
+
+	// A Map parsed later starts from the reserved names again.
+	m, err = p.ParseAst(nil)
+	assert.NilError(t, err)
+	got, _ = m.Ident("example.com/foo")
+	assert.Equal(t, got, "foo_3")
+}

@@ -17,6 +17,7 @@ import (
 	"go/token"
 	"go/types"
 	"iter"
+	"maps"
 	"path"
 	"slices"
 	"strconv"
@@ -124,6 +125,7 @@ func (t QualifiedType) Is(ty types.Type) bool {
 type Parser struct {
 	known    map[string]Package
 	required []Import
+	reserved map[string]bool
 }
 
 // NewParser returns a Parser that knows pkg and every package it imports,
@@ -180,6 +182,20 @@ func (p *Parser) Require(imports ...Import) error {
 	return nil
 }
 
+// Reserve marks idents as taken in every Map p parses, so that no missing
+// import gets one of them as its name. Callers reserve the identifiers the
+// file declares or uses unqualified. A missing import whose name is
+// reserved gets the next free name, as name_2. Imports the parsed file
+// already has keep their names.
+func (p *Parser) Reserve(idents ...string) {
+	if p.reserved == nil {
+		p.reserved = map[string]bool{}
+	}
+	for _, ident := range idents {
+		p.reserved[ident] = true
+	}
+}
+
 // ParseAst parses the import specs of a file, as ast.File.Imports holds
 // them.
 func (p *Parser) ParseAst(specs []*ast.ImportSpec) (*Map, error) {
@@ -215,8 +231,11 @@ func (p *Parser) ParseDst(specs []*dst.ImportSpec) (*Map, error) {
 func (p *Parser) parse(specs iter.Seq2[string, string]) (*Map, error) {
 	m := &Map{
 		known:   p.known,
-		idents:  map[string]bool{},
+		idents:  maps.Clone(p.reserved),
 		imports: map[string]Import{},
+	}
+	if m.idents == nil {
+		m.idents = map[string]bool{}
 	}
 
 	for name, lit := range specs {
