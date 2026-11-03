@@ -274,8 +274,9 @@
 // variants other than the one loaded keep finding theirs. The methods have
 // signatures of basic and time types, so *pflag.FlagSet of
 // github.com/spf13/pflag implements it and the generated code imports no
-// flag package. The file has no build constraint and is written again on
-// every run; a declaration in it the generator did not mark is an error,
+// flag package. The file has no build constraint and is generated on every
+// run, and Proc keeps it as it was when only its generated: line would
+// change; a declaration in it the generator did not mark is an error,
 // and so is PartialFlagSet declared elsewhere in the package.
 //
 // # Output
@@ -288,7 +289,8 @@
 // of each package holding targets. The file holds every helper whether the
 // package uses it or not, so that partial files of build variants other
 // than the one loaded keep finding theirs. It has no build constraint and
-// is written again on every run; a declaration in it the generator did not
+// is generated on every run, and Proc keeps it as it was when only its
+// generated: line would change; a declaration in it the generator did not
 // mark is an error, and so is a helper name declared elsewhere in the
 // package. Every generated declaration carries the marker
 // //kama:generated kama-partial.

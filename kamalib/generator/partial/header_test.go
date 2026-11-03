@@ -179,7 +179,7 @@ func TestProcStale(t *testing.T) {
 	assert.Equal(t, len(r.warnings), 1, "%v", r.warnings)
 	assert.Assert(t, errors.Is(r.warnings[0], ErrStale))
 	assert.ErrorContains(t, r.warnings[0], "b.kama_partial.go")
-	assert.DeepEqual(t, r.progress, []string{"3 files written, 0 unchanged"})
+	assert.DeepEqual(t, r.progress, []string{"3 files written, 0 files unchanged"})
 	// The stale file is left in place.
 	assert.Equal(t, e.read("b.kama_partial.go"), staleSources["b.kama_partial.go"])
 }
@@ -192,7 +192,7 @@ func TestProcKeepsUnchanged(t *testing.T) {
 	)
 	e := newProcEnv(t, map[string]string{"a.go": staleSources["a.go"]})
 	r := e.run(time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC))
-	assert.DeepEqual(t, r.progress, []string{"3 files written, 0 unchanged"})
+	assert.DeepEqual(t, r.progress, []string{"3 files written, 0 files unchanged"})
 	names := []string{"a.kama_partial.go", HelpersFile, FlagSetFile}
 	before := map[string]string{}
 	for _, name := range names {
@@ -202,14 +202,14 @@ func TestProcKeepsUnchanged(t *testing.T) {
 
 	r = e.run(time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC))
 	assert.Equal(t, len(r.warnings), 0, "%v", r.warnings)
-	assert.DeepEqual(t, r.progress, []string{"0 files written, 3 unchanged"})
+	assert.DeepEqual(t, r.progress, []string{"0 files written, 3 files unchanged"})
 	for _, name := range names {
 		assert.Equal(t, e.read(name), before[name], name)
 	}
 
 	e.write("a.go", "package x\n\n//kama:partial\ntype A struct{ X, Y int }\n")
 	r = e.run(time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
-	assert.DeepEqual(t, r.progress, []string{"1 files written, 2 unchanged"})
+	assert.DeepEqual(t, r.progress, []string{"1 file written, 2 files unchanged"})
 	got := map[string]string{}
 	for _, name := range names {
 		got[name] = e.read(name)

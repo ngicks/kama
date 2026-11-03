@@ -140,8 +140,15 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 			kept++
 		}
 	}
-	r.Progress(fmt.Sprintf("%d files written, %d unchanged", written, kept))
+	r.Progress(fmt.Sprintf("%s written, %s unchanged", fileCount(written), fileCount(kept)))
 	return nil
+}
+
+func fileCount(n int) string {
+	if n == 1 {
+		return "1 file"
+	}
+	return fmt.Sprintf("%d files", n)
 }
 
 // write stages content at name and reports whether it changed the file.

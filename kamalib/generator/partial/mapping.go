@@ -498,16 +498,6 @@ func setOption(tags structtag.Tags, key, add, drop string, always bool) (structt
 		if tags[i].Value == "-" {
 			return tags, nil
 		}
-		// structtag rejects the empty option a trailing comma leaves, as in
-		// json:"-," naming a field "-".
-		if v, ok := strings.CutSuffix(tags[i].Value, ","); ok {
-			tags = slices.Clone(tags)
-			if v == "-" {
-				tags[i].Value = "-," + add
-				return tags, nil
-			}
-			tags[i].Value = v
-		}
 		_, _, err := tags.Get(key, drop)
 		switch {
 		case err == nil:
