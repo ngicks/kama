@@ -1,0 +1,55 @@
+# Produced by TestMarshalers/toml_v2 (go1.27; github.com/ngicks/option v0.0.2, github.com/pelletier/go-toml/v2 v2.4.3) using toml.Marshal/toml.Unmarshal.
+# Regenerate with: go test ./generator/partial -run TestMarshalers/toml_v2 -update
+
+## tag `toml:"<key>"`
+encode:
+  [und_undefined]
+  [und_null]
+  [und_defined]
+  [elastic_undefined]
+  [elastic_null]
+  [elastic_defined]
+  [opt_none]
+  [opt_some]
+decode:
+  und missing: undefined
+  und null: not expressible
+  und value: undefined (error: toml: cannot decode TOML string into struct field <probe struct>.F0 of type und.Und[string])
+  elastic missing: undefined
+  elastic null: not expressible
+  elastic value: undefined (error: toml: cannot decode TOML string into struct field <probe struct>.F1 of type elastic.Elastic[string])
+  opt missing: none
+  opt null: not expressible
+  opt value: none (error: toml: cannot decode TOML string into struct field <probe struct>.F2 of type opt.Option[string])
+
+## tag `toml:"<key>,omitempty"`
+encode:
+  (empty)
+decode:
+  und missing: undefined
+  und null: not expressible
+  und value: undefined (error: toml: cannot decode TOML string into struct field <probe struct>.F0 of type und.Und[string])
+  elastic missing: undefined
+  elastic null: not expressible
+  elastic value: undefined (error: toml: cannot decode TOML string into struct field <probe struct>.F1 of type elastic.Elastic[string])
+  opt missing: none
+  opt null: not expressible
+  opt value: none (error: toml: cannot decode TOML string into struct field <probe struct>.F2 of type opt.Option[string])
+
+## tag `toml:"<key>,omitzero"`
+encode:
+  [und_null]
+  [und_defined]
+  [elastic_null]
+  [elastic_defined]
+  [opt_some]
+decode:
+  und missing: undefined
+  und null: not expressible
+  und value: undefined (error: toml: cannot decode TOML string into struct field <probe struct>.F0 of type und.Und[string])
+  elastic missing: undefined
+  elastic null: not expressible
+  elastic value: undefined (error: toml: cannot decode TOML string into struct field <probe struct>.F1 of type elastic.Elastic[string])
+  opt missing: none
+  opt null: not expressible
+  opt value: none (error: toml: cannot decode TOML string into struct field <probe struct>.F2 of type opt.Option[string])

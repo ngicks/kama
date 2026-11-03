@@ -1,0 +1,56 @@
+# Produced by TestMarshalers/yaml_v4 (go1.27; github.com/ngicks/option v0.0.2, go.yaml.in/yaml/v4 v4.0.0-rc.5) using yaml.Marshal/yaml.Unmarshal.
+# Regenerate with: go test ./generator/partial -run TestMarshalers/yaml_v4 -update
+
+## tag `yaml:"<key>"`
+encode:
+  und_undefined: {}
+  und_null: {}
+  und_defined: {}
+  elastic_undefined: {}
+  elastic_null: {}
+  elastic_defined: {}
+  opt_none: {}
+  opt_some: {}
+decode:
+  und missing: undefined
+  und null: undefined
+  und value: undefined (error: yaml: construct errors: line 1: cannot construct !!str `x` into und.Und[string])
+  elastic missing: undefined
+  elastic null: undefined
+  elastic value: undefined (error: yaml: construct errors: line 1: cannot construct !!str `x` into elastic.Elastic[string])
+  opt missing: none
+  opt null: none
+  opt value: none (error: yaml: construct errors: line 1: cannot construct !!str `x` into opt.Option[string])
+
+## tag `yaml:"<key>,omitempty"`
+encode:
+  und_null: {}
+  und_defined: {}
+  elastic_null: {}
+  elastic_defined: {}
+  opt_some: {}
+decode:
+  und missing: undefined
+  und null: undefined
+  und value: undefined (error: yaml: construct errors: line 1: cannot construct !!str `x` into und.Und[string])
+  elastic missing: undefined
+  elastic null: undefined
+  elastic value: undefined (error: yaml: construct errors: line 1: cannot construct !!str `x` into elastic.Elastic[string])
+  opt missing: none
+  opt null: none
+  opt value: none (error: yaml: construct errors: line 1: cannot construct !!str `x` into opt.Option[string])
+
+## tag `yaml:"<key>,omitzero"`
+encode:
+  (empty)
+encode error: go-yaml dump error in representer: unsupported flag "omitzero" in tag "und_undefined,omitzero" of type <probe struct>
+decode:
+  und missing: undefined (error: panic: unsupported flag "omitzero" in tag "und,omitzero" of type <probe struct>)
+  und null: undefined (error: panic: unsupported flag "omitzero" in tag "und,omitzero" of type <probe struct>)
+  und value: undefined (error: panic: unsupported flag "omitzero" in tag "und,omitzero" of type <probe struct>)
+  elastic missing: undefined (error: panic: unsupported flag "omitzero" in tag "und,omitzero" of type <probe struct>)
+  elastic null: undefined (error: panic: unsupported flag "omitzero" in tag "und,omitzero" of type <probe struct>)
+  elastic value: undefined (error: panic: unsupported flag "omitzero" in tag "und,omitzero" of type <probe struct>)
+  opt missing: none (error: panic: unsupported flag "omitzero" in tag "und,omitzero" of type <probe struct>)
+  opt null: none (error: panic: unsupported flag "omitzero" in tag "und,omitzero" of type <probe struct>)
+  opt value: none (error: panic: unsupported flag "omitzero" in tag "und,omitzero" of type <probe struct>)

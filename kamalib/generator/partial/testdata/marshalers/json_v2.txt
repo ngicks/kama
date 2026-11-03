@@ -1,0 +1,44 @@
+# Produced by TestMarshalers/json_v2 (go1.27; github.com/ngicks/option v0.0.2) using encoding/json/v2 Marshal/Unmarshal.
+# Regenerate with: go test ./generator/partial -run TestMarshalers/json_v2 -update
+
+## tag `json:"<key>"`
+encode:
+  {"und_undefined":null,"und_null":null,"und_defined":"x","elastic_undefined":null,"elastic_null":null,"elastic_defined":["x"],"opt_none":null,"opt_some":"x"}
+decode:
+  und missing: undefined
+  und null: null
+  und value: defined("x")
+  elastic missing: undefined
+  elastic null: null
+  elastic value: defined[some("x")]
+  opt missing: none
+  opt null: none
+  opt value: some("x")
+
+## tag `json:"<key>,omitempty"`
+encode:
+  {"und_defined":"x","elastic_defined":["x"],"opt_some":"x"}
+decode:
+  und missing: undefined
+  und null: null
+  und value: defined("x")
+  elastic missing: undefined
+  elastic null: null
+  elastic value: defined[some("x")]
+  opt missing: none
+  opt null: none
+  opt value: some("x")
+
+## tag `json:"<key>,omitzero"`
+encode:
+  {"und_null":null,"und_defined":"x","elastic_null":null,"elastic_defined":["x"],"opt_some":"x"}
+decode:
+  und missing: undefined
+  und null: null
+  und value: defined("x")
+  elastic missing: undefined
+  elastic null: null
+  elastic value: defined[some("x")]
+  opt missing: none
+  opt null: none
+  opt value: some("x")
