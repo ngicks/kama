@@ -125,6 +125,34 @@ func TestFormat(t *testing.T) {
 	assert.ErrorIs(t, f.Write(ctx, "x.go", []byte("package x\n")), ErrClosed)
 }
 
+func TestFormatLeavesInputIntact(t *testing.T) {
+	ctx := context.Background()
+
+	// The formatter rewrites its input in place, using spare capacity.
+	f, err := New(t.TempDir(), WithFormatter(formatterFunc(
+		func(_ context.Context, _ string, src []byte) ([]byte, error) {
+			prefixed := append([]byte("// formatted\n"), src...)
+			return append(src[:0], prefixed...), nil
+		},
+	)))
+	assert.NilError(t, err)
+	defer f.Close()
+
+	content := make([]byte, 0, 100)
+	content = append(content, "package x\n"...)
+
+	got, err := f.Format(ctx, "x.go", content)
+	assert.NilError(t, err)
+	assert.Equal(t, string(got), "// formatted\npackage x\n")
+	assert.Equal(t, string(content), "package x\n")
+
+	assert.NilError(t, f.Write(ctx, "x.go", content))
+	staged, err := fs.ReadFile(f.FS(), "x.go")
+	assert.NilError(t, err)
+	assert.Equal(t, string(staged), "// formatted\npackage x\n")
+	assert.Equal(t, string(content), "package x\n")
+}
+
 func TestFormatError(t *testing.T) {
 	errFormat := errors.New("format failed")
 	f, err := New(t.TempDir(), WithFormatter(formatterFunc(

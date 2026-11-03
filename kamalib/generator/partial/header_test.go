@@ -224,13 +224,15 @@ func TestProcKeepsUnchanged(t *testing.T) {
 }
 
 // prefixFormatter prepends a line to every file it formats, so formatting
-// a file twice is visible.
+// a file twice is visible. It writes its result into src's storage, as a
+// formatter may, so a caller reusing src after formatting would see it.
 type prefixFormatter struct{}
 
 const formattedPrefix = "// formatted\n"
 
 func (prefixFormatter) Format(_ context.Context, _ string, src []byte) ([]byte, error) {
-	return append([]byte(formattedPrefix), src...), nil
+	prefixed := append([]byte(formattedPrefix), src...)
+	return append(src[:0], prefixed...), nil
 }
 
 func TestProcKeepsUnchangedNonIdempotentFormatter(t *testing.T) {

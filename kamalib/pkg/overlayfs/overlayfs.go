@@ -17,6 +17,7 @@ import (
 	"io/fs"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/ngicks/go-fsys-helper/vroot"
@@ -137,7 +138,9 @@ func (f *Fs) Format(ctx context.Context, name string, content []byte) ([]byte, e
 	}
 
 	abs := filepath.Join(f.root, filepath.FromSlash(name))
-	formatted, err := f.formatter.Format(ctx, abs, content)
+	// Formatters may reuse their input's storage; a copy keeps the caller's
+	// content intact, so the same bytes can be passed to Format and Write.
+	formatted, err := f.formatter.Format(ctx, abs, slices.Clone(content))
 	if err != nil {
 		return nil, fmt.Errorf("overlayfs: format %q: %w", name, err)
 	}
