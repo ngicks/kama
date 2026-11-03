@@ -9,9 +9,11 @@ import (
 	"maps"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
@@ -54,14 +56,38 @@ func registry(t *testing.T) *genmark.Registry {
 	return r
 }
 
-// generate runs Generate on files with opts and a registry of this
-// generator only.
+// testNow is the time the header of the files generate gives records.
+func testNow() time.Time { return time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC) }
+
+// testHeader is the header of the files generate gives with default options.
+const testHeader = header + `
+//
+// generator: kama-partial
+// params: merge=overwrite merge_nested=recursive option_file=none
+// generated: 2026-11-04T10:12:33Z`
+
+var optionFileParam = regexp.MustCompile(`(?m)^(// params: .*option_file=)\S+$`)
+
+// withoutRunParams returns src, a generated file, without the generated:
+// line and with option_file=none, the header fields that tell how a run was
+// made rather than what it generated.
+func withoutRunParams(src string) string {
+	return optionFileParam.ReplaceAllString(string(dropGenerated([]byte(src))), "${1}none")
+}
+
+// generate runs Generate on files with opts, a registry of this generator
+// only and testNow, and fails on a warning.
 func generate(t *testing.T, files map[string]string, opts Options) ([]File, error) {
 	t.Helper()
 	if opts.Registry == nil {
 		opts.Registry = registry(t)
 	}
-	return Generate(load(t, files), opts)
+	if opts.Now == nil {
+		opts.Now = testNow
+	}
+	out, warnings, err := Generate(load(t, files), opts)
+	assert.Assert(t, len(warnings) == 0, "%v", warnings)
+	return out, err
 }
 
 // generatedWith returns the files generated with opts keyed by base name.
@@ -560,7 +586,7 @@ func TestImports(t *testing.T) {
 		files["b.kama_partial.go"],
 	)
 	for name, src := range files {
-		assert.Assert(t, strings.HasPrefix(src, header+"\n\npackage x\n"), src)
+		assert.Assert(t, strings.HasPrefix(src, testHeader+"\n\npackage x\n"), src)
 		if name != HelpersFile {
 			assert.Assert(t, strings.Contains(src, "\n//kama:generated kama-partial\ntype "), src)
 		}
@@ -576,11 +602,14 @@ func TestBuildConstraint(t *testing.T) {
 		t,
 		strings.HasPrefix(
 			files["a.kama_partial.go"],
-			header+"\n\n//go:build !never\n\npackage x\n",
+			testHeader+"\n\n//go:build !never\n\npackage x\n",
 		),
 		files["a.kama_partial.go"],
 	)
-	assert.Assert(t, strings.HasPrefix(files["b.kama_partial_linux.go"], header+"\n\npackage x\n"))
+	assert.Assert(
+		t,
+		strings.HasPrefix(files["b.kama_partial_linux.go"], testHeader+"\n\npackage x\n"),
+	)
 }
 
 func TestPartialTag(t *testing.T) {

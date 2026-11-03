@@ -13,6 +13,10 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
+	"time"
+	"unicode"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -60,6 +64,9 @@ var (
 	// ErrOptionFile reports an option file that does not decode, or whose
 	// entries name packages, types or fields that are not loaded.
 	ErrOptionFile = errors.New("partial: invalid option file")
+	// ErrStale reports a file of a loaded package that carries the marker of
+	// the generator but that the run did not produce. It is a warning.
+	ErrStale = errors.New("partial: stale generated file")
 )
 
 // MergeMode selects how a defined slice or map field of a partial combines
@@ -103,6 +110,9 @@ type Options struct {
 	// OptionFile holds options given beside the directives, as
 	// LoadOptionFile or DecodeOptionFile return them. It is none when nil.
 	OptionFile *OptionFile
+	// Now gives the time the header of the generated files records. It is
+	// time.Now when nil.
+	Now func() time.Time
 }
 
 // WithDefaults returns o with empty fields set to their defaults.
@@ -111,6 +121,9 @@ func (o Options) WithDefaults() Options {
 	o.MergeNested = cmp.Or(o.MergeNested, MergeNestedRecursive)
 	if o.Registry == nil {
 		o.Registry = genmark.DefaultRegistry
+	}
+	if o.Now == nil {
+		o.Now = time.Now
 	}
 	return o
 }
@@ -144,18 +157,24 @@ type File struct {
 // sorted by path. See the package documentation for target selection, the
 // type mapping and the methods.
 //
+// The warnings wrap ErrStale, one for each file of pkgs carrying the
+// marker of the generator that is not among the returned files, sorted by
+// path.
+//
 // pkgs must be loaded as gopackages.Load does. Test variants are skipped.
 // The returned content is not formatted beyond what printing the syntax
 // tree gives.
-func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
+func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	if err := opts.Validate(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	opts = opts.WithDefaults()
+	hdr := fileHeader(opts, opts.Now())
 
-	sel, err := selectTargets(sourcePackages(pkgs), opts)
+	srcPkgs := sourcePackages(pkgs)
+	sel, err := selectTargets(srcPkgs, opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	byFile := map[string][]*typegraph.Node{}
@@ -179,9 +198,9 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 			return cmp.Compare(a.Detail.Ts.Pos(), b.Detail.Ts.Pos())
 		})
 
-		content, err := renderFile(sel, nodes)
+		content, err := renderFile(sel, hdr, nodes)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		files = append(files, File{
 			Path: filepath.Join(
@@ -202,27 +221,162 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 
 	for _, pkgPath := range slices.Sorted(maps.Keys(byPkg)) {
 		h := byPkg[pkgPath]
-		content, err := renderHelpers(h.pkg)
+		content, err := renderHelpers(h.pkg, hdr)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		files = append(files, File{Path: filepath.Join(h.dir, HelpersFile), Content: content})
 		h.contents = append(h.contents, content)
 		// The flag set holds every method any flag kind calls, like the
 		// helpers file holds every helper: a partial file of a build variant
 		// other than the one loaded keeps calling the methods its flags use.
-		content, err = renderFlagSet(h.pkg)
+		content, err = renderFlagSet(h.pkg, hdr)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		files = append(files, File{Path: filepath.Join(h.dir, FlagSetFile), Content: content})
 		h.contents = append(h.contents, content)
 		if err := checkPredeclared(h.pkg, h.contents); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	slices.SortFunc(files, func(a, b File) int { return cmp.Compare(a.Path, b.Path) })
-	return files, nil
+	return files, staleFiles(srcPkgs, opts.Registry, files), nil
+}
+
+// fileHeader returns the comment lines every generated file starts with.
+// The first line follows the convention of go help generate.
+func fileHeader(opts Options, now time.Time) dst.Decorations {
+	optionFile := "none"
+	if opts.OptionFile != nil {
+		optionFile = headerValue(opts.OptionFile.Name)
+	}
+	return dst.Decorations{
+		header,
+		"//",
+		"// generator: " + GeneratorName,
+		fmt.Sprintf(
+			"// params: merge=%s merge_nested=%s option_file=%s",
+			headerValue(string(opts.Merge)), headerValue(string(opts.MergeNested)), optionFile,
+		),
+		generatedPrefix + now.UTC().Format(time.RFC3339),
+	}
+}
+
+// generatedPrefix starts the header line holding the time of the run, the
+// only line SameExceptGenerated ignores.
+const generatedPrefix = "// generated: "
+
+// headerValue quotes v when it would not read as a single word of the
+// params line.
+func headerValue(v string) string {
+	if v == "" || strings.ContainsFunc(v, func(r rune) bool {
+		return r <= ' ' || r == '=' || r == '"' || r == 0x7f || r > unicode.MaxASCII
+	}) {
+		return strconv.Quote(v)
+	}
+	return v
+}
+
+// SameExceptGenerated reports whether a and b, two generated files, are
+// equal once the generated: line of their headers is ignored. A caller
+// keeps the existing file of a run that would change only that line, so
+// that regenerating without changes keeps the files byte for byte. Both
+// must be formatted alike, as the files Proc stages are.
+func SameExceptGenerated(a, b []byte) bool {
+	return bytes.Equal(dropGenerated(a), dropGenerated(b))
+}
+
+// dropGenerated returns src without the first generated: line before the
+// package clause.
+func dropGenerated(src []byte) []byte {
+	rest := src
+	for len(rest) > 0 {
+		line, next, _ := bytes.Cut(rest, []byte("\n"))
+		if bytes.HasPrefix(line, []byte("package ")) {
+			break
+		}
+		if bytes.HasPrefix(line, []byte(generatedPrefix)) {
+			start := len(src) - len(rest)
+			return slices.Concat(src[:start], next)
+		}
+		rest = next
+	}
+	return src
+}
+
+// staleFiles returns a warning for each file of pkgs holding a declaration
+// marked by the generator that is not among files.
+func staleFiles(pkgs []*packages.Package, reg *genmark.Registry, files []File) []error {
+	produced := map[string]bool{}
+	for _, f := range files {
+		produced[filepath.Clean(f.Path)] = true
+	}
+
+	type stale struct{ path, name string }
+	var found []stale
+	for _, pkg := range pkgs {
+		for _, f := range pkg.Syntax {
+			tf := pkg.Fset.File(f.Pos())
+			if tf == nil || produced[filepath.Clean(tf.Name())] || !markedFile(f, reg) {
+				continue
+			}
+			name := tf.Name()
+			if pkg.Module != nil && pkg.Module.Dir != "" {
+				if rel, err := filepath.Rel(pkg.Module.Dir, name); err == nil &&
+					rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					name = rel
+				}
+			}
+			found = append(found, stale{path: tf.Name(), name: name})
+		}
+	}
+	slices.SortFunc(found, func(a, b stale) int { return cmp.Compare(a.path, b.path) })
+
+	var out []error
+	for _, s := range found {
+		out = append(out, fmt.Errorf(
+			"%w: %s was generated by %s but not produced by this run; delete it if no longer needed",
+			ErrStale,
+			s.name,
+			GeneratorName,
+		))
+	}
+	return out
+}
+
+// markedFile reports whether a declaration of f carries the marker of the
+// generator.
+func markedFile(f *ast.File, reg *genmark.Registry) bool {
+	marked := func(cg *ast.CommentGroup) bool {
+		name, ok := reg.Generated(cg)
+		return ok && name == GeneratorName
+	}
+	for _, decl := range f.Decls {
+		switch d := decl.(type) {
+		case *ast.FuncDecl:
+			if marked(d.Doc) {
+				return true
+			}
+		case *ast.GenDecl:
+			if marked(d.Doc) {
+				return true
+			}
+			for _, spec := range d.Specs {
+				switch s := spec.(type) {
+				case *ast.TypeSpec:
+					if marked(s.Doc) {
+						return true
+					}
+				case *ast.ValueSpec:
+					if marked(s.Doc) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 // sourcePackages drops test variants, which repeat the declarations of the
@@ -242,23 +396,24 @@ func sourcePackages(pkgs []*packages.Package) []*packages.Package {
 
 // renderFile prints the partial declarations of nodes, which share a
 // source file.
-func renderFile(sel *selection, nodes []*typegraph.Node) ([]byte, error) {
+func renderFile(sel *selection, hdr dst.Decorations, nodes []*typegraph.Node) ([]byte, error) {
 	pkg := nodes[0].Detail.Pkg
 
 	// The und import is required up front because a package that does not
 	// import it, directly or not, is unknown to the Parser. Requiring it
 	// imports it unconditionally, so a file not using it is rendered again
 	// without.
-	b, p, err := renderFileWith(sel, pkg, nodes, true)
+	b, p, err := renderFileWith(sel, hdr, pkg, nodes, true)
 	if err != nil || p.usedUnd {
 		return b, err
 	}
-	b, _, err = renderFileWith(sel, pkg, nodes, false)
+	b, _, err = renderFileWith(sel, hdr, pkg, nodes, false)
 	return b, err
 }
 
 func renderFileWith(
 	sel *selection,
+	hdr dst.Decorations,
 	pkg *packages.Package,
 	nodes []*typegraph.Node,
 	requireUnd bool,
@@ -297,7 +452,7 @@ func renderFileWith(
 		sel: sel, pkg: pkg, m: m,
 	}
 	f := &dst.File{Name: dst.NewIdent(pkg.Name)}
-	f.Decs.Start = dst.Decorations{header, "\n"}
+	f.Decs.Start = append(slices.Clone(hdr), "\n")
 	// The partial types refer to the source types, so they must build under
 	// the same constraint. A constraint in the file name is kept by the
 	// output name.

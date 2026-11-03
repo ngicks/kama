@@ -36,8 +36,10 @@ func generateAndBuild(t *testing.T, files map[string]string, buildFlags ...strin
 
 	pkgs, err := gopackages.Load(ctx, f, opts)
 	assert.NilError(t, err)
-	out, err := Generate(pkgs, Options{Registry: registry(t)})
+	out, warnings, err := Generate(pkgs, Options{Registry: registry(t)})
 	assert.NilError(t, err)
+	// A partial file of a build variant not loaded is not stale.
+	assert.Equal(t, len(warnings), 0, "%v", warnings)
 	for _, o := range out {
 		rel, err := filepath.Rel(f.Root(), o.Path)
 		assert.NilError(t, err)

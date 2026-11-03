@@ -115,7 +115,8 @@ func generatedFiles(t *testing.T, root string) []string {
 // internal/fixtureexternal/partial.yaml generate what the directives of
 // internal/fixture do: its packages copy those of internal/fixture without
 // directives, so every generated file matches its counterpart once the
-// import paths are replaced.
+// import paths are replaced. The headers differ in the time of the run and
+// in the option file.
 func TestFixtureExternalParity(t *testing.T) {
 	const (
 		directiveDir = "internal/fixture"
@@ -141,7 +142,12 @@ func TestFixtureExternalParity(t *testing.T) {
 		assert.NilError(t, err)
 		got, err := os.ReadFile(filepath.Join(fileDir, name))
 		assert.NilError(t, err)
-		assert.Equal(t, string(got), replacer.Replace(string(want)), name)
+		assert.Equal(
+			t,
+			withoutRunParams(string(got)),
+			withoutRunParams(replacer.Replace(string(want))),
+			name,
+		)
 	}
 }
 

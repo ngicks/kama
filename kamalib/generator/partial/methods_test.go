@@ -358,7 +358,7 @@ func TestHelpersFile(t *testing.T) {
 		"b.go": "package x\n\n//kama:partial\ntype B struct{ X []int }\n",
 	})
 	h := files[HelpersFile]
-	assert.Assert(t, strings.HasPrefix(h, header+"\n\npackage x\n"), h)
+	assert.Assert(t, strings.HasPrefix(h, testHeader+"\n\npackage x\n"), h)
 
 	var names []string
 	for name := range funcs(t, h) {

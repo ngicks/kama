@@ -200,7 +200,7 @@ func TestFlagSetFile(t *testing.T) {
 	})
 	src := files[FlagSetFile]
 	assert.Equal(t, src, unflagged)
-	assert.Assert(t, strings.HasPrefix(src, header+"\n\npackage x\n\nimport \"time\"\n"), src)
+	assert.Assert(t, strings.HasPrefix(src, testHeader+"\n\npackage x\n\nimport \"time\"\n"), src)
 	assert.Assert(
 		t,
 		strings.Contains(src, "\n//kama:generated kama-partial\ntype PartialFlagSet interface {\n"+

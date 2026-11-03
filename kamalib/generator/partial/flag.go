@@ -369,7 +369,7 @@ func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 }
 
 // renderFlagSet prints FlagSetFile of pkg declaring flagSetName.
-func renderFlagSet(pkg *packages.Package) ([]byte, error) {
+func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	sigs := flagSetSignatures()
 	parser := importdecl.NewParser(pkg.Types)
 	parser.Reserve(types.Universe.Names()...)
@@ -417,7 +417,7 @@ func renderFlagSet(pkg *packages.Package) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("partial: parse flag set of %s: %w", pkg.PkgPath, err)
 	}
-	f.Decs.Start = dst.Decorations{header, "\n"}
+	f.Decs.Start = append(slices.Clone(hdr), "\n")
 	m.AddMissingDst(f)
 
 	var buf bytes.Buffer

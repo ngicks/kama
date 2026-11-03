@@ -1,8 +1,11 @@
 package partial
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -31,7 +34,9 @@ type ProcParam struct {
 // Proc generates the partial types of the packages its in loaded and
 // stages the files in its out. The packages must lie under the root of
 // its out. The option file is read from its out, so a file staged by an
-// earlier step is read too.
+// earlier step is read too. A file of its out that would change in the
+// generated: line of its header only is staged unchanged. Proc reports the
+// warnings of Generate and the number of files written and unchanged.
 //
 //	Param(ProcParam) error
 //	In(*gopackages.Packages)
@@ -98,7 +103,7 @@ func (i *instance) In(pkgs *gopackages.Packages) { i.pkgs = pkgs }
 
 func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
 
-func (i *instance) Run(ctx context.Context, _ workflow.Reporter) error {
+func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 	opts := i.opts
 	if i.optionFile != nil {
 		f, err := LoadOptionFile(i.fs.FS(), *i.optionFile)
@@ -108,11 +113,15 @@ func (i *instance) Run(ctx context.Context, _ workflow.Reporter) error {
 		opts.OptionFile = f
 	}
 
-	files, err := Generate(i.pkgs.Pkgs, opts)
+	files, warnings, err := Generate(i.pkgs.Pkgs, opts)
 	if err != nil {
 		return err
 	}
+	for _, w := range warnings {
+		r.Warn(w)
+	}
 
+	var written, kept int
 	for _, f := range files {
 		rel, err := filepath.Rel(i.fs.Root(), f.Path)
 		if err != nil {
@@ -121,9 +130,49 @@ func (i *instance) Run(ctx context.Context, _ workflow.Reporter) error {
 		if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			return fmt.Errorf("partial: %q is outside %q", f.Path, i.fs.Root())
 		}
-		if err := i.fs.Write(ctx, filepath.ToSlash(rel), f.Content); err != nil {
-			return fmt.Errorf("partial: write %q: %w", rel, err)
+		changed, err := i.write(ctx, filepath.ToSlash(rel), f.Content)
+		if err != nil {
+			return err
+		}
+		if changed {
+			written++
+		} else {
+			kept++
 		}
 	}
+	r.Progress(fmt.Sprintf("%d files written, %d unchanged", written, kept))
 	return nil
+}
+
+// write stages content at name and reports whether it changed the file.
+// The existing file is staged again in place of content when the two
+// differ in the generated: line only.
+//
+// Generate returns unformatted content, while the file in fs is formatted
+// by fs.Write. Comparing the staged result, rather than content, keeps the
+// comparison right for any formatter fs runs.
+func (i *instance) write(ctx context.Context, name string, content []byte) (bool, error) {
+	existing, err := fs.ReadFile(i.fs.FS(), name)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return false, fmt.Errorf("partial: read %q: %w", name, err)
+	}
+	if err := i.fs.Write(ctx, name, content); err != nil {
+		return false, fmt.Errorf("partial: write %q: %w", name, err)
+	}
+	if existing == nil {
+		return true, nil
+	}
+	staged, err := fs.ReadFile(i.fs.FS(), name)
+	if err != nil {
+		return false, fmt.Errorf("partial: read %q: %w", name, err)
+	}
+	if !SameExceptGenerated(existing, staged) {
+		return true, nil
+	}
+	if !bytes.Equal(existing, staged) {
+		if err := i.fs.Write(ctx, name, existing); err != nil {
+			return false, fmt.Errorf("partial: write %q: %w", name, err)
+		}
+	}
+	return false, nil
 }

@@ -488,7 +488,7 @@ func helperNames() []string { return slices.Sorted(maps.Keys(helpers)) }
 // so a helper used by a partial file of another variant would be dropped
 // if the file held only the helpers the loaded targets use. Holding every
 // helper keeps the file the same across variants.
-func renderHelpers(pkg *packages.Package) ([]byte, error) {
+func renderHelpers(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	paths := map[string]bool{}
 	for name := range helpers {
 		for _, path := range helpers[name].imports {
@@ -535,7 +535,7 @@ func renderHelpers(pkg *packages.Package) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("partial: parse helpers of %s: %w", pkg.PkgPath, err)
 	}
-	f.Decs.Start = dst.Decorations{header, "\n"}
+	f.Decs.Start = append(slices.Clone(hdr), "\n")
 	m.AddMissingDst(f)
 
 	var buf bytes.Buffer

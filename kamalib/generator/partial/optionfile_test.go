@@ -268,6 +268,12 @@ packages:
       E: {ignore: true}
 `),
 	})
+	for name, src := range byFile {
+		byFile[name] = withoutRunParams(src)
+	}
+	for name, src := range byDirective {
+		byDirective[name] = withoutRunParams(src)
+	}
 	assert.DeepEqual(t, byFile, byDirective)
 }
 
