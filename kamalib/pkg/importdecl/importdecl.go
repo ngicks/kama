@@ -272,7 +272,8 @@ func (p *Parser) parse(specs iter.Seq2[string, string]) (*Map, error) {
 // Map maps package paths to the identifiers a file accesses them through.
 type Map struct {
 	known map[string]Package
-	// idents are the identifiers taken by imports.
+	// idents are the identifiers taken by imports and those reserved by
+	// Parser.Reserve.
 	idents map[string]bool
 	// imports are the imports the file has or misses, keyed by path.
 	imports map[string]Import

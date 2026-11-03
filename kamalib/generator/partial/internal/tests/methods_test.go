@@ -492,3 +492,124 @@ func TestMergeOptions(t *testing.T) {
 		mergemodel.LinesPartial{inner(1, 0), inner(0, 2)})
 	equal(t, mergemodel.LinesPartial(nil).Merge(nil), mergemodel.LinesPartial(nil))
 }
+
+func TestEmbeddedPointerWithoutDefinedField(t *testing.T) {
+	// FromValue copies the undefined und.Und of Hollow, so its partial has
+	// no defined field and ToValue cannot tell it from a nil pointer.
+	var p mergemodel.DocPartial
+	p.FromValue(mergemodel.Doc{Hollow: &mergemodel.Hollow{}})
+	equal(t, p.HollowPartial, mergemodel.HollowPartial{})
+	assert.Assert(t, p.ToValue().Hollow == nil)
+
+	for _, h := range []mergemodel.Hollow{{Note: und.Defined("n")}, {Note: und.Null[string]()}} {
+		roundTrip[mergemodel.Doc, mergemodel.DocPartial](t, mergemodel.Doc{Hollow: &h})
+	}
+}
+
+func TestMergeEmbeddedOverwrite(t *testing.T) {
+	l := mergemodel.DocPartial{
+		ID:   und.Defined("l"),
+		Rev:  und.Defined(1),
+		Note: und.Defined("l"),
+	}
+	// An embedded partial with every field undefined counts as undefined.
+	equal(t, l.Merge(mergemodel.DocPartial{}), l)
+	equal(t, l.Merge(mergemodel.DocPartial{Name: und.Defined("n")}).BasePartial, l.BasePartial)
+
+	// Any defined or null field makes the embedded partial of r replace that
+	// of p whole.
+	got := l.Merge(mergemodel.DocPartial{ID: und.Defined("r")})
+	equal(t, got.BasePartial, mergemodel.BasePartial{ID: und.Defined("r")})
+	equal(t, got.HollowPartial, l.HollowPartial)
+
+	got = l.Merge(mergemodel.DocPartial{Rev: und.Null[int](), Note: und.Null[string]()})
+	equal(t, got.BasePartial, mergemodel.BasePartial{Rev: und.Null[int]()})
+	equal(t, got.HollowPartial, mergemodel.HollowPartial{Note: und.Null[string]()})
+
+	// ApplyTo of the zero partial keeps the embedded values.
+	v := mergemodel.Doc{
+		ID: "i", Rev: 2,
+		Hollow: &mergemodel.Hollow{Note: und.Defined("n")},
+	}
+	equal(t, mergemodel.DocPartial{}.ApplyTo(v), v)
+}
+
+func TestMergeAppendMapPartial(t *testing.T) {
+	inner := func(a int) und.Und[mergemodel.InnerPartial] {
+		return und.Defined(mergemodel.InnerPartial{A: und.Defined(a)})
+	}
+	l := mergemodel.IndexPartial{"a": inner(1), "b": inner(1)}
+	r := mergemodel.IndexPartial{"b": inner(2), "c": inner(3)}
+	want := mergemodel.IndexPartial{"a": inner(1), "b": inner(2), "c": inner(3)}
+
+	// The map partial's own Merge sets the entries of r without merging
+	// them one by one.
+	equal(t, l.Merge(r), want)
+	equal(t, l.Merge(nil), l)
+	equal(t, mergemodel.IndexPartial(nil).Merge(r), r)
+	equal(t, mergemodel.IndexPartial(nil).Merge(nil), mergemodel.IndexPartial(nil))
+	equal(t, l, mergemodel.IndexPartial{"a": inner(1), "b": inner(1)})
+	equal(t, r, mergemodel.IndexPartial{"b": inner(2), "c": inner(3)})
+
+	// The field appends the defined map partials.
+	got := mergemodel.DocPartial{Index: und.Defined(l)}.
+		Merge(mergemodel.DocPartial{Index: und.Defined(r)})
+	equal(t, got.Index, und.Defined(want))
+	got = mergemodel.DocPartial{Index: und.Defined(l)}.
+		Merge(mergemodel.DocPartial{Index: und.Null[mergemodel.IndexPartial]()})
+	assert.Assert(t, got.Index.IsNull())
+}
+
+func TestMergeAppendOption(t *testing.T) {
+	for ln, l := range states([]string{"l"}) {
+		for rn, r := range states([]string{"r"}) {
+			got := mergemodel.DocPartial{OptTags: l}.
+				Merge(mergemodel.DocPartial{OptTags: r}).OptTags
+			switch {
+			case rn == "undefined":
+				equal(t, got, l)
+			case ln == "defined" && rn == "defined":
+				equal(t, got, und.Defined([]string{"l", "r"}))
+			default:
+				equal(t, got, r)
+			}
+		}
+	}
+
+	for ln, l := range states(map[string]string{"a": "l", "b": "l"}) {
+		for rn, r := range states(map[string]string{"b": "r", "c": "r"}) {
+			got := mergemodel.DocPartial{OptAttrs: l}.
+				Merge(mergemodel.DocPartial{OptAttrs: r}).OptAttrs
+			switch {
+			case rn == "undefined":
+				equal(t, got, l)
+			case ln == "defined" && rn == "defined":
+				equal(t, got, und.Defined(map[string]string{"a": "l", "b": "r", "c": "r"}))
+			default:
+				equal(t, got, r)
+			}
+		}
+	}
+
+	got := mergemodel.DocPartial{OptTags: und.Defined([]string{"l"})}.ApplyTo(
+		mergemodel.Doc{OptTags: opt.Some([]string{"v"})},
+	)
+	equal(t, got.OptTags, opt.Some([]string{"v", "l"}))
+}
+
+func TestBlankFields(t *testing.T) {
+	// Doc declares blank fields; the methods skip them and handle the
+	// fields around them.
+	v := mergemodel.Doc{
+		ID:    "i",
+		Name:  "n",
+		Index: mergemodel.Index{"k": {A: 1}},
+	}
+	roundTrip[mergemodel.Doc, mergemodel.DocPartial](t, v)
+
+	var p mergemodel.DocPartial
+	p.FromValue(v)
+	got := p.Merge(mergemodel.DocPartial{Name: und.Defined("m")})
+	equal(t, got.Name, und.Defined("m"))
+	equal(t, got.Index, p.Index)
+}

@@ -115,8 +115,9 @@
 // Two fields of a partial struct with one name, as for an embedded M next
 // to a field MPartial, a field named like one of the methods, and a type
 // parameter named like a predeclared identifier or like a partial type or
-// helper the declarations refer to are errors. Import names avoid predeclared and package-level
-// identifiers, type parameters and the identifiers the methods declare. A
+// helper the declarations refer to are errors. Import names avoid
+// predeclared and package-level identifiers, type parameters and the
+// identifiers the methods declare. A
 // package-level declaration named like a predeclared identifier the
 // generated code spells, such as make, len, string or error, is an error;
 // the generated code spells interface{} rather than any. The methods spell
@@ -166,6 +167,15 @@
 // converts to nil. FromValue does not terminate on a value whose pointers
 // form a cycle.
 //
+// An embedded partial has no undefined state of its own, so ToValue gives
+// a nil embedded *M for an MPartial with every field undefined. FromValue
+// of a non-nil pointer to an M whose fields all give undefined, as for an
+// M holding undefined und.Und fields only, therefore converts back to nil.
+//
+// A blank field _ of the source struct stays in the partial struct with
+// its mapped type. FromValue, ToValue and Merge skip it, since it cannot be
+// referred to.
+//
 // ApplyTo returns ToValue of FromValue of v merged with p.
 //
 // # Merge
@@ -180,8 +190,13 @@
 //     even when one of them is nil or empty. Two nil values give nil.
 //     Otherwise as overwrite.
 //   - recursive: when both are defined, the Merge of their partial values.
-//     Otherwise as overwrite. An embedded partial has no undefined state
-//     and always merges by its Merge, or is replaced under overwrite.
+//     Otherwise as overwrite.
+//
+// An embedded partial of r counts as undefined when every field of it is
+// undefined, so it keeps the embedded partial of p under every strategy.
+// Otherwise recursive gives the Merge of both, and overwrite gives the
+// embedded partial of r whole. ApplyTo of the zero partial value therefore
+// returns v unchanged.
 //
 // Options.Merge, overwrite or append, is the strategy of fields whose
 // value is a slice or a map, as for []T, *[]T and opt.Option[map[K]V].
@@ -210,11 +225,11 @@
 //
 // The args are parsed by kamaopt.ParseArgs. name is required, and has no
 // leading -, no white space, no control character and no =. short is
-// optional and is a single ASCII character. usage is optional. An unknown key, a second directive
-// on a
-// field, the directive on a type or a file, the directive on a field of a
-// type without partial variant, and two fields of one partial type with
-// one flag name or shorthand are errors.
+// optional and is a single ASCII character. usage is optional. An unknown
+// key, a second directive on a field, the directive on a type or a file,
+// the directive on a field of a type without partial variant, the
+// directive on a blank field, and two fields of one partial type with one
+// flag name or shorthand are errors.
 //
 // A partial type with at least one flagged field gets these methods:
 //
@@ -272,10 +287,10 @@
 // of each package holding targets. The file holds every helper whether the
 // package uses it or not, so that partial files of build variants other
 // than the one loaded keep finding theirs. It has no build constraint and
-// is written again on every run; a
-// declaration in it the generator did not mark is an error, and so is a
-// helper name declared elsewhere in the package. Every generated
-// declaration carries the marker //kama:generated kama-partial.
+// is written again on every run; a declaration in it the generator did not
+// mark is an error, and so is a helper name declared elsewhere in the
+// package. Every generated declaration carries the marker
+// //kama:generated kama-partial.
 //
 // A file the generator wrote earlier whose source no longer declares
 // targets is left in place. If it refers to a type that no longer exists,

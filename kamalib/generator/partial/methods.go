@@ -203,7 +203,7 @@ func (w *methodWriter) merge(f fieldInfo, l, r string) string {
 	case f.class == classEmbedded && f.strategy == string(MergeNestedRecursive):
 		return l + ".Merge(" + r + ")"
 	case f.class == classEmbedded:
-		return r
+		return w.call("kamaPartialMergeOverwriteEmbedded", l, r)
 	case f.class == classElastic:
 		return w.call("kamaPartialMergeOverwriteElastic", l, r)
 	case f.strategy == string(MergeAppend) && (f.class == classSlice || f.class == classSubSlice):

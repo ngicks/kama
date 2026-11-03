@@ -12,6 +12,16 @@ import (
 	"github.com/ngicks/option/und"
 )
 
+// kamaPartialAllUndefined reports whether every field of the partial value p is undefined.
+//
+// The zero value of a partial type has every field undefined, and partial
+// types are not comparable in general, so reflect tells the zero value.
+//
+//kama:generated kama-partial
+func kamaPartialAllUndefined[P interface{}](p P) bool {
+	return reflect.ValueOf(&p).Elem().IsZero()
+}
+
 // kamaPartialAppendMap returns l when r is nil, r when l is nil, and a new map of the entries
 // of l with the entries of r set otherwise.
 //
@@ -300,6 +310,17 @@ func kamaPartialMergeOverwriteElastic[T interface{}](
 	return r
 }
 
+// kamaPartialMergeOverwriteEmbedded returns l when every field of the embedded partial value r is undefined
+// and r otherwise. An embedded partial has no undefined state of its own.
+//
+//kama:generated kama-partial
+func kamaPartialMergeOverwriteEmbedded[P interface{}](l, r P) P {
+	if kamaPartialAllUndefined(r) {
+		return l
+	}
+	return r
+}
+
 // kamaPartialMergeRecursive returns the merge of the values of l and r when both are defined, l when
 // r is undefined, and r otherwise.
 //
@@ -353,12 +374,9 @@ func kamaPartialOverwriteSlice[S ~[]E, E interface{}](l, r S) S {
 
 // kamaPartialToEmbeddedPointer sets d to a new value p describes, or to nil when every field of p is undefined.
 //
-// The zero value of a partial type has every field undefined, and partial
-// types are not comparable in general, so reflect tells the zero value.
-//
 //kama:generated kama-partial
 func kamaPartialToEmbeddedPointer[V interface{}, P interface{ ToValue() V }](d **V, p P) {
-	if reflect.ValueOf(&p).Elem().IsZero() {
+	if kamaPartialAllUndefined(p) {
 		*d = nil
 		return
 	}

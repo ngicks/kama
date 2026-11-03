@@ -46,8 +46,14 @@ var (
 	// ErrUnsupported reports a type the generator cannot give a partial
 	// variant, or a field type it cannot map.
 	ErrUnsupported = errors.New("partial: unsupported type")
-	// ErrConflict reports a partial type name taken by a declaration the
-	// generator did not emit.
+	// ErrConflict reports a name the generated declarations would collide
+	// with or shadow: a partial type, a method of one, a helper or the
+	// flag set interface declared by something other than the generator, a
+	// declaration the generator did not write in the helpers or flag set
+	// file, two partial fields with one name or a partial field named like a
+	// method, a type parameter named like a predeclared identifier or like a
+	// name the declarations refer to, and a package-level declaration named
+	// like a predeclared identifier the generated code spells.
 	ErrConflict = errors.New("partial: name conflict")
 	// ErrOption reports an invalid Options value.
 	ErrOption = errors.New("partial: invalid option")
@@ -134,9 +140,9 @@ type File struct {
 
 // Generate returns the partial type declarations and their methods for
 // the targets in pkgs, one file per source file declaring targets, and the
-// helpers file of each package holding targets, sorted by path. See the
-// package documentation for target selection, the type mapping and the
-// methods.
+// helpers file and the flag set file of each package holding targets,
+// sorted by path. See the package documentation for target selection, the
+// type mapping and the methods.
 //
 // pkgs must be loaded as gopackages.Load does. Test variants are skipped.
 // The returned content is not formatted beyond what printing the syntax

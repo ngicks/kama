@@ -131,6 +131,25 @@ func TestFlagErrors(t *testing.T) {
 			contains: []string{"unsupported type"},
 		},
 		{
+			name: "elastic",
+			src: head + "import \"github.com/ngicks/option/elastic\"\n\n" +
+				"//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n" +
+				"\tB elastic.Elastic[int]\n}\n",
+			is: ErrDirective,
+			contains: []string{
+				"x.go:7:2",
+				"A.B",
+				"unsupported type github.com/ngicks/option/elastic.Elastic[int]",
+			},
+		},
+		{
+			name: "blank field",
+			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n\t_ int\n" +
+				"\tC int\n}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:5:2", "A._", "a blank field cannot be set"},
+		},
+		{
 			name: "field named like a flag method",
 			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n\tB int\n" +
 				"\tRegisterFlags int\n}\n",

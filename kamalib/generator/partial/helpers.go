@@ -249,13 +249,9 @@ var helpers = map[string]helper{
 }`,
 	},
 	"kamaPartialToEmbeddedPointer": {
-		imports: []string{reflectPath},
-		doc: "sets d to a new value p describes, or to nil when every field of p is undefined.\n" +
-			"//\n" +
-			"// The zero value of a partial type has every field undefined, and partial\n" +
-			"// types are not comparable in general, so reflect tells the zero value.",
+		doc: "sets d to a new value p describes, or to nil when every field of p is undefined.",
 		src: `func kamaPartialToEmbeddedPointer[V interface{}, P interface{ ToValue() V }](d **V, p P) {
-	if $reflect.ValueOf(&p).Elem().IsZero() {
+	if kamaPartialAllUndefined(p) {
 		*d = nil
 		return
 	}
@@ -290,6 +286,26 @@ var helpers = map[string]helper{
 		doc:     "returns l when r is undefined and r otherwise.",
 		src: `func kamaPartialMergeOverwrite[T interface{}](l, r $und.Und[T]) $und.Und[T] {
 	if r.IsUndefined() {
+		return l
+	}
+	return r
+}`,
+	},
+	"kamaPartialAllUndefined": {
+		imports: []string{reflectPath},
+		doc: "reports whether every field of the partial value p is undefined.\n" +
+			"//\n" +
+			"// The zero value of a partial type has every field undefined, and partial\n" +
+			"// types are not comparable in general, so reflect tells the zero value.",
+		src: `func kamaPartialAllUndefined[P interface{}](p P) bool {
+	return $reflect.ValueOf(&p).Elem().IsZero()
+}`,
+	},
+	"kamaPartialMergeOverwriteEmbedded": {
+		doc: "returns l when every field of the embedded partial value r is undefined\n" +
+			"// and r otherwise. An embedded partial has no undefined state of its own.",
+		src: `func kamaPartialMergeOverwriteEmbedded[P interface{}](l, r P) P {
+	if kamaPartialAllUndefined(r) {
 		return l
 	}
 	return r

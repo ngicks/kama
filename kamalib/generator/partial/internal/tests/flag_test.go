@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -76,4 +77,64 @@ func TestFromFlagSetTextError(t *testing.T) {
 	_, err := parseFlags(t, "--level", "nope")
 	assert.ErrorContains(t, err, "flag --level")
 	assert.ErrorContains(t, err, `unknown level "nope"`)
+}
+
+func TestFromFlagSetZeroValue(t *testing.T) {
+	p, err := parseFlags(t, "--count=0", "--verbose=false", "--name=")
+	assert.NilError(t, err)
+	equal(t, p, model.FlagsPartial{
+		Name:    und.Defined(""),
+		Verbose: und.Defined(false),
+		Count:   und.Defined(0),
+	})
+}
+
+func TestFromFlagSetKeepsFields(t *testing.T) {
+	fs := pflag.NewFlagSet("x", pflag.ContinueOnError)
+	p := model.FlagsPartial{
+		Name:      und.Defined("base"),
+		Count:     und.Defined(9),
+		Verbose:   und.Null[bool](),
+		Unflagged: und.Defined("u"),
+	}
+	p.RegisterFlags(fs)
+	assert.NilError(t, fs.Parse([]string{"--count", "5"}))
+	assert.NilError(t, p.FromFlagSet(fs))
+	equal(t, p, model.FlagsPartial{
+		Name:      und.Defined("base"),
+		Count:     und.Defined(5),
+		Verbose:   und.Null[bool](),
+		Unflagged: und.Defined("u"),
+	})
+}
+
+var errGet = errors.New("get failed")
+
+// failingGetInt is a flag set whose GetInt fails.
+type failingGetInt struct {
+	*pflag.FlagSet
+}
+
+func (failingGetInt) GetInt(string) (int, error) { return 0, errGet }
+
+func TestFromFlagSetGetError(t *testing.T) {
+	fs := failingGetInt{pflag.NewFlagSet("x", pflag.ContinueOnError)}
+	var p model.FlagsPartial
+	p.RegisterFlags(fs)
+	assert.NilError(t, fs.Parse([]string{"--name", "a", "--count", "1"}))
+
+	err := p.FromFlagSet(fs)
+	assert.ErrorIs(t, err, errGet)
+	assert.ErrorContains(t, err, "flag --count")
+}
+
+func TestFromFlagSetGetErrorUnchanged(t *testing.T) {
+	fs := failingGetInt{pflag.NewFlagSet("x", pflag.ContinueOnError)}
+	var p model.FlagsPartial
+	p.RegisterFlags(fs)
+	assert.NilError(t, fs.Parse([]string{"--name", "a"}))
+
+	// GetInt is not called for a flag not set.
+	assert.NilError(t, p.FromFlagSet(fs))
+	equal(t, p, model.FlagsPartial{Name: und.Defined("a")})
 }
