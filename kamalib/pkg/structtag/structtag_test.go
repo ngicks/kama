@@ -87,10 +87,67 @@ func TestGet(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNotFound)
 }
 
+func TestTrailingEmptyOption(t *testing.T) {
+	dash := mustParse(t, `json:"-,"`)
+	assert.DeepEqual(t, dash, Tags{{Key: "json", Value: "-,"}})
+
+	raw, unescaped, err := dash.Get("json", "")
+	assert.NilError(t, err)
+	assert.Equal(t, raw, "-")
+	assert.Equal(t, unescaped, "-")
+	_, _, err = dash.Get("json", "omitzero")
+	assert.ErrorIs(t, err, ErrNotFound)
+
+	comma := mustParse(t, `json:","`)
+	_, _, err = comma.Get("json", "")
+	assert.ErrorIs(t, err, ErrNotFound)
+	_, _, err = comma.Get("json", "omitzero")
+	assert.ErrorIs(t, err, ErrNotFound)
+
+	addCases := []struct {
+		tag, option, value, want string
+	}{
+		{`json:"-,"`, "omitzero", "", `json:"-,omitzero"`},
+		{`json:"-,"`, "format", "x", `json:"-,format:x"`},
+		{`json:"-,"`, "", "a", `json:"-,"`},
+		{`json:"a,omitempty,"`, "omitzero", "", `json:"a,omitempty,omitzero"`},
+		{`json:"a,omitempty,"`, "omitempty", "", `json:"a,omitempty,"`},
+		{`json:","`, "omitzero", "", `json:",omitzero"`},
+		{`json:","`, "", "a", `json:"a,"`},
+	}
+	for _, c := range addCases {
+		t.Run("Add "+c.tag+" "+c.option, func(t *testing.T) {
+			got, err := mustParse(t, c.tag).Add("json", c.option, c.value)
+			assert.NilError(t, err)
+			assert.Equal(t, string(got.StructTag()), c.want)
+		})
+	}
+
+	deleteCases := []struct {
+		tag, option, want string
+	}{
+		{`json:"-,"`, "", `json:","`},
+		{`json:"a,omitempty,"`, "omitempty", `json:"a,"`},
+	}
+	for _, c := range deleteCases {
+		t.Run("Delete "+c.tag+" "+c.option, func(t *testing.T) {
+			got, err := mustParse(t, c.tag).Delete("json", c.option)
+			assert.NilError(t, err)
+			assert.Equal(t, string(got.StructTag()), c.want)
+		})
+	}
+
+	_, err = dash.Delete("json", "omitzero")
+	assert.ErrorIs(t, err, ErrNotFound)
+	_, err = comma.Delete("json", "")
+	assert.ErrorIs(t, err, ErrNotFound)
+}
+
 func TestGetSyntaxErrors(t *testing.T) {
 	for _, value := range []string{
-		`a,`,
 		`a,,b`,
+		`a,,`,
+		`,,`,
 		`a,1x`,
 		`a,format:`,
 		`a,format:-`,

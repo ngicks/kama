@@ -9,6 +9,12 @@
 //
 //	json:"'a,b',omitempty"
 //
+// A trailing comma, as in json:"-," naming a field "-", ends the value with
+// an empty option. Get, Add and Delete treat it as no option at all. Add
+// drops it when appending an option, so that the empty option never ends up
+// before another one. An empty option anywhere else, as in json:"a,,b", is
+// a syntax error.
+//
 // Lifted from github.com/ngicks/go-codegen/graft/pkg/structtag.
 package structtag
 
@@ -186,7 +192,10 @@ func (t Tags) Add(key, option, value string) (Tags, error) {
 	if option == "" {
 		v = value + v
 	} else {
-		v += part(option, value)
+		// A value ending in a comma that locate accepted ends in an empty
+		// option. Appending after it would leave the empty option in the
+		// middle.
+		v = strings.TrimSuffix(v, ",") + part(option, value)
 	}
 
 	out := slices.Clone(t)
@@ -232,8 +241,11 @@ func locate(v, option string) (span, error) {
 	}
 
 	for pos < len(v) {
-		if v[pos] != ',' || pos+1 == len(v) {
+		if v[pos] != ',' {
 			return span{}, fmt.Errorf("%w: %q", ErrSyntax, v)
+		}
+		if pos+1 == len(v) {
+			break
 		}
 		start := pos + 1
 
