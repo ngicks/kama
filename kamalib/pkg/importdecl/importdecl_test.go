@@ -2,6 +2,7 @@ package importdecl
 
 import (
 	"bytes"
+	"fmt"
 	"go/ast"
 	"go/format"
 	"go/token"
@@ -84,8 +85,8 @@ func TestIdent(t *testing.T) {
 		assert.Equal(t, got, "pkg22")
 
 		assert.DeepEqual(t, missing(m), []Import{
-			// The name is explicit because the path does not tell it.
-			{Name: "pkg22", Package: Package{Path: pkg22Path, Name: "pkg22"}},
+			// pkg2-2 drops to pkg22, the package name, so no name is written.
+			{Package: Package{Path: pkg22Path, Name: "pkg22"}},
 		})
 	})
 
@@ -129,7 +130,7 @@ func TestRequire(t *testing.T) {
 	pkgs, _ := load(t)
 
 	p := NewParser(pkgs["pkg1"].Types)
-	p.Require(
+	assert.NilError(t, p.Require(
 		Import{Package: Package{Path: "example.com/foo1", Name: "foo"}},
 		Import{Package: Package{Path: "example.com/foo0", Name: "foo"}},
 		Import{Package: Package{Path: "example.com/foo0", Name: "foo"}},
@@ -144,14 +145,14 @@ func TestRequire(t *testing.T) {
 		Import{Package: Package{Path: "example.com/x/v3"}},
 		Import{Name: "renamed", Package: Package{Path: "example.com/y", Name: "y"}},
 		Import{Package: Package{Path: "example.com/z/v2", Name: "z"}},
-	)
+	))
 	m := parse(t, p, pkgs["pkg1"])
 
 	assert.DeepEqual(t, missing(m), []Import{
 		{Name: "foo", Package: Package{Path: "example.com/foo0", Name: "foo"}},
-		{Name: "foo_1", Package: Package{Path: "example.com/foo1", Name: "foo"}},
-		{Name: "foo_2", Package: Package{Path: "example.com/foo2", Name: "foo"}},
-		{Name: "json_1", Package: Package{Path: "example.com/json", Name: "json"}},
+		{Name: "foo_2", Package: Package{Path: "example.com/foo1", Name: "foo"}},
+		{Name: "foo_3", Package: Package{Path: "example.com/foo2", Name: "foo"}},
+		{Name: "json_2", Package: Package{Path: "example.com/json", Name: "json"}},
 		{Name: "x", Package: Package{Path: "example.com/x/v3"}},
 		{Name: "renamed", Package: Package{Path: "example.com/y", Name: "y"}},
 		{Package: Package{Path: "example.com/z/v2", Name: "z"}},
@@ -159,7 +160,7 @@ func TestRequire(t *testing.T) {
 
 	got, ok := m.Ident("example.com/foo1")
 	assert.Assert(t, ok)
-	assert.Equal(t, got, "foo_1")
+	assert.Equal(t, got, "foo_2")
 
 	// The file's own import of a required package wins, and the package
 	// name comes from the requirement.
@@ -240,11 +241,13 @@ func TestQualifiedTypeIs(t *testing.T) {
 	assert.Assert(t, !QualifiedType{"", "int"}.Is(types.Typ[types.Int]))
 }
 
-func requireExtra(p *Parser) {
-	p.Require(
+func requireExtra(t *testing.T, p *Parser) {
+	t.Helper()
+
+	assert.NilError(t, p.Require(
 		Import{Package: Package{Path: "example.com/x/v3"}},
 		Import{Package: Package{Path: "example.com/json", Name: "json"}},
-	)
+	))
 }
 
 const wantPkg1 = `// Package pkg1 imports packages under their own names.
@@ -252,9 +255,9 @@ package pkg1
 
 import (
 	"encoding/json"
-	json_1 "example.com/json"
+	json_2 "example.com/json"
 	x "example.com/x/v3"
-	pkg22 "github.com/ngicks/kama/kamalib/pkg/importdecl/internal/pkg2/pkg2-2"
+	"github.com/ngicks/kama/kamalib/pkg/importdecl/internal/pkg2/pkg2-2"
 	"math/rand/v2"
 )
 
@@ -270,7 +273,7 @@ package pkg4
 import (
 	"example.com/json"
 	x "example.com/x/v3"
-	pkg22 "github.com/ngicks/kama/kamalib/pkg/importdecl/internal/pkg2/pkg2-2"
+	"github.com/ngicks/kama/kamalib/pkg/importdecl/internal/pkg2/pkg2-2"
 )
 `
 
@@ -281,7 +284,7 @@ func TestAddMissingAst(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			pkg := pkgs[name]
 			p := NewParserFromPackages(all)
-			requireExtra(p)
+			requireExtra(t, p)
 			m := parse(t, p, pkg)
 			_, _ = m.Ident(pkg22Path)
 
@@ -306,7 +309,7 @@ func TestAddMissingDst(t *testing.T) {
 			assert.NilError(t, err)
 
 			p := NewParserFromPackages(all)
-			requireExtra(p)
+			requireExtra(t, p)
 			m, err := p.ParseDst(df.Imports)
 			assert.NilError(t, err)
 			_, _ = m.Ident(pkg22Path)
@@ -330,4 +333,178 @@ func formatSource(t *testing.T, src string) string {
 	out, err := format.Source([]byte(src))
 	assert.NilError(t, err)
 	return string(out)
+}
+
+func TestInferName(t *testing.T) {
+	for pkgPath, want := range map[string]string{
+		"encoding/json":       "json",
+		"math/rand/v2":        "rand",
+		"example.com/v2":      "examplecom",
+		"example.com/x/v":     "v",
+		"example.com/x/v2x":   "v2x",
+		"example.com/go-yaml": "goyaml",
+		"gopkg.in/yaml.v3":    "yamlv3",
+		"example.com/a_b":     "a_b",
+		"example.com/π-1":     "π1",
+		"example.com/1st":     "_1st",
+		"example.com/0":       "_0",
+		"example.com/٣x":      "_٣x",
+		"example.com/type":    "_type",
+		"example.com/func":    "_func",
+		"example.com/go":      "_go",
+		"example.com/ty-pe":   "_type",
+		"example.com/-":       "pkg",
+		"example.com/.-.":     "pkg",
+		"example.com/_":       "pkg",
+		"example.com/_-":      "pkg",
+		"example.com/__":      "__",
+	} {
+		t.Run(pkgPath, func(t *testing.T) {
+			assert.Equal(t, inferName(pkgPath), want)
+		})
+	}
+}
+
+func TestInferNameKeywords(t *testing.T) {
+	for tok := token.BREAK; tok <= token.VAR; tok++ {
+		if !tok.IsKeyword() {
+			continue
+		}
+		kw := tok.String()
+		assert.Equal(t, inferName("example.com/"+kw), "_"+kw)
+	}
+}
+
+func TestRequireInferredNames(t *testing.T) {
+	p := NewParser(types.NewPackage("example.com/p", "p"))
+	assert.NilError(t, p.Require(
+		Import{Package: Package{Path: "example.com/go-yaml"}},
+		Import{Package: Package{Path: "gopkg.in/yaml.v3"}},
+		Import{Package: Package{Path: "example.com/type"}},
+		Import{Package: Package{Path: "example.com/ty-pe"}},
+		Import{Package: Package{Path: "example.com/1st"}},
+		// Every one of these drops to nothing, so they share pkg.
+		Import{Package: Package{Path: "example.com/-"}},
+		Import{Package: Package{Path: "example.com/x/-/v2"}},
+		Import{Package: Package{Path: "example.com/y/_"}},
+		Import{Package: Package{Path: "example.com/z/.."}},
+		// A known name the path tells needs no explicit name.
+		Import{Package: Package{Path: "example.com/check", Name: "check"}},
+		// A known name the path does not tell is written explicitly.
+		Import{Package: Package{Path: "example.com/go-check", Name: "check"}},
+	))
+	m, err := p.ParseAst(nil)
+	assert.NilError(t, err)
+
+	assert.DeepEqual(t, missing(m), []Import{
+		{Name: "pkg", Package: Package{Path: "example.com/-"}},
+		{Name: "_1st", Package: Package{Path: "example.com/1st"}},
+		{Package: Package{Path: "example.com/check", Name: "check"}},
+		{Name: "check_2", Package: Package{Path: "example.com/go-check", Name: "check"}},
+		{Name: "goyaml", Package: Package{Path: "example.com/go-yaml"}},
+		{Name: "_type", Package: Package{Path: "example.com/ty-pe"}},
+		{Name: "_type_2", Package: Package{Path: "example.com/type"}},
+		{Name: "pkg_2", Package: Package{Path: "example.com/x/-/v2"}},
+		{Name: "pkg_3", Package: Package{Path: "example.com/y/_"}},
+		{Name: "pkg_4", Package: Package{Path: "example.com/z/.."}},
+		{Name: "yamlv3", Package: Package{Path: "gopkg.in/yaml.v3"}},
+	})
+
+	for pkgPath, want := range map[string]string{
+		"example.com/-":      "pkg",
+		"example.com/x/-/v2": "pkg_2",
+		"example.com/y/_":    "pkg_3",
+		"example.com/z/..":   "pkg_4",
+	} {
+		got, ok := m.Ident(pkgPath)
+		assert.Assert(t, ok)
+		assert.Equal(t, got, want, pkgPath)
+	}
+
+	// Every emitted spec, and a reference through it, parses.
+	f := &ast.File{Name: ast.NewIdent("p")}
+	fset := token.NewFileSet()
+	m.AddMissingAst(fset, f)
+	var buf bytes.Buffer
+	assert.NilError(t, format.Node(&buf, fset, f))
+	for imp := range m.Missing() {
+		fmt.Fprintf(&buf, "\nvar _ = %s.X\n", imp.Ident())
+	}
+	formatSource(t, buf.String())
+}
+
+func TestRequireInvalidName(t *testing.T) {
+	p := NewParser(types.NewPackage("example.com/p", "p"))
+
+	for _, imp := range []Import{
+		{Name: "go-yaml", Package: Package{Path: "example.com/go-yaml"}},
+		{Name: "type", Package: Package{Path: "example.com/x"}},
+		{Name: "_", Package: Package{Path: "example.com/x"}},
+		{Name: ".", Package: Package{Path: "example.com/x"}},
+		{Package: Package{Path: "example.com/x", Name: "1x"}},
+	} {
+		assert.ErrorIs(t, p.Require(imp), ErrInvalidName)
+	}
+
+	m, err := p.ParseAst(nil)
+	assert.NilError(t, err)
+	assert.Equal(t, len(missing(m)), 0, "a rejected Require adds nothing")
+}
+
+func TestFallbackSkipsTakenNames(t *testing.T) {
+	t.Run("native name in the file", func(t *testing.T) {
+		p := NewParser(types.NewPackage("example.com/p", "p"))
+		assert.NilError(t, p.Require(
+			Import{Package: Package{Path: "example.com/a/foo", Name: "foo"}},
+			Import{Package: Package{Path: "example.com/b/foo", Name: "foo"}},
+			Import{Package: Package{Path: "example.com/c/foo", Name: "foo"}},
+		))
+		m, err := p.ParseAst([]*ast.ImportSpec{{
+			Name: ast.NewIdent("foo_2"),
+			Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/native"`},
+		}})
+		assert.NilError(t, err)
+
+		assert.DeepEqual(t, missing(m), []Import{
+			{Package: Package{Path: "example.com/a/foo", Name: "foo"}},
+			{Name: "foo_3", Package: Package{Path: "example.com/b/foo", Name: "foo"}},
+			{Name: "foo_4", Package: Package{Path: "example.com/c/foo", Name: "foo"}},
+		})
+	})
+
+	t.Run("native name required after the fallback took it", func(t *testing.T) {
+		p := NewParser(types.NewPackage("example.com/p", "p"))
+		assert.NilError(t, p.Require(
+			Import{Package: Package{Path: "example.com/a/foo", Name: "foo"}},
+			Import{Package: Package{Path: "example.com/b/foo", Name: "foo"}},
+			Import{Package: Package{Path: "example.com/c/foo_2", Name: "foo_2"}},
+		))
+		m, err := p.ParseAst(nil)
+		assert.NilError(t, err)
+
+		assert.DeepEqual(t, missing(m), []Import{
+			{Package: Package{Path: "example.com/a/foo", Name: "foo"}},
+			{Name: "foo_2", Package: Package{Path: "example.com/b/foo", Name: "foo"}},
+			{Name: "foo_2_2", Package: Package{Path: "example.com/c/foo_2", Name: "foo_2"}},
+		})
+	})
+
+	t.Run("fallback through Ident", func(t *testing.T) {
+		p := NewParser(types.NewPackage("example.com/p", "p"))
+		m, err := p.ParseAst([]*ast.ImportSpec{
+			{
+				Name: ast.NewIdent("p"),
+				Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/x"`},
+			},
+			{
+				Name: ast.NewIdent("p_2"),
+				Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/y"`},
+			},
+		})
+		assert.NilError(t, err)
+
+		got, ok := m.Ident("example.com/p")
+		assert.Assert(t, ok)
+		assert.Equal(t, got, "p_3")
+	})
 }

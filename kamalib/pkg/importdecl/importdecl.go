@@ -21,13 +21,17 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/dave/dst"
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/packages"
 )
 
-var ErrUnknownImport = errors.New("importdecl: unknown import")
+var (
+	ErrUnknownImport = errors.New("importdecl: unknown import")
+	ErrInvalidName   = errors.New("importdecl: invalid name")
+)
 
 // Package is a package a file can import.
 type Package struct {
@@ -57,15 +61,35 @@ func (i Import) Ident() string {
 	}
 }
 
-// inferName guesses the package name from its path, skipping a major
-// version suffix like v2.
+// inferName guesses the package name from its path. It skips a major
+// version element like v2 and drops every character an identifier cannot
+// hold. A guess starting with a digit or being a keyword gets a leading _.
+// Nothing left, or only _, gives pkg.
 func inferName(pkgPath string) string {
 	base := path.Base(pkgPath)
 	if v, ok := strings.CutPrefix(base, "v"); ok && v != "" &&
 		strings.Trim(v, "0123456789") == "" {
-		return path.Base(path.Dir(pkgPath))
+		base = path.Base(path.Dir(pkgPath))
 	}
-	return base
+
+	base = strings.Map(func(r rune) rune {
+		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return r
+		}
+		return -1
+	}, base)
+
+	switch {
+	// The blank identifier cannot refer to a package.
+	case base == "" || base == "_":
+		return "pkg"
+	// Only a leading digit or a keyword keeps identifier characters from
+	// forming an identifier.
+	case !token.IsIdentifier(base):
+		return "_" + base
+	default:
+		return base
+	}
 }
 
 func compareImport(l, r Import) int {
@@ -136,11 +160,24 @@ func NewParserFromPackages(pkgs []*packages.Package) *Parser {
 }
 
 // Require adds imports every Map from p reports as missing, unless the
-// parsed file already imports their packages.
-func (p *Parser) Require(imports ...Import) {
+// parsed file already imports their packages. A non-empty Name or
+// Package.Name must be an identifier other than _.
+func (p *Parser) Require(imports ...Import) error {
+	for _, imp := range imports {
+		for _, name := range []string{imp.Name, imp.Package.Name} {
+			if name != "" && (!token.IsIdentifier(name) || name == "_") {
+				return fmt.Errorf(
+					"%w: %q for %q is not an identifier",
+					ErrInvalidName, name, imp.Package.Path,
+				)
+			}
+		}
+	}
+
 	p.required = append(p.required, imports...)
 	slices.SortFunc(p.required, compareImport)
 	p.required = slices.Compact(p.required)
+	return nil
 }
 
 // ParseAst parses the import specs of a file, as ast.File.Imports holds
@@ -239,8 +276,9 @@ func (m *Map) lookup(pkgPath string, required []Import) Package {
 // addMissing records imp as missing under an identifier no other import
 // takes, and returns the recorded import.
 func (m *Map) addMissing(imp Import) Import {
+	// The second import of a name is name_2, the first being name itself.
 	ident := imp.Ident()
-	for i := 1; m.idents[ident]; i++ {
+	for i := 2; m.idents[ident]; i++ {
 		ident = imp.Ident() + "_" + strconv.Itoa(i)
 	}
 	m.idents[ident] = true
