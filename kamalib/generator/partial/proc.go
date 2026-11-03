@@ -157,11 +157,11 @@ func fileCount(n int) string {
 // write stages content at name unless the file in fs differs from it in
 // the generated: line only, and reports whether it staged content.
 //
-// Generate returns unformatted content, while fs.Write formats what it
+// Generate returns unformatted content, and fs.Write formats what it
 // stages. The comparison uses the formatted content so it holds for any
-// formatter fs runs. An unchanged file is left untouched rather than
-// restored with fs.Write, since that would format the existing, already
-// formatted file again, and not every formatter is idempotent.
+// formatter fs runs. write leaves an unchanged file untouched. Restoring it
+// with fs.Write would format the existing, already formatted file again,
+// and not every formatter is idempotent.
 func (i *instance) write(ctx context.Context, name string, content []byte) (bool, error) {
 	existing, err := fs.ReadFile(i.fs.FS(), name)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {

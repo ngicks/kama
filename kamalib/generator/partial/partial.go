@@ -159,7 +159,8 @@ type File struct {
 //
 // The warnings wrap ErrStale, one for each file of pkgs carrying the
 // marker of the generator that is not among the returned files, sorted by
-// path.
+// path. The helpers file and the flag set file of a package the run
+// produces no files for are not reported.
 //
 // pkgs must be loaded as gopackages.Load does. Test variants are skipped.
 // The returned content is not formatted beyond what printing the syntax
@@ -241,7 +242,11 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		}
 	}
 	slices.SortFunc(files, func(a, b File) int { return cmp.Compare(a.Path, b.Path) })
-	return files, staleFiles(srcPkgs, opts.Registry, files), nil
+	generated := map[string]bool{}
+	for pkgPath := range byPkg {
+		generated[pkgPath] = true
+	}
+	return files, staleFiles(srcPkgs, opts.Registry, files, generated), nil
 }
 
 // fileHeader returns the comment lines every generated file starts with.
@@ -306,8 +311,14 @@ func dropGenerated(src []byte) []byte {
 }
 
 // staleFiles returns a warning for each file of pkgs holding a declaration
-// marked by the generator that is not among files.
-func staleFiles(pkgs []*packages.Package, reg *genmark.Registry, files []File) []error {
+// marked by the generator that is not among files. generated holds the
+// packages files were generated into, keyed by package path.
+func staleFiles(
+	pkgs []*packages.Package,
+	reg *genmark.Registry,
+	files []File,
+	generated map[string]bool,
+) []error {
 	produced := map[string]bool{}
 	for _, f := range files {
 		produced[filepath.Clean(f.Path)] = true
@@ -320,6 +331,17 @@ func staleFiles(pkgs []*packages.Package, reg *genmark.Registry, files []File) [
 			tf := pkg.Fset.File(f.Pos())
 			if tf == nil || produced[filepath.Clean(tf.Name())] || !markedFile(f, reg) {
 				continue
+			}
+			// The helpers and flag set files have no build constraint and
+			// serve the partial files of every build variant. A package the
+			// run produced nothing for may still declare targets in files of
+			// a variant not loaded, which keep needing them. A package the run
+			// produced files for always gets both, so they cannot be stale
+			// there and are left to the check above.
+			if !generated[pkg.PkgPath] {
+				if base := filepath.Base(tf.Name()); base == HelpersFile || base == FlagSetFile {
+					continue
+				}
 			}
 			name := tf.Name()
 			if pkg.Module != nil && pkg.Module.Dir != "" {

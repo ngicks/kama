@@ -75,7 +75,9 @@ func TestFixtureUpToDate(t *testing.T) {
 			i.Out(f)
 			files, _, err := i.generate()
 			assert.NilError(t, err)
-			assert.NilError(t, i.Run(ctx, nopReporter{}))
+			r := &recordReporter{}
+			assert.NilError(t, i.Run(ctx, r))
+			assert.Equal(t, len(r.warnings), 0, "%v", r.warnings)
 
 			var produced []string
 			for _, file := range files {

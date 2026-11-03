@@ -24,7 +24,10 @@ const OptionFileVersion = 1
 // OptionFile holds the options of an option file. Each entry stands for the
 // directive the package documentation names under Option file.
 type OptionFile struct {
-	// Name names the file in error messages.
+	// Name names the file in error messages and is the option_file value
+	// of the header of every generated file. Pass a stable name relative to
+	// the project, so that committed output holds no path specific to one
+	// machine.
 	Name string
 	// Packages are keyed by package import path.
 	Packages map[string]PackageOptions

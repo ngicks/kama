@@ -316,13 +316,20 @@
 // as it was. Generate itself always returns the time of the run; a caller
 // writing its files compares them with SameExceptGenerated to do the same.
 //
-// A file of the loaded packages holding a declaration with the marker of
-// the generator that the run does not produce, as one whose source no
-// longer declares targets, is stale. Generate returns a warning wrapping
-// ErrStale for it, naming its path relative to the module root, and Proc
-// reports the warning. The file is left in place; delete it if it is no
-// longer needed. If it refers to a type that no longer exists, loading the
-// packages fails until the file is removed. Files of build variants other
-// than the one loaded are not in the loaded packages and are never
-// reported.
+// A file of the loaded packages is stale when it holds a declaration with
+// the marker of the generator and the run does not produce it. A partial
+// file becomes stale when its source file no longer declares targets.
+// Generate returns a warning wrapping ErrStale for a stale file, naming its
+// path relative to the module root, and Proc reports the warning. The file
+// is left in place; delete it if it is no longer needed. If it refers to a
+// type that no longer exists, loading the packages fails until the file is
+// removed. Files of build variants other than the one loaded are not in
+// the loaded packages and are never reported.
+//
+// The helpers file and the flag set file of a package the run produces no
+// files for are never reported. The run cannot tell whether the package
+// still declares targets in files of build variants other than the one
+// loaded, and those partial files need both. A package whose targets are
+// all gone keeps its kama_partial_helpers.go and kama_partial_flagset.go
+// without a warning; delete them by hand.
 package partial
