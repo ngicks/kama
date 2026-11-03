@@ -10,6 +10,7 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"golang.org/x/tools/go/packages"
@@ -80,24 +81,36 @@ func (s *selection) sorted() []*typegraph.Node {
 	})
 }
 
-// marks are the //kama:partial directives of the source packages.
+// marks are the //kama:partial directives of the source packages and the
+// option file entries standing for them.
 type marks struct {
 	merges map[kamaopt.Key]kamaopt.Raw
 	flags  map[kamaopt.Key]flagOption
-	// explicit are the type-scoped directives without args, in source
-	// order.
+	// explicit are the type marks, the first one of each type, in source
+	// order and then in option file order.
 	explicit []kamaopt.Raw
-	ignored  map[typegraph.QualifiedType]bool
+	// marked and ignored are the first type mark and ignore of each type.
+	marked  map[typegraph.QualifiedType]kamaopt.Raw
+	ignored map[typegraph.QualifiedType]kamaopt.Raw
 	// files are the file names as packages reports them.
 	files map[string]bool
 	pkgs  map[string]bool
 }
 
-func collectMarks(pkgs []*packages.Package) (marks, error) {
+func (m *marks) isIgnored(id typegraph.QualifiedType) bool {
+	_, ok := m.ignored[id]
+	return ok
+}
+
+// collectMarks collects the directives of pkgs and the entries of file,
+// which may be nil. The entries follow the directives, so a conflict
+// between the two names the directive first.
+func collectMarks(pkgs []*packages.Package, file *OptionFile) (marks, error) {
 	m := marks{
 		merges:  map[kamaopt.Key]kamaopt.Raw{},
 		flags:   map[kamaopt.Key]flagOption{},
-		ignored: map[typegraph.QualifiedType]bool{},
+		marked:  map[typegraph.QualifiedType]kamaopt.Raw{},
+		ignored: map[typegraph.QualifiedType]kamaopt.Raw{},
 		files:   map[string]bool{},
 		pkgs:    map[string]bool{},
 	}
@@ -106,6 +119,11 @@ func collectMarks(pkgs []*packages.Package) (marks, error) {
 	if err != nil {
 		return marks{}, err
 	}
+	fileRaws, err := file.raws(pkgs)
+	if err != nil {
+		return marks{}, err
+	}
+	raws = append(raws, fileRaws...)
 
 	var errs []error
 	for _, r := range raws {
@@ -131,9 +149,14 @@ func collectMarks(pkgs []*packages.Package) (marks, error) {
 			id := typegraph.NewQualifiedType(r.Key.PkgPath, r.Key.Type)
 			switch args {
 			case "":
-				m.explicit = append(m.explicit, r)
+				if _, ok := m.marked[id]; !ok {
+					m.marked[id] = r
+					m.explicit = append(m.explicit, r)
+				}
 			case "ignore":
-				m.ignored[id] = true
+				if !m.isIgnored(id) {
+					m.ignored[id] = r
+				}
 			default:
 				errs = append(errs, fmt.Errorf(
 					"%w: %s: unknown args %q on type %s.%s; want none or ignore",
@@ -174,18 +197,29 @@ func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
 		)
 	}
 	field := r.Key.PkgPath + "." + r.Key.Type + "." + r.Key.Field
-	switch strings.TrimSpace(r.Args) {
+	strategy := strings.TrimSpace(r.Args)
+	switch strategy {
 	case string(MergeOverwrite), string(MergeAppend), string(MergeNestedRecursive):
 	default:
 		return fmt.Errorf(
-			"%w: %s: unknown strategy %q on field %s; want overwrite, append or recursive",
-			ErrDirective, pos, strings.TrimSpace(r.Args), field,
+			"%w: %s: %s: unknown strategy %q on field %s; want overwrite, append or recursive",
+			ErrDirective, origin(r), spelling(r), strategy, field,
 		)
 	}
 	if prev, ok := m.merges[r.Key]; ok {
-		return fmt.Errorf(
-			"%w: %s: second //kama:partial:merge on field %s; the first is at %s",
-			ErrDirective, pos, field, prev.Origin.Pos,
+		if prev.Origin.Source == r.Origin.Source {
+			return fmt.Errorf(
+				"%w: %s: second //kama:partial:merge on field %s; the first is at %s",
+				ErrDirective, pos, field, prev.Origin.Pos,
+			)
+		}
+		prevStrategy := strings.TrimSpace(prev.Args)
+		if prevStrategy == strategy {
+			return nil
+		}
+		return sourceConflict(
+			"the merge strategy of field "+field,
+			prev, strconv.Quote(prevStrategy), r, strconv.Quote(strategy),
 		)
 	}
 	m.merges[r.Key] = r
@@ -201,23 +235,39 @@ func (m *marks) flag(r kamaopt.Raw) error {
 		)
 	}
 	field := r.Key.PkgPath + "." + r.Key.Type + "." + r.Key.Field
-	if prev, ok := m.flags[r.Key]; ok {
+	prev, hasPrev := m.flags[r.Key]
+	if hasPrev && prev.raw.Origin.Source == r.Origin.Source {
 		return fmt.Errorf(
 			"%w: %s: second //kama:partial:flag on field %s; the first is at %s",
 			ErrDirective, pos, field, prev.raw.Origin.Pos,
 		)
 	}
-	o, err := parseFlag(r.Args)
+	var (
+		o   flagOption
+		err error
+	)
+	if v, ok := r.Value.(FlagOptions); ok {
+		o, err = flagFromOptions(v)
+	} else {
+		o, err = parseFlag(r.Args)
+	}
 	if err != nil {
 		return fmt.Errorf(
-			"%w: %s: //kama:partial:flag on field %s: %w",
+			"%w: %s: %s on field %s: %w",
 			ErrDirective,
-			pos,
+			origin(r),
+			spelling(r),
 			field,
 			err,
 		)
 	}
 	o.raw = r
+	if hasPrev {
+		if prev.same(o) {
+			return nil
+		}
+		return sourceConflict("the flag of field "+field, prev.raw, prev.String(), r, o.String())
+	}
 	m.flags[r.Key] = o
 	return nil
 }
@@ -296,7 +346,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 		return nil, fmt.Errorf("partial: %w", err)
 	}
 
-	m, err := collectMarks(pkgs)
+	m, err := collectMarks(pkgs, opts.OptionFile)
 	if err != nil {
 		return nil, err
 	}
@@ -314,8 +364,12 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	for _, r := range m.explicit {
 		id := typegraph.NewQualifiedType(r.Key.PkgPath, r.Key.Type)
 		name := id.PackagePath + "." + id.TypeName
-		pos := r.Origin.Pos
-		if m.ignored[id] {
+		pos := origin(r)
+		if ig, ok := m.ignored[id]; ok {
+			if ig.Origin.Source != r.Origin.Source {
+				errs = append(errs, sourceConflict("type "+name, r, "marked", ig, "ignored"))
+				continue
+			}
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s is both marked and ignored", ErrDirective, pos, name,
 			))
@@ -346,7 +400,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	}
 
 	for id, n := range g.All() {
-		if m.ignored[id] || !partialKind(n) {
+		if m.isIgnored(id) || !partialKind(n) {
 			continue
 		}
 		if m.pkgs[id.PackagePath] || m.files[sel.filename(n)] {
@@ -359,7 +413,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 		n := queue[0]
 		queue = queue[1:]
 		for id, e := range n.Children {
-			if sel.targets[id] != nil || m.ignored[id] || !partialKind(e.Child) ||
+			if sel.targets[id] != nil || m.isIgnored(id) || !partialKind(e.Child) ||
 				!slices.ContainsFunc(e.Routes, followed) {
 				continue
 			}
@@ -391,9 +445,10 @@ func (s *selection) checkMerges() error {
 		if s.targets[typegraph.NewQualifiedType(k.PkgPath, k.Type)] != nil {
 			continue
 		}
+		r := s.merges[k]
 		errs = append(errs, fmt.Errorf(
-			"%w: %s: //kama:partial:merge on field %s.%s.%s; %s has no partial variant",
-			ErrDirective, s.merges[k].Origin.Pos, k.PkgPath, k.Type, k.Field, k.Type,
+			"%w: %s: %s on field %s.%s.%s; %s has no partial variant",
+			ErrDirective, origin(r), spelling(r), k.PkgPath, k.Type, k.Field, k.Type,
 		))
 	}
 	return errors.Join(errs...)
@@ -409,9 +464,10 @@ func (s *selection) checkFlagTargets() error {
 			s.flagged[id] = true
 			continue
 		}
+		r := s.flags[k].raw
 		errs = append(errs, fmt.Errorf(
-			"%w: %s: //kama:partial:flag on field %s.%s.%s; %s has no partial variant",
-			ErrDirective, s.flags[k].raw.Origin.Pos, k.PkgPath, k.Type, k.Field, k.Type,
+			"%w: %s: %s on field %s.%s.%s; %s has no partial variant",
+			ErrDirective, origin(r), spelling(r), k.PkgPath, k.Type, k.Field, k.Type,
 		))
 	}
 	return errors.Join(errs...)
@@ -451,11 +507,9 @@ func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Obj
 	}
 
 	targetPkgs := map[string]*packages.Package{}
-	flagPkgs := map[string]bool{}
 	for _, n := range s.sorted() {
 		pkg := n.Detail.Pkg
 		targetPkgs[pkg.PkgPath] = pkg
-		flagPkgs[pkg.PkgPath] = flagPkgs[pkg.PkgPath] || s.flagged[n.Id]
 		name := partialName(n.Id.TypeName)
 		obj := pkg.Types.Scope().Lookup(name)
 		if obj == nil {
@@ -491,8 +545,7 @@ func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Obj
 				)
 			}
 		}
-		if obj := pkg.Types.Scope().Lookup(flagSetName); flagPkgs[pkgPath] && obj != nil &&
-			!generated[obj] {
+		if obj := pkg.Types.Scope().Lookup(flagSetName); obj != nil && !generated[obj] {
 			conflict(pkg.Fset, obj.Pos(),
 				"%s.%s is already declared for the flag set of the generated methods",
 				pkgPath, flagSetName,

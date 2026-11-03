@@ -392,6 +392,7 @@ type L []S
 	assert.DeepEqual(t, slices.Sorted(maps.Keys(files)), []string{
 		"a.kama_partial.go",
 		"file.kama_partial.go",
+		FlagSetFile,
 		HelpersFile,
 		"types.kama_partial.go",
 	})

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -20,11 +21,17 @@ type ProcParam struct {
 	Merge string `json:"merge"`
 	// MergeNested is "recursive" or "overwrite". Empty means "recursive".
 	MergeNested string `json:"merge_nested"`
+	// OptionFile names the option file, its base path relative to the root
+	// of the out of Proc and its formats, as base and formats. Empty
+	// formats mean yaml, json, toml. Nil means no option file. A named file
+	// that is not present is an error.
+	OptionFile *fileloader.PathInput `json:"option_file"`
 }
 
 // Proc generates the partial types of the packages its in loaded and
 // stages the files in its out. The packages must lie under the root of
-// its out.
+// its out. The option file is read from its out, so a file staged by an
+// earlier step is read too.
 //
 //	Param(ProcParam) error
 //	In(*gopackages.Packages)
@@ -53,9 +60,10 @@ func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
 func (Proc) CleanUp(context.Context) error { return nil }
 
 type instance struct {
-	opts Options
-	pkgs *gopackages.Packages
-	fs   *overlayfs.Fs
+	opts       Options
+	optionFile *fileloader.PathInput
+	pkgs       *gopackages.Packages
+	fs         *overlayfs.Fs
 }
 
 func (i *instance) Param(p ProcParam) error {
@@ -64,6 +72,25 @@ func (i *instance) Param(p ProcParam) error {
 		return err
 	}
 	i.opts = opts.WithDefaults()
+
+	if p.OptionFile != nil {
+		in := *p.OptionFile
+		if in.Base == "" {
+			return fmt.Errorf("%w: option_file: base is required", ErrOption)
+		}
+		if len(in.Formats) == 0 {
+			in.Formats = []fileloader.Format{
+				fileloader.FormatYaml,
+				fileloader.FormatJson,
+				fileloader.FormatToml,
+			}
+		}
+		// Candidates reports unknown formats before Run opens any file.
+		if _, err := in.Candidates(); err != nil {
+			return fmt.Errorf("%w: option_file: %w", ErrOption, err)
+		}
+		i.optionFile = &in
+	}
 	return nil
 }
 
@@ -72,7 +99,16 @@ func (i *instance) In(pkgs *gopackages.Packages) { i.pkgs = pkgs }
 func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
 
 func (i *instance) Run(ctx context.Context) error {
-	files, err := Generate(i.pkgs.Pkgs, i.opts)
+	opts := i.opts
+	if i.optionFile != nil {
+		f, err := LoadOptionFile(i.fs.FS(), *i.optionFile)
+		if err != nil {
+			return err
+		}
+		opts.OptionFile = f
+	}
+
+	files, err := Generate(i.pkgs.Pkgs, opts)
 	if err != nil {
 		return err
 	}

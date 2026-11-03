@@ -36,9 +36,6 @@ type mapper struct {
 	// refs are the identifiers of partial types of the package the
 	// expressions refer to unqualified.
 	refs map[string]bool
-	// flagSet are the methods of the flag set interface the methods call,
-	// keyed by name.
-	flagSet map[string]string
 }
 
 func (p *mapper) position(pos token.Pos) token.Position { return p.pkg.Fset.Position(pos) }
@@ -251,7 +248,7 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 }
 
 // strategy returns the merge strategy of a value of class c, set by the
-// directive r or defaulted by the options.
+// directive or option file entry r or defaulted by the options.
 func (p *mapper) strategy(c class, r kamaopt.Raw) (string, error) {
 	var (
 		def     string
@@ -278,8 +275,8 @@ func (p *mapper) strategy(c class, r kamaopt.Raw) (string, error) {
 	got := strings.TrimSpace(r.Args)
 	if !slices.Contains(allowed, got) {
 		return "", fmt.Errorf(
-			"%w: %s: //kama:partial:merge %s on field %s.%s.%s; want %s",
-			ErrDirective, r.Origin.Pos, got, r.Key.PkgPath, r.Key.Type, r.Key.Field,
+			"%w: %s: %s %s on field %s.%s.%s; want %s",
+			ErrDirective, origin(r), spelling(r), got, r.Key.PkgPath, r.Key.Type, r.Key.Field,
 			strings.Join(allowed, " or "),
 		)
 	}

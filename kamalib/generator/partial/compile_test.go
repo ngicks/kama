@@ -157,6 +157,20 @@ func TestPredeclaredShadowed(t *testing.T) {
 	}
 }
 
+func TestTypeParamNamedLikePredeclared(t *testing.T) {
+	for _, name := range []string{"error", "nil", "false"} {
+		t.Run(name, func(t *testing.T) {
+			_, err := generate(t, map[string]string{
+				"a.go": "package x\n\n//kama:partial\ntype A[" + name + " any] struct {\n" +
+					"\t//kama:partial:flag name=b\n\tB bool\n\tV " + name + "\n}\n",
+			}, Options{})
+			assert.ErrorIs(t, err, ErrConflict)
+			assert.ErrorContains(t, err, "a.go:4:8")
+			assert.ErrorContains(t, err, "type parameter "+name+" of A")
+		})
+	}
+}
+
 func TestImportNamedLikePredeclared(t *testing.T) {
 	assert.NilError(t, generateAndBuild(t, map[string]string{
 		"a.go": "package x\n\nimport s \"" + modulePath(t) + "/string\"\n\n" +

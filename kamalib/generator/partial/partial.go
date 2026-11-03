@@ -51,6 +51,9 @@ var (
 	ErrConflict = errors.New("partial: name conflict")
 	// ErrOption reports an invalid Options value.
 	ErrOption = errors.New("partial: invalid option")
+	// ErrOptionFile reports an option file that does not decode, or whose
+	// entries name packages, types or fields that are not loaded.
+	ErrOptionFile = errors.New("partial: invalid option file")
 )
 
 // MergeMode selects how a defined slice or map field of a partial combines
@@ -78,8 +81,8 @@ const (
 // Options configures Generate.
 //
 // The merge modes are the defaults of the Merge methods, which a field
-// overrides with //kama:partial:merge. They do not affect the type
-// declarations.
+// overrides with //kama:partial:merge or its option file entry. They do
+// not affect the type declarations.
 type Options struct {
 	// Merge is the strategy of slice and map fields and of the Merge
 	// methods of slice and map partial types. It is MergeOverwrite when
@@ -91,6 +94,9 @@ type Options struct {
 	// Registry tells the declarations emitted by generators. It is
 	// genmark.DefaultRegistry when nil.
 	Registry *genmark.Registry
+	// OptionFile holds options given beside the directives, as
+	// LoadOptionFile or DecodeOptionFile return them. It is none when nil.
+	OptionFile *OptionFile
 }
 
 // WithDefaults returns o with empty fields set to their defaults.
@@ -153,9 +159,8 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 	}
 
 	type pkgHelpers struct {
-		pkg     *packages.Package
-		dir     string
-		flagSet map[string]string
+		pkg *packages.Package
+		dir string
 		// contents are the files generated into the package.
 		contents [][]byte
 	}
@@ -168,7 +173,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 			return cmp.Compare(a.Detail.Ts.Pos(), b.Detail.Ts.Pos())
 		})
 
-		content, flagSet, err := renderFile(sel, nodes)
+		content, err := renderFile(sel, nodes)
 		if err != nil {
 			return nil, err
 		}
@@ -183,14 +188,9 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 		pkg := nodes[0].Detail.Pkg
 		h := byPkg[pkg.PkgPath]
 		if h == nil {
-			h = &pkgHelpers{
-				pkg:     pkg,
-				dir:     filepath.Dir(name),
-				flagSet: map[string]string{},
-			}
+			h = &pkgHelpers{pkg: pkg, dir: filepath.Dir(name)}
 			byPkg[pkg.PkgPath] = h
 		}
-		maps.Copy(h.flagSet, flagSet)
 		h.contents = append(h.contents, content)
 	}
 
@@ -202,14 +202,15 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, error) {
 		}
 		files = append(files, File{Path: filepath.Join(h.dir, HelpersFile), Content: content})
 		h.contents = append(h.contents, content)
-		if len(h.flagSet) > 0 {
-			content, err = renderFlagSet(h.pkg, h.flagSet)
-			if err != nil {
-				return nil, err
-			}
-			files = append(files, File{Path: filepath.Join(h.dir, FlagSetFile), Content: content})
-			h.contents = append(h.contents, content)
+		// The flag set holds every method any flag kind calls, like the
+		// helpers file holds every helper: a partial file of a build variant
+		// other than the one loaded keeps calling the methods its flags use.
+		content, err = renderFlagSet(h.pkg)
+		if err != nil {
+			return nil, err
 		}
+		files = append(files, File{Path: filepath.Join(h.dir, FlagSetFile), Content: content})
+		h.contents = append(h.contents, content)
 		if err := checkPredeclared(h.pkg, h.contents); err != nil {
 			return nil, err
 		}
@@ -234,9 +235,8 @@ func sourcePackages(pkgs []*packages.Package) []*packages.Package {
 }
 
 // renderFile prints the partial declarations of nodes, which share a
-// source file, and returns the methods of the flag set interface their
-// methods call, keyed by name.
-func renderFile(sel *selection, nodes []*typegraph.Node) ([]byte, map[string]string, error) {
+// source file.
+func renderFile(sel *selection, nodes []*typegraph.Node) ([]byte, error) {
 	pkg := nodes[0].Detail.Pkg
 
 	// The und import is required up front because a package that does not
@@ -245,17 +245,10 @@ func renderFile(sel *selection, nodes []*typegraph.Node) ([]byte, map[string]str
 	// without.
 	b, p, err := renderFileWith(sel, pkg, nodes, true)
 	if err != nil || p.usedUnd {
-		return b, flagSetOf(p), err
+		return b, err
 	}
-	b, p, err = renderFileWith(sel, pkg, nodes, false)
-	return b, flagSetOf(p), err
-}
-
-func flagSetOf(p *mapper) map[string]string {
-	if p == nil {
-		return nil
-	}
-	return p.flagSet
+	b, _, err = renderFileWith(sel, pkg, nodes, false)
+	return b, err
 }
 
 func renderFileWith(
@@ -295,7 +288,7 @@ func renderFileWith(
 	}
 
 	p := &mapper{
-		sel: sel, pkg: pkg, m: m, flagSet: map[string]string{},
+		sel: sel, pkg: pkg, m: m,
 	}
 	f := &dst.File{Name: dst.NewIdent(pkg.Name)}
 	f.Decs.Start = dst.Decorations{header, "\n"}
@@ -392,8 +385,9 @@ func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 }
 
 // checkTypeParams reports a type parameter of named sharing its name with
-// a package-level identifier the generated declarations refer to, which
-// the parameter would shadow. Import names avoid type parameters instead.
+// a predeclared identifier or with a package-level identifier the
+// generated declarations refer to, which the parameter would shadow.
+// Import names avoid type parameters instead.
 func (p *mapper) checkTypeParams(named *types.Named) error {
 	refs := maps.Clone(p.refs)
 	refs[named.Obj().Name()] = true
@@ -403,6 +397,19 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 	}
 	var errs []error
 	for tp := range named.TypeParams().TypeParams() {
+		// The methods spell predeclared identifiers such as error, nil and
+		// false, which a type parameter of that name would denote instead.
+		if types.Universe.Lookup(tp.Obj().Name()) != nil {
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: type parameter %s of %s shadows the predeclared %s the generated code spells",
+				ErrConflict,
+				p.position(tp.Obj().Pos()),
+				tp.Obj().Name(),
+				named.Obj().Name(),
+				tp.Obj().Name(),
+			))
+			continue
+		}
 		if refs[tp.Obj().Name()] {
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: type parameter %s shadows %s the partial declarations refer to",

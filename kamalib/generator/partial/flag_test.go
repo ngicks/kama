@@ -23,6 +23,9 @@ func TestParseFlag(t *testing.T) {
 		"name=a prefix=x":    `unknown key "prefix"`,
 		"name=-a":            "leading -",
 		"name=a=b":           "no =",
+		`name="a\u00a0b"`:    `name "a\u00a0b"`,
+		`name="a\u0085b"`:    `name "a\u0085b"`,
+		`name="a\u009fb"`:    `name "a\u009fb"`,
 		"name=a short=ab":    `short "ab"`,
 		"name=a short=":      `short ""`,
 		"name=a short=-":     `short "-"`,
@@ -141,6 +144,12 @@ func TestFlagErrors(t *testing.T) {
 			is:       ErrConflict,
 			contains: []string{"x.go:9:6", "PartialFlagSet"},
 		},
+		{
+			name:     "flag set declared without flags",
+			src:      head + "//kama:partial\ntype A struct {\n\tB int\n}\n\ntype PartialFlagSet int\n",
+			is:       ErrConflict,
+			contains: []string{"x.go:8:6", "PartialFlagSet"},
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -157,9 +166,11 @@ func TestFlagSetFile(t *testing.T) {
 	files := generated(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n",
 	})
-	_, ok := files[FlagSetFile]
-	assert.Assert(t, !ok)
+	assert.DeepEqual(t, slices.Sorted(maps.Keys(files)), []string{
+		"a.kama_partial.go", FlagSetFile, HelpersFile,
+	})
 	assert.Assert(t, !strings.Contains(files["a.kama_partial.go"], "RegisterFlags"))
+	unflagged := files[FlagSetFile]
 
 	files = generated(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct {\n" +
@@ -169,16 +180,19 @@ func TestFlagSetFile(t *testing.T) {
 		"a.kama_partial.go", FlagSetFile, HelpersFile,
 	})
 	src := files[FlagSetFile]
-	assert.Assert(t, strings.HasPrefix(src, header+"\n\npackage x\n"), src)
-	assert.Assert(t, !strings.Contains(src, "import"), src)
+	assert.Equal(t, src, unflagged)
+	assert.Assert(t, strings.HasPrefix(src, header+"\n\npackage x\n\nimport \"time\"\n"), src)
 	assert.Assert(
 		t,
 		strings.Contains(src, "\n//kama:generated kama-partial\ntype PartialFlagSet interface {\n"+
+			"\tBoolP(name, shorthand string, value bool, usage string) *bool\n"+
 			"\tChanged(name string) bool\n"+
-			"\tGetString(name string) (string, error)\n"+
-			"\tStringP(name, shorthand string, value string, usage string) *string\n}\n"),
+			"\tDurationP(name, shorthand string, value time.Duration, usage string) *time.Duration\n"),
 		src,
 	)
+	for name := range flagSetSignatures() {
+		assert.Assert(t, strings.Contains(src, "\t"+name+"("), name)
+	}
 
 	fs := funcs(t, files["a.kama_partial.go"])
 	assert.Equal(
@@ -192,6 +206,23 @@ func TestFlagSetFile(t *testing.T) {
 		!strings.Contains(fs["APartial.FromFlagSet"], `"c"`),
 		fs["APartial.FromFlagSet"],
 	)
+}
+
+// TestFlagSetFileBuildVariant generates without the build tag of a file
+// whose partial type has a duration flag; the flag set must keep the
+// methods that file calls.
+func TestFlagSetFileBuildVariant(t *testing.T) {
+	files := map[string]string{
+		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n",
+		"b.go": "//go:build kamavariant\n\npackage x\n\nimport \"time\"\n\n" +
+			"//kama:partial\ntype B struct {\n\t//kama:partial:flag name=wait\n\tWait time.Duration\n}\n",
+	}
+	out := generated(t, files)
+	_, ok := out["b.kama_partial.go"]
+	assert.Assert(t, !ok)
+	src := out[FlagSetFile]
+	assert.Assert(t, strings.Contains(src, "\tDurationP("), src)
+	assert.Assert(t, strings.Contains(src, "\tGetDuration("), src)
 }
 
 func TestFlagSetFileConflict(t *testing.T) {

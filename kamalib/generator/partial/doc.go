@@ -7,7 +7,8 @@
 //
 // # Targets
 //
-// Targets are taken from the loaded packages only:
+// Targets are taken from the loaded packages only, by directives or by the
+// option file entries standing for them:
 //
 //   - //kama:partial in the doc comment of a type marks it.
 //   - //kama:partial file in a free-floating comment, one that is not the
@@ -34,6 +35,43 @@
 // on a field, are errors. //kama:partial:merge is described under Merge,
 // //kama:partial:flag under Flags, and any other //kama:partial:<name> is
 // an error.
+//
+// # Option file
+//
+// An option file gives the options of the directives for types that cannot
+// carry them, such as generated code. Options.OptionFile holds it, and
+// ProcParam.OptionFile names the file Proc reads. The file is JSON, YAML or
+// TOML:
+//
+//	version: 1
+//	packages:
+//	  example.com/gen/pb:         # package import path
+//	    all_types: true           # //kama:partial package
+//	    types:
+//	      Server:                 # //kama:partial on Server
+//	        fields:
+//	          Addr:
+//	            merge: append     # //kama:partial:merge append
+//	            flag: {name: addr, short: a, usage: listen address}
+//	      Client:
+//	        ignore: true          # //kama:partial ignore on Client
+//
+// Listing a type marks it, as //kama:partial on it does, unless ignore is
+// true. A listed type that has no partial variant is an error, as for the
+// directive. Fields take the options of //kama:partial:merge and of the
+// args of //kama:partial:flag. The file has no equivalent of
+// //kama:partial file. version is required and is 1. An unknown key, a
+// value of the wrong type, a package that is not loaded, a type the
+// package does not declare and a field its struct type does not declare
+// are errors naming the file and the key path.
+//
+// The entries of the file and the directives give the same output. An
+// option set by both a directive and the file is allowed when both give
+// the same value. Different values, as for a type marked by one and
+// ignored by the other, or two merge strategies or flags of one field, are
+// errors wrapping kamaopt.ErrConflict and naming both origins. Errors
+// about an option name its directive position or its key path in the
+// file.
 //
 // # Type mapping
 //
@@ -76,8 +114,8 @@
 //
 // Two fields of a partial struct with one name, as for an embedded M next
 // to a field MPartial, a field named like one of the methods, and a type
-// parameter named like a partial type or helper the declarations refer to
-// are errors. Import names avoid predeclared and package-level
+// parameter named like a predeclared identifier or like a partial type or
+// helper the declarations refer to are errors. Import names avoid predeclared and package-level
 // identifiers, type parameters and the identifiers the methods declare. A
 // package-level declaration named like a predeclared identifier the
 // generated code spells, such as make, len, string or error, is an error;
@@ -171,8 +209,9 @@
 //	//kama:partial:flag name=<name> short=<c> usage="<text>"
 //
 // The args are parsed by kamaopt.ParseArgs. name is required, and has no
-// leading -, no space and no =. short is optional and is a single ASCII
-// character. usage is optional. An unknown key, a second directive on a
+// leading -, no white space, no control character and no =. short is
+// optional and is a single ASCII character. usage is optional. An unknown key, a second directive
+// on a
 // field, the directive on a type or a file, the directive on a field of a
 // type without partial variant, and two fields of one partial type with
 // one flag name or shorthand are errors.
@@ -214,14 +253,14 @@
 // //kama:partial ignore on the type to take a flag.
 //
 // PartialFlagSet is declared in the file kama_partial_flagset.go of each
-// package whose partial types have flags. It holds only the methods the
-// generated methods of the package call, with signatures of basic and
-// time types, so *pflag.FlagSet of github.com/spf13/pflag implements it
-// and the generated code imports no flag package. The file is written
-// again on every run that generates flags in the package; a declaration
-// in it the generator did not mark is an error, and so is PartialFlagSet
-// declared elsewhere in the package. A file left from an earlier run whose
-// package no longer has flags is left in place.
+// package holding targets. It holds every method the flag types above
+// call, whether the package uses it or not, so that partial files of build
+// variants other than the one loaded keep finding theirs. The methods have
+// signatures of basic and time types, so *pflag.FlagSet of
+// github.com/spf13/pflag implements it and the generated code imports no
+// flag package. The file has no build constraint and is written again on
+// every run; a declaration in it the generator did not mark is an error,
+// and so is PartialFlagSet declared elsewhere in the package.
 //
 // # Output
 //

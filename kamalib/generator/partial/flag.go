@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -22,7 +23,7 @@ import (
 
 // FlagSetFile is the name of the file declaring the flag set interface
 // the flag methods of a package take. The generator writes it again on
-// every run that generates flag methods in the package.
+// every run into every package holding targets.
 const FlagSetFile = "kama_partial_flagset.go"
 
 // flagSetName is the interface declared in FlagSetFile.
@@ -35,10 +36,19 @@ var flagMethodNames = []string{"RegisterFlags", "FromFlagSet"}
 // which import names must not shadow.
 var flagSetParams = []string{"name", "shorthand", "value", "usage"}
 
-// flagOption is a decoded //kama:partial:flag directive.
+// flagOption is a decoded //kama:partial:flag directive or option file
+// entry.
 type flagOption struct {
 	name, short, usage string
 	raw                kamaopt.Raw
+}
+
+func (o flagOption) same(other flagOption) bool {
+	return o.name == other.name && o.short == other.short && o.usage == other.usage
+}
+
+func (o flagOption) String() string {
+	return fmt.Sprintf("name=%q short=%q usage=%q", o.name, o.short, o.usage)
 }
 
 // parseFlag decodes the args of //kama:partial:flag.
@@ -47,6 +57,21 @@ func parseFlag(args string) (flagOption, error) {
 	if err != nil {
 		return flagOption{}, err
 	}
+	return flagFromArgs(kv)
+}
+
+// flagFromOptions decodes an option file flag entry as the directive with
+// the same args.
+func flagFromOptions(f FlagOptions) (flagOption, error) {
+	kv := map[string]string{"name": f.Name, "usage": f.Usage}
+	if f.Short != "" {
+		kv["short"] = f.Short
+	}
+	return flagFromArgs(kv)
+}
+
+// flagFromArgs validates the args of //kama:partial:flag, keyed by name.
+func flagFromArgs(kv map[string]string) (flagOption, error) {
 	for _, k := range slices.Sorted(maps.Keys(kv)) {
 		switch k {
 		case "name", "short", "usage":
@@ -77,7 +102,7 @@ func parseFlag(args string) (flagOption, error) {
 }
 
 func invalidFlagRune(r rune) bool {
-	return r == '=' || r <= ' ' || r == 0x7f
+	return r == '=' || unicode.IsSpace(r) || unicode.IsControl(r)
 }
 
 // flagKind is a flag type of the flag set, and the methods defining and
@@ -125,16 +150,24 @@ var basicFlagKinds = map[types.BasicKind]flagKind{
 	types.Float64: flagFloat64,
 }
 
-// signatures returns the methods of flagSetName k calls, keyed by name.
-// They are the signatures of the methods of *pflag.FlagSet.
-func (k flagKind) signatures() map[string]string {
-	return map[string]string{
-		k.define: fmt.Sprintf(
+// flagKinds are every flag kind a field can take.
+var flagKinds = []flagKind{
+	flagString, flagBool, flagInt, flagInt64, flagUint, flagUint64, flagFloat64,
+	flagDuration, flagStringSlice, flagStringToString, flagText,
+}
+
+// flagSetSignatures returns the methods of flagSetName, keyed by name: the
+// methods every flag kind calls, with the signatures of the methods of
+// *pflag.FlagSet.
+func flagSetSignatures() map[string]string {
+	out := map[string]string{"Changed": "Changed(name string) bool"}
+	for _, k := range flagKinds {
+		out[k.define] = fmt.Sprintf(
 			"%s(name, shorthand string, value %s, usage string) *%s", k.define, k.value, k.value,
-		),
-		k.get:     fmt.Sprintf("%s(name string) (%s, error)", k.get, k.value),
-		"Changed": "Changed(name string) bool",
+		)
+		out[k.get] = fmt.Sprintf("%s(name string) (%s, error)", k.get, k.value)
 	}
+	return out
 }
 
 // flagField is a field with a flag option.
@@ -165,10 +198,11 @@ func (p *mapper) flag(n *typegraph.Node, info fieldInfo, o flagOption) (*flagFie
 	}
 	bad := func(format string, args ...any) error {
 		return fmt.Errorf(
-			"%w: %s: //kama:partial:flag on field %s.%s.%s: "+format,
-			append(
-				[]any{ErrDirective, o.raw.Origin.Pos, n.Id.PackagePath, n.Id.TypeName, info.name},
-				args...)...,
+			"%w: %s: %s on field %s.%s.%s: "+format,
+			append([]any{
+				ErrDirective, origin(o.raw), spelling(o.raw),
+				n.Id.PackagePath, n.Id.TypeName, info.name,
+			}, args...)...,
 		)
 	}
 
@@ -261,7 +295,6 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) {
 	w.line("func (%s *%s) RegisterFlags(%s %s) {", p, w.recv, f, flagSetName)
 	for _, fl := range flags {
 		k := fl.flag.kind
-		w.p.recordFlagKind(k)
 		w.line("%s.%s(%s, %s, %s, %s)", f, k.define,
 			strconv.Quote(fl.flag.name), strconv.Quote(fl.flag.short), k.zero,
 			strconv.Quote(fl.flag.usage))
@@ -296,10 +329,6 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) {
 	w.line("}")
 }
 
-func (p *mapper) recordFlagKind(k flagKind) {
-	maps.Copy(p.flagSet, k.signatures())
-}
-
 // checkFlags reports duplicate flag names and shorthands among fields.
 func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 	names := map[string]fieldInfo{}
@@ -320,16 +349,17 @@ func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 			}
 			if prev, ok := c.seen[c.key]; ok {
 				return fmt.Errorf(
-					"%w: %s: //kama:partial:flag on field %s.%s.%s: flag %s %q is taken by field %s (%s)",
+					"%w: %s: %s on field %s.%s.%s: flag %s %q is taken by field %s (%s)",
 					ErrDirective,
-					f.flag.raw.Origin.Pos,
+					origin(f.flag.raw),
+					spelling(f.flag.raw),
 					n.Id.PackagePath,
 					n.Id.TypeName,
 					f.name,
 					c.what,
 					c.key,
 					prev.name,
-					prev.flag.raw.Origin.Pos,
+					origin(prev.flag.raw),
 				)
 			}
 			c.seen[c.key] = f
@@ -338,9 +368,9 @@ func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 	return nil
 }
 
-// renderFlagSet prints FlagSetFile of pkg declaring flagSetName with the
-// methods sigs, keyed by name.
-func renderFlagSet(pkg *packages.Package, sigs map[string]string) ([]byte, error) {
+// renderFlagSet prints FlagSetFile of pkg declaring flagSetName.
+func renderFlagSet(pkg *packages.Package) ([]byte, error) {
+	sigs := flagSetSignatures()
 	parser := importdecl.NewParser(pkg.Types)
 	parser.Reserve(types.Universe.Names()...)
 	parser.Reserve(pkg.Types.Scope().Names()...)

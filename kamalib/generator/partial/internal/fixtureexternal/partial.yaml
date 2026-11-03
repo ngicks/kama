@@ -1,0 +1,72 @@
+# The options of the models, standing for the directives of the fixture
+# package. The option file has no file scope, so the types of the file
+# marked there are listed one by one.
+version: 1
+packages:
+  github.com/ngicks/kama/kamalib/generator/partial/internal/fixtureexternal/model:
+    types:
+      User:
+      Box:
+      Pair:
+      Stat:
+      Tree:
+      Ring:
+      Config:
+      Limits:
+      Meta:
+        ignore: true
+      Merging:
+        fields:
+          Tags: { merge: append }
+          Attrs: { merge: append }
+          Replaced: { merge: overwrite }
+          Items: { merge: append }
+          Ptr: { merge: append }
+          Flagged:
+            flag: { name: flagged }
+      Embeds:
+      Flags:
+        fields:
+          Name:
+            flag: { name: name, short: n, usage: the name }
+          Verbose:
+            flag: { name: verbose, short: v }
+          Count:
+            flag: { name: count }
+          Size:
+            flag: { name: size }
+          Workers:
+            flag: { name: workers }
+          Limit:
+            flag: { name: limit }
+          Ratio:
+            flag: { name: ratio }
+          Timeout:
+            flag: { name: timeout, short: t, usage: time to wait }
+          Tags:
+            flag: { name: tag }
+          Labels:
+            flag: { name: label }
+          Level:
+            flag: { name: level, short: l }
+          Since:
+            flag: { name: since }
+          Mode:
+            flag: { name: mode }
+          Hosts:
+            flag: { name: host }
+          Retry:
+            flag: { name: retry }
+          Nick:
+            flag: { name: nick }
+          Port:
+            flag: { name: port }
+          MinLevel:
+            flag: { name: min-level }
+      Hosts:
+        ignore: true
+  github.com/ngicks/kama/kamalib/generator/partial/internal/fixtureexternal/pkgmark:
+    all_types: true
+    types:
+      Draft:
+        ignore: true
