@@ -125,21 +125,32 @@ func (f *Fs) Root() string { return f.root }
 // FS is the merged view: the project with staged output on top.
 func (f *Fs) FS() fs.FS { return vroot.ToIoFsRoot(f.merged) }
 
-// Write stages content at name, a slash-separated path relative to Root.
-// A name ending in .go is formatted first, and a formatter error stages
-// nothing.
-func (f *Fs) Write(ctx context.Context, name string, content []byte) error {
+// Format returns what Write stages for content at name: content formatted
+// when name ends in .go, content itself otherwise. It stages nothing.
+func (f *Fs) Format(ctx context.Context, name string, content []byte) ([]byte, error) {
 	if f.merged == nil {
-		return ErrClosed
+		return nil, ErrClosed
 	}
 
-	if strings.HasSuffix(name, ".go") {
-		abs := filepath.Join(f.root, filepath.FromSlash(name))
-		formatted, err := f.formatter.Format(ctx, abs, content)
-		if err != nil {
-			return fmt.Errorf("overlayfs: format %q: %w", name, err)
-		}
-		content = formatted
+	if !strings.HasSuffix(name, ".go") {
+		return content, nil
+	}
+
+	abs := filepath.Join(f.root, filepath.FromSlash(name))
+	formatted, err := f.formatter.Format(ctx, abs, content)
+	if err != nil {
+		return nil, fmt.Errorf("overlayfs: format %q: %w", name, err)
+	}
+	return formatted, nil
+}
+
+// Write stages content at name, a slash-separated path relative to Root.
+// The content is formatted by Format first, and a formatter error stages
+// nothing.
+func (f *Fs) Write(ctx context.Context, name string, content []byte) error {
+	content, err := f.Format(ctx, name, content)
+	if err != nil {
+		return err
 	}
 
 	if dir := path.Dir(name); dir != "." {
