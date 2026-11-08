@@ -2,7 +2,7 @@
 //
 // generator: kama-partial
 // params: merge=overwrite merge_nested=recursive option_file=partial.yaml
-// generated: 2026-11-03T21:41:57Z
+// generated: 2026-11-08T11:13:38Z
 
 package model
 
@@ -52,32 +52,32 @@ type UserPartial struct {
 //kama:generated kama-partial
 func (p *UserPartial) FromValue(v User) {
 	p.BasePartial.FromValue(v.Base)
-	kamaPartialFromEmbeddedPointer(&p.AuditPartial, v.Audit)
-	p.Status = kamaPartialFromValue(v.Status)
-	p.Time = kamaPartialFromValue(v.Time)
-	p.Name = kamaPartialFromValue(v.Name)
-	p.Age = kamaPartialFromValue(v.Age)
-	p.Nick = kamaPartialFromPointer(v.Nick)
-	p.Email = kamaPartialFromValue(v.Email)
-	p.Skipped = kamaPartialFromValue(v.Skipped)
-	kamaPartialFromTarget(&p.Address, v.Address)
-	kamaPartialFromTargetPointer(&p.Geo, v.Geo)
-	p.Tags = kamaPartialFromSlice(v.Tags)
-	p.Attrs = kamaPartialFromMap(v.Attrs)
-	p.Pos = kamaPartialFromValue(v.Pos)
-	p.Geos = kamaPartialFromSlice(v.Geos)
-	kamaPartialFromSliceTarget(&p.Items, v.Items)
-	kamaPartialFromMapTarget(&p.Index, v.Index)
-	kamaPartialFromTarget(&p.Box, v.Box)
-	kamaPartialFromTarget(&p.Pair, v.Pair)
-	kamaPartialFromTargetPointer(&p.Stat, v.Stat)
-	p.Opt = kamaPartialFromOption(v.Opt)
+	p.AuditPartial = kamaPartialFromEmbedded_7a21ca9948_17f3b00870(v.Audit)
+	p.Status = und.Defined(v.Status)
+	p.Time = und.Defined(v.Time)
+	p.Name = und.Defined(v.Name)
+	p.Age = und.Defined(v.Age)
+	p.Nick = und.FromPointer(v.Nick).CollapseToNull()
+	p.Email = und.Defined(v.Email)
+	p.Skipped = und.Defined(v.Skipped)
+	p.Address = kamaPartialFromTarget_3871251615_3e7cd404d7(v.Address)
+	p.Geo = kamaPartialFromTarget_acf3e584a9_8081dec190(v.Geo)
+	p.Tags = und.WrapSlice(v.Tags).CollapseToNull()
+	p.Attrs = und.WrapMap(v.Attrs).CollapseToNull()
+	p.Pos = und.Defined(v.Pos)
+	p.Geos = und.WrapSlice(v.Geos).CollapseToNull()
+	p.Items = kamaPartialFromTarget_c98a5f6137_4ab6a1c8b3(v.Items)
+	p.Index = kamaPartialFromTarget_f76724f096_873a8e8784(v.Index)
+	p.Box = kamaPartialFromTarget_3cb03841a7_53ab574924(v.Box)
+	p.Pair = kamaPartialFromTarget_7ec6306d72_40f317f5ec(v.Pair)
+	p.Stat = kamaPartialFromTarget_800bd0cf57_db6292de4f(v.Stat)
+	p.Opt = und.FromOption(v.Opt, true)
 	p.Und = v.Und
 	p.Elastic = v.Elastic
-	p.Fn = kamaPartialFromValue(v.Fn)
-	p.Ch = kamaPartialFromValue(v.Ch)
-	p.Any = kamaPartialFromValue(v.Any)
-	p.secret = kamaPartialFromValue(v.secret)
+	p.Fn = und.Defined(v.Fn)
+	p.Ch = und.Defined(v.Ch)
+	p.Any = und.Defined(v.Any)
+	p.secret = und.Defined(v.secret)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -87,32 +87,35 @@ func (p *UserPartial) FromValue(v User) {
 func (p UserPartial) ToValue() User {
 	var v User
 	v.Base = p.BasePartial.ToValue()
-	kamaPartialToEmbeddedPointer(&v.Audit, p.AuditPartial)
-	v.Status = kamaPartialToValue(p.Status)
-	v.Time = kamaPartialToValue(p.Time)
-	v.Name = kamaPartialToValue(p.Name)
-	v.Age = kamaPartialToValue(p.Age)
-	v.Nick = kamaPartialToPointer(p.Nick)
-	v.Email = kamaPartialToValue(p.Email)
-	v.Skipped = kamaPartialToValue(p.Skipped)
-	kamaPartialToTarget(&v.Address, p.Address)
-	kamaPartialToTargetPointer(&v.Geo, p.Geo)
-	v.Tags = kamaPartialToValue(p.Tags)
-	v.Attrs = kamaPartialToValue(p.Attrs)
-	v.Pos = kamaPartialToValue(p.Pos)
-	v.Geos = kamaPartialToValue(p.Geos)
-	kamaPartialToTarget(&v.Items, p.Items)
-	kamaPartialToTarget(&v.Index, p.Index)
-	kamaPartialToTarget(&v.Box, p.Box)
-	kamaPartialToTarget(&v.Pair, p.Pair)
-	kamaPartialToTargetPointer(&v.Stat, p.Stat)
-	v.Opt = kamaPartialToOption(p.Opt)
+	v.Audit = kamaPartialToEmbedded_17f3b00870_7a21ca9948(p.AuditPartial)
+	v.Status = p.Status.Value()
+	v.Time = p.Time.Value()
+	v.Name = p.Name.Value()
+	v.Age = p.Age.Value()
+	if p.Nick.IsDefined() {
+		o := p.Nick.Value()
+		v.Nick = &o
+	}
+	v.Email = p.Email.Value()
+	v.Skipped = p.Skipped.Value()
+	v.Address = p.Address.Value().ToValue()
+	v.Geo = kamaPartialToTarget_8081dec190_acf3e584a9(p.Geo)
+	v.Tags = p.Tags.Value()
+	v.Attrs = p.Attrs.Value()
+	v.Pos = p.Pos.Value()
+	v.Geos = p.Geos.Value()
+	v.Items = p.Items.Value().ToValue()
+	v.Index = p.Index.Value().ToValue()
+	v.Box = p.Box.Value().ToValue()
+	v.Pair = p.Pair.Value().ToValue()
+	v.Stat = kamaPartialToTarget_db6292de4f_800bd0cf57(p.Stat)
+	v.Opt = p.Opt.Flatten()
 	v.Und = p.Und
 	v.Elastic = p.Elastic
-	v.Fn = kamaPartialToValue(p.Fn)
-	v.Ch = kamaPartialToValue(p.Ch)
-	v.Any = kamaPartialToValue(p.Any)
-	v.secret = kamaPartialToValue(p.secret)
+	v.Fn = p.Fn.Value()
+	v.Ch = p.Ch.Value()
+	v.Any = p.Any.Value()
+	v.secret = p.secret.Value()
 	return v
 }
 
@@ -123,31 +126,67 @@ func (p UserPartial) ToValue() User {
 func (p UserPartial) Merge(r UserPartial) UserPartial {
 	p.BasePartial = p.BasePartial.Merge(r.BasePartial)
 	p.AuditPartial = p.AuditPartial.Merge(r.AuditPartial)
-	p.Status = kamaPartialMergeOverwrite(p.Status, r.Status)
-	p.Time = kamaPartialMergeOverwrite(p.Time, r.Time)
-	p.Name = kamaPartialMergeOverwrite(p.Name, r.Name)
-	p.Age = kamaPartialMergeOverwrite(p.Age, r.Age)
-	p.Nick = kamaPartialMergeOverwrite(p.Nick, r.Nick)
-	p.Email = kamaPartialMergeOverwrite(p.Email, r.Email)
-	p.Skipped = kamaPartialMergeOverwrite(p.Skipped, r.Skipped)
-	p.Address = kamaPartialMergeRecursive(p.Address, r.Address)
-	p.Geo = kamaPartialMergeRecursive(p.Geo, r.Geo)
-	p.Tags = kamaPartialMergeOverwrite(p.Tags, r.Tags)
-	p.Attrs = kamaPartialMergeOverwrite(p.Attrs, r.Attrs)
-	p.Pos = kamaPartialMergeOverwrite(p.Pos, r.Pos)
-	p.Geos = kamaPartialMergeOverwrite(p.Geos, r.Geos)
-	p.Items = kamaPartialMergeRecursive(p.Items, r.Items)
-	p.Index = kamaPartialMergeRecursive(p.Index, r.Index)
-	p.Box = kamaPartialMergeRecursive(p.Box, r.Box)
-	p.Pair = kamaPartialMergeRecursive(p.Pair, r.Pair)
-	p.Stat = kamaPartialMergeRecursive(p.Stat, r.Stat)
-	p.Opt = kamaPartialMergeOverwrite(p.Opt, r.Opt)
-	p.Und = kamaPartialMergeOverwrite(p.Und, r.Und)
-	p.Elastic = kamaPartialMergeOverwriteElastic(p.Elastic, r.Elastic)
-	p.Fn = kamaPartialMergeOverwrite(p.Fn, r.Fn)
-	p.Ch = kamaPartialMergeOverwrite(p.Ch, r.Ch)
-	p.Any = kamaPartialMergeOverwrite(p.Any, r.Any)
-	p.secret = kamaPartialMergeOverwrite(p.secret, r.secret)
+	if !r.Status.IsUndefined() {
+		p.Status = r.Status
+	}
+	if !r.Time.IsUndefined() {
+		p.Time = r.Time
+	}
+	if !r.Name.IsUndefined() {
+		p.Name = r.Name
+	}
+	if !r.Age.IsUndefined() {
+		p.Age = r.Age
+	}
+	if !r.Nick.IsUndefined() {
+		p.Nick = r.Nick
+	}
+	if !r.Email.IsUndefined() {
+		p.Email = r.Email
+	}
+	if !r.Skipped.IsUndefined() {
+		p.Skipped = r.Skipped
+	}
+	p.Address = kamaPartialMergeRecursive_e960de9719_3e7cd404d7(p.Address, r.Address)
+	p.Geo = kamaPartialMergeRecursive_d5f6b51833_8081dec190(p.Geo, r.Geo)
+	if !r.Tags.IsUndefined() {
+		p.Tags = r.Tags
+	}
+	if !r.Attrs.IsUndefined() {
+		p.Attrs = r.Attrs
+	}
+	if !r.Pos.IsUndefined() {
+		p.Pos = r.Pos
+	}
+	if !r.Geos.IsUndefined() {
+		p.Geos = r.Geos
+	}
+	p.Items = kamaPartialMergeRecursive_6fabe48fa8_4ab6a1c8b3(p.Items, r.Items)
+	p.Index = kamaPartialMergeRecursive_d8f397bdba_873a8e8784(p.Index, r.Index)
+	p.Box = kamaPartialMergeRecursive_433e24426b_53ab574924(p.Box, r.Box)
+	p.Pair = kamaPartialMergeRecursive_9ef04e78a4_40f317f5ec(p.Pair, r.Pair)
+	p.Stat = kamaPartialMergeRecursive_dc49493b2b_db6292de4f(p.Stat, r.Stat)
+	if !r.Opt.IsUndefined() {
+		p.Opt = r.Opt
+	}
+	if !r.Und.IsUndefined() {
+		p.Und = r.Und
+	}
+	if !r.Elastic.IsUndefined() {
+		p.Elastic = r.Elastic
+	}
+	if !r.Fn.IsUndefined() {
+		p.Fn = r.Fn
+	}
+	if !r.Ch.IsUndefined() {
+		p.Ch = r.Ch
+	}
+	if !r.Any.IsUndefined() {
+		p.Any = r.Any
+	}
+	if !r.secret.IsUndefined() {
+		p.secret = r.secret
+	}
 	return p
 }
 
@@ -173,7 +212,7 @@ type BasePartial struct {
 //
 //kama:generated kama-partial
 func (p *BasePartial) FromValue(v Base) {
-	p.ID = kamaPartialFromValue(v.ID)
+	p.ID = und.Defined(v.ID)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -182,7 +221,7 @@ func (p *BasePartial) FromValue(v Base) {
 //kama:generated kama-partial
 func (p BasePartial) ToValue() Base {
 	var v Base
-	v.ID = kamaPartialToValue(p.ID)
+	v.ID = p.ID.Value()
 	return v
 }
 
@@ -191,7 +230,9 @@ func (p BasePartial) ToValue() Base {
 //
 //kama:generated kama-partial
 func (p BasePartial) Merge(r BasePartial) BasePartial {
-	p.ID = kamaPartialMergeOverwrite(p.ID, r.ID)
+	if !r.ID.IsUndefined() {
+		p.ID = r.ID
+	}
 	return p
 }
 
@@ -217,7 +258,7 @@ type AuditPartial struct {
 //
 //kama:generated kama-partial
 func (p *AuditPartial) FromValue(v Audit) {
-	p.CreatedAt = kamaPartialFromValue(v.CreatedAt)
+	p.CreatedAt = und.Defined(v.CreatedAt)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -226,7 +267,7 @@ func (p *AuditPartial) FromValue(v Audit) {
 //kama:generated kama-partial
 func (p AuditPartial) ToValue() Audit {
 	var v Audit
-	v.CreatedAt = kamaPartialToValue(p.CreatedAt)
+	v.CreatedAt = p.CreatedAt.Value()
 	return v
 }
 
@@ -235,7 +276,9 @@ func (p AuditPartial) ToValue() Audit {
 //
 //kama:generated kama-partial
 func (p AuditPartial) Merge(r AuditPartial) AuditPartial {
-	p.CreatedAt = kamaPartialMergeOverwrite(p.CreatedAt, r.CreatedAt)
+	if !r.CreatedAt.IsUndefined() {
+		p.CreatedAt = r.CreatedAt
+	}
 	return p
 }
 
@@ -262,8 +305,8 @@ type AddressPartial struct {
 //
 //kama:generated kama-partial
 func (p *AddressPartial) FromValue(v Address) {
-	p.City = kamaPartialFromValue(v.City)
-	kamaPartialFromTargetPointer(&p.Geo, v.Geo)
+	p.City = und.Defined(v.City)
+	p.Geo = kamaPartialFromTarget_acf3e584a9_8081dec190(v.Geo)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -272,8 +315,8 @@ func (p *AddressPartial) FromValue(v Address) {
 //kama:generated kama-partial
 func (p AddressPartial) ToValue() Address {
 	var v Address
-	v.City = kamaPartialToValue(p.City)
-	kamaPartialToTargetPointer(&v.Geo, p.Geo)
+	v.City = p.City.Value()
+	v.Geo = kamaPartialToTarget_8081dec190_acf3e584a9(p.Geo)
 	return v
 }
 
@@ -282,8 +325,10 @@ func (p AddressPartial) ToValue() Address {
 //
 //kama:generated kama-partial
 func (p AddressPartial) Merge(r AddressPartial) AddressPartial {
-	p.City = kamaPartialMergeOverwrite(p.City, r.City)
-	p.Geo = kamaPartialMergeRecursive(p.Geo, r.Geo)
+	if !r.City.IsUndefined() {
+		p.City = r.City
+	}
+	p.Geo = kamaPartialMergeRecursive_d5f6b51833_8081dec190(p.Geo, r.Geo)
 	return p
 }
 
@@ -310,8 +355,8 @@ type GeoPartial struct {
 //
 //kama:generated kama-partial
 func (p *GeoPartial) FromValue(v Geo) {
-	p.Lat = kamaPartialFromValue(v.Lat)
-	p.Lng = kamaPartialFromValue(v.Lng)
+	p.Lat = und.Defined(v.Lat)
+	p.Lng = und.Defined(v.Lng)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -320,8 +365,8 @@ func (p *GeoPartial) FromValue(v Geo) {
 //kama:generated kama-partial
 func (p GeoPartial) ToValue() Geo {
 	var v Geo
-	v.Lat = kamaPartialToValue(p.Lat)
-	v.Lng = kamaPartialToValue(p.Lng)
+	v.Lat = p.Lat.Value()
+	v.Lng = p.Lng.Value()
 	return v
 }
 
@@ -330,8 +375,12 @@ func (p GeoPartial) ToValue() Geo {
 //
 //kama:generated kama-partial
 func (p GeoPartial) Merge(r GeoPartial) GeoPartial {
-	p.Lat = kamaPartialMergeOverwrite(p.Lat, r.Lat)
-	p.Lng = kamaPartialMergeOverwrite(p.Lng, r.Lng)
+	if !r.Lat.IsUndefined() {
+		p.Lat = r.Lat
+	}
+	if !r.Lng.IsUndefined() {
+		p.Lng = r.Lng
+	}
 	return p
 }
 
@@ -355,9 +404,13 @@ type ItemsPartial []und.Und[ItemPartial]
 //
 //kama:generated kama-partial
 func (p *ItemsPartial) FromValue(v Items) {
-	kamaPartialMakeSlice(p, v)
+	if v == nil {
+		*p = nil
+		return
+	}
+	*p = make(ItemsPartial, len(v))
 	for i, e := range v {
-		kamaPartialFromTarget(&(*p)[i], e)
+		(*p)[i] = kamaPartialFromTarget_057cca7c3e_119fc94a91(e)
 	}
 }
 
@@ -366,10 +419,12 @@ func (p *ItemsPartial) FromValue(v Items) {
 //
 //kama:generated kama-partial
 func (p ItemsPartial) ToValue() Items {
-	var v Items
-	kamaPartialMakeSlice(&v, p)
+	if p == nil {
+		return nil
+	}
+	v := make(Items, len(p))
 	for i, e := range p {
-		kamaPartialToTarget(&v[i], e)
+		v[i] = e.Value().ToValue()
 	}
 	return v
 }
@@ -378,7 +433,10 @@ func (p ItemsPartial) ToValue() Items {
 //
 //kama:generated kama-partial
 func (p ItemsPartial) Merge(r ItemsPartial) ItemsPartial {
-	return kamaPartialOverwriteSlice(p, r)
+	if r == nil {
+		return p
+	}
+	return r
 }
 
 // ApplyTo returns v with the change p describes applied. It is
@@ -404,8 +462,8 @@ type ItemPartial struct {
 //
 //kama:generated kama-partial
 func (p *ItemPartial) FromValue(v Item) {
-	p.Name = kamaPartialFromValue(v.Name)
-	p.Count = kamaPartialFromPointer(v.Count)
+	p.Name = und.Defined(v.Name)
+	p.Count = und.FromPointer(v.Count).CollapseToNull()
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -414,8 +472,11 @@ func (p *ItemPartial) FromValue(v Item) {
 //kama:generated kama-partial
 func (p ItemPartial) ToValue() Item {
 	var v Item
-	v.Name = kamaPartialToValue(p.Name)
-	v.Count = kamaPartialToPointer(p.Count)
+	v.Name = p.Name.Value()
+	if p.Count.IsDefined() {
+		o := p.Count.Value()
+		v.Count = &o
+	}
 	return v
 }
 
@@ -424,8 +485,12 @@ func (p ItemPartial) ToValue() Item {
 //
 //kama:generated kama-partial
 func (p ItemPartial) Merge(r ItemPartial) ItemPartial {
-	p.Name = kamaPartialMergeOverwrite(p.Name, r.Name)
-	p.Count = kamaPartialMergeOverwrite(p.Count, r.Count)
+	if !r.Name.IsUndefined() {
+		p.Name = r.Name
+	}
+	if !r.Count.IsUndefined() {
+		p.Count = r.Count
+	}
 	return p
 }
 
@@ -449,11 +514,13 @@ type IndexPartial map[string]und.Und[ItemPartial]
 //
 //kama:generated kama-partial
 func (p *IndexPartial) FromValue(v Index) {
-	kamaPartialMakeMap(p, v)
+	if v == nil {
+		*p = nil
+		return
+	}
+	*p = make(IndexPartial, len(v))
 	for k, e := range v {
-		var x und.Und[ItemPartial]
-		kamaPartialFromTargetPointer(&x, e)
-		(*p)[k] = x
+		(*p)[k] = kamaPartialFromTarget_52cec98d6f_119fc94a91(e)
 	}
 }
 
@@ -462,12 +529,12 @@ func (p *IndexPartial) FromValue(v Index) {
 //
 //kama:generated kama-partial
 func (p IndexPartial) ToValue() Index {
-	var v Index
-	kamaPartialMakeMap(&v, p)
+	if p == nil {
+		return nil
+	}
+	v := make(Index, len(p))
 	for k, e := range p {
-		var x *Item
-		kamaPartialToTargetPointer(&x, e)
-		v[k] = x
+		v[k] = kamaPartialToTarget_119fc94a91_52cec98d6f(e)
 	}
 	return v
 }
@@ -476,7 +543,10 @@ func (p IndexPartial) ToValue() Index {
 //
 //kama:generated kama-partial
 func (p IndexPartial) Merge(r IndexPartial) IndexPartial {
-	return kamaPartialOverwriteMap(p, r)
+	if r == nil {
+		return p
+	}
+	return r
 }
 
 // ApplyTo returns v with the change p describes applied. It is
@@ -503,9 +573,9 @@ type BoxPartial[T any] struct {
 //
 //kama:generated kama-partial
 func (p *BoxPartial[T]) FromValue(v Box[T]) {
-	p.Value = kamaPartialFromValue(v.Value)
-	p.Values = kamaPartialFromSlice(v.Values)
-	p.Ptr = kamaPartialFromPointer(v.Ptr)
+	p.Value = und.Defined(v.Value)
+	p.Values = und.WrapSlice(v.Values).CollapseToNull()
+	p.Ptr = und.FromPointer(v.Ptr).CollapseToNull()
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -514,9 +584,12 @@ func (p *BoxPartial[T]) FromValue(v Box[T]) {
 //kama:generated kama-partial
 func (p BoxPartial[T]) ToValue() Box[T] {
 	var v Box[T]
-	v.Value = kamaPartialToValue(p.Value)
-	v.Values = kamaPartialToValue(p.Values)
-	v.Ptr = kamaPartialToPointer(p.Ptr)
+	v.Value = p.Value.Value()
+	v.Values = p.Values.Value()
+	if p.Ptr.IsDefined() {
+		o := p.Ptr.Value()
+		v.Ptr = &o
+	}
 	return v
 }
 
@@ -525,9 +598,15 @@ func (p BoxPartial[T]) ToValue() Box[T] {
 //
 //kama:generated kama-partial
 func (p BoxPartial[T]) Merge(r BoxPartial[T]) BoxPartial[T] {
-	p.Value = kamaPartialMergeOverwrite(p.Value, r.Value)
-	p.Values = kamaPartialMergeOverwrite(p.Values, r.Values)
-	p.Ptr = kamaPartialMergeOverwrite(p.Ptr, r.Ptr)
+	if !r.Value.IsUndefined() {
+		p.Value = r.Value
+	}
+	if !r.Values.IsUndefined() {
+		p.Values = r.Values
+	}
+	if !r.Ptr.IsUndefined() {
+		p.Ptr = r.Ptr
+	}
 	return p
 }
 
@@ -554,8 +633,8 @@ type PairPartial[K comparable, V any] struct {
 //
 //kama:generated kama-partial
 func (p *PairPartial[K, V]) FromValue(v Pair[K, V]) {
-	p.Key = kamaPartialFromValue(v.Key)
-	p.Value = kamaPartialFromValue(v.Value)
+	p.Key = und.Defined(v.Key)
+	p.Value = und.Defined(v.Value)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -564,8 +643,8 @@ func (p *PairPartial[K, V]) FromValue(v Pair[K, V]) {
 //kama:generated kama-partial
 func (p PairPartial[K, V]) ToValue() Pair[K, V] {
 	var v Pair[K, V]
-	v.Key = kamaPartialToValue(p.Key)
-	v.Value = kamaPartialToValue(p.Value)
+	v.Key = p.Key.Value()
+	v.Value = p.Value.Value()
 	return v
 }
 
@@ -574,8 +653,12 @@ func (p PairPartial[K, V]) ToValue() Pair[K, V] {
 //
 //kama:generated kama-partial
 func (p PairPartial[K, V]) Merge(r PairPartial[K, V]) PairPartial[K, V] {
-	p.Key = kamaPartialMergeOverwrite(p.Key, r.Key)
-	p.Value = kamaPartialMergeOverwrite(p.Value, r.Value)
+	if !r.Key.IsUndefined() {
+		p.Key = r.Key
+	}
+	if !r.Value.IsUndefined() {
+		p.Value = r.Value
+	}
 	return p
 }
 
@@ -601,7 +684,7 @@ type StatPartial[N ~int | ~float64] struct {
 //
 //kama:generated kama-partial
 func (p *StatPartial[N]) FromValue(v Stat[N]) {
-	p.Total = kamaPartialFromValue(v.Total)
+	p.Total = und.Defined(v.Total)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -610,7 +693,7 @@ func (p *StatPartial[N]) FromValue(v Stat[N]) {
 //kama:generated kama-partial
 func (p StatPartial[N]) ToValue() Stat[N] {
 	var v Stat[N]
-	v.Total = kamaPartialToValue(p.Total)
+	v.Total = p.Total.Value()
 	return v
 }
 
@@ -619,7 +702,9 @@ func (p StatPartial[N]) ToValue() Stat[N] {
 //
 //kama:generated kama-partial
 func (p StatPartial[N]) Merge(r StatPartial[N]) StatPartial[N] {
-	p.Total = kamaPartialMergeOverwrite(p.Total, r.Total)
+	if !r.Total.IsUndefined() {
+		p.Total = r.Total
+	}
 	return p
 }
 
@@ -631,4 +716,218 @@ func (p StatPartial[N]) ApplyTo(v Stat[N]) Stat[N] {
 	var base StatPartial[N]
 	base.FromValue(v)
 	return base.Merge(p).ToValue()
+}
+
+// kamaPartialAllUndefined_17f3b00870_48118fe3f3 reports whether every field
+// of p, a AuditPartial, is undefined, the fields of embedded partial values
+// included. Blank fields are skipped.
+//
+//kama:generated kama-partial
+func kamaPartialAllUndefined_17f3b00870_48118fe3f3(p AuditPartial) bool {
+	return p.CreatedAt.IsUndefined()
+}
+
+// kamaPartialFromEmbedded_7a21ca9948_17f3b00870 converts *Audit into
+// AuditPartial, or the zero partial value for a nil v.
+//
+//kama:generated kama-partial
+func kamaPartialFromEmbedded_7a21ca9948_17f3b00870(v *Audit) AuditPartial {
+	var x AuditPartial
+	if v != nil {
+		x.FromValue(*v)
+	}
+	return x
+}
+
+// kamaPartialFromTarget_057cca7c3e_119fc94a91 converts Item into
+// und.Und[ItemPartial], defined.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_057cca7c3e_119fc94a91(v Item) und.Und[ItemPartial] {
+	var x ItemPartial
+	x.FromValue(v)
+	return und.Defined(x)
+}
+
+// kamaPartialFromTarget_3cb03841a7_53ab574924 converts Box[int] into
+// und.Und[BoxPartial[int]], defined.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_3cb03841a7_53ab574924(v Box[int]) und.Und[BoxPartial[int]] {
+	var x BoxPartial[int]
+	x.FromValue(v)
+	return und.Defined(x)
+}
+
+// kamaPartialFromTarget_52cec98d6f_119fc94a91 converts *Item into
+// und.Und[ItemPartial], defined, or null for a nil v.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_52cec98d6f_119fc94a91(v *Item) und.Und[ItemPartial] {
+	if v == nil {
+		return und.Null[ItemPartial]()
+	}
+	var x ItemPartial
+	x.FromValue(*v)
+	return und.Defined(x)
+}
+
+// kamaPartialFromTarget_7ec6306d72_40f317f5ec converts Pair[string, Geo]
+// into und.Und[PairPartial[string, Geo]], defined.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_7ec6306d72_40f317f5ec(v Pair[string, Geo]) und.Und[PairPartial[string, Geo]] {
+	var x PairPartial[string, Geo]
+	x.FromValue(v)
+	return und.Defined(x)
+}
+
+// kamaPartialFromTarget_800bd0cf57_db6292de4f converts *Stat[float64] into
+// und.Und[StatPartial[float64]], defined, or null for a nil v.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_800bd0cf57_db6292de4f(v *Stat[float64]) und.Und[StatPartial[float64]] {
+	if v == nil {
+		return und.Null[StatPartial[float64]]()
+	}
+	var x StatPartial[float64]
+	x.FromValue(*v)
+	return und.Defined(x)
+}
+
+// kamaPartialFromTarget_acf3e584a9_8081dec190 converts *Geo into
+// und.Und[GeoPartial], defined, or null for a nil v.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_acf3e584a9_8081dec190(v *Geo) und.Und[GeoPartial] {
+	if v == nil {
+		return und.Null[GeoPartial]()
+	}
+	var x GeoPartial
+	x.FromValue(*v)
+	return und.Defined(x)
+}
+
+// kamaPartialMergeRecursive_433e24426b_53ab574924 merges r onto l, both
+// und.Und[BoxPartial[int]]: it returns the merge of their values when both
+// are defined, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_433e24426b_53ab574924(l, r und.Und[BoxPartial[int]]) und.Und[BoxPartial[int]] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() {
+		return r
+	}
+	return und.Defined(l.Value().Merge(r.Value()))
+}
+
+// kamaPartialMergeRecursive_6fabe48fa8_4ab6a1c8b3 merges r onto l, both
+// und.Und[ItemsPartial]: it returns the merge of their values when both are
+// defined, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_6fabe48fa8_4ab6a1c8b3(l, r und.Und[ItemsPartial]) und.Und[ItemsPartial] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() {
+		return r
+	}
+	return und.Defined(l.Value().Merge(r.Value()))
+}
+
+// kamaPartialMergeRecursive_9ef04e78a4_40f317f5ec merges r onto l, both
+// und.Und[PairPartial[string, Geo]]: it returns the merge of their values
+// when both are defined, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_9ef04e78a4_40f317f5ec(l, r und.Und[PairPartial[string, Geo]]) und.Und[PairPartial[string, Geo]] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() {
+		return r
+	}
+	return und.Defined(l.Value().Merge(r.Value()))
+}
+
+// kamaPartialMergeRecursive_d5f6b51833_8081dec190 merges r onto l, both
+// und.Und[GeoPartial]: it returns the merge of their values when both are
+// defined, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_d5f6b51833_8081dec190(l, r und.Und[GeoPartial]) und.Und[GeoPartial] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() {
+		return r
+	}
+	return und.Defined(l.Value().Merge(r.Value()))
+}
+
+// kamaPartialMergeRecursive_dc49493b2b_db6292de4f merges r onto l, both
+// und.Und[StatPartial[float64]]: it returns the merge of their values when
+// both are defined, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_dc49493b2b_db6292de4f(l, r und.Und[StatPartial[float64]]) und.Und[StatPartial[float64]] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() {
+		return r
+	}
+	return und.Defined(l.Value().Merge(r.Value()))
+}
+
+// kamaPartialToEmbedded_17f3b00870_7a21ca9948 converts AuditPartial into
+// *Audit, newly allocated, or nil when every field of p is undefined.
+//
+//kama:generated kama-partial
+func kamaPartialToEmbedded_17f3b00870_7a21ca9948(p AuditPartial) *Audit {
+	if kamaPartialAllUndefined_17f3b00870_48118fe3f3(p) {
+		return nil
+	}
+	x := p.ToValue()
+	return &x
+}
+
+// kamaPartialToTarget_119fc94a91_52cec98d6f converts und.Und[ItemPartial]
+// into *Item, newly allocated, or nil when p is undefined or null.
+//
+//kama:generated kama-partial
+func kamaPartialToTarget_119fc94a91_52cec98d6f(p und.Und[ItemPartial]) *Item {
+	if !p.IsDefined() {
+		return nil
+	}
+	x := p.Value().ToValue()
+	return &x
+}
+
+// kamaPartialToTarget_8081dec190_acf3e584a9 converts und.Und[GeoPartial]
+// into *Geo, newly allocated, or nil when p is undefined or null.
+//
+//kama:generated kama-partial
+func kamaPartialToTarget_8081dec190_acf3e584a9(p und.Und[GeoPartial]) *Geo {
+	if !p.IsDefined() {
+		return nil
+	}
+	x := p.Value().ToValue()
+	return &x
+}
+
+// kamaPartialToTarget_db6292de4f_800bd0cf57 converts
+// und.Und[StatPartial[float64]] into *Stat[float64], newly allocated, or
+// nil when p is undefined or null.
+//
+//kama:generated kama-partial
+func kamaPartialToTarget_db6292de4f_800bd0cf57(p und.Und[StatPartial[float64]]) *Stat[float64] {
+	if !p.IsDefined() {
+		return nil
+	}
+	x := p.Value().ToValue()
+	return &x
 }

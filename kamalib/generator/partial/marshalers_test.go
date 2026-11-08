@@ -271,7 +271,9 @@ func writeIndented(b *strings.Builder, s string) {
 		return
 	}
 	for line := range strings.SplitSeq(s, "\n") {
-		b.WriteString("  " + line + "\n")
+		b.WriteString("  ")
+		b.WriteString(line)
+		b.WriteByte('\n')
 	}
 }
 

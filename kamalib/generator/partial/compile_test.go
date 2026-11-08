@@ -2,6 +2,7 @@ package partial
 
 import (
 	"context"
+	"io/fs"
 	"maps"
 	"path"
 	"path/filepath"
@@ -15,13 +16,11 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
-// generateAndBuild generates from files as load does, stages the output
-// next to them and loads the packages again with buildFlags, returning the
-// error of that second load, which reports any package error.
-func generateAndBuild(t *testing.T, files map[string]string, buildFlags ...string) error {
+// stage writes files under the inline test directory of t and returns the
+// overlay and the options loading their packages.
+func stage(t *testing.T, files map[string]string) (*overlayfs.Fs, gopackages.Options) {
 	t.Helper()
 
-	ctx := context.Background()
 	f, err := overlayfs.New(".")
 	assert.NilError(t, err)
 	t.Cleanup(func() { f.Close() })
@@ -29,11 +28,18 @@ func generateAndBuild(t *testing.T, files map[string]string, buildFlags ...strin
 	dir := "testdata/inline/" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 	dirs := map[string]bool{}
 	for name, src := range files {
-		assert.NilError(t, f.Write(ctx, path.Join(dir, name), []byte(src)))
+		assert.NilError(t, f.Write(context.Background(), path.Join(dir, name), []byte(src)))
 		dirs["./"+path.Dir(path.Join(dir, name))] = true
 	}
-	opts := gopackages.Options{Patterns: slices.Sorted(maps.Keys(dirs))}
+	return f, gopackages.Options{Patterns: slices.Sorted(maps.Keys(dirs))}
+}
 
+// generateInto generates from the packages opts loads from f and stages
+// the output next to them.
+func generateInto(t *testing.T, f *overlayfs.Fs, opts gopackages.Options) {
+	t.Helper()
+
+	ctx := context.Background()
 	pkgs, err := gopackages.Load(ctx, f, opts)
 	assert.NilError(t, err)
 	out, warnings, err := Generate(pkgs, Options{Registry: registry(t)})
@@ -45,45 +51,67 @@ func generateAndBuild(t *testing.T, files map[string]string, buildFlags ...strin
 		assert.NilError(t, err)
 		assert.NilError(t, f.Write(ctx, filepath.ToSlash(rel), o.Content))
 	}
+}
 
+// generateAndBuild generates from files as load does, stages the output
+// next to them and loads the packages again with buildFlags, returning the
+// error of that second load, which reports any package error.
+func generateAndBuild(t *testing.T, files map[string]string, buildFlags ...string) error {
+	t.Helper()
+
+	f, opts := stage(t, files)
+	generateInto(t, f, opts)
 	opts.BuildFlags = buildFlags
-	_, err = gopackages.Load(ctx, f, opts)
+	_, err := gopackages.Load(context.Background(), f, opts)
 	return err
 }
 
-// TestHelpersAcrossBuildVariants generates with a constrained file left
-// out, and builds with it included: the constrained partial file from an
-// earlier run calls helpers no loaded target uses.
+// TestHelpersAcrossBuildVariants generates with a constrained file loaded,
+// then with it left out, and builds with it included: the partial file of
+// the constrained file from the first run keeps finding the helpers it
+// calls.
 func TestHelpersAcrossBuildVariants(t *testing.T) {
-	files := map[string]string{
-		"a.go": "package x\n\n//kama:partial\ntype A struct{ N int }\n",
+	f, opts := stage(t, map[string]string{
+		"a.go": "package x\n\n//kama:partial\ntype A struct{ N *N }\n\ntype N struct{ I int }\n",
 		"b_tagged.go": "//go:build tagged\n\npackage x\n\n//kama:partial\ntype B struct {\n" +
-			"\t//kama:partial:merge append\n\tS []int\n\tM map[string]int\n\tP *int\n}\n",
-		// The partial file of b_tagged.go as an earlier run with the tag gave
-		// it.
-		"b_tagged.kama_partial.go": "//go:build tagged\n\npackage x\n\n" +
-			"import \"github.com/ngicks/option/und\"\n\n" +
-			"//kama:generated kama-partial\ntype BPartial struct {\n" +
-			"\tS und.Und[[]int]\n\tM und.Und[map[string]int]\n\tP und.Und[int]\n}\n\n" +
-			"//kama:generated kama-partial\nfunc (p BPartial) Merge(r BPartial) BPartial {\n" +
-			"\tp.S = kamaPartialMergeAppendSlice(p.S, r.S)\n" +
-			"\tp.M = kamaPartialMergeOverwrite(p.M, r.M)\n" +
-			"\tp.P = kamaPartialMergeOverwrite(p.P, r.P)\n\treturn p\n}\n\n" +
-			"//kama:generated kama-partial\nfunc (p *BPartial) FromValue(v B) {\n" +
-			"\tp.S = kamaPartialFromSlice(v.S)\n\tp.M = kamaPartialFromMap(v.M)\n" +
-			"\tp.P = kamaPartialFromPointer(v.P)\n}\n",
-	}
-	assert.NilError(t, generateAndBuild(t, files, "-tags=tagged"))
+			"\t//kama:partial:merge append\n\tS []int\n\tN *N\n}\n",
+	})
+	tagged := []string{"-tags=tagged"}
 
-	got := generated(t, files)[HelpersFile]
-	for _, h := range helperNames() {
-		assert.Assert(
-			t,
-			strings.Contains(got, "\nfunc "+h+"[") || strings.Contains(got, "\nfunc "+h+"("),
-			"%s is missing",
-			h,
-		)
+	opts.BuildFlags = tagged
+	generateInto(t, f, opts)
+	read := func(name string) string {
+		t.Helper()
+		b, err := fs.ReadFile(f.FS(), path.Join(opts.Patterns[0], name))
+		assert.NilError(t, err)
+		return string(b)
 	}
+	a, b := read("a.kama_partial.go"), read("b_tagged.kama_partial.go")
+	h := helperIn(t, a, b)
+	fromN := "\nfunc " + h("FromTarget", "converts *N into und.Und[NPartial],") + "("
+	appendInts := "\nfunc " + h("MergeAppend", "both und.Und[[]int]:") + "("
+	// A helper both files call lives in the file without a constraint,
+	// which every build variant has.
+	assert.Assert(t, strings.Contains(a, fromN), a)
+	assert.Assert(t, !strings.Contains(b, fromN), b)
+	assert.Assert(t, strings.Contains(b, appendInts), b)
+
+	opts.BuildFlags = nil
+	generateInto(t, f, opts)
+	assert.Assert(t, SameExceptGenerated([]byte(read("a.kama_partial.go")), []byte(a)))
+
+	opts.BuildFlags = tagged
+	_, err := gopackages.Load(context.Background(), f, opts)
+	assert.NilError(t, err)
+}
+
+// TestHelperOfConstrainedFiles builds the helpers a constrained file calls
+// alone, which it declares itself.
+func TestHelperOfConstrainedFiles(t *testing.T) {
+	assert.NilError(t, generateAndBuild(t, map[string]string{
+		"a_linux.go": "package x\n\n//kama:partial\ntype A struct{ N *N }\n",
+		"b.go":       "package x\n\ntype N struct{ I int }\n\n//kama:partial\ntype B struct{ N N }\n",
+	}))
 }
 
 func TestForeignUnexportedFields(t *testing.T) {
@@ -139,21 +167,17 @@ type Item[T any] struct{ V T }
 }
 
 func TestPredeclaredShadowed(t *testing.T) {
+	const src = "package x\n\n//kama:partial\ntype A struct {\n" +
+		"\t//kama:partial:merge append\n\tN []int\n\tS *S\n\tE []E\n}\n\n" +
+		"type S struct{ A *A }\n\n//kama:partial ignore\ntype E struct{}\n\ntype "
 	// The generated code spells interface{} for any.
-	assert.NilError(t, generateAndBuild(t, map[string]string{
-		"a.go": "package x\n\n//kama:partial\ntype A struct{ N []int }\n\ntype any int\n",
-	}))
+	assert.NilError(t, generateAndBuild(t, map[string]string{"a.go": src + "any int\n"}))
 
-	for _, name := range []string{
-		"comparable", "make", "len", "append", "new", "error", "nil", "string", "byte",
-	} {
+	for _, name := range []string{"make", "len", "append", "new", "nil"} {
 		t.Run(name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{
-				"a.go": "package x\n\n//kama:partial\ntype A struct{ N []int }\n\ntype " +
-					name + " int\n",
-			}, Options{})
+			_, err := generate(t, map[string]string{"a.go": src + name + " int\n"}, Options{})
 			assert.ErrorIs(t, err, ErrConflict)
-			assert.ErrorContains(t, err, "a.go:6:6")
+			assert.ErrorContains(t, err, "a.go:16:6")
 			assert.ErrorContains(t, err, "predeclared "+name)
 		})
 	}

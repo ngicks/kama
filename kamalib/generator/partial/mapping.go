@@ -30,12 +30,48 @@ const (
 type mapper struct {
 	sel *selection
 	pkg *packages.Package
-	m   *importdecl.Map
-	// usedUnd reports whether an expression refers to und.
-	usedUnd bool
-	// refs are the identifiers of partial types of the package the
-	// expressions refer to unqualified.
+	// parser gave m, the imports of the file.
+	parser *importdecl.Parser
+	m      *importdecl.Map
+	// helpers are the helpers of the package, shared by its files.
+	helpers *helperSet
+	// calls are the helpers the file calls.
+	calls map[*helper]bool
+	// support are the paths of supportPaths the file spells.
+	support map[string]bool
+	// refs are the identifiers of partial types and helpers of the package
+	// a declaration refers to unqualified.
 	refs map[string]bool
+}
+
+// ident returns the identifier the file refers to the package at path by.
+func (p *mapper) ident(path string) (string, error) {
+	ident, ok := p.m.Ident(path)
+	if !ok {
+		return "", fmt.Errorf("partial: unknown package %q", path)
+	}
+	if slices.Contains(supportPaths, path) {
+		p.support[path] = true
+	}
+	return ident, nil
+}
+
+// typeString spells t.
+func (p *mapper) typeString(t types.Type) (string, error) {
+	e, err := p.print(t)
+	if err != nil {
+		return "", err
+	}
+	return exprString(e)
+}
+
+// partialString spells the partial variant of the target named.
+func (p *mapper) partialString(named *types.Named) (string, error) {
+	e, err := p.partial(named)
+	if err != nil {
+		return "", err
+	}
+	return exprString(e)
 }
 
 func (p *mapper) position(pos token.Pos) token.Position { return p.pkg.Fset.Position(pos) }
@@ -50,14 +86,7 @@ func (p *mapper) typeParams(n *typegraph.Node, list *types.TypeParamList) (*dst.
 	}
 	fields := &dst.FieldList{Opening: true, Closing: true}
 	for tp := range list.TypeParams() {
-		c := tp.Constraint()
-		// A constraint written as ~int | string is an implicit interface;
-		// printing it as such would spell interface{ ~int | string }.
-		if iface, ok := c.(*types.Interface); ok && iface.IsImplicit() &&
-			iface.NumEmbeddeds() == 1 {
-			c = iface.EmbeddedType(0)
-		}
-		expr, err := p.print(c)
+		expr, err := p.print(constraintType(tp))
 		if err != nil {
 			return nil, fmt.Errorf(
 				"%s (%s): type parameter %s: %w",
@@ -70,6 +99,22 @@ func (p *mapper) typeParams(n *typegraph.Node, list *types.TypeParamList) (*dst.
 		})
 	}
 	return fields, nil
+}
+
+// constraintType returns the constraint of tp as it is written. A
+// constraint written as ~int | string is an implicit interface; printing it
+// as such would spell interface{ ~int | string }.
+func constraintType(tp *types.TypeParam) types.Type {
+	c := tp.Constraint()
+	if iface, ok := c.(*types.Interface); ok && iface.IsImplicit() && iface.NumEmbeddeds() == 1 {
+		return iface.EmbeddedType(0)
+	}
+	return c
+}
+
+// constraintString spells the constraint of tp.
+func (p *mapper) constraintString(tp *types.TypeParam) (string, error) {
+	return p.typeString(constraintType(tp))
 }
 
 // conv selects how a value converts between its source and partial form.
@@ -129,6 +174,14 @@ type mapped struct {
 	expr  dst.Expr
 	conv  conv
 	class class
+	// source is the source type. route are the pointer steps from source to
+	// leaf, the source type the partial form holds: the target, the type
+	// argument of an option or the source type itself.
+	source types.Type
+	route  []typegraph.EdgeRouteNode
+	leaf   types.Type
+	// named is the target leaf refers to, or nil.
+	named *types.Named
 }
 
 // fieldInfo is a mapped struct field.
@@ -137,8 +190,6 @@ type fieldInfo struct {
 	// name is the name of the source field; partial is the name of the
 	// partial field.
 	name, partial string
-	// source is the type of the source field.
-	source types.Type
 	// strategy is the merge strategy of the field.
 	strategy string
 	// flag is the flag of the field, or nil.
@@ -201,7 +252,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 // embedded by the field name of the source. Encoders do not inline an
 // embedded slice or map either, so keeping its name keeps its wire name.
 func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field, fieldInfo, error) {
-	info := fieldInfo{name: v.Name(), partial: v.Name(), source: v.Type()}
+	info := fieldInfo{source: v.Type(), name: v.Name(), partial: v.Name()}
 
 	var (
 		f   *dst.Field
@@ -212,7 +263,9 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 		info.partial = partialName(named.Obj().Name())
 		info.class = classEmbedded
 		info.conv = convEmbedded
-		if deref(v.Type()) != v.Type() {
+		info.named = named
+		info.leaf, info.route = pointerRoute(v.Type())
+		if len(info.route) > 0 {
 			info.conv = convEmbeddedPointer
 		}
 		info.expr, err = p.partial(named)
@@ -313,11 +366,12 @@ func withTag(f *dst.Field, tag string) *dst.Field {
 // does. So does a target whose partial variant cannot be spelled in the
 // package of the mapper.
 func (p *mapper) value(t types.Type, ref bool) (mapped, error) {
-	if ptr, ok := types.Unalias(t).(*types.Pointer); ok {
-		if _, ok := types.Unalias(ptr.Elem()).(*types.Pointer); ok {
-			return mapped{}, fmt.Errorf("%w: pointer to pointer %s", ErrUnsupported, t)
-		}
-		out, err := p.wrap(ptr.Elem(), ref)
+	leaf, route := pointerRoute(t)
+	if len(route) > 1 {
+		return mapped{}, fmt.Errorf("%w: pointer to pointer %s", ErrUnsupported, t)
+	}
+	if len(route) == 1 {
+		out, err := p.wrap(leaf, ref)
 		switch out.conv {
 		case convTarget:
 			out.conv = convTargetPointer
@@ -327,6 +381,7 @@ func (p *mapper) value(t types.Type, ref bool) (mapped, error) {
 		default:
 			out.conv = convPointer
 		}
+		out.source, out.route = t, route
 		return out, err
 	}
 
@@ -338,17 +393,50 @@ func (p *mapper) value(t types.Type, ref bool) (mapped, error) {
 			return mapped{}, err
 		}
 		expr, err := p.und(elem)
-		return mapped{expr: expr, conv: convOption, class: plainClass(arg)}, err
+		return mapped{
+			expr: expr, conv: convOption, class: plainClass(arg), source: t, leaf: arg,
+		}, err
 	case isNamed(t, undPath, "Und"):
-		p.usedUnd = true
+		p.support[undPath] = true
 		expr, err := p.print(t)
 		arg := types.Unalias(t).(*types.Named).TypeArgs().At(0)
-		return mapped{expr: expr, conv: convCopy, class: plainClass(arg)}, err
+		return mapped{
+			expr: expr, conv: convCopy, class: plainClass(arg), source: t, leaf: arg,
+		}, err
 	case isNamed(t, elasticPath, "Elastic"):
 		expr, err := p.print(t)
-		return mapped{expr: expr, conv: convCopy, class: classElastic}, err
+		return mapped{expr: expr, conv: convCopy, class: classElastic, source: t, leaf: t}, err
 	}
 	return p.wrap(t, false)
+}
+
+// pointerRoute returns the type t points to through its pointers and the
+// pointer steps leading there, aliases dropped. leaf keeps the alias it is
+// spelled by, if any.
+func pointerRoute(t types.Type) (leaf types.Type, route []typegraph.EdgeRouteNode) {
+	_ = typegraph.WalkTypes(
+		nil,
+		t,
+		func(ty types.Type, _ []typegraph.EdgeRouteNode) bool {
+			_, ok := types.Unalias(ty).(*types.Pointer)
+			return !ok
+		},
+		func(ty types.Type, stack []typegraph.EdgeRouteNode) error {
+			// The type arguments of a generic alias are walked too; they are
+			// not where the value leads.
+			if slices.ContainsFunc(stack, func(n typegraph.EdgeRouteNode) bool {
+				return n.Kind == typegraph.EdgeKindTypeArg || n.Kind == typegraph.EdgeKindTypeParam
+			}) {
+				return nil
+			}
+			leaf = ty
+			route = slices.DeleteFunc(slices.Clone(stack), func(n typegraph.EdgeRouteNode) bool {
+				return n.Kind == typegraph.EdgeKindAlias
+			})
+			return nil
+		},
+	)
+	return leaf, route
 }
 
 // wrap returns und.Und of t, or of the partial variant of t when it is a
@@ -361,7 +449,7 @@ func (p *mapper) wrap(t types.Type, ref bool) (mapped, error) {
 			return mapped{}, err
 		}
 		expr, err := p.und(inner)
-		out := mapped{expr: expr, conv: convPlain, class: plainClass(t)}
+		out := mapped{expr: expr, conv: convPlain, class: plainClass(t), source: t, leaf: t}
 		switch out.class {
 		case classSlice:
 			out.conv = convSlice
@@ -379,7 +467,9 @@ func (p *mapper) wrap(t types.Type, ref bool) (mapped, error) {
 		inner = &dst.StarExpr{X: inner}
 	}
 	expr, err := p.und(inner)
-	out := mapped{expr: expr, conv: convTarget, class: classSub}
+	out := mapped{
+		expr: expr, conv: convTarget, class: classSub, source: t, leaf: t, named: named,
+	}
 	switch named.Underlying().(type) {
 	case *types.Slice:
 		out.class = classSubSlice
@@ -405,7 +495,7 @@ func (p *mapper) und(inner dst.Expr) (dst.Expr, error) {
 	if sel == nil {
 		return nil, fmt.Errorf("partial: unknown package %q", undPath)
 	}
-	p.usedUnd = true
+	p.support[undPath] = true
 	return &dst.IndexExpr{X: sel, Index: inner}, nil
 }
 

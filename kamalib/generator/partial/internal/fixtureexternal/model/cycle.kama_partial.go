@@ -2,7 +2,7 @@
 //
 // generator: kama-partial
 // params: merge=overwrite merge_nested=recursive option_file=partial.yaml
-// generated: 2026-11-03T21:41:57Z
+// generated: 2026-11-08T11:13:38Z
 
 package model
 
@@ -23,10 +23,10 @@ type TreePartial struct {
 //
 //kama:generated kama-partial
 func (p *TreePartial) FromValue(v Tree) {
-	p.Value = kamaPartialFromValue(v.Value)
-	kamaPartialFromTargetRef(&p.Left, v.Left)
-	kamaPartialFromTargetRef(&p.Right, v.Right)
-	kamaPartialFromSliceTarget(&p.Kids, v.Kids)
+	p.Value = und.Defined(v.Value)
+	p.Left = kamaPartialFromTargetRef_387be4579b_95bb7f54b5(v.Left)
+	p.Right = kamaPartialFromTargetRef_387be4579b_95bb7f54b5(v.Right)
+	p.Kids = kamaPartialFromTarget_5ad5f92a50_fbbe1032f0(v.Kids)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -35,10 +35,10 @@ func (p *TreePartial) FromValue(v Tree) {
 //kama:generated kama-partial
 func (p TreePartial) ToValue() Tree {
 	var v Tree
-	v.Value = kamaPartialToValue(p.Value)
-	kamaPartialToTargetRef(&v.Left, p.Left)
-	kamaPartialToTargetRef(&v.Right, p.Right)
-	kamaPartialToTarget(&v.Kids, p.Kids)
+	v.Value = p.Value.Value()
+	v.Left = kamaPartialToTargetRef_95bb7f54b5_387be4579b(p.Left)
+	v.Right = kamaPartialToTargetRef_95bb7f54b5_387be4579b(p.Right)
+	v.Kids = p.Kids.Value().ToValue()
 	return v
 }
 
@@ -47,10 +47,12 @@ func (p TreePartial) ToValue() Tree {
 //
 //kama:generated kama-partial
 func (p TreePartial) Merge(r TreePartial) TreePartial {
-	p.Value = kamaPartialMergeOverwrite(p.Value, r.Value)
-	p.Left = kamaPartialMergeRecursiveRef(p.Left, r.Left)
-	p.Right = kamaPartialMergeRecursiveRef(p.Right, r.Right)
-	p.Kids = kamaPartialMergeRecursive(p.Kids, r.Kids)
+	if !r.Value.IsUndefined() {
+		p.Value = r.Value
+	}
+	p.Left = kamaPartialMergeRecursive_29a24c9c43_95bb7f54b5(p.Left, r.Left)
+	p.Right = kamaPartialMergeRecursive_29a24c9c43_95bb7f54b5(p.Right, r.Right)
+	p.Kids = kamaPartialMergeRecursive_badeecfa88_fbbe1032f0(p.Kids, r.Kids)
 	return p
 }
 
@@ -74,9 +76,13 @@ type ForestPartial []und.Und[TreePartial]
 //
 //kama:generated kama-partial
 func (p *ForestPartial) FromValue(v Forest) {
-	kamaPartialMakeSlice(p, v)
+	if v == nil {
+		*p = nil
+		return
+	}
+	*p = make(ForestPartial, len(v))
 	for i, e := range v {
-		kamaPartialFromTargetPointer(&(*p)[i], e)
+		(*p)[i] = kamaPartialFromTarget_387be4579b_a2405436ec(e)
 	}
 }
 
@@ -85,10 +91,12 @@ func (p *ForestPartial) FromValue(v Forest) {
 //
 //kama:generated kama-partial
 func (p ForestPartial) ToValue() Forest {
-	var v Forest
-	kamaPartialMakeSlice(&v, p)
+	if p == nil {
+		return nil
+	}
+	v := make(Forest, len(p))
 	for i, e := range p {
-		kamaPartialToTargetPointer(&v[i], e)
+		v[i] = kamaPartialToTarget_a2405436ec_387be4579b(e)
 	}
 	return v
 }
@@ -97,7 +105,10 @@ func (p ForestPartial) ToValue() Forest {
 //
 //kama:generated kama-partial
 func (p ForestPartial) Merge(r ForestPartial) ForestPartial {
-	return kamaPartialOverwriteSlice(p, r)
+	if r == nil {
+		return p
+	}
+	return r
 }
 
 // ApplyTo returns v with the change p describes applied. It is
@@ -122,7 +133,7 @@ type RingPartial struct {
 //
 //kama:generated kama-partial
 func (p *RingPartial) FromValue(v Ring) {
-	kamaPartialFromTarget(&p.Head, v.Head)
+	p.Head = kamaPartialFromTarget_920a909165_429d2ba34d(v.Head)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -131,7 +142,7 @@ func (p *RingPartial) FromValue(v Ring) {
 //kama:generated kama-partial
 func (p RingPartial) ToValue() Ring {
 	var v Ring
-	kamaPartialToTarget(&v.Head, p.Head)
+	v.Head = p.Head.Value().ToValue()
 	return v
 }
 
@@ -140,7 +151,7 @@ func (p RingPartial) ToValue() Ring {
 //
 //kama:generated kama-partial
 func (p RingPartial) Merge(r RingPartial) RingPartial {
-	p.Head = kamaPartialMergeRecursive(p.Head, r.Head)
+	p.Head = kamaPartialMergeRecursive_2c5932c0a0_429d2ba34d(p.Head, r.Head)
 	return p
 }
 
@@ -167,8 +178,8 @@ type ElemPartial struct {
 //
 //kama:generated kama-partial
 func (p *ElemPartial) FromValue(v Elem) {
-	p.Name = kamaPartialFromValue(v.Name)
-	kamaPartialFromTargetRef(&p.Ring, v.Ring)
+	p.Name = und.Defined(v.Name)
+	p.Ring = kamaPartialFromTargetRef_1bf454c0d4_f8a34a0799(v.Ring)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -177,8 +188,8 @@ func (p *ElemPartial) FromValue(v Elem) {
 //kama:generated kama-partial
 func (p ElemPartial) ToValue() Elem {
 	var v Elem
-	v.Name = kamaPartialToValue(p.Name)
-	kamaPartialToTargetRef(&v.Ring, p.Ring)
+	v.Name = p.Name.Value()
+	v.Ring = kamaPartialToTargetRef_f8a34a0799_1bf454c0d4(p.Ring)
 	return v
 }
 
@@ -187,8 +198,10 @@ func (p ElemPartial) ToValue() Elem {
 //
 //kama:generated kama-partial
 func (p ElemPartial) Merge(r ElemPartial) ElemPartial {
-	p.Name = kamaPartialMergeOverwrite(p.Name, r.Name)
-	p.Ring = kamaPartialMergeRecursiveRef(p.Ring, r.Ring)
+	if !r.Name.IsUndefined() {
+		p.Name = r.Name
+	}
+	p.Ring = kamaPartialMergeRecursive_d21f5e880e_f8a34a0799(p.Ring, r.Ring)
 	return p
 }
 
@@ -200,4 +213,168 @@ func (p ElemPartial) ApplyTo(v Elem) Elem {
 	var base ElemPartial
 	base.FromValue(v)
 	return base.Merge(p).ToValue()
+}
+
+// kamaPartialFromTargetRef_1bf454c0d4_f8a34a0799 converts *Ring into
+// und.Und[*RingPartial], a newly allocated defined value, or null for a nil
+// v.
+//
+//kama:generated kama-partial
+func kamaPartialFromTargetRef_1bf454c0d4_f8a34a0799(v *Ring) und.Und[*RingPartial] {
+	if v == nil {
+		return und.Null[*RingPartial]()
+	}
+	x := new(RingPartial)
+	x.FromValue(*v)
+	return und.Defined(x)
+}
+
+// kamaPartialFromTargetRef_387be4579b_95bb7f54b5 converts *Tree into
+// und.Und[*TreePartial], a newly allocated defined value, or null for a nil
+// v.
+//
+//kama:generated kama-partial
+func kamaPartialFromTargetRef_387be4579b_95bb7f54b5(v *Tree) und.Und[*TreePartial] {
+	if v == nil {
+		return und.Null[*TreePartial]()
+	}
+	x := new(TreePartial)
+	x.FromValue(*v)
+	return und.Defined(x)
+}
+
+// kamaPartialFromTarget_387be4579b_a2405436ec converts *Tree into
+// und.Und[TreePartial], defined, or null for a nil v.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_387be4579b_a2405436ec(v *Tree) und.Und[TreePartial] {
+	if v == nil {
+		return und.Null[TreePartial]()
+	}
+	var x TreePartial
+	x.FromValue(*v)
+	return und.Defined(x)
+}
+
+// kamaPartialFromTarget_5ad5f92a50_fbbe1032f0 converts Forest into
+// und.Und[ForestPartial], defined, or null for a nil v.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_5ad5f92a50_fbbe1032f0(v Forest) und.Und[ForestPartial] {
+	if v == nil {
+		return und.Null[ForestPartial]()
+	}
+	var x ForestPartial
+	x.FromValue(v)
+	return und.Defined(x)
+}
+
+// kamaPartialFromTarget_920a909165_429d2ba34d converts Elem into
+// und.Und[ElemPartial], defined.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_920a909165_429d2ba34d(v Elem) und.Und[ElemPartial] {
+	var x ElemPartial
+	x.FromValue(v)
+	return und.Defined(x)
+}
+
+// kamaPartialMergeRecursive_29a24c9c43_95bb7f54b5 merges r onto l, both
+// und.Und[*TreePartial]: it returns a new merge of their values when both
+// are defined and non-nil, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_29a24c9c43_95bb7f54b5(l, r und.Und[*TreePartial]) und.Und[*TreePartial] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() || l.Value() == nil || r.Value() == nil {
+		return r
+	}
+	x := l.Value().Merge(*r.Value())
+	return und.Defined(&x)
+}
+
+// kamaPartialMergeRecursive_2c5932c0a0_429d2ba34d merges r onto l, both
+// und.Und[ElemPartial]: it returns the merge of their values when both are
+// defined, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_2c5932c0a0_429d2ba34d(l, r und.Und[ElemPartial]) und.Und[ElemPartial] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() {
+		return r
+	}
+	return und.Defined(l.Value().Merge(r.Value()))
+}
+
+// kamaPartialMergeRecursive_badeecfa88_fbbe1032f0 merges r onto l, both
+// und.Und[ForestPartial]: it returns the merge of their values when both
+// are defined, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_badeecfa88_fbbe1032f0(l, r und.Und[ForestPartial]) und.Und[ForestPartial] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() {
+		return r
+	}
+	return und.Defined(l.Value().Merge(r.Value()))
+}
+
+// kamaPartialMergeRecursive_d21f5e880e_f8a34a0799 merges r onto l, both
+// und.Und[*RingPartial]: it returns a new merge of their values when both
+// are defined and non-nil, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_d21f5e880e_f8a34a0799(l, r und.Und[*RingPartial]) und.Und[*RingPartial] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() || l.Value() == nil || r.Value() == nil {
+		return r
+	}
+	x := l.Value().Merge(*r.Value())
+	return und.Defined(&x)
+}
+
+// kamaPartialToTargetRef_95bb7f54b5_387be4579b converts
+// und.Und[*TreePartial] into *Tree, newly allocated, or nil when p is
+// undefined, null or nil.
+//
+//kama:generated kama-partial
+func kamaPartialToTargetRef_95bb7f54b5_387be4579b(p und.Und[*TreePartial]) *Tree {
+	if !p.IsDefined() || p.Value() == nil {
+		return nil
+	}
+	x := p.Value().ToValue()
+	return &x
+}
+
+// kamaPartialToTargetRef_f8a34a0799_1bf454c0d4 converts
+// und.Und[*RingPartial] into *Ring, newly allocated, or nil when p is
+// undefined, null or nil.
+//
+//kama:generated kama-partial
+func kamaPartialToTargetRef_f8a34a0799_1bf454c0d4(p und.Und[*RingPartial]) *Ring {
+	if !p.IsDefined() || p.Value() == nil {
+		return nil
+	}
+	x := p.Value().ToValue()
+	return &x
+}
+
+// kamaPartialToTarget_a2405436ec_387be4579b converts und.Und[TreePartial]
+// into *Tree, newly allocated, or nil when p is undefined or null.
+//
+//kama:generated kama-partial
+func kamaPartialToTarget_a2405436ec_387be4579b(p und.Und[TreePartial]) *Tree {
+	if !p.IsDefined() {
+		return nil
+	}
+	x := p.Value().ToValue()
+	return &x
 }

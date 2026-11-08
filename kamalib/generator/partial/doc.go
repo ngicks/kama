@@ -117,12 +117,11 @@
 // parameter named like a predeclared identifier or like a partial type or
 // helper the declarations refer to are errors. Import names avoid
 // predeclared and package-level identifiers, type parameters and the
-// identifiers the methods declare. A
-// package-level declaration named like a predeclared identifier the
-// generated code spells, such as make, len, string or error, is an error;
-// the generated code spells interface{} rather than any. The methods spell
-// a blank type parameter by a fresh name, and the partial type declaration
-// keeps it blank.
+// identifiers the methods and helpers declare. A package-level declaration
+// named like a predeclared identifier the generated code spells, such as
+// make, len, new, nil or error, is an error; the generated code spells
+// interface{} rather than any. The methods spell a blank type parameter by
+// a fresh name, and the partial type declaration keeps it blank.
 //
 // A target whose underlying struct type is declared in another package,
 // as in type A sub.S, is an error when that struct has an unexported
@@ -218,6 +217,105 @@
 // Merge writes to neither p nor r. Its result shares the slices, maps and
 // pointers it does not build anew.
 //
+// # Helpers
+//
+// The methods call the option API directly where it converts or merges a
+// value, as und.Defined, und.FromPointer(v).CollapseToNull(),
+// und.WrapSlice, und.WrapMap, und.FromOption, Value and Flatten. A
+// conversion through the methods of a partial type, an append merge, a
+// recursive merge and the test of an embedded partial value for every
+// field undefined go through helper functions instead, one per type:
+//
+//	FromTarget      M or *M -> und.Und[MPartial]
+//	FromTargetRef   *M -> und.Und[*MPartial]
+//	ToTarget        und.Und[MPartial] -> *M
+//	ToTargetRef     und.Und[*MPartial] -> *M
+//	FromEmbedded    *M -> MPartial              embedded *M
+//	ToEmbedded      MPartial -> *M              embedded *M
+//	MergeAppend     (und.Und[T], und.Und[T]) -> und.Und[T]
+//	MergeRecursive  (und.Und[T], und.Und[T]) -> und.Und[T]
+//	AllUndefined    MPartial -> bool            embedded M or *M
+//
+// AllUndefined tests the fields of MPartial with IsUndefined, and the
+// fields of a partial value embedded in it with its own AllUndefined. It
+// skips blank fields, which cannot be set. It cannot read an unexported
+// field of a partial type of another package, so embedding a target of
+// another package that has unexported fields, where AllUndefined is
+// needed, is an error wrapping ErrUnsupported.
+//
+// A helper is named kamaPartial, its op as above, _, the first 5 bytes of
+// the SHA-256 of the canonical encoding of its parameter types, _ and
+// those of its result types, in lowercase hexadecimal. The helper
+// converting *Address of package example.com/m into
+// und.Und[AddressPartial] is kamaPartialFromTarget_2b27c0c476_7bfb4f6244.
+// The op is in the name only, so two ops of one signature differ in their
+// prefix.
+//
+// Helpers of one op whose signatures are not identical but hash alike get
+// that name followed by _1, _2 and so on up to _ff, in lowercase
+// hexadecimal, numbered in the order of their encodings, parameters then
+// results. The number of a helper may change between runs when the
+// helpers of its package change. More than 0xff such helpers are an error
+// wrapping ErrConflict.
+//
+// The canonical encoding is defined by type identity: identical types, as
+// types.Identical tells them, encode alike, and other types differently.
+// It is built from the types, not from how they are printed. Each node
+// starts with a byte telling its kind, and each string and list with its
+// length as an unsigned varint:
+//
+//	list       L, count, types
+//	basic      b, kind               byte and rune as uint8 and int32
+//	pointer    p, elem
+//	slice      s, elem
+//	array      a, length, elem
+//	map        m, key, elem
+//	chan       c, direction, elem
+//	named      n, package path, name, list of type arguments
+//	partial    P, package path, name of the target, list of type arguments
+//	type param t, index, constraint  r, index within its own constraint
+//	struct     S, count, per field: name, package path of an unexported
+//	           name or empty, embedded, type, tag
+//	func       F, list of parameters, list of results, variadic
+//	interface  I, count, per method sorted by name: name, package path of
+//	           an unexported name or empty, signature; count and embedded
+//	           elements other than interfaces; comparable
+//	union      U, count, per term: tilde, type
+//
+// Aliases are resolved at every level, and parameter names and type
+// parameter names are left out. Two type parameters of one index and alike
+// constraints encode alike although types.Identical tells them apart: a
+// generic helper declares type parameters of its own, so the helpers of
+// two receivers spelling *Item[T] and *Item[U] are one.
+//
+// The partial variant of a target does not exist before generation, nor
+// need und.Und be imported by the package. A helper signature holds a
+// synthetic named type for each: one origin per type, of the package path
+// and name it stands for, instantiated with the type arguments spelled.
+// und.Und encodes as the named type it stands for, and a partial variant as
+// partial, naming its target.
+//
+// Within a run, two helpers share a name exactly when their signatures are
+// identical, or encode alike for generic helpers. Identical signatures
+// given two names would break the encoding and are an error wrapping
+// ErrConflict. The doc comment of a helper spells its types
+// as its code does, as "converts *Address into und.Und[AddressPartial]".
+//
+// A helper is generic only over the type parameters of the partial type
+// its types mention, and those their constraints mention, which keep their
+// names and constraints. The methods call it with explicit type arguments.
+// Any other helper is not generic, so the compiler specializes it to its
+// types rather than sharing one instantiation among all pointer types.
+//
+// Each helper is declared once per package, in a partial file calling it:
+// the first one by path without a build constraint, or if every file
+// calling it has one, the first one by path. A file without a build
+// constraint is part of every build variant, so the helpers it calls are
+// found in every variant. A helper called by constrained files only is
+// declared in one of them, which assumes those files are built together.
+// A file declares its helpers sorted by name. A package-level declaration
+// named like a helper is an error.
+//
 // # Flags
 //
 // A source struct field opts in to a command-line flag with
@@ -284,16 +382,9 @@
 // Each source file declaring targets gets a file of the same package next
 // to it, named by inserting .kama_partial before the build constraint
 // suffixes of its name, as in x.kama_partial_linux.go for x_linux.go, and
-// the //go:build line of the source file. The methods call unexported
-// generic helper functions, declared in the file kama_partial_helpers.go
-// of each package holding targets. The file holds every helper whether the
-// package uses it or not, so that partial files of build variants other
-// than the one loaded keep finding theirs. It has no build constraint and
-// is generated on every run, and Proc keeps it as it was when only its
-// generated: line would change; a declaration in it the generator did not
-// mark is an error, and so is a helper name declared elsewhere in the
-// package. Every generated declaration carries the marker
-// //kama:generated kama-partial.
+// the //go:build line of the source file. The partial files declare the
+// helpers they host, described under Helpers. Every generated declaration
+// carries the marker //kama:generated kama-partial.
 //
 // Every generated file starts with this header:
 //
@@ -322,14 +413,16 @@
 // Generate returns a warning wrapping ErrStale for a stale file, naming its
 // path relative to the module root, and Proc reports the warning. The file
 // is left in place; delete it if it is no longer needed. If it refers to a
-// type that no longer exists, loading the packages fails until the file is
-// removed. Files of build variants other than the one loaded are not in
-// the loaded packages and are never reported.
+// type that no longer exists, or declares a helper the run declares in
+// another file, loading the packages fails until the file is removed.
+// Files of build variants other than the one loaded are not in the loaded
+// packages and are never reported.
 //
-// The helpers file and the flag set file of a package the run produces no
-// files for are never reported. The run cannot tell whether the package
-// still declares targets in files of build variants other than the one
-// loaded, and those partial files need both. A package whose targets are
-// all gone keeps its kama_partial_helpers.go and kama_partial_flagset.go
-// without a warning; delete them by hand.
+// The flag set file of a package the run produces no files for is never
+// reported. The run cannot tell whether the package still declares targets
+// in files of build variants other than the one loaded, and those partial
+// files need it. A package whose targets are all gone keeps its
+// kama_partial_flagset.go without a warning; delete it by hand. The file
+// kama_partial_helpers.go earlier versions wrote is stale like any other
+// file the run does not produce.
 package partial

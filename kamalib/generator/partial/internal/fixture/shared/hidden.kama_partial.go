@@ -2,7 +2,7 @@
 //
 // generator: kama-partial
 // params: merge=overwrite merge_nested=recursive option_file=none
-// generated: 2026-11-03T21:41:56Z
+// generated: 2026-11-06T13:16:34Z
 
 package shared
 
@@ -20,7 +20,7 @@ type hiddenPartial struct {
 //
 //kama:generated kama-partial
 func (p *hiddenPartial) FromValue(v hidden) {
-	p.Secret = kamaPartialFromValue(v.Secret)
+	p.Secret = und.Defined(v.Secret)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -29,7 +29,7 @@ func (p *hiddenPartial) FromValue(v hidden) {
 //kama:generated kama-partial
 func (p hiddenPartial) ToValue() hidden {
 	var v hidden
-	v.Secret = kamaPartialToValue(p.Secret)
+	v.Secret = p.Secret.Value()
 	return v
 }
 
@@ -38,7 +38,9 @@ func (p hiddenPartial) ToValue() hidden {
 //
 //kama:generated kama-partial
 func (p hiddenPartial) Merge(r hiddenPartial) hiddenPartial {
-	p.Secret = kamaPartialMergeOverwrite(p.Secret, r.Secret)
+	if !r.Secret.IsUndefined() {
+		p.Secret = r.Secret
+	}
 	return p
 }
 

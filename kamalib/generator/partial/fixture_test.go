@@ -2,9 +2,13 @@ package partial
 
 import (
 	"context"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -112,7 +116,7 @@ func generatedFiles(t *testing.T, root string) []string {
 	var out []string
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() &&
-			(strings.HasSuffix(p, FileSuffix+".go") || filepath.Base(p) == HelpersFile ||
+			(strings.HasSuffix(p, FileSuffix+".go") ||
 				filepath.Base(p) == FlagSetFile) {
 			out = append(out, p)
 		}
@@ -148,6 +152,20 @@ func TestFixtureExternalParity(t *testing.T) {
 	assert.DeepEqual(t, rel(fileDir), names)
 
 	replacer := strings.NewReplacer(pkgPath+directiveDir+"/", pkgPath+fileDir+"/")
+	// Helper names hash the types they convert, import paths included,
+	// and files declare their helpers sorted by name. Helpers are compared
+	// as a set with the hashes left out, the rest of each file as is.
+	hash := regexp.MustCompile(
+		`(kamaPartial[A-Za-z]+_)[0-9a-f]{10}_[0-9a-f]{10}(_[0-9a-f]{1,2})?\b`,
+	)
+	normalize := func(src string) string {
+		rest, helpers := splitHelpers(t, src)
+		for i, h := range helpers {
+			helpers[i] = hash.ReplaceAllString(h, "${1}<hash>")
+		}
+		slices.Sort(helpers)
+		return hash.ReplaceAllString(rest, "${1}<hash>") + "\n" + strings.Join(helpers, "\n")
+	}
 	for _, name := range names {
 		want, err := os.ReadFile(filepath.Join(directiveDir, name))
 		assert.NilError(t, err)
@@ -155,11 +173,38 @@ func TestFixtureExternalParity(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Equal(
 			t,
-			withoutRunParams(string(got)),
-			withoutRunParams(replacer.Replace(string(want))),
+			normalize(withoutRunParams(string(got))),
+			normalize(withoutRunParams(replacer.Replace(string(want)))),
 			name,
 		)
 	}
+}
+
+// splitHelpers returns src without the declarations of helpers and those
+// declarations, each with its doc comment.
+func splitHelpers(t *testing.T, src string) (string, []string) {
+	t.Helper()
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
+	assert.NilError(t, err)
+	var (
+		rest    strings.Builder
+		helpers []string
+		last    int
+	)
+	for _, d := range f.Decls {
+		fd, ok := d.(*ast.FuncDecl)
+		if !ok || fd.Recv != nil || !strings.HasPrefix(fd.Name.Name, "kamaPartial") {
+			continue
+		}
+		start, end := fset.Position(fd.Doc.Pos()).Offset, fset.Position(fd.End()).Offset
+		rest.WriteString(src[last:start])
+		helpers = append(helpers, src[start:end])
+		last = end
+	}
+	rest.WriteString(src[last:])
+	blank := regexp.MustCompile(`\n{3,}`)
+	return blank.ReplaceAllString(rest.String(), "\n\n"), helpers
 }
 
 // nopReporter drops what an instance reports.

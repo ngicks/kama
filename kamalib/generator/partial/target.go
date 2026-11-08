@@ -38,6 +38,9 @@ type selection struct {
 	// refs are the pointer fields mapped to und.Und[*MPartial] since they
 	// close a cycle of partial variants.
 	refs map[*types.Var]bool
+	// generated are the objects declared by declarations carrying the
+	// marker of a registered generator.
+	generated map[types.Object]bool
 }
 
 func (s *selection) filename(n *typegraph.Node) string {
@@ -352,12 +355,13 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	}
 
 	sel := &selection{
-		opts:    opts,
-		targets: map[typegraph.QualifiedType]*typegraph.Node{},
-		merges:  m.merges,
-		flags:   m.flags,
-		flagged: map[typegraph.QualifiedType]bool{},
-		refs:    map[*types.Var]bool{},
+		opts:      opts,
+		targets:   map[typegraph.QualifiedType]*typegraph.Node{},
+		merges:    m.merges,
+		flags:     m.flags,
+		flagged:   map[typegraph.QualifiedType]bool{},
+		refs:      map[*types.Var]bool{},
+		generated: generated,
 	}
 
 	var errs []error
@@ -428,7 +432,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	if err := sel.checkFlagTargets(); err != nil {
 		return nil, err
 	}
-	if err := sel.checkNames(pkgs, generated); err != nil {
+	if err := sel.checkNames(generated); err != nil {
 		return nil, err
 	}
 	if err := sel.mapCycles(); err != nil {
@@ -492,12 +496,13 @@ func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Obje
 }
 
 // checkNames reports names the generated declarations would collide with:
-// a partial type name, a method of a partial type, a helper function or
-// the flag set interface declared by something other than a generator,
-// and a helpers or flag set file holding a declaration the generator did
-// not write. A field of a partial type named like one of its methods is
-// reported while mapping the fields.
-func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Object]bool) error {
+// a partial type name, a method of a partial type or the flag set
+// interface declared by something other than a generator, and a flag set
+// file holding a declaration the generator did not write. A field of a
+// partial type named like one of its methods is reported while mapping the
+// fields, and a helper named like another declaration once the helpers are
+// known.
+func (s *selection) checkNames(generated map[types.Object]bool) error {
 	var errs []error
 	conflict := func(fset *token.FileSet, pos token.Pos, format string, args ...any) {
 		errs = append(errs, fmt.Errorf(
@@ -538,13 +543,6 @@ func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Obj
 
 	for _, pkgPath := range slices.Sorted(maps.Keys(targetPkgs)) {
 		pkg := targetPkgs[pkgPath]
-		for _, h := range helperNames() {
-			if obj := pkg.Types.Scope().Lookup(h); obj != nil && !generated[obj] {
-				conflict(pkg.Fset, obj.Pos(),
-					"%s.%s is already declared for a helper of the generated methods", pkgPath, h,
-				)
-			}
-		}
 		if obj := pkg.Types.Scope().Lookup(flagSetName); obj != nil && !generated[obj] {
 			conflict(pkg.Fset, obj.Pos(),
 				"%s.%s is already declared for the flag set of the generated methods",
@@ -553,11 +551,11 @@ func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Obj
 		}
 		for _, f := range pkg.Syntax {
 			base := filepath.Base(pkg.Fset.Position(f.FileStart).Filename)
-			if base != HelpersFile && base != FlagSetFile {
+			if base != FlagSetFile {
 				continue
 			}
 			for _, decl := range f.Decls {
-				if s.ownDecl(base, decl) {
+				if s.ownDecl(decl) {
 					continue
 				}
 				conflict(pkg.Fset, decl.Pos(),
@@ -569,22 +567,18 @@ func (s *selection) checkNames(pkgs []*packages.Package, generated map[types.Obj
 	return errors.Join(errs...)
 }
 
-// ownDecl reports whether decl of the generated file base is one the
-// generator writes there: imports, and marked functions in HelpersFile or
-// marked types in FlagSetFile.
-func (s *selection) ownDecl(base string, decl ast.Decl) bool {
-	switch decl := decl.(type) {
-	case *ast.FuncDecl:
-		_, ok := s.opts.Registry.Generated(decl.Doc)
-		return ok && base == HelpersFile
-	case *ast.GenDecl:
-		if decl.Tok == token.IMPORT {
-			return true
-		}
-		_, ok := s.opts.Registry.Generated(decl.Doc)
-		return ok && decl.Tok == token.TYPE && base == FlagSetFile
+// ownDecl reports whether decl of FlagSetFile is one the generator writes
+// there: imports and marked types.
+func (s *selection) ownDecl(decl ast.Decl) bool {
+	gd, ok := decl.(*ast.GenDecl)
+	if !ok {
+		return false
 	}
-	return false
+	if gd.Tok == token.IMPORT {
+		return true
+	}
+	_, ok = s.opts.Registry.Generated(gd.Doc)
+	return ok && gd.Tok == token.TYPE
 }
 
 // mapCycles finds the pointer fields that close a cycle of partial

@@ -177,6 +177,8 @@ type flagField struct {
 	// conv spells the type a flag value converts to, or is empty when the
 	// value has the type the field holds.
 	conv string
+	// typ spells the type a text flag value unmarshals to.
+	typ string
 }
 
 // textUnmarshaler is encoding.TextUnmarshaler, built here since the
@@ -229,12 +231,15 @@ func (p *mapper) flag(n *typegraph.Node, info fieldInfo, o flagOption) (*flagFie
 	if !ok {
 		return nil, bad("unsupported type %s", t)
 	}
-	if !types.Identical(t, want) {
-		expr, err := p.print(t)
-		if err != nil {
+	if f.kind.text {
+		var err error
+		if f.typ, err = p.typeString(t); err != nil {
 			return nil, err
 		}
-		if f.conv, err = exprString(expr); err != nil {
+	}
+	if !types.Identical(t, want) {
+		var err error
+		if f.conv, err = p.typeString(t); err != nil {
 			return nil, err
 		}
 	}
@@ -276,7 +281,7 @@ func (f *flagField) setKind(t types.Type) (types.Type, bool) {
 
 // flagMethods writes RegisterFlags and FromFlagSet for the fields with a
 // flag option. It writes nothing when there are none.
-func (w *methodWriter) flagMethods(fields []fieldInfo) {
+func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 	var flags []fieldInfo
 	for _, f := range fields {
 		if f.flag != nil {
@@ -284,10 +289,18 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) {
 		}
 	}
 	if len(flags) == 0 {
-		return
+		return nil
 	}
 	w.p.refs[flagSetName] = true
-	p, f, v, err := w.l["p"], w.l["f"], w.l["v"], w.l["err"]
+	p, f, v, x, err := w.l["p"], w.l["f"], w.l["v"], w.l["x"], w.l["err"]
+	und, uerr := w.p.ident(undPath)
+	if uerr != nil {
+		return uerr
+	}
+	fmtIdent, ferr := w.p.ident(fmtPath)
+	if ferr != nil {
+		return ferr
+	}
 
 	w.doc("RegisterFlags", "defines on "+f+" a flag for each field of p with a flag\n"+
 		"// option. Every flag defaults to the zero value; FromFlagSet reads the\n"+
@@ -309,24 +322,27 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) {
 	for _, fl := range flags {
 		k := fl.flag.kind
 		name := strconv.Quote(fl.flag.name)
-		fail := "return " + w.call("kamaPartialFlagError", name, err)
+		fail := "return " + fmtIdent + `.Errorf("flag --%s: %w", ` + name + ", " + err + ")"
 		lhs := p + "." + fl.partial
 		w.line("if %s.Changed(%s) {", f, name)
 		w.line("%s, %s := %s.%s(%s)", v, err, f, k.get, name)
 		w.line("if %s != nil {\n%s\n}", err, fail)
 		switch {
 		case k.text:
-			w.line("%s = %s", err, w.call("kamaPartialFromText", "&"+lhs, v))
+			w.line("var %s %s", x, fl.flag.typ)
+			w.line("%s = %s.UnmarshalText([]byte(%s))", err, x, v)
 			w.line("if %s != nil {\n%s\n}", err, fail)
+			w.line("%s = %s.Defined(%s)", lhs, und, x)
 		case fl.flag.conv != "":
-			w.line("%s = %s", lhs, w.call("kamaPartialFromValue", fl.flag.conv+"("+v+")"))
+			w.line("%s = %s.Defined(%s(%s))", lhs, und, fl.flag.conv, v)
 		default:
-			w.line("%s = %s", lhs, w.call("kamaPartialFromValue", v))
+			w.line("%s = %s.Defined(%s)", lhs, und, v)
 		}
 		w.line("}")
 	}
 	w.line("return nil")
 	w.line("}")
+	return nil
 }
 
 // checkFlags reports duplicate flag names and shorthands among fields.
@@ -409,7 +425,8 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 		flagSetName, genmark.Marker(GeneratorName))
 	fmt.Fprintf(&src, "type %s interface {\n", flagSetName)
 	for _, name := range slices.Sorted(maps.Keys(sigs)) {
-		src.WriteString(replacer.Replace(sigs[name]) + "\n")
+		src.WriteString(replacer.Replace(sigs[name]))
+		src.WriteByte('\n')
 	}
 	src.WriteString("}\n")
 

@@ -2,7 +2,7 @@
 //
 // generator: kama-partial
 // params: merge=overwrite merge_nested=recursive option_file=partial.yaml
-// generated: 2026-11-03T21:41:57Z
+// generated: 2026-11-06T13:16:35Z
 
 package shared
 
@@ -21,8 +21,8 @@ type MoneyPartial struct {
 //
 //kama:generated kama-partial
 func (p *MoneyPartial) FromValue(v Money) {
-	p.Amount = kamaPartialFromValue(v.Amount)
-	p.Currency = kamaPartialFromValue(v.Currency)
+	p.Amount = und.Defined(v.Amount)
+	p.Currency = und.Defined(v.Currency)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -31,8 +31,8 @@ func (p *MoneyPartial) FromValue(v Money) {
 //kama:generated kama-partial
 func (p MoneyPartial) ToValue() Money {
 	var v Money
-	v.Amount = kamaPartialToValue(p.Amount)
-	v.Currency = kamaPartialToValue(p.Currency)
+	v.Amount = p.Amount.Value()
+	v.Currency = p.Currency.Value()
 	return v
 }
 
@@ -41,8 +41,12 @@ func (p MoneyPartial) ToValue() Money {
 //
 //kama:generated kama-partial
 func (p MoneyPartial) Merge(r MoneyPartial) MoneyPartial {
-	p.Amount = kamaPartialMergeOverwrite(p.Amount, r.Amount)
-	p.Currency = kamaPartialMergeOverwrite(p.Currency, r.Currency)
+	if !r.Amount.IsUndefined() {
+		p.Amount = r.Amount
+	}
+	if !r.Currency.IsUndefined() {
+		p.Currency = r.Currency
+	}
 	return p
 }
 

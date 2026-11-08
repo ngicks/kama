@@ -4,6 +4,8 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"maps"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -109,23 +111,43 @@ type Kids[T any] []L[T]
 		"Kids": "und.Und[KidsPartial[T]]",
 	})
 
+	h := helperIn(t, src)
+	fromRefA := h("FromTargetRef", "converts *A into und.Und[*APartial],")
+	fromC := h("FromTarget", "converts *C into und.Und[CPartial],")
+	toRefA := h("ToTargetRef", "converts und.Und[*APartial] into *A,")
+	toC := h("ToTarget", "converts und.Und[CPartial] into *C,")
+	mergeRefA := h("MergeRecursive", "both und.Und[*APartial]:")
+	mergeC := h("MergeRecursive", "both und.Und[CPartial]:")
+	// Helpers spelling a type parameter are generic over it.
+	fromRefL := h("FromTargetRef", "converts *L[T] into und.Und[*LPartial[T]],")
+	mergeRefL := h("MergeRecursive", "both und.Und[*LPartial[T]]:")
+
 	fs := funcs(t, src)
-	assert.Assert(
-		t,
-		strings.Contains(fs["APartial.FromValue"], "kamaPartialFromTargetRef(&p.Self, v.Self)"),
-	)
-	assert.Assert(
-		t,
-		strings.Contains(fs["APartial.FromValue"], "kamaPartialFromTargetPointer(&p.C, v.C)"),
-	)
-	assert.Assert(
-		t,
-		strings.Contains(fs["APartial.ToValue"], "kamaPartialToTargetRef(&v.Self, p.Self)"),
-	)
-	assert.Assert(t, strings.Contains(fs["APartial.Merge"],
-		"p.Self = kamaPartialMergeRecursiveRef(p.Self, r.Self)"))
-	assert.Assert(t, strings.Contains(fs["APartial.Merge"],
-		"p.C = kamaPartialMergeRecursive(p.C, r.C)"))
+	for name, want := range map[string][]string{
+		"APartial.FromValue": {
+			"p.Self = " + fromRefA + "(v.Self)",
+			"p.C = " + fromC + "(v.C)",
+		},
+		"APartial.ToValue": {"v.Self = " + toRefA + "(p.Self)"},
+		"APartial.Merge": {
+			"p.Self = " + mergeRefA + "(p.Self, r.Self)",
+			"p.C = " + mergeC + "(p.C, r.C)",
+		},
+		"LPartial.FromValue": {"p.Next = " + fromRefL + "[T](v.Next)"},
+		"LPartial.Merge":     {"p.Next = " + mergeRefL + "[T](p.Next, r.Next)"},
+		fromRefL:             {"func " + fromRefL + "[T any](v *L[T]) und.Und[*LPartial[T]] {"},
+	} {
+		for _, w := range want {
+			assert.Assert(t, strings.Contains(fs[name], w), "%s\n%s", w, fs[name])
+		}
+	}
+	for _, h := range []string{fromRefA, fromC, toRefA, toC, mergeRefA, mergeC, mergeRefL} {
+		assert.Assert(t, fs[h] != "", "%s is missing", h)
+	}
+	assert.Assert(t, !strings.Contains(src, "func("), "a function literal remains")
+	for name := range fs {
+		assert.Assert(t, !strings.Contains(name, "_L"), "%s spells a type parameter", name)
+	}
 }
 
 func TestImportNamesAvoidPackageAndTypeParams(t *testing.T) {
@@ -143,9 +165,7 @@ func TestImportNamesAvoidPackageAndTypeParams(t *testing.T) {
 	a = files["a.kama_partial.go"]
 	assert.Assert(t, strings.Contains(a, `import und_2 "github.com/ngicks/option/und"`), a)
 	assert.Assert(t, strings.Contains(a, "X und_2.Und[und]"), a)
-	h := files[HelpersFile]
-	assert.Assert(t, strings.Contains(h, `und_2 "github.com/ngicks/option/und"`), h)
-	assert.Assert(t, strings.Contains(h, "und_2.Defined(v)"), h)
+	assert.Assert(t, strings.Contains(a, "p.X = und_2.Defined(v.X)"), a)
 }
 
 func TestLocalsAvoidTypeParams(t *testing.T) {
@@ -165,10 +185,29 @@ func TestLocalsAvoidTypeParams(t *testing.T) {
 		"a.go": "package x\n\n//kama:partial\ntype v map[string]*x\n\ntype x struct{ I int }\n",
 	})
 	fs = funcs(t, files["a.kama_partial.go"])
-	assert.Assert(t, strings.Contains(fs["vPartial.ToValue"], "var v_ v\n"), fs["vPartial.ToValue"])
 	assert.Assert(
 		t,
-		strings.Contains(fs["vPartial.ToValue"], "var x_ *x\n"),
+		strings.Contains(fs["vPartial.ToValue"], "v_ := make(v, len(p))\n"),
+		fs["vPartial.ToValue"],
+	)
+	toX := helperIn(
+		t,
+		files["a.kama_partial.go"],
+	)(
+		"ToTarget",
+		"converts und.Und[xPartial] into *x,",
+	)
+	assert.Assert(t, strings.Contains(fs[toX], "x_ := p.Value().ToValue()"), fs[toX])
+
+	// A map element converted by a conditional statement goes through a
+	// local.
+	files = generated(t, map[string]string{
+		"a.go": "package x\n\n//kama:partial\ntype v map[string]*int\n\ntype x int\n",
+	})
+	fs = funcs(t, files["a.kama_partial.go"])
+	assert.Assert(
+		t,
+		strings.Contains(fs["vPartial.ToValue"], "var x_ *int\n"),
 		fs["vPartial.ToValue"],
 	)
 }
@@ -194,7 +233,7 @@ func TestUnexportedAliasField(t *testing.T) {
 	fs := funcs(t, src)
 	assert.Assert(
 		t,
-		strings.Contains(fs["APartial.FromValue"], "p.P = kamaPartialFromPointer(v.P)"),
+		strings.Contains(fs["APartial.FromValue"], "p.P = und.FromPointer(v.P).CollapseToNull()"),
 	)
 	assert.Assert(t, strings.Contains(files["s.kama_partial.go"], "type hiddenPartial struct"))
 }
@@ -211,12 +250,11 @@ func TestEmbeddedCollection(t *testing.T) {
 		"Index": {"und.Und[IndexPartial]", "`json:\"idx,omitzero\"`"},
 	})
 	fs := funcs(t, src)
-	assert.Assert(
-		t,
-		strings.Contains(fs["APartial.FromValue"], "kamaPartialFromSliceTarget(&p.Items, v.Items)"),
-	)
+	h := helperIn(t, src)
 	assert.Assert(t, strings.Contains(fs["APartial.FromValue"],
-		"kamaPartialFromTargetPointer(&p.Index, v.Index)"))
+		"p.Items = "+h("FromTarget", "converts Items into und.Und[ItemsPartial],")+"(v.Items)"))
+	assert.Assert(t, strings.Contains(fs["APartial.FromValue"],
+		"p.Index = "+h("FromTarget", "converts *Index into und.Und[IndexPartial],")+"(v.Index)"))
 }
 
 func TestRegistry(t *testing.T) {
@@ -246,10 +284,10 @@ func TestMethodConflicts(t *testing.T) {
 
 	_, err = generate(t, map[string]string{
 		"a.go":      "package x\n\n//kama:partial\ntype A struct{}\n",
-		HelpersFile: "package x\n\nfunc mine() {}\n",
+		FlagSetFile: "package x\n\nfunc mine() {}\n",
 	}, Options{})
 	assert.ErrorIs(t, err, ErrConflict)
-	assert.ErrorContains(t, err, HelpersFile+":3:1")
+	assert.ErrorContains(t, err, FlagSetFile+":3:1")
 }
 
 func TestRegenerateKeepsOwnDecls(t *testing.T) {
@@ -259,12 +297,15 @@ func TestRegenerateKeepsOwnDecls(t *testing.T) {
 	second := generated(t, map[string]string{
 		"a.go":              "package x\n\n//kama:partial\ntype A struct{ X []int }\n",
 		"a.kama_partial.go": first["a.kama_partial.go"],
-		HelpersFile:         first[HelpersFile],
+		FlagSetFile:         first[FlagSetFile],
 	})
 	assert.DeepEqual(t, second, first)
 }
 
 func TestMergeDefaults(t *testing.T) {
+	overwrite := func(f string) string {
+		return "if !r." + f + ".IsUndefined() {\n\t\tp." + f + " = r." + f + "\n\t}"
+	}
 	src := map[string]string{
 		"a.go": `package x
 
@@ -294,51 +335,59 @@ type L []int
 `,
 	}
 
+	merge := func(h func(op, doc string) string, op, held, field string) string {
+		return "p." + field + " = " + h(op, "both und.Und["+held+"]:") +
+			"(p." + field + ", r." + field + ")"
+	}
 	for _, c := range []struct {
 		name string
 		opts Options
-		want []string
+		want func(h func(op, doc string) string) []string
 		l    string
 	}{
 		{
 			name: "defaults",
-			want: []string{
-				"p.S = kamaPartialMergeOverwrite(p.S, r.S)",
-				"p.M = kamaPartialMergeOverwrite(p.M, r.M)",
-				"p.N = kamaPartialMergeRecursive(p.N, r.N)",
-				"p.PN = kamaPartialMergeRecursive(p.PN, r.PN)",
-				"p.L = kamaPartialMergeRecursive(p.L, r.L)",
-				"p.I = kamaPartialMergeOverwrite(p.I, r.I)",
-				"p.E = kamaPartialMergeOverwriteElastic(p.E, r.E)",
-				"p.S2 = kamaPartialMergeOverwrite(p.S2, r.S2)",
-				"p.N3 = kamaPartialMergeRecursive(p.N3, r.N3)",
-				"p.L2 = kamaPartialMergeAppendSlice(p.L2, r.L2)",
+			want: func(h func(op, doc string) string) []string {
+				return []string{
+					overwrite("S"),
+					overwrite("M"),
+					merge(h, "MergeRecursive", "NPartial", "N"),
+					merge(h, "MergeRecursive", "NPartial", "PN"),
+					merge(h, "MergeRecursive", "LPartial", "L"),
+					overwrite("I"),
+					overwrite("E"),
+					overwrite("S2"),
+					merge(h, "MergeRecursive", "NPartial", "N3"),
+					merge(h, "MergeAppend", "LPartial", "L2"),
+				}
 			},
-			l: "return kamaPartialOverwriteSlice(p, r)",
+			l: "if r == nil {\n\t\treturn p\n\t}\n\treturn r\n",
 		},
 		{
 			name: "append and overwrite",
 			opts: Options{Merge: MergeAppend, MergeNested: MergeNestedOverwrite},
-			want: []string{
-				"p.S = kamaPartialMergeAppendSlice(p.S, r.S)",
-				"p.M = kamaPartialMergeAppendMap(p.M, r.M)",
-				"p.N = kamaPartialMergeOverwrite(p.N, r.N)",
-				"p.PN = kamaPartialMergeOverwrite(p.PN, r.PN)",
-				"p.L = kamaPartialMergeOverwrite(p.L, r.L)",
-				// Plain values have no append.
-				"p.I = kamaPartialMergeOverwrite(p.I, r.I)",
-				"p.E = kamaPartialMergeOverwriteElastic(p.E, r.E)",
-				"p.S2 = kamaPartialMergeOverwrite(p.S2, r.S2)",
-				"p.N3 = kamaPartialMergeRecursive(p.N3, r.N3)",
-				"p.L2 = kamaPartialMergeAppendSlice(p.L2, r.L2)",
+			want: func(h func(op, doc string) string) []string {
+				return []string{
+					merge(h, "MergeAppend", "[]int", "S"),
+					merge(h, "MergeAppend", "map[string]int", "M"),
+					overwrite("N"),
+					overwrite("PN"),
+					overwrite("L"),
+					// Plain values have no append.
+					overwrite("I"),
+					overwrite("E"),
+					overwrite("S2"),
+					merge(h, "MergeRecursive", "NPartial", "N3"),
+					merge(h, "MergeAppend", "LPartial", "L2"),
+				}
 			},
-			l: "return kamaPartialAppendSlice(p, r)",
+			l: "o := make(LPartial, 0, len(p)+len(r))\n",
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			files := generatedWith(t, src, c.opts)
 			fs := funcs(t, files["a.kama_partial.go"])
-			for _, w := range c.want {
+			for _, w := range c.want(helperIn(t, files["a.kama_partial.go"])) {
 				assert.Assert(
 					t,
 					strings.Contains(fs["APartial.Merge"], w),
@@ -352,28 +401,73 @@ type L []int
 	}
 }
 
-func TestHelpersFile(t *testing.T) {
+// TestHelperPlacement checks that each helper is declared once in the
+// package, in the first partial file calling it, and only when called.
+func TestHelperPlacement(t *testing.T) {
 	files := generated(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ X int }\n",
-		"b.go": "package x\n\n//kama:partial\ntype B struct{ X []int }\n",
+		"b.go": "package x\n\n//kama:partial\ntype B struct{ N *N }\n\ntype N struct{ I int }\n",
+		"c.go": "package x\n\n//kama:partial\ntype C struct {\n\tN *N\n" +
+			"\t//kama:partial:merge append\n\tM map[string]int\n}\n",
 	})
-	h := files[HelpersFile]
-	assert.Assert(t, strings.HasPrefix(h, testHeader+"\n\npackage x\n"), h)
-
-	var names []string
-	for name := range funcs(t, h) {
-		names = append(names, name)
+	declared := map[string][]string{}
+	for _, name := range slices.Sorted(maps.Keys(files)) {
+		for fn := range funcs(t, files[name]) {
+			if strings.HasPrefix(fn, "kamaPartial") {
+				declared[fn] = append(declared[fn], name)
+			}
+		}
 	}
-	slices.Sort(names)
-	// The file holds every helper, used or not, so it does not depend on
-	// the build variant loaded.
-	assert.DeepEqual(t, names, helperNames())
-	assert.Assert(t, strings.Contains(h, `import (
-	"fmt"
-	"github.com/ngicks/option/elastic"
-	"github.com/ngicks/option/opt"
-	"github.com/ngicks/option/und"
-	"maps"
-	"reflect"
-)`), h)
+	h := helperIn(t, slices.Collect(maps.Values(files))...)
+	assert.DeepEqual(t, declared, map[string][]string{
+		h("FromTarget", "converts *N into und.Und[NPartial],"): {"b.kama_partial.go"},
+		h("ToTarget", "converts und.Und[NPartial] into *N,"):   {"b.kama_partial.go"},
+		h("MergeRecursive", "both und.Und[NPartial]:"):         {"b.kama_partial.go"},
+		h("MergeAppend", "both und.Und[map[string]int]:"):      {"c.kama_partial.go"},
+	})
+	// a.go calls no helper and spells no helper import.
+	assert.Assert(t, !strings.Contains(files["a.kama_partial.go"], `"maps"`))
+	c := files["c.kama_partial.go"]
+	assert.Assert(t, strings.Contains(c, `"maps"`), c)
+	assert.Assert(t, !strings.Contains(files["b.kama_partial.go"], `"maps"`))
+}
+
+// TestHelperNamesSamePackageName gives types of two packages of one name
+// helpers of their own.
+func TestHelperNamesSamePackageName(t *testing.T) {
+	files := map[string]string{
+		"a.go": "package x\n\nimport (\n\t\"" + modulePath(t) + "/one/v\"\n\tw \"" + modulePath(t) +
+			"/two/v\"\n)\n\n//kama:partial\ntype A struct {\n\t//kama:partial:merge append\n" +
+			"\tX []v.T\n\t//kama:partial:merge append\n\tY []w.T\n}\n",
+		"one/v/v.go": "package v\n\ntype T int\n",
+		"two/v/v.go": "package v\n\ntype T string\n",
+	}
+	src := generated(t, files)["a.kama_partial.go"]
+	fs := funcs(t, src)
+	call := regexp.MustCompile(`p\.([XY]) = (kamaPartialMergeAppend_[0-9a-f_]+)\(`)
+	names := map[string]string{}
+	for _, m := range call.FindAllStringSubmatch(fs["APartial.Merge"], -1) {
+		names[m[1]] = m[2]
+	}
+	assert.Equal(t, len(names), 2, fs["APartial.Merge"])
+	assert.Assert(t, names["X"] != names["Y"], src)
+	for _, name := range names {
+		assert.Assert(t, fs[name] != "", "%s is not declared", name)
+	}
+	assert.NilError(t, generateAndBuild(t, files))
+}
+
+// TestHelperDeclared reports a declaration named like a helper.
+func TestHelperDeclared(t *testing.T) {
+	const src = "package x\n\n//kama:partial\ntype A struct{ X M }\n\ntype M struct{}\n"
+	name := helperIn(t, generated(t, map[string]string{"x.go": src})["x.kama_partial.go"])(
+		"FromTarget", "converts M into und.Und[MPartial],")
+	_, err := generate(t, map[string]string{
+		"x.go": "package x\n\n//kama:partial\ntype A struct{ X M }\n\n" +
+			"type M struct{}\n\nfunc " + name + "() {}\n",
+	}, Options{})
+	assert.ErrorIs(t, err, ErrConflict)
+	assert.ErrorContains(t, err, "x.go:8:6")
+	assert.ErrorContains(t, err, name)
+	assert.ErrorContains(t, err, "helper")
 }

@@ -329,13 +329,6 @@ func TestTargetErrors(t *testing.T) {
 			contains: []string{"x.go:5:2", "method Merge"},
 		},
 		{
-			name: "helper declared",
-			src: "package x\n\n//kama:partial\ntype A struct{ X int }\n\n" +
-				"func kamaPartialFromValue() {}\n",
-			is:       ErrConflict,
-			contains: []string{"x.go:6:6", "kamaPartialFromValue"},
-		},
-		{
 			name:     "name conflict",
 			src:      "package x\n\n//kama:partial\ntype A struct{}\n\ntype APartial struct{}\n",
 			is:       ErrConflict,
@@ -419,7 +412,6 @@ type L []S
 		"a.kama_partial.go",
 		"file.kama_partial.go",
 		FlagSetFile,
-		HelpersFile,
 		"types.kama_partial.go",
 	})
 	assert.DeepEqual(t, partialTypes(t, files["a.kama_partial.go"]), []string{
@@ -454,9 +446,14 @@ func fieldTypes(t *testing.T, src, name string) map[string][2]string {
 
 	f, err := parser.ParseFile(token.NewFileSet(), "x.go", src, 0)
 	assert.NilError(t, err)
-	obj := f.Scope.Lookup(name)
-	assert.Assert(t, obj != nil, name)
-	st := obj.Decl.(*ast.TypeSpec).Type.(*ast.StructType)
+	var st *ast.StructType
+	ast.Inspect(f, func(n ast.Node) bool {
+		if ts, ok := n.(*ast.TypeSpec); ok && ts.Name.Name == name {
+			st, _ = ts.Type.(*ast.StructType)
+		}
+		return st == nil
+	})
+	assert.Assert(t, st != nil, name)
 
 	out := map[string][2]string{}
 	for _, fl := range st.Fields.List {
@@ -585,11 +582,9 @@ func TestImports(t *testing.T) {
 		strings.Contains(files["b.kama_partial.go"], `import "github.com/ngicks/option/und"`),
 		files["b.kama_partial.go"],
 	)
-	for name, src := range files {
+	for _, src := range files {
 		assert.Assert(t, strings.HasPrefix(src, testHeader+"\n\npackage x\n"), src)
-		if name != HelpersFile {
-			assert.Assert(t, strings.Contains(src, "\n//kama:generated kama-partial\ntype "), src)
-		}
+		assert.Assert(t, strings.Contains(src, "\n//kama:generated kama-partial\ntype "), src)
 	}
 }
 

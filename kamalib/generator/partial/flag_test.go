@@ -186,7 +186,7 @@ func TestFlagSetFile(t *testing.T) {
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n",
 	})
 	assert.DeepEqual(t, slices.Sorted(maps.Keys(files)), []string{
-		"a.kama_partial.go", FlagSetFile, HelpersFile,
+		"a.kama_partial.go", FlagSetFile,
 	})
 	assert.Assert(t, !strings.Contains(files["a.kama_partial.go"], "RegisterFlags"))
 	unflagged := files[FlagSetFile]
@@ -196,7 +196,7 @@ func TestFlagSetFile(t *testing.T) {
 			"\t//kama:partial:flag name=b\n\tB string\n\tC int\n}\n",
 	})
 	assert.DeepEqual(t, slices.Sorted(maps.Keys(files)), []string{
-		"a.kama_partial.go", FlagSetFile, HelpersFile,
+		"a.kama_partial.go", FlagSetFile,
 	})
 	src := files[FlagSetFile]
 	assert.Equal(t, src, unflagged)

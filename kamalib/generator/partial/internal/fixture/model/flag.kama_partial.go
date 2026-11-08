@@ -2,11 +2,12 @@
 //
 // generator: kama-partial
 // params: merge=overwrite merge_nested=recursive option_file=none
-// generated: 2026-11-03T21:41:56Z
+// generated: 2026-11-08T11:13:37Z
 
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ngicks/option/und"
@@ -43,26 +44,26 @@ type FlagsPartial struct {
 //
 //kama:generated kama-partial
 func (p *FlagsPartial) FromValue(v Flags) {
-	p.Name = kamaPartialFromValue(v.Name)
-	p.Verbose = kamaPartialFromValue(v.Verbose)
-	p.Count = kamaPartialFromValue(v.Count)
-	p.Size = kamaPartialFromValue(v.Size)
-	p.Workers = kamaPartialFromValue(v.Workers)
-	p.Limit = kamaPartialFromValue(v.Limit)
-	p.Ratio = kamaPartialFromValue(v.Ratio)
-	p.Timeout = kamaPartialFromValue(v.Timeout)
-	p.Tags = kamaPartialFromSlice(v.Tags)
-	p.Labels = kamaPartialFromMap(v.Labels)
-	p.Level = kamaPartialFromValue(v.Level)
-	p.Since = kamaPartialFromValue(v.Since)
-	p.Mode = kamaPartialFromValue(v.Mode)
-	p.Hosts = kamaPartialFromSlice(v.Hosts)
-	p.Retry = kamaPartialFromOption(v.Retry)
-	p.Nick = kamaPartialFromPointer(v.Nick)
+	p.Name = und.Defined(v.Name)
+	p.Verbose = und.Defined(v.Verbose)
+	p.Count = und.Defined(v.Count)
+	p.Size = und.Defined(v.Size)
+	p.Workers = und.Defined(v.Workers)
+	p.Limit = und.Defined(v.Limit)
+	p.Ratio = und.Defined(v.Ratio)
+	p.Timeout = und.Defined(v.Timeout)
+	p.Tags = und.WrapSlice(v.Tags).CollapseToNull()
+	p.Labels = und.WrapMap(v.Labels).CollapseToNull()
+	p.Level = und.Defined(v.Level)
+	p.Since = und.Defined(v.Since)
+	p.Mode = und.Defined(v.Mode)
+	p.Hosts = und.WrapSlice(v.Hosts).CollapseToNull()
+	p.Retry = und.FromOption(v.Retry, true)
+	p.Nick = und.FromPointer(v.Nick).CollapseToNull()
 	p.Port = v.Port
-	p.MinLevel = kamaPartialFromPointer(v.MinLevel)
-	p.Unflagged = kamaPartialFromValue(v.Unflagged)
-	kamaPartialFromTarget(&p.Nested, v.Nested)
+	p.MinLevel = und.FromPointer(v.MinLevel).CollapseToNull()
+	p.Unflagged = und.Defined(v.Unflagged)
+	p.Nested = kamaPartialFromTarget_70ed9c9af6_e1ff8a0c46(v.Nested)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -71,26 +72,32 @@ func (p *FlagsPartial) FromValue(v Flags) {
 //kama:generated kama-partial
 func (p FlagsPartial) ToValue() Flags {
 	var v Flags
-	v.Name = kamaPartialToValue(p.Name)
-	v.Verbose = kamaPartialToValue(p.Verbose)
-	v.Count = kamaPartialToValue(p.Count)
-	v.Size = kamaPartialToValue(p.Size)
-	v.Workers = kamaPartialToValue(p.Workers)
-	v.Limit = kamaPartialToValue(p.Limit)
-	v.Ratio = kamaPartialToValue(p.Ratio)
-	v.Timeout = kamaPartialToValue(p.Timeout)
-	v.Tags = kamaPartialToValue(p.Tags)
-	v.Labels = kamaPartialToValue(p.Labels)
-	v.Level = kamaPartialToValue(p.Level)
-	v.Since = kamaPartialToValue(p.Since)
-	v.Mode = kamaPartialToValue(p.Mode)
-	v.Hosts = kamaPartialToValue(p.Hosts)
-	v.Retry = kamaPartialToOption(p.Retry)
-	v.Nick = kamaPartialToPointer(p.Nick)
+	v.Name = p.Name.Value()
+	v.Verbose = p.Verbose.Value()
+	v.Count = p.Count.Value()
+	v.Size = p.Size.Value()
+	v.Workers = p.Workers.Value()
+	v.Limit = p.Limit.Value()
+	v.Ratio = p.Ratio.Value()
+	v.Timeout = p.Timeout.Value()
+	v.Tags = p.Tags.Value()
+	v.Labels = p.Labels.Value()
+	v.Level = p.Level.Value()
+	v.Since = p.Since.Value()
+	v.Mode = p.Mode.Value()
+	v.Hosts = p.Hosts.Value()
+	v.Retry = p.Retry.Flatten()
+	if p.Nick.IsDefined() {
+		o := p.Nick.Value()
+		v.Nick = &o
+	}
 	v.Port = p.Port
-	v.MinLevel = kamaPartialToPointer(p.MinLevel)
-	v.Unflagged = kamaPartialToValue(p.Unflagged)
-	kamaPartialToTarget(&v.Nested, p.Nested)
+	if p.MinLevel.IsDefined() {
+		o := p.MinLevel.Value()
+		v.MinLevel = &o
+	}
+	v.Unflagged = p.Unflagged.Value()
+	v.Nested = p.Nested.Value().ToValue()
 	return v
 }
 
@@ -99,26 +106,64 @@ func (p FlagsPartial) ToValue() Flags {
 //
 //kama:generated kama-partial
 func (p FlagsPartial) Merge(r FlagsPartial) FlagsPartial {
-	p.Name = kamaPartialMergeOverwrite(p.Name, r.Name)
-	p.Verbose = kamaPartialMergeOverwrite(p.Verbose, r.Verbose)
-	p.Count = kamaPartialMergeOverwrite(p.Count, r.Count)
-	p.Size = kamaPartialMergeOverwrite(p.Size, r.Size)
-	p.Workers = kamaPartialMergeOverwrite(p.Workers, r.Workers)
-	p.Limit = kamaPartialMergeOverwrite(p.Limit, r.Limit)
-	p.Ratio = kamaPartialMergeOverwrite(p.Ratio, r.Ratio)
-	p.Timeout = kamaPartialMergeOverwrite(p.Timeout, r.Timeout)
-	p.Tags = kamaPartialMergeOverwrite(p.Tags, r.Tags)
-	p.Labels = kamaPartialMergeOverwrite(p.Labels, r.Labels)
-	p.Level = kamaPartialMergeOverwrite(p.Level, r.Level)
-	p.Since = kamaPartialMergeOverwrite(p.Since, r.Since)
-	p.Mode = kamaPartialMergeOverwrite(p.Mode, r.Mode)
-	p.Hosts = kamaPartialMergeOverwrite(p.Hosts, r.Hosts)
-	p.Retry = kamaPartialMergeOverwrite(p.Retry, r.Retry)
-	p.Nick = kamaPartialMergeOverwrite(p.Nick, r.Nick)
-	p.Port = kamaPartialMergeOverwrite(p.Port, r.Port)
-	p.MinLevel = kamaPartialMergeOverwrite(p.MinLevel, r.MinLevel)
-	p.Unflagged = kamaPartialMergeOverwrite(p.Unflagged, r.Unflagged)
-	p.Nested = kamaPartialMergeRecursive(p.Nested, r.Nested)
+	if !r.Name.IsUndefined() {
+		p.Name = r.Name
+	}
+	if !r.Verbose.IsUndefined() {
+		p.Verbose = r.Verbose
+	}
+	if !r.Count.IsUndefined() {
+		p.Count = r.Count
+	}
+	if !r.Size.IsUndefined() {
+		p.Size = r.Size
+	}
+	if !r.Workers.IsUndefined() {
+		p.Workers = r.Workers
+	}
+	if !r.Limit.IsUndefined() {
+		p.Limit = r.Limit
+	}
+	if !r.Ratio.IsUndefined() {
+		p.Ratio = r.Ratio
+	}
+	if !r.Timeout.IsUndefined() {
+		p.Timeout = r.Timeout
+	}
+	if !r.Tags.IsUndefined() {
+		p.Tags = r.Tags
+	}
+	if !r.Labels.IsUndefined() {
+		p.Labels = r.Labels
+	}
+	if !r.Level.IsUndefined() {
+		p.Level = r.Level
+	}
+	if !r.Since.IsUndefined() {
+		p.Since = r.Since
+	}
+	if !r.Mode.IsUndefined() {
+		p.Mode = r.Mode
+	}
+	if !r.Hosts.IsUndefined() {
+		p.Hosts = r.Hosts
+	}
+	if !r.Retry.IsUndefined() {
+		p.Retry = r.Retry
+	}
+	if !r.Nick.IsUndefined() {
+		p.Nick = r.Nick
+	}
+	if !r.Port.IsUndefined() {
+		p.Port = r.Port
+	}
+	if !r.MinLevel.IsUndefined() {
+		p.MinLevel = r.MinLevel
+	}
+	if !r.Unflagged.IsUndefined() {
+		p.Unflagged = r.Unflagged
+	}
+	p.Nested = kamaPartialMergeRecursive_251d1aec18_e1ff8a0c46(p.Nested, r.Nested)
 	return p
 }
 
@@ -168,137 +213,168 @@ func (p *FlagsPartial) FromFlagSet(f PartialFlagSet) error {
 	if f.Changed("name") {
 		v, err := f.GetString("name")
 		if err != nil {
-			return kamaPartialFlagError("name", err)
+			return fmt.Errorf("flag --%s: %w", "name", err)
 		}
-		p.Name = kamaPartialFromValue(v)
+		p.Name = und.Defined(v)
 	}
 	if f.Changed("verbose") {
 		v, err := f.GetBool("verbose")
 		if err != nil {
-			return kamaPartialFlagError("verbose", err)
+			return fmt.Errorf("flag --%s: %w", "verbose", err)
 		}
-		p.Verbose = kamaPartialFromValue(v)
+		p.Verbose = und.Defined(v)
 	}
 	if f.Changed("count") {
 		v, err := f.GetInt("count")
 		if err != nil {
-			return kamaPartialFlagError("count", err)
+			return fmt.Errorf("flag --%s: %w", "count", err)
 		}
-		p.Count = kamaPartialFromValue(v)
+		p.Count = und.Defined(v)
 	}
 	if f.Changed("size") {
 		v, err := f.GetInt64("size")
 		if err != nil {
-			return kamaPartialFlagError("size", err)
+			return fmt.Errorf("flag --%s: %w", "size", err)
 		}
-		p.Size = kamaPartialFromValue(v)
+		p.Size = und.Defined(v)
 	}
 	if f.Changed("workers") {
 		v, err := f.GetUint("workers")
 		if err != nil {
-			return kamaPartialFlagError("workers", err)
+			return fmt.Errorf("flag --%s: %w", "workers", err)
 		}
-		p.Workers = kamaPartialFromValue(v)
+		p.Workers = und.Defined(v)
 	}
 	if f.Changed("limit") {
 		v, err := f.GetUint64("limit")
 		if err != nil {
-			return kamaPartialFlagError("limit", err)
+			return fmt.Errorf("flag --%s: %w", "limit", err)
 		}
-		p.Limit = kamaPartialFromValue(v)
+		p.Limit = und.Defined(v)
 	}
 	if f.Changed("ratio") {
 		v, err := f.GetFloat64("ratio")
 		if err != nil {
-			return kamaPartialFlagError("ratio", err)
+			return fmt.Errorf("flag --%s: %w", "ratio", err)
 		}
-		p.Ratio = kamaPartialFromValue(v)
+		p.Ratio = und.Defined(v)
 	}
 	if f.Changed("timeout") {
 		v, err := f.GetDuration("timeout")
 		if err != nil {
-			return kamaPartialFlagError("timeout", err)
+			return fmt.Errorf("flag --%s: %w", "timeout", err)
 		}
-		p.Timeout = kamaPartialFromValue(v)
+		p.Timeout = und.Defined(v)
 	}
 	if f.Changed("tag") {
 		v, err := f.GetStringSlice("tag")
 		if err != nil {
-			return kamaPartialFlagError("tag", err)
+			return fmt.Errorf("flag --%s: %w", "tag", err)
 		}
-		p.Tags = kamaPartialFromValue(v)
+		p.Tags = und.Defined(v)
 	}
 	if f.Changed("label") {
 		v, err := f.GetStringToString("label")
 		if err != nil {
-			return kamaPartialFlagError("label", err)
+			return fmt.Errorf("flag --%s: %w", "label", err)
 		}
-		p.Labels = kamaPartialFromValue(v)
+		p.Labels = und.Defined(v)
 	}
 	if f.Changed("level") {
 		v, err := f.GetString("level")
 		if err != nil {
-			return kamaPartialFlagError("level", err)
+			return fmt.Errorf("flag --%s: %w", "level", err)
 		}
-		err = kamaPartialFromText(&p.Level, v)
+		var x LogLevel
+		err = x.UnmarshalText([]byte(v))
 		if err != nil {
-			return kamaPartialFlagError("level", err)
+			return fmt.Errorf("flag --%s: %w", "level", err)
 		}
+		p.Level = und.Defined(x)
 	}
 	if f.Changed("since") {
 		v, err := f.GetString("since")
 		if err != nil {
-			return kamaPartialFlagError("since", err)
+			return fmt.Errorf("flag --%s: %w", "since", err)
 		}
-		err = kamaPartialFromText(&p.Since, v)
+		var x time.Time
+		err = x.UnmarshalText([]byte(v))
 		if err != nil {
-			return kamaPartialFlagError("since", err)
+			return fmt.Errorf("flag --%s: %w", "since", err)
 		}
+		p.Since = und.Defined(x)
 	}
 	if f.Changed("mode") {
 		v, err := f.GetString("mode")
 		if err != nil {
-			return kamaPartialFlagError("mode", err)
+			return fmt.Errorf("flag --%s: %w", "mode", err)
 		}
-		p.Mode = kamaPartialFromValue(Mode(v))
+		p.Mode = und.Defined(Mode(v))
 	}
 	if f.Changed("host") {
 		v, err := f.GetStringSlice("host")
 		if err != nil {
-			return kamaPartialFlagError("host", err)
+			return fmt.Errorf("flag --%s: %w", "host", err)
 		}
-		p.Hosts = kamaPartialFromValue(Hosts(v))
+		p.Hosts = und.Defined(Hosts(v))
 	}
 	if f.Changed("retry") {
 		v, err := f.GetInt("retry")
 		if err != nil {
-			return kamaPartialFlagError("retry", err)
+			return fmt.Errorf("flag --%s: %w", "retry", err)
 		}
-		p.Retry = kamaPartialFromValue(v)
+		p.Retry = und.Defined(v)
 	}
 	if f.Changed("nick") {
 		v, err := f.GetString("nick")
 		if err != nil {
-			return kamaPartialFlagError("nick", err)
+			return fmt.Errorf("flag --%s: %w", "nick", err)
 		}
-		p.Nick = kamaPartialFromValue(v)
+		p.Nick = und.Defined(v)
 	}
 	if f.Changed("port") {
 		v, err := f.GetInt("port")
 		if err != nil {
-			return kamaPartialFlagError("port", err)
+			return fmt.Errorf("flag --%s: %w", "port", err)
 		}
-		p.Port = kamaPartialFromValue(v)
+		p.Port = und.Defined(v)
 	}
 	if f.Changed("min-level") {
 		v, err := f.GetString("min-level")
 		if err != nil {
-			return kamaPartialFlagError("min-level", err)
+			return fmt.Errorf("flag --%s: %w", "min-level", err)
 		}
-		err = kamaPartialFromText(&p.MinLevel, v)
+		var x LogLevel
+		err = x.UnmarshalText([]byte(v))
 		if err != nil {
-			return kamaPartialFlagError("min-level", err)
+			return fmt.Errorf("flag --%s: %w", "min-level", err)
 		}
+		p.MinLevel = und.Defined(x)
 	}
 	return nil
+}
+
+// kamaPartialFromTarget_70ed9c9af6_e1ff8a0c46 converts Address into
+// und.Und[AddressPartial], defined.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_70ed9c9af6_e1ff8a0c46(v Address) und.Und[AddressPartial] {
+	var x AddressPartial
+	x.FromValue(v)
+	return und.Defined(x)
+}
+
+// kamaPartialMergeRecursive_251d1aec18_e1ff8a0c46 merges r onto l, both
+// und.Und[AddressPartial]: it returns the merge of their values when both
+// are defined, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_251d1aec18_e1ff8a0c46(l, r und.Und[AddressPartial]) und.Und[AddressPartial] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() {
+		return r
+	}
+	return und.Defined(l.Value().Merge(r.Value()))
 }

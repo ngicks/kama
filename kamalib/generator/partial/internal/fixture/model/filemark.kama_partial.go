@@ -2,7 +2,7 @@
 //
 // generator: kama-partial
 // params: merge=overwrite merge_nested=recursive option_file=none
-// generated: 2026-11-03T21:41:56Z
+// generated: 2026-11-08T11:13:37Z
 
 package model
 
@@ -22,9 +22,9 @@ type ConfigPartial struct {
 //
 //kama:generated kama-partial
 func (p *ConfigPartial) FromValue(v Config) {
-	kamaPartialFromTarget(&p.Limits, v.Limits)
-	p.Level = kamaPartialFromValue(v.Level)
-	p.Meta = kamaPartialFromValue(v.Meta)
+	p.Limits = kamaPartialFromTarget_02ffa29b15_37447b88c1(v.Limits)
+	p.Level = und.Defined(v.Level)
+	p.Meta = und.Defined(v.Meta)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -33,9 +33,9 @@ func (p *ConfigPartial) FromValue(v Config) {
 //kama:generated kama-partial
 func (p ConfigPartial) ToValue() Config {
 	var v Config
-	kamaPartialToTarget(&v.Limits, p.Limits)
-	v.Level = kamaPartialToValue(p.Level)
-	v.Meta = kamaPartialToValue(p.Meta)
+	v.Limits = p.Limits.Value().ToValue()
+	v.Level = p.Level.Value()
+	v.Meta = p.Meta.Value()
 	return v
 }
 
@@ -44,9 +44,13 @@ func (p ConfigPartial) ToValue() Config {
 //
 //kama:generated kama-partial
 func (p ConfigPartial) Merge(r ConfigPartial) ConfigPartial {
-	p.Limits = kamaPartialMergeRecursive(p.Limits, r.Limits)
-	p.Level = kamaPartialMergeOverwrite(p.Level, r.Level)
-	p.Meta = kamaPartialMergeOverwrite(p.Meta, r.Meta)
+	p.Limits = kamaPartialMergeRecursive_b7b54a5d6e_37447b88c1(p.Limits, r.Limits)
+	if !r.Level.IsUndefined() {
+		p.Level = r.Level
+	}
+	if !r.Meta.IsUndefined() {
+		p.Meta = r.Meta
+	}
 	return p
 }
 
@@ -72,7 +76,7 @@ type LimitsPartial struct {
 //
 //kama:generated kama-partial
 func (p *LimitsPartial) FromValue(v Limits) {
-	p.Max = kamaPartialFromValue(v.Max)
+	p.Max = und.Defined(v.Max)
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -81,7 +85,7 @@ func (p *LimitsPartial) FromValue(v Limits) {
 //kama:generated kama-partial
 func (p LimitsPartial) ToValue() Limits {
 	var v Limits
-	v.Max = kamaPartialToValue(p.Max)
+	v.Max = p.Max.Value()
 	return v
 }
 
@@ -90,7 +94,9 @@ func (p LimitsPartial) ToValue() Limits {
 //
 //kama:generated kama-partial
 func (p LimitsPartial) Merge(r LimitsPartial) LimitsPartial {
-	p.Max = kamaPartialMergeOverwrite(p.Max, r.Max)
+	if !r.Max.IsUndefined() {
+		p.Max = r.Max
+	}
 	return p
 }
 
@@ -102,4 +108,29 @@ func (p LimitsPartial) ApplyTo(v Limits) Limits {
 	var base LimitsPartial
 	base.FromValue(v)
 	return base.Merge(p).ToValue()
+}
+
+// kamaPartialFromTarget_02ffa29b15_37447b88c1 converts Limits into
+// und.Und[LimitsPartial], defined.
+//
+//kama:generated kama-partial
+func kamaPartialFromTarget_02ffa29b15_37447b88c1(v Limits) und.Und[LimitsPartial] {
+	var x LimitsPartial
+	x.FromValue(v)
+	return und.Defined(x)
+}
+
+// kamaPartialMergeRecursive_b7b54a5d6e_37447b88c1 merges r onto l, both
+// und.Und[LimitsPartial]: it returns the merge of their values when both
+// are defined, l when r is undefined, and r otherwise.
+//
+//kama:generated kama-partial
+func kamaPartialMergeRecursive_b7b54a5d6e_37447b88c1(l, r und.Und[LimitsPartial]) und.Und[LimitsPartial] {
+	if r.IsUndefined() {
+		return l
+	}
+	if !l.IsDefined() || !r.IsDefined() {
+		return r
+	}
+	return und.Defined(l.Value().Merge(r.Value()))
 }

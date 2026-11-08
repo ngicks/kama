@@ -53,11 +53,12 @@ var (
 	// ErrConflict reports a name the generated declarations would collide
 	// with or shadow: a partial type, a method of one, a helper or the
 	// flag set interface declared by something other than the generator, a
-	// declaration the generator did not write in the helpers or flag set
-	// file, two partial fields with one name or a partial field named like a
-	// method, a type parameter named like a predeclared identifier or like a
-	// name the declarations refer to, and a package-level declaration named
-	// like a predeclared identifier the generated code spells.
+	// declaration the generator did not write in the flag set file, two
+	// partial fields with one name or a partial field named like a method,
+	// more helpers sharing one hashed name than suffixes tell apart, a type
+	// parameter named like a predeclared identifier or like a name the
+	// declarations refer to, and a package-level declaration named like a
+	// predeclared identifier the generated code spells.
 	ErrConflict = errors.New("partial: name conflict")
 	// ErrOption reports an invalid Options value.
 	ErrOption = errors.New("partial: invalid option")
@@ -153,14 +154,14 @@ type File struct {
 
 // Generate returns the partial type declarations and their methods for
 // the targets in pkgs, one file per source file declaring targets, and the
-// helpers file and the flag set file of each package holding targets,
-// sorted by path. See the package documentation for target selection, the
-// type mapping and the methods.
+// flag set file of each package holding targets, sorted by path. See the
+// package documentation for target selection, the type mapping, the
+// methods and their helpers.
 //
 // The warnings wrap ErrStale, one for each file of pkgs carrying the
 // marker of the generator that is not among the returned files, sorted by
-// path. The helpers file and the flag set file of a package the run
-// produces no files for are not reported.
+// path. The flag set file of a package the run produces no files for is
+// not reported.
 //
 // pkgs must be loaded as gopackages.Load does. Test variants are skipped.
 // The returned content is not formatted beyond what printing the syntax
@@ -184,62 +185,62 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		byFile[name] = append(byFile[name], n)
 	}
 
-	type pkgHelpers struct {
-		pkg *packages.Package
-		dir string
-		// contents are the files generated into the package.
-		contents [][]byte
+	type pkgFiles struct {
+		pkg   *packages.Package
+		dir   string
+		files []*partialFile
 	}
-	byPkg := map[string]*pkgHelpers{}
-
-	files := make([]File, 0, len(byFile))
+	byPkg := map[string]*pkgFiles{}
 	for _, name := range slices.Sorted(maps.Keys(byFile)) {
 		nodes := byFile[name]
 		slices.SortFunc(nodes, func(a, b *typegraph.Node) int {
 			return cmp.Compare(a.Detail.Ts.Pos(), b.Detail.Ts.Pos())
 		})
-
-		content, err := renderFile(sel, hdr, nodes)
-		if err != nil {
-			return nil, nil, err
-		}
-		files = append(files, File{
-			Path: filepath.Join(
-				filepath.Dir(name),
-				suffix.SuffixFilename(filepath.Base(name), FileSuffix),
-			),
-			Content: content,
-		})
-
 		pkg := nodes[0].Detail.Pkg
-		h := byPkg[pkg.PkgPath]
-		if h == nil {
-			h = &pkgHelpers{pkg: pkg, dir: filepath.Dir(name)}
-			byPkg[pkg.PkgPath] = h
+		pf := byPkg[pkg.PkgPath]
+		if pf == nil {
+			pf = &pkgFiles{pkg: pkg, dir: filepath.Dir(name)}
+			byPkg[pkg.PkgPath] = pf
 		}
-		h.contents = append(h.contents, content)
+		base := filepath.Base(name)
+		out := suffix.SuffixFilename(base, FileSuffix)
+		_, constrained := buildConstraint(nodes[0].Detail.File)
+		pf.files = append(pf.files, &partialFile{
+			path:  filepath.Join(filepath.Dir(name), out),
+			nodes: nodes,
+			// The suffix moves after a constraint of the file name only.
+			constrained: constrained ||
+				out != strings.TrimSuffix(base, ".go")+FileSuffix+".go",
+		})
 	}
 
+	var files []File
 	for _, pkgPath := range slices.Sorted(maps.Keys(byPkg)) {
-		h := byPkg[pkgPath]
-		content, err := renderHelpers(h.pkg, hdr)
+		pf := byPkg[pkgPath]
+		slices.SortFunc(
+			pf.files,
+			func(a, b *partialFile) int { return cmp.Compare(a.path, b.path) },
+		)
+		out, err := renderPackage(sel, hdr, pf.pkg, pf.files)
 		if err != nil {
 			return nil, nil, err
 		}
-		files = append(files, File{Path: filepath.Join(h.dir, HelpersFile), Content: content})
-		h.contents = append(h.contents, content)
-		// The flag set holds every method any flag kind calls, like the
-		// helpers file holds every helper: a partial file of a build variant
-		// other than the one loaded keeps calling the methods its flags use.
-		content, err = renderFlagSet(h.pkg, hdr)
+		// The flag set holds every method any flag kind calls: a partial
+		// file of a build variant other than the one loaded keeps calling the
+		// methods its flags use.
+		content, err := renderFlagSet(pf.pkg, hdr)
 		if err != nil {
 			return nil, nil, err
 		}
-		files = append(files, File{Path: filepath.Join(h.dir, FlagSetFile), Content: content})
-		h.contents = append(h.contents, content)
-		if err := checkPredeclared(h.pkg, h.contents); err != nil {
+		out = append(out, File{Path: filepath.Join(pf.dir, FlagSetFile), Content: content})
+		contents := make([][]byte, 0, len(out))
+		for _, f := range out {
+			contents = append(contents, f.Content)
+		}
+		if err := checkPredeclared(pf.pkg, contents); err != nil {
 			return nil, nil, err
 		}
+		files = append(files, out...)
 	}
 	slices.SortFunc(files, func(a, b File) int { return cmp.Compare(a.Path, b.Path) })
 	generated := map[string]bool{}
@@ -247,6 +248,78 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		generated[pkgPath] = true
 	}
 	return files, staleFiles(srcPkgs, opts.Registry, files, generated), nil
+}
+
+// renderPackage prints the partial files of pkg, sorted by path.
+//
+// A helper is declared in one file of the package, which the files calling
+// it must agree on before any is printed. A first pass therefore collects
+// the helpers each file calls and the packages of supportPaths it spells,
+// with every one of them required. The second pass prints each file
+// requiring only those it spells, with the helpers it hosts: a required
+// import is added whether the file uses it or not.
+func renderPackage(
+	sel *selection,
+	hdr dst.Decorations,
+	pkg *packages.Package,
+	files []*partialFile,
+) ([]File, error) {
+	helpers := newHelperSet()
+	for _, f := range files {
+		_, p, err := renderFileWith(sel, hdr, pkg, f, supportPaths, helpers, nil)
+		if err != nil {
+			return nil, err
+		}
+		f.calls, f.support = p.calls, p.support
+	}
+	if err := helpers.resolve(); err != nil {
+		return nil, err
+	}
+	for _, f := range files {
+		f.used = map[string]bool{}
+		for h := range f.calls {
+			f.used[helpers.name(h)] = true
+		}
+	}
+	hostHelpers(files)
+	if err := checkHelperNames(sel, pkg, files); err != nil {
+		return nil, err
+	}
+
+	out := make([]File, 0, len(files))
+	for _, f := range files {
+		require := maps.Clone(f.support)
+		for _, name := range f.hosted {
+			maps.Copy(require, helpers.byName[name].spelled)
+		}
+		content, _, err := renderFileWith(
+			sel, hdr, pkg, f, slices.Sorted(maps.Keys(require)), helpers, f.hosted,
+		)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, File{Path: f.path, Content: content})
+	}
+	return out, nil
+}
+
+// checkHelperNames reports a package-level declaration of pkg named like a
+// helper files call that the generator did not write.
+func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFile) error {
+	names := map[string]bool{}
+	for _, f := range files {
+		maps.Copy(names, f.used)
+	}
+	var errs []error
+	for _, name := range slices.Sorted(maps.Keys(names)) {
+		if obj := pkg.Types.Scope().Lookup(name); obj != nil && !sel.generated[obj] {
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: %s.%s is already declared for a helper of the generated methods",
+				ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, name,
+			))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // fileHeader returns the comment lines every generated file starts with.
@@ -332,16 +405,14 @@ func staleFiles(
 			if tf == nil || produced[filepath.Clean(tf.Name())] || !markedFile(f, reg) {
 				continue
 			}
-			// The helpers and flag set files have no build constraint and
-			// serve the partial files of every build variant. A package the
-			// run produced nothing for may still declare targets in files of
-			// a variant not loaded, which keep needing them. A package the run
-			// produced files for always gets both, so they cannot be stale
-			// there and are left to the check above.
-			if !generated[pkg.PkgPath] {
-				if base := filepath.Base(tf.Name()); base == HelpersFile || base == FlagSetFile {
-					continue
-				}
+			// The flag set file has no build constraint and serves the
+			// partial files of every build variant. A package the run
+			// produced nothing for may still declare targets in files of a
+			// variant not loaded, which keep needing it. A package the run
+			// produced files for always gets it, so it cannot be stale there
+			// and is left to the check above.
+			if !generated[pkg.PkgPath] && filepath.Base(tf.Name()) == FlagSetFile {
+				continue
 			}
 			name := tf.Name()
 			if pkg.Module != nil && pkg.Module.Dir != "" {
@@ -416,30 +487,18 @@ func sourcePackages(pkgs []*packages.Package) []*packages.Package {
 	return out
 }
 
-// renderFile prints the partial declarations of nodes, which share a
-// source file.
-func renderFile(sel *selection, hdr dst.Decorations, nodes []*typegraph.Node) ([]byte, error) {
-	pkg := nodes[0].Detail.Pkg
-
-	// The und import is required up front because a package that does not
-	// import it, directly or not, is unknown to the Parser. Requiring it
-	// imports it unconditionally, so a file not using it is rendered again
-	// without.
-	b, p, err := renderFileWith(sel, hdr, pkg, nodes, true)
-	if err != nil || p.usedUnd {
-		return b, err
-	}
-	b, _, err = renderFileWith(sel, hdr, pkg, nodes, false)
-	return b, err
-}
-
+// renderFileWith prints the partial declarations of f and the helpers
+// hosted of helpers, with the packages of require imported.
 func renderFileWith(
 	sel *selection,
 	hdr dst.Decorations,
 	pkg *packages.Package,
-	nodes []*typegraph.Node,
-	requireUnd bool,
+	f *partialFile,
+	require []string,
+	helpers *helperSet,
+	hosted []string,
 ) ([]byte, *mapper, error) {
+	nodes := f.nodes
 	parser := importdecl.NewParser(pkg.Types)
 	// Import names must not be taken by declarations of the package, nor
 	// by the type parameters and locals of the generated declarations,
@@ -448,18 +507,26 @@ func renderFileWith(
 	// package named string would for und.Und[string].
 	parser.Reserve(types.Universe.Names()...)
 	parser.Reserve(pkg.Types.Scope().Names()...)
+	for _, l := range locals(pkg.Types.Scope(), nil) {
+		parser.Reserve(l)
+	}
+	for _, name := range hosted {
+		for _, tp := range helpers.byName[name].typeParams() {
+			parser.Reserve(tp.Obj().Name())
+		}
+	}
 	for _, n := range nodes {
 		for tp := range n.Detail.Type.TypeParams().TypeParams() {
 			parser.Reserve(tp.Obj().Name())
 		}
-		for _, l := range locals(pkg.Types.Scope(), n.Detail.Type.TypeParams()) {
+		for _, l := range locals(pkg.Types.Scope(), tparamNames(n.Detail.Type.TypeParams())) {
 			parser.Reserve(l)
 		}
 		parser.Reserve(methodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams())...)
 	}
-	if requireUnd {
+	for _, path := range require {
 		err := parser.Require(importdecl.Import{
-			Package: importdecl.Package{Path: undPath, Name: "und"},
+			Package: importdecl.Package{Path: path, Name: filepath.Base(path)},
 		})
 		if err != nil {
 			return nil, nil, err
@@ -471,27 +538,51 @@ func renderFileWith(
 	}
 
 	p := &mapper{
-		sel: sel, pkg: pkg, m: m,
+		sel: sel, pkg: pkg, parser: parser, m: m,
+		helpers: helpers, calls: map[*helper]bool{}, support: map[string]bool{},
 	}
-	f := &dst.File{Name: dst.NewIdent(pkg.Name)}
-	f.Decs.Start = append(slices.Clone(hdr), "\n")
+	file := &dst.File{Name: dst.NewIdent(pkg.Name)}
+	file.Decs.Start = append(slices.Clone(hdr), "\n")
 	// The partial types refer to the source types, so they must build under
 	// the same constraint. A constraint in the file name is kept by the
 	// output name.
 	if line, ok := buildConstraint(nodes[0].Detail.File); ok {
-		f.Decs.Start = append(f.Decs.Start, line, "\n")
+		file.Decs.Start = append(file.Decs.Start, line, "\n")
 	}
 	for _, n := range nodes {
 		decls, err := p.decl(n)
 		if err != nil {
 			return nil, nil, err
 		}
-		f.Decls = append(f.Decls, decls...)
+		file.Decls = append(file.Decls, decls...)
 	}
-	m.AddMissingDst(f)
+	if len(hosted) > 0 {
+		var src strings.Builder
+		printf, flush := bufPrintf(&src)
+		printf("package %s\n", pkg.Name)
+		for _, name := range hosted {
+			decl, err := p.helperDecl(name, helpers.byName[name])
+			if err != nil {
+				return nil, nil, err
+			}
+			printf("%s", decl)
+		}
+		if err := flush(); err != nil {
+			return nil, nil, err
+		}
+		hf, err := decorator.Parse(src.String())
+		if err != nil {
+			return nil, nil, fmt.Errorf("partial: parse helpers of %s: %w", f.path, err)
+		}
+		for _, d := range hf.Decls {
+			d.Decorations().Before = dst.EmptyLine
+		}
+		file.Decls = append(file.Decls, hf.Decls...)
+	}
+	m.AddMissingDst(file)
 
 	var buf bytes.Buffer
-	if err := decorator.Fprint(&buf, f); err != nil {
+	if err := decorator.Fprint(&buf, file); err != nil {
 		return nil, nil, fmt.Errorf("partial: print %s: %w", nodeName(nodes[0]), err)
 	}
 	return buf.Bytes(), p, nil
@@ -513,7 +604,7 @@ func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 		var fields []fieldInfo
 		ty, fields, err = p.structType(n, u)
 		if err == nil {
-			w.structMethods(fields)
+			err = w.structMethods(fields)
 		}
 	case *types.Slice:
 		var elem mapped
@@ -575,9 +666,6 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 	refs := maps.Clone(p.refs)
 	refs[named.Obj().Name()] = true
 	refs[partialName(named.Obj().Name())] = true
-	for _, h := range helperNames() {
-		refs[h] = true
-	}
 	var errs []error
 	for tp := range named.TypeParams().TypeParams() {
 		// The methods spell predeclared identifiers such as error, nil and
