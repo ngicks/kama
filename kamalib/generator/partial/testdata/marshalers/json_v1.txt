@@ -1,4 +1,4 @@
-# Produced by TestMarshalers/json_v1 (go1.27; github.com/ngicks/option v0.0.2) using encoding/json Marshal/Unmarshal.
+# Produced by TestMarshalers/json_v1 (go1.27; github.com/ngicks/option v0.0.4) using encoding/json Marshal/Unmarshal.
 # Regenerate with: go test ./generator/partial -run TestMarshalers/json_v1 -update
 
 ## tag `json:"<key>"`
