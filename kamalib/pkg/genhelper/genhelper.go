@@ -7,15 +7,17 @@ import (
 // Context is what a [Step] renders with. C is the implementing type
 // itself, so a step hands back the same type it received.
 //
-// [BaseContext] implements Context. A generator needing more state embeds BaseContext
-// and defines WithScope for its own type.
+// [BaseContext] implements Context. A generator needing more state embeds
+// BaseContext and defines WithScope for its own type.
 type Context[C Context[C]] interface {
 	// Scope returns the lexical scope the next text lands in.
 	Scope() *Scope
 	// WithScope returns a copy of the context positioned at s.
 	WithScope(s *Scope) C
-	// Dest returns the destination of the text.
-	Dest() *Dest
+	// Package returns the package the text lands in.
+	Package() *Package
+	// Printer returns a Printer whose text starts with b.
+	Printer(b []byte) Printer
 }
 
 // Push returns c positioned at a new scope nested in its current one.
@@ -31,18 +33,22 @@ func Pop[C Context[C]](c C) C {
 // BaseContext is the minimal [Context].
 type BaseContext struct {
 	scope *Scope
-	dest  *Dest
+	pkg   *Package
 }
 
 var _ Context[BaseContext] = BaseContext{}
 
-func NewBaseContext(s *Scope, d *Dest) BaseContext {
-	return BaseContext{scope: s, dest: d}
+func NewBaseContext(s *Scope, d *Package) BaseContext {
+	return BaseContext{scope: s, pkg: d}
 }
 
 func (c BaseContext) Scope() *Scope { return c.scope }
 
-func (c BaseContext) Dest() *Dest { return c.dest }
+func (c BaseContext) Package() *Package { return c.pkg }
+
+func (c BaseContext) Printer(b []byte) Printer {
+	return newBufPrinter(b)
+}
 
 func (c BaseContext) WithScope(s *Scope) BaseContext {
 	c.scope = s
@@ -56,7 +62,7 @@ func (c BaseContext) WithScope(s *Scope) BaseContext {
 // The returned context is the one the next step renders with.
 //
 // The package defines no error of its own for rendering. A step returns
-// what its generator returns, such as the errors of [Dest] and
+// what its generator returns, such as the errors of [Package] and
 // [Scope.Shadow].
 type Step[C Context[C]] interface {
 	Render(c C, b []byte) (C, []byte, error)

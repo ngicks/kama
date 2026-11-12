@@ -257,7 +257,7 @@ func ExampleScope_LookupOrDeclare() {
 	// err = read()
 }
 
-func ExampleDest() {
+func ExamplePackage() {
 	const (
 		destPath  = "example.com/dest"
 		undPath   = "github.com/ngicks/und"
@@ -283,11 +283,11 @@ func ExampleDest() {
 	r := genhelper.Renderer[genhelper.BaseContext]{
 		Context: genhelper.NewBaseContext(
 			genhelper.NewScope(),
-			&genhelper.Dest{Imports: imports, PkgPath: destPath},
+			&genhelper.Package{Imports: imports, Path: destPath},
 		),
 		Steps: genhelper.Steps[genhelper.BaseContext]{
 			genhelper.Append(func(c genhelper.BaseContext) (string, error) {
-				fromPointer, err := c.Dest().Qual(undPath, "FromPointer")
+				fromPointer, err := c.Package().Qual(undPath, "FromPointer")
 				if err != nil {
 					return "", err
 				}
@@ -295,7 +295,7 @@ func ExampleDest() {
 			}),
 			genhelper.Wrap(func(c genhelper.BaseContext, inner string) (string, error) {
 				// A name of the destination package is spelled unqualified.
-				partial, err := c.Dest().Qual(destPath, "Partial")
+				partial, err := c.Package().Qual(destPath, "Partial")
 				if err != nil {
 					return "", err
 				}
@@ -323,7 +323,7 @@ func ExampleDest() {
 	fmt.Println()
 	fmt.Print(string(b))
 
-	_, err = r.Context.Dest().Qual("example.com/unknown", "X")
+	_, err = r.Context.Package().Qual("example.com/unknown", "X")
 	fmt.Println(errors.Is(err, importdecl.ErrUnknownImport))
 	// Output:
 	// package dest
@@ -337,4 +337,95 @@ func ExampleDest() {
 	// 	return Partial{X: und_2.FromPointer(v.X)}
 	// }
 	// true
+}
+
+func ExamplePrinter() {
+	r := genhelper.Renderer[genhelper.BaseContext]{
+		Context: genhelper.NewBaseContext(genhelper.NewScope(), nil),
+		Steps: genhelper.Steps[genhelper.BaseContext]{
+			genhelper.FuncStep[genhelper.BaseContext](
+				func(c genhelper.BaseContext, b []byte) (genhelper.BaseContext, []byte, error) {
+					p := c.Printer(b)
+					p.Printf("%s := %d\n", c.Scope().Declare("n"), 1)
+					p.Printf("%s := %q\n", c.Scope().Declare("s"), "one")
+					return c, p.Bytes(), nil
+				},
+			),
+		},
+	}
+	_, b, err := r.Render([]byte("// values\n"))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(string(b))
+	// Output:
+	// // values
+	// n := 1
+	// s := "one"
+}
+
+func ExampleForRange() {
+	type ctx = genhelper.BaseContext
+	text := func(s string) genhelper.Gen[ctx] {
+		return func(ctx) (string, error) { return s, nil }
+	}
+	// name returns the name a role refers to where the text renders.
+	name := func(role string) genhelper.Gen[ctx] {
+		return func(c ctx) (string, error) { return c.Scope().Use(role), nil }
+	}
+	printf := func(format string, roles ...string) genhelper.Step[ctx] {
+		return genhelper.Append(func(c ctx) (string, error) {
+			names := make([]any, len(roles))
+			for i, role := range roles {
+				names[i] = c.Scope().Use(role)
+			}
+			return fmt.Sprintf(format, names...), nil
+		})
+	}
+
+	fn := genhelper.NewScope().Push()
+	fn.Declare("v")
+
+	r := genhelper.Renderer[ctx]{
+		Context: genhelper.NewBaseContext(fn, nil),
+		Steps: genhelper.Steps[ctx]{
+			genhelper.ForRange("k", "v", text("items"),
+				genhelper.Steps[ctx]{
+					genhelper.If(text("skip[k]"),
+						printf("continue\n"),
+						nil,
+					),
+					genhelper.Switch(
+						name("v"),
+						genhelper.Case[ctx]{
+							List: text("nil"),
+							Body: printf("delete(out, %s)\n", "k"),
+						},
+						genhelper.Case[ctx]{Body: printf("out[%s] = %s\n", "k", "v")},
+					),
+				},
+			),
+		},
+	}
+	_, b, err := r.Render(nil)
+	if err != nil {
+		panic(err)
+	}
+	b, err = format.Source(b)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(string(b))
+	// Output:
+	// for k, v2 := range items {
+	// 	if skip[k] {
+	// 		continue
+	// 	}
+	// 	switch v2 {
+	// 	case nil:
+	// 		delete(out, k)
+	// 	default:
+	// 		out[k] = v2
+	// 	}
+	// }
 }

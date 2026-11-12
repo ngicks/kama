@@ -29,6 +29,11 @@ func PrintDstStmts(stmts []dst.Stmt) ([]byte, error) { panic("unimplemented") }
 // PrintDstDecls prints decls as partial text.
 func PrintDstDecls(decls []dst.Decl) ([]byte, error) { panic("unimplemented") }
 
+// The ast functions suit reading and type checking. Comments of ast nodes
+// are placed by position, and nodes parsed from partial text carry the
+// positions of that text. Comments drift when such nodes move into another
+// file. The dst functions keep comments attached to their nodes.
+
 // ParseAstExpr parses b as one expression. Positions refer to fset.
 func ParseAstExpr(fset *token.FileSet, b []byte) (ast.Expr, error) { panic("unimplemented") }
 
@@ -59,22 +64,17 @@ func DstDecls[C Context[C]](f func(c C, decls []dst.Decl) (C, []dst.Decl, error)
 }
 
 // AstExpr is a step editing the text before it as one ast expression.
-func AstExpr[C Context[C]](
-	f func(c C, fset *token.FileSet, e ast.Expr) (C, ast.Expr, error),
-) Step[C] {
+// Positions refer to the Fset of [Context.Package].
+func AstExpr[C Context[C]](f func(c C, e ast.Expr) (C, ast.Expr, error)) Step[C] {
 	panic("unimplemented")
 }
 
 // AstStmts is a step editing the text before it as ast statements.
-func AstStmts[C Context[C]](
-	f func(c C, fset *token.FileSet, stmts []ast.Stmt) (C, []ast.Stmt, error),
-) Step[C] {
+func AstStmts[C Context[C]](f func(c C, stmts []ast.Stmt) (C, []ast.Stmt, error)) Step[C] {
 	panic("unimplemented")
 }
 
 // AstDecls is a step editing the text before it as ast declarations.
-func AstDecls[C Context[C]](
-	f func(c C, fset *token.FileSet, decls []ast.Decl) (C, []ast.Decl, error),
-) Step[C] {
+func AstDecls[C Context[C]](f func(c C, decls []ast.Decl) (C, []ast.Decl, error)) Step[C] {
 	panic("unimplemented")
 }

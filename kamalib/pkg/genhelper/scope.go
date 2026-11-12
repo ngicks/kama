@@ -5,8 +5,6 @@ import (
 	"go/types"
 	"slices"
 	"strconv"
-
-	"github.com/dave/dst"
 )
 
 // Scope is a lexical scope of the generated code. It hands out identifiers
@@ -66,12 +64,6 @@ func (s *Scope) ReserveUniverse() {
 // destination.
 func (s *Scope) ReserveTypes(ts *types.Scope) {
 	s.Reserve(ts.Names()...)
-}
-
-// ReserveDst reserves every identifier appearing in n. A step editing
-// existing code reserves the function it edits.
-func (s *Scope) ReserveDst(n dst.Node) {
-	panic("unimplemented")
 }
 
 // Declare declares the identifier of role in s and returns its name.
