@@ -10,7 +10,9 @@
 // independently written steps declare locals without duplicating or
 // shadowing names. Its [Package] spells package qualifiers and types for
 // the destination file through importdecl and typeprint. Its [Printer]
-// builds the text of a step.
+// builds the text of a step. [NewBaseContext] links the Scope with the
+// imports of the Package, so that a local never takes the identifier of an
+// import and an import added later avoids the names of locals.
 //
 // Two forms nest text in a scope:
 //

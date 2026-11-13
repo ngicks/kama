@@ -257,6 +257,44 @@ func ExampleScope_LookupOrDeclare() {
 	// err = read()
 }
 
+func ExampleScope_LinkImports() {
+	const (
+		destPath = "example.com/dest"
+		keyPath  = "example.com/key"
+		valPath  = "example.com/val"
+	)
+
+	pkg := types.NewPackage(destPath, "dest")
+	pkg.SetImports([]*types.Package{
+		types.NewPackage(keyPath, "key"),
+		types.NewPackage(valPath, "val"),
+	})
+	imports, err := importdecl.NewParser(pkg).ParseDst(nil)
+	if err != nil {
+		panic(err)
+	}
+
+	fn := genhelper.NewScope().Push()
+	fn.LinkImports(imports)
+
+	// A local declared first keeps its name, and the import requested later
+	// avoids it.
+	fmt.Println(fn.Declare("key"))
+	ident, _ := imports.Ident(keyPath)
+	fmt.Println(ident)
+
+	// An import requested first keeps its identifier, and the local declared
+	// later avoids it.
+	ident, _ = imports.Ident(valPath)
+	fmt.Println(ident)
+	fmt.Println(fn.Declare("val"))
+	// Output:
+	// key
+	// key_2
+	// val
+	// val2
+}
+
 func ExamplePackage() {
 	const (
 		destPath  = "example.com/dest"

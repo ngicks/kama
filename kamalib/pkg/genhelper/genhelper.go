@@ -38,7 +38,14 @@ type BaseContext struct {
 
 var _ Context[BaseContext] = BaseContext{}
 
+// NewBaseContext returns a BaseContext positioned at s, rendering for d.
+// When d has Imports, NewBaseContext links the scope tree of s with them
+// through [Scope.LinkImports], so that locals and import identifiers do not
+// collide.
 func NewBaseContext(s *Scope, d *Package) BaseContext {
+	if s != nil && d != nil && d.Imports != nil {
+		s.LinkImports(d.Imports)
+	}
 	return BaseContext{scope: s, pkg: d}
 }
 

@@ -3,6 +3,7 @@ package genhelper
 import (
 	"fmt"
 	"go/types"
+	"maps"
 	"slices"
 	"strconv"
 )
@@ -16,9 +17,15 @@ import (
 //
 // A name is taken when this scope, a scope enclosing it or a scope nested
 // in it holds it. Scopes beside each other reuse names.
+//
+// [Scope.LinkImports] shares the names with the imports of the file, so
+// that locals and import identifiers do not collide.
 type Scope struct {
 	parent   *Scope
 	children []*Scope
+	// imports is set on the root scope only, so that every scope of the
+	// tree, including those pushed later, shares one link.
+	imports ImportNames
 	// names are the names this scope holds: reserved, declared or pending.
 	names map[string]bool
 	roles map[string]binding
@@ -28,6 +35,16 @@ type binding struct {
 	name string
 	// pending marks a name Use handed out and no Declare has claimed.
 	pending bool
+}
+
+// ImportNames is the import side of the identifiers a file holds.
+// *importdecl.Map implements it.
+type ImportNames interface {
+	// HasIdent reports whether an import of the file is accessed through
+	// ident.
+	HasIdent(ident string) bool
+	// Reserve marks idents as taken, so that imports added later avoid them.
+	Reserve(idents ...string)
 }
 
 // NewScope returns a root scope.
@@ -48,11 +65,51 @@ func (s *Scope) Parent() *Scope {
 	return s.parent
 }
 
-// Reserve marks names as taken in s without giving them a role.
-func (s *Scope) Reserve(names ...string) {
+// LinkImports links the scope tree s belongs to with names, the imports
+// of the file the generated text lands in. Every scope of the tree, those
+// pushed later included, shares the link.
+//
+// Every name the tree holds, now or later, is reserved in names, so that
+// imports added later avoid it. A fresh name [Scope.Declare], [Scope.Use]
+// or [Scope.LookupOrDeclare] hands out avoids the identifiers of the
+// imports. [Scope.Shadow] does not.
+//
+// Linking again replaces the link. A nil names unlinks the tree.
+func (s *Scope) LinkImports(names ImportNames) {
+	root := s.root()
+	root.imports = names
+	if names != nil {
+		root.pushNames(names)
+	}
+}
+
+func (s *Scope) pushNames(names ImportNames) {
+	names.Reserve(slices.Sorted(maps.Keys(s.names))...)
+	for _, child := range s.children {
+		child.pushNames(names)
+	}
+}
+
+func (s *Scope) root() *Scope {
+	for s.parent != nil {
+		s = s.parent
+	}
+	return s
+}
+
+// hold adds names to s and reserves them in the linked imports.
+func (s *Scope) hold(names ...string) {
 	for _, name := range names {
 		s.names[name] = true
 	}
+	if imports := s.root().imports; imports != nil {
+		imports.Reserve(names...)
+	}
+}
+
+// Reserve marks names as taken in s without giving them a role.
+func (s *Scope) Reserve(names ...string) {
+	s.hold(names...)
 }
 
 // ReserveUniverse reserves the predeclared identifiers.
@@ -77,7 +134,7 @@ func (s *Scope) Declare(role string) string {
 		return b.name
 	}
 	name := s.fresh(role)
-	s.names[name] = true
+	s.hold(name)
 	s.roles[role] = binding{name: name}
 	return name
 }
@@ -85,7 +142,9 @@ func (s *Scope) Declare(role string) string {
 // Shadow declares the identifier of role in s under exactly the name role,
 // even when a scope enclosing s holds that name. Text rendered in s and
 // the scopes nested in it no longer reaches what the name referred to
-// outside, such as the builtin new.
+// outside, such as the builtin new. Shadow may take the identifier of an
+// import linked by [Scope.LinkImports], and the import is then unreachable
+// in s and the scopes nested in it.
 //
 // Shadow returns an error wrapping [ErrRedeclared] when s itself holds the
 // name, which Go rejects as a redeclaration, and when [Scope.Use] already
@@ -101,7 +160,7 @@ func (s *Scope) Shadow(role string) (string, error) {
 	if s.names[role] {
 		return "", fmt.Errorf("%w: %s", ErrRedeclared, role)
 	}
-	s.names[role] = true
+	s.hold(role)
 	s.roles[role] = binding{name: role}
 	return role, nil
 }
@@ -144,7 +203,7 @@ func (s *Scope) Use(role string) string {
 		return name
 	}
 	name := s.fresh(role)
-	s.names[name] = true
+	s.hold(name)
 	s.roles[role] = binding{name: name, pending: true}
 	return name
 }
@@ -174,6 +233,9 @@ func (s *Scope) fresh(hint string) string {
 }
 
 func (s *Scope) taken(name string) bool {
+	if imports := s.root().imports; imports != nil && imports.HasIdent(name) {
+		return true
+	}
 	for sc := s.parent; sc != nil; sc = sc.parent {
 		if sc.names[name] {
 			return true
