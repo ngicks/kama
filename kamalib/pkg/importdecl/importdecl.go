@@ -371,6 +371,16 @@ func (m *Map) Missing() iter.Seq[Import] {
 	return slices.Values(slices.Clone(m.missing))
 }
 
+// Imports returns every import the file accesses a package through, those
+// it has and those it misses, sorted by path. Name is set where the spec
+// names the import and where a missing import needs an explicit name.
+//
+// Blank and dot imports give no identifier, so Imports leaves them out. A
+// package the file imports twice appears once, under its first name.
+func (m *Map) Imports() iter.Seq[Import] {
+	return slices.Values(slices.SortedFunc(maps.Values(m.imports), compareImport))
+}
+
 // AddMissingAst adds the missing imports to f. Imports f already has are
 // skipped, so calling it again is safe.
 func (m *Map) AddMissingAst(fset *token.FileSet, f *ast.File) {

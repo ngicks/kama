@@ -535,3 +535,37 @@ func TestReserve(t *testing.T) {
 	got, _ = m.Ident("example.com/foo")
 	assert.Equal(t, got, "foo_3")
 }
+
+func TestImports(t *testing.T) {
+	p := NewParser(types.NewPackage("example.com/p", "p"))
+	assert.NilError(t, p.Require(
+		Import{Package: Package{Path: "example.com/foo", Name: "foo"}},
+		Import{Package: Package{Path: "example.com/other/foo", Name: "foo"}},
+	))
+	lit := func(path string) *ast.BasicLit {
+		return &ast.BasicLit{Kind: token.STRING, Value: `"` + path + `"`}
+	}
+	m, err := p.ParseAst([]*ast.ImportSpec{
+		{Path: lit("example.com/zzz"), Name: ast.NewIdent("z")},
+		{Path: lit("example.com/foo")},
+		// Blank and dot imports give no identifier.
+		{Path: lit("example.com/blank"), Name: ast.NewIdent("_")},
+		{Path: lit("example.com/dot"), Name: ast.NewIdent(".")},
+		// The second import of a package is left out.
+		{Path: lit("example.com/zzz"), Name: ast.NewIdent("again")},
+	})
+	assert.NilError(t, err)
+
+	assert.DeepEqual(t, slices.Collect(m.Imports()), []Import{
+		{Package: Package{Path: "example.com/foo", Name: "foo"}},
+		{Name: "foo_2", Package: Package{Path: "example.com/other/foo", Name: "foo"}},
+		{Name: "z", Package: Package{Path: "example.com/zzz"}},
+	})
+	assert.DeepEqual(t, missing(m), []Import{
+		{Name: "foo_2", Package: Package{Path: "example.com/other/foo", Name: "foo"}},
+	})
+
+	empty, err := p.ParseAst(nil)
+	assert.NilError(t, err)
+	assert.Equal(t, len(slices.Collect(empty.Imports())), 2)
+}
