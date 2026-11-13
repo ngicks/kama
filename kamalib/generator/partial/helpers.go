@@ -714,8 +714,13 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 		}
 		tparams = append(tparams, tp.Obj().Name()+" "+c)
 	}
-	l := locals(p.pkg.Types.Scope(), names)
-	v, x, pp, lv, rv, ll, r, o := l["v"], l["x"], l["p"], l["lv"], l["rv"], l["l"], l["r"], l["o"]
+	// p.m is the Map in effect now, which call swaps while it renders.
+	scope := p.funcContext(names).Scope()
+	l := func(role string) string {
+		name, _ := scope.LookupOrDeclare(role)
+		return name
+	}
+	v, x, pp, lv, rv, ll, r, o := l("v"), l("x"), l("p"), l("lv"), l("rv"), l("l"), l("r"), l("o")
 
 	f := helperFunc{}
 	if len(tparams) > 0 {

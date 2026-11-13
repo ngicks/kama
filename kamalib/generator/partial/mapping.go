@@ -13,6 +13,7 @@ import (
 	"github.com/dave/dst"
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
@@ -62,7 +63,11 @@ func (p *mapper) typeString(t types.Type) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return exprString(e)
+	b, err := genhelper.PrintDstExpr(e)
+	if err != nil {
+		return "", fmt.Errorf("partial: %w", err)
+	}
+	return string(b), nil
 }
 
 // partialString spells the partial variant of the target named.
@@ -71,7 +76,11 @@ func (p *mapper) partialString(named *types.Named) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return exprString(e)
+	b, err := genhelper.PrintDstExpr(e)
+	if err != nil {
+		return "", fmt.Errorf("partial: %w", err)
+	}
+	return string(b), nil
 }
 
 func (p *mapper) position(pos token.Pos) token.Position { return p.pkg.Fset.Position(pos) }

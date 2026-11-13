@@ -18,6 +18,7 @@ import (
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -59,20 +60,30 @@ func registry(t *testing.T) *genmark.Registry {
 // testNow is the time the header of the files generate gives records.
 func testNow() time.Time { return time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC) }
 
+// header is the first line of every generated file.
+var header = genhelper.GeneratedComment(generatorPath)
+
 // testHeader is the header of the files generate gives with default options.
-const testHeader = header + `
-//
-// generator: kama-partial
-// params: merge=overwrite merge_nested=recursive option_file=none
+var testHeader = header + `
+// params:
+//	merge: "overwrite"
+//	merge_nested: "recursive"
+//	option_file: null
 // generated: 2026-11-04T10:12:33Z`
 
-var optionFileParam = regexp.MustCompile(`(?m)^(// params: .*option_file=)\S+$`)
+var (
+	optionFileParam = regexp.MustCompile(`(?m)^(//\toption_file: ).*$`)
+	generatedLine   = regexp.MustCompile(`(?m)^` + genhelper.GeneratedTimePrefix + `.*\n`)
+)
 
 // withoutRunParams returns src, a generated file, without the generated:
-// line and with option_file=none, the header fields that tell how a run was
-// made rather than what it generated.
+// line and with a null option_file, the header fields that tell how a run
+// was made rather than what it generated.
 func withoutRunParams(src string) string {
-	return optionFileParam.ReplaceAllString(string(dropGenerated([]byte(src))), "${1}none")
+	if loc := generatedLine.FindStringIndex(src); loc != nil {
+		src = src[:loc[0]] + src[loc[1]:]
+	}
+	return optionFileParam.ReplaceAllString(src, "${1}null")
 }
 
 // generate runs Generate on files with opts, a registry of this generator

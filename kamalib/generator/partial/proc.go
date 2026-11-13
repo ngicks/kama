@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -172,7 +173,7 @@ func (i *instance) write(ctx context.Context, name string, content []byte) (bool
 		if err != nil {
 			return false, fmt.Errorf("partial: format %q: %w", name, err)
 		}
-		if SameExceptGenerated(existing, formatted) {
+		if genhelper.SameExceptGenerated(existing, formatted) {
 			return false, nil
 		}
 	}

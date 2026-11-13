@@ -292,7 +292,6 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 		return nil
 	}
 	w.p.refs[flagSetName] = true
-	p, f, v, x, err := w.l["p"], w.l["f"], w.l["v"], w.l["x"], w.l["err"]
 	und, uerr := w.p.ident(undPath)
 	if uerr != nil {
 		return uerr
@@ -302,6 +301,8 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 		return ferr
 	}
 
+	w.beginFunc()
+	p, f := w.local("p"), w.local("f")
 	w.doc("RegisterFlags", "defines on "+f+" a flag for each field of p with a flag\n"+
 		"// option. Every flag defaults to the zero value; FromFlagSet reads the\n"+
 		"// flags back after "+f+" is parsed.")
@@ -314,6 +315,9 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 	}
 	w.line("}")
 
+	w.beginFunc()
+	p, f = w.local("p"), w.local("f")
+	v, x, err := w.local("v"), w.local("x"), w.local("err")
 	w.doc("FromFlagSet", "sets each field of p with a flag option to the value of\n"+
 		"// its flag when the flag was set on "+f+". Other fields are left as they\n"+
 		"// are, so merging p onto another partial value keeps the fields of the\n"+

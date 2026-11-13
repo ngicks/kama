@@ -176,8 +176,8 @@ func TestLocalsAvoidTypeParams(t *testing.T) {
 	})
 	fs := funcs(t, files["a.kama_partial.go"])
 	assert.Assert(t, strings.HasPrefix(fs["APartial.FromValue"],
-		"func (p_ *APartial[p, v]) FromValue(v_ A[p, v]) {"), fs["APartial.FromValue"])
-	assert.Assert(t, strings.Contains(fs["MPartial.FromValue"], "for k_, e_ := range v {"),
+		"func (p2 *APartial[p, v]) FromValue(v2 A[p, v]) {"), fs["APartial.FromValue"])
+	assert.Assert(t, strings.Contains(fs["MPartial.FromValue"], "for k2, e2 := range v {"),
 		fs["MPartial.FromValue"])
 
 	// Locals do not shadow the package-level types the methods spell.
@@ -187,7 +187,7 @@ func TestLocalsAvoidTypeParams(t *testing.T) {
 	fs = funcs(t, files["a.kama_partial.go"])
 	assert.Assert(
 		t,
-		strings.Contains(fs["vPartial.ToValue"], "v_ := make(v, len(p))\n"),
+		strings.Contains(fs["vPartial.ToValue"], "v2 := make(v, len(p))\n"),
 		fs["vPartial.ToValue"],
 	)
 	toX := helperIn(
@@ -197,7 +197,7 @@ func TestLocalsAvoidTypeParams(t *testing.T) {
 		"ToTarget",
 		"converts und.Und[xPartial] into *x,",
 	)
-	assert.Assert(t, strings.Contains(fs[toX], "x_ := p.Value().ToValue()"), fs[toX])
+	assert.Assert(t, strings.Contains(fs[toX], "x2 := p.Value().ToValue()"), fs[toX])
 
 	// A map element converted by a conditional statement goes through a
 	// local.
@@ -207,7 +207,7 @@ func TestLocalsAvoidTypeParams(t *testing.T) {
 	fs = funcs(t, files["a.kama_partial.go"])
 	assert.Assert(
 		t,
-		strings.Contains(fs["vPartial.ToValue"], "var x_ *int\n"),
+		strings.Contains(fs["vPartial.ToValue"], "var x2 *int\n"),
 		fs["vPartial.ToValue"],
 	)
 }

@@ -1,16 +1,14 @@
 package partial
 
 import (
-	"bytes"
 	"fmt"
-	"go/token"
 	"go/types"
 	"slices"
 	"strings"
 
 	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
@@ -32,32 +30,10 @@ func (s *selection) partialMethodNames(n *typegraph.Node) []string {
 	return methodNames
 }
 
-// locals maps each of localNames to an identifier that shadows neither a
-// type parameter named in tparams nor a package-level identifier of scope,
-// both of which the methods and helpers may spell.
-func locals(scope *types.Scope, tparams []string) map[string]string {
-	taken := map[string]bool{}
-	for _, name := range scope.Names() {
-		taken[name] = true
-	}
-	for _, name := range tparams {
-		taken[name] = true
-	}
-	out := map[string]string{}
-	for _, name := range localNames {
-		ident := name
-		for taken[ident] {
-			ident += "_"
-		}
-		out[name] = ident
-	}
-	return out
-}
-
 // methodTypeParams returns the names the methods spell the type parameters
 // of tparams by. A named parameter keeps its name. A blank one, which the
 // methods cannot spell, gets a name taken by no package-level identifier
-// of scope, no other type parameter, no local and no predeclared
+// of scope, no other type parameter, no local name and no predeclared
 // identifier. No field type refers to a blank parameter, so only the
 // receiver and the source type spell the new name.
 func methodTypeParams(scope *types.Scope, tparams *types.TypeParamList) []string {
@@ -71,8 +47,8 @@ func methodTypeParams(scope *types.Scope, tparams *types.TypeParamList) []string
 	for tp := range tparams.TypeParams() {
 		taken[tp.Obj().Name()] = true
 	}
-	for _, l := range locals(scope, tparamNames(tparams)) {
-		taken[l] = true
+	for _, name := range localNames {
+		taken[name] = true
 	}
 	var out []string
 	for i, tp := range slices.Collect(tparams.TypeParams()) {
@@ -93,8 +69,10 @@ func methodTypeParams(scope *types.Scope, tparams *types.TypeParamList) []string
 type methodWriter struct {
 	p *mapper
 	b strings.Builder
-	// l maps localNames to the identifiers used.
-	l map[string]string
+	// tparams are the names the methods spell the type parameters by.
+	tparams []string
+	// scope is the scope of the method being written.
+	scope *genhelper.Scope
 	// recv and source spell the partial type and the source type with the
 	// type parameters of the source.
 	recv, source string
@@ -102,16 +80,17 @@ type methodWriter struct {
 
 func (p *mapper) newMethodWriter(n *typegraph.Node) *methodWriter {
 	named := n.Detail.Type
+	var tparams []string
 	var targs string
 	if named.TypeParams().Len() > 0 {
-		names := methodTypeParams(p.pkg.Types.Scope(), named.TypeParams())
-		targs = "[" + strings.Join(names, ", ") + "]"
+		tparams = methodTypeParams(p.pkg.Types.Scope(), named.TypeParams())
+		targs = "[" + strings.Join(tparams, ", ") + "]"
 	}
 	return &methodWriter{
-		p:      p,
-		l:      locals(p.pkg.Types.Scope(), tparamNames(named.TypeParams())),
-		recv:   partialName(named.Obj().Name()) + targs,
-		source: named.Obj().Name() + targs,
+		p:       p,
+		tparams: tparams,
+		recv:    partialName(named.Obj().Name()) + targs,
+		source:  named.Obj().Name() + targs,
 	}
 }
 
@@ -119,13 +98,34 @@ func (w *methodWriter) line(format string, args ...any) {
 	fmt.Fprintf(&w.b, format+"\n", args...)
 }
 
-// tparamNames returns the names of the type parameters of list.
-func tparamNames(list *types.TypeParamList) []string {
-	out := make([]string, 0, list.Len())
-	for tp := range list.TypeParams() {
-		out = append(out, tp.Obj().Name())
+// beginFunc starts the scope of the next method and returns the context
+// positioned at it.
+func (w *methodWriter) beginFunc() genCtx {
+	c := w.p.funcContext(w.tparams)
+	w.scope = c.Scope()
+	return c
+}
+
+// local returns the name of role in the method being written, declaring
+// it in the scope of the method on first use. The blocks of a method
+// reuse the name.
+func (w *methodWriter) local(role string) string {
+	name, _ := w.scope.LookupOrDeclare(role)
+	return name
+}
+
+// function writes the method name documented by doc, whose text body
+// renders. body starts at the scope of the method, where its receiver and
+// parameters are declared.
+func (w *methodWriter) function(name, doc string, body ...genStep) error {
+	c := w.beginFunc()
+	w.doc(name, doc)
+	_, b, err := genSteps(body).Render(c, nil)
+	if err != nil {
+		return err
 	}
-	return out
+	w.b.Write(b)
+	return nil
 }
 
 // call returns the call of h with args. See mapper.call.
@@ -190,7 +190,7 @@ func (w *methodWriter) to(m mapped, dst, src string) (string, error) {
 	case convPointer:
 		// opt.Option.Pointer has a pointer receiver, which the result of
 		// Flatten does not provide.
-		o := w.l["o"]
+		o := w.local("o")
 		return "if " + src + ".IsDefined() {\n" + o + " := " + src + ".Value()\n" +
 			dst + " = &" + o + "\n}", nil
 	case convOption:
@@ -259,7 +259,8 @@ func (w *methodWriter) merge(f fieldInfo, l, r string) (string, error) {
 }
 
 func (w *methodWriter) applyTo() {
-	p, v, base := w.l["p"], w.l["v"], w.l["base"]
+	w.beginFunc()
+	p, v, base := w.local("p"), w.local("v"), w.local("base")
 	w.doc("ApplyTo", "returns v with the change p describes applied. It is\n"+
 		"// FromValue of v merged with p, converted back with ToValue.")
 	w.line("func (%s %s) ApplyTo(%s %s) %s {", p, w.recv, v, w.source, w.source)
@@ -271,8 +272,8 @@ func (w *methodWriter) applyTo() {
 
 // structMethods writes the methods of a struct partial type.
 func (w *methodWriter) structMethods(fields []fieldInfo) error {
-	p, v, r := w.l["p"], w.l["v"], w.l["r"]
-
+	w.beginFunc()
+	p, v := w.local("p"), w.local("v")
 	w.doc("FromValue", "sets every field of p to the partial form of the field of v.\n"+
 		"// A nil pointer, slice or map and a none option become null.")
 	w.line("func (%s *%s) FromValue(%s %s) {", p, w.recv, v, w.source)
@@ -288,6 +289,8 @@ func (w *methodWriter) structMethods(fields []fieldInfo) error {
 	}
 	w.line("}")
 
+	w.beginFunc()
+	p, v = w.local("p"), w.local("v")
 	w.doc("ToValue", "returns the value p describes. An undefined or null field\n"+
 		"// gives the zero value of the field.")
 	w.line("func (%s %s) ToValue() %s {", p, w.recv, w.source)
@@ -305,6 +308,8 @@ func (w *methodWriter) structMethods(fields []fieldInfo) error {
 	w.line("return %s", v)
 	w.line("}")
 
+	w.beginFunc()
+	p, r := w.local("p"), w.local("r")
 	w.doc("Merge", "returns p with the fields of r merged onto it. An undefined\n"+
 		"// field of r keeps the field of p. Merge writes to neither p nor r.")
 	w.line("func (%s %s) Merge(%s %s) %s {", p, w.recv, r, w.recv, w.recv)
@@ -328,130 +333,139 @@ func (w *methodWriter) structMethods(fields []fieldInfo) error {
 // collectionMethods writes the methods of a slice or map partial type,
 // whose elements map as elem from the source element type source.
 func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.Type) error {
-	p, v, r, e, x, o := w.l["p"], w.l["v"], w.l["r"], w.l["e"], w.l["x"], w.l["o"]
-	idx := w.l["i"]
+	idx := "i"
 	if isMap {
-		idx = w.l["k"]
+		idx = "k"
 	}
 
 	// A map element missing from the map is not the zero value, so a
 	// conversion that may leave its destination unset goes through a local.
-	// back reports whether stmt converts back to source values, as to does,
+	// back reports whether conv converts back to source values, as to does,
 	// whose conditional statements need a zero destination. typ is the
 	// element type of dst then.
 	elemLoop := func(
-		dst, src string, stmt func(m mapped, dst, src string) (string, error), back bool, typ string,
-	) error {
-		w.line("for %s, %s := range %s {", idx, e, src)
-		target := dst + "[" + idx + "]"
-		if isMap && back && conditional(elem.conv) {
-			w.line("var %s %s", x, typ)
-			target = x
+		dst, src genExpr, conv convFunc, back bool, typ string,
+	) genStep {
+		if !isMap || !back || !conditional(elem.conv) {
+			return genhelper.ForRange(idx, "e", src,
+				convStmt(conv, elem, expr("%s[%s]", dst, ref(idx)), expr("%s", ref("e"))),
+			)
 		}
-		s, err := stmt(elem, target, e)
-		if err != nil {
-			return err
-		}
-		w.line("%s", s)
-		if target == x {
-			w.line("%s[%s] = %s", dst, idx, x)
-		}
-		w.line("}")
-		return nil
+		return genhelper.ForRange(idx, "e", src, genSteps{
+			stmt("var %s %s", decl("x"), typ),
+			convStmt(conv, elem, expr("%s", ref("x")), expr("%s", ref("e"))),
+			stmt("%s[%s] = %s", dst, ref(idx), ref("x")),
+		})
 	}
 
-	w.doc("FromValue", "sets p to the partial forms of the elements of v. A nil v\n"+
-		"// gives a nil p.")
-	w.line("func (%s *%s) FromValue(%s %s) {", p, w.recv, v, w.source)
-	w.line("if %s == nil {\n*%s = nil\nreturn\n}", v, p)
-	w.line("*%s = make(%s, len(%s))", p, w.recv, v)
-	if err := elemLoop("(*"+p+")", v, w.from, false, ""); err != nil {
+	err := w.function("FromValue", "sets p to the partial forms of the elements of v. A nil v\n"+
+		"// gives a nil p.",
+		stmt("func (%s *%s) FromValue(%s %s) {", decl("p"), w.recv, decl("v"), w.source),
+		genhelper.If(expr("%s == nil", ref("v")), genSteps{
+			stmt("*%s = nil", ref("p")),
+			stmt("return"),
+		}, nil),
+		stmt("*%s = make(%s, len(%s))", ref("p"), w.recv, ref("v")),
+		elemLoop(expr("(*%s)", ref("p")), expr("%s", ref("v")), w.from, false, ""),
+		stmt("}"),
+	)
+	if err != nil {
 		return err
 	}
-	w.line("}")
 
 	elemType, err := w.p.typeString(source)
 	if err != nil {
 		return err
 	}
-	w.doc("ToValue", "returns the value p describes. An undefined or null element\n"+
-		"// gives the zero value of the element, and a nil p gives nil.")
-	w.line("func (%s %s) ToValue() %s {", p, w.recv, w.source)
-	w.line("if %s == nil {\nreturn nil\n}", p)
-	w.line("%s := make(%s, len(%s))", v, w.source, p)
-	if err := elemLoop(v, p, w.to, true, elemType); err != nil {
+	err = w.function("ToValue", "returns the value p describes. An undefined or null element\n"+
+		"// gives the zero value of the element, and a nil p gives nil.",
+		stmt("func (%s %s) ToValue() %s {", decl("p"), w.recv, w.source),
+		genhelper.If(expr("%s == nil", ref("p")), stmt("return nil"), nil),
+		stmt("%s := make(%s, len(%s))", decl("v"), w.source, ref("p")),
+		elemLoop(expr("%s", ref("v")), expr("%s", ref("p")), w.to, true, elemType),
+		stmt("return %s", ref("v")),
+		stmt("}"),
+	)
+	if err != nil {
 		return err
 	}
-	w.line("return %s", v)
-	w.line("}")
 
-	text := "returns r, or p when r is nil."
+	mergeDoc := "returns r, or p when r is nil."
 	if w.p.sel.opts.Merge == MergeAppend {
-		text = "returns the elements of p then r in a new slice. A nil\n" +
+		mergeDoc = "returns the elements of p then r in a new slice. A nil\n" +
 			"// p or r gives the other."
 		if isMap {
-			text = "returns the entries of p with the entries of r set in a\n" +
+			mergeDoc = "returns the entries of p with the entries of r set in a\n" +
 				"// new map. A nil p or r gives the other."
 		}
 	}
-	w.doc("Merge", text+" Merge writes to neither p nor r.")
-	w.line("func (%s %s) Merge(%s %s) %s {", p, w.recv, r, w.recv, w.recv)
-	w.line("if %s == nil {\nreturn %s\n}", r, p)
+	merge := genSteps{
+		stmt("func (%s %s) Merge(%s %s) %s {", decl("p"), w.recv, decl("r"), w.recv, w.recv),
+		genhelper.If(expr("%s == nil", ref("r")), stmt("return %s", ref("p")), nil),
+	}
 	switch {
 	case w.p.sel.opts.Merge != MergeAppend:
-		w.line("return %s", r)
+		merge = append(merge, stmt("return %s", ref("r")))
 	case isMap:
 		mp, err := w.p.ident(mapsPath)
 		if err != nil {
 			return err
 		}
-		w.line("if %s == nil {\nreturn %s\n}", p, r)
-		w.line("%s := make(%s, len(%s)+len(%s))", o, w.recv, p, r)
-		w.line("%s.Copy(%s, %s)", mp, o, p)
-		w.line("%s.Copy(%s, %s)", mp, o, r)
-		w.line("return %s", o)
+		merge = append(merge,
+			genhelper.If(expr("%s == nil", ref("p")), stmt("return %s", ref("r")), nil),
+			stmt("%s := make(%s, len(%s)+len(%s))", decl("o"), w.recv, ref("p"), ref("r")),
+			stmt("%s.Copy(%s, %s)", mp, ref("o"), ref("p")),
+			stmt("%s.Copy(%s, %s)", mp, ref("o"), ref("r")),
+			stmt("return %s", ref("o")),
+		)
 	default:
-		w.line("if %s == nil {\nreturn %s\n}", p, r)
-		w.line("%s := make(%s, 0, len(%s)+len(%s))", o, w.recv, p, r)
-		w.line("%s = append(%s, %s...)", o, o, p)
-		w.line("return append(%s, %s...)", o, r)
+		merge = append(merge,
+			genhelper.If(expr("%s == nil", ref("p")), stmt("return %s", ref("r")), nil),
+			stmt("%s := make(%s, 0, len(%s)+len(%s))", decl("o"), w.recv, ref("p"), ref("r")),
+			stmt("%s = append(%s, %s...)", ref("o"), ref("o"), ref("p")),
+			stmt("return append(%s, %s...)", ref("o"), ref("r")),
+		)
 	}
-	w.line("}")
+	merge = append(merge, stmt("}"))
+	if err := w.function(
+		"Merge",
+		mergeDoc+" Merge writes to neither p nor r.",
+		merge...); err != nil {
+		return err
+	}
 
 	w.applyTo()
 	return nil
 }
 
+// convFunc returns the statement setting dst to the conversion of src
+// that m describes, as from and to do.
+type convFunc func(m mapped, dst, src string) (string, error)
+
+// convStmt is a step appending the statement conv returns for m, with dst
+// and src rendered in the scope of the step.
+func convStmt(conv convFunc, m mapped, dst, src genExpr) genStep {
+	return text(func(c genCtx) (string, error) {
+		d, err := dst(c)
+		if err != nil {
+			return "", err
+		}
+		s, err := src(c)
+		if err != nil {
+			return "", err
+		}
+		return conv(m, d, s)
+	})
+}
+
 // decls parses the methods written.
-func (w *methodWriter) decls(pkgName string) ([]dst.Decl, error) {
-	f, err := decorator.Parse("package " + pkgName + "\n" + w.b.String())
+func (w *methodWriter) decls() ([]dst.Decl, error) {
+	decls, err := genhelper.ParseDstDecls([]byte(w.b.String()))
 	if err != nil {
 		return nil, fmt.Errorf("partial: parse methods of %s: %w", w.recv, err)
 	}
-	for _, d := range f.Decls {
+	for _, d := range decls {
 		d.Decorations().Before = dst.EmptyLine
 	}
-	return f.Decls, nil
-}
-
-// exprString prints the type expression e.
-func exprString(e dst.Expr) (string, error) {
-	f := &dst.File{
-		Name: dst.NewIdent("x"),
-		Decls: []dst.Decl{&dst.GenDecl{
-			Tok: token.TYPE,
-			Specs: []dst.Spec{
-				&dst.TypeSpec{Name: dst.NewIdent("_"), Type: dst.Clone(e).(dst.Expr)},
-			},
-		}},
-	}
-	var buf bytes.Buffer
-	if err := decorator.Fprint(&buf, f); err != nil {
-		return "", err
-	}
-	_, s, ok := strings.Cut(buf.String(), "type _ ")
-	if !ok {
-		return "", fmt.Errorf("partial: print %T", e)
-	}
-	return strings.TrimSpace(s), nil
+	return decls, nil
 }
