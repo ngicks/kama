@@ -6,6 +6,10 @@
 // Map for the identifier of a package the file does not import records it
 // as missing, under a name that does not conflict with the file's imports.
 //
+// Names the file declares itself can be reserved, before parsing with
+// Parser.Reserve or afterwards with Map.Reserve, so that missing imports
+// avoid them. Map.HasIdent tells such a caller which names the imports take.
+//
 // Lifted from github.com/ngicks/go-codegen/graft/pkg/importmap.
 package importdecl
 
@@ -233,6 +237,7 @@ func (p *Parser) parse(specs iter.Seq2[string, string]) (*Map, error) {
 		known:   p.known,
 		idents:  maps.Clone(p.reserved),
 		imports: map[string]Import{},
+		held:    map[string]bool{},
 	}
 	if m.idents == nil {
 		m.idents = map[string]bool{}
@@ -255,6 +260,7 @@ func (p *Parser) parse(specs iter.Seq2[string, string]) (*Map, error) {
 		}
 
 		m.idents[imp.Ident()] = true
+		m.held[imp.Ident()] = true
 		if _, ok := m.imports[pkgPath]; !ok {
 			m.imports[pkgPath] = imp
 		}
@@ -273,8 +279,12 @@ func (p *Parser) parse(specs iter.Seq2[string, string]) (*Map, error) {
 type Map struct {
 	known map[string]Package
 	// idents are the identifiers taken by imports and those reserved by
-	// Parser.Reserve.
+	// Parser.Reserve or Map.Reserve.
 	idents map[string]bool
+	// held are the identifiers taken by imports only. A caller reserving its
+	// own names asks HasIdent which names the imports take, and reserved
+	// names must not come back to it as import identifiers.
+	held map[string]bool
 	// imports are the imports the file has or misses, keyed by path.
 	imports map[string]Import
 	// missing are the imports the file misses, sorted by path.
@@ -302,6 +312,7 @@ func (m *Map) addMissing(imp Import) Import {
 		ident = imp.Ident() + "_" + strconv.Itoa(i)
 	}
 	m.idents[ident] = true
+	m.held[ident] = true
 
 	// An explicit name keeps the identifier right when the package name is
 	// unknown or the path does not tell it.
@@ -331,6 +342,23 @@ func (m *Map) Ident(pkgPath string) (ident string, ok bool) {
 		return "", false
 	}
 	return m.addMissing(Import{Package: pkg}).Ident(), true
+}
+
+// Reserve marks idents as taken, so that no import recorded as missing
+// afterwards gets one of them as its name. A missing import whose name is
+// reserved gets the next free name, as name_2. Imports m already holds keep
+// their identifiers.
+func (m *Map) Reserve(idents ...string) {
+	for _, ident := range idents {
+		m.idents[ident] = true
+	}
+}
+
+// HasIdent reports whether the file accesses an import through ident, one
+// the file has or one recorded as missing. Names only reserved by
+// Parser.Reserve or Map.Reserve do not count.
+func (m *Map) HasIdent(ident string) bool {
+	return m.held[ident]
 }
 
 // AstExpr returns the expression referring to ty, or nil if its package is

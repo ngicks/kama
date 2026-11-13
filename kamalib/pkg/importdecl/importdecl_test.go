@@ -205,6 +205,47 @@ func TestParseErrors(t *testing.T) {
 	assert.ErrorContains(t, err, "import path")
 }
 
+func TestMapReserve(t *testing.T) {
+	pkg := types.NewPackage("example.com/p", "p")
+	pkg.SetImports([]*types.Package{
+		types.NewPackage("example.com/bar", "bar"),
+		types.NewPackage("example.com/foo", "foo"),
+		types.NewPackage("example.com/qux", "qux"),
+	})
+	p := NewParser(pkg)
+	p.Reserve("parsed")
+	m, err := p.ParseAst([]*ast.ImportSpec{{
+		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/bar"`},
+	}})
+	assert.NilError(t, err)
+
+	got, _ := m.Ident("example.com/qux")
+	assert.Equal(t, got, "qux")
+
+	m.Reserve("bar", "foo", "qux", "local")
+
+	// Imports the map already holds keep their identifiers.
+	got, _ = m.Ident("example.com/bar")
+	assert.Equal(t, got, "bar")
+	got, _ = m.Ident("example.com/qux")
+	assert.Equal(t, got, "qux")
+
+	got, _ = m.Ident("example.com/foo")
+	assert.Equal(t, got, "foo_2")
+
+	for ident, want := range map[string]bool{
+		"bar":     true,
+		"qux":     true,
+		"foo_2":   true,
+		"foo":     false,
+		"local":   false,
+		"parsed":  false,
+		"unknown": false,
+	} {
+		assert.Equal(t, m.HasIdent(ident), want, "%s", ident)
+	}
+}
+
 func TestExpr(t *testing.T) {
 	pkgs, _ := load(t)
 	m := parse(t, NewParser(pkgs["pkg2"].Types), pkgs["pkg2"])
