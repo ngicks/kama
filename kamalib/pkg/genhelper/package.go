@@ -44,7 +44,15 @@ func (p *Package) Qual(pkgPath, name string) (string, error) {
 
 // Type spells t. It returns the errors [Package.TypeDst] returns.
 func (p *Package) Type(t types.Type) (string, error) {
-	panic("unimplemented")
+	e, err := p.TypeDst(t)
+	if err != nil {
+		return "", err
+	}
+	b, err := PrintDstExpr(e)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
 // TypeDst returns the dst expression spelling t.

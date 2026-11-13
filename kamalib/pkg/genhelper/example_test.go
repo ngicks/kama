@@ -310,18 +310,15 @@ func ExamplePackage() {
 	if err != nil {
 		panic(err)
 	}
-	b, err = format.Source(b)
-	if err != nil {
+	// Qual recorded the import the file misses, under a name the existing
+	// import does not take. AppendDecls adds it to the import declaration
+	// of the file along with the function.
+	if err := genhelper.AppendDecls(f, r.Context.Package(), b); err != nil {
 		panic(err)
 	}
-	// Qual recorded the import the file misses, under a name the existing
-	// import does not take. It joins the import declaration of the file.
-	imports.AddMissingDst(f)
 	if err := decorator.Fprint(os.Stdout, f); err != nil {
 		panic(err)
 	}
-	fmt.Println()
-	fmt.Print(string(b))
 
 	_, err = r.Context.Package().Qual("example.com/unknown", "X")
 	fmt.Println(errors.Is(err, importdecl.ErrUnknownImport))

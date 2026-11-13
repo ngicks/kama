@@ -1,32 +1,95 @@
 package genhelper
 
 import (
+	"go/scanner"
+	"go/token"
+	"strings"
+
 	"github.com/dave/dst"
 
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 )
 
-// PrintFileHeader prints the lines of header as they are, then the package
-// clause of pkgName. header holds whole comment lines, such as the
-// generated-code line.
+// PrintFileHeader prints header with [PrintComment], then the package
+// clause of pkgName. header holds the comment sections before the package
+// clause, such as the generated-code line and a build constraint.
 func PrintFileHeader(p Printer, header []string, pkgName string) {
-	for _, line := range header {
-		p.Printf("%s\n", line)
-	}
-	if len(header) > 0 {
+	if printComment(p, header) {
 		p.Printf("\n")
 	}
 	p.Printf("package %s\n\n", pkgName)
 }
 
-// PrintImports prints the import declaration of the imports m records as
-// missing. It prints nothing when m records none.
+// PrintComment prints sections as comments. Each element is one section,
+// which may span lines. An empty line separates sections, so each section
+// is a comment group of its own. An empty section is skipped.
 //
-// For a new file, m comes from parsing no import spec, so every import the
-// rendered text asked for is missing.
+// A section that is Go comments as a whole, line comments or block
+// comments, is printed as it is. Any other section is taken as plain text,
+// and every line of it is printed after "// ".
+func PrintComment(p Printer, sections []string) {
+	printComment(p, sections)
+}
+
+// printComment reports whether it printed a section.
+func printComment(p Printer, sections []string) bool {
+	printed := false
+	for _, section := range sections {
+		if section == "" {
+			continue
+		}
+		if printed {
+			p.Printf("\n")
+		}
+		printed = true
+
+		commented := isComments(section)
+		for line := range strings.SplitSeq(strings.TrimSuffix(section, "\n"), "\n") {
+			switch {
+			case commented:
+				p.Printf("%s\n", line)
+			case line == "":
+				p.Printf("//\n")
+			default:
+				p.Printf("// %s\n", line)
+			}
+		}
+	}
+	return printed
+}
+
+// isComments reports whether src holds nothing but Go comments.
+//
+// The check scans src as a whole, since the lines inside a block comment
+// carry no comment marker of their own.
+func isComments(src string) bool {
+	var (
+		s      scanner.Scanner
+		failed bool
+	)
+	file := token.NewFileSet().AddFile("", -1, len(src))
+	s.Init(file, []byte(src), func(token.Position, string) { failed = true }, scanner.ScanComments)
+	for {
+		_, tok, lit := s.Scan()
+		switch {
+		case tok == token.EOF:
+			return !failed
+		case tok == token.COMMENT, tok == token.SEMICOLON && lit == "\n":
+		default:
+			return false
+		}
+	}
+}
+
+// PrintImports prints the import declaration of every import m holds,
+// those the file has and those it misses. It prints nothing when m holds
+// none.
+//
+// m knows no blank or dot import, so PrintImports prints none. A file
+// needing one gets it through [AppendDecls] into a parsed file instead.
 func PrintImports(p Printer, m *importdecl.Map) {
 	first := true
-	for imp := range m.Missing() {
+	for imp := range m.Imports() {
 		if first {
 			p.Printf("import (\n")
 			first = false
@@ -43,19 +106,39 @@ func PrintImports(p Printer, m *importdecl.Map) {
 }
 
 // WrapFile is a step turning the declarations before it into a whole file:
-// header, the package clause, the imports the steps before it asked for,
-// then the declarations. It runs last, since earlier steps record the
-// imports. The file is not formatted.
+// header, the package clause, the imports of [Context.Package], then the
+// declarations. It runs last, since earlier steps record the imports they
+// ask for. A context without a Package or without Imports gives no import
+// declaration. The file is not formatted.
 func WrapFile[C Context[C]](header []string, pkgName string) Step[C] {
 	return FuncStep[C](func(c C, b []byte) (C, []byte, error) {
 		p := c.Printer(nil)
 		PrintFileHeader(p, header, pkgName)
-		PrintImports(p, c.Package().Imports)
+		if pkg := c.Package(); pkg != nil && pkg.Imports != nil {
+			PrintImports(p, pkg.Imports)
+		}
 		p.Printf("%s", b)
 		return c, p.Bytes(), nil
 	})
 }
 
-// AppendDecls parses decls and appends them to the existing file f, then
-// adds the imports pkg.Imports records as missing.
-func AppendDecls(f *dst.File, pkg *Package, decls []byte) error { panic("unimplemented") }
+// AppendDecls parses decls and appends them to the existing file f, each
+// after an empty line, then adds the imports pkg.Imports records as
+// missing. A nil pkg or a nil pkg.Imports adds no import.
+//
+// AppendDecls returns the errors [ParseDstDecls] returns and leaves f
+// unchanged then.
+func AppendDecls(f *dst.File, pkg *Package, decls []byte) error {
+	parsed, err := ParseDstDecls(decls)
+	if err != nil {
+		return err
+	}
+	for _, d := range parsed {
+		d.Decorations().Before = dst.EmptyLine
+	}
+	f.Decls = append(f.Decls, parsed...)
+	if pkg != nil && pkg.Imports != nil {
+		pkg.Imports.AddMissingDst(f)
+	}
+	return nil
+}
