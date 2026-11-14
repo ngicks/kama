@@ -205,3 +205,113 @@ func TestImportNamedLikePredeclared(t *testing.T) {
 		"string/string.go": "package string\n\ntype T struct{ N int }\n",
 	}))
 }
+
+// TestCollidingLocalsBuild names type parameters and package-level
+// declarations after the locals the generated functions declare, and
+// builds the output. A renamed local that the body still spells by its
+// plain name fails to build.
+func TestCollidingLocalsBuild(t *testing.T) {
+	files := map[string]string{
+		"typeparams/a.go": `package typeparams
+
+//kama:partial
+type A[p, v, r, o, x, e, k, i, f, err, base, l, lv, rv any] struct {
+	X  p
+	S  []v
+	M  map[string]r
+	P  *o
+	N  Inner[x]
+	PN *Inner[e]
+	Emb[k]
+	*EmbP[i]
+}
+
+//kama:partial
+type L[p, v, r, o, x, e, k, i any] []*Inner[e]
+
+//kama:partial
+type LV[p, v, r, o, x, e, k, i any] []Inner[e]
+
+//kama:partial
+type M[k comparable, p, v, r, o, x, e, i any] map[k]*Inner[e]
+
+//kama:partial
+type MI[k comparable, p, v, r, o, x, e, i any] map[k]*int
+
+//kama:partial
+type Inner[x any] struct{ V x }
+
+//kama:partial
+type Emb[e any] struct{ E e }
+
+//kama:partial
+type EmbP[v any] struct{ F v }
+`,
+		"pkglevel/a.go": `package pkglevel
+
+type (
+	p    int
+	r    int
+	o    int
+	e    int
+	k    int
+	i    int
+	f    int
+	err  int
+	base int
+	l    int
+	lv   int
+	rv   int
+)
+
+//kama:partial
+type v map[string]*x
+
+//kama:partial
+type x struct {
+	I  int
+	S  []string
+	M  map[string]int
+	P  *int
+	N  inner
+	PN *inner
+	emb
+	*embP
+}
+
+//kama:partial
+type s []*x
+
+//kama:partial
+type inner struct{ V int }
+
+//kama:partial
+type emb struct{ E int }
+
+//kama:partial
+type embP struct{ F int }
+`,
+	}
+	for _, opts := range []Options{
+		{},
+		{Merge: MergeAppend},
+		{MergeNested: MergeNestedOverwrite},
+	} {
+		t.Run(string(opts.Merge)+"/"+string(opts.MergeNested), func(t *testing.T) {
+			f, load := stage(t, files)
+			ctx := context.Background()
+			pkgs, err := gopackages.Load(ctx, f, load)
+			assert.NilError(t, err)
+			opts.Registry = registry(t)
+			out, _, err := Generate(pkgs, opts)
+			assert.NilError(t, err)
+			for _, o := range out {
+				rel, err := filepath.Rel(f.Root(), o.Path)
+				assert.NilError(t, err)
+				assert.NilError(t, f.Write(ctx, filepath.ToSlash(rel), o.Content))
+			}
+			_, err = gopackages.Load(ctx, f, load)
+			assert.NilError(t, err)
+		})
+	}
+}

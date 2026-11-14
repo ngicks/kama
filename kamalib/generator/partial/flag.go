@@ -15,7 +15,7 @@ import (
 	"github.com/dave/dst/decorator"
 	"golang.org/x/tools/go/packages"
 
-	"github.com/ngicks/kama/kamalib/pkg/genmark"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
@@ -301,52 +301,72 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 		return ferr
 	}
 
-	w.beginFunc()
-	p, f := w.local("p"), w.local("f")
-	w.doc("RegisterFlags", "defines on "+f+" a flag for each field of p with a flag\n"+
-		"// option. Every flag defaults to the zero value; FromFlagSet reads the\n"+
-		"// flags back after "+f+" is parsed.")
-	w.line("func (%s *%s) RegisterFlags(%s %s) {", p, w.recv, f, flagSetName)
-	for _, fl := range flags {
-		k := fl.flag.kind
-		w.line("%s.%s(%s, %s, %s, %s)", f, k.define,
-			strconv.Quote(fl.flag.name), strconv.Quote(fl.flag.short), k.zero,
-			strconv.Quote(fl.flag.usage))
+	err := w.function(
+		docComment("RegisterFlags defines on %s a flag for each field of p with a flag\n"+
+			"option. Every flag defaults to the zero value; FromFlagSet reads the\n"+
+			"flags back after %s is parsed.", name("f"), name("f")),
+		expr("func (%s *%s) RegisterFlags(%s %s)", decl("p"), w.recv, decl("f"), flagSetName),
+		registerFlags(flags),
+	)
+	if err != nil {
+		return err
 	}
-	w.line("}")
 
-	w.beginFunc()
-	p, f = w.local("p"), w.local("f")
-	v, x, err := w.local("v"), w.local("x"), w.local("err")
-	w.doc("FromFlagSet", "sets each field of p with a flag option to the value of\n"+
-		"// its flag when the flag was set on "+f+". Other fields are left as they\n"+
-		"// are, so merging p onto another partial value keeps the fields of the\n"+
-		"// flags not set.")
-	w.line("func (%s *%s) FromFlagSet(%s %s) error {", p, w.recv, f, flagSetName)
+	return w.function(
+		docComment("FromFlagSet sets each field of p with a flag option to the value of\n"+
+			"its flag when the flag was set on %s. Other fields are left as they\n"+
+			"are, so merging p onto another partial value keeps the fields of the\n"+
+			"flags not set.", name("f")),
+		expr("func (%s *%s) FromFlagSet(%s %s) error", decl("p"), w.recv, decl("f"), flagSetName),
+		readFlags(flags, und, fmtIdent),
+		stmt("return nil"),
+	)
+}
+
+// registerFlags returns the statements defining the flag of each of flags
+// on the flag set f.
+func registerFlags(flags []fieldInfo) genSteps {
+	var out genSteps
 	for _, fl := range flags {
 		k := fl.flag.kind
-		name := strconv.Quote(fl.flag.name)
-		fail := "return " + fmtIdent + `.Errorf("flag --%s: %w", ` + name + ", " + err + ")"
-		lhs := p + "." + fl.partial
-		w.line("if %s.Changed(%s) {", f, name)
-		w.line("%s, %s := %s.%s(%s)", v, err, f, k.get, name)
-		w.line("if %s != nil {\n%s\n}", err, fail)
+		out = append(out, stmt("%s.%s(%s, %s, %s, %s)", name("f"), k.define,
+			strconv.Quote(fl.flag.name), strconv.Quote(fl.flag.short), k.zero,
+			strconv.Quote(fl.flag.usage)))
+	}
+	return out
+}
+
+// readFlags returns the statements setting the field of p of each of flags
+// set on the flag set f, und and fmtIdent spelling the packages und and fmt.
+func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
+	var out genSteps
+	for _, fl := range flags {
+		k := fl.flag.kind
+		flagName := strconv.Quote(fl.flag.name)
+		fail := genhelper.If(expr("%s != nil", name("err")), stmt("return %s.Errorf(%s, %s, %s)",
+			fmtIdent, strconv.Quote("flag --%s: %w"), flagName, name("err")), nil)
+		lhs := fieldOf("p", fl.partial)
+		body := genSteps{
+			stmt("%s, %s := %s.%s(%s)", decl("v"), decl("err"), name("f"), k.get, flagName),
+			fail,
+		}
 		switch {
 		case k.text:
-			w.line("var %s %s", x, fl.flag.typ)
-			w.line("%s = %s.UnmarshalText([]byte(%s))", err, x, v)
-			w.line("if %s != nil {\n%s\n}", err, fail)
-			w.line("%s = %s.Defined(%s)", lhs, und, x)
+			body = append(body,
+				stmt("var %s %s", decl("x"), fl.flag.typ),
+				stmt("%s = %s.UnmarshalText([]byte(%s))", name("err"), name("x"), name("v")),
+				fail,
+				stmt("%s = %s.Defined(%s)", lhs, und, name("x")),
+			)
 		case fl.flag.conv != "":
-			w.line("%s = %s.Defined(%s(%s))", lhs, und, fl.flag.conv, v)
+			body = append(body,
+				stmt("%s = %s.Defined(%s(%s))", lhs, und, fl.flag.conv, name("v")))
 		default:
-			w.line("%s = %s.Defined(%s)", lhs, und, v)
+			body = append(body, stmt("%s = %s.Defined(%s)", lhs, und, name("v")))
 		}
-		w.line("}")
+		out = append(out, genhelper.If(expr("%s.Changed(%s)", name("f"), flagName), body, nil))
 	}
-	w.line("return nil")
-	w.line("}")
-	return nil
+	return out
 }
 
 // checkFlags reports duplicate flag names and shorthands among fields.
@@ -422,24 +442,28 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	}
 	replacer := strings.NewReplacer(pairs...)
 
-	var src strings.Builder
-	fmt.Fprintf(&src, "package %s\n\n", pkg.Name)
-	fmt.Fprintf(&src, "// %s is the flag set the RegisterFlags and FromFlagSet methods of\n"+
-		"// the package take. *FlagSet of github.com/spf13/pflag implements it.\n//\n%s\n",
-		flagSetName, genmark.Marker(GeneratorName))
-	fmt.Fprintf(&src, "type %s interface {\n", flagSetName)
-	for _, name := range slices.Sorted(maps.Keys(sigs)) {
-		src.WriteString(replacer.Replace(sigs[name]))
-		src.WriteByte('\n')
+	body := genSteps{
+		genhelper.Append(
+			docComment("%s is the flag set the RegisterFlags and FromFlagSet methods of\n"+
+				"the package take. *FlagSet of github.com/spf13/pflag implements it.", flagSetName),
+		),
+		stmt("type %s interface {", flagSetName),
 	}
-	src.WriteString("}\n")
-
-	f, err := decorator.Parse(src.String())
+	for _, name := range slices.Sorted(maps.Keys(sigs)) {
+		body = append(body, stmt("%s", replacer.Replace(sigs[name])))
+	}
+	body = append(body, stmt("}"))
+	gpkg := &genhelper.Package{Imports: m, Path: pkg.PkgPath}
+	_, src, err := body.Render(genhelper.NewBaseContext(genhelper.NewScope(), gpkg), nil)
 	if err != nil {
+		return nil, fmt.Errorf("partial: flag set of %s: %w", pkg.PkgPath, err)
+	}
+
+	f := &dst.File{Name: dst.NewIdent(pkg.Name)}
+	f.Decs.Start = append(slices.Clone(hdr), "\n")
+	if err := genhelper.AppendDecls(f, gpkg, src); err != nil {
 		return nil, fmt.Errorf("partial: parse flag set of %s: %w", pkg.PkgPath, err)
 	}
-	f.Decs.Start = append(slices.Clone(hdr), "\n")
-	m.AddMissingDst(f)
 
 	var buf bytes.Buffer
 	if err := decorator.Fprint(&buf, f); err != nil {

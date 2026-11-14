@@ -520,16 +520,12 @@ func renderFileWith(
 	}
 	if len(hosted) > 0 {
 		var src strings.Builder
-		printf, flush := bufPrintf(&src)
 		for _, name := range hosted {
 			decl, err := p.helperDecl(name, helpers.byName[name])
 			if err != nil {
 				return nil, nil, err
 			}
-			printf("%s", decl)
-		}
-		if err := flush(); err != nil {
-			return nil, nil, err
+			src.WriteString(decl)
 		}
 		helperDecls, err := genhelper.ParseDstDecls([]byte(src.String()))
 		if err != nil {
