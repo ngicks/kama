@@ -151,7 +151,7 @@ const (
 	convEmbedded
 	// convEmbeddedPointer: embedded *M <-> embedded MPartial, nil <-> zero.
 	convEmbeddedPointer
-	// convSkip: a blank field, which cannot be referred to.
+	// convSkip: a blank field, which the partial struct leaves out.
 	convSkip
 )
 
@@ -243,7 +243,9 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 		if err != nil {
 			return nil, nil, fmt.Errorf("field %s (%s): %w", v.Name(), p.position(v.Pos()), err)
 		}
-		fields.List = append(fields.List, f)
+		if f != nil {
+			fields.List = append(fields.List, f)
+		}
 		infos = append(infos, info)
 	}
 	if err := checkFlags(n, infos); err != nil {
@@ -262,11 +264,23 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 // embedded slice or map either, so keeping its name keeps its wire name.
 func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field, fieldInfo, error) {
 	info := fieldInfo{source: v.Type(), name: v.Name(), partial: v.Name()}
+	key := kamaopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: v.Name()}
 
 	var (
 		f   *dst.Field
 		err error
 	)
+	if v.Name() == "_" {
+		// Nothing refers to a blank field, so the partial struct leaves it
+		// out. Its type is not mapped: a type only blank fields spell would
+		// leave an import unused.
+		info.conv = convSkip
+		info.flag, err = p.flag(n, info, p.sel.flags[key])
+		if err != nil {
+			return nil, fieldInfo{}, err
+		}
+		return nil, info, nil
+	}
 	if named, ok := p.sel.partialOf(deref(v.Type()), p.pkg.PkgPath); ok && v.Embedded() &&
 		isStruct(named) {
 		info.partial = partialName(named.Obj().Name())
@@ -293,11 +307,6 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 		}
 		f = withTag(&dst.Field{Names: []*dst.Ident{dst.NewIdent(v.Name())}, Type: info.expr}, tag)
 	}
-	if v.Name() == "_" {
-		info.conv = convSkip
-	}
-
-	key := kamaopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: v.Name()}
 	info.strategy, err = p.strategy(info.class, p.sel.merges[key])
 	if err != nil {
 		return nil, fieldInfo{}, err

@@ -315,3 +315,42 @@ type embP struct{ F int }
 		})
 	}
 }
+
+// TestBlankFieldsLeftOut builds partial types of structs with blank
+// fields. A partial struct declaring them would import the packages of
+// their types without using them elsewhere.
+func TestBlankFieldsLeftOut(t *testing.T) {
+	files := map[string]string{
+		"a.go": `package x
+
+import "time"
+
+//kama:partial
+type OnlyBlank struct {
+	_ int
+	_ time.Time
+}
+
+//kama:partial
+type Mixed struct {
+	_ [0]func()
+	X int
+	_ **int
+	_ Inner
+	Y *Inner
+}
+
+//kama:partial
+type Inner struct {
+	_ string
+	V string
+}
+`,
+	}
+	assert.NilError(t, generateAndBuild(t, files))
+
+	src := generated(t, files)["a.kama_partial.go"]
+	assert.Assert(t, !strings.Contains(src, "\t_ "), src)
+	assert.Assert(t, strings.Contains(src, "type OnlyBlankPartial struct{}"), src)
+	assert.Assert(t, !strings.Contains(src, `"time"`), src)
+}

@@ -171,9 +171,8 @@
 // of a non-nil pointer to an M whose fields all give undefined, as for an
 // M holding undefined und.Und fields only, therefore converts back to nil.
 //
-// A blank field _ of the source struct stays in the partial struct with
-// its mapped type. FromValue, ToValue and Merge skip it, since it cannot be
-// referred to.
+// The partial struct leaves out a blank field _ of the source struct,
+// since nothing can refer to it. FromValue, ToValue and Merge skip it.
 //
 // ApplyTo returns ToValue of FromValue of v merged with p.
 //
@@ -238,7 +237,7 @@
 //
 // AllUndefined tests the fields of MPartial with IsUndefined, and the
 // fields of a partial value embedded in it with its own AllUndefined. It
-// skips blank fields, which cannot be set. It cannot read an unexported
+// skips blank fields, which a partial struct does not have. It cannot read an unexported
 // field of a partial type of another package, so embedding a target of
 // another package that has unexported fields, where AllUndefined is
 // needed, is an error wrapping ErrUnsupported.
