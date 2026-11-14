@@ -23,7 +23,36 @@
 //     [Scope.Declare].
 //
 // [ForRange], [If] and [Switch] are steps for common statements. Each
-// renders its bodies in scopes of their own.
+// renders its bodies in scopes of their own. [Func] is a step for a
+// function, whose signature and body share one scope.
+//
+// [Expr] formats a piece of text, and [Stmt] and [Line] append one line.
+// The arguments [Ref], [Decl], [Use] and [Shadow] stand for the name of a
+// role in the scope the text renders in. A [Gen] argument stands for its
+// text. The format string is source text the generator author writes, and
+// generated text goes in as an argument.
+//
+// [Expr], [Stmt] and [Name] take no argument of the context type, so a
+// caller instantiates them, as in Stmt[C]. A consumer declares thin
+// wrappers once for its context:
+//
+//	type genCtx = genhelper.BaseContext
+//
+//	type (
+//		ref  = genhelper.Ref
+//		decl = genhelper.Decl
+//	)
+//
+//	func expr(format string, args ...any) genhelper.Gen[genCtx] {
+//		return genhelper.Expr[genCtx](format, args...)
+//	}
+//
+//	func stmt(format string, args ...any) genhelper.Step[genCtx] {
+//		return genhelper.Stmt[genCtx](format, args...)
+//	}
+//
+// [Line], [Func], [ForRange], [If] and [Switch] infer the context from
+// their [Gen] or [Step] arguments.
 //
 // The Parse and Print functions convert the text to dst or ast nodes and
 // back. [DstExpr], [DstStmts], [DstDecls] and their ast counterparts are

@@ -6,6 +6,10 @@ import "errors"
 // [Scope.Shadow] returns it.
 var ErrRedeclared = errors.New("genhelper: redeclared in this scope")
 
+// ErrUndeclared reports a role that neither the scope nor a scope enclosing
+// it declares. [Expr] and [Stmt] return it for a [Ref] to such a role.
+var ErrUndeclared = errors.New("genhelper: undeclared in this scope")
+
 // ErrNotPartial reports text that does not parse as the partial text asked
 // for: one expression, the statements of a function body or top-level
 // declarations other than imports. The Parse functions return it for text

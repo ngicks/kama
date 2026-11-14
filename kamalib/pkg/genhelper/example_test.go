@@ -464,3 +464,63 @@ func ExampleForRange() {
 	// 	}
 	// }
 }
+
+// The vocabulary takes no argument of the context type, so a consumer
+// instantiates it once for its context through thin wrappers.
+
+func expr(format string, args ...any) genhelper.Gen[ctx] {
+	return genhelper.Expr[ctx](format, args...)
+}
+
+func stmt(format string, args ...any) step {
+	return genhelper.Stmt[ctx](format, args...)
+}
+
+func ExampleFunc() {
+	type (
+		decl = genhelper.Decl
+		ref  = genhelper.Ref
+	)
+
+	root := genhelper.NewScope()
+	root.ReserveUniverse()
+	// The destination package declares v.
+	root.Reserve("v")
+
+	r := genhelper.Renderer[ctx]{
+		Context: genhelper.NewBaseContext(root, nil),
+		Steps: genhelper.Steps[ctx]{
+			// Func, ForRange and If infer the context from their Gen arguments.
+			genhelper.Func(
+				expr("func (%s Set) Filter(%s func(string) bool) Set", decl("s"), decl("keep")),
+				stmt("%s := make(Set, len(%s))", decl("out"), ref("s")),
+				genhelper.ForRange("v", "", genhelper.Name[ctx]("s"),
+					genhelper.If(expr("%s(%s)", ref("keep"), ref("v")),
+						stmt("%s[%s] = true", ref("out"), ref("v")),
+						nil,
+					),
+				),
+				stmt("return %s", ref("out")),
+			),
+		},
+	}
+	_, b, err := r.Render(nil)
+	if err != nil {
+		panic(err)
+	}
+	b, err = format.Source(b)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(string(b))
+	// Output:
+	// func (s Set) Filter(keep func(string) bool) Set {
+	// 	out := make(Set, len(s))
+	// 	for v2 := range s {
+	// 		if keep(v2) {
+	// 			out[v2] = true
+	// 		}
+	// 	}
+	// 	return out
+	// }
+}

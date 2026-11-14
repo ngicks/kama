@@ -1,7 +1,8 @@
 package genhelper
 
 import (
-	"fmt"
+	"strconv"
+	"strings"
 )
 
 // Context is what a [Step] renders with. C is the implementing type
@@ -68,9 +69,8 @@ func (c BaseContext) WithScope(s *Scope) BaseContext {
 //
 // The returned context is the one the next step renders with.
 //
-// The package defines no error of its own for rendering. A step returns
-// what its generator returns, such as the errors of [Package] and
-// [Scope.Shadow].
+// A step returns what its generator returns, such as the errors of
+// [Package], [Scope.Shadow] and [Expr].
 type Step[C Context[C]] interface {
 	Render(c C, b []byte) (C, []byte, error)
 }
@@ -85,8 +85,11 @@ func (f FuncStep[C]) Render(c C, b []byte) (C, []byte, error) {
 // Steps runs its steps in order. It is a [Step] itself, so chains nest.
 //
 // Render stops at the first failing step and returns its error wrapped
-// with the index of the step. errors.Is and errors.As still match the
-// error of the step.
+// with the index of the step, as in "genhelper: step 3: <error>". A failing
+// Steps nested directly in another, with no wrapping between them, extends
+// the path instead: "genhelper: step 3.0: <error>" is step 0 of the Steps
+// that is step 3. errors.Is and errors.As still match the error of the
+// step.
 type Steps[C Context[C]] []Step[C]
 
 func (s Steps[C]) Render(c C, b []byte) (C, []byte, error) {
@@ -94,10 +97,44 @@ func (s Steps[C]) Render(c C, b []byte) (C, []byte, error) {
 		var err error
 		c, b, err = step.Render(c, b)
 		if err != nil {
-			return c, nil, fmt.Errorf("genhelper: step %d: %w", i, err)
+			return c, nil, newStepError(i, err)
 		}
 	}
 	return c, b, nil
+}
+
+// stepError is the error of a step of [Steps], with the index of the step
+// in each enclosing Steps.
+type stepError struct {
+	path []int
+	err  error
+}
+
+func newStepError(i int, err error) error {
+	// A type assertion instead of errors.As keeps a message a step wraps
+	// around a nested stepError, which extending the path would drop.
+	if se, ok := err.(*stepError); ok {
+		return &stepError{path: append([]int{i}, se.path...), err: se.err}
+	}
+	return &stepError{path: []int{i}, err: err}
+}
+
+func (e *stepError) Error() string {
+	var sb strings.Builder
+	sb.WriteString("genhelper: step ")
+	for i, n := range e.path {
+		if i > 0 {
+			sb.WriteByte('.')
+		}
+		sb.WriteString(strconv.Itoa(n))
+	}
+	sb.WriteString(": ")
+	sb.WriteString(e.err.Error())
+	return sb.String()
+}
+
+func (e *stepError) Unwrap() error {
+	return e.err
 }
 
 // Renderer is a chain with the context it starts from.
