@@ -9,6 +9,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/ngicks/kama/kamalib/generator/base"
+
 	"github.com/ngicks/opiter"
 
 	"gotest.tools/v3/assert"
@@ -605,13 +607,13 @@ func TestOptionFileConflicts(t *testing.T) {
 }
 
 func TestProcOptionFile(t *testing.T) {
-	i := &instance{}
-	assert.ErrorIs(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{}}), ErrOption)
-	assert.ErrorIs(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{
+	g := &generator{}
+	assert.ErrorIs(t, g.Configure(ProcParam{OptionFile: &fileloader.PathInput{}}), ErrOption)
+	assert.ErrorIs(t, g.Configure(ProcParam{OptionFile: &fileloader.PathInput{
 		Base: "partial", Formats: []fileloader.Format{"ini"},
 	}}), ErrOption)
-	assert.NilError(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{Base: "partial"}}))
-	assert.DeepEqual(t, i.optionFile, &fileloader.PathInput{
+	assert.NilError(t, g.Configure(ProcParam{OptionFile: &fileloader.PathInput{Base: "partial"}}))
+	assert.DeepEqual(t, g.optionFile, &fileloader.PathInput{
 		Base: "partial",
 		Formats: []fileloader.Format{
 			fileloader.FormatYaml, fileloader.FormatJson, fileloader.FormatToml,
@@ -627,9 +629,9 @@ func TestProcOptionFile(t *testing.T) {
 	pkgs, err := gopackages.Load(ctx, f, gopackages.Options{Patterns: []string{"./" + dir}})
 	assert.NilError(t, err)
 
-	run := func(base string) error {
-		i := &instance{}
-		assert.NilError(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{Base: base}}))
+	run := func(optionFile string) error {
+		i := base.NewInstance(newGenerator())
+		assert.NilError(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{Base: optionFile}}))
 		i.In(&procgopackages.Packages{Pkgs: pkgs})
 		i.Out(f)
 		return i.Run(ctx, nopReporter{})

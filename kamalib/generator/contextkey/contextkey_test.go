@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ngicks/kama/kamalib/generator/base"
+
 	"go.yaml.in/yaml/v4"
 	"gotest.tools/v3/assert"
 
@@ -128,7 +130,7 @@ func TestRenderMarksDeclarations(t *testing.T) {
 }
 
 func TestProcParamErrors(t *testing.T) {
-	i := &instance{}
+	i := base.NewInstance(newGenerator())
 
 	assert.ErrorContains(
 		t,
@@ -153,7 +155,7 @@ entries:
   - {file_name: b, name: B, type: int, default_expr: "1"}
 `), &data))
 
-	i := &instance{}
+	i := base.NewInstance(newGenerator())
 	assert.NilError(t, i.Param(ProcParam{Dir: "gen", Package: "p", KeyTypeFunc: "k"}))
 	i.In(&fileloader.Document{Path: "t.yaml", Data: data})
 	i.Out(f)
@@ -168,7 +170,7 @@ entries:
 }
 
 func TestProcRunNoEntries(t *testing.T) {
-	i := &instance{}
+	i := base.NewInstance(newGenerator())
 	assert.NilError(t, i.Param(ProcParam{Package: "p", KeyTypeFunc: "k"}))
 	i.In(&fileloader.Document{Path: "t.yaml", Data: map[string]any{}})
 	assert.ErrorIs(t, i.Run(context.Background(), nopReporter{}), ErrNoEntries)

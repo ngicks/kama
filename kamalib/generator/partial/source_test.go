@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ngicks/kama/kamalib/generator/base"
+
 	"github.com/ngicks/opiter"
 
 	"github.com/dave/dst"
@@ -275,7 +277,7 @@ type A struct {
 	assert.DeepEqual(t, second, first)
 
 	opts = opts.WithDefaults()
-	sel, err := selectTargets(sourcePackages(pkgs), opts)
+	sel, err := selectTargets(base.SourcePackages(pkgs), opts)
 	assert.NilError(t, err)
 	n := opiter.First(maps.Values(sel.targets)).Value()
 	assert.Assert(t, n != nil)

@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ngicks/kama/kamalib/generator/base"
+
 	"github.com/ngicks/opiter"
 
 	"go.yaml.in/yaml/v4"
@@ -75,17 +77,22 @@ func TestFixtureUpToDate(t *testing.T) {
 			)
 			assert.NilError(t, err)
 
-			i := &instance{}
+			in := &gopackages.Packages{Pkgs: pkgs}
+			g := newGenerator()
+			i := base.NewInstance(g)
 			assert.NilError(t, i.Param(fx.param))
-			i.In(&gopackages.Packages{Pkgs: pkgs})
+			i.In(in)
 			i.Out(f)
-			files, _, err := i.generate()
+			files, _, err := g.Generate(ctx, in, f)
 			assert.NilError(t, err)
 			r := &recordReporter{}
 			assert.NilError(t, i.Run(ctx, r))
 			assert.Equal(t, len(r.warnings), 0, "%v", r.warnings)
 
-			produced := slices.Sorted(opiter.Map(filePath, slices.Values(files)))
+			absPath := func(file File) string {
+				return filepath.Join(f.Root(), filepath.FromSlash(file.Path))
+			}
+			produced := slices.Sorted(opiter.Map(absPath, slices.Values(files)))
 			assert.DeepEqual(t, produced, generatedFiles(t, f.Root()))
 
 			for _, name := range produced {
@@ -107,8 +114,6 @@ func TestFixtureUpToDate(t *testing.T) {
 		})
 	}
 }
-
-func filePath(f File) string { return f.Path }
 
 // generatedFiles returns the generated files under root, sorted.
 func generatedFiles(t *testing.T, root string) []string {

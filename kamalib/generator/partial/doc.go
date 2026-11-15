@@ -2,7 +2,7 @@
 //
 // The partial variant XPartial of a type X has the type parameters of X,
 // and its fields can each be undefined, null or defined, so that a value
-// can describe a change to some fields of an X. Proc runs Generate as the
+// can describe a change to some fields of an X. The proc of NewProc runs Generate as the
 // workflow step kind partial.generate.
 //
 // # Targets
@@ -417,7 +417,7 @@
 // signatures of basic and time types, so *pflag.FlagSet of
 // github.com/spf13/pflag implements it and the generated code imports no
 // flag package. The file has no build constraint and is generated on every
-// run, and Proc keeps it as it was when only its generated: line would
+// run, and the proc keeps it as it was when only its generated: line would
 // change; a declaration in it the generator did not mark is an error,
 // and so is PartialFlagSet declared elsewhere in the package.
 //
@@ -550,7 +550,7 @@
 // OptionFile.Name gives it, and null without an option file. generated is
 // the time Options.Now returns, in UTC to the second.
 //
-// Proc keeps a file that already exists, on disk or staged by an earlier
+// The proc keeps a file that already exists, on disk or staged by an earlier
 // step, when the file it would write differs from it in the generated:
 // line only, so that a run without changes leaves every file byte for byte
 // as it was. Generate itself always returns the time of the run; a caller
@@ -561,7 +561,7 @@
 // the marker of the generator and the run does not produce it. A partial
 // file becomes stale when its source file no longer declares targets.
 // Generate returns a warning wrapping ErrStale for a stale file, naming its
-// path relative to the module root, and Proc reports the warning. The file
+// path relative to the module root, and the proc reports the warning. The file
 // is left in place; delete it if it is no longer needed. If it refers to a
 // type that no longer exists, or declares a helper the run declares in
 // another file, loading the packages fails until the file is removed.

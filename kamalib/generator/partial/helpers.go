@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/ngicks/kama/kamalib/generator/base"
+
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
@@ -647,56 +649,13 @@ type partialFile struct {
 	support map[string]bool
 }
 
-func isUnconstrained(f *partialFile) bool { return !f.constrained }
-
-// helpersFile is a file declaring helpers of a package.
-type helpersFile struct {
-	path string
-	// buildLine is the //go:build line of the file, or empty.
-	buildLine string
-	// hosted are the names of the helpers the file declares, sorted.
-	hosted []string
+// callers returns files as the callers of the helpers of their package.
+func callers(files []*partialFile) []base.Caller {
+	return slices.Collect(opiter.Map((*partialFile).caller, slices.Values(files)))
 }
 
-// hostHelpers returns the files declaring the helpers that files, sorted
-// by path, call. Every helper is declared once in the package.
-//
-// A helper called by a file without a build constraint goes to shared, the
-// helpers file of the package. Such a file is in every build variant, and
-// whether it calls a helper does not depend on the variant loaded, so
-// shared comes out the same whichever variant a run loads.
-//
-// A helper called by constrained files only cannot go there: its types may
-// not exist in another variant, and a run loading another variant would
-// drop it. It goes to the helpers file of the first file calling it, which
-// carries the build constraint of that file and stays right as long as the
-// files calling the helper are loaded together.
-//
-// A file declares its helpers sorted by name, that is by op and then by
-// the hashes of their signatures.
-func hostHelpers(shared string, files []*partialFile) []*helpersFile {
-	names := map[string]bool{}
-	for _, f := range files {
-		maps.Copy(names, f.used)
+func (f *partialFile) caller() base.Caller {
+	return base.Caller{
+		Constrained: f.constrained, BuildLine: f.buildLine, Own: f.helpersPath, Uses: f.used,
 	}
-	byPath := map[string]*helpersFile{}
-	host := func(path, buildLine, name string) {
-		hf := byPath[path]
-		if hf == nil {
-			hf = &helpersFile{path: path, buildLine: buildLine}
-			byPath[path] = hf
-		}
-		hf.hosted = append(hf.hosted, name)
-	}
-	for _, name := range slices.Sorted(maps.Keys(names)) {
-		usesName := func(f *partialFile) bool { return f.used[name] }
-		callers := opiter.Filter(usesName, slices.Values(files))
-		if opiter.ContainsFunc(isUnconstrained, callers) {
-			host(shared, "", name)
-		} else {
-			first := opiter.First(callers).Value()
-			host(first.helpersPath, first.buildLine, name)
-		}
-	}
-	return slices.Collect(opiter.OmitF(opiter.MapsSorted(byPath)))
 }

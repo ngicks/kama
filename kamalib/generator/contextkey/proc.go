@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
-	"reflect"
+	"slices"
+
+	"github.com/ngicks/kama/kamalib/generator/base"
 
 	"github.com/ngicks/opiter"
 
@@ -31,43 +33,24 @@ type ProcParam struct {
 	KeyTypeFunc string `json:"key_type_func"`
 }
 
-// Proc renders the Template its in decodes to and stages the files in its
-// out.
+// NewProc returns the proc rendering the Template its in decodes to and
+// staging the files in its out. A file of its out that would not change is
+// not staged. The proc reports the number of files written and unchanged.
 //
 //	Param(ProcParam) error
 //	In(*fileloader.Document)
 //	Out(*overlayfs.Fs)
-type Proc struct{}
+func NewProc() workflow.Proc { return base.NewProc(newGenerator)() }
 
-// NewProc returns a new Proc.
-func NewProc() workflow.Proc { return Proc{} }
-
-func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParam]() }
-
-func (Proc) InTypes() []reflect.Type {
-	return []reflect.Type{reflect.TypeFor[*fileloader.Document]()}
-}
-
-func (Proc) OutTypes() []reflect.Type {
-	return []reflect.Type{reflect.TypeFor[*overlayfs.Fs]()}
-}
-
-func (Proc) AsInputType() reflect.Type { return nil }
-
-func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
-	return &instance{}, nil
-}
-
-func (Proc) CleanUp(context.Context) error { return nil }
-
-type instance struct {
+// generator runs Render as a step.
+type generator struct {
 	dir  string
 	opts Options
-	doc  *fileloader.Document
-	fs   *overlayfs.Fs
 }
 
-func (i *instance) Param(p ProcParam) error {
+func newGenerator() base.Generator[ProcParam, *fileloader.Document] { return &generator{} }
+
+func (g *generator) Configure(p ProcParam) error {
 	if p.Dir == "" {
 		p.Dir = "."
 	}
@@ -80,35 +63,32 @@ func (i *instance) Param(p ProcParam) error {
 		return err
 	}
 
-	i.dir, i.opts = p.Dir, opts
+	g.dir, g.opts = p.Dir, opts
 	return nil
 }
 
-func (i *instance) In(doc *fileloader.Document) { i.doc = doc }
-
-func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
-
-func (i *instance) Run(ctx context.Context, _ workflow.Reporter) error {
-	tmpl, err := decodeTemplate(i.doc.Data)
+func (g *generator) Generate(
+	_ context.Context,
+	doc *fileloader.Document,
+	_ *overlayfs.Fs,
+) ([]base.File, []error, error) {
+	tmpl, err := decodeTemplate(doc.Data)
 	if err != nil {
-		return fmt.Errorf("contextkey: %s: %w", i.doc.Path, err)
+		return nil, nil, fmt.Errorf("contextkey: %s: %w", doc.Path, err)
 	}
 	if len(tmpl.Entries) == 0 {
-		return fmt.Errorf("%w: %s", ErrNoEntries, i.doc.Path)
+		return nil, nil, fmt.Errorf("%w: %s", ErrNoEntries, doc.Path)
 	}
 
-	files, err := Render(tmpl.Entries, i.opts)
+	files, err := Render(tmpl.Entries, g.opts)
 	if err != nil {
-		return fmt.Errorf("%s: %w", i.doc.Path, err)
+		return nil, nil, fmt.Errorf("%s: %w", doc.Path, err)
 	}
 
-	for name, src := range opiter.MapsSorted(files) {
-		if err := i.fs.Write(ctx, path.Join(i.dir, name), src); err != nil {
-			return fmt.Errorf("contextkey: write %q: %w", name, err)
-		}
+	inDir := func(name string, src []byte) base.File {
+		return base.File{Path: path.Join(g.dir, name), Content: src}
 	}
-
-	return nil
+	return slices.Collect(opiter.Unify(inDir, opiter.MapsSorted(files))), nil, nil
 }
 
 // decodeTemplate converts the format-neutral data fileloader decodes into

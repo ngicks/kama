@@ -5,9 +5,6 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
-	"go/ast"
-	"go/build/constraint"
-	"go/parser"
 	"go/token"
 	"go/types"
 	"maps"
@@ -16,13 +13,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ngicks/kama/kamalib/generator/base"
+
 	"github.com/ngicks/opiter"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"golang.org/x/tools/go/packages"
 
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
@@ -36,6 +34,9 @@ const GeneratorName = "kama-partial"
 // FileSuffix is inserted into the name of a source file to name the file
 // generated from it.
 const FileSuffix = ".kama_partial"
+
+// naming names the files the generator writes.
+var naming = base.Naming{Name: "kama_partial"}
 
 // HelpersFile is the name of the file declaring the helpers the partial
 // files of a package call. The zz_gen. prefix marks a generated file no
@@ -88,7 +89,7 @@ var (
 	ErrOptionFile = errors.New("partial: invalid option file")
 	// ErrStale reports a file of a loaded package that carries the marker of
 	// the generator but that the run did not produce. It is a warning.
-	ErrStale = errors.New("partial: stale generated file")
+	ErrStale = base.ErrStale
 )
 
 // MergeMode selects how a defined slice or map field of a partial combines
@@ -165,13 +166,9 @@ func (o Options) Validate() error {
 	return nil
 }
 
-// File is a generated file.
-type File struct {
-	// Path is the absolute path of the file, next to the source file it
-	// derives from.
-	Path    string
-	Content []byte
-}
+// File is a generated file. Its Path is absolute, next to the source file
+// the file derives from.
+type File = base.File
 
 // Generate returns the partial type declarations and their methods for
 // the targets in pkgs, one file per source file declaring targets, and the
@@ -198,7 +195,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		return nil, nil, err
 	}
 
-	srcPkgs := sourcePackages(pkgs)
+	srcPkgs := base.SourcePackages(pkgs)
 	sel, err := selectTargets(srcPkgs, opts)
 	if err != nil {
 		return nil, nil, err
@@ -227,17 +224,14 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 			pf = &pkgFiles{pkg: pkg, dir: filepath.Dir(filename)}
 			byPkg[pkg.PkgPath] = pf
 		}
-		base := filepath.Base(filename)
-		out := suffix.SuffixFilename(base, FileSuffix)
-		buildLine, constrained := buildConstraint(nodes[0].Detail.File)
+		buildLine, constrained := base.BuildConstraint(nodes[0].Detail.File)
 		pf.files = append(pf.files, &partialFile{
-			path:  filepath.Join(filepath.Dir(filename), out),
-			nodes: nodes,
-			// The suffix moves after a constraint of the file name only.
-			constrained: constrained ||
-				out != strings.TrimSuffix(base, ".go")+FileSuffix+".go",
+			path:        naming.SourceFile(filename),
+			nodes:       nodes,
+			constrained: constrained || base.Constrained(filename),
 			helpersPath: filepath.Join(
-				filepath.Dir(filename), suffix.SuffixFilename(base, HelpersSuffix),
+				filepath.Dir(filename),
+				suffix.SuffixFilename(filepath.Base(filename), HelpersSuffix),
 			),
 			buildLine: buildLine,
 		})
@@ -273,7 +267,19 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	for pkgPath := range byPkg {
 		generated[pkgPath] = true
 	}
-	return files, staleFiles(srcPkgs, opts.Registry, files, generated), nil
+	stale := base.StaleCheck{
+		Registry:  opts.Registry,
+		Generator: GeneratorName,
+		// The flag set file has no build constraint and serves the partial
+		// files of every build variant. A package the run produced nothing
+		// for may still declare targets in files of a variant not loaded,
+		// which keep needing it. A package the run produced files for
+		// always gets it, so it cannot be stale there.
+		Keep: func(pkg *packages.Package, path string) bool {
+			return !generated[pkg.PkgPath] && filepath.Base(path) == FlagSetFile
+		},
+	}
+	return files, stale.Files(srcPkgs, files), nil
 }
 
 func fileContent(f File) []byte { return f.Content }
@@ -325,12 +331,14 @@ func renderPackage(
 		}
 		out = append(out, File{Path: f.path, Content: content})
 	}
-	for _, hf := range hostHelpers(filepath.Join(dir, HelpersFile), files) {
+	// A helpers file declares its helpers sorted by name, that is by op and
+	// then by the hashes of their signatures.
+	for _, hf := range base.HostShared(filepath.Join(dir, HelpersFile), callers(files)) {
 		content, err := renderHelpers(sel, hdr, pkg, hf, helpers)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, File{Path: hf.path, Content: content})
+		out = append(out, File{Path: hf.Path, Content: content})
 	}
 	return out, nil
 }
@@ -340,7 +348,7 @@ func renderHelpers(
 	sel *selection,
 	hdr dst.Decorations,
 	pkg *packages.Package,
-	hf *helpersFile,
+	hf base.Host,
 	helpers *helperSet,
 ) ([]byte, error) {
 	parser := importdecl.NewParser(pkg.Types)
@@ -348,7 +356,7 @@ func renderHelpers(
 	parser.Reserve(pkg.Types.Scope().Names()...)
 	parser.Reserve(localNames...)
 	require := map[string]bool{}
-	for _, name := range hf.hosted {
+	for _, name := range hf.Names {
 		h := helpers.byName[name]
 		parser.Reserve(slices.Collect(opiter.Map(typeParamName, slices.Values(h.typeParams())))...)
 		maps.Copy(require, h.spelled)
@@ -373,11 +381,11 @@ func renderHelpers(
 	}
 	file := &dst.File{Name: dst.NewIdent(pkg.Name)}
 	file.Decs.Start = append(slices.Clone(hdr), "\n")
-	if hf.buildLine != "" {
-		file.Decs.Start = append(file.Decs.Start, hf.buildLine, "\n")
+	if hf.BuildLine != "" {
+		file.Decs.Start = append(file.Decs.Start, hf.BuildLine, "\n")
 	}
 	var src strings.Builder
-	for _, name := range hf.hosted {
+	for _, name := range hf.Names {
 		text, err := p.helperDecl(name, helpers.byName[name])
 		if err != nil {
 			return nil, err
@@ -386,7 +394,7 @@ func renderHelpers(
 	}
 	decls, err := gofragment.ParseDstDecls([]byte(src.String()))
 	if err != nil {
-		return nil, fmt.Errorf("partial: parse helpers of %s: %w", hf.path, err)
+		return nil, fmt.Errorf("partial: parse helpers of %s: %w", hf.Path, err)
 	}
 	for _, d := range decls {
 		d.Decorations().Before = dst.EmptyLine
@@ -396,7 +404,7 @@ func renderHelpers(
 
 	var buf bytes.Buffer
 	if err := decorator.Fprint(&buf, file); err != nil {
-		return nil, fmt.Errorf("partial: print %s: %w", hf.path, err)
+		return nil, fmt.Errorf("partial: print %s: %w", hf.Path, err)
 	}
 	return buf.Bytes(), nil
 }
@@ -424,121 +432,17 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 }
 
 // fileHeader returns the comment lines every generated file starts with.
-// The first line follows the convention of go help generate.
 func fileHeader(opts Options, now time.Time) (dst.Decorations, error) {
 	var optionFile any
 	if opts.OptionFile != nil {
 		optionFile = opts.OptionFile.Name
 	}
-	comment, err := genhelper.GeneratorParams{
-		Name: generatorPath,
-		Params: map[string]any{
-			"merge":        string(opts.Merge),
-			"merge_nested": string(opts.MergeNested),
-			"option_file":  optionFile,
-		},
-		Generated: now,
-	}.Comment()
-	if err != nil {
-		return nil, fmt.Errorf("partial: file header: %w", err)
-	}
-	return strings.Split(comment, "\n"), nil
+	return base.Header(generatorPath, map[string]any{
+		"merge":        string(opts.Merge),
+		"merge_nested": string(opts.MergeNested),
+		"option_file":  optionFile,
+	}, now)
 }
-
-// staleFiles returns a warning for each file of pkgs holding a declaration
-// marked by the generator that is not among files. generated holds the
-// packages files were generated into, keyed by package path.
-func staleFiles(
-	pkgs []*packages.Package,
-	reg *genmark.Registry,
-	files []File,
-	generated map[string]bool,
-) []error {
-	produced := map[string]bool{}
-	for _, f := range files {
-		produced[filepath.Clean(f.Path)] = true
-	}
-
-	type stale struct{ path, name string }
-	var found []stale
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Syntax {
-			tf := pkg.Fset.File(f.Pos())
-			if tf == nil || produced[filepath.Clean(tf.Name())] || !markedFile(f, reg) {
-				continue
-			}
-			// The flag set file has no build constraint and serves the
-			// partial files of every build variant. A package the run
-			// produced nothing for may still declare targets in files of a
-			// variant not loaded, which keep needing it. A package the run
-			// produced files for always gets it, so it cannot be stale there
-			// and is left to the check above.
-			if !generated[pkg.PkgPath] && filepath.Base(tf.Name()) == FlagSetFile {
-				continue
-			}
-			shown := tf.Name()
-			if pkg.Module != nil && pkg.Module.Dir != "" {
-				if rel, err := filepath.Rel(pkg.Module.Dir, shown); err == nil &&
-					rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-					shown = rel
-				}
-			}
-			found = append(found, stale{path: tf.Name(), name: shown})
-		}
-	}
-	slices.SortFunc(found, func(a, b stale) int { return cmp.Compare(a.path, b.path) })
-
-	staleErr := func(s stale) error {
-		return fmt.Errorf(
-			"%w: %s was generated by %s but not produced by this run; delete it if no longer needed",
-			ErrStale,
-			s.name,
-			GeneratorName,
-		)
-	}
-	return slices.Collect(opiter.Map(staleErr, slices.Values(found)))
-}
-
-// markedFile reports whether a declaration of f carries the marker of the
-// generator.
-func markedFile(f *ast.File, reg *genmark.Registry) bool {
-	marked := func(cg *ast.CommentGroup) bool {
-		gen, ok := reg.Generated(cg)
-		return ok && gen == GeneratorName
-	}
-	markedSpec := func(spec ast.Spec) bool {
-		switch s := spec.(type) {
-		case *ast.TypeSpec:
-			return marked(s.Doc)
-		case *ast.ValueSpec:
-			return marked(s.Doc)
-		}
-		return false
-	}
-	markedDecl := func(node ast.Decl) bool {
-		switch d := node.(type) {
-		case *ast.FuncDecl:
-			return marked(d.Doc)
-		case *ast.GenDecl:
-			return marked(d.Doc) || opiter.ContainsFunc(markedSpec, slices.Values(d.Specs))
-		}
-		return false
-	}
-	return opiter.ContainsFunc(markedDecl, slices.Values(f.Decls))
-}
-
-// sourcePackages drops test variants, which repeat the declarations of the
-// package they test, and the generated test main packages.
-func sourcePackages(pkgs []*packages.Package) []*packages.Package {
-	sources := opiter.Filter(isSourceVariant, slices.Values(pkgs))
-	return slices.Collect(opiter.UniqueFunc(pkgPathOf, sources))
-}
-
-func pkgPathOf(p *packages.Package) string { return p.PkgPath }
-
-// isSourceVariant reports whether p is the package itself rather than a test
-// variant or a test main package, whose IDs differ from their paths.
-func isSourceVariant(p *packages.Package) bool { return p.ID == p.PkgPath }
 
 // renderFileWith prints the partial declarations of f, with the packages
 // of require imported.
@@ -594,7 +498,7 @@ func renderFileWith(
 	// The partial types refer to the source types, so they must build under
 	// the same constraint. A constraint in the file name is kept by the
 	// output name.
-	if line, ok := buildConstraint(nodes[0].Detail.File); ok {
+	if line, ok := base.BuildConstraint(nodes[0].Detail.File); ok {
 		file.Decs.Start = append(file.Decs.Start, line, "\n")
 	}
 	for _, n := range nodes {
@@ -718,73 +622,20 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 
 // checkPredeclared reports package-level declarations of pkg named like a
 // predeclared identifier the generated files contents spell, which the
-// declaration would shadow there.
-//
-// Every identifier the files use other than selected names, field and
-// parameter names and declared names is taken as a use, so a predeclared
-// name spelled for a type of pkg itself, as und.Und[string] for a field of
-// a package-level type string, is reported too.
+// declaration would shadow there. See base.ShadowedPredeclared for what
+// counts as spelled.
 func checkPredeclared(pkg *packages.Package, contents [][]byte) error {
-	used := map[string]bool{}
-	for _, c := range contents {
-		f, err := parser.ParseFile(token.NewFileSet(), "", c, parser.SkipObjectResolution)
-		if err != nil {
-			return fmt.Errorf("partial: parse generated file of %s: %w", pkg.PkgPath, err)
-		}
-		declared := map[*ast.Ident]bool{}
-		ast.Inspect(f, func(n ast.Node) bool {
-			switch n := n.(type) {
-			case *ast.SelectorExpr:
-				declared[n.Sel] = true
-			case *ast.Field:
-				for _, ident := range n.Names {
-					declared[ident] = true
-				}
-			case *ast.FuncDecl:
-				declared[n.Name] = true
-			case *ast.TypeSpec:
-				declared[n.Name] = true
-			case *ast.ImportSpec:
-				return false
-			case *ast.Ident:
-				if !declared[n] {
-					used[n.Name] = true
-				}
-			}
-			return true
-		})
+	objs, err := base.ShadowedPredeclared(pkg, contents)
+	if err != nil {
+		return err
 	}
-
-	shadowErr := func(ident string) error {
-		obj := pkg.Types.Scope().Lookup(ident)
-		if obj == nil {
-			return nil
-		}
+	shadowErr := func(obj types.Object) error {
 		return fmt.Errorf(
 			"%w: %s: %s.%s shadows the predeclared %s the generated code spells",
-			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, ident, ident,
+			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(), obj.Name(),
 		)
 	}
-	predeclared := slices.Sorted(opiter.Filter(isPredeclared, maps.Keys(used)))
-	// errors.Join drops the nil errors of identifiers pkg does not declare.
-	return errors.Join(slices.Collect(opiter.Map(shadowErr, slices.Values(predeclared)))...)
-}
-
-func isPredeclared(ident string) bool { return types.Universe.Lookup(ident) != nil }
-
-// buildConstraint returns the //go:build line of f.
-func buildConstraint(f *ast.File) (string, bool) {
-	for _, cg := range f.Comments {
-		if cg.Pos() >= f.Package {
-			break
-		}
-		for _, c := range cg.List {
-			if constraint.IsGoBuild(c.Text) {
-				return c.Text, true
-			}
-		}
-	}
-	return "", false
+	return errors.Join(slices.Collect(opiter.Map(shadowErr, slices.Values(objs)))...)
 }
 
 func partialName(typeName string) string { return typeName + "Partial" }

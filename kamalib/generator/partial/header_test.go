@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ngicks/kama/kamalib/generator/base"
+
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
@@ -221,10 +223,11 @@ func (e *procEnv) run(now time.Time) *recordReporter {
 	pkgs, err := gopackages.Load(ctx, e.f, gopackages.Options{Patterns: []string{"./" + e.dir}})
 	assert.NilError(e.t, err)
 
-	i := &instance{}
+	g := &generator{}
+	i := base.NewInstance[ProcParam, *procgopackages.Packages](g)
 	assert.NilError(e.t, i.Param(ProcParam{}))
-	i.opts.Registry = registry(e.t)
-	i.opts.Now = func() time.Time { return now }
+	g.opts.Registry = registry(e.t)
+	g.opts.Now = func() time.Time { return now }
 	i.In(&procgopackages.Packages{Pkgs: pkgs})
 	i.Out(e.f)
 	r := &recordReporter{}
