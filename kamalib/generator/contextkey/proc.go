@@ -34,8 +34,10 @@ type ProcParam struct {
 }
 
 // NewProc returns the proc rendering the Template its in decodes to and
-// staging the files in its out. A file of its out that would not change is
-// not staged. The proc reports the number of files written and unchanged.
+// staging the files in its out. A file of its out that would change in the
+// generated: line of its header only is not staged. The proc reports a
+// warning for each stale file of its output directory, and the number of
+// files written and unchanged.
 //
 //	Param(ProcParam) error
 //	In(*fileloader.Document)
@@ -70,7 +72,7 @@ func (g *generator) Configure(p ProcParam) error {
 func (g *generator) Generate(
 	_ context.Context,
 	doc *fileloader.Document,
-	_ *overlayfs.Fs,
+	out *overlayfs.Fs,
 ) ([]base.File, []error, error) {
 	tmpl, err := decodeTemplate(doc.Data)
 	if err != nil {
@@ -88,7 +90,15 @@ func (g *generator) Generate(
 	inDir := func(name string, src []byte) base.File {
 		return base.File{Path: path.Join(g.dir, name), Content: src}
 	}
-	return slices.Collect(opiter.Unify(inDir, opiter.MapsSorted(files))), nil, nil
+	produced := slices.Collect(opiter.Unify(inDir, opiter.MapsSorted(files)))
+
+	opts := g.opts.withDefaults()
+	stale := base.StaleCheck{Registry: opts.Registry, Generator: GeneratorName}
+	warnings, err := stale.Dir(out.FS(), g.dir, produced)
+	if err != nil {
+		return nil, nil, fmt.Errorf("contextkey: %w", err)
+	}
+	return produced, warnings, nil
 }
 
 // decodeTemplate converts the format-neutral data fileloader decodes into
