@@ -4,8 +4,8 @@ go 1.27.0
 
 require (
 	github.com/dave/dst v0.27.3
-	github.com/ngicks/go-fsys-helper/vroot v0.0.1
-	github.com/ngicks/go-fsys-helper/vroot-adapter/overlayfs v0.0.0-20260820002924-4f04f83b610e
+	github.com/ngicks/go-fsys-helper/vroot v0.0.2
+	github.com/ngicks/go-fsys-helper/vroot-adapter/overlayfs v0.0.0-20261115192526-4e496cb4e8cc
 	github.com/ngicks/opiter v0.0.0-20260820004518-4283fb0915b9
 	github.com/ngicks/option v0.0.4
 	github.com/pelletier/go-toml/v2 v2.4.3
@@ -21,7 +21,7 @@ require (
 	github.com/ncruces/go-sqlite3 v0.35.3 // indirect
 	github.com/ncruces/go-sqlite3-wasm/v3 v3.2.35304 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
-	github.com/ngicks/go-fsys-helper/fsutil v0.0.0-20260528191442-457556e7ce33 // indirect
+	github.com/ngicks/go-fsys-helper/fsutil v0.0.0-20260816154526-c6c8f4c0c36f // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 )
