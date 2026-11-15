@@ -14,7 +14,7 @@ import (
 
 func init() { workflow.Register("partial.generate", NewProc) }
 
-// ProcParam configures Proc. See Options for the modes.
+// ProcParam configures the proc of NewProc. See Options for the modes.
 type ProcParam struct {
 	// Merge is "overwrite" or "append". Empty means "overwrite".
 	Merge string `json:"merge"`

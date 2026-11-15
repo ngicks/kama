@@ -87,7 +87,7 @@ func TestHelpersAcrossBuildVariants(t *testing.T) {
 		assert.NilError(t, err)
 		return string(b)
 	}
-	shared, own := read(HelpersFile), read("b_tagged"+HelpersSuffix+".go")
+	shared, own := read(HelpersFile), read("zz_gen.helper.b_tagged.kama_partial.go")
 	h := helperIn(t, shared, own)
 	fromN := "\nfunc " + h("FromTarget", "converts *N into und.Und[NPartial],") + "("
 	appendInts := "\nfunc " + h("MergeAppend", "both und.Und[[]int]:") + "("
@@ -119,7 +119,7 @@ func TestHelperOfConstrainedFiles(t *testing.T) {
 		"b.go":       "package x\n\ntype N struct{ I int }\n\n//kama:partial\ntype B struct{ N N }\n",
 	}
 	out := generated(t, files)
-	own := out["a"+HelpersSuffix+"_linux.go"]
+	own := out["zz_gen.helper.a.kama_partial_linux.go"]
 	helperIn(t, own)("FromTarget", "converts *N into und.Und[NPartial],")
 	assert.NilError(t, generateAndBuild(t, files))
 }

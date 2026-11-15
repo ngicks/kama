@@ -441,7 +441,7 @@ func TestHelpersFileConflict(t *testing.T) {
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, HelpersFile+" holds a declaration")
 
-	own := "a" + HelpersSuffix + "_linux.go"
+	own := "zz_gen.helper.a.kama_partial_linux.go"
 	_, err = generate(t, map[string]string{
 		"a_linux.go": "package x\n\n//kama:partial\ntype A struct{ N *N }\n\ntype N struct{ I int }\n",
 		own:          "package x\n\nfunc stray() {}\n",

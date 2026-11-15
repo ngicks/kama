@@ -15,7 +15,8 @@ type Caller struct {
 	// BuildLine is the //go:build line of the source file, or empty.
 	BuildLine string
 	// Own is the path of the file declaring what only constrained callers
-	// use, when this caller is the first of them.
+	// use, when this caller is the first of them. Naming.SharedFileOf names
+	// it.
 	Own string
 	// Uses are the names of the shared declarations the file calls.
 	Uses map[string]bool

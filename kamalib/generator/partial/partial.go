@@ -24,7 +24,6 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
-	"github.com/ngicks/kama/kamalib/pkg/overlayfs/suffix"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -43,16 +42,12 @@ var naming = base.Naming{Name: "kama_partial"}
 // source file stands behind and sorts it after the files written by hand.
 const HelpersFile = "zz_gen.helper.kama_partial.go"
 
-// HelpersSuffix is inserted into the name of a source file that has a
-// build constraint to name the file declaring the helpers only files with
-// a build constraint call.
-const HelpersSuffix = ".kama_partial_helpers"
+// helperKind is the kind of the files declaring helpers, as their names
+// spell it.
+const helperKind = "helper"
 
 // isHelpersFile reports whether base names a helpers file.
-func isHelpersFile(base string) bool {
-	return base == HelpersFile || strings.HasSuffix(base, HelpersSuffix+".go") ||
-		strings.Contains(base, HelpersSuffix+"_")
-}
+func isHelpersFile(base string) bool { return naming.IsShared(helperKind, base) }
 
 // generatorPath is the import path of the generator, named by the first
 // line of the header of every generated file.
@@ -229,11 +224,8 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 			path:        naming.SourceFile(filename),
 			nodes:       nodes,
 			constrained: constrained || base.Constrained(filename),
-			helpersPath: filepath.Join(
-				filepath.Dir(filename),
-				suffix.SuffixFilename(filepath.Base(filename), HelpersSuffix),
-			),
-			buildLine: buildLine,
+			helpersPath: naming.SharedFileOf(helperKind, filename),
+			buildLine:   buildLine,
 		})
 	}
 

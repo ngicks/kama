@@ -22,7 +22,7 @@ func init() { workflow.Register("contextkey.generate", NewProc) }
 
 var ErrNoEntries = errors.New("contextkey: no entries")
 
-// ProcParam configures Proc.
+// ProcParam configures the proc of NewProc.
 type ProcParam struct {
 	// Dir is the output directory, relative to the project root.
 	Dir string `json:"dir"`

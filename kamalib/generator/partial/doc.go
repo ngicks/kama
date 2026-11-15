@@ -348,10 +348,13 @@
 // out the same whichever variant a run loads.
 //
 // A helper called by constrained files only is declared in the helpers
-// file of the first of them by path. That file is named like the partial
-// file with .kama_partial_helpers in place of .kama_partial, as in
-// x.kama_partial_helpers_linux.go for x_linux.go, and carries the
-// //go:build line of the source file. The types of such a helper may not
+// file of the first of them by path. That file is named zz_gen.helper.
+// followed by the name of the partial file, as in
+// zz_gen.helper.x.kama_partial_linux.go for x_linux.go, and carries the
+// //go:build line of the source file. The name of the source file is kept
+// so that two constrained source files of a package get a helpers file
+// each, and so that a //go:build line, which no file name shows, still
+// tells the files apart. The types of such a helper may not
 // exist in another build variant, and a run loading another variant would
 // drop the helper from zz_gen.helper.kama_partial.go. This placement assumes the
 // constrained files calling one helper are built together.
@@ -530,10 +533,11 @@
 // call go to the helpers files described under Helpers. Every generated
 // declaration carries the marker //kama:generated kama-partial.
 //
-// Two files of a package derive from no source file: the helpers file
-// zz_gen.helper.kama_partial.go and the flag set file
-// zz_gen.flagset.kama_partial.go. The zz_gen. prefix marks them as
-// generated and sorts them after the files written by hand.
+// The files other than the partial files start with zz_gen.: the helpers
+// file zz_gen.helper.kama_partial.go, the helpers files of constrained
+// source files and the flag set file zz_gen.flagset.kama_partial.go. The
+// prefix marks them as generated and sorts them after the files written by
+// hand.
 //
 // Every generated file starts with this header:
 //
