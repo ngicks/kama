@@ -20,6 +20,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/ngicks/kama/kamalib/generator/base"
+
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
@@ -28,11 +30,7 @@ import (
 // GeneratorName is the name the generator marks its declarations with.
 const GeneratorName = "kama-contextkey"
 
-func init() {
-	if err := genmark.DefaultRegistry.Register(GeneratorName); err != nil {
-		panic(err)
-	}
-}
+func init() { base.MustRegister(GeneratorName) }
 
 var ErrInvalidEntry = errors.New("contextkey: invalid entry")
 

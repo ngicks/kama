@@ -53,11 +53,7 @@ func isHelpersFile(base string) bool { return naming.IsShared(helperKind, base) 
 // line of the header of every generated file.
 const generatorPath = "github.com/ngicks/kama/kamalib/generator/partial"
 
-func init() {
-	if err := genmark.DefaultRegistry.Register(GeneratorName); err != nil {
-		panic(err)
-	}
-}
+func init() { base.MustRegister(GeneratorName) }
 
 var (
 	// ErrDirective reports a //kama:partial directive with unknown args or

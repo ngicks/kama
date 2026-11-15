@@ -2,8 +2,8 @@
 //
 // The partial variant XPartial of a type X has the type parameters of X,
 // and its fields can each be undefined, null or defined, so that a value
-// can describe a change to some fields of an X. The proc of NewProc runs Generate as the
-// workflow step kind partial.generate.
+// can describe a change to some fields of an X. The proc of NewProc runs
+// Generate as the workflow step kind partial.generate.
 //
 // # Targets
 //
@@ -354,9 +354,9 @@
 // //go:build line of the source file. The name of the source file is kept
 // so that two constrained source files of a package get a helpers file
 // each, and so that a //go:build line, which no file name shows, still
-// tells the files apart. The types of such a helper may not
-// exist in another build variant, and a run loading another variant would
-// drop the helper from zz_gen.helper.kama_partial.go. This placement assumes the
+// tells the files apart. The types of such a helper may not exist in
+// another build variant, and a run loading another variant would drop the
+// helper from zz_gen.helper.kama_partial.go. This placement assumes the
 // constrained files calling one helper are built together.
 //
 // A helpers file declares its helpers sorted by name. A package-level
@@ -413,8 +413,8 @@
 // reached from a target is a target too, so a field of such a type needs
 // //kama:partial ignore on the type to take a flag.
 //
-// PartialFlagSet is declared in the file zz_gen.flagset.kama_partial.go of each
-// package holding targets. It holds every method the flag types above
+// PartialFlagSet is declared in the file zz_gen.flagset.kama_partial.go of
+// each package holding targets. It holds every method the flag types above
 // call, whether the package uses it or not, so that partial files of build
 // variants other than the one loaded keep finding theirs. The methods have
 // signatures of basic and time types, so *pflag.FlagSet of
@@ -576,8 +576,8 @@
 // reported. The run cannot tell whether the package still declares targets
 // in files of build variants other than the one loaded, and those partial
 // files need it. A package whose targets are all gone keeps its
-// zz_gen.flagset.kama_partial.go without a warning; delete it by hand. A helpers
-// file is stale like any other file the run does not produce:
+// zz_gen.flagset.kama_partial.go without a warning; delete it by hand. A
+// helpers file is stale like any other file the run does not produce:
 // zz_gen.helper.kama_partial.go serves the partial files without a build
 // constraint only, which every run loads.
 package partial

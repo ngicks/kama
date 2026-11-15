@@ -705,3 +705,11 @@ func TestPartialTag(t *testing.T) {
 	_, err := partialTag(`json:a`, true)
 	assert.Assert(t, err != nil)
 }
+
+// TestSharedFileNames pins the exported file names to the naming of the
+// generator.
+func TestSharedFileNames(t *testing.T) {
+	assert.Equal(t, HelpersFile, naming.SharedFile(helperKind))
+	assert.Equal(t, FlagSetFile, naming.SharedFile("flagset"))
+	assert.Equal(t, FileSuffix, naming.Suffix())
+}
