@@ -11,6 +11,7 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
@@ -40,12 +41,10 @@ func newPackage(t *testing.T, fset *token.FileSet) (*genhelper.Package, *types.P
 }
 
 func missingPaths(m *importdecl.Map) []string {
-	var out []string
-	for imp := range m.Missing() {
-		out = append(out, imp.Package.Path)
-	}
-	return out
+	return slices.Collect(opiter.Map(importPath, m.Missing()))
 }
+
+func importPath(imp importdecl.Import) string { return imp.Package.Path }
 
 // marker is a context distinct from the one a step starts with.
 func marker() ctx {

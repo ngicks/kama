@@ -7,8 +7,11 @@ import (
 	"reflect"
 	"runtime"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/option/elastic"
 	"github.com/ngicks/option/opt"
@@ -160,19 +163,18 @@ var (
 // probeStruct builds a struct type at run time so that one field list serves
 // every tag key and option combination.
 func probeStruct(fields []probeField, tagKey, option string) reflect.Type {
-	sf := make([]reflect.StructField, len(fields))
-	for i, f := range fields {
+	toStructField := func(i int, f probeField) reflect.StructField {
 		tag := f.key
 		if option != "" {
 			tag += "," + option
 		}
-		sf[i] = reflect.StructField{
+		return reflect.StructField{
 			Name: fmt.Sprintf("F%d", i),
 			Type: reflect.TypeOf(f.value),
 			Tag:  reflect.StructTag(fmt.Sprintf("%s:%q", tagKey, tag)),
 		}
 	}
-	return reflect.StructOf(sf)
+	return reflect.StructOf(slices.Collect(opiter.Unify(toStructField, slices.All(fields))))
 }
 
 func probe(b *strings.Builder, f probeFormat, option string) {
@@ -250,10 +252,7 @@ func describe(v any) string {
 		case x.IsNull():
 			return "null"
 		}
-		vals := make([]string, len(x.Options()))
-		for i, o := range x.Options() {
-			vals[i] = describe(o)
-		}
+		vals := slices.Collect(opiter.Map(describeOption, slices.Values(x.Options())))
 		return "defined[" + strings.Join(vals, ", ") + "]"
 	case opt.Option[string]:
 		if x.IsNone() {
@@ -263,6 +262,8 @@ func describe(v any) string {
 	}
 	panic(fmt.Sprintf("unexpected probe field type %T", v))
 }
+
+func describeOption(o opt.Option[string]) string { return describe(o) }
 
 func writeIndented(b *strings.Builder, s string) {
 	s = strings.TrimSuffix(s, "\n")
@@ -304,17 +305,12 @@ func moduleVersions(t *testing.T, paths []string) string {
 	}
 	versions := make([]string, 0, len(paths))
 	for _, p := range paths {
-		var found bool
-		for _, dep := range info.Deps {
-			if dep.Path == p {
-				versions = append(versions, p+" "+dep.Version)
-				found = true
-				break
-			}
-		}
-		if !found {
+		isModule := func(dep *debug.Module) bool { return dep.Path == p }
+		dep := opiter.First(opiter.Filter(isModule, slices.Values(info.Deps)))
+		if dep.IsNone() {
 			t.Fatalf("module %s is missing from build info", p)
 		}
+		versions = append(versions, p+" "+dep.Value().Version)
 	}
 	return strings.Join(versions, ", ")
 }

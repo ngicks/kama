@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"maps"
 	"path"
 	"reflect"
-	"slices"
+
+	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/fileloader"
@@ -102,8 +102,8 @@ func (i *instance) Run(ctx context.Context, _ workflow.Reporter) error {
 		return fmt.Errorf("%s: %w", i.doc.Path, err)
 	}
 
-	for _, name := range slices.Sorted(maps.Keys(files)) {
-		if err := i.fs.Write(ctx, path.Join(i.dir, name), files[name]); err != nil {
+	for name, src := range opiter.MapsSorted(files) {
+		if err := i.fs.Write(ctx, path.Join(i.dir, name), src); err != nil {
 			return fmt.Errorf("contextkey: write %q: %w", name, err)
 		}
 	}

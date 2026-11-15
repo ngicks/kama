@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ngicks/opiter"
+
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
@@ -87,11 +89,7 @@ type Kids[T any] []L[T]
 	src := files["a.kama_partial.go"]
 
 	types := func(name string) map[string]string {
-		out := map[string]string{}
-		for k, v := range fieldTypes(t, src, name) {
-			out[k] = v[0]
-		}
-		return out
+		return maps.Collect(opiter.Map2(withoutTag, maps.All(fieldTypes(t, src, name))))
 	}
 	assert.DeepEqual(t, types("APartial"), map[string]string{
 		"B":    "und.Und[*BPartial]",
@@ -286,10 +284,7 @@ func TestUnexportedAliasField(t *testing.T) {
 		"sub/s.go": "package sub\n\ntype Public = hidden\n\ntype hidden struct{ I int }\n",
 	})
 	src := files["a.kama_partial.go"]
-	got := map[string]string{}
-	for k, v := range fieldTypes(t, src, "APartial") {
-		got[k] = v[0]
-	}
+	got := maps.Collect(opiter.Map2(withoutTag, maps.All(fieldTypes(t, src, "APartial"))))
 	assert.DeepEqual(t, got, map[string]string{
 		"Public": "und.Und[sub.Public]",
 		"X":      "und.Und[sub.Public]",

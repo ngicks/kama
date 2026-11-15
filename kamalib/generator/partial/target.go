@@ -349,10 +349,8 @@ func followed(r *typegraph.EdgeRoute) bool {
 		typegraph.EdgeKindMapValue |
 		typegraph.EdgeKindPointer |
 		typegraph.EdgeKindAlias
-	return opiter.Every(
-		func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 },
-		slices.Values(r.Nodes),
-	)
+	isAllowed := func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 }
+	return opiter.Every(isAllowed, slices.Values(r.Nodes))
 }
 
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
@@ -469,18 +467,18 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 // checkMerges reports //kama:partial:merge on fields of types without
 // partial variants, where it would have no effect.
 func (s *selection) checkMerges() error {
-	var errs []error
-	for _, k := range slices.SortedFunc(maps.Keys(s.merges), compareKey) {
-		if s.targets[typegraph.NewQualifiedType(k.PkgPath, k.Type)] != nil {
-			continue
-		}
+	hasNoTarget := func(k kamaopt.Key) bool {
+		return s.targets[typegraph.NewQualifiedType(k.PkgPath, k.Type)] == nil
+	}
+	mergeErr := func(k kamaopt.Key) error {
 		r := s.merges[k]
-		errs = append(errs, fmt.Errorf(
+		return fmt.Errorf(
 			"%w: %s: %s on field %s.%s.%s; %s has no partial variant",
 			ErrDirective, origin(r), spelling(r), k.PkgPath, k.Type, k.Field, k.Type,
-		))
+		)
 	}
-	return errors.Join(errs...)
+	keys := slices.SortedFunc(opiter.Filter(hasNoTarget, maps.Keys(s.merges)), compareKey)
+	return errors.Join(slices.Collect(opiter.Map(mergeErr, slices.Values(keys)))...)
 }
 
 // checkFlagTargets reports //kama:partial:flag on fields of types without
@@ -512,12 +510,12 @@ func compareKey(a, b kamaopt.Key) int {
 }
 
 func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Object {
-	for _, pkg := range pkgs {
-		if pkg.PkgPath == id.PackagePath {
-			return pkg.Types.Scope().Lookup(id.TypeName)
-		}
+	hasPath := func(pkg *packages.Package) bool { return pkg.PkgPath == id.PackagePath }
+	pkg := opiter.First(opiter.Filter(hasPath, slices.Values(pkgs)))
+	if pkg.IsNone() {
+		return nil
 	}
-	return nil
+	return pkg.Value().Types.Scope().Lookup(id.TypeName)
 }
 
 // checkNames reports names the generated declarations would collide with:
@@ -640,10 +638,7 @@ func (s *selection) mapCycles() error {
 		switch state[n.Id] {
 		case visiting:
 			i := slices.Index(path, n.Id)
-			names := slices.Collect(opiter.Map(
-				func(id typegraph.QualifiedType) string { return id.TypeName },
-				slices.Values(append(path[i:], n.Id)),
-			))
+			names := slices.Collect(opiter.Map(typeNameOf, slices.Values(append(path[i:], n.Id))))
 			return fmt.Errorf(
 				"%w: %s (%s): partial variants would be recursive through embedded fields: %s",
 				ErrUnsupported, nodeName(n),
@@ -675,6 +670,8 @@ func (s *selection) mapCycles() error {
 	}
 	return nil
 }
+
+func typeNameOf(id typegraph.QualifiedType) string { return id.TypeName }
 
 // components returns the strongly connected components of the targets
 // under valueChildren, numbered by Tarjan's algorithm.

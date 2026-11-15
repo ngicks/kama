@@ -194,19 +194,23 @@ func unparen(expr ast.Expr) ast.Expr {
 }
 
 func (c *collector) add(key Key, comments []*ast.Comment) {
-	for _, cm := range comments {
+	toRaw := func(cm *ast.Comment) (Raw, bool) {
 		d, ok := dircmnt.Parse(cm.Text)
 		if !ok || d.ToolName != c.toolName {
-			continue
+			return Raw{}, false
 		}
-		c.out = append(c.out, Raw{
+		return Raw{
 			Key:       key,
 			Directive: d.Directive,
 			Args:      d.Args,
 			Origin:    Origin{Source: SourceDirective, Pos: c.fset.Position(cm.Slash)},
-		})
+		}, true
 	}
+	raws := opiter.OmitL(opiter.Filter2(isRaw, opiter.Divide(toRaw, slices.Values(comments))))
+	c.out = slices.AppendSeq(c.out, raws)
 }
+
+func isRaw(_ Raw, ok bool) bool { return ok }
 
 // fieldComments selects the same comments as dircmnt.AstField, which
 // returns no positions.
@@ -223,10 +227,7 @@ func fieldComments(f *ast.Field) []*ast.Comment {
 
 func fieldNames(f *ast.Field) []string {
 	if len(f.Names) > 0 {
-		return slices.Collect(opiter.Map(
-			func(n *ast.Ident) string { return n.Name },
-			slices.Values(f.Names),
-		))
+		return slices.Collect(opiter.Map((*ast.Ident).String, slices.Values(f.Names)))
 	}
 	return []string{embeddedName(f.Type)}
 }

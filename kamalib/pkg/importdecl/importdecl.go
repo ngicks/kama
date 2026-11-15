@@ -29,6 +29,7 @@ import (
 	"unicode"
 
 	"github.com/dave/dst"
+	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/packages"
 )
@@ -203,33 +204,27 @@ func (p *Parser) Reserve(idents ...string) {
 // ParseAst parses the import specs of a file, as ast.File.Imports holds
 // them.
 func (p *Parser) ParseAst(specs []*ast.ImportSpec) (*Map, error) {
-	return p.parse(func(yield func(string, string) bool) {
-		for _, s := range specs {
-			var name string
-			if s.Name != nil {
-				name = s.Name.Name
-			}
-			if !yield(name, s.Path.Value) {
-				return
-			}
-		}
-	})
+	return p.parse(opiter.Divide(astSpecNamePath, slices.Values(specs)))
+}
+
+func astSpecNamePath(s *ast.ImportSpec) (name, pathLit string) {
+	if s.Name != nil {
+		name = s.Name.Name
+	}
+	return name, s.Path.Value
 }
 
 // ParseDst parses the import specs of a file, as dst.File.Imports holds
 // them.
 func (p *Parser) ParseDst(specs []*dst.ImportSpec) (*Map, error) {
-	return p.parse(func(yield func(string, string) bool) {
-		for _, s := range specs {
-			var name string
-			if s.Name != nil {
-				name = s.Name.Name
-			}
-			if !yield(name, s.Path.Value) {
-				return
-			}
-		}
-	})
+	return p.parse(opiter.Divide(dstSpecNamePath, slices.Values(specs)))
+}
+
+func dstSpecNamePath(s *dst.ImportSpec) (name, pathLit string) {
+	if s.Name != nil {
+		name = s.Name.Name
+	}
+	return name, s.Path.Value
 }
 
 func (p *Parser) parse(specs iter.Seq2[string, string]) (*Map, error) {
@@ -275,6 +270,13 @@ func (p *Parser) parse(specs iter.Seq2[string, string]) (*Map, error) {
 	return m, nil
 }
 
+func asGenDecl(d dst.Decl) *dst.GenDecl {
+	g, _ := d.(*dst.GenDecl)
+	return g
+}
+
+func isImportDecl(g *dst.GenDecl) bool { return g != nil && g.Tok == token.IMPORT }
+
 // Map maps package paths to the identifiers a file accesses them through.
 type Map struct {
 	known map[string]Package
@@ -295,10 +297,9 @@ func (m *Map) lookup(pkgPath string, required []Import) Package {
 	if pkg, ok := m.known[pkgPath]; ok {
 		return pkg
 	}
-	if i := slices.IndexFunc(required, func(imp Import) bool {
-		return imp.Package.Path == pkgPath
-	}); i >= 0 {
-		return required[i].Package
+	hasPath := func(imp Import) bool { return imp.Package.Path == pkgPath }
+	if imp := opiter.First(opiter.Filter(hasPath, slices.Values(required))); imp.IsSome() {
+		return imp.Value().Package
 	}
 	return Package{Path: pkgPath}
 }
@@ -435,13 +436,8 @@ func (m *Map) AddMissingDst(f *dst.File) {
 		has[spec{name, pkgPath}] = true
 	}
 
-	var decl *dst.GenDecl
-	for _, d := range f.Decls {
-		if g, ok := d.(*dst.GenDecl); ok && g.Tok == token.IMPORT {
-			decl = g
-			break
-		}
-	}
+	genDecls := opiter.Map(asGenDecl, slices.Values(f.Decls))
+	decl := opiter.First(opiter.Filter(isImportDecl, genDecls)).UnwrapOrDefault()
 
 	for imp := range m.Missing() {
 		if has[spec{imp.Name, imp.Package.Path}] {

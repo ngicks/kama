@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"slices"
 
+	"github.com/ngicks/opiter"
 	"github.com/pelletier/go-toml/v2"
 	"go.yaml.in/yaml/v4"
 )
@@ -56,18 +58,17 @@ type PathInput struct {
 
 // Candidates lists every file name Load probes, in order.
 func (p PathInput) Candidates() ([]string, error) {
-	var names []string
-	for _, f := range p.Formats {
-		exts := f.Extensions()
-		if exts == nil {
-			return nil, fmt.Errorf("%w: %q", ErrUnknownFormat, f)
-		}
-		for _, ext := range exts {
-			names = append(names, p.Base+ext)
-		}
+	if unknown := opiter.First(
+		opiter.Filter(isUnknown, slices.Values(p.Formats)),
+	); unknown.IsSome() {
+		return nil, fmt.Errorf("%w: %q", ErrUnknownFormat, unknown.Value())
 	}
-	return names, nil
+	withBase := func(ext string) string { return p.Base + ext }
+	exts := opiter.Flatten(opiter.Map(Format.Extensions, slices.Values(p.Formats)))
+	return slices.Collect(opiter.Map(withBase, exts)), nil
 }
+
+func isUnknown(f Format) bool { return f.Extensions() == nil }
 
 // Decode decodes one document from r into v.
 //

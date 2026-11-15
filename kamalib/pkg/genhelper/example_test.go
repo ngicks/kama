@@ -6,9 +6,11 @@ import (
 	"go/format"
 	"go/types"
 	"os"
+	"slices"
 
 	"github.com/dave/dst/decorator"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
+	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
@@ -16,15 +18,18 @@ import (
 type step = genhelper.Step[genhelper.BaseContext]
 
 func lookup(s *genhelper.Scope, roles ...string) ([]string, error) {
-	out := make([]string, len(roles))
-	for i, role := range roles {
+	lookupRole := func(role string) (string, error) {
 		name, ok := s.Lookup(role)
 		if !ok {
-			return nil, fmt.Errorf("role %q is not declared", role)
+			return "", fmt.Errorf("role %q is not declared", role)
 		}
-		out[i] = name
+		return name, nil
 	}
-	return out, nil
+	names, err := opiter.TryCollect(opiter.Divide(lookupRole, slices.Values(roles)))
+	if err != nil {
+		return nil, err
+	}
+	return names, nil
 }
 
 // rangeLevels converts a nested container one level per block. Every level
@@ -410,10 +415,8 @@ func ExampleForRange() {
 	}
 	printf := func(format string, roles ...string) genhelper.Step[ctx] {
 		return genhelper.Append(func(c ctx) (string, error) {
-			names := make([]any, len(roles))
-			for i, role := range roles {
-				names[i] = c.Scope().Use(role)
-			}
+			use := func(role string) any { return c.Scope().Use(role) }
+			names := slices.Collect(opiter.Map(use, slices.Values(roles)))
 			return fmt.Sprintf(format, names...), nil
 		})
 	}

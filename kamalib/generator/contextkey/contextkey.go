@@ -20,6 +20,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/ngicks/opiter"
+
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
 
@@ -125,10 +127,7 @@ func Render(entries []Entry, opts Options) (map[string][]byte, error) {
 func renderEntry(e Entry, opts Options) ([]byte, error) {
 	imports := slices.Concat([]string{"context"}, e.Imports)
 	slices.Sort(imports)
-	imports = slices.Compact(imports)
-	for i, imp := range imports {
-		imports[i] = strconv.Quote(imp)
-	}
+	imports = slices.Collect(opiter.Map(strconv.Quote, slices.Values(slices.Compact(imports))))
 
 	var buf bytes.Buffer
 	err := fileTemplate.Execute(&buf, templateData{

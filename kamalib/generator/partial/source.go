@@ -3,7 +3,10 @@ package partial
 import (
 	"go/ast"
 	"go/types"
+	"slices"
 	"strconv"
+
+	"github.com/ngicks/opiter"
 
 	"github.com/dave/dst"
 
@@ -63,11 +66,9 @@ func matchesFields(fields []dstreplace.Field, s *types.Struct) bool {
 	if len(fields) != s.NumFields() {
 		return false
 	}
-	for i, f := range fields {
+	matchesField := func(i int, f dstreplace.Field) bool {
 		v := s.Field(i)
-		if f.Name != v.Name() || f.Embedded != v.Embedded() {
-			return false
-		}
+		return f.Name == v.Name() && f.Embedded == v.Embedded()
 	}
-	return true
+	return opiter.Every2(matchesField, slices.All(fields))
 }

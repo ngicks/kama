@@ -12,6 +12,7 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 )
@@ -46,6 +47,8 @@ func parse(t *testing.T, p *Parser, pkg *packages.Package) *Map {
 }
 
 func missing(m *Map) []Import { return slices.Collect(m.Missing()) }
+
+func isExampleY(imp Import) bool { return imp.Package.Path == "example.com/y" }
 
 func TestIdent(t *testing.T) {
 	pkgs, all := load(t)
@@ -170,9 +173,7 @@ func TestRequire(t *testing.T) {
 	assert.NilError(t, err)
 	got, _ = m.Ident("example.com/y")
 	assert.Equal(t, got, "y")
-	assert.Assert(t, !slices.ContainsFunc(missing(m), func(imp Import) bool {
-		return imp.Package.Path == "example.com/y"
-	}))
+	assert.Assert(t, !opiter.ContainsFunc(isExampleY, m.Missing()))
 
 	// A requirement without a package name does not tell the name of an
 	// unnamed import.
@@ -407,10 +408,7 @@ func TestInferName(t *testing.T) {
 }
 
 func TestInferNameKeywords(t *testing.T) {
-	for tok := token.BREAK; tok <= token.VAR; tok++ {
-		if !tok.IsKeyword() {
-			continue
-		}
+	for tok := range opiter.Filter(token.Token.IsKeyword, opiter.Range(token.BREAK, token.VAR+1)) {
 		kw := tok.String()
 		assert.Equal(t, inferName("example.com/"+kw), "_"+kw)
 	}

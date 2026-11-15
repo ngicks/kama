@@ -121,8 +121,6 @@ func runNode(
 }
 
 func refValues(refs []string, values map[string]reflect.Value) []reflect.Value {
-	return slices.Collect(opiter.Map(
-		func(r string) reflect.Value { return values[r] },
-		slices.Values(refs),
-	))
+	valueOf := func(ref string) reflect.Value { return values[ref] }
+	return slices.Collect(opiter.Map(valueOf, slices.Values(refs)))
 }

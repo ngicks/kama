@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ngicks/opiter"
+
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
@@ -25,31 +27,34 @@ import (
 func helperIn(t *testing.T, srcs ...string) func(op, doc string) string {
 	t.Helper()
 	type decl struct{ name, doc string }
+	toDecl := func(d ast.Decl) decl {
+		fd := d.(*ast.FuncDecl)
+		return decl{fd.Name.Name, strings.Join(strings.Fields(fd.Doc.Text()), " ")}
+	}
+	declName := func(d decl) string { return d.name }
 	var decls []decl
 	for _, src := range srcs {
 		f, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments)
 		assert.NilError(t, err)
-		for _, d := range f.Decls {
-			if fd, ok := d.(*ast.FuncDecl); ok && fd.Recv == nil &&
-				strings.HasPrefix(fd.Name.Name, "kamaPartial") {
-				decls = append(
-					decls,
-					decl{fd.Name.Name, strings.Join(strings.Fields(fd.Doc.Text()), " ")},
-				)
-			}
-		}
+		helpers := opiter.Filter(isHelperFunc, slices.Values(f.Decls))
+		decls = slices.AppendSeq(decls, opiter.Map(toDecl, helpers))
 	}
 	return func(op, doc string) string {
 		t.Helper()
-		var found []string
-		for _, d := range decls {
-			if strings.HasPrefix(d.name, "kamaPartial"+op+"_") && strings.Contains(d.doc, doc) {
-				found = append(found, d.name)
-			}
+		isOpStating := func(d decl) bool {
+			return strings.HasPrefix(d.name, "kamaPartial"+op+"_") && strings.Contains(d.doc, doc)
 		}
+		stating := opiter.Filter(isOpStating, slices.Values(decls))
+		found := slices.Collect(opiter.Map(declName, stating))
 		assert.Equal(t, len(found), 1, "helpers of %s stating %q: %v", op, doc, found)
 		return found[0]
 	}
+}
+
+// isHelperFunc reports whether d declares a helper.
+func isHelperFunc(d ast.Decl) bool {
+	fd, ok := d.(*ast.FuncDecl)
+	return ok && fd.Recv == nil && strings.HasPrefix(fd.Name.Name, "kamaPartial")
 }
 
 var (
@@ -69,15 +74,14 @@ func field(pkg *types.Package, name string, t types.Type, embedded bool) *types.
 }
 
 func params(pkg *types.Package, names []string, ts ...types.Type) *types.Tuple {
-	vars := make([]*types.Var, len(ts))
-	for i, t := range ts {
+	toParam := func(i int, t types.Type) *types.Var {
 		var name string
 		if i < len(names) {
 			name = names[i]
 		}
-		vars[i] = types.NewParam(token.NoPos, pkg, name, t)
+		return types.NewParam(token.NoPos, pkg, name, t)
 	}
-	return types.NewTuple(vars...)
+	return types.NewTuple(slices.Collect(opiter.Unify(toParam, slices.All(ts)))...)
 }
 
 func method(pkg *types.Package, name string) *types.Func {
@@ -221,11 +225,7 @@ func names(t *testing.T, set *helperSet, hs ...*helper) ([]string, error) {
 	if err := set.resolve(); err != nil {
 		return nil, err
 	}
-	out := make([]string, len(added))
-	for i, h := range added {
-		out[i] = set.name(h)
-	}
-	return out, nil
+	return slices.Collect(opiter.Map(set.name, slices.Values(added))), nil
 }
 
 func mustNames(t *testing.T, hs ...*helper) []string {
@@ -302,12 +302,13 @@ func colliding() *helperSet {
 
 // sliceHelpers returns append helpers of slices of n distinct named types.
 func sliceHelpers(n int) []*helper {
-	out := make([]*helper, n)
-	for i := range out {
-		elem := newNamed(pkgA, "T"+strconv.Itoa(i), intT)
-		out[i] = &helper{op: opMergeAppend, typ: types.NewSlice(elem)}
-	}
-	return out
+	return slices.Collect(opiter.Map(sliceHelper, opiter.Range(0, n)))
+}
+
+// sliceHelper returns the append helper of a slice of the named type Ti.
+func sliceHelper(i int) *helper {
+	elem := newNamed(pkgA, "T"+strconv.Itoa(i), intT)
+	return &helper{op: opMergeAppend, typ: types.NewSlice(elem)}
 }
 
 // TestHelperCollision suffixes the names of colliding helpers in the order

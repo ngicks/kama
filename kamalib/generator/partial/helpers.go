@@ -426,13 +426,7 @@ func (e *encoder) typ(t types.Type) {
 		}
 		// Embedded interfaces contribute their methods above; the other
 		// embedded elements restrict the type set.
-		elems := slices.Collect(opiter.Filter(
-			func(et types.Type) bool {
-				_, ok := types.Unalias(et).Underlying().(*types.Interface)
-				return !ok
-			},
-			t.EmbeddedTypes(),
-		))
+		elems := slices.Collect(opiter.Filter(notInterface, t.EmbeddedTypes()))
 		e.int(len(elems))
 		for _, et := range elems {
 			e.typ(et)
@@ -457,6 +451,11 @@ func methodPkg(m *types.Func) string {
 		return ""
 	}
 	return pkgPath(m.Pkg())
+}
+
+func notInterface(t types.Type) bool {
+	_, ok := types.Unalias(t).Underlying().(*types.Interface)
+	return !ok
 }
 
 func isMapType(t types.Type) bool {
@@ -555,11 +554,13 @@ func (s *helperSet) add(h *helper) (*helper, error) {
 	h.in, h.out = h.signature(s.syn)
 	h.inEnc, h.outEnc = s.syn.encodeList(h.in), s.syn.encodeList(h.out)
 	base := helperName(helperOpNames[h.op], s.hash(h.inEnc, h.outEnc))
-	for _, prev := range s.groups[base] {
-		if identicalSignature(prev, h) || len(h.typeParams()) > 0 &&
-			bytes.Equal(prev.inEnc, h.inEnc) && bytes.Equal(prev.outEnc, h.outEnc) {
-			return prev, nil
-		}
+	servesSignature := func(prev *helper) bool {
+		return identicalSignature(prev, h) || len(h.typeParams()) > 0 &&
+			bytes.Equal(prev.inEnc, h.inEnc) && bytes.Equal(prev.outEnc, h.outEnc)
+	}
+	sameBase := slices.Values(s.groups[base])
+	if prev := opiter.First(opiter.Filter(servesSignature, sameBase)); prev.IsSome() {
+		return prev.Value(), nil
 	}
 	for other, group := range s.groups {
 		for _, prev := range group {
@@ -646,6 +647,8 @@ type partialFile struct {
 	support map[string]bool
 }
 
+func isUnconstrained(f *partialFile) bool { return !f.constrained }
+
 // helpersFile is a file declaring helpers of a package.
 type helpersFile struct {
 	path string
@@ -686,21 +689,12 @@ func hostHelpers(shared string, files []*partialFile) []*helpersFile {
 		hf.hosted = append(hf.hosted, name)
 	}
 	for _, name := range slices.Sorted(maps.Keys(names)) {
-		var first *partialFile
-		everywhere := false
-		for _, f := range files {
-			if !f.used[name] {
-				continue
-			}
-			first = cmp.Or(first, f)
-			if !f.constrained {
-				everywhere = true
-				break
-			}
-		}
-		if everywhere {
+		usesName := func(f *partialFile) bool { return f.used[name] }
+		callers := opiter.Filter(usesName, slices.Values(files))
+		if opiter.ContainsFunc(isUnconstrained, callers) {
 			host(shared, "", name)
 		} else {
+			first := opiter.First(callers).Value()
 			host(first.helpersPath, first.buildLine, name)
 		}
 	}

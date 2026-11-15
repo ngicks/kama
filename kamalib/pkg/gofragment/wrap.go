@@ -8,6 +8,9 @@ import (
 	"go/printer"
 	"go/scanner"
 	"go/token"
+	"slices"
+
+	"github.com/ngicks/opiter"
 )
 
 // The expression wrapper places the text after "=" so that the parser
@@ -105,16 +108,19 @@ func checkShape(fset *token.FileSet, k partialKind, f *ast.File, src []byte) err
 		}
 		return nil
 	default:
-		for _, d := range f.Decls {
-			if gen, ok := d.(*ast.GenDecl); ok && gen.Tok == token.IMPORT {
-				return fmt.Errorf(
-					"%w: text declares imports, which the caller adds to the file",
-					ErrNotPartial,
-				)
-			}
+		if opiter.ContainsFunc(isImportDecl, slices.Values(f.Decls)) {
+			return fmt.Errorf(
+				"%w: text declares imports, which the caller adds to the file",
+				ErrNotPartial,
+			)
 		}
 		return nil
 	}
+}
+
+func isImportDecl(d ast.Decl) bool {
+	gen, ok := d.(*ast.GenDecl)
+	return ok && gen.Tok == token.IMPORT
 }
 
 // checkTrailing rejects tokens after the expression ending at end. The

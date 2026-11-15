@@ -72,14 +72,18 @@ func flagFromOptions(f FlagOptions) (flagOption, error) {
 	return flagFromArgs(kv)
 }
 
+func notFlagKey(k string) bool {
+	switch k {
+	case "name", "short", "usage":
+		return false
+	}
+	return true
+}
+
 // flagFromArgs validates the args of //kama:partial:flag, keyed by name.
 func flagFromArgs(kv map[string]string) (flagOption, error) {
-	for _, k := range slices.Sorted(maps.Keys(kv)) {
-		switch k {
-		case "name", "short", "usage":
-		default:
-			return flagOption{}, fmt.Errorf("unknown key %q; want name, short or usage", k)
-		}
+	if k := opiter.Min(opiter.Filter(notFlagKey, maps.Keys(kv))); k.IsSome() {
+		return flagOption{}, fmt.Errorf("unknown key %q; want name, short or usage", k.Value())
 	}
 	o := flagOption{name: kv["name"], short: kv["short"], usage: kv["usage"]}
 	switch {
@@ -284,10 +288,7 @@ func (f *flagField) setKind(t types.Type) (types.Type, bool) {
 // flagMethods writes RegisterFlags and FromFlagSet for the fields with a
 // flag option. It writes nothing when there are none.
 func (w *methodWriter) flagMethods(fields []fieldInfo) error {
-	flags := slices.Collect(opiter.Filter(
-		func(f fieldInfo) bool { return f.flag != nil },
-		slices.Values(fields),
-	))
+	flags := slices.Collect(opiter.Filter(hasFlag, slices.Values(fields)))
 	if len(flags) == 0 {
 		return nil
 	}
@@ -324,26 +325,26 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 	)
 }
 
+func hasFlag(f fieldInfo) bool { return f.flag != nil }
+
 // registerFlags returns the statements defining the flag of each of flags
 // on the flag set f.
 func registerFlags(flags []fieldInfo) genSteps {
-	return slices.Collect(opiter.Map(
-		func(fl fieldInfo) genStep {
-			k := fl.flag.kind
-			return lang.Stmt("%s.%s(%s, %s, %s, %s)", lang.Name("f"), k.define,
-				strconv.Quote(fl.flag.name), strconv.Quote(fl.flag.short), k.zero,
-				strconv.Quote(fl.flag.usage))
-		},
-		slices.Values(flags),
-	))
+	return slices.Collect(opiter.Map(registerFlag, slices.Values(flags)))
+}
+
+func registerFlag(fl fieldInfo) genStep {
+	k := fl.flag.kind
+	return lang.Stmt("%s.%s(%s, %s, %s, %s)", lang.Name("f"), k.define,
+		strconv.Quote(fl.flag.name), strconv.Quote(fl.flag.short), k.zero,
+		strconv.Quote(fl.flag.usage))
 }
 
 // readFlags returns the statements setting the field of p of each of flags
 // set on the flag set f. und spells the package und. fmtIdent spells the
 // package fmt.
 func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
-	var out genSteps
-	for _, fl := range flags {
+	readFlag := func(fl fieldInfo) genStep {
 		k := fl.flag.kind
 		flagName := strconv.Quote(fl.flag.name)
 		fail := lang.If(lang.Expr("%s != nil", lang.Name("err")),
@@ -370,9 +371,9 @@ func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
 		default:
 			body = append(body, lang.Stmt("%s = %s.Defined(%s)", lhs, und, lang.Name("v")))
 		}
-		out = append(out, lang.If(lang.Expr("%s.Changed(%s)", lang.Name("f"), flagName), body, nil))
+		return lang.If(lang.Expr("%s.Changed(%s)", lang.Name("f"), flagName), body, nil)
 	}
-	return out
+	return slices.Collect(opiter.Map(readFlag, slices.Values(flags)))
 }
 
 // checkFlags reports duplicate flag names and shorthands among fields.
@@ -414,6 +415,9 @@ func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 	return nil
 }
 
+// spellsTime reports whether the method signature sig spells package time.
+func spellsTime(sig string) bool { return strings.Contains(sig, "$time.") }
+
 // renderFlagSet prints FlagSetFile of pkg declaring flagSetName.
 func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	sigs := flagSetSignatures()
@@ -422,10 +426,7 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	parser.Reserve(pkg.Types.Scope().Names()...)
 	parser.Reserve(flagSetParams...)
 
-	var usesTime bool
-	for _, s := range sigs {
-		usesTime = usesTime || strings.Contains(s, "$time.")
-	}
+	usesTime := opiter.Any(spellsTime, maps.Values(sigs))
 	if usesTime {
 		err := parser.Require(
 			importdecl.Import{Package: importdecl.Package{Path: "time", Name: "time"}},
@@ -455,10 +456,8 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 		),
 		lang.Stmt("type %s interface {", flagSetName),
 	}
-	body = slices.AppendSeq(body, opiter.Map(
-		func(sig string) genStep { return lang.Stmt("%s", replacer.Replace(sig)) },
-		opiter.OmitF(opiter.MapsSorted(sigs)),
-	))
+	toStmt := func(sig string) genStep { return lang.Stmt("%s", replacer.Replace(sig)) }
+	body = slices.AppendSeq(body, opiter.Map(toStmt, opiter.OmitF(opiter.MapsSorted(sigs))))
 	body = append(body, lang.Stmt("}"))
 	gpkg := &genhelper.Package{Imports: m, Path: pkg.PkgPath}
 	_, src, err := body.Render(genhelper.NewBaseContext(genhelper.NewScope(), gpkg), nil)

@@ -15,6 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ngicks/opiter"
+
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
@@ -126,16 +128,19 @@ func partialTypes(t *testing.T, src string) []string {
 
 	f, err := parser.ParseFile(token.NewFileSet(), "x.go", src, 0)
 	assert.NilError(t, err)
-	var names []string
-	for _, d := range f.Decls {
-		if gd, ok := d.(*ast.GenDecl); ok && gd.Tok == token.TYPE {
-			for _, s := range gd.Specs {
-				names = append(names, s.(*ast.TypeSpec).Name.Name)
-			}
-		}
-	}
-	return names
+	specs := opiter.Flatten(opiter.Map(typeSpecs, slices.Values(f.Decls)))
+	return slices.Collect(opiter.Map(typeSpecName, specs))
 }
+
+// typeSpecs returns the specs of d when it declares types.
+func typeSpecs(d ast.Decl) []ast.Spec {
+	if gd, ok := d.(*ast.GenDecl); ok && gd.Tok == token.TYPE {
+		return gd.Specs
+	}
+	return nil
+}
+
+func typeSpecName(s ast.Spec) string { return s.(*ast.TypeSpec).Name.Name }
 
 func TestOptions(t *testing.T) {
 	assert.NilError(t, Options{}.Validate())
@@ -479,6 +484,11 @@ func TestGeneratedDeclsAreNotTargets(t *testing.T) {
 	assert.DeepEqual(t, partialTypes(t, files["other.kama_partial.go"]), []string{"OPartial"})
 }
 
+// withoutTag drops the tag of an entry of the result of fieldTypes.
+func withoutTag(name string, typeAndTag [2]string) (string, string) {
+	return name, typeAndTag[0]
+}
+
 // fieldTypes returns the type and the tag of each field of the struct type
 // name declared in src, keyed by field name; embedded fields are keyed by
 // their type.
@@ -596,10 +606,7 @@ type Om map[int]opt.Option[M]
 		"Alias":             "und.Und[MPartial]",
 		"private":           "und.Und[int]",
 	}
-	got := map[string]string{}
-	for k, v := range fieldTypes(t, src, "APartial") {
-		got[k] = v[0]
-	}
+	got := maps.Collect(opiter.Map2(withoutTag, maps.All(fieldTypes(t, src, "APartial"))))
 	assert.DeepEqual(t, got, want)
 
 	assert.Assert(t, strings.Contains(src, "type SPartial []und.Und[MPartial]"), src)

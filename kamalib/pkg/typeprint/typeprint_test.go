@@ -13,6 +13,7 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
@@ -121,25 +122,26 @@ func modelCases(t *testing.T, pkg *packages.Package) []testCase {
 		cases = append(cases, testCase{name: name, ty: ty, want: buf.String()})
 	}
 
-	for _, decl := range pkg.Syntax[0].Decls {
-		g, ok := decl.(*ast.GenDecl)
-		if !ok {
-			continue
-		}
-		for _, spec := range g.Specs {
-			switch spec := spec.(type) {
-			case *ast.ValueSpec:
-				name := spec.Names[0].Name
-				add(name, pkg.Types.Scope().Lookup(name).Type(), spec.Type)
-			case *ast.TypeSpec:
-				name := spec.Name.Name
-				if strings.HasPrefix(name, "U") {
-					add(name, pkg.Types.Scope().Lookup(name).Type().Underlying(), spec.Type)
-				}
+	for spec := range opiter.Flatten(opiter.Map(genDeclSpecs, slices.Values(pkg.Syntax[0].Decls))) {
+		switch spec := spec.(type) {
+		case *ast.ValueSpec:
+			name := spec.Names[0].Name
+			add(name, pkg.Types.Scope().Lookup(name).Type(), spec.Type)
+		case *ast.TypeSpec:
+			name := spec.Name.Name
+			if strings.HasPrefix(name, "U") {
+				add(name, pkg.Types.Scope().Lookup(name).Type().Underlying(), spec.Type)
 			}
 		}
 	}
 	return cases
+}
+
+func genDeclSpecs(d ast.Decl) []ast.Spec {
+	if g, ok := d.(*ast.GenDecl); ok {
+		return g.Specs
+	}
+	return nil
 }
 
 func TestModel(t *testing.T) {

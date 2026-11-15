@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/dave/dst"
+	"github.com/ngicks/opiter"
 )
 
 // Comment is a parsed directive comment //ToolName:Directive Args.
@@ -68,7 +69,7 @@ func AstField(f *ast.Field) []Comment {
 	if f.Comment != nil && len(f.Comment.List) > 0 {
 		trailing = []string{f.Comment.List[0].Text}
 	}
-	return collect(concat(astTexts(f.Doc), slices.Values(trailing)))
+	return collect(opiter.Concat(astTexts(f.Doc), slices.Values(trailing)))
 }
 
 // Dst returns the directive comments decorating the start of a node, after
@@ -82,7 +83,7 @@ func Dst(decs dst.NodeDecs) []Comment {
 // comment decorating its end.
 func DstField(decs dst.FieldDecorations) []Comment {
 	return collect(
-		concat(
+		opiter.Concat(
 			slices.Values(afterLastEmptyLine(decs.Start)),
 			slices.Values(decs.End[:min(len(decs.End), 1)]),
 		),
@@ -90,29 +91,13 @@ func DstField(decs dst.FieldDecorations) []Comment {
 }
 
 func astTexts(cg *ast.CommentGroup) iter.Seq[string] {
-	return func(yield func(string) bool) {
-		if cg == nil {
-			return
-		}
-		for _, c := range cg.List {
-			if !yield(c.Text) {
-				return
-			}
-		}
+	if cg == nil {
+		return opiter.Empty[string]()
 	}
+	return opiter.Map(commentText, slices.Values(cg.List))
 }
 
-func concat(seqs ...iter.Seq[string]) iter.Seq[string] {
-	return func(yield func(string) bool) {
-		for _, seq := range seqs {
-			for s := range seq {
-				if !yield(s) {
-					return
-				}
-			}
-		}
-	}
-}
+func commentText(c *ast.Comment) string { return c.Text }
 
 // afterLastEmptyLine drops the decorations up to and including the last
 // empty line, which separates comments not attached to the node.
@@ -134,11 +119,7 @@ func afterLastEmptyLine(lines []string) []string {
 }
 
 func collect(texts iter.Seq[string]) []Comment {
-	var out []Comment
-	for text := range texts {
-		if c, ok := Parse(text); ok {
-			out = append(out, c)
-		}
-	}
-	return out
+	return slices.Collect(opiter.OmitL(opiter.Filter2(isParsed, opiter.Divide(Parse, texts))))
 }
+
+func isParsed(_ Comment, ok bool) bool { return ok }

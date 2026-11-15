@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ngicks/opiter"
+
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
@@ -165,10 +167,9 @@ func (d *optionDecoder) table(v any, path []string) (map[string]any, bool) {
 
 // keys reports the keys of t other than known.
 func (d *optionDecoder) keys(t map[string]any, path []string, known ...string) {
-	for _, k := range slices.Sorted(maps.Keys(t)) {
-		if !slices.Contains(known, k) {
-			d.fail(appendPath(path, k), "unknown key; want %s", strings.Join(known, ", "))
-		}
+	isUnknown := func(k string) bool { return !slices.Contains(known, k) }
+	for _, k := range slices.Sorted(opiter.Filter(isUnknown, maps.Keys(t))) {
+		d.fail(appendPath(path, k), "unknown key; want %s", strings.Join(known, ", "))
 	}
 }
 
@@ -303,14 +304,15 @@ var bareKey = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 // keyPath spells path as a TOML dotted key, quoting the keys that need it
 // such as package import paths.
 func keyPath(path []string) string {
-	keys := make([]string, len(path))
-	for i, k := range path {
-		keys[i] = k
-		if !bareKey.MatchString(k) {
-			keys[i] = strconv.Quote(k)
-		}
+	return strings.Join(slices.Collect(opiter.Map(quoteKey, slices.Values(path))), ".")
+}
+
+// quoteKey quotes k unless it is a bare TOML key.
+func quoteKey(k string) string {
+	if bareKey.MatchString(k) {
+		return k
 	}
-	return strings.Join(keys, ".")
+	return strconv.Quote(k)
 }
 
 // raws returns the options of f as the Raw values of the directives they
@@ -387,9 +389,8 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 			}
 			for _, fieldName := range slices.Sorted(maps.Keys(to.Fields)) {
 				fo := to.Fields[fieldName]
-				if !slices.ContainsFunc(slices.Collect(st.Fields()), func(v *types.Var) bool {
-					return v.Name() == fieldName
-				}) {
+				isField := func(v *types.Var) bool { return v.Name() == fieldName }
+				if !opiter.ContainsFunc(isField, st.Fields()) {
 					fail(&errs, appendPath(typePath, "fields", fieldName),
 						"field %s is not declared in %s.%s", fieldName, pkgPath, typeName)
 					continue

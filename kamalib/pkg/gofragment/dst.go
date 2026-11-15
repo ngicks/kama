@@ -173,6 +173,8 @@ func PrintDstStmts(stmts []dst.Stmt) ([]byte, error) {
 	return b, nil
 }
 
+func cloneDecl(d dst.Decl) dst.Decl { return dst.Clone(d).(dst.Decl) }
+
 // PrintDstDecls prints decls as partial text. The text ends with a newline
 // unless decls is empty.
 //
@@ -184,10 +186,7 @@ func PrintDstDecls(decls []dst.Decl) ([]byte, error) {
 	}
 	// A dst node belongs to one tree. Placing the clones in the wrapper
 	// keeps decls where the caller put them.
-	cloned := slices.Collect(opiter.Map(
-		func(d dst.Decl) dst.Decl { return dst.Clone(d).(dst.Decl) },
-		slices.Values(decls),
-	))
+	cloned := slices.Collect(opiter.Map(cloneDecl, slices.Values(decls)))
 	// A comment leading the first declaration would otherwise follow the
 	// package clause on its line.
 	cloned[0].Decorations().Before = dst.EmptyLine

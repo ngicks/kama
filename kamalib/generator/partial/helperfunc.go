@@ -18,13 +18,10 @@ import (
 // the imports of the file stay those it spells itself.
 func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 	return func(c genCtx) (string, error) {
-		in := make([]string, 0, len(args))
-		for _, arg := range args {
-			s, err := arg(c)
-			if err != nil {
-				return "", err
-			}
-			in = append(in, s)
+		render := func(arg genExpr) (string, error) { return arg(c) }
+		in, err := opiter.TryCollect(opiter.Divide(render, slices.Values(args)))
+		if err != nil {
+			return "", err
 		}
 
 		h, err := p.helpers.add(h)
@@ -55,10 +52,7 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 
 		var targs string
 		if tps := h.typeParams(); len(tps) > 0 {
-			names := slices.Collect(opiter.Map(
-				func(tp *types.TypeParam) string { return tp.Obj().Name() },
-				slices.Values(tps),
-			))
+			names := slices.Collect(opiter.Map(typeParamName, slices.Values(tps)))
 			// Type arguments are given rather than inferred: a parameter only a
 			// constraint mentions cannot be inferred from the arguments.
 			targs = "[" + strings.Join(names, ", ") + "]"
@@ -66,6 +60,8 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 		return fn + targs + "(" + strings.Join(in, ", ") + ")", nil
 	}
 }
+
+func typeParamName(tp *types.TypeParam) string { return tp.Obj().Name() }
 
 // helperFunc is the function of a helper.
 type helperFunc struct {
@@ -129,25 +125,21 @@ type helperTypes struct {
 // allocates.
 func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 	tps := h.typeParams()
-	names := make([]string, 0, len(tps))
-	var tparams []string
-	for _, tp := range tps {
-		names = append(names, tp.Obj().Name())
+	declare := func(tp *types.TypeParam) (string, error) {
 		c, err := p.constraintString(tp)
-		if err != nil {
-			return helperFunc{}, err
-		}
-		tparams = append(tparams, tp.Obj().Name()+" "+c)
+		return tp.Obj().Name() + " " + c, err
 	}
+	tparams, err := opiter.TryCollect(opiter.Divide(declare, slices.Values(tps)))
+	if err != nil {
+		return helperFunc{}, err
+	}
+	names := slices.Collect(opiter.Map(typeParamName, slices.Values(tps)))
 	// p.m is the Map in effect now, which call swaps while it renders.
 	f := helperFunc{c: p.funcContext(names)}
 	if len(tparams) > 0 {
 		f.tparams = "[" + strings.Join(tparams, ", ") + "]"
 	}
-	var (
-		t   helperTypes
-		err error
-	)
+	var t helperTypes
 	t.src, err = p.typeString(h.typ)
 	if err != nil {
 		return helperFunc{}, err

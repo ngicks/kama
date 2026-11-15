@@ -122,23 +122,22 @@ func (t Tags) StructTag() reflect.StructTag {
 // raw is the part as written. unescaped differs from raw when the name is
 // single-quoted.
 func (t Tags) Get(key, option string) (raw, unescaped string, err error) {
-	for _, tag := range t {
-		if tag.Key != key {
-			continue
-		}
-
-		r, err := locate(tag.Value, option)
-		if err != nil {
-			return "", "", err
-		}
-
-		raw = tag.Value[r.start:r.end]
-		if r.quoted {
-			return raw, r.unescaped, nil
-		}
-		return raw, raw, nil
+	found := opiter.First(opiter.Filter(hasKey(key), slices.Values(t)))
+	if found.IsNone() {
+		return "", "", fmt.Errorf("%w: key %q", ErrNotFound, key)
 	}
-	return "", "", fmt.Errorf("%w: key %q", ErrNotFound, key)
+
+	v := found.Value().Value
+	r, err := locate(v, option)
+	if err != nil {
+		return "", "", err
+	}
+
+	raw = v[r.start:r.end]
+	if r.quoted {
+		return raw, r.unescaped, nil
+	}
+	return raw, raw, nil
 }
 
 // Delete returns a copy of t with the part of key's value that option names
@@ -203,7 +202,11 @@ func (t Tags) Add(key, option, value string) (Tags, error) {
 }
 
 func (t Tags) index(key string) int {
-	return slices.IndexFunc(t, func(tag Tag) bool { return tag.Key == key })
+	return slices.IndexFunc(t, hasKey(key))
+}
+
+func hasKey(key string) func(Tag) bool {
+	return func(tag Tag) bool { return tag.Key == key }
 }
 
 func part(option, value string) string {

@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ngicks/opiter"
+
 	"go.yaml.in/yaml/v4"
 	"gotest.tools/v3/assert"
 
@@ -83,11 +85,7 @@ func TestFixtureUpToDate(t *testing.T) {
 			assert.NilError(t, i.Run(ctx, r))
 			assert.Equal(t, len(r.warnings), 0, "%v", r.warnings)
 
-			var produced []string
-			for _, file := range files {
-				produced = append(produced, file.Path)
-			}
-			slices.Sort(produced)
+			produced := slices.Sorted(opiter.Map(filePath, slices.Values(files)))
 			assert.DeepEqual(t, produced, generatedFiles(t, f.Root()))
 
 			for _, name := range produced {
@@ -109,6 +107,8 @@ func TestFixtureUpToDate(t *testing.T) {
 		})
 	}
 }
+
+func filePath(f File) string { return f.Path }
 
 // generatedFiles returns the generated files under root, sorted.
 func generatedFiles(t *testing.T, root string) []string {
@@ -158,13 +158,11 @@ func TestFixtureExternalParity(t *testing.T) {
 	hash := regexp.MustCompile(
 		`(kamaPartial[A-Za-z]+_)[0-9a-f]{10}_[0-9a-f]{10}(_[0-9a-f]{1,2})?\b`,
 	)
+	hideHash := func(src string) string { return hash.ReplaceAllString(src, "${1}<hash>") }
 	normalize := func(src string) string {
 		rest, helpers := splitHelpers(t, src)
-		for i, h := range helpers {
-			helpers[i] = hash.ReplaceAllString(h, "${1}<hash>")
-		}
-		slices.Sort(helpers)
-		return hash.ReplaceAllString(rest, "${1}<hash>") + "\n" + strings.Join(helpers, "\n")
+		hidden := slices.Sorted(opiter.Map(hideHash, slices.Values(helpers)))
+		return hideHash(rest) + "\n" + strings.Join(hidden, "\n")
 	}
 	for _, name := range names {
 		want, err := os.ReadFile(filepath.Join(directiveDir, name))

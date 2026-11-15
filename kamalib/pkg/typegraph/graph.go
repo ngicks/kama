@@ -23,6 +23,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -133,10 +134,7 @@ func New(
 
 func loadError(pkg *packages.Package) error {
 	if len(pkg.Errors) > 0 {
-		errs := make([]error, len(pkg.Errors))
-		for i, e := range pkg.Errors {
-			errs[i] = e
-		}
+		errs := slices.Collect(opiter.Map(packageError, slices.Values(pkg.Errors)))
 		return fmt.Errorf("%w: %s: %w", ErrLoad, pkg.PkgPath, errors.Join(errs...))
 	}
 	if pkg.Types == nil || pkg.TypesInfo == nil {
@@ -144,6 +142,8 @@ func loadError(pkg *packages.Package) error {
 	}
 	return nil
 }
+
+func packageError(e packages.Error) error { return e }
 
 func listTypes(
 	g *Graph,
@@ -282,24 +282,21 @@ func (g *Graph) Trim(
 	}
 
 	// First pass: identify matched nodes
-	for id, node := range g.all {
-		if !nodeMatcher(node) {
-			continue
-		}
-
-		mn := &MatchedNode{
-			MatchKind: MatchKindMatched,
-			Parent:    make(map[QualifiedType]*Edge[MatchedNode]),
-			Children:  make(map[QualifiedType]*Edge[MatchedNode]),
-			Node:      node,
-		}
-
-		mg.matched[id] = mn
-	}
+	matches := func(_ QualifiedType, node *Node) bool { return nodeMatcher(node) }
+	maps.Insert(mg.matched, opiter.Map2(newMatchedNode, opiter.Filter2(matches, maps.All(g.all))))
 
 	markDependants(mg, edgeMatcher, routeFilter)
 
 	return mg
+}
+
+func newMatchedNode(id QualifiedType, node *Node) (QualifiedType, *MatchedNode) {
+	return id, &MatchedNode{
+		MatchKind: MatchKindMatched,
+		Parent:    make(map[QualifiedType]*Edge[MatchedNode]),
+		Children:  make(map[QualifiedType]*Edge[MatchedNode]),
+		Node:      node,
+	}
 }
 
 // markDependants walks upward from every matched node.
@@ -325,10 +322,7 @@ func markDependants(
 
 			routes := edge.Routes
 			if routeFilter != nil {
-				routes = slices.DeleteFunc(
-					slices.Clone(routes),
-					func(r *EdgeRoute) bool { return !routeFilter(r) },
-				)
+				routes = slices.Collect(opiter.Filter(routeFilter, slices.Values(routes)))
 			}
 
 			parent := mg.dependantNode(parentId, edge.Parent)
@@ -420,21 +414,11 @@ func (g *MatchedGraph) Get(id QualifiedType) (*MatchedNode, bool) {
 
 // All returns matched and dependant nodes, each once.
 func (g *MatchedGraph) All() iter.Seq2[QualifiedType, *MatchedNode] {
-	return func(yield func(QualifiedType, *MatchedNode) bool) {
-		for k, v := range g.matched {
-			if !yield(k, v) {
-				return
-			}
-		}
-		for k, v := range g.dependant {
-			if _, visited := g.matched[k]; visited {
-				continue
-			}
-			if !yield(k, v) {
-				return
-			}
-		}
+	notMatched := func(id QualifiedType, _ *MatchedNode) bool {
+		_, matched := g.matched[id]
+		return !matched
 	}
+	return opiter.Concat2(maps.All(g.matched), opiter.Filter2(notMatched, maps.All(g.dependant)))
 }
 
 func (g *MatchedGraph) Matched() iter.Seq2[QualifiedType, *MatchedNode] {

@@ -6,8 +6,10 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
+	"github.com/ngicks/opiter"
 	"go.yaml.in/yaml/v4"
 	"gotest.tools/v3/assert"
 )
@@ -137,26 +139,22 @@ func build(t *testing.T, p procs, steps map[string]Step) (*Graph, error) {
 	return Spec{Version: SpecVersion, Steps: steps}.Build(context.Background(), p.registry(t))
 }
 
-func names(g *Graph) []string {
-	var out []string
-	for _, n := range g.Nodes() {
-		out = append(out, n.Name)
-	}
+func nodeName(n Node) string { return n.Name }
 
-	return out
+func names(g *Graph) []string {
+	return slices.Collect(opiter.Map(nodeName, slices.Values(g.Nodes())))
 }
 
 func node(t *testing.T, g *Graph, name string) Node {
 	t.Helper()
 
-	for _, n := range g.Nodes() {
-		if n.Name == name {
-			return n
-		}
+	isNamed := func(n Node) bool { return n.Name == name }
+	found := opiter.First(opiter.Filter(isNamed, slices.Values(g.Nodes())))
+	if found.IsNone() {
+		t.Fatalf("no node %q", name)
 	}
 
-	t.Fatalf("no node %q", name)
-	return Node{}
+	return found.Value()
 }
 
 func TestFormation(t *testing.T) {

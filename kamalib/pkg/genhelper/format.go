@@ -2,7 +2,10 @@ package genhelper
 
 import (
 	"fmt"
+	"slices"
 	"strings"
+
+	"github.com/ngicks/opiter"
 )
 
 // Ref is an argument of [Expr] and [Stmt] spelling the name the role
@@ -39,13 +42,10 @@ type Shadow string
 // error of a Gen argument as it is.
 func Expr[C Context[C]](format string, args ...any) Gen[C] {
 	return func(c C) (string, error) {
-		out := make([]any, len(args))
-		for i, arg := range args {
-			var err error
-			out[i], err = renderArg(c, arg)
-			if err != nil {
-				return "", err
-			}
+		render := func(arg any) (any, error) { return renderArg(c, arg) }
+		out, err := opiter.TryCollect(opiter.Divide(render, slices.Values(args)))
+		if err != nil {
+			return "", err
 		}
 		return fmt.Sprintf(format, out...), nil
 	}
@@ -89,13 +89,10 @@ func Name[C Context[C]](role string) Gen[C] {
 // The returned Gen returns the error of the first failing part as it is.
 func Join[C Context[C]](sep string, parts ...Gen[C]) Gen[C] {
 	return func(c C) (string, error) {
-		out := make([]string, len(parts))
-		for i, part := range parts {
-			var err error
-			out[i], err = part(c)
-			if err != nil {
-				return "", err
-			}
+		render := func(part Gen[C]) (string, error) { return part(c) }
+		out, err := opiter.TryCollect(opiter.Divide(render, slices.Values(parts)))
+		if err != nil {
+			return "", err
 		}
 		return strings.Join(out, sep), nil
 	}

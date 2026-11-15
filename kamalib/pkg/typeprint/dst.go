@@ -7,6 +7,7 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
+	"github.com/ngicks/opiter"
 )
 
 // Dst returns the dst type expression spelling ty. It qualifies types the
@@ -102,13 +103,9 @@ func (p dstPrinter) named(
 	}
 	x := dstName(qual, name)
 
-	indices := make([]dst.Expr, 0, targs.Len())
-	for t := range targs.Types() {
-		index, err := p.expr(t)
-		if err != nil {
-			return nil, err
-		}
-		indices = append(indices, index)
+	indices, err := opiter.TryCollect(opiter.Divide(p.expr, targs.Types()))
+	if err != nil {
+		return nil, err
 	}
 
 	switch len(indices) {
@@ -180,19 +177,23 @@ func (p dstPrinter) signature(sig *types.Signature) (*dst.FuncType, error) {
 }
 
 func (p dstPrinter) tuple(t *types.Tuple) (*dst.FieldList, error) {
-	list := &dst.FieldList{}
-	for v := range t.Variables() {
-		ty, err := p.expr(v.Type())
-		if err != nil {
-			return nil, err
-		}
-		f := &dst.Field{Type: ty}
-		if v.Name() != "" {
-			f.Names = []*dst.Ident{dst.NewIdent(v.Name())}
-		}
-		list.List = append(list.List, f)
+	fields, err := opiter.TryCollect(opiter.Divide(p.tupleField, t.Variables()))
+	if err != nil {
+		return nil, err
 	}
-	return list, nil
+	return &dst.FieldList{List: fields}, nil
+}
+
+func (p dstPrinter) tupleField(v *types.Var) (*dst.Field, error) {
+	ty, err := p.expr(v.Type())
+	if err != nil {
+		return nil, err
+	}
+	f := &dst.Field{Type: ty}
+	if v.Name() != "" {
+		f.Names = []*dst.Ident{dst.NewIdent(v.Name())}
+	}
+	return f, nil
 }
 
 func (p dstPrinter) structType(s *types.Struct) (*dst.StructType, error) {

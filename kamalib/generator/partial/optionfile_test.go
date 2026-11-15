@@ -2,10 +2,14 @@ package partial
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/ngicks/opiter"
 
 	"gotest.tools/v3/assert"
 
@@ -640,11 +644,8 @@ func TestProcOptionFile(t *testing.T) {
 	assert.NilError(t, run(dir+"/partial"))
 	staged, err := f.Overlay()
 	assert.NilError(t, err)
-	var names []string
-	for name := range staged {
-		if strings.HasSuffix(name, "x.kama_partial.go") {
-			names = append(names, name)
-		}
-	}
+	names := slices.Collect(opiter.Filter(isXPartialFile, maps.Keys(staged)))
 	assert.Equal(t, len(names), 1, names)
 }
+
+func isXPartialFile(name string) bool { return strings.HasSuffix(name, "x.kama_partial.go") }

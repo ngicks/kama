@@ -2,8 +2,10 @@ package proc_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 
+	"github.com/ngicks/opiter"
 	"go.yaml.in/yaml/v4"
 	"gotest.tools/v3/assert"
 
@@ -51,10 +53,7 @@ steps:
 	g, err := spec.Build(context.Background(), workflow.DefaultRegistry)
 	assert.NilError(t, err)
 
-	var names []string
-	for _, n := range g.Nodes() {
-		names = append(names, n.Name)
-	}
+	names := slices.Collect(opiter.Map(nodeName, slices.Values(g.Nodes())))
 	assert.DeepEqual(t, names, []string{"root", "meta", "packages", "final"})
 }
 
@@ -113,3 +112,5 @@ steps:
 		})
 	}
 }
+
+func nodeName(n workflow.Node) string { return n.Name }

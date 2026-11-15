@@ -6,6 +6,8 @@ import (
 	"go/token"
 	"go/types"
 
+	"github.com/ngicks/opiter"
+
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 )
 
@@ -107,13 +109,9 @@ func (p astPrinter) named(
 	}
 	x := astName(qual, name)
 
-	indices := make([]ast.Expr, 0, targs.Len())
-	for t := range targs.Types() {
-		index, err := p.expr(t)
-		if err != nil {
-			return nil, err
-		}
-		indices = append(indices, index)
+	indices, err := opiter.TryCollect(opiter.Divide(p.expr, targs.Types()))
+	if err != nil {
+		return nil, err
 	}
 
 	switch len(indices) {
@@ -179,19 +177,23 @@ func (p astPrinter) signature(sig *types.Signature) (*ast.FuncType, error) {
 }
 
 func (p astPrinter) tuple(t *types.Tuple) (*ast.FieldList, error) {
-	list := &ast.FieldList{}
-	for v := range t.Variables() {
-		ty, err := p.expr(v.Type())
-		if err != nil {
-			return nil, err
-		}
-		f := &ast.Field{Type: ty}
-		if v.Name() != "" {
-			f.Names = []*ast.Ident{ast.NewIdent(v.Name())}
-		}
-		list.List = append(list.List, f)
+	fields, err := opiter.TryCollect(opiter.Divide(p.tupleField, t.Variables()))
+	if err != nil {
+		return nil, err
 	}
-	return list, nil
+	return &ast.FieldList{List: fields}, nil
+}
+
+func (p astPrinter) tupleField(v *types.Var) (*ast.Field, error) {
+	ty, err := p.expr(v.Type())
+	if err != nil {
+		return nil, err
+	}
+	f := &ast.Field{Type: ty}
+	if v.Name() != "" {
+		f.Names = []*ast.Ident{ast.NewIdent(v.Name())}
+	}
+	return f, nil
 }
 
 func (p astPrinter) structType(s *types.Struct) (*ast.StructType, error) {

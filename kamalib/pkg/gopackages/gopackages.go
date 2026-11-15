@@ -5,10 +5,10 @@ package gopackages
 import (
 	"context"
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 
+	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -81,16 +81,11 @@ func Load(ctx context.Context, fsys *overlayfs.Fs, opts Options) ([]*packages.Pa
 type PackageErrors map[string][]packages.Error
 
 func (e PackageErrors) Error() string {
-	var b strings.Builder
-	for i, path := range slices.Sorted(maps.Keys(e)) {
-		if i > 0 {
-			b.WriteByte('\n')
-		}
-		fmt.Fprintf(&b, "%s:", path)
-		for _, pe := range e[path] {
-			b.WriteString("\n\t")
-			b.WriteString(pe.Error())
-		}
-	}
-	return b.String()
+	return strings.Join(slices.Collect(opiter.Unify(packageErrorBlock, opiter.MapsSorted(e))), "\n")
+}
+
+func packageErrorBlock(path string, errs []packages.Error) string {
+	header := opiter.Once(path + ":")
+	msgs := opiter.Map(packages.Error.Error, slices.Values(errs))
+	return strings.Join(slices.Collect(opiter.Concat(header, msgs)), "\n\t")
 }

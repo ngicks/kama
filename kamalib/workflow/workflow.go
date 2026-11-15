@@ -145,20 +145,18 @@ func checkProc(kind string, p Proc) error {
 		return fmt.Errorf("%w: %q constructs nil", ErrInvalidProc, kind)
 	}
 
-	for i, t := range p.InTypes() {
-		if t == nil {
-			return fmt.Errorf("%w: %q: in %d is nil", ErrInvalidProc, kind, i)
-		}
+	if found := opiter.FindFunc(isNilType, slices.Values(p.InTypes())); found.IsSome() {
+		return fmt.Errorf("%w: %q: in %d is nil", ErrInvalidProc, kind, found.Value().K)
 	}
 
-	for i, t := range p.OutTypes() {
-		if t == nil {
-			return fmt.Errorf("%w: %q: out %d is nil", ErrInvalidProc, kind, i)
-		}
+	if found := opiter.FindFunc(isNilType, slices.Values(p.OutTypes())); found.IsSome() {
+		return fmt.Errorf("%w: %q: out %d is nil", ErrInvalidProc, kind, found.Value().K)
 	}
 
 	return nil
 }
+
+func isNilType(t reflect.Type) bool { return t == nil }
 
 // matchRefs checks that the AsInput values of the steps named in refs fit
 // the argument types want, by position.
@@ -374,10 +372,7 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 		pending[name] = len(deps)
 	}
 
-	ready := slices.Collect(opiter.OmitL(opiter.Filter2(
-		func(_ string, n int) bool { return n == 0 },
-		maps.All(pending),
-	)))
+	ready := slices.Collect(opiter.OmitL(opiter.Filter2(isReady, maps.All(pending))))
 
 	order := make([]string, 0, len(steps))
 	for len(ready) > 0 {
@@ -395,13 +390,14 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 	}
 
 	if len(order) != len(steps) {
-		stuck := slices.Sorted(opiter.OmitL(opiter.Filter2(
-			func(_ string, n int) bool { return n > 0 },
-			maps.All(pending),
-		)))
+		stuck := slices.Sorted(opiter.OmitL(opiter.Filter2(isStuck, maps.All(pending))))
 
 		return nil, fmt.Errorf("%w: among %v", ErrCycle, stuck)
 	}
 
 	return order, nil
 }
+
+func isReady(_ string, pending int) bool { return pending == 0 }
+
+func isStuck(_ string, pending int) bool { return pending > 0 }

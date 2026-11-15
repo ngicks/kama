@@ -6,9 +6,11 @@ import (
 	"go/ast"
 	"go/types"
 	"iter"
+	"maps"
 	"slices"
 	"testing"
 
+	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 )
@@ -29,32 +31,46 @@ func loadPackages(t *testing.T, patterns ...string) []*packages.Package {
 	return pkgs
 }
 
+func pkgNamed(pkgs []*packages.Package, name string) *packages.Package {
+	hasName := func(pkg *packages.Package) bool { return pkg.Name == name }
+	return opiter.First(opiter.Filter(hasName, slices.Values(pkgs))).UnwrapOrDefault()
+}
+
 func pkgPathOf(t *testing.T, pkgs []*packages.Package, name string) string {
 	t.Helper()
-	for _, pkg := range pkgs {
-		if pkg.Name == name {
-			return pkg.PkgPath
-		}
+	pkg := pkgNamed(pkgs, name)
+	if pkg == nil {
+		t.Fatalf("package %s not loaded", name)
 	}
-	t.Fatalf("package %s not loaded", name)
-	return ""
+	return pkg.PkgPath
 }
 
 func findNamed(t *testing.T, pkgs []*packages.Package, pkgName, typeName string) *types.Named {
 	t.Helper()
-	for _, pkg := range pkgs {
-		if pkg.Name != pkgName {
-			continue
-		}
-		obj := pkg.Types.Scope().Lookup(typeName)
-		assert.Assert(t, obj != nil)
-		named, ok := obj.Type().(*types.Named)
-		assert.Assert(t, ok)
-		return named
+	pkg := pkgNamed(pkgs, pkgName)
+	if pkg == nil {
+		t.Fatalf("package %s not loaded", pkgName)
 	}
-	t.Fatalf("package %s not loaded", pkgName)
-	return nil
+	obj := pkg.Types.Scope().Lookup(typeName)
+	assert.Assert(t, obj != nil)
+	named, ok := obj.Type().(*types.Named)
+	assert.Assert(t, ok)
+	return named
 }
+
+func definedNamed(pkg *packages.Package, name string) *types.Named {
+	isNamedType := func(obj types.Object) bool {
+		if obj == nil || obj.Name() != name {
+			return false
+		}
+		_, ok := obj.Type().(*types.Named)
+		return ok
+	}
+	defs := maps.Values(pkg.TypesInfo.Defs)
+	return opiter.First(opiter.Map(objNamed, opiter.Filter(isNamedType, defs))).UnwrapOrDefault()
+}
+
+func objNamed(obj types.Object) *types.Named { return obj.Type().(*types.Named) }
 
 func compareQualifiedType(a, b QualifiedType) int {
 	if c := cmp.Compare(a.PackagePath, b.PackagePath); c != 0 {
@@ -67,21 +83,13 @@ func compareQualifiedType(a, b QualifiedType) int {
 }
 
 func keysSorted[V any](m map[QualifiedType]V) []QualifiedType {
+	// Tests compare the keys of an empty map with an empty, non-nil slice.
 	keys := make([]QualifiedType, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	slices.SortFunc(keys, compareQualifiedType)
-	return keys
+	return slices.AppendSeq(keys, opiter.OmitL(opiter.MapsSortedFunc(m, compareQualifiedType)))
 }
 
 func collectKeysSorted[V any](seq iter.Seq2[QualifiedType, V]) []QualifiedType {
-	var keys []QualifiedType
-	for k := range seq {
-		keys = append(keys, k)
-	}
-	slices.SortFunc(keys, compareQualifiedType)
-	return keys
+	return slices.SortedFunc(opiter.OmitL(seq), compareQualifiedType)
 }
 
 func compareEdgeRoutesByFirstPos(a, b *EdgeRoute) int {
@@ -112,13 +120,7 @@ func TestNew_Basic(t *testing.T) {
 	g, err := New(pkgs, nil, nil)
 	assert.NilError(t, err)
 
-	var basicPkgPath string
-	for _, pkg := range pkgs {
-		if pkg.Name == "basic" {
-			basicPkgPath = pkg.PkgPath
-			break
-		}
-	}
+	basicPkgPath := pkgPathOf(t, pkgs, "basic")
 
 	// All 4 types should exist
 	assert.DeepEqual(t,
@@ -166,13 +168,7 @@ func TestNew_Edges(t *testing.T) {
 	g, err := New(pkgs, nil, nil)
 	assert.NilError(t, err)
 
-	var edgesPkgPath string
-	for _, pkg := range pkgs {
-		if pkg.Name == "edges" {
-			edgesPkgPath = pkg.PkgPath
-			break
-		}
-	}
+	edgesPkgPath := pkgPathOf(t, pkgs, "edges")
 
 	targetId := NewQualifiedType(edgesPkgPath, "Target")
 	genericId := NewQualifiedType(edgesPkgPath, "GenericType")
@@ -240,13 +236,7 @@ func TestNew_WithFilters(t *testing.T) {
 	g, err := New(pkgs, nil, typeSpecFilter)
 	assert.NilError(t, err)
 
-	var basicPkgPath string
-	for _, pkg := range pkgs {
-		if pkg.Name == "basic" {
-			basicPkgPath = pkg.PkgPath
-			break
-		}
-	}
+	basicPkgPath := pkgPathOf(t, pkgs, "basic")
 
 	// Only TypeA and TypeB should exist
 	assert.DeepEqual(t,
@@ -271,13 +261,7 @@ func TestTrim_MatchAll(t *testing.T) {
 	g, err := New(pkgs, nil, nil)
 	assert.NilError(t, err)
 
-	var basicPkgPath string
-	for _, pkg := range pkgs {
-		if pkg.Name == "basic" {
-			basicPkgPath = pkg.PkgPath
-			break
-		}
-	}
+	basicPkgPath := pkgPathOf(t, pkgs, "basic")
 
 	// Match all nodes
 	mg := g.Trim(
@@ -310,12 +294,9 @@ func TestTrim_MatchAll(t *testing.T) {
 	// A node both matched and dependant is a single node carrying both kinds and its edges.
 	typeAId := NewQualifiedType(basicPkgPath, "TypeA")
 	matchedA, _ := mg.Get(typeAId)
-	var dependantA *MatchedNode
-	for id, n := range mg.Dependant() {
-		if id == typeAId {
-			dependantA = n
-		}
-	}
+	isTypeA := func(id QualifiedType, _ *MatchedNode) bool { return id == typeAId }
+	dependants := opiter.OmitF(opiter.Filter2(isTypeA, mg.Dependant()))
+	dependantA := opiter.First(dependants).UnwrapOrDefault()
 	assert.Assert(t, matchedA == dependantA)
 	assert.Equal(t, MatchKindMatched|MatchKindDependant, matchedA.MatchKind)
 	assert.DeepEqual(t,
@@ -339,13 +320,7 @@ func TestTrim_MatchLeaf(t *testing.T) {
 	g, err := New(pkgs, nil, nil)
 	assert.NilError(t, err)
 
-	var basicPkgPath string
-	for _, pkg := range pkgs {
-		if pkg.Name == "basic" {
-			basicPkgPath = pkg.PkgPath
-			break
-		}
-	}
+	basicPkgPath := pkgPathOf(t, pkgs, "basic")
 
 	typeDId := NewQualifiedType(basicPkgPath, "TypeD")
 
@@ -386,13 +361,7 @@ func TestTrim_EdgeMatcher(t *testing.T) {
 	g, err := New(pkgs, nil, nil)
 	assert.NilError(t, err)
 
-	var basicPkgPath string
-	for _, pkg := range pkgs {
-		if pkg.Name == "basic" {
-			basicPkgPath = pkg.PkgPath
-			break
-		}
-	}
+	basicPkgPath := pkgPathOf(t, pkgs, "basic")
 
 	typeDId := NewQualifiedType(basicPkgPath, "TypeD")
 	typeCId := NewQualifiedType(basicPkgPath, "TypeC")
@@ -440,25 +409,10 @@ func TestMatchKind(t *testing.T) {
 func TestTraverseTypes(t *testing.T) {
 	pkgs := loadPackages(t, "./testdata/edges")
 
-	var edgesPkg *packages.Package
-	for _, pkg := range pkgs {
-		if pkg.Name == "edges" {
-			edgesPkg = pkg
-			break
-		}
-	}
+	edgesPkg := pkgNamed(pkgs, "edges")
 
 	// Find NestedType: A *map[string][]Target
-	var nestedType *types.Named
-	for _, obj := range edgesPkg.TypesInfo.Defs {
-		if obj == nil {
-			continue
-		}
-		if named, ok := obj.Type().(*types.Named); ok && obj.Name() == "NestedType" {
-			nestedType = named
-			break
-		}
-	}
+	nestedType := definedNamed(edgesPkg, "NestedType")
 	assert.Assert(t, nestedType != nil)
 
 	// Traverse and collect all named types
@@ -481,25 +435,10 @@ func TestTraverseTypes(t *testing.T) {
 func TestTraverseTypes_InstantiatedGeneric(t *testing.T) {
 	pkgs := loadPackages(t, "./testdata/edges")
 
-	var edgesPkg *packages.Package
-	for _, pkg := range pkgs {
-		if pkg.Name == "edges" {
-			edgesPkg = pkg
-			break
-		}
-	}
+	edgesPkg := pkgNamed(pkgs, "edges")
 
 	// Find InstantiatedType: G GenericType[Target, map[[2]Target][]Target]
-	var instantiatedType *types.Named
-	for _, obj := range edgesPkg.TypesInfo.Defs {
-		if obj == nil {
-			continue
-		}
-		if named, ok := obj.Type().(*types.Named); ok && obj.Name() == "InstantiatedType" {
-			instantiatedType = named
-			break
-		}
-	}
+	instantiatedType := definedNamed(edgesPkg, "InstantiatedType")
 	assert.Assert(t, instantiatedType != nil)
 
 	// Traverse and collect all named types
@@ -527,13 +466,7 @@ func TestBidirectionalEdges(t *testing.T) {
 	g, err := New(pkgs, nil, nil)
 	assert.NilError(t, err)
 
-	var basicPkgPath string
-	for _, pkg := range pkgs {
-		if pkg.Name == "basic" {
-			basicPkgPath = pkg.PkgPath
-			break
-		}
-	}
+	basicPkgPath := pkgPathOf(t, pkgs, "basic")
 
 	typeAId := NewQualifiedType(basicPkgPath, "TypeA")
 	typeBId := NewQualifiedType(basicPkgPath, "TypeB")
@@ -559,13 +492,7 @@ func TestNew_Edges_DetailedRoutes(t *testing.T) {
 	g, err := New(pkgs, nil, nil)
 	assert.NilError(t, err)
 
-	var edgesPkg *packages.Package
-	for _, pkg := range pkgs {
-		if pkg.Name == "edges" {
-			edgesPkg = pkg
-			break
-		}
-	}
+	edgesPkg := pkgNamed(pkgs, "edges")
 	edgesPkgPath := edgesPkg.PkgPath
 
 	targetId := NewQualifiedType(edgesPkgPath, "Target")
@@ -730,13 +657,7 @@ func TestNew_Edges_TypeDetail(t *testing.T) {
 	g, err := New(pkgs, nil, nil)
 	assert.NilError(t, err)
 
-	var edgesPkg *packages.Package
-	for _, pkg := range pkgs {
-		if pkg.Name == "edges" {
-			edgesPkg = pkg
-			break
-		}
-	}
+	edgesPkg := pkgNamed(pkgs, "edges")
 	edgesPkgPath := edgesPkg.PkgPath
 
 	t.Run("Target TypeDetail", func(t *testing.T) {
@@ -931,6 +852,8 @@ func TestTrim_Diamond(t *testing.T) {
 	}
 }
 
+func isPointerNode(n EdgeRouteNode) bool { return n.Kind == EdgeKindPointer }
+
 func TestTrim_RouteFilter(t *testing.T) {
 	pkgs := loadPackages(t, "./testdata/edges")
 
@@ -944,12 +867,7 @@ func TestTrim_RouteFilter(t *testing.T) {
 	mg := g.Trim(
 		func(n *Node) bool { return n.Id == targetId },
 		func(e *Edge[Node]) bool { return e.Parent.Id == structId },
-		func(r *EdgeRoute) bool {
-			return slices.ContainsFunc(
-				r.Nodes,
-				func(n EdgeRouteNode) bool { return n.Kind == EdgeKindPointer },
-			)
-		},
+		func(r *EdgeRoute) bool { return opiter.ContainsFunc(isPointerNode, slices.Values(r.Nodes)) },
 	)
 
 	assert.DeepEqual(t, []QualifiedType{structId}, collectKeysSorted(mg.Dependant()))

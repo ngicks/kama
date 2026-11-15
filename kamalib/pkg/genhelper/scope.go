@@ -6,6 +6,8 @@ import (
 	"maps"
 	"slices"
 	"strconv"
+
+	"github.com/ngicks/opiter"
 )
 
 // Scope is a lexical scope of the generated code. It hands out identifiers
@@ -217,16 +219,14 @@ func (s *Scope) Unbound() []string {
 }
 
 func (s *Scope) appendUnbound(out []string) []string {
-	for role, b := range s.roles {
-		if b.pending {
-			out = append(out, role)
-		}
-	}
+	out = slices.AppendSeq(out, opiter.OmitL(opiter.Filter2(isPending, maps.All(s.roles))))
 	for _, child := range s.children {
 		out = child.appendUnbound(out)
 	}
 	return out
 }
+
+func isPending(_ string, b binding) bool { return b.pending }
 
 func (s *Scope) fresh(hint string) string {
 	name := hint
@@ -252,7 +252,6 @@ func (s *Scope) takenBelow(name string) bool {
 	if s.names[name] {
 		return true
 	}
-	return slices.ContainsFunc(s.children, func(child *Scope) bool {
-		return child.takenBelow(name)
-	})
+	holdsBelow := func(child *Scope) bool { return child.takenBelow(name) }
+	return opiter.ContainsFunc(holdsBelow, slices.Values(s.children))
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -48,11 +49,7 @@ func TestLoadSeesStagedFiles(t *testing.T) {
 	assert.Equal(t, len(pkgs), 1)
 	pkg := pkgs[0]
 
-	var files []string
-	for _, f := range pkg.GoFiles {
-		files = append(files, filepath.Base(f))
-	}
-	slices.Sort(files)
+	files := slices.Sorted(opiter.Map(filepath.Base, slices.Values(pkg.GoFiles)))
 	assert.DeepEqual(t, files, []string{"a.go", "b.gen.go"})
 }
 

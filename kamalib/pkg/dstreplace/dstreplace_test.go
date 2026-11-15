@@ -6,11 +6,13 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/dstreplace"
@@ -31,18 +33,23 @@ func parse(t *testing.T, src string) (*dstreplace.Cache, *dst.StructType) {
 
 func typeSpec(t *testing.T, f *ast.File, name string) *ast.TypeSpec {
 	t.Helper()
-	for _, d := range f.Decls {
-		if gd, ok := d.(*ast.GenDecl); ok && gd.Tok == token.TYPE {
-			for _, s := range gd.Specs {
-				if ts := s.(*ast.TypeSpec); ts.Name.Name == name {
-					return ts
-				}
-			}
-		}
+	hasName := func(ts *ast.TypeSpec) bool { return ts.Name.Name == name }
+	specs := opiter.Flatten(opiter.Map(typeDeclSpecs, slices.Values(f.Decls)))
+	found := opiter.First(opiter.Filter(hasName, opiter.Map(asTypeSpec, specs)))
+	if found.IsNone() {
+		t.Fatalf("no type %s", name)
 	}
-	t.Fatalf("no type %s", name)
+	return found.Value()
+}
+
+func typeDeclSpecs(d ast.Decl) []ast.Spec {
+	if gd, ok := d.(*ast.GenDecl); ok && gd.Tok == token.TYPE {
+		return gd.Specs
+	}
 	return nil
 }
+
+func asTypeSpec(s ast.Spec) *ast.TypeSpec { return s.(*ast.TypeSpec) }
 
 // printStruct prints st as the type B.
 func printStruct(t *testing.T, st *dst.StructType) string {

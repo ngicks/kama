@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/dave/dst"
+	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 )
@@ -185,16 +186,15 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 		return nil, nil
 	}
 
-	grouped := !slices.ContainsFunc(keys[1:], func(k string) bool { return k != keys[0] })
-	if grouped {
+	sameAsFirst := func(k string) bool { return k == keys[0] }
+	if opiter.Every(sameAsFirst, slices.Values(keys[1:])) {
 		f.Names = names
 		f.Type = dst.Clone(reps[0].Type).(dst.Expr)
 		f.Tag = tagLit(f.Tag, fields[0].Tag, reps[0].Tag)
 		return []*dst.Field{f}, nil
 	}
 
-	out := make([]*dst.Field, len(reps))
-	for k, r := range reps {
+	splitField := func(k int, r Replacement) *dst.Field {
 		var lit *dst.BasicLit
 		if f.Tag != nil {
 			lit = dst.Clone(f.Tag).(*dst.BasicLit)
@@ -207,8 +207,9 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 			Tag:  tagLit(lit, fields[0].Tag, r.Tag),
 		}
 		nf.Decs.Before, nf.Decs.After = dst.NewLine, dst.NewLine
-		out[k] = nf
+		return nf
 	}
+	out := slices.Collect(opiter.Unify(splitField, slices.All(reps)))
 	out[0].Decs.Before = f.Decs.Before
 	out[len(out)-1].Decs.After = f.Decs.After
 	return out, nil

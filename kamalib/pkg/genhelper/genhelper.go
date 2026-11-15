@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/ngicks/opiter"
 )
 
 // Context is what a [Step] renders with. C is the implementing type
@@ -145,12 +147,8 @@ func newStepError(i int, err error) error {
 func (e *stepError) Error() string {
 	var sb strings.Builder
 	sb.WriteString("genhelper: step ")
-	for i, n := range e.path {
-		if i > 0 {
-			sb.WriteByte('.')
-		}
-		sb.WriteString(strconv.Itoa(n))
-	}
+	indices := slices.Collect(opiter.Map(strconv.Itoa, slices.Values(e.path)))
+	sb.WriteString(strings.Join(indices, "."))
 	sb.WriteString(": ")
 	sb.WriteString(e.err.Error())
 	return sb.String()

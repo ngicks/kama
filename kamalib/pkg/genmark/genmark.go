@@ -11,12 +11,14 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"slices"
 	"strings"
 	"sync"
 	"unicode"
 
 	"github.com/dave/dst"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/opiter"
 )
 
 const (
@@ -85,17 +87,25 @@ func (r *Registry) find(comments []dircmnt.Comment) (string, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	for _, c := range comments {
-		if c.ToolName != toolName || c.Directive != directive {
-			continue
-		}
-		fields := strings.Fields(c.Args)
-		if len(fields) == 0 {
-			continue
-		}
-		if _, ok := r.names[fields[0]]; ok {
-			return fields[0], true
-		}
+	// Register rejects the empty name, so a marker without a name never
+	// counts as registered.
+	isRegistered := func(name string) bool {
+		_, ok := r.names[name]
+		return ok
 	}
-	return "", false
+	names := opiter.Map(markerName, opiter.Filter(isMarker, slices.Values(comments)))
+	found := opiter.First(opiter.Filter(isRegistered, names))
+	return found.Value(), found.IsSome()
+}
+
+func isMarker(c dircmnt.Comment) bool {
+	return c.ToolName == toolName && c.Directive == directive
+}
+
+func markerName(c dircmnt.Comment) string {
+	fields := strings.Fields(c.Args)
+	if len(fields) == 0 {
+		return ""
+	}
+	return fields[0]
 }
