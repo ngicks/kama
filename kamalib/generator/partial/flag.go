@@ -24,7 +24,7 @@ import (
 // FlagSetFile is the name of the file declaring the flag set interface
 // the flag methods of a package take. The generator writes it again on
 // every run into every package holding targets.
-const FlagSetFile = "kama_partial_flagset.go"
+const FlagSetFile = "zz_gen.flagset.kama_partial.go"
 
 // flagSetName is the interface declared in FlagSetFile.
 const flagSetName = "PartialFlagSet"

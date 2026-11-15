@@ -36,8 +36,9 @@ const GeneratorName = "kama-partial"
 const FileSuffix = ".kama_partial"
 
 // HelpersFile is the name of the file declaring the helpers the partial
-// files of a package call.
-const HelpersFile = "kama_partial_helpers.go"
+// files of a package call. The zz_gen. prefix marks a generated file no
+// source file stands behind and sorts it after the files written by hand.
+const HelpersFile = "zz_gen.helper.kama_partial.go"
 
 // HelpersSuffix is inserted into the name of a source file that has a
 // build constraint to name the file declaring the helpers only files with
