@@ -198,3 +198,38 @@ type nopReporter struct{}
 
 func (nopReporter) Warn(error)      {}
 func (nopReporter) Progress(string) {}
+
+func TestDecodeTemplate(t *testing.T) {
+	got, err := decodeTemplate(map[string]any{
+		"entries": []any{
+			map[string]any{
+				"file_name":    "user",
+				"name":         "User",
+				"type":         "string",
+				"default_expr": `""`,
+				"imports":      []any{"time"},
+				"extra":        true,
+			},
+			map[string]any{"File_Name": "ignored", "Name": "Ignored"},
+		},
+	})
+	assert.NilError(t, err)
+
+	assert.DeepEqual(t, got, Template{Entries: []Entry{
+		{
+			FileName:    "user",
+			Name:        "User",
+			Type:        "string",
+			DefaultExpr: `""`,
+			Imports:     []string{"time"},
+		},
+		{},
+	}})
+}
+
+func TestDecodeTemplateRejectsInvalidUtf8(t *testing.T) {
+	_, err := decodeTemplate(map[string]any{
+		"entries": []any{map[string]any{"name": "\xff"}},
+	})
+	assert.ErrorContains(t, err, "invalid UTF-8")
+}

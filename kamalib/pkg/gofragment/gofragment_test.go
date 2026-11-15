@@ -1,4 +1,4 @@
-package genhelper_test
+package gofragment_test
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	"github.com/dave/dst"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 )
 
 func TestParsePrintDstExpr(t *testing.T) {
@@ -30,9 +30,9 @@ func TestParsePrintDstExpr(t *testing.T) {
 		"T{\n\tA: 1, // one\n\tB: `raw\n\tline\n  end`,\n}",
 	} {
 		t.Run(src, func(t *testing.T) {
-			e, err := genhelper.ParseDstExpr([]byte(src))
+			e, err := gofragment.ParseDstExpr([]byte(src))
 			assert.NilError(t, err)
-			got, err := genhelper.PrintDstExpr(e)
+			got, err := gofragment.PrintDstExpr(e)
 			assert.NilError(t, err)
 			assert.Equal(t, string(got), src)
 		})
@@ -40,9 +40,9 @@ func TestParsePrintDstExpr(t *testing.T) {
 }
 
 func TestPrintDstExprSurroundingText(t *testing.T) {
-	e, err := genhelper.ParseDstExpr([]byte("\n\t f(x) // dropped\n\n"))
+	e, err := gofragment.ParseDstExpr([]byte("\n\t f(x) // dropped\n\n"))
 	assert.NilError(t, err)
-	got, err := genhelper.PrintDstExpr(e)
+	got, err := gofragment.PrintDstExpr(e)
 	assert.NilError(t, err)
 	assert.Equal(t, string(got), "f(x)")
 }
@@ -76,10 +76,10 @@ func TestParsePrintDstStmts(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			stmts, err := genhelper.ParseDstStmts([]byte(tc.src))
+			stmts, err := gofragment.ParseDstStmts([]byte(tc.src))
 			assert.NilError(t, err)
 			assert.Assert(t, stmts != nil)
-			got, err := genhelper.PrintDstStmts(stmts)
+			got, err := gofragment.PrintDstStmts(stmts)
 			assert.NilError(t, err)
 			assert.Equal(t, string(got), tc.src)
 		})
@@ -101,10 +101,10 @@ func TestParsePrintDstDecls(t *testing.T) {
 		{name: "grouped", src: "const (\n\tA = iota\n\tB\n)\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			decls, err := genhelper.ParseDstDecls([]byte(tc.src))
+			decls, err := gofragment.ParseDstDecls([]byte(tc.src))
 			assert.NilError(t, err)
 			assert.Assert(t, decls != nil)
-			got, err := genhelper.PrintDstDecls(decls)
+			got, err := gofragment.PrintDstDecls(decls)
 			assert.NilError(t, err)
 			assert.Equal(t, string(got), tc.src)
 		})
@@ -112,30 +112,30 @@ func TestParsePrintDstDecls(t *testing.T) {
 }
 
 func TestParseDstComments(t *testing.T) {
-	stmts, err := genhelper.ParseDstStmts([]byte("// leading\nx := 1\n"))
+	stmts, err := gofragment.ParseDstStmts([]byte("// leading\nx := 1\n"))
 	assert.NilError(t, err)
 	assert.DeepEqual(t, []string(stmts[0].Decorations().Start), []string{"// leading"})
 
-	decls, err := genhelper.ParseDstDecls([]byte("// F does nothing.\nfunc F() {}\n"))
+	decls, err := gofragment.ParseDstDecls([]byte("// F does nothing.\nfunc F() {}\n"))
 	assert.NilError(t, err)
 	assert.DeepEqual(t, []string(decls[0].Decorations().Start), []string{"// F does nothing."})
 }
 
 func TestParseRejects(t *testing.T) {
 	type parseFunc func(b []byte) error
-	expr := func(b []byte) error { _, err := genhelper.ParseDstExpr(b); return err }
-	stmts := func(b []byte) error { _, err := genhelper.ParseDstStmts(b); return err }
-	decls := func(b []byte) error { _, err := genhelper.ParseDstDecls(b); return err }
+	expr := func(b []byte) error { _, err := gofragment.ParseDstExpr(b); return err }
+	stmts := func(b []byte) error { _, err := gofragment.ParseDstStmts(b); return err }
+	decls := func(b []byte) error { _, err := gofragment.ParseDstDecls(b); return err }
 	astExpr := func(b []byte) error {
-		_, err := genhelper.ParseAstExpr(token.NewFileSet(), b)
+		_, err := gofragment.ParseAstExpr(token.NewFileSet(), b)
 		return err
 	}
 	astStmts := func(b []byte) error {
-		_, err := genhelper.ParseAstStmts(token.NewFileSet(), b)
+		_, err := gofragment.ParseAstStmts(token.NewFileSet(), b)
 		return err
 	}
 	astDecls := func(b []byte) error {
-		_, err := genhelper.ParseAstDecls(token.NewFileSet(), b)
+		_, err := gofragment.ParseAstDecls(token.NewFileSet(), b)
 		return err
 	}
 
@@ -185,7 +185,7 @@ func TestParseRejects(t *testing.T) {
 				if tc.syntax {
 					assert.Assert(t, errors.As(err, &list), "%v", err)
 				} else {
-					assert.ErrorIs(t, err, genhelper.ErrNotPartial)
+					assert.ErrorIs(t, err, gofragment.ErrNotPartial)
 				}
 			}
 		})
@@ -194,20 +194,20 @@ func TestParseRejects(t *testing.T) {
 
 func TestParseEmpty(t *testing.T) {
 	for _, src := range []string{"", " \n\t\n"} {
-		stmts, err := genhelper.ParseDstStmts([]byte(src))
+		stmts, err := gofragment.ParseDstStmts([]byte(src))
 		assert.NilError(t, err)
 		assert.Equal(t, len(stmts), 0)
 
-		decls, err := genhelper.ParseDstDecls([]byte(src))
+		decls, err := gofragment.ParseDstDecls([]byte(src))
 		assert.NilError(t, err)
 		assert.Equal(t, len(decls), 0)
 
-		astStmts, err := genhelper.ParseAstStmts(token.NewFileSet(), []byte(src))
+		astStmts, err := gofragment.ParseAstStmts(token.NewFileSet(), []byte(src))
 		assert.NilError(t, err)
 		assert.Assert(t, astStmts != nil)
 		assert.Equal(t, len(astStmts), 0)
 
-		astDecls, err := genhelper.ParseAstDecls(token.NewFileSet(), []byte(src))
+		astDecls, err := gofragment.ParseAstDecls(token.NewFileSet(), []byte(src))
 		assert.NilError(t, err)
 		assert.Assert(t, astDecls != nil)
 		assert.Equal(t, len(astDecls), 0)
@@ -216,28 +216,28 @@ func TestParseEmpty(t *testing.T) {
 
 func TestPrintDstTwice(t *testing.T) {
 	const src = "// leading\nx := f(func() {\n\ty()\n})\n"
-	stmts, err := genhelper.ParseDstStmts([]byte(src))
+	stmts, err := gofragment.ParseDstStmts([]byte(src))
 	assert.NilError(t, err)
 
 	for range 2 {
-		got, err := genhelper.PrintDstStmts(stmts)
+		got, err := gofragment.PrintDstStmts(stmts)
 		assert.NilError(t, err)
 		assert.Equal(t, string(got), src)
 	}
 
-	e, err := genhelper.ParseDstExpr([]byte("a[b]"))
+	e, err := gofragment.ParseDstExpr([]byte("a[b]"))
 	assert.NilError(t, err)
 	for range 2 {
-		got, err := genhelper.PrintDstExpr(e)
+		got, err := gofragment.PrintDstExpr(e)
 		assert.NilError(t, err)
 		assert.Equal(t, string(got), "a[b]")
 	}
 
-	decls, err := genhelper.ParseDstDecls([]byte("var x = 1\n"))
+	decls, err := gofragment.ParseDstDecls([]byte("var x = 1\n"))
 	assert.NilError(t, err)
 	before := decls[0].Decorations().Before
 	for range 2 {
-		got, err := genhelper.PrintDstDecls(decls)
+		got, err := gofragment.PrintDstDecls(decls)
 		assert.NilError(t, err)
 		assert.Equal(t, string(got), "var x = 1\n")
 	}
@@ -251,11 +251,11 @@ func TestPrintDstNoMutation(t *testing.T) {
 		Values: []dst.Expr{dst.NewIdent("y")},
 	}}}
 	for range 2 {
-		got, err := genhelper.PrintDstStmts([]dst.Stmt{stmt})
+		got, err := gofragment.PrintDstStmts([]dst.Stmt{stmt})
 		assert.NilError(t, err)
 		assert.Equal(t, string(got), "f()\n")
 
-		got, err = genhelper.PrintDstDecls([]dst.Decl{decl})
+		got, err = gofragment.PrintDstDecls([]dst.Decl{decl})
 		assert.NilError(t, err)
 		assert.Equal(t, string(got), "var x = y\n")
 	}
@@ -264,15 +264,15 @@ func TestPrintDstNoMutation(t *testing.T) {
 }
 
 func TestTrailingComments(t *testing.T) {
-	stmts, err := genhelper.ParseDstStmts([]byte("x := 1\n// tail\n"))
+	stmts, err := gofragment.ParseDstStmts([]byte("x := 1\n// tail\n"))
 	assert.NilError(t, err)
-	got, err := genhelper.PrintDstStmts(stmts)
+	got, err := gofragment.PrintDstStmts(stmts)
 	assert.NilError(t, err)
 	assert.Equal(t, string(got), "x := 1\n// tail\n")
 
-	decls, err := genhelper.ParseDstDecls([]byte("var x = 1\n\n// tail\n"))
+	decls, err := gofragment.ParseDstDecls([]byte("var x = 1\n\n// tail\n"))
 	assert.NilError(t, err)
-	got, err = genhelper.PrintDstDecls(decls)
+	got, err = gofragment.PrintDstDecls(decls)
 	assert.NilError(t, err)
 	assert.Equal(t, string(got), "var x = 1\n\n// tail\n")
 }
@@ -281,7 +281,7 @@ func TestPrintDstBuilt(t *testing.T) {
 	call := &dst.ExprStmt{X: &dst.CallExpr{Fun: dst.NewIdent("f")}}
 	call.Decs.Before = dst.NewLine
 	call.Decs.Start.Append("// call f")
-	got, err := genhelper.PrintDstStmts([]dst.Stmt{
+	got, err := gofragment.PrintDstStmts([]dst.Stmt{
 		&dst.AssignStmt{
 			Lhs: []dst.Expr{dst.NewIdent("x")},
 			Tok: token.DEFINE,
@@ -295,7 +295,7 @@ func TestPrintDstBuilt(t *testing.T) {
 }
 
 func TestPrintDstPath(t *testing.T) {
-	_, err := genhelper.PrintDstExpr(&dst.Ident{Name: "X", Path: "example.com/x"})
+	_, err := gofragment.PrintDstExpr(&dst.Ident{Name: "X", Path: "example.com/x"})
 	assert.ErrorContains(t, err, "package path")
 }
 
@@ -304,9 +304,9 @@ func TestParsePrintAst(t *testing.T) {
 
 	t.Run("expr", func(t *testing.T) {
 		for _, src := range []string{"map[string][]T", "Set[T]", "func(x int) int {\n\treturn x\n}"} {
-			e, err := genhelper.ParseAstExpr(fset, []byte(src))
+			e, err := gofragment.ParseAstExpr(fset, []byte(src))
 			assert.NilError(t, err)
-			got, err := genhelper.PrintAst(fset, e)
+			got, err := gofragment.PrintAst(fset, e)
 			assert.NilError(t, err)
 			assert.Equal(t, string(got), src)
 		}
@@ -314,38 +314,58 @@ func TestParsePrintAst(t *testing.T) {
 
 	t.Run("stmts", func(t *testing.T) {
 		const src = "s := `a\n\tb`\nL:\nfor {\n\tbreak L\n}\n"
-		stmts, err := genhelper.ParseAstStmts(fset, []byte(src))
+		stmts, err := gofragment.ParseAstStmts(fset, []byte(src))
 		assert.NilError(t, err)
 		assert.Equal(t, len(stmts), 2)
 
-		got, err := genhelper.PrintAst(fset, stmts[0])
+		got, err := gofragment.PrintAst(fset, stmts[0])
 		assert.NilError(t, err)
 		assert.Equal(t, string(got), "s := `a\n\tb`\n")
 
-		got, err = genhelper.PrintAst(fset, stmts[1])
+		got, err = gofragment.PrintAst(fset, stmts[1])
 		assert.NilError(t, err)
 		assert.Equal(t, string(got), "L:\nfor {\n\tbreak L\n}\n")
 	})
 
 	t.Run("decls", func(t *testing.T) {
 		const src = "// F does nothing.\nfunc F() {}\n"
-		decls, err := genhelper.ParseAstDecls(fset, []byte(src))
+		decls, err := gofragment.ParseAstDecls(fset, []byte(src))
 		assert.NilError(t, err)
 		assert.Equal(t, len(decls), 1)
-		got, err := genhelper.PrintAst(fset, decls[0])
+		got, err := gofragment.PrintAst(fset, decls[0])
 		assert.NilError(t, err)
 		assert.Equal(t, string(got), src)
 	})
 
 	t.Run("unsupported", func(t *testing.T) {
-		_, err := genhelper.PrintAst(fset, &ast.File{})
+		_, err := gofragment.PrintAst(fset, &ast.File{})
 		assert.ErrorContains(t, err, "unsupported")
 	})
 
 	t.Run("no file set", func(t *testing.T) {
-		_, err := genhelper.ParseAstExpr(nil, []byte("a"))
-		assert.ErrorIs(t, err, genhelper.ErrNoFileSet)
-		_, err = genhelper.PrintAst(nil, ast.NewIdent("a"))
-		assert.ErrorIs(t, err, genhelper.ErrNoFileSet)
+		_, err := gofragment.ParseAstExpr(nil, []byte("a"))
+		assert.ErrorIs(t, err, gofragment.ErrNoFileSet)
+		_, err = gofragment.PrintAst(nil, ast.NewIdent("a"))
+		assert.ErrorIs(t, err, gofragment.ErrNoFileSet)
 	})
+}
+
+func TestPrintAstLists(t *testing.T) {
+	fset := token.NewFileSet()
+	stmts, err := gofragment.ParseAstStmts(fset, []byte("x := 1\nif x > 0 {\n\treturn\n}\n"))
+	assert.NilError(t, err)
+	b, err := gofragment.PrintAstStmts(fset, stmts)
+	assert.NilError(t, err)
+	assert.Equal(t, string(b), "x := 1\nif x > 0 {\n\treturn\n}\n")
+
+	decls, err := gofragment.ParseAstDecls(fset, []byte("var x = 1\n\nfunc f() {}\n"))
+	assert.NilError(t, err)
+	b, err = gofragment.PrintAstDecls(fset, decls)
+	assert.NilError(t, err)
+	assert.Equal(t, string(b), "var x = 1\n\nfunc f() {}\n")
+
+	_, err = gofragment.PrintAstStmts(nil, stmts)
+	assert.ErrorIs(t, err, gofragment.ErrNoFileSet)
+	_, err = gofragment.PrintAstDecls(nil, decls)
+	assert.ErrorIs(t, err, gofragment.ErrNoFileSet)
 }

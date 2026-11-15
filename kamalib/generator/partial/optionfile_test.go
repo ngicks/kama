@@ -25,10 +25,12 @@ packages:
     all_types: true
     types:
       Server:
+        fieldmask: true
         fields:
           Addr:
             merge: append
             flag: {name: addr, short: a, usage: listen address}
+            fieldmask: {name: address}
           Port:
       Client:
         ignore: true
@@ -40,10 +42,12 @@ packages:
       "all_types": true,
       "types": {
         "Server": {
+          "fieldmask": true,
           "fields": {
             "Addr": {
               "merge": "append",
-              "flag": {"name": "addr", "short": "a", "usage": "listen address"}
+              "flag": {"name": "addr", "short": "a", "usage": "listen address"},
+              "fieldmask": {"name": "address"}
             },
             "Port": {}
           }
@@ -59,9 +63,13 @@ version = 1
 [packages."example.com/gen/pb"]
 all_types = true
 
+[packages."example.com/gen/pb".types.Server]
+fieldmask = true
+
 [packages."example.com/gen/pb".types.Server.fields.Addr]
 merge = "append"
 flag = { name = "addr", short = "a", usage = "listen address" }
+fieldmask = { name = "address" }
 
 [packages."example.com/gen/pb".types.Server.fields.Port]
 
@@ -75,10 +83,15 @@ ignore = true
 			"example.com/gen/pb": {
 				AllTypes: true,
 				Types: map[string]TypeOptions{
-					"Server": {Fields: map[string]FieldOptions{
+					"Server": {FieldMask: true, Fields: map[string]FieldOptions{
 						"Addr": {
 							Merge: "append",
-							Flag:  &FlagOptions{Name: "addr", Short: "a", Usage: "listen address"},
+							Flag: &FlagOptions{
+								Name:  "addr",
+								Short: "a",
+								Usage: "listen address",
+							},
+							FieldMask: &FieldMaskOptions{Name: "address"},
 						},
 						"Port": {},
 					}},
@@ -147,7 +160,7 @@ func TestDecodeOptionFileErrors(t *testing.T) {
 			name: "unknown type key",
 			doc: "version: 1\npackages:\n  example.com/gen/pb:\n" +
 				"    types:\n      S:\n        merge: append\n",
-			contains: []string{pb + ".types.S.merge: unknown key; want ignore, fields"},
+			contains: []string{pb + ".types.S.merge: unknown key; want ignore, fieldmask, fields"},
 		},
 		{
 			name: "ignore not a boolean",
@@ -180,6 +193,26 @@ func TestDecodeOptionFileErrors(t *testing.T) {
 			doc: "version: 1\npackages:\n  example.com/gen/pb:\n    types:\n      S:\n" +
 				"        fields:\n          F:\n            flag: {name: f, short: \"\"}\n",
 			contains: []string{pb + ".types.S.fields.F.flag.short: empty shorthand"},
+		},
+		{
+			name: "fieldmask not a boolean",
+			doc: "version: 1\npackages:\n  example.com/gen/pb:\n" +
+				"    types:\n      S:\n        fieldmask: yes please\n",
+			contains: []string{pb + ".types.S.fieldmask: yes please is not a boolean"},
+		},
+		{
+			name: "unknown fieldmask key",
+			doc: "version: 1\npackages:\n  example.com/gen/pb:\n    types:\n      S:\n" +
+				"        fields:\n          F:\n            fieldmask: {name: f, json: true}\n",
+			contains: []string{
+				pb + ".types.S.fields.F.fieldmask.json: unknown key; want name",
+			},
+		},
+		{
+			name: "fieldmask not a table",
+			doc: "version: 1\npackages:\n  example.com/gen/pb:\n    types:\n      S:\n" +
+				"        fields:\n          F:\n            fieldmask: f\n",
+			contains: []string{pb + ".types.S.fields.F.fieldmask: f is not a table"},
 		},
 		{
 			name:     "non-string key",
@@ -251,7 +284,9 @@ func TestOptionFileParity(t *testing.T) {
 		"x.go": "package x\n\n//kama:partial package\n\n//kama:partial\ntype A struct {\n" +
 			"\t//kama:partial:merge append\n\tB []int\n" +
 			"\t//kama:partial:flag name=c short=c usage=\"the c\"\n\tC string\n\tD D\n}\n\n" +
-			"type D struct{ N int }\n\n//kama:partial ignore\ntype E struct{ M int }\n",
+			"//kama:partial:fieldmask\ntype D struct {\n" +
+			"\t//kama:partial:fieldmask name=n\n\tN int\n}\n\n" +
+			"//kama:partial ignore\ntype E struct{ M int }\n",
 	})
 	byFile := generatedWith(t, map[string]string{"x.go": "package x\n" + models}, Options{
 		OptionFile: optionFile(t, `
@@ -265,6 +300,10 @@ packages:
           B: {merge: append}
           C:
             flag: {name: c, short: c, usage: the c}
+      D:
+        fieldmask: true
+        fields:
+          N: {fieldmask: {name: n}}
       E: {ignore: true}
 `),
 	})
@@ -375,6 +414,36 @@ func TestOptionFileErrors(t *testing.T) {
 			},
 		},
 		{
+			name: "fieldmask without name",
+			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fieldmask: true\n" +
+				"        fields:\n          C:\n            fieldmask: {}\n",
+			is: ErrDirective,
+			contains: []string{
+				".types.A.fields.C.fieldmask: option file fieldmask option on field",
+				"name is required",
+			},
+		},
+		{
+			name: "fieldmask name on a type without field masks",
+			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
+				"          C:\n            fieldmask: {name: c}\n",
+			is: ErrDirective,
+			contains: []string{
+				".types.A.fields.C.fieldmask: option file fieldmask option on field",
+				"A does not have field masks enabled",
+			},
+		},
+		{
+			name: "fieldmask on an ignored type",
+			doc: "packages:\n  $pkg:\n    types:\n      D:\n" +
+				"        ignore: true\n        fieldmask: true\n",
+			is: ErrDirective,
+			contains: []string{
+				".types.D.fieldmask: option file fieldmask option on type",
+				"D has no partial variant",
+			},
+		},
+		{
 			name: "flag name taken",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
 				"          C:\n            flag: {name: x}\n          E:\n            flag: {name: x}\n",
@@ -445,6 +514,49 @@ func TestOptionFileConflicts(t *testing.T) {
 				"\t//kama:partial:flag name=b short=b\n\tB int\n}\n",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
 				"          B:\n            flag: {name: b, short: b}\n",
+		},
+		{
+			name: "fieldmask name",
+			src: "package x\n\n//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
+				"\t//kama:partial:fieldmask name=b\n\tB int\n}\n",
+			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
+				"          B:\n            fieldmask: {name: c}\n",
+			contains: []string{
+				`the field mask name of field `,
+				`"b" by //kama:partial:fieldmask (`, "x.go:6:2) and",
+				`"c" by option file fieldmask option (opts.yaml: `,
+				".types.A.fields.B.fieldmask)",
+			},
+		},
+		{
+			name: "same fieldmask",
+			src: "package x\n\n//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
+				"\t//kama:partial:fieldmask name=b\n\tB int\n}\n",
+			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fieldmask: true\n" +
+				"        fields:\n          B:\n            fieldmask: {name: b}\n",
+		},
+		{
+			name: "fieldmask type by file and name by directive",
+			src: "package x\n\n//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:fieldmask name=b\n\tB int\n}\n",
+			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fieldmask: true\n",
+		},
+		{
+			name: "fieldmask type by directive and name by file",
+			src:  "package x\n\n//kama:partial\n//kama:partial:fieldmask\ntype A struct{ B int }\n",
+			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
+				"          B:\n            fieldmask: {name: b}\n",
+		},
+		{
+			name: "fieldmask name by file conflicting with directive on a type enabled by both",
+			src: "package x\n\n//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
+				"\t//kama:partial:fieldmask name=b\n\tB int\n}\n",
+			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fieldmask: true\n" +
+				"        fields:\n          B:\n            fieldmask: {name: c}\n",
+			contains: []string{
+				`"b" by //kama:partial:fieldmask (`,
+				`"c" by option file fieldmask option (opts.yaml: `,
+			},
 		},
 		{
 			name: "marked by directive and ignored by file",

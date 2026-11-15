@@ -25,9 +25,9 @@ type ProcParam struct {
 	// MergeNested is "recursive" or "overwrite". Empty means "recursive".
 	MergeNested string `json:"merge_nested"`
 	// OptionFile names the option file, its base path relative to the root
-	// of the out of Proc and its formats, as base and formats. Empty
-	// formats mean yaml, json, toml. Nil means no option file. A named file
-	// that is not present is an error.
+	// of the out of Proc and its formats, under the lowercase keys base and
+	// formats. Empty formats mean yaml, json, toml. Nil means no option
+	// file. A named file that is not present is an error.
 	OptionFile *fileloader.PathInput `json:"option_file"`
 }
 

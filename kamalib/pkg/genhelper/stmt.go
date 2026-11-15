@@ -45,6 +45,55 @@ func ForRange[C Context[C]](key, value string, x Gen[C], body Step[C]) Step[C] {
 	})
 }
 
+// For is a step appending a for loop with a condition or with the three
+// clauses:
+//
+//	for init; cond; post {
+//		body
+//	}
+//
+// init, cond and post render in that order in the scope of the loop, where
+// body renders too, so init declares the loop variables with [Decl]. A nil
+// clause is left empty. With init and post both nil the loop has the
+// condition only, and with all three nil it is the bare for.
+//
+// For returns the error of a clause as it is.
+func For[C Context[C]](init, cond, post Gen[C], body Step[C]) Step[C] {
+	return FuncStep[C](func(c C, b []byte) (C, []byte, error) {
+		outer := c.Scope()
+		c = Push(c)
+
+		var clauses [3]string
+		for i, gen := range []Gen[C]{init, cond, post} {
+			if gen == nil {
+				continue
+			}
+			var err error
+			clauses[i], err = gen(c)
+			if err != nil {
+				return c, nil, err
+			}
+		}
+
+		p := c.Printer(b)
+		switch {
+		case init != nil || post != nil:
+			p.Printf("for %s; %s; %s {\n", clauses[0], clauses[1], clauses[2])
+		case cond != nil:
+			p.Printf("for %s {\n", clauses[1])
+		default:
+			p.Printf("for {\n")
+		}
+
+		c, err := printBody(c, p, body)
+		if err != nil {
+			return c, nil, err
+		}
+		p.Printf("}\n")
+		return c.WithScope(outer), p.Bytes(), nil
+	})
+}
+
 // If is a step appending an if statement:
 //
 //	if cond {

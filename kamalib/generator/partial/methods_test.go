@@ -212,6 +212,69 @@ func TestLocalsAvoidTypeParams(t *testing.T) {
 	)
 }
 
+// TestDocNamesRenamedParams checks that the doc comments of methods and
+// helpers spell the receiver and parameters as their signatures do once
+// type parameters take the names p, v, l and r, and that helper docs stay
+// wrapped at commentWidth.
+func TestDocNamesRenamedParams(t *testing.T) {
+	files := generated(t, map[string]string{
+		"a.go": "package x\n\n//kama:partial\n//kama:partial:fieldmask\n" +
+			"type A[p, v any] struct{ Z *N[p]; W *N[v] }\n\n" +
+			"//kama:partial\ntype S[p any] []p\n\n" +
+			"//kama:partial:fieldmask\ntype N[T any] struct{ V T }\n",
+	})
+	src := files["a.kama_partial.go"]
+	for _, want := range []string{
+		"// FromValue sets every field of p2 to the partial form of the field of v2.\n",
+		"// ToValue returns the value p2 describes.",
+		"// Merge returns p2 with the fields of r merged onto it.",
+		"// ApplyTo returns v2 with the change p2 describes applied. It is\n" +
+			"// FromValue of v2 merged with p2, converted back with ToValue.\n",
+		"// FieldMask returns the sorted paths of the fields p2 sets.",
+		"// FromValueWithMask sets p2 to the partial form of the fields of v2 that\n",
+		"// FromValue sets p2 to the partial forms of the elements of v. A nil v\n" +
+			"// gives a nil p2.\n",
+		"// Merge returns r, or p2 when r is nil. Merge writes to neither p2 nor r.\n",
+	} {
+		assert.Assert(t, strings.Contains(src, want), "%q in\n%s", want, src)
+	}
+
+	// Helpers are shared by the shape of their types, so the type parameters
+	// l and r go to a package of their own.
+	merged := generated(t, map[string]string{
+		"a.go": "package x\n\n//kama:partial\ntype B[l, r any] struct{ L *N[l]; R *N[r] }\n\n" +
+			"//kama:partial\ntype N[T any] struct{ V T }\n",
+	})["a.kama_partial.go"]
+	helper := helperIn(t, src, merged)
+	for _, c := range []struct{ op, doc string }{
+		{"FromTarget", "into und.Und[NPartial[v]], defined, or null for a nil v2."},
+		{"FromTarget", "into und.Und[NPartial[p]], defined, or null for a nil v."},
+		{"ToTarget", "into *N[p], newly allocated, or nil when p2 is undefined or null."},
+		{"ToTarget", "into *N[v], newly allocated, or nil when p is undefined or null."},
+		{"MergeRecursive", "merges r onto l2, both und.Und[NPartial[l]]: " +
+			"it returns the merge of their values when both are defined, l2 when r is"},
+		{"MergeRecursive", "merges r2 onto l, both und.Und[NPartial[r]]: " +
+			"it returns the merge of their values when both are defined, l when r2 is"},
+	} {
+		helper(c.op, c.doc)
+	}
+
+	for _, out := range []string{src, merged} {
+		f, err := parser.ParseFile(token.NewFileSet(), "x.go", out, parser.ParseComments)
+		assert.NilError(t, err)
+		for _, d := range f.Decls {
+			fd, ok := d.(*ast.FuncDecl)
+			if !ok || fd.Recv != nil {
+				continue
+			}
+			for _, c := range fd.Doc.List {
+				assert.Assert(t, len(c.Text) <= commentWidth || !strings.Contains(c.Text[3:], " "),
+					"%s: %q", fd.Name.Name, c.Text)
+			}
+		}
+	}
+}
+
 func TestUnexportedAliasField(t *testing.T) {
 	const sub = "github.com/ngicks/kama/kamalib/generator/partial/testdata/inline/" +
 		"TestUnexportedAliasField/sub"

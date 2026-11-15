@@ -33,8 +33,8 @@
 // read like any other file and regenerated. Options.Registry tells the
 // registered generators. Other args of //kama:partial, or //kama:partial
 // on a field, are errors. //kama:partial:merge is described under Merge,
-// //kama:partial:flag under Flags, and any other //kama:partial:<name> is
-// an error.
+// //kama:partial:flag under Flags, //kama:partial:fieldmask under Field
+// mask, and any other //kama:partial:<name> is an error.
 //
 // # Option file
 //
@@ -49,27 +49,33 @@
 //	    all_types: true           # //kama:partial package
 //	    types:
 //	      Server:                 # //kama:partial on Server
+//	        fieldmask: true       # //kama:partial:fieldmask on Server
 //	        fields:
 //	          Addr:
 //	            merge: append     # //kama:partial:merge append
 //	            flag: {name: addr, short: a, usage: listen address}
+//	            fieldmask: {name: address}  # //kama:partial:fieldmask name=address
 //	      Client:
 //	        ignore: true          # //kama:partial ignore on Client
 //
 // Listing a type marks it, as //kama:partial on it does, unless ignore is
 // true. A listed type that has no partial variant is an error, as for the
-// directive. Fields take the options of //kama:partial:merge and of the
-// args of //kama:partial:flag. The file has no equivalent of
+// directive. fieldmask of a type stands for //kama:partial:fieldmask on
+// it. Fields take the options of //kama:partial:merge, of the args of
+// //kama:partial:flag and of the args of //kama:partial:fieldmask. The file has no equivalent of
 // //kama:partial file. version is required and is 1. An unknown key, a
 // value of the wrong type, a package that is not loaded, a type the
 // package does not declare and a field its struct type does not declare
-// are errors naming the file and the key path.
+// are errors naming the file and the key path. Keys are case-sensitive.
+// A JSON file is decoded with encoding/json/v2. A duplicate key, invalid
+// UTF-8 and data after the top-level value make it fail to load.
 //
 // The entries of the file and the directives give the same output. An
 // option set by both a directive and the file is allowed when both give
 // the same value. Different values, as for a type marked by one and
-// ignored by the other, or two merge strategies or flags of one field, are
-// errors wrapping kamaopt.ErrConflict and naming both origins. Errors
+// ignored by the other, or two merge strategies, flags or path segments of
+// one field, are errors wrapping kamaopt.ErrConflict and naming both
+// origins. Errors
 // about an option name its directive position or its key path in the
 // file.
 //
@@ -129,6 +135,31 @@
 //
 // A target with an underlying []T or map[K]V maps to []T' or map[K]V',
 // where T' and V' map T and V as a struct field type.
+//
+// # Source layout
+//
+// A struct target declared by a struct literal, as in type A struct{ ... },
+// gets a partial struct built on a copy of that literal by
+// github.com/ngicks/kama/kamalib/pkg/dstreplace. The copy keeps the order
+// of the fields, the blank lines between them, the names that share one
+// field and the tag literals as written. The copy replaces the type of
+// every field with its mapped type. The generator spells each mapped type
+// anew. The partial struct therefore refers to no import of the source
+// file. A tag literal stays as written when the partial tag equals the
+// source tag. Otherwise its value is replaced.
+//
+// The copy holds no comment of the source: field comments, line comments
+// and directives are all erased. The doc comment of a partial type is
+// generated.
+//
+// The copy drops blank names. A field holding blank names only disappears.
+// Grouped names whose partial types or tags differ get one field each. An
+// exported name and an unexported name of one group without a json tag get
+// different tags.
+//
+// The generator builds slice and map targets, targets defined on another
+// type and type parameter lists from the types. A target defined on
+// another type is written as type A B or type A sub.S.
 //
 // # Struct tags
 //
@@ -375,6 +406,106 @@
 // run, and Proc keeps it as it was when only its generated: line would
 // change; a declaration in it the generator did not mark is an error,
 // and so is PartialFlagSet declared elsewhere in the package.
+//
+// # Field mask
+//
+// A struct target opts in to field masks with //kama:partial:fieldmask in
+// its doc comment. A field mask is a list of paths naming fields. Its
+// paths follow those of google.protobuf.FieldMask, and the generated code
+// takes them as []string. A partial type of a target with field masks gets
+// these methods:
+//
+//	func (p XPartial) FieldMask() []string
+//	func (p *XPartial) FromValueWithMask(v X, paths []string) error
+//
+// Partial types of other targets get neither method. They neither declare
+// nor promote one. A field of such a type may share a name with one of
+// them.
+//
+// A path joins the segments of nested fields with dots. Segments are
+// case-sensitive. The segment of a field is its Go name by default.
+//
+//	//kama:partial:fieldmask name=<segment>
+//
+// on the field sets another segment. kamaopt.ParseArgs parses the args.
+// name is required. It must not be empty or hold a dot. Json tags and
+// other spellings of the field name give no segments. A path holds no
+// index, map key or wildcard. These are errors:
+//
+//   - an unknown key, or a second directive on a type or a field
+//   - args on a type
+//   - the directive on a type without a struct partial variant, or on a
+//     free-floating comment
+//   - name on a field of a type without field masks, on a blank field or
+//     on an embedded partial value
+//   - two fields of one type with one segment
+//   - an embedding type and an embedded partial value of which only one
+//     has field masks
+//
+// A path addresses every field of the partial struct as a whole. Some
+// fields hold a partial value of a struct target with field masks, as M,
+// *M and a pointer closing a cycle do. Paths below the segment of such a
+// field address the fields of that value, as in Field.Child. A path
+// addresses a partial value of a target without field masks only as a
+// whole. The same holds for slices, maps and slice and map targets, even
+// when their elements are partial values. An embedded partial value has no
+// segment. Its paths are paths of its parent, in the way Go promotes the
+// fields of an embedded struct. Its type must have field masks too. Its
+// segments must differ from those of the parent and of other embedded
+// partial values.
+//
+// An embedding type and the struct targets it embeds agree on field masks.
+// A target without field masks must not embed a partial value of a target
+// with field masks. Go would promote FieldMask and FromValueWithMask of
+// the embedded partial value, and these methods know nothing of the
+// fields of the embedding type. Both directions are errors.
+//
+// FieldMask returns the sorted paths of the fields p sets. It returns nil
+// when p sets no field. An undefined field gives no path. A null field
+// gives its own path. A defined field gives its own path even for a zero
+// value. A defined field holding a partial value with field masks gives
+// the paths of the FieldMask of that value below its segment instead. A
+// defined partial value setting nothing therefore gives no path. A defined
+// nil pointer of a field closing a cycle converts back to nil like null.
+// It gives its own path too. FieldMask writes to no field of p.
+//
+// FromValueWithMask sets p to the partial form of the fields of v that
+// paths name. Every other field of p becomes undefined.
+//
+//   - A field a path names gets what FromValue gives it. A zero value stays
+//     defined, and a nil pointer, slice or map becomes null.
+//   - A path below a field holding a partial value builds that value with
+//     its own FromValueWithMask and the rest of the path. The field becomes
+//     defined. A nil pointer in the field of v holds none of the fields the
+//     paths name, so the field becomes null.
+//   - A path naming a field covers the paths below it in any order. A
+//     repeated path counts once.
+//   - The paths of an embedded partial value go to its FromValueWithMask.
+//     A nil embedded pointer leaves every field of the embedded partial
+//     value undefined, as FromValue does.
+//   - Empty or nil paths give the zero partial value. They never select
+//     every field.
+//
+// An empty path, an empty segment, an unknown segment and a path below a
+// field addressed only as a whole are errors. FromValueWithMask checks
+// every path. The value of v and the other paths do not affect the check.
+// The generated code builds the errors with fmt.Errorf. The error text
+// starts with the path and a colon and then names the reason, as in
+// Inner.Nope: unknown field Nope. For a path below a field, the error of
+// the FromValueWithMask of the value gets the segment of the field and a
+// dot in front. An empty path gives the text empty path. On error,
+// FromValueWithMask leaves p unchanged.
+//
+// A field mask records which fields a partial value sets. It does not
+// record whether they are null or defined, and it drops a defined partial
+// value setting nothing. A field mask therefore does not round-trip a
+// partial value on its own.
+//
+// ApplyTo of the result of FromValueWithMask changes only the fields the
+// paths name when every field holding a partial value merges with the
+// recursive strategy. Under overwrite, a path below such a field replaces
+// the whole partial value of the field. A null from a nil pointer clears
+// the whole field under every strategy.
 //
 // # Output
 //

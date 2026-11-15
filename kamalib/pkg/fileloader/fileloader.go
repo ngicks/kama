@@ -1,11 +1,12 @@
 // Package fileloader decodes structured metadata files in JSON, YAML or TOML.
 //
 // Callers name one base path and the formats they accept, in priority order.
-// The first format whose file is present is decoded.
+// The first format whose file is present is decoded. JSON files are decoded
+// with encoding/json/v2.
 package fileloader
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -45,12 +46,12 @@ func (f Format) Extensions() []string {
 }
 
 // PathInput names a metadata file without its extension and the formats it
-// may be written in.
+// may be written in. Its keys in a workflow spec are base and formats.
 type PathInput struct {
 	// Base is the path relative to the fs passed to Load, without extension.
-	Base string
+	Base string `json:"base"`
 	// Formats are tried in order; earlier entries take priority.
-	Formats []Format
+	Formats []Format `json:"formats"`
 }
 
 // Candidates lists every file name Load probes, in order.
@@ -69,10 +70,17 @@ func (p PathInput) Candidates() ([]string, error) {
 }
 
 // Decode decodes one document from r into v.
+//
+// JSON is decoded with encoding/json/v2. The input must hold exactly one JSON
+// value. Data after the value other than whitespace is an error. An empty
+// input, a duplicate object name and invalid UTF-8 are errors too. Object
+// names match struct fields case-sensitively. Unknown names are ignored. JSON
+// decoded into an any yields map[string]any, []any, string, float64, bool and
+// nil.
 func Decode(r io.Reader, format Format, v any) error {
 	switch format {
 	case FormatJson:
-		return json.NewDecoder(r).Decode(v)
+		return json.UnmarshalRead(r, v)
 	case FormatYaml:
 		return yaml.NewDecoder(r).Decode(v)
 	case FormatToml:

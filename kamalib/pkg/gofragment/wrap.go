@@ -1,4 +1,4 @@
-package genhelper
+package gofragment
 
 import (
 	"bytes"
@@ -9,20 +9,6 @@ import (
 	"go/scanner"
 	"go/token"
 )
-
-// The text a chain carries has no kind of its own. The function converting
-// it names the kind: an expression, a list of statements or a list of
-// declarations.
-//
-// The Parse functions parse the text inside a throwaway file and check the
-// file kept the shape they wrapped the text in. Text closing the wrapper and
-// adding to the file, such as statements ending the function body they
-// are parsed in, is an error wrapping [ErrNotPartial]. Syntax errors of the
-// Go parser are wrapped. Their positions refer to the throwaway file, not
-// to the text.
-//
-// The Print functions print partial text without the wrapper. They clone
-// the dst nodes they print, so the nodes stay usable and printable again.
 
 // The expression wrapper places the text after "=" so that the parser
 // accepts type expressions too: the parser checks syntax only, and a type is
@@ -85,10 +71,10 @@ func parseWrapped(fset *token.FileSet, k partialKind, b []byte) (*ast.File, erro
 	src := k.wrap(b)
 	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
 	if err != nil {
-		return nil, fmt.Errorf("genhelper: parse %s: %w", k, err)
+		return nil, fmt.Errorf("gofragment: parse %s: %w", k, err)
 	}
 	if err := checkShape(fset, k, f, src); err != nil {
-		return nil, fmt.Errorf("genhelper: parse %s: %w", k, err)
+		return nil, fmt.Errorf("gofragment: parse %s: %w", k, err)
 	}
 	return f, nil
 }
@@ -122,7 +108,7 @@ func checkShape(fset *token.FileSet, k partialKind, f *ast.File, src []byte) err
 		for _, d := range f.Decls {
 			if gen, ok := d.(*ast.GenDecl); ok && gen.Tok == token.IMPORT {
 				return fmt.Errorf(
-					"%w: text declares imports, which the import map of Package adds",
+					"%w: text declares imports, which the caller adds to the file",
 					ErrNotPartial,
 				)
 			}

@@ -3,7 +3,7 @@
 //	merge: "overwrite"
 //	merge_nested: "recursive"
 //	option_file: "partial.yaml"
-// generated: 2026-11-13T22:48:00Z
+// generated: 2026-11-14T00:48:46Z
 
 package model
 
@@ -13,10 +13,9 @@ import "github.com/ngicks/option/und"
 //
 //kama:generated kama-partial
 type TreePartial struct {
-	Value und.Und[int]           `json:"value,omitzero"`
-	Left  und.Und[*TreePartial]  `json:"-"`
-	Right und.Und[*TreePartial]  `json:"-"`
-	Kids  und.Und[ForestPartial] `json:"kids,omitzero"`
+	Value       und.Und[int]           `json:"value,omitzero"`
+	Left, Right und.Und[*TreePartial]  `json:"-"`
+	Kids        und.Und[ForestPartial] `json:"kids,omitzero"`
 }
 
 // FromValue sets every field of p to the partial form of the field of v.

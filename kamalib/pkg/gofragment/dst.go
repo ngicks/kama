@@ -1,7 +1,8 @@
-package genhelper
+package gofragment
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/printer"
@@ -19,7 +20,7 @@ func parseDstWrapped(k partialKind, b []byte) (*dst.File, error) {
 	}
 	df, err := decorator.NewDecorator(fset).DecorateFile(f)
 	if err != nil {
-		return nil, fmt.Errorf("genhelper: parse %s: %w", k, err)
+		return nil, fmt.Errorf("gofragment: parse %s: %w", k, err)
 	}
 	return df, nil
 }
@@ -58,7 +59,7 @@ func ParseDstStmts(b []byte) ([]dst.Stmt, error) {
 // empty slice.
 //
 // ParseDstDecls returns an error wrapping [ErrNotPartial] when b holds an
-// import declaration. Imports go through [Package.Imports] instead.
+// import declaration. The caller adds imports to the file itself.
 func ParseDstDecls(b []byte) ([]dst.Decl, error) {
 	f, err := parseDstWrapped(declsKind, b)
 	if err != nil {
@@ -105,10 +106,10 @@ func restore(f *dst.File) (*ast.File, *token.FileSet, error) {
 // before its start or after its end, are dropped.
 //
 // PrintDstExpr returns an error when an identifier of e carries a package
-// path, since import management is left to [Package].
+// path, since import management is left to the caller.
 func PrintDstExpr(e dst.Expr) ([]byte, error) {
 	if e == nil {
-		return nil, fmt.Errorf("genhelper: print expression: nil expression")
+		return nil, errors.New("gofragment: print expression: nil expression")
 	}
 	// A dst node belongs to one tree. Placing the clone in the wrapper keeps
 	// e where the caller put it.
@@ -124,13 +125,13 @@ func PrintDstExpr(e dst.Expr) ([]byte, error) {
 	}
 	af, fset, err := restore(f)
 	if err != nil {
-		return nil, fmt.Errorf("genhelper: print expression: %w", err)
+		return nil, fmt.Errorf("gofragment: print expression: %w", err)
 	}
 	ae := af.Decls[0].(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Values[0]
 	var buf bytes.Buffer
 	err = printConfig(0).Fprint(&buf, fset, &printer.CommentedNode{Node: ae, Comments: af.Comments})
 	if err != nil {
-		return nil, fmt.Errorf("genhelper: print expression: %w", err)
+		return nil, fmt.Errorf("gofragment: print expression: %w", err)
 	}
 	return buf.Bytes(), nil
 }
@@ -139,7 +140,7 @@ func PrintDstExpr(e dst.Expr) ([]byte, error) {
 // text ends with a newline unless stmts is empty.
 //
 // PrintDstStmts returns an error when an identifier of stmts carries a
-// package path, since import management is left to [Package].
+// package path, since import management is left to the caller.
 func PrintDstStmts(stmts []dst.Stmt) ([]byte, error) {
 	if len(stmts) == 0 {
 		return []byte{}, nil
@@ -160,11 +161,11 @@ func PrintDstStmts(stmts []dst.Stmt) ([]byte, error) {
 	}
 	af, fset, err := restore(f)
 	if err != nil {
-		return nil, fmt.Errorf("genhelper: print statements: %w", err)
+		return nil, fmt.Errorf("gofragment: print statements: %w", err)
 	}
 	b, err := printBlock(fset, af.Decls[0].(*ast.FuncDecl).Body, af.Comments)
 	if err != nil {
-		return nil, fmt.Errorf("genhelper: print statements: %w", err)
+		return nil, fmt.Errorf("gofragment: print statements: %w", err)
 	}
 	return b, nil
 }
@@ -173,7 +174,7 @@ func PrintDstStmts(stmts []dst.Stmt) ([]byte, error) {
 // unless decls is empty.
 //
 // PrintDstDecls returns an error when an identifier of decls carries a
-// package path, since import management is left to [Package].
+// package path, since import management is left to the caller.
 func PrintDstDecls(decls []dst.Decl) ([]byte, error) {
 	if len(decls) == 0 {
 		return []byte{}, nil
@@ -189,18 +190,18 @@ func PrintDstDecls(decls []dst.Decl) ([]byte, error) {
 	cloned[0].Decorations().Before = dst.EmptyLine
 	af, fset, err := restore(&dst.File{Name: dst.NewIdent(wrapperPkg), Decls: cloned})
 	if err != nil {
-		return nil, fmt.Errorf("genhelper: print declarations: %w", err)
+		return nil, fmt.Errorf("gofragment: print declarations: %w", err)
 	}
 	// The printer cannot print comments with a declaration list that is not
 	// a node. The whole file carries them, and only its package clause is
 	// cut off.
 	var buf bytes.Buffer
 	if err := printConfig(0).Fprint(&buf, fset, af); err != nil {
-		return nil, fmt.Errorf("genhelper: print declarations: %w", err)
+		return nil, fmt.Errorf("gofragment: print declarations: %w", err)
 	}
 	out := buf.Bytes()
 	if !bytes.HasPrefix(out, []byte(printedFile)) {
-		return nil, fmt.Errorf("genhelper: print declarations: unexpected file %q", out)
+		return nil, fmt.Errorf("gofragment: print declarations: unexpected file %q", out)
 	}
 	return trimLines(out[len(printedFile):]), nil
 }

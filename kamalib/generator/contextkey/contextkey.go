@@ -37,7 +37,8 @@ var ErrInvalidEntry = errors.New("contextkey: invalid entry")
 // Suffix is appended to Entry.FileName to name the generated file.
 const Suffix = ".contextkey.go"
 
-// Template is the decoded template file.
+// Template is the decoded template file. The json tags of Template and
+// Entry give its keys. The keys are lowercase snake case.
 type Template struct {
 	Entries []Entry `json:"entries"`
 }

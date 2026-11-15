@@ -5,6 +5,10 @@
 // AsInput value. See Proc for the methods an instance has and when the
 // executor calls them.
 //
+// Build decodes every step's param into the proc's ParamType with
+// encoding/json/v2. It does so for specs in every format. Param keys match the
+// JSON names of the fields case-sensitively. Unknown keys are ignored.
+//
 // Build forms the graph and checks it without running anything. It matches
 // every in and out list against the procs' declared types and then
 // instantiates every step with dryRun set, checking its methods and passing
@@ -22,7 +26,7 @@ package workflow
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"reflect"
@@ -317,8 +321,10 @@ func method(
 }
 
 // decodeParam decodes raw, as produced by a JSON, YAML or TOML decoder, into
-// a value of type t. Unknown fields are ignored, so a spec written for a
-// newer or older version of a proc still decodes.
+// a value of type t with encoding/json/v2. Keys match the JSON names of the
+// fields case-sensitively. Unknown fields are
+// ignored, so a spec written for a newer or older version of a proc still
+// decodes. A string holding invalid UTF-8 is an error.
 func decodeParam(raw any, t reflect.Type) (reflect.Value, error) {
 	if t == nil {
 		if raw != nil {

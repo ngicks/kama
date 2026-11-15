@@ -65,6 +65,35 @@ packages:
             flag: { name: min-level }
       Hosts:
         ignore: true
+      Shelf:
+      Catalog:
+        fields:
+          Books: { merge: append }
+          BookRefs: { merge: append }
+          ByID: { merge: append }
+          RefsByID: { merge: append }
+          List: { merge: append }
+          RefMap: { merge: append }
+          Map: { merge: overwrite }
+          ListPtr: { merge: append }
+          Sections: { merge: append }
+      Masked:
+        fieldmask: true
+        fields:
+          Renamed: { fieldmask: { name: alias } }
+      MaskInner: { fieldmask: true }
+      MaskDeep: { fieldmask: true }
+      MaskEmbedded:
+        fieldmask: true
+        fields:
+          EDeep: { fieldmask: { name: e_deep } }
+      MaskAudit: { fieldmask: true }
+      MaskBox: { fieldmask: true }
+      MaskPair: { fieldmask: true }
+      MaskTree: { fieldmask: true }
+      MaskPing: { fieldmask: true }
+      MaskPong: { fieldmask: true }
+      MaskHolder: { fieldmask: true }
   github.com/ngicks/kama/kamalib/generator/partial/internal/fixtureexternal/pkgmark:
     all_types: true
     types:

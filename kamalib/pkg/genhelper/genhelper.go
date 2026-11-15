@@ -1,6 +1,7 @@
 package genhelper
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -103,6 +104,28 @@ func (s Steps[C]) Render(c C, b []byte) (C, []byte, error) {
 	return c, b, nil
 }
 
+// Fail is a step failing with err as it is, for a branch chosen while the
+// steps are built that has no text to give. [Steps] wraps err with the path
+// of the step as it wraps any other error.
+func Fail[C Context[C]](err error) Step[C] {
+	return FuncStep[C](func(c C, _ []byte) (C, []byte, error) {
+		return c, nil, err
+	})
+}
+
+// Render renders steps in order from c and empty text and returns the
+// text. It discards the context the steps return.
+//
+// Render returns the error of steps as [Steps] returns it, so the error
+// names the index of the failing step.
+func Render[C Context[C]](c C, steps ...Step[C]) (string, error) {
+	_, b, err := Steps[C](steps).Render(c, nil)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 // stepError is the error of a step of [Steps], with the index of the step
 // in each enclosing Steps.
 type stepError struct {
@@ -114,7 +137,7 @@ func newStepError(i int, err error) error {
 	// A type assertion instead of errors.As keeps a message a step wraps
 	// around a nested stepError, which extending the path would drop.
 	if se, ok := err.(*stepError); ok {
-		return &stepError{path: append([]int{i}, se.path...), err: se.err}
+		return &stepError{path: slices.Concat([]int{i}, se.path), err: se.err}
 	}
 	return &stepError{path: []int{i}, err: err}
 }
@@ -143,14 +166,18 @@ type Renderer[C Context[C]] struct {
 	Steps   Steps[C]
 }
 
+// Render renders Steps from Context and b. It returns the errors
+// [Steps.Render] returns.
 func (r *Renderer[C]) Render(b []byte) (C, []byte, error) {
 	return r.Steps.Render(r.Context, b)
 }
 
+// Prepend adds s before Steps. It leaves s itself unmodified.
 func (r *Renderer[C]) Prepend(s ...Step[C]) {
-	r.Steps = append(s, r.Steps...)
+	r.Steps = slices.Concat(s, r.Steps)
 }
 
+// Append adds s after Steps.
 func (r *Renderer[C]) Append(s ...Step[C]) {
 	r.Steps = append(r.Steps, s...)
 }
@@ -202,7 +229,7 @@ type Block[C Context[C]] struct {
 	Body Step[C]
 	// Wrap builds the block around body. c is positioned at the pushed
 	// scope, so c.Scope().Parent() looks up what the block reads from
-	// outside.
+	// outside. A nil Wrap gives the text of Body as it is.
 	Wrap func(c C, body string) (string, error)
 }
 
@@ -223,6 +250,9 @@ func (bl Block[C]) Render(c C, b []byte) (C, []byte, error) {
 		if err != nil {
 			return c, nil, err
 		}
+	}
+	if bl.Wrap == nil {
+		return c.WithScope(outer), append(b, body...), nil
 	}
 	s, err := bl.Wrap(c, string(body))
 	if err != nil {

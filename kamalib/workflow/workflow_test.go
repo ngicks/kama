@@ -2,7 +2,8 @@ package workflow
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"reflect"
 	"testing"
@@ -368,6 +369,25 @@ func TestParamIgnoresUnknownFields(t *testing.T) {
 	assert.Equal(t, got, seedParam{Value: 1})
 }
 
+func TestParamMatchesKeysCaseSensitively(t *testing.T) {
+	g, err := build(t, newProcs(), map[string]Step{
+		"x": {Proc: "seed", Param: map[string]any{"Value": 1}},
+	})
+	assert.NilError(t, err)
+
+	got, ok := reflect.TypeAssert[seedParam](g.Nodes()[0].Param)
+	assert.Assert(t, ok)
+	assert.Equal(t, got, seedParam{})
+}
+
+func TestParamRejectsInvalidUtf8(t *testing.T) {
+	_, err := build(t, newProcs(), map[string]Step{
+		"x": {Proc: "seed", Param: map[string]any{"extra": "\xff"}},
+	})
+	assert.ErrorIs(t, err, ErrParam)
+	assert.ErrorContains(t, err, "invalid UTF-8")
+}
+
 func TestDryRunReportsEveryStep(t *testing.T) {
 	_, err := build(t, newProcs(), map[string]Step{
 		"a": {Proc: "broken"},
@@ -477,4 +497,41 @@ func TestDecodeJson(t *testing.T) {
 	g, err := spec.Build(context.Background(), newProcs().registry(t))
 	assert.NilError(t, err)
 	assert.DeepEqual(t, names(g), []string{"src", "dbl"})
+}
+
+func TestDecodeJsonNames(t *testing.T) {
+	cases := []struct {
+		src  string
+		want Names
+	}{
+		{`{"in":"a"}`, Names{"a"}},
+		{`{"in":["a","b"]}`, Names{"a", "b"}},
+		{`{"in":[]}`, Names{}},
+		{`{"in":null}`, nil},
+		{`{}`, nil},
+	}
+
+	for _, c := range cases {
+		var st Step
+		assert.NilError(t, json.Unmarshal([]byte(c.src), &st), c.src)
+		assert.DeepEqual(t, st.In, c.want)
+	}
+}
+
+func TestDecodeJsonNamesErrors(t *testing.T) {
+	for _, src := range []string{`{"in":1}`, `{"in":["a",1]}`, `{"in":{}}`} {
+		var st Step
+		err := json.Unmarshal([]byte(src), &st)
+
+		var semErr *json.SemanticError
+		assert.Assert(t, errors.As(err, &semErr), "%s: %v", src, err)
+	}
+}
+
+func TestDecodeJsonRejectsDuplicateNames(t *testing.T) {
+	var spec Spec
+	err := json.Unmarshal([]byte(`{"version":1,"version":1}`), &spec)
+
+	var synErr *jsontext.SyntacticError
+	assert.Assert(t, errors.As(err, &synErr), "%v", err)
 }

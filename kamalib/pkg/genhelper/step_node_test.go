@@ -14,6 +14,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/typeprint"
 )
@@ -104,7 +105,7 @@ func TestDstSteps(t *testing.T) {
 			return c, stmts, nil
 		})
 		_, _, err := step.Render(start, []byte("}\nfunc f() {"))
-		assert.ErrorIs(t, err, genhelper.ErrNotPartial)
+		assert.ErrorIs(t, err, gofragment.ErrNotPartial)
 		assert.Assert(t, !called)
 	})
 
@@ -113,7 +114,7 @@ func TestDstSteps(t *testing.T) {
 			return c, &dst.Ident{Name: "X", Path: optPath}, nil
 		})
 		_, _, err := step.Render(start, []byte("a"))
-		assert.ErrorContains(t, err, "genhelper: print expression")
+		assert.ErrorContains(t, err, "gofragment: print expression")
 	})
 }
 
@@ -169,7 +170,7 @@ func TestAstSteps(t *testing.T) {
 			return c, decls, nil
 		})
 		_, _, err := step.Render(start, []byte("import \"fmt\"\n"))
-		assert.ErrorIs(t, err, genhelper.ErrNotPartial)
+		assert.ErrorIs(t, err, gofragment.ErrNotPartial)
 	})
 
 	t.Run("no file set", func(t *testing.T) {
@@ -182,7 +183,7 @@ func TestAstSteps(t *testing.T) {
 				return c, e, nil
 			})
 			_, _, err := step.Render(c, []byte("a"))
-			assert.ErrorIs(t, err, genhelper.ErrNoFileSet)
+			assert.ErrorIs(t, err, gofragment.ErrNoFileSet)
 		}
 	})
 }
@@ -250,7 +251,7 @@ func TestAppendDecls(t *testing.T) {
 		err = genhelper.AppendDecls(f, pkg, []byte("var y = 2\n\nimport \"fmt\"\n"))
 		assert.Assert(t, err != nil)
 		err = genhelper.AppendDecls(f, pkg, []byte("import \"fmt\"\n"))
-		assert.ErrorIs(t, err, genhelper.ErrNotPartial)
+		assert.ErrorIs(t, err, gofragment.ErrNotPartial)
 
 		var buf bytes.Buffer
 		assert.NilError(t, decorator.Fprint(&buf, f))
@@ -320,26 +321,6 @@ func TestNodeStepsFuncError(t *testing.T) {
 			assert.Equal(t, c.Scope(), want.Scope())
 		})
 	}
-}
-
-func TestPrintAstLists(t *testing.T) {
-	fset := token.NewFileSet()
-	stmts, err := genhelper.ParseAstStmts(fset, []byte("x := 1\nif x > 0 {\n\treturn\n}\n"))
-	assert.NilError(t, err)
-	b, err := genhelper.PrintAstStmts(fset, stmts)
-	assert.NilError(t, err)
-	assert.Equal(t, string(b), "x := 1\nif x > 0 {\n\treturn\n}\n")
-
-	decls, err := genhelper.ParseAstDecls(fset, []byte("var x = 1\n\nfunc f() {}\n"))
-	assert.NilError(t, err)
-	b, err = genhelper.PrintAstDecls(fset, decls)
-	assert.NilError(t, err)
-	assert.Equal(t, string(b), "var x = 1\n\nfunc f() {}\n")
-
-	_, err = genhelper.PrintAstStmts(nil, stmts)
-	assert.ErrorIs(t, err, genhelper.ErrNoFileSet)
-	_, err = genhelper.PrintAstDecls(nil, decls)
-	assert.ErrorIs(t, err, genhelper.ErrNoFileSet)
 }
 
 func TestAppendDeclsWithoutPackage(t *testing.T) {

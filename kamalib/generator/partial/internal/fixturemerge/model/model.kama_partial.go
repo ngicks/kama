@@ -3,7 +3,7 @@
 //	merge: "append"
 //	merge_nested: "overwrite"
 //	option_file: null
-// generated: 2026-11-14T00:18:55Z
+// generated: 2026-11-14T00:59:24Z
 
 package model
 
@@ -19,6 +19,7 @@ import (
 type DocPartial struct {
 	BasePartial
 	HollowPartial
+
 	Tags     und.Und[[]string]          `json:"tags,omitzero"`
 	Attrs    und.Und[map[string]string] `json:"attrs,omitzero"`
 	Name     und.Und[string]            `json:"name,omitzero"`

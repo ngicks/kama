@@ -2,6 +2,7 @@ package genhelper
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Ref is an argument of [Expr] and [Stmt] spelling the name the role
@@ -82,14 +83,77 @@ func Name[C Context[C]](role string) Gen[C] {
 	return Expr[C]("%s", Ref(role))
 }
 
-// Stmt is a step appending the text of [Expr] with format and args,
-// followed by a newline. It returns the error of Expr as it is.
+// Join returns the texts of parts separated by sep, such as the parameters
+// of a list or the operands of a && chain. No part gives empty text.
+//
+// The returned Gen returns the error of the first failing part as it is.
+func Join[C Context[C]](sep string, parts ...Gen[C]) Gen[C] {
+	return func(c C) (string, error) {
+		out := make([]string, len(parts))
+		for i, part := range parts {
+			var err error
+			out[i], err = part(c)
+			if err != nil {
+				return "", err
+			}
+		}
+		return strings.Join(out, sep), nil
+	}
+}
+
+// FailGen returns a Gen failing with err as it is, for a branch chosen
+// while the steps are built that has no text to give.
+func FailGen[C Context[C]](err error) Gen[C] {
+	return func(C) (string, error) {
+		return "", err
+	}
+}
+
+// Comment returns the text of parts as the lines of one comment group, in
+// the order of parts. Each part follows the rules of one section of
+// [PrintComment]: text that is Go comments as a whole stays as it is, and
+// every line of other text gets "// ". No empty line separates the parts,
+// so a directive line given as the last part stays in the group. A part
+// with empty text gives one "//" line, which separates paragraphs. A nil
+// part is skipped.
+//
+// The text ends in a newline unless it is empty. It is Go comments as a
+// whole, so a doc of [DocFunc] keeps it as it is.
+//
+// The returned Gen returns the error of the first failing part as it is.
+func Comment[C Context[C]](parts ...Gen[C]) Gen[C] {
+	return func(c C) (string, error) {
+		p := c.Printer(nil)
+		for _, part := range parts {
+			if part == nil {
+				continue
+			}
+			s, err := part(c)
+			if err != nil {
+				return "", err
+			}
+			if strings.TrimSuffix(s, "\n") == "" {
+				p.Printf("//\n")
+				continue
+			}
+			printSection(p, s)
+		}
+		return string(p.Bytes()), nil
+	}
+}
+
+// Stmt is a step appending the text of [Expr] with format and args as one
+// line, as [Line] does. It returns the error of Expr as it is.
 func Stmt[C Context[C]](format string, args ...any) Step[C] {
 	return Line(Expr[C](format, args...))
 }
 
-// Line is a step appending the text of gen followed by a newline. It
-// returns the error of gen as it is.
+// Line is a step appending the text of gen followed by a newline. Text
+// already ending in a newline gets no other, so it adds no empty line. Line
+// leaves the rest of the text as it is, so text ending in an empty line
+// keeps it.
+//
+// Line returns the error of gen as it is.
 func Line[C Context[C]](gen Gen[C]) Step[C] {
 	return FuncStep[C](func(c C, b []byte) (C, []byte, error) {
 		s, err := gen(c)
@@ -97,7 +161,11 @@ func Line[C Context[C]](gen Gen[C]) Step[C] {
 			return c, nil, err
 		}
 		p := c.Printer(b)
-		p.Printf("%s\n", s)
+		if strings.HasSuffix(s, "\n") {
+			p.Printf("%s", s)
+		} else {
+			p.Printf("%s\n", s)
+		}
 		return c, p.Bytes(), nil
 	})
 }
@@ -118,8 +186,22 @@ func Line[C Context[C]](gen Gen[C]) Step[C] {
 // to Func, and [Block] is the alternative for text that builds its own.
 //
 // Func returns the error of signature as it is and the error of body as
-// [Steps] returns it.
+// [Steps] returns it. [DocFunc] adds a doc comment.
 func Func[C Context[C]](signature Gen[C], body ...Step[C]) Step[C] {
+	return DocFunc(nil, signature, body...)
+}
+
+// DocFunc is [Func] with the text of doc printed as the doc comment before
+// signature. doc follows the rules of one section of [PrintComment], so
+// the text of [Comment] stays as it is. A nil doc or one giving empty text
+// prints no doc comment.
+//
+// doc renders after signature, in the scope of the function, so that it
+// refers to a parameter signature declares with [Ref].
+//
+// DocFunc returns the errors of signature and doc as they are and the error
+// of body as [Steps] returns it.
+func DocFunc[C Context[C]](doc, signature Gen[C], body ...Step[C]) Step[C] {
 	return FuncStep[C](func(c C, b []byte) (C, []byte, error) {
 		outer := c.Scope()
 		c = Push(c)
@@ -128,7 +210,17 @@ func Func[C Context[C]](signature Gen[C], body ...Step[C]) Step[C] {
 		if err != nil {
 			return c, nil, err
 		}
+		var text string
+		if doc != nil {
+			text, err = doc(c)
+			if err != nil {
+				return c, nil, err
+			}
+		}
 		p := c.Printer(b)
+		if strings.TrimSuffix(text, "\n") != "" {
+			printSection(p, text)
+		}
 		p.Printf("%s {\n", sig)
 		c, err = printBody(c, p, Steps[C](body))
 		if err != nil {

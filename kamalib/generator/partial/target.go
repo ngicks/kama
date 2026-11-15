@@ -15,6 +15,7 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/pkg/dstreplace"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
@@ -35,12 +36,20 @@ type selection struct {
 	flags map[kamaopt.Key]flagOption
 	// flagged are the targets with a field holding a flag directive.
 	flagged map[typegraph.QualifiedType]bool
+	// masked are the //kama:partial:fieldmask directives keyed by type, and
+	// maskNames those keyed by field.
+	masked    map[typegraph.QualifiedType]kamaopt.Raw
+	maskNames map[kamaopt.Key]maskName
 	// refs are the pointer fields mapped to und.Und[*MPartial] since they
 	// close a cycle of partial variants.
 	refs map[*types.Var]bool
 	// generated are the objects declared by declarations carrying the
 	// marker of a registered generator.
 	generated map[types.Object]bool
+	// sources holds the decorated source files declaring targets. Every
+	// partial file is rendered twice, so the files are decorated once per
+	// run rather than once per rendering.
+	sources dstreplace.Cache
 }
 
 func (s *selection) filename(n *typegraph.Node) string {
@@ -87,8 +96,10 @@ func (s *selection) sorted() []*typegraph.Node {
 // marks are the //kama:partial directives of the source packages and the
 // option file entries standing for them.
 type marks struct {
-	merges map[kamaopt.Key]kamaopt.Raw
-	flags  map[kamaopt.Key]flagOption
+	merges    map[kamaopt.Key]kamaopt.Raw
+	flags     map[kamaopt.Key]flagOption
+	masked    map[typegraph.QualifiedType]kamaopt.Raw
+	maskNames map[kamaopt.Key]maskName
 	// explicit are the type marks, the first one of each type, in source
 	// order and then in option file order.
 	explicit []kamaopt.Raw
@@ -110,12 +121,14 @@ func (m *marks) isIgnored(id typegraph.QualifiedType) bool {
 // between the two names the directive first.
 func collectMarks(pkgs []*packages.Package, file *OptionFile) (marks, error) {
 	m := marks{
-		merges:  map[kamaopt.Key]kamaopt.Raw{},
-		flags:   map[kamaopt.Key]flagOption{},
-		marked:  map[typegraph.QualifiedType]kamaopt.Raw{},
-		ignored: map[typegraph.QualifiedType]kamaopt.Raw{},
-		files:   map[string]bool{},
-		pkgs:    map[string]bool{},
+		merges:    map[kamaopt.Key]kamaopt.Raw{},
+		flags:     map[kamaopt.Key]flagOption{},
+		masked:    map[typegraph.QualifiedType]kamaopt.Raw{},
+		maskNames: map[kamaopt.Key]maskName{},
+		marked:    map[typegraph.QualifiedType]kamaopt.Raw{},
+		ignored:   map[typegraph.QualifiedType]kamaopt.Raw{},
+		files:     map[string]bool{},
+		pkgs:      map[string]bool{},
 	}
 
 	raws, err := kamaopt.Collect(pkgs, toolName)
@@ -189,6 +202,8 @@ func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
 	switch sub {
 	case "flag":
 		return m.flag(r)
+	case "fieldmask":
+		return m.fieldMask(r)
 	case "merge":
 	default:
 		return fmt.Errorf("%w: %s: unknown directive //kama:%s", ErrDirective, pos, r.Directive)
@@ -360,6 +375,8 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 		merges:    m.merges,
 		flags:     m.flags,
 		flagged:   map[typegraph.QualifiedType]bool{},
+		masked:    m.masked,
+		maskNames: m.maskNames,
 		refs:      map[*types.Var]bool{},
 		generated: generated,
 	}
@@ -432,10 +449,18 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	if err := sel.checkFlagTargets(); err != nil {
 		return nil, err
 	}
+	if err := sel.checkFieldMaskTargets(); err != nil {
+		return nil, err
+	}
 	if err := sel.checkNames(generated); err != nil {
 		return nil, err
 	}
 	if err := sel.mapCycles(); err != nil {
+		return nil, err
+	}
+	// Segments flatten embedded partial values, which terminates only once
+	// mapCycles has ruled out cycles through embedded fields.
+	if err := sel.checkFieldMaskSegments(); err != nil {
 		return nil, err
 	}
 	return sel, nil

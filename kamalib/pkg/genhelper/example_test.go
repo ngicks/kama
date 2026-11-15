@@ -524,3 +524,97 @@ func ExampleFunc() {
 	// 	return out
 	// }
 }
+
+func ExampleLang() {
+	type (
+		decl = genhelper.Decl
+		ref  = genhelper.Ref
+	)
+	// The type of l names the context once, so no call instantiates it.
+	var l genhelper.Lang[genhelper.BaseContext]
+
+	root := genhelper.NewScope()
+	root.ReserveUniverse()
+	// The destination package declares n.
+	root.Reserve("n")
+
+	s, err := l.Render(
+		genhelper.NewBaseContext(root, nil),
+		l.DocFunc(
+			l.Comment(l.Expr("Count returns the number of %s in %s.", ref("n"), ref("xs"))),
+			l.Expr("func Count(%s []int, %s int) int", decl("xs"), decl("n")),
+			l.Stmt("var %s int", decl("count")),
+			l.ForRange("", "x", l.Name("xs"),
+				l.If(l.Expr("%s == %s", ref("x"), ref("n")),
+					l.Stmt("%s++", ref("count")),
+					nil,
+				),
+			),
+			l.Stmt("return %s", ref("count")),
+		),
+	)
+	if err != nil {
+		panic(err)
+	}
+	b, err := format.Source([]byte(s))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(string(b))
+	// Output:
+	// // Count returns the number of n2 in xs.
+	// func Count(xs []int, n2 int) int {
+	// 	var count int
+	// 	for _, x := range xs {
+	// 		if x == n2 {
+	// 			count++
+	// 		}
+	// 	}
+	// 	return count
+	// }
+}
+
+func ExampleDocFunc() {
+	type (
+		decl = genhelper.Decl
+		ref  = genhelper.Ref
+	)
+
+	root := genhelper.NewScope()
+	root.ReserveUniverse()
+	// The destination package declares s.
+	root.Reserve("s")
+
+	r := genhelper.Renderer[ctx]{
+		Context: genhelper.NewBaseContext(root, nil),
+		Steps: genhelper.Steps[ctx]{
+			genhelper.DocFunc(
+				// The doc renders after the signature, so it spells the names
+				// the signature declares. The marker line stays in the group.
+				genhelper.Comment(
+					expr("Has reports whether %s holds %s.", ref("s"), ref("key")),
+					expr(""),
+					expr("%s", "//example:generated"),
+				),
+				expr("func (%s Set) Has(%s string) bool", decl("s"), decl("key")),
+				stmt("return %s[%s]", ref("s"), ref("key")),
+			),
+		},
+	}
+	_, b, err := r.Render(nil)
+	if err != nil {
+		panic(err)
+	}
+	b, err = format.Source(b)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(string(b))
+	// Output:
+	// // Has reports whether s2 holds key.
+	// //
+	// //example:generated
+	// func (s2 Set) Has(key string) bool {
+	// 	return s2[key]
+	// }
+}

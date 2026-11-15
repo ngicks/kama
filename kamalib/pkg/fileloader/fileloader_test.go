@@ -1,6 +1,10 @@
 package fileloader
 
 import (
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"errors"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -53,4 +57,49 @@ func TestCandidates(t *testing.T) {
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, got, []string{"a/meta.yaml", "a/meta.yml", "a/meta.json"})
+}
+
+func TestDecodeJson(t *testing.T) {
+	var d doc
+	assert.NilError(
+		t,
+		Decode(strings.NewReader("{\"name\":\"a\",\"extra\":1}\n\n"), FormatJson, &d),
+	)
+	assert.Equal(t, d.Name, "a")
+
+	var cased doc
+	assert.NilError(t, Decode(strings.NewReader(`{"Name":"a"}`), FormatJson, &cased))
+	assert.Equal(t, cased.Name, "")
+
+	var data any
+	assert.NilError(t, Decode(strings.NewReader(`{"a":[1,"s",true,null,{}]}`), FormatJson, &data))
+	assert.DeepEqual(t, data, map[string]any{"a": []any{1.0, "s", true, nil, map[string]any{}}})
+}
+
+func TestDecodeJsonErrors(t *testing.T) {
+	cases := []struct {
+		name, src string
+	}{
+		{"trailing data", `{"name":"a"} {"name":"b"}`},
+		{"trailing garbage", `{"name":"a"}x`},
+		{"empty", ""},
+		{"duplicate name", `{"name":"a","name":"b"}`},
+		{"invalid UTF-8", "{\"name\":\"\xff\"}"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var data any
+			err := Decode(strings.NewReader(c.src), FormatJson, &data)
+
+			var synErr *jsontext.SyntacticError
+			assert.Assert(t, errors.As(err, &synErr), "%v", err)
+		})
+	}
+}
+
+func TestPathInputJson(t *testing.T) {
+	var in PathInput
+	assert.NilError(t, json.Unmarshal([]byte(`{"base":"a/meta","formats":["yaml","json"]}`), &in))
+	assert.DeepEqual(t, in, PathInput{Base: "a/meta", Formats: []Format{FormatYaml, FormatJson}})
 }

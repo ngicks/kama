@@ -13,7 +13,7 @@ import (
 	"github.com/dave/dst"
 	"golang.org/x/tools/go/packages"
 
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
@@ -63,7 +63,7 @@ func (p *mapper) typeString(t types.Type) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	b, err := genhelper.PrintDstExpr(e)
+	b, err := gofragment.PrintDstExpr(e)
 	if err != nil {
 		return "", fmt.Errorf("partial: %w", err)
 	}
@@ -76,7 +76,7 @@ func (p *mapper) partialString(named *types.Named) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	b, err := genhelper.PrintDstExpr(e)
+	b, err := gofragment.PrintDstExpr(e)
 	if err != nil {
 		return "", fmt.Errorf("partial: %w", err)
 	}
@@ -205,8 +205,12 @@ type fieldInfo struct {
 	flag *flagField
 }
 
+// structType returns the partial struct type of the target n and its
+// mapped fields. A target declared by a struct literal gets a clone of the
+// literal with its field types replaced, as sourceStruct describes; any
+// other target gets a struct built from s.
 func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fieldInfo, error) {
-	fields := &dst.FieldList{Opening: true, Closing: true}
+	synth := make([]*dst.Field, s.NumFields())
 	var infos []fieldInfo
 	seen := map[string]*types.Var{}
 	for i := range s.NumFields() {
@@ -243,13 +247,24 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 		if err != nil {
 			return nil, nil, fmt.Errorf("field %s (%s): %w", v.Name(), p.position(v.Pos()), err)
 		}
-		if f != nil {
-			fields.List = append(fields.List, f)
-		}
+		synth[i] = f
 		infos = append(infos, info)
 	}
 	if err := checkFlags(n, infos); err != nil {
 		return nil, nil, err
+	}
+	st, err := p.sourceStruct(n, s, synth)
+	if err != nil {
+		return nil, nil, err
+	}
+	if st != nil {
+		return st, infos, nil
+	}
+	fields := &dst.FieldList{Opening: true, Closing: true}
+	for _, f := range synth {
+		if f != nil {
+			fields.List = append(fields.List, f)
+		}
 	}
 	return &dst.StructType{Fields: fields}, infos, nil
 }

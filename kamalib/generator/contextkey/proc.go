@@ -2,7 +2,7 @@ package contextkey
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -112,7 +112,8 @@ func (i *instance) Run(ctx context.Context, _ workflow.Reporter) error {
 }
 
 // decodeTemplate converts the format-neutral data fileloader decodes into
-// a Template.
+// a Template with encoding/json/v2. Keys match the JSON names of the fields
+// of Template and Entry case-sensitively. Unknown keys are ignored.
 func decodeTemplate(data any) (Template, error) {
 	b, err := json.Marshal(data)
 	if err != nil {

@@ -6,11 +6,13 @@ import (
 	"go/token"
 
 	"github.com/dave/dst"
+
+	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 )
 
 // nodeStep builds the steps editing the text as nodes. The Parse and Print
-// functions wrap their errors with context, and f's error is returned as
-// it is.
+// functions of gofragment wrap their errors with context, and f's error is
+// returned as it is.
 func nodeStep[C Context[C], N any](
 	parse func(c C, b []byte) (N, error),
 	f func(c C, n N) (C, N, error),
@@ -53,7 +55,10 @@ func astStep[C Context[C], N any](
 	return FuncStep[C](func(c C, b []byte) (C, []byte, error) {
 		pkg := c.Package()
 		if pkg == nil || pkg.Fset == nil {
-			return c, nil, fmt.Errorf("%w: the context has no Package.Fset", ErrNoFileSet)
+			return c, nil, fmt.Errorf(
+				"%w: the context has no Package.Fset",
+				gofragment.ErrNoFileSet,
+			)
 		}
 		// The nodes hold positions of the file set they were parsed into,
 		// so printing uses it too, whatever context f returns.
@@ -69,56 +74,62 @@ func astStep[C Context[C], N any](
 // DstExpr is a step editing the text before it as one dst expression. The
 // step parses the text, calls f and prints the expression f returns.
 //
-// The step returns the errors of [ParseDstExpr] and [PrintDstExpr], and
-// the error of f as it is.
+// The step returns the errors of [gofragment.ParseDstExpr] and
+// [gofragment.PrintDstExpr], and the error of f as it is.
 func DstExpr[C Context[C]](f func(c C, e dst.Expr) (C, dst.Expr, error)) Step[C] {
-	return dstStep(ParseDstExpr, f, PrintDstExpr)
+	return dstStep(gofragment.ParseDstExpr, f, gofragment.PrintDstExpr)
 }
 
 // DstStmts is a step editing the text before it as dst statements.
 //
-// The step returns the errors of [ParseDstStmts] and [PrintDstStmts], and
-// the error of f as it is.
+// The step returns the errors of [gofragment.ParseDstStmts] and
+// [gofragment.PrintDstStmts], and the error of f as it is.
 func DstStmts[C Context[C]](f func(c C, stmts []dst.Stmt) (C, []dst.Stmt, error)) Step[C] {
-	return dstStep(ParseDstStmts, f, PrintDstStmts)
+	return dstStep(gofragment.ParseDstStmts, f, gofragment.PrintDstStmts)
 }
 
 // DstDecls is a step editing the text before it as dst declarations.
 //
-// The step returns the errors of [ParseDstDecls] and [PrintDstDecls], and
-// the error of f as it is.
+// The step returns the errors of [gofragment.ParseDstDecls] and
+// [gofragment.PrintDstDecls], and the error of f as it is.
 func DstDecls[C Context[C]](f func(c C, decls []dst.Decl) (C, []dst.Decl, error)) Step[C] {
-	return dstStep(ParseDstDecls, f, PrintDstDecls)
+	return dstStep(gofragment.ParseDstDecls, f, gofragment.PrintDstDecls)
 }
 
 // AstExpr is a step editing the text before it as one ast expression.
 // Positions refer to the Fset of [Context.Package].
 //
-// The step returns an error wrapping [ErrNoFileSet] when the context has
-// no Package or no Fset, the errors of [ParseAstExpr] and [PrintAst], and
-// the error of f as it is.
+// The step returns an error wrapping [gofragment.ErrNoFileSet] when the
+// context has no Package or no Fset, the errors of [gofragment.ParseAstExpr]
+// and [gofragment.PrintAst], and the error of f as it is.
 func AstExpr[C Context[C]](f func(c C, e ast.Expr) (C, ast.Expr, error)) Step[C] {
-	return astStep(ParseAstExpr, f, func(fset *token.FileSet, e ast.Expr) ([]byte, error) {
-		return PrintAst(fset, e)
-	})
+	return astStep(
+		gofragment.ParseAstExpr,
+		f,
+		func(fset *token.FileSet, e ast.Expr) ([]byte, error) {
+			return gofragment.PrintAst(fset, e)
+		},
+	)
 }
 
 // AstStmts is a step editing the text before it as ast statements.
 // Positions refer to the Fset of [Context.Package].
 //
-// The step returns an error wrapping [ErrNoFileSet] when the context has
-// no Package or no Fset, the errors of [ParseAstStmts] and [PrintAstStmts], and
-// the error of f as it is.
+// The step returns an error wrapping [gofragment.ErrNoFileSet] when the
+// context has no Package or no Fset, the errors of
+// [gofragment.ParseAstStmts] and [gofragment.PrintAstStmts], and the error
+// of f as it is.
 func AstStmts[C Context[C]](f func(c C, stmts []ast.Stmt) (C, []ast.Stmt, error)) Step[C] {
-	return astStep(ParseAstStmts, f, PrintAstStmts)
+	return astStep(gofragment.ParseAstStmts, f, gofragment.PrintAstStmts)
 }
 
 // AstDecls is a step editing the text before it as ast declarations.
 // Positions refer to the Fset of [Context.Package].
 //
-// The step returns an error wrapping [ErrNoFileSet] when the context has
-// no Package or no Fset, the errors of [ParseAstDecls] and [PrintAstDecls], and
-// the error of f as it is.
+// The step returns an error wrapping [gofragment.ErrNoFileSet] when the
+// context has no Package or no Fset, the errors of
+// [gofragment.ParseAstDecls] and [gofragment.PrintAstDecls], and the error
+// of f as it is.
 func AstDecls[C Context[C]](f func(c C, decls []ast.Decl) (C, []ast.Decl, error)) Step[C] {
-	return astStep(ParseAstDecls, f, PrintAstDecls)
+	return astStep(gofragment.ParseAstDecls, f, gofragment.PrintAstDecls)
 }

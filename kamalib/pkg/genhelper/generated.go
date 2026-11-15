@@ -2,7 +2,7 @@ package genhelper
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"maps"
 	"slices"
@@ -33,7 +33,8 @@ type GeneratorParams struct {
 	// such as absolute paths, make the generated file differ too.
 	Argv []string
 	// Params holds the settings of the run that are not arguments. The
-	// values must encode as JSON. It may be empty.
+	// values must encode with encoding/json/v2, which [GeneratorParams.Comment]
+	// uses. It may be empty.
 	Params map[string]any
 	// Generated is the time of the run. It may be zero.
 	//
@@ -56,14 +57,18 @@ const GeneratedTimePrefix = "// generated: "
 //	//	key: "value"
 //	// generated: 2026-11-04T10:12:33Z
 //
-// The parameters are sorted by key and each value is printed as JSON, so
-// equal runs give equal text. An argument or a key is quoted where it would
-// not read as one word. The time is printed in UTC as RFC 3339, to the
-// second. A line for empty Argv, empty Params or zero Generated is left
-// out.
+// The parameters are sorted by key and each value is printed as JSON by
+// encoding/json/v2 with [json.Deterministic], which sorts the keys of
+// nested maps too, so equal runs give equal text. The JSON leaves <, > and
+// & unescaped. A nil slice or map prints as [] or {}, and an untyped nil
+// prints as null. An argument or a key is quoted where it would not read
+// as one word. The time is printed in UTC as RFC 3339, to the second. A
+// line for empty Argv, empty Params or zero Generated is left out.
 //
-// Comment returns the error of encoding/json for a value JSON does not
-// encode.
+// Comment returns an error wrapping the [*json.SemanticError] of
+// encoding/json/v2 for a value JSON does not encode, such as a channel,
+// and an error wrapping a [*encoding/json/jsontext.SyntacticError] for a
+// string holding invalid UTF-8.
 func (g GeneratorParams) Comment() (string, error) {
 	var b strings.Builder
 	b.WriteString(GeneratedComment(g.Name))
@@ -77,7 +82,7 @@ func (g GeneratorParams) Comment() (string, error) {
 	if len(g.Params) > 0 {
 		b.WriteString("\n// params:")
 		for _, key := range slices.Sorted(maps.Keys(g.Params)) {
-			value, err := json.Marshal(g.Params[key])
+			value, err := json.Marshal(g.Params[key], json.Deterministic(true))
 			if err != nil {
 				return "", fmt.Errorf("genhelper: generator parameter %q: %w", key, err)
 			}

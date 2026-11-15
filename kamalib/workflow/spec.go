@@ -1,7 +1,8 @@
 package workflow
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"slices"
 )
 
@@ -44,8 +45,31 @@ func (s Step) deps() []string {
 // Names is a list of step names. A single name may be written as a scalar.
 type Names []string
 
-func (n *Names) UnmarshalJSON(b []byte) error {
-	return n.decode(func(v any) error { return json.Unmarshal(b, v) })
+// UnmarshalJSONFrom decodes a string as a list of one name. A null is no
+// names.
+func (n *Names) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	switch dec.PeekKind() {
+	case 'n':
+		if _, err := dec.ReadToken(); err != nil {
+			return err
+		}
+		*n = nil
+		return nil
+	case '"':
+		var one string
+		if err := json.UnmarshalDecode(dec, &one); err != nil {
+			return err
+		}
+		*n = Names{one}
+		return nil
+	default:
+		var many []string
+		if err := json.UnmarshalDecode(dec, &many); err != nil {
+			return err
+		}
+		*n = many
+		return nil
+	}
 }
 
 func (n *Names) UnmarshalYAML(unmarshal func(any) error) error {

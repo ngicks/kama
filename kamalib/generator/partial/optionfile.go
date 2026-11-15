@@ -45,6 +45,8 @@ type PackageOptions struct {
 // TypeOptions are the options of a type.
 type TypeOptions struct {
 	Ignore bool
+	// FieldMask stands for //kama:partial:fieldmask on the type.
+	FieldMask bool
 	// Fields are keyed by field name, an embedded field named after its
 	// type.
 	Fields map[string]FieldOptions
@@ -56,6 +58,14 @@ type FieldOptions struct {
 	Merge string
 	// Flag stands for //kama:partial:flag, or for none when nil.
 	Flag *FlagOptions
+	// FieldMask stands for //kama:partial:fieldmask on the field, or for
+	// none when nil.
+	FieldMask *FieldMaskOptions
+}
+
+// FieldMaskOptions are the args of //kama:partial:fieldmask on a field.
+type FieldMaskOptions struct {
+	Name string
 }
 
 // FlagOptions are the args of //kama:partial:flag. An empty Short sets no
@@ -206,8 +216,12 @@ func (d *optionDecoder) typ(v any, path []string) TypeOptions {
 	if !ok {
 		return TypeOptions{}
 	}
-	d.keys(t, path, "ignore", "fields")
-	o := TypeOptions{Ignore: d.bool(t, path, "ignore"), Fields: map[string]FieldOptions{}}
+	d.keys(t, path, "ignore", "fieldmask", "fields")
+	o := TypeOptions{
+		Ignore:    d.bool(t, path, "ignore"),
+		FieldMask: d.bool(t, path, "fieldmask"),
+		Fields:    map[string]FieldOptions{},
+	}
 	fieldsPath := appendPath(path, "fields")
 	fs, _ := d.table(t["fields"], fieldsPath)
 	for _, name := range slices.Sorted(maps.Keys(fs)) {
@@ -221,9 +235,10 @@ func (d *optionDecoder) field(v any, path []string) FieldOptions {
 	if !ok {
 		return FieldOptions{}
 	}
-	d.keys(t, path, "merge", "flag")
+	d.keys(t, path, "merge", "flag", "fieldmask")
 	var o FieldOptions
 	o.Merge, _ = d.string(t, path, "merge")
+	o.FieldMask = d.fieldMask(t, path)
 	if _, ok := t["flag"]; !ok {
 		return o
 	}
@@ -243,6 +258,23 @@ func (d *optionDecoder) field(v any, path []string) FieldOptions {
 	} else {
 		o.Flag.Short = s
 	}
+	return o
+}
+
+// fieldMask decodes the fieldmask entry of the field table t, or returns
+// nil when t has none.
+func (d *optionDecoder) fieldMask(t map[string]any, path []string) *FieldMaskOptions {
+	if _, ok := t["fieldmask"]; !ok {
+		return nil
+	}
+	maskPath := appendPath(path, "fieldmask")
+	mt, ok := d.table(t["fieldmask"], maskPath)
+	if !ok {
+		return nil
+	}
+	d.keys(mt, maskPath, "name")
+	o := &FieldMaskOptions{}
+	o.Name, _ = d.string(mt, maskPath, "name")
 	return o
 }
 
@@ -333,6 +365,11 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 				r.Args = "ignore"
 			}
 			out = append(out, r)
+			if to.FieldMask {
+				out = append(out, kamaopt.Raw{
+					Key: key, Directive: directive + ":fieldmask", Value: true, Origin: origin,
+				})
+			}
 
 			if len(to.Fields) == 0 {
 				continue
@@ -369,6 +406,12 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 						Key: key, Directive: directive + ":flag", Value: *fo.Flag, Origin: origin,
 					})
 				}
+				if fo.FieldMask != nil {
+					out = append(out, kamaopt.Raw{
+						Key: key, Directive: directive + ":fieldmask", Value: *fo.FieldMask,
+						Origin: origin,
+					})
+				}
 			}
 		}
 	}
@@ -382,13 +425,14 @@ func optionPath(r kamaopt.Raw) []string {
 		return append(path, "all_types")
 	}
 	path = append(path, "types", r.Key.Type)
-	if r.Key.Field == "" {
+	if r.Key.Field != "" {
+		path = append(path, "fields", r.Key.Field)
+	} else if r.Directive == directive {
 		if strings.TrimSpace(r.Args) == "ignore" {
 			path = append(path, "ignore")
 		}
 		return path
 	}
-	path = append(path, "fields", r.Key.Field)
 	if sub, ok := strings.CutPrefix(r.Directive, directive+":"); ok {
 		path = append(path, sub)
 	}

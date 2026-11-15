@@ -3,7 +3,7 @@
 //	merge: "overwrite"
 //	merge_nested: "recursive"
 //	option_file: null
-// generated: 2026-11-13T22:47:58Z
+// generated: 2026-11-14T00:48:45Z
 
 package model
 
@@ -18,26 +18,27 @@ import (
 //
 //kama:generated kama-partial
 type FlagsPartial struct {
-	Name      und.Und[string]            `json:"name,omitzero"`
-	Verbose   und.Und[bool]              `json:"verbose,omitzero"`
-	Count     und.Und[int]               `json:"count,omitzero"`
-	Size      und.Und[int64]             `json:"size,omitzero"`
-	Workers   und.Und[uint]              `json:"workers,omitzero"`
-	Limit     und.Und[uint64]            `json:"limit,omitzero"`
-	Ratio     und.Und[float64]           `json:"ratio,omitzero"`
-	Timeout   und.Und[time.Duration]     `json:"timeout,omitzero"`
-	Tags      und.Und[[]string]          `json:"tags,omitzero"`
-	Labels    und.Und[map[string]string] `json:"labels,omitzero"`
-	Level     und.Und[LogLevel]          `json:"level,omitzero"`
-	Since     und.Und[time.Time]         `json:"since,omitzero"`
-	Mode      und.Und[Mode]              `json:"mode,omitzero"`
-	Hosts     und.Und[Hosts]             `json:"hosts,omitzero"`
-	Retry     und.Und[int]               `json:"retry,omitzero"`
-	Nick      und.Und[string]            `json:"nick,omitzero"`
-	Port      und.Und[int]               `json:"port,omitzero"`
-	MinLevel  und.Und[LogLevel]          `json:"min_level,omitzero"`
-	Unflagged und.Und[string]            `json:"unflagged,omitzero"`
-	Nested    und.Und[AddressPartial]    `json:"nested,omitzero"`
+	Name     und.Und[string]            `json:"name,omitzero"`
+	Verbose  und.Und[bool]              `json:"verbose,omitzero"`
+	Count    und.Und[int]               `json:"count,omitzero"`
+	Size     und.Und[int64]             `json:"size,omitzero"`
+	Workers  und.Und[uint]              `json:"workers,omitzero"`
+	Limit    und.Und[uint64]            `json:"limit,omitzero"`
+	Ratio    und.Und[float64]           `json:"ratio,omitzero"`
+	Timeout  und.Und[time.Duration]     `json:"timeout,omitzero"`
+	Tags     und.Und[[]string]          `json:"tags,omitzero"`
+	Labels   und.Und[map[string]string] `json:"labels,omitzero"`
+	Level    und.Und[LogLevel]          `json:"level,omitzero"`
+	Since    und.Und[time.Time]         `json:"since,omitzero"`
+	Mode     und.Und[Mode]              `json:"mode,omitzero"`
+	Hosts    und.Und[Hosts]             `json:"hosts,omitzero"`
+	Retry    und.Und[int]               `json:"retry,omitzero"`
+	Nick     und.Und[string]            `json:"nick,omitzero"`
+	Port     und.Und[int]               `json:"port,omitzero"`
+	MinLevel und.Und[LogLevel]          `json:"min_level,omitzero"`
+
+	Unflagged und.Und[string]         `json:"unflagged,omitzero"`
+	Nested    und.Und[AddressPartial] `json:"nested,omitzero"`
 }
 
 // FromValue sets every field of p to the partial form of the field of v.

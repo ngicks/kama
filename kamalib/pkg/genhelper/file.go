@@ -7,6 +7,7 @@ import (
 
 	"github.com/dave/dst"
 
+	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 )
 
@@ -27,6 +28,8 @@ func PrintFileHeader(p Printer, header []string, pkgName string) {
 // A section that is Go comments as a whole, line comments or block
 // comments, is printed as it is. Any other section is taken as plain text,
 // and every line of it is printed after "// ".
+//
+// [Comment] prints its parts as one comment group instead.
 func PrintComment(p Printer, sections []string) {
 	printComment(p, sections)
 }
@@ -42,20 +45,25 @@ func printComment(p Printer, sections []string) bool {
 			p.Printf("\n")
 		}
 		printed = true
-
-		commented := isComments(section)
-		for line := range strings.SplitSeq(strings.TrimSuffix(section, "\n"), "\n") {
-			switch {
-			case commented:
-				p.Printf("%s\n", line)
-			case line == "":
-				p.Printf("//\n")
-			default:
-				p.Printf("// %s\n", line)
-			}
-		}
+		printSection(p, section)
 	}
 	return printed
+}
+
+// printSection prints section as the comment lines [PrintComment] prints
+// for one section.
+func printSection(p Printer, section string) {
+	commented := isComments(section)
+	for line := range strings.SplitSeq(strings.TrimSuffix(section, "\n"), "\n") {
+		switch {
+		case commented:
+			p.Printf("%s\n", line)
+		case line == "":
+			p.Printf("//\n")
+		default:
+			p.Printf("// %s\n", line)
+		}
+	}
 }
 
 // isComments reports whether src holds nothing but Go comments.
@@ -126,10 +134,11 @@ func WrapFile[C Context[C]](header []string, pkgName string) Step[C] {
 // after an empty line, then adds the imports pkg.Imports records as
 // missing. A nil pkg or a nil pkg.Imports adds no import.
 //
-// AppendDecls returns the errors [ParseDstDecls] returns and leaves f
-// unchanged then.
+// AppendDecls returns the errors [gofragment.ParseDstDecls] returns, such
+// as one wrapping [gofragment.ErrNotPartial] for an import declaration, and
+// leaves f unchanged then.
 func AppendDecls(f *dst.File, pkg *Package, decls []byte) error {
-	parsed, err := ParseDstDecls(decls)
+	parsed, err := gofragment.ParseDstDecls(decls)
 	if err != nil {
 		return err
 	}

@@ -42,8 +42,10 @@ var ErrInvalidProc = errors.New("workflow: invalid proc")
 // listing a wrong number of ins or outs, or naming a step whose AsInputType
 // does not fit an argument fails formation, and no step is executed.
 type Proc interface {
-	// ParamType returns the type a step's param is decoded into. Unknown
-	// fields are ignored. Nil means the proc takes no param.
+	// ParamType returns the type a step's param is decoded into with
+	// encoding/json/v2. Param keys match the JSON names of its fields
+	// case-sensitively. Give every field meant to be set from a spec a json
+	// tag. Unknown fields are ignored. Nil means the proc takes no param.
 	ParamType() reflect.Type
 	// InTypes returns the argument types of the instance's In method.
 	InTypes() []reflect.Type

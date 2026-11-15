@@ -291,6 +291,48 @@ type emb struct{ E int }
 //kama:partial
 type embP struct{ F int }
 `,
+		"fieldmask/a.go": `package fieldmask
+
+type (
+	paths  int
+	path   int
+	head   int
+	rest   int
+	nested int
+	y      int
+	subB   int
+	wholeB int
+	subEmb int
+	slices int
+)
+
+//kama:partial
+//kama:partial:fieldmask
+type A[fmt, strings, x, err, p, v, subPB, wholePB any] struct {
+	X  p
+	B  Inner[x]
+	PB *Inner[err]
+	Emb[v]
+	*EmbP[strings]
+	R *A[fmt, strings, x, err, p, v, subPB, wholePB]
+}
+
+//kama:partial
+//kama:partial:fieldmask
+type T[paths, path, head, rest, nested, y, subN, wholeN any] struct {
+	L paths
+	N Inner[y]
+}
+
+//kama:partial:fieldmask
+type Inner[T any] struct{ V T }
+
+//kama:partial:fieldmask
+type Emb[T any] struct{ E T }
+
+//kama:partial:fieldmask
+type EmbP[T any] struct{ F T }
+`,
 	}
 	for _, opts := range []Options{
 		{},
@@ -299,7 +341,7 @@ type embP struct{ F int }
 	} {
 		t.Run(string(opts.Merge)+"/"+string(opts.MergeNested), func(t *testing.T) {
 			f, load := stage(t, files)
-			ctx := context.Background()
+			ctx := t.Context()
 			pkgs, err := gopackages.Load(ctx, f, load)
 			assert.NilError(t, err)
 			opts.Registry = registry(t)

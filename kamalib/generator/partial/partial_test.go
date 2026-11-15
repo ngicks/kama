@@ -232,6 +232,35 @@ func TestTargetErrors(t *testing.T) {
 			},
 		},
 		{
+			name: "pointer to pointer element of a slice target",
+			src:  "package x\n\n//kama:partial\ntype A []**B\n\ntype B struct{ I int }\n",
+			is:   ErrUnsupported,
+			contains: []string{
+				"_pointer_to_pointer_element_of_a_slice_target.A",
+				"x.go:4:6",
+				"pointer to pointer",
+			},
+		},
+		{
+			name:     "pointer to pointer element of a map target",
+			src:      "package x\n\n//kama:partial\ntype A map[string]**B\n\ntype B struct{ I int }\n",
+			is:       ErrUnsupported,
+			contains: []string{"x.go:4:6", "pointer to pointer"},
+		},
+		{
+			name: "pointer to pointer to a slice target",
+			src: "package x\n\n//kama:partial\ntype A struct {\n\tB **B\n}\n\n" +
+				"type B []C\n\ntype C struct{ I int }\n",
+			is:       ErrUnsupported,
+			contains: []string{"field B", "x.go:5:2", "pointer to pointer"},
+		},
+		{
+			name:     "array of targets",
+			src:      "package x\n\n//kama:partial\ntype A [2]B\n\ntype B struct{ I int }\n",
+			is:       ErrUnsupported,
+			contains: []string{"x.go:3:1", "want a struct, slice or map"},
+		},
+		{
 			name:     "embedded recursive",
 			src:      "package x\n\n//kama:partial\ntype A struct {\n\t*A\n}\n",
 			is:       ErrUnsupported,

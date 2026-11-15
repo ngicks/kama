@@ -8,7 +8,7 @@ import (
 
 	"github.com/dave/dst"
 
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -23,10 +23,14 @@ var localNames = []string{
 
 // partialMethodNames returns the methods the partial type of n gets.
 func (s *selection) partialMethodNames(n *typegraph.Node) []string {
-	if s.flagged[n.Id] {
-		return slices.Concat(methodNames, flagMethodNames)
+	out := methodNames
+	if s.fieldMasked(n.Id) {
+		out = slices.Concat(out, fieldMaskMethodNames)
 	}
-	return methodNames
+	if s.flagged[n.Id] {
+		out = slices.Concat(out, flagMethodNames)
+	}
+	return out
 }
 
 // methodTypeParams returns the names the methods spell the type parameters
@@ -67,6 +71,7 @@ func methodTypeParams(scope *types.Scope, tparams *types.TypeParamList) []string
 // methodWriter writes the methods of one partial type as source text.
 type methodWriter struct {
 	p *mapper
+	n *typegraph.Node
 	b strings.Builder
 	// tparams are the names the methods spell the type parameters by.
 	tparams []string
@@ -85,6 +90,7 @@ func (p *mapper) newMethodWriter(n *typegraph.Node) *methodWriter {
 	}
 	return &methodWriter{
 		p:       p,
+		n:       n,
 		tparams: tparams,
 		recv:    partialName(named.Obj().Name()) + targs,
 		source:  named.Obj().Name() + targs,
@@ -94,7 +100,10 @@ func (p *mapper) newMethodWriter(n *typegraph.Node) *methodWriter {
 // function writes a method documented by doc. signature declares its
 // receiver and parameters in the scope of the method, where body renders.
 func (w *methodWriter) function(doc, signature genExpr, body ...genStep) error {
-	s, err := renderFunc(w.p.funcContext(w.tparams), doc, signature, body...)
+	s, err := lang.Render(
+		w.p.funcContext(w.tparams),
+		lang.DocFunc(doc, signature, body...),
+	)
 	if err != nil {
 		return err
 	}
@@ -105,22 +114,22 @@ func (w *methodWriter) function(doc, signature genExpr, body ...genStep) error {
 // from returns the statement setting dst to the partial form of the source
 // value src.
 func (w *methodWriter) from(m mapped, dst, src genExpr) genStep {
-	assign := func(rhs genExpr) genStep { return stmt("%s = %s", dst, rhs) }
+	assign := func(rhs genExpr) genStep { return lang.Stmt("%s = %s", dst, rhs) }
 	und := func(genCtx) (string, error) { return w.p.ident(undPath) }
 	call := func(op helperOp) genStep {
 		return assign(w.p.call(&helper{op: op, typ: m.source, route: m.route, named: m.named}, src))
 	}
 	switch m.conv {
 	case convPlain:
-		return assign(expr("%s.Defined(%s)", und, src))
+		return assign(lang.Expr("%s.Defined(%s)", und, src))
 	case convSlice:
-		return assign(expr("%s.WrapSlice(%s).CollapseToNull()", und, src))
+		return assign(lang.Expr("%s.WrapSlice(%s).CollapseToNull()", und, src))
 	case convMap:
-		return assign(expr("%s.WrapMap(%s).CollapseToNull()", und, src))
+		return assign(lang.Expr("%s.WrapMap(%s).CollapseToNull()", und, src))
 	case convPointer:
-		return assign(expr("%s.FromPointer(%s).CollapseToNull()", und, src))
+		return assign(lang.Expr("%s.FromPointer(%s).CollapseToNull()", und, src))
 	case convOption:
-		return assign(expr("%s.FromOption(%s, true)", und, src))
+		return assign(lang.Expr("%s.FromOption(%s, true)", und, src))
 	case convCopy:
 		return assign(src)
 	case convTarget, convTargetPointer:
@@ -128,56 +137,54 @@ func (w *methodWriter) from(m mapped, dst, src genExpr) genStep {
 	case convTargetRef:
 		return call(opFromTargetRef)
 	case convEmbedded:
-		return stmt("%s.FromValue(%s)", dst, src)
+		return lang.Stmt("%s.FromValue(%s)", dst, src)
 	case convEmbeddedPointer:
 		return call(opFromEmbedded)
 	}
-	return unknownConv(m.conv)
+	return lang.Fail(unknownConv(m.conv))
 }
 
 // to returns the statements setting dst to the value the partial value src
 // describes. A conditional conversion leaves dst as it is when src is
 // undefined or null, so dst must hold the zero value.
 func (w *methodWriter) to(m mapped, dst, src genExpr) genStep {
-	assign := func(rhs genExpr) genStep { return stmt("%s = %s", dst, rhs) }
+	assign := func(rhs genExpr) genStep { return lang.Stmt("%s = %s", dst, rhs) }
 	call := func(op helperOp) genStep {
 		return assign(w.p.call(&helper{op: op, typ: m.source, route: m.route, named: m.named}, src))
 	}
 	switch m.conv {
 	case convPlain, convSlice, convMap:
-		return assign(expr("%s.Value()", src))
+		return assign(lang.Expr("%s.Value()", src))
 	case convPointer:
 		// opt.Option.Pointer has a pointer receiver, which the result of
 		// Flatten does not provide.
-		return genhelper.If(expr("%s.IsDefined()", src), genSteps{
-			stmt("%s := %s.Value()", decl("o"), src),
-			stmt("%s = &%s", dst, name("o")),
+		return lang.If(lang.Expr("%s.IsDefined()", src), genSteps{
+			lang.Stmt("%s := %s.Value()", decl("o"), src),
+			lang.Stmt("%s = &%s", dst, lang.Name("o")),
 		}, nil)
 	case convOption:
-		return assign(expr("%s.Flatten()", src))
+		return assign(lang.Expr("%s.Flatten()", src))
 	case convCopy:
 		return assign(src)
 	case convTarget:
 		// Value gives the zero partial value for undefined and null, which
 		// converts back to the zero value.
-		return assign(expr("%s.Value().ToValue()", src))
+		return assign(lang.Expr("%s.Value().ToValue()", src))
 	case convTargetPointer:
 		return call(opToTarget)
 	case convTargetRef:
 		return call(opToTargetRef)
 	case convEmbedded:
-		return assign(expr("%s.ToValue()", src))
+		return assign(lang.Expr("%s.ToValue()", src))
 	case convEmbeddedPointer:
 		return call(opToEmbedded)
 	}
-	return unknownConv(m.conv)
+	return lang.Fail(unknownConv(m.conv))
 }
 
-// unknownConv is the step failing for the unknown conversion c.
-func unknownConv(c conv) genStep {
-	return genhelper.FuncStep[genCtx](func(ctx genCtx, _ []byte) (genCtx, []byte, error) {
-		return ctx, nil, fmt.Errorf("partial: unknown conversion %d", c)
-	})
+// unknownConv returns the error for the unknown conversion c.
+func unknownConv(c conv) error {
+	return fmt.Errorf("partial: unknown conversion %d", c)
 }
 
 // conditional reports whether the statements of to for c leave their
@@ -186,15 +193,15 @@ func conditional(c conv) bool { return c == convPointer }
 
 // merge returns the statement merging the field r onto the field l.
 func (w *methodWriter) merge(f fieldInfo, l, r genExpr) genStep {
-	overwrite := genhelper.If(expr("!%s.IsUndefined()", r), stmt("%s = %s", l, r), nil)
-	assign := func(rhs genExpr) genStep { return stmt("%s = %s", l, rhs) }
+	overwrite := lang.If(lang.Expr("!%s.IsUndefined()", r), lang.Stmt("%s = %s", l, r), nil)
+	assign := func(rhs genExpr) genStep { return lang.Stmt("%s = %s", l, rhs) }
 	switch {
 	case f.class == classEmbedded && f.strategy == string(MergeNestedRecursive):
-		return assign(expr("%s.Merge(%s)", l, r))
+		return assign(lang.Expr("%s.Merge(%s)", l, r))
 	case f.class == classEmbedded:
 		// An embedded partial has no undefined state of its own.
 		test := w.p.call(&helper{op: opAllUndefined, typ: f.named, named: f.named}, r)
-		return genhelper.If(expr("!%s", test), stmt("%s = %s", l, r), nil)
+		return lang.If(lang.Expr("!%s", test), lang.Stmt("%s = %s", l, r), nil)
 	case f.class == classElastic:
 		return overwrite
 	case f.strategy == string(MergeAppend) && (f.class == classSubSlice || f.class == classSubMap):
@@ -217,12 +224,14 @@ func (w *methodWriter) merge(f fieldInfo, l, r genExpr) genStep {
 
 func (w *methodWriter) applyTo() error {
 	return w.function(
-		docComment("ApplyTo returns v with the change p describes applied. It is\n"+
-			"FromValue of v merged with p, converted back with ToValue."),
-		expr("func (%s %s) ApplyTo(%s %s) %s", decl("p"), w.recv, decl("v"), w.source, w.source),
-		stmt("var %s %s", decl("base"), w.recv),
-		stmt("%s.FromValue(%s)", name("base"), name("v")),
-		stmt("return %s.Merge(%s).ToValue()", name("base"), name("p")),
+		docComment("ApplyTo returns %s with the change %s describes applied. It is\n"+
+			"FromValue of %s merged with %s, converted back with ToValue.",
+			lang.Name("v"), lang.Name("p"), lang.Name("v"), lang.Name("p")),
+		lang.Expr("func (%s %s) ApplyTo(%s %s) %s",
+			decl("p"), w.recv, decl("v"), w.source, w.source),
+		lang.Stmt("var %s %s", decl("base"), w.recv),
+		lang.Stmt("%s.FromValue(%s)", lang.Name("base"), lang.Name("v")),
+		lang.Stmt("return %s.Merge(%s).ToValue()", lang.Name("base"), lang.Name("p")),
 	)
 }
 
@@ -239,15 +248,16 @@ func fieldSteps(fields []fieldInfo, step func(f fieldInfo) genStep) genSteps {
 
 // fieldOf returns the field sel of the value role refers to.
 func fieldOf(role, sel string) genExpr {
-	return expr("%s.%s", name(role), sel)
+	return lang.Expr("%s.%s", lang.Name(role), sel)
 }
 
 // structMethods writes the methods of a struct partial type.
 func (w *methodWriter) structMethods(fields []fieldInfo) error {
 	err := w.function(
-		docComment("FromValue sets every field of p to the partial form of the field of v.\n"+
-			"A nil pointer, slice or map and a none option become null."),
-		expr("func (%s *%s) FromValue(%s %s)", decl("p"), w.recv, decl("v"), w.source),
+		docComment("FromValue sets every field of %s to the partial form of the field of %s.\n"+
+			"A nil pointer, slice or map and a none option become null.",
+			lang.Name("p"), lang.Name("v")),
+		lang.Expr("func (%s *%s) FromValue(%s %s)", decl("p"), w.recv, decl("v"), w.source),
 		fieldSteps(fields, func(f fieldInfo) genStep {
 			return w.from(f.mapped, fieldOf("p", f.partial), fieldOf("v", f.name))
 		}),
@@ -257,33 +267,38 @@ func (w *methodWriter) structMethods(fields []fieldInfo) error {
 	}
 
 	err = w.function(
-		docComment("ToValue returns the value p describes. An undefined or null field\n"+
-			"gives the zero value of the field."),
-		expr("func (%s %s) ToValue() %s", decl("p"), w.recv, w.source),
-		stmt("var %s %s", decl("v"), w.source),
+		docComment("ToValue returns the value %s describes. An undefined or null field\n"+
+			"gives the zero value of the field.", lang.Name("p")),
+		lang.Expr("func (%s %s) ToValue() %s", decl("p"), w.recv, w.source),
+		lang.Stmt("var %s %s", decl("v"), w.source),
 		fieldSteps(fields, func(f fieldInfo) genStep {
 			return w.to(f.mapped, fieldOf("v", f.name), fieldOf("p", f.partial))
 		}),
-		stmt("return %s", name("v")),
+		lang.Stmt("return %s", lang.Name("v")),
 	)
 	if err != nil {
 		return err
 	}
 
 	err = w.function(
-		docComment("Merge returns p with the fields of r merged onto it. An undefined\n"+
-			"field of r keeps the field of p. Merge writes to neither p nor r."),
-		expr("func (%s %s) Merge(%s %s) %s", decl("p"), w.recv, decl("r"), w.recv, w.recv),
+		docComment("Merge returns %s with the fields of %s merged onto it. An undefined\n"+
+			"field of %s keeps the field of %s. Merge writes to neither %s nor %s.",
+			lang.Name("p"), lang.Name("r"), lang.Name("r"),
+			lang.Name("p"), lang.Name("p"), lang.Name("r")),
+		lang.Expr("func (%s %s) Merge(%s %s) %s", decl("p"), w.recv, decl("r"), w.recv, w.recv),
 		fieldSteps(fields, func(f fieldInfo) genStep {
 			return w.merge(f, fieldOf("p", f.partial), fieldOf("r", f.partial))
 		}),
-		stmt("return %s", name("p")),
+		lang.Stmt("return %s", lang.Name("p")),
 	)
 	if err != nil {
 		return err
 	}
 
 	if err := w.applyTo(); err != nil {
+		return err
+	}
+	if err := w.fieldMaskMethods(fields); err != nil {
 		return err
 	}
 	return w.flagMethods(fields)
@@ -306,27 +321,27 @@ func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.T
 		dst, src genExpr, conv convFunc, back bool, typ string,
 	) genStep {
 		if !isMap || !back || !conditional(elem.conv) {
-			return genhelper.ForRange(idx, "e", src,
-				conv(elem, expr("%s[%s]", dst, name(idx)), name("e")),
+			return lang.ForRange(idx, "e", src,
+				conv(elem, lang.Expr("%s[%s]", dst, lang.Name(idx)), lang.Name("e")),
 			)
 		}
-		return genhelper.ForRange(idx, "e", src, genSteps{
-			stmt("var %s %s", decl("x"), typ),
-			conv(elem, name("x"), name("e")),
-			stmt("%s[%s] = %s", dst, name(idx), name("x")),
+		return lang.ForRange(idx, "e", src, genSteps{
+			lang.Stmt("var %s %s", decl("x"), typ),
+			conv(elem, lang.Name("x"), lang.Name("e")),
+			lang.Stmt("%s[%s] = %s", dst, lang.Name(idx), lang.Name("x")),
 		})
 	}
 
 	err := w.function(
-		docComment("FromValue sets p to the partial forms of the elements of v. A nil v\n"+
-			"gives a nil p."),
-		expr("func (%s *%s) FromValue(%s %s)", decl("p"), w.recv, decl("v"), w.source),
-		genhelper.If(expr("%s == nil", name("v")), genSteps{
-			stmt("*%s = nil", name("p")),
-			stmt("return"),
+		docComment("FromValue sets %s to the partial forms of the elements of %s. A nil %s\n"+
+			"gives a nil %s.", lang.Name("p"), lang.Name("v"), lang.Name("v"), lang.Name("p")),
+		lang.Expr("func (%s *%s) FromValue(%s %s)", decl("p"), w.recv, decl("v"), w.source),
+		lang.If(lang.Expr("%s == nil", lang.Name("v")), genSteps{
+			lang.Stmt("*%s = nil", lang.Name("p")),
+			lang.Stmt("return"),
 		}, nil),
-		stmt("*%s = make(%s, len(%s))", name("p"), w.recv, name("v")),
-		elemLoop(expr("(*%s)", name("p")), name("v"), w.from, false, ""),
+		lang.Stmt("*%s = make(%s, len(%s))", lang.Name("p"), w.recv, lang.Name("v")),
+		elemLoop(lang.Expr("(*%s)", lang.Name("p")), lang.Name("v"), w.from, false, ""),
 	)
 	if err != nil {
 		return err
@@ -337,56 +352,66 @@ func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.T
 		return err
 	}
 	err = w.function(
-		docComment("ToValue returns the value p describes. An undefined or null element\n"+
-			"gives the zero value of the element, and a nil p gives nil."),
-		expr("func (%s %s) ToValue() %s", decl("p"), w.recv, w.source),
-		genhelper.If(expr("%s == nil", name("p")), stmt("return nil"), nil),
-		stmt("%s := make(%s, len(%s))", decl("v"), w.source, name("p")),
-		elemLoop(name("v"), name("p"), w.to, true, elemType),
-		stmt("return %s", name("v")),
+		docComment("ToValue returns the value %s describes. An undefined or null element\n"+
+			"gives the zero value of the element, and a nil %s gives nil.",
+			lang.Name("p"), lang.Name("p")),
+		lang.Expr("func (%s %s) ToValue() %s", decl("p"), w.recv, w.source),
+		lang.If(lang.Expr("%s == nil", lang.Name("p")), lang.Stmt("return nil"), nil),
+		lang.Stmt("%s := make(%s, len(%s))", decl("v"), w.source, lang.Name("p")),
+		elemLoop(lang.Name("v"), lang.Name("p"), w.to, true, elemType),
+		lang.Stmt("return %s", lang.Name("v")),
 	)
 	if err != nil {
 		return err
 	}
 
-	mergeDoc := "returns r, or p when r is nil."
+	mergeDoc := lang.Expr("returns %s, or %s when %s is nil.",
+		lang.Name("r"), lang.Name("p"), lang.Name("r"))
 	if w.p.sel.opts.Merge == MergeAppend {
-		mergeDoc = "returns the elements of p then r in a new slice. A nil\n" +
-			"p or r gives the other."
+		mergeDoc = lang.Expr("returns the elements of %s then %s in a new slice. A nil\n"+
+			"%s or %s gives the other.",
+			lang.Name("p"), lang.Name("r"), lang.Name("p"), lang.Name("r"))
 		if isMap {
-			mergeDoc = "returns the entries of p with the entries of r set in a\n" +
-				"new map. A nil p or r gives the other."
+			mergeDoc = lang.Expr("returns the entries of %s with the entries of %s set in a\n"+
+				"new map. A nil %s or %s gives the other.",
+				lang.Name("p"), lang.Name("r"), lang.Name("p"), lang.Name("r"))
 		}
 	}
 	merge := genSteps{
-		genhelper.If(expr("%s == nil", name("r")), stmt("return %s", name("p")), nil),
+		lang.If(lang.Expr("%s == nil", lang.Name("r")),
+			lang.Stmt("return %s", lang.Name("p")), nil),
 	}
 	switch {
 	case w.p.sel.opts.Merge != MergeAppend:
-		merge = append(merge, stmt("return %s", name("r")))
+		merge = append(merge, lang.Stmt("return %s", lang.Name("r")))
 	case isMap:
 		mp, err := w.p.ident(mapsPath)
 		if err != nil {
 			return err
 		}
 		merge = append(merge,
-			genhelper.If(expr("%s == nil", name("p")), stmt("return %s", name("r")), nil),
-			stmt("%s := make(%s, len(%s)+len(%s))", decl("o"), w.recv, name("p"), name("r")),
-			stmt("%s.Copy(%s, %s)", mp, name("o"), name("p")),
-			stmt("%s.Copy(%s, %s)", mp, name("o"), name("r")),
-			stmt("return %s", name("o")),
+			lang.If(lang.Expr("%s == nil", lang.Name("p")),
+				lang.Stmt("return %s", lang.Name("r")), nil),
+			lang.Stmt("%s := make(%s, len(%s)+len(%s))",
+				decl("o"), w.recv, lang.Name("p"), lang.Name("r")),
+			lang.Stmt("%s.Copy(%s, %s)", mp, lang.Name("o"), lang.Name("p")),
+			lang.Stmt("%s.Copy(%s, %s)", mp, lang.Name("o"), lang.Name("r")),
+			lang.Stmt("return %s", lang.Name("o")),
 		)
 	default:
 		merge = append(merge,
-			genhelper.If(expr("%s == nil", name("p")), stmt("return %s", name("r")), nil),
-			stmt("%s := make(%s, 0, len(%s)+len(%s))", decl("o"), w.recv, name("p"), name("r")),
-			stmt("%s = append(%s, %s...)", name("o"), name("o"), name("p")),
-			stmt("return append(%s, %s...)", name("o"), name("r")),
+			lang.If(lang.Expr("%s == nil", lang.Name("p")),
+				lang.Stmt("return %s", lang.Name("r")), nil),
+			lang.Stmt("%s := make(%s, 0, len(%s)+len(%s))",
+				decl("o"), w.recv, lang.Name("p"), lang.Name("r")),
+			lang.Stmt("%s = append(%s, %s...)", lang.Name("o"), lang.Name("o"), lang.Name("p")),
+			lang.Stmt("return append(%s, %s...)", lang.Name("o"), lang.Name("r")),
 		)
 	}
 	err = w.function(
-		docComment("Merge %s Merge writes to neither p nor r.", mergeDoc),
-		expr("func (%s %s) Merge(%s %s) %s", decl("p"), w.recv, decl("r"), w.recv, w.recv),
+		docComment("Merge %s Merge writes to neither %s nor %s.",
+			mergeDoc, lang.Name("p"), lang.Name("r")),
+		lang.Expr("func (%s %s) Merge(%s %s) %s", decl("p"), w.recv, decl("r"), w.recv, w.recv),
 		merge...,
 	)
 	if err != nil {
@@ -402,7 +427,7 @@ type convFunc func(m mapped, dst, src genExpr) genStep
 
 // decls parses the methods written.
 func (w *methodWriter) decls() ([]dst.Decl, error) {
-	decls, err := genhelper.ParseDstDecls([]byte(w.b.String()))
+	decls, err := gofragment.ParseDstDecls([]byte(w.b.String()))
 	if err != nil {
 		return nil, fmt.Errorf("partial: parse methods of %s: %w", w.recv, err)
 	}

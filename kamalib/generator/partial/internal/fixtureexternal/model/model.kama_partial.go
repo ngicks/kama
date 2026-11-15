@@ -3,7 +3,7 @@
 //	merge: "overwrite"
 //	merge_nested: "recursive"
 //	option_file: "partial.yaml"
-// generated: 2026-11-13T22:48:00Z
+// generated: 2026-11-14T00:59:23Z
 
 package model
 
@@ -20,31 +20,39 @@ import (
 type UserPartial struct {
 	BasePartial
 	AuditPartial
-	Status  und.Und[Status]                   `json:",omitzero"`
-	Time    und.Und[time.Time]                `json:",omitzero"`
-	Name    und.Und[string]                   `json:"name,omitzero"`
-	Age     und.Und[int]                      `json:"age,omitzero"`
-	Nick    und.Und[string]                   `json:"nick,omitzero" yaml:"nick,omitempty" toml:"nick,omitzero"`
-	Email   und.Und[string]                   `json:"email,omitzero" yaml:"email,omitempty" toml:"email,omitzero" xml:"email"`
-	Skipped und.Und[string]                   `json:"-"`
-	Address und.Und[AddressPartial]           `json:"address,omitzero"`
-	Geo     und.Und[GeoPartial]               `json:"geo,omitzero"`
-	Tags    und.Und[[]string]                 `json:"tags,omitzero"`
-	Attrs   und.Und[map[string]int]           `json:"attrs,omitzero"`
-	Pos     und.Und[[2]float64]               `json:"pos,omitzero"`
-	Geos    und.Und[[]Geo]                    `json:"geos,omitzero"`
-	Items   und.Und[ItemsPartial]             `json:"items,omitzero"`
-	Index   und.Und[IndexPartial]             `json:"index,omitzero"`
-	Box     und.Und[BoxPartial[int]]          `json:"box,omitzero"`
-	Pair    und.Und[PairPartial[string, Geo]] `json:"pair,omitzero"`
-	Stat    und.Und[StatPartial[float64]]     `json:"stat,omitzero"`
-	Opt     und.Und[int]                      `json:"opt,omitzero"`
-	Und     und.Und[string]                   `json:"und,omitzero"`
-	Elastic elastic.Elastic[int]              `json:"elastic,omitzero"`
-	Fn      und.Und[func() error]             `json:",omitzero"`
-	Ch      und.Und[chan int]                 `json:",omitzero"`
-	Any     und.Und[any]                      `json:",omitzero"`
-	secret  und.Und[int]
+	Status und.Und[Status]    `json:",omitzero"`
+	Time   und.Und[time.Time] `json:",omitzero"`
+
+	Name    und.Und[string] `json:"name,omitzero"`
+	Age     und.Und[int]    `json:"age,omitzero"`
+	Nick    und.Und[string] `json:"nick,omitzero" yaml:"nick,omitempty" toml:"nick,omitzero"`
+	Email   und.Und[string] `json:"email,omitzero" yaml:"email,omitempty" toml:"email,omitzero" xml:"email"`
+	Skipped und.Und[string] `json:"-"`
+
+	Address und.Und[AddressPartial] `json:"address,omitzero"`
+	Geo     und.Und[GeoPartial]     `json:"geo,omitzero"`
+
+	Tags  und.Und[[]string]       `json:"tags,omitzero"`
+	Attrs und.Und[map[string]int] `json:"attrs,omitzero"`
+	Pos   und.Und[[2]float64]     `json:"pos,omitzero"`
+	Geos  und.Und[[]Geo]          `json:"geos,omitzero"`
+
+	Items und.Und[ItemsPartial] `json:"items,omitzero"`
+	Index und.Und[IndexPartial] `json:"index,omitzero"`
+
+	Box  und.Und[BoxPartial[int]]          `json:"box,omitzero"`
+	Pair und.Und[PairPartial[string, Geo]] `json:"pair,omitzero"`
+	Stat und.Und[StatPartial[float64]]     `json:"stat,omitzero"`
+
+	Opt     und.Und[int]         `json:"opt,omitzero"`
+	Und     und.Und[string]      `json:"und,omitzero"`
+	Elastic elastic.Elastic[int] `json:"elastic,omitzero"`
+
+	Fn  und.Und[func() error] `json:",omitzero"`
+	Ch  und.Und[chan int]     `json:",omitzero"`
+	Any und.Und[any]          `json:",omitzero"`
+
+	secret und.Und[int]
 }
 
 // FromValue sets every field of p to the partial form of the field of v.
@@ -347,8 +355,7 @@ func (p AddressPartial) ApplyTo(v Address) Address {
 //
 //kama:generated kama-partial
 type GeoPartial struct {
-	Lat und.Und[float64] `json:",omitzero"`
-	Lng und.Und[float64] `json:",omitzero"`
+	Lat, Lng und.Und[float64] `json:",omitzero"`
 }
 
 // FromValue sets every field of p to the partial form of the field of v.

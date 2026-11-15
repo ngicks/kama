@@ -1,4 +1,4 @@
-package genhelper
+package gofragment
 
 import (
 	"bytes"
@@ -7,16 +7,9 @@ import (
 	"go/token"
 )
 
-// The ast functions suit reading and type checking. Comments of ast nodes
-// are placed by position, and nodes parsed from partial text carry the
-// positions of the throwaway file wrapping that text. Comments drift when
-// such nodes move into another file. The ast Print functions print only
-// the comments node fields hold, such as the Doc of a declaration. The dst
-// functions keep comments attached to their nodes.
-
 func parseAstWrapped(fset *token.FileSet, k partialKind, b []byte) (*ast.File, error) {
 	if fset == nil {
-		return nil, fmt.Errorf("genhelper: parse %s: %w", k, ErrNoFileSet)
+		return nil, fmt.Errorf("gofragment: parse %s: %w", k, ErrNoFileSet)
 	}
 	return parseWrapped(fset, k, b)
 }
@@ -77,13 +70,13 @@ func ParseAstDecls(fset *token.FileSet, b []byte) ([]ast.Decl, error) {
 // PrintAst returns an error wrapping [ErrNoFileSet] when fset is nil.
 func PrintAst(fset *token.FileSet, n ast.Node) ([]byte, error) {
 	if fset == nil {
-		return nil, fmt.Errorf("genhelper: print: %w", ErrNoFileSet)
+		return nil, fmt.Errorf("gofragment: print: %w", ErrNoFileSet)
 	}
 	switch n := n.(type) {
 	case ast.Expr:
 		var buf bytes.Buffer
 		if err := printConfig(0).Fprint(&buf, fset, n); err != nil {
-			return nil, fmt.Errorf("genhelper: print expression: %w", err)
+			return nil, fmt.Errorf("gofragment: print expression: %w", err)
 		}
 		return buf.Bytes(), nil
 	case ast.Stmt:
@@ -91,7 +84,7 @@ func PrintAst(fset *token.FileSet, n ast.Node) ([]byte, error) {
 	case ast.Decl:
 		return PrintAstDecls(fset, []ast.Decl{n})
 	default:
-		return nil, fmt.Errorf("genhelper: print: unsupported node %T", n)
+		return nil, fmt.Errorf("gofragment: print: unsupported node %T", n)
 	}
 }
 
@@ -101,14 +94,14 @@ func PrintAst(fset *token.FileSet, n ast.Node) ([]byte, error) {
 // PrintAstStmts returns an error wrapping [ErrNoFileSet] when fset is nil.
 func PrintAstStmts(fset *token.FileSet, stmts []ast.Stmt) ([]byte, error) {
 	if fset == nil {
-		return nil, fmt.Errorf("genhelper: print statements: %w", ErrNoFileSet)
+		return nil, fmt.Errorf("gofragment: print statements: %w", ErrNoFileSet)
 	}
 	if len(stmts) == 0 {
 		return []byte{}, nil
 	}
 	b, err := printBlock(fset, &ast.BlockStmt{List: stmts}, nil)
 	if err != nil {
-		return nil, fmt.Errorf("genhelper: print statements: %w", err)
+		return nil, fmt.Errorf("gofragment: print statements: %w", err)
 	}
 	return b, nil
 }
@@ -119,14 +112,14 @@ func PrintAstStmts(fset *token.FileSet, stmts []ast.Stmt) ([]byte, error) {
 // PrintAstDecls returns an error wrapping [ErrNoFileSet] when fset is nil.
 func PrintAstDecls(fset *token.FileSet, decls []ast.Decl) ([]byte, error) {
 	if fset == nil {
-		return nil, fmt.Errorf("genhelper: print declarations: %w", ErrNoFileSet)
+		return nil, fmt.Errorf("gofragment: print declarations: %w", ErrNoFileSet)
 	}
 	if len(decls) == 0 {
 		return []byte{}, nil
 	}
 	var buf bytes.Buffer
 	if err := printConfig(0).Fprint(&buf, fset, decls); err != nil {
-		return nil, fmt.Errorf("genhelper: print declarations: %w", err)
+		return nil, fmt.Errorf("gofragment: print declarations: %w", err)
 	}
 	return trimLines(buf.Bytes()), nil
 }

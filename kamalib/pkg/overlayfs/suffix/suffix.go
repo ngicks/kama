@@ -6,7 +6,7 @@
 package suffix
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"log/slog"
 	"os/exec"
 	"path/filepath"
@@ -19,11 +19,12 @@ var (
 	suffixOs, suffixArch map[string]bool
 )
 
+// goToolDistListJson is an element of the output of go tool dist list -json.
 type goToolDistListJson struct {
-	GOOS         string
-	GOARCH       string
-	CgoSupported bool
-	FirstClass   bool
+	GOOS         string `json:"GOOS"`
+	GOARCH       string `json:"GOARCH"`
+	CgoSupported bool   `json:"CgoSupported"`
+	FirstClass   bool   `json:"FirstClass"`
 }
 
 var preCachedList = []goToolDistListJson{

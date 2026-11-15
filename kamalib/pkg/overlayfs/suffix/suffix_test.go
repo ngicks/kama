@@ -1,6 +1,8 @@
 package suffix
 
 import (
+	"os/exec"
+	"slices"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -45,5 +47,21 @@ func TestIsSuffixed(t *testing.T) {
 		"foo.suffix_amd64_linux.go",
 	} {
 		assert.Assert(t, !IsSuffixed(name, ".suffix"))
+	}
+}
+
+func TestListDist(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go is not on PATH")
+	}
+
+	got, err := listDist()
+	assert.NilError(t, err)
+
+	assert.Assert(t, slices.ContainsFunc(got, func(l goToolDistListJson) bool {
+		return l.GOOS == "linux" && l.GOARCH == "amd64" && l.CgoSupported && l.FirstClass
+	}))
+	for _, l := range got {
+		assert.Assert(t, l.GOOS != "" && l.GOARCH != "", "%+v", l)
 	}
 }

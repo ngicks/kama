@@ -17,15 +17,17 @@ import (
 )
 
 const (
-	fmtPath  = "fmt"
-	mapsPath = "maps"
+	fmtPath     = "fmt"
+	mapsPath    = "maps"
+	slicesPath  = "slices"
+	stringsPath = "strings"
 )
 
 // supportPaths are the packages the generated code spells by path rather
 // than through a type it prints. A package that does not import one of
 // them, directly or not, is unknown to the import Parser, so they are
 // required explicitly.
-var supportPaths = []string{fmtPath, mapsPath, undPath}
+var supportPaths = []string{fmtPath, mapsPath, slicesPath, stringsPath, undPath}
 
 // helperOp is what a helper does. With the type of the helper it decides
 // the signature.

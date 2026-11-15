@@ -211,17 +211,21 @@ func (s *Scope) Use(role string) string {
 // Unbound returns the roles of s and the scopes nested in it that Use
 // handed a name for and no Declare claimed, sorted.
 func (s *Scope) Unbound() []string {
-	var out []string
+	out := s.appendUnbound(nil)
+	slices.Sort(out)
+	return slices.Compact(out)
+}
+
+func (s *Scope) appendUnbound(out []string) []string {
 	for role, b := range s.roles {
 		if b.pending {
 			out = append(out, role)
 		}
 	}
 	for _, child := range s.children {
-		out = append(out, child.Unbound()...)
+		out = child.appendUnbound(out)
 	}
-	slices.Sort(out)
-	return slices.Compact(out)
+	return out
 }
 
 func (s *Scope) fresh(hint string) string {
