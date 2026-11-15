@@ -452,6 +452,7 @@ type L []S
 		"a.kama_partial.go",
 		"file.kama_partial.go",
 		FlagSetFile,
+		HelpersFile,
 		"types.kama_partial.go",
 	})
 	assert.DeepEqual(t, partialTypes(t, files["a.kama_partial.go"]), []string{

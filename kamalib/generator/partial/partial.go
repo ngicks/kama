@@ -35,6 +35,15 @@ const GeneratorName = "kama-partial"
 // generated from it.
 const FileSuffix = ".kama_partial"
 
+// HelpersFile is the name of the file declaring the helpers the partial
+// files of a package call.
+const HelpersFile = "kama_partial_helpers.go"
+
+// HelpersSuffix is inserted into the name of a source file that has a
+// build constraint to name the file declaring the helpers only files with
+// a build constraint call.
+const HelpersSuffix = ".kama_partial_helpers"
+
 // generatorPath is the import path of the generator, named by the first
 // line of the header of every generated file.
 const generatorPath = "github.com/ngicks/kama/kamalib/generator/partial"
@@ -156,7 +165,8 @@ type File struct {
 
 // Generate returns the partial type declarations and their methods for
 // the targets in pkgs, one file per source file declaring targets, and the
-// flag set file of each package holding targets, sorted by path. See the
+// helpers files and the flag set file of each package holding targets,
+// sorted by path. See the
 // package documentation for target selection, the type mapping, the
 // methods and their helpers.
 //
@@ -209,13 +219,17 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		}
 		base := filepath.Base(filename)
 		out := suffix.SuffixFilename(base, FileSuffix)
-		_, constrained := buildConstraint(nodes[0].Detail.File)
+		buildLine, constrained := buildConstraint(nodes[0].Detail.File)
 		pf.files = append(pf.files, &partialFile{
 			path:  filepath.Join(filepath.Dir(filename), out),
 			nodes: nodes,
 			// The suffix moves after a constraint of the file name only.
 			constrained: constrained ||
 				out != strings.TrimSuffix(base, ".go")+FileSuffix+".go",
+			helpersPath: filepath.Join(
+				filepath.Dir(filename), suffix.SuffixFilename(base, HelpersSuffix),
+			),
+			buildLine: buildLine,
 		})
 	}
 
@@ -226,7 +240,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 			pf.files,
 			func(a, b *partialFile) int { return cmp.Compare(a.path, b.path) },
 		)
-		out, err := renderPackage(sel, hdr, pf.pkg, pf.files)
+		out, err := renderPackage(sel, hdr, pf.pkg, pf.dir, pf.files)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -255,23 +269,25 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	return files, staleFiles(srcPkgs, opts.Registry, files, generated), nil
 }
 
-// renderPackage prints the partial files of pkg, sorted by path.
+// renderPackage prints the partial files of pkg, sorted by path, and the
+// helpers files of dir.
 //
 // A helper is declared in one file of the package, which the files calling
 // it must agree on before any is printed. A first pass therefore collects
 // the helpers each file calls and the packages of supportPaths it spells,
 // with every one of them required. The second pass prints each file
-// requiring only those it spells, with the helpers it hosts: a required
-// import is added whether the file uses it or not.
+// requiring only those it spells: a required import is added whether the
+// file uses it or not.
 func renderPackage(
 	sel *selection,
 	hdr dst.Decorations,
 	pkg *packages.Package,
+	dir string,
 	files []*partialFile,
 ) ([]File, error) {
 	helpers := newHelperSet()
 	for _, f := range files {
-		_, p, err := renderFileWith(sel, hdr, pkg, f, supportPaths, helpers, nil)
+		_, p, err := renderFileWith(sel, hdr, pkg, f, supportPaths, helpers)
 		if err != nil {
 			return nil, err
 		}
@@ -286,26 +302,96 @@ func renderPackage(
 			f.used[helpers.name(h)] = true
 		}
 	}
-	hostHelpers(files)
 	if err := checkHelperNames(sel, pkg, files); err != nil {
 		return nil, err
 	}
 
-	out := make([]File, 0, len(files))
+	out := make([]File, 0, len(files)+1)
 	for _, f := range files {
-		require := maps.Clone(f.support)
-		for _, helper := range f.hosted {
-			maps.Copy(require, helpers.byName[helper].spelled)
-		}
 		content, _, err := renderFileWith(
-			sel, hdr, pkg, f, slices.Sorted(maps.Keys(require)), helpers, f.hosted,
+			sel, hdr, pkg, f, slices.Sorted(maps.Keys(f.support)), helpers,
 		)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, File{Path: f.path, Content: content})
 	}
+	for _, hf := range hostHelpers(filepath.Join(dir, HelpersFile), files) {
+		content, err := renderHelpers(sel, hdr, pkg, hf, helpers)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, File{Path: hf.path, Content: content})
+	}
 	return out, nil
+}
+
+// renderHelpers prints hf, declaring the helpers it hosts of helpers.
+func renderHelpers(
+	sel *selection,
+	hdr dst.Decorations,
+	pkg *packages.Package,
+	hf *helpersFile,
+	helpers *helperSet,
+) ([]byte, error) {
+	parser := importdecl.NewParser(pkg.Types)
+	parser.Reserve(types.Universe.Names()...)
+	parser.Reserve(pkg.Types.Scope().Names()...)
+	parser.Reserve(localNames...)
+	require := map[string]bool{}
+	for _, name := range hf.hosted {
+		h := helpers.byName[name]
+		for _, tp := range h.typeParams() {
+			parser.Reserve(tp.Obj().Name())
+		}
+		maps.Copy(require, h.spelled)
+	}
+	for _, path := range slices.Sorted(maps.Keys(require)) {
+		err := parser.Require(importdecl.Import{
+			Package: importdecl.Package{Path: path, Name: filepath.Base(path)},
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	m, err := parser.ParseDst(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	p := &mapper{
+		sel: sel, pkg: pkg, parser: parser, m: m,
+		helpers: helpers, calls: map[*helper]bool{}, support: map[string]bool{},
+		refs: map[string]bool{},
+	}
+	file := &dst.File{Name: dst.NewIdent(pkg.Name)}
+	file.Decs.Start = append(slices.Clone(hdr), "\n")
+	if hf.buildLine != "" {
+		file.Decs.Start = append(file.Decs.Start, hf.buildLine, "\n")
+	}
+	var src strings.Builder
+	for _, name := range hf.hosted {
+		text, err := p.helperDecl(name, helpers.byName[name])
+		if err != nil {
+			return nil, err
+		}
+		src.WriteString(text)
+	}
+	decls, err := gofragment.ParseDstDecls([]byte(src.String()))
+	if err != nil {
+		return nil, fmt.Errorf("partial: parse helpers of %s: %w", hf.path, err)
+	}
+	for _, d := range decls {
+		d.Decorations().Before = dst.EmptyLine
+	}
+	file.Decls = decls
+	m.AddMissingDst(file)
+
+	var buf bytes.Buffer
+	if err := decorator.Fprint(&buf, file); err != nil {
+		return nil, fmt.Errorf("partial: print %s: %w", hf.path, err)
+	}
+	return buf.Bytes(), nil
 }
 
 // checkHelperNames reports a package-level declaration of pkg named like a
@@ -453,8 +539,8 @@ func sourcePackages(pkgs []*packages.Package) []*packages.Package {
 	return out
 }
 
-// renderFileWith prints the partial declarations of f and the helpers
-// hosted of helpers, with the packages of require imported.
+// renderFileWith prints the partial declarations of f, with the packages
+// of require imported.
 func renderFileWith(
 	sel *selection,
 	hdr dst.Decorations,
@@ -462,7 +548,6 @@ func renderFileWith(
 	f *partialFile,
 	require []string,
 	helpers *helperSet,
-	hosted []string,
 ) ([]byte, *mapper, error) {
 	nodes := f.nodes
 	parser := importdecl.NewParser(pkg.Types)
@@ -476,11 +561,6 @@ func renderFileWith(
 	parser.Reserve(types.Universe.Names()...)
 	parser.Reserve(pkg.Types.Scope().Names()...)
 	parser.Reserve(localNames...)
-	for _, helper := range hosted {
-		for _, tp := range helpers.byName[helper].typeParams() {
-			parser.Reserve(tp.Obj().Name())
-		}
-	}
 	for _, n := range nodes {
 		// Only files with field mask methods reserve their locals, so that the
 		// import names of other files stay as they were.
@@ -523,24 +603,6 @@ func renderFileWith(
 			return nil, nil, err
 		}
 		file.Decls = append(file.Decls, decls...)
-	}
-	if len(hosted) > 0 {
-		var src strings.Builder
-		for _, helper := range hosted {
-			text, err := p.helperDecl(helper, helpers.byName[helper])
-			if err != nil {
-				return nil, nil, err
-			}
-			src.WriteString(text)
-		}
-		helperDecls, err := gofragment.ParseDstDecls([]byte(src.String()))
-		if err != nil {
-			return nil, nil, fmt.Errorf("partial: parse helpers of %s: %w", f.path, err)
-		}
-		for _, d := range helperDecls {
-			d.Decorations().Before = dst.EmptyLine
-		}
-		file.Decls = append(file.Decls, helperDecls...)
 	}
 	m.AddMissingDst(file)
 

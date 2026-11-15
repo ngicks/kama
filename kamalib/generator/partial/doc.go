@@ -337,14 +337,28 @@
 // Any other helper is not generic, so the compiler specializes it to its
 // types rather than sharing one instantiation among all pointer types.
 //
-// Each helper is declared once per package, in a partial file calling it:
-// the first one by path without a build constraint, or if every file
-// calling it has one, the first one by path. A file without a build
-// constraint is part of every build variant, so the helpers it calls are
-// found in every variant. A helper called by constrained files only is
-// declared in one of them, which assumes those files are built together.
-// A file declares its helpers sorted by name. A package-level declaration
-// named like a helper is an error.
+// Each helper is declared once per package, in a helpers file. The partial
+// files declare no helper: two of them may call one helper, which belongs
+// to neither.
+//
+// The helpers file of a package is kama_partial_helpers.go. It has no
+// build constraint and declares every helper that a partial file without a
+// build constraint calls. Such a partial file is part of every build
+// variant and calls the same helpers in each, so the helpers file comes
+// out the same whichever variant a run loads.
+//
+// A helper called by constrained files only is declared in the helpers
+// file of the first of them by path. That file is named like the partial
+// file with .kama_partial_helpers in place of .kama_partial, as in
+// x.kama_partial_helpers_linux.go for x_linux.go, and carries the
+// //go:build line of the source file. The types of such a helper may not
+// exist in another build variant, and a run loading another variant would
+// drop the helper from kama_partial_helpers.go. This placement assumes the
+// constrained files calling one helper are built together.
+//
+// A helpers file declares its helpers sorted by name. A package-level
+// declaration named like a helper is an error, and so is a declaration in
+// kama_partial_helpers.go that the generator did not write.
 //
 // # Flags
 //
@@ -512,9 +526,9 @@
 // Each source file declaring targets gets a file of the same package next
 // to it, named by inserting .kama_partial before the build constraint
 // suffixes of its name, as in x.kama_partial_linux.go for x_linux.go, and
-// the //go:build line of the source file. The partial files declare the
-// helpers they host, described under Helpers. Every generated declaration
-// carries the marker //kama:generated kama-partial.
+// the //go:build line of the source file. The helpers the partial files
+// call go to the helpers files described under Helpers. Every generated
+// declaration carries the marker //kama:generated kama-partial.
 //
 // Every generated file starts with this header:
 //
@@ -553,7 +567,8 @@
 // reported. The run cannot tell whether the package still declares targets
 // in files of build variants other than the one loaded, and those partial
 // files need it. A package whose targets are all gone keeps its
-// kama_partial_flagset.go without a warning; delete it by hand. The file
-// kama_partial_helpers.go earlier versions wrote is stale like any other
-// file the run does not produce.
+// kama_partial_flagset.go without a warning; delete it by hand. A helpers
+// file is stale like any other file the run does not produce:
+// kama_partial_helpers.go serves the partial files without a build
+// constraint only, which every run loads.
 package partial

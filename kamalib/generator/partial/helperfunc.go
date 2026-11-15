@@ -9,10 +9,10 @@ import (
 // call returns the call of h with args, recording h in the helpers of the
 // package and as called by the file when it renders.
 //
-// The first call from a file renders the function of h once: the helpers
-// its body calls are called by the file too, and the packages of
-// supportPaths it spells are recorded on h, while the imports of the file
-// stay those it spells itself.
+// Until the helpers are named, the first call from a file renders the
+// function of h once: the helpers its body calls are called by the file
+// too, and the packages of supportPaths it spells are recorded on h, while
+// the imports of the file stay those it spells itself.
 func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 	return func(c genCtx) (string, error) {
 		in := make([]string, 0, len(args))
@@ -29,9 +29,11 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 			return "", err
 		}
 		fn := p.helpers.name(h)
-		if !p.calls[h] {
+		// Once named, the calls and imports of every helper are known, and
+		// the calling file may not know the packages the helper spells.
+		if p.helpers.names == nil && !p.calls[h] {
 			p.calls[h] = true
-			// The file declaring the helper imports what it spells, which the
+			// The helpers file imports what the helper spells, which the
 			// calling file may not, so the rendering goes to a separate map.
 			m, err := p.parser.ParseDst(nil)
 			if err != nil {

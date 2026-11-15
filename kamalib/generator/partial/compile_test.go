@@ -68,9 +68,9 @@ func generateAndBuild(t *testing.T, files map[string]string, buildFlags ...strin
 }
 
 // TestHelpersAcrossBuildVariants generates with a constrained file loaded,
-// then with it left out, and builds with it included: the partial file of
-// the constrained file from the first run keeps finding the helpers it
-// calls.
+// then with it left out, and builds with it included: the helpers file of
+// the package comes out the same, and the partial file of the constrained
+// file from the first run keeps finding the helpers it calls.
 func TestHelpersAcrossBuildVariants(t *testing.T) {
 	f, opts := stage(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ N *N }\n\ntype N struct{ I int }\n",
@@ -87,32 +87,41 @@ func TestHelpersAcrossBuildVariants(t *testing.T) {
 		assert.NilError(t, err)
 		return string(b)
 	}
-	a, b := read("a.kama_partial.go"), read("b_tagged.kama_partial.go")
-	h := helperIn(t, a, b)
+	shared, own := read(HelpersFile), read("b_tagged"+HelpersSuffix+".go")
+	h := helperIn(t, shared, own)
 	fromN := "\nfunc " + h("FromTarget", "converts *N into und.Und[NPartial],") + "("
 	appendInts := "\nfunc " + h("MergeAppend", "both und.Und[[]int]:") + "("
-	// A helper both files call lives in the file without a constraint,
-	// which every build variant has.
-	assert.Assert(t, strings.Contains(a, fromN), a)
-	assert.Assert(t, !strings.Contains(b, fromN), b)
-	assert.Assert(t, strings.Contains(b, appendInts), b)
+	// A helper a file without a constraint calls lives in the helpers file
+	// of the package, which every build variant has.
+	assert.Assert(t, strings.Contains(shared, fromN), shared)
+	// A helper only the constrained file calls lives in a helpers file of
+	// the same constraint.
+	assert.Assert(t, strings.Contains(own, appendInts), own)
+	assert.Assert(t, strings.Contains(own, "//go:build tagged\n"), own)
+	for _, name := range []string{"a.kama_partial.go", "b_tagged.kama_partial.go"} {
+		assert.Assert(t, !strings.Contains(read(name), "\nfunc kamaPartial"), read(name))
+	}
 
 	opts.BuildFlags = nil
 	generateInto(t, f, opts)
-	assert.Assert(t, genhelper.SameExceptGenerated([]byte(read("a.kama_partial.go")), []byte(a)))
+	assert.Assert(t, genhelper.SameExceptGenerated([]byte(read(HelpersFile)), []byte(shared)))
 
 	opts.BuildFlags = tagged
 	_, err := gopackages.Load(context.Background(), f, opts)
 	assert.NilError(t, err)
 }
 
-// TestHelperOfConstrainedFiles builds the helpers a constrained file calls
-// alone, which it declares itself.
+// TestHelperOfConstrainedFiles builds the helpers a file with a constraint
+// in its name calls alone, which a helpers file of that constraint declares.
 func TestHelperOfConstrainedFiles(t *testing.T) {
-	assert.NilError(t, generateAndBuild(t, map[string]string{
+	files := map[string]string{
 		"a_linux.go": "package x\n\n//kama:partial\ntype A struct{ N *N }\n",
 		"b.go":       "package x\n\ntype N struct{ I int }\n\n//kama:partial\ntype B struct{ N N }\n",
-	}))
+	}
+	out := generated(t, files)
+	own := out["a"+HelpersSuffix+"_linux.go"]
+	helperIn(t, own)("FromTarget", "converts *N into und.Und[NPartial],")
+	assert.NilError(t, generateAndBuild(t, files))
 }
 
 func TestForeignUnexportedFields(t *testing.T) {

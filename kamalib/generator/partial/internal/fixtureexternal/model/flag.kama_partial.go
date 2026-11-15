@@ -3,7 +3,7 @@
 //	merge: "overwrite"
 //	merge_nested: "recursive"
 //	option_file: "partial.yaml"
-// generated: 2026-11-14T00:48:46Z
+// generated: 2026-11-15T07:27:26Z
 
 package model
 
@@ -354,29 +354,4 @@ func (p *FlagsPartial) FromFlagSet(f PartialFlagSet) error {
 		p.MinLevel = und.Defined(x)
 	}
 	return nil
-}
-
-// kamaPartialFromTarget_3871251615_3e7cd404d7 converts Address into
-// und.Und[AddressPartial], defined.
-//
-//kama:generated kama-partial
-func kamaPartialFromTarget_3871251615_3e7cd404d7(v Address) und.Und[AddressPartial] {
-	var x AddressPartial
-	x.FromValue(v)
-	return und.Defined(x)
-}
-
-// kamaPartialMergeRecursive_e960de9719_3e7cd404d7 merges r onto l, both
-// und.Und[AddressPartial]: it returns the merge of their values when both
-// are defined, l when r is undefined, and r otherwise.
-//
-//kama:generated kama-partial
-func kamaPartialMergeRecursive_e960de9719_3e7cd404d7(l, r und.Und[AddressPartial]) und.Und[AddressPartial] {
-	if r.IsUndefined() {
-		return l
-	}
-	if !l.IsDefined() || !r.IsDefined() {
-		return r
-	}
-	return und.Defined(l.Value().Merge(r.Value()))
 }

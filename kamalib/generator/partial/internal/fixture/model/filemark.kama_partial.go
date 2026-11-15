@@ -3,7 +3,7 @@
 //	merge: "overwrite"
 //	merge_nested: "recursive"
 //	option_file: null
-// generated: 2026-11-13T22:47:58Z
+// generated: 2026-11-15T07:27:24Z
 
 package model
 
@@ -109,29 +109,4 @@ func (p LimitsPartial) ApplyTo(v Limits) Limits {
 	var base LimitsPartial
 	base.FromValue(v)
 	return base.Merge(p).ToValue()
-}
-
-// kamaPartialFromTarget_02ffa29b15_37447b88c1 converts Limits into
-// und.Und[LimitsPartial], defined.
-//
-//kama:generated kama-partial
-func kamaPartialFromTarget_02ffa29b15_37447b88c1(v Limits) und.Und[LimitsPartial] {
-	var x LimitsPartial
-	x.FromValue(v)
-	return und.Defined(x)
-}
-
-// kamaPartialMergeRecursive_b7b54a5d6e_37447b88c1 merges r onto l, both
-// und.Und[LimitsPartial]: it returns the merge of their values when both
-// are defined, l when r is undefined, and r otherwise.
-//
-//kama:generated kama-partial
-func kamaPartialMergeRecursive_b7b54a5d6e_37447b88c1(l, r und.Und[LimitsPartial]) und.Und[LimitsPartial] {
-	if r.IsUndefined() {
-		return l
-	}
-	if !l.IsDefined() || !r.IsDefined() {
-		return r
-	}
-	return und.Defined(l.Value().Merge(r.Value()))
 }

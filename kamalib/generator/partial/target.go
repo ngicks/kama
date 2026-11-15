@@ -523,7 +523,7 @@ func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Obje
 // checkNames reports names the generated declarations would collide with:
 // a partial type name, a method of a partial type or the flag set
 // interface declared by something other than a generator, and a flag set
-// file holding a declaration the generator did not write. A field of a
+// file or helpers file holding a declaration the generator did not write. A field of a
 // partial type named like one of its methods is reported while mapping the
 // fields, and a helper named like another declaration once the helpers are
 // known.
@@ -576,11 +576,11 @@ func (s *selection) checkNames(generated map[types.Object]bool) error {
 		}
 		for _, f := range pkg.Syntax {
 			base := filepath.Base(pkg.Fset.Position(f.FileStart).Filename)
-			if base != FlagSetFile {
+			if base != FlagSetFile && base != HelpersFile {
 				continue
 			}
 			for _, decl := range f.Decls {
-				if s.ownDecl(decl) {
+				if s.ownDecl(base, decl) {
 					continue
 				}
 				conflict(pkg.Fset, decl.Pos(),
@@ -592,18 +592,22 @@ func (s *selection) checkNames(generated map[types.Object]bool) error {
 	return errors.Join(errs...)
 }
 
-// ownDecl reports whether decl of FlagSetFile is one the generator writes
-// there: imports and marked types.
-func (s *selection) ownDecl(decl ast.Decl) bool {
-	gd, ok := decl.(*ast.GenDecl)
-	if !ok {
-		return false
+// ownDecl reports whether decl of the file named base is one the generator
+// writes there: imports, and marked types in FlagSetFile or marked
+// functions in HelpersFile.
+func (s *selection) ownDecl(base string, decl ast.Decl) bool {
+	switch d := decl.(type) {
+	case *ast.GenDecl:
+		if d.Tok == token.IMPORT {
+			return true
+		}
+		_, ok := s.opts.Registry.Generated(d.Doc)
+		return ok && d.Tok == token.TYPE && base == FlagSetFile
+	case *ast.FuncDecl:
+		_, ok := s.opts.Registry.Generated(d.Doc)
+		return ok && d.Recv == nil && base == HelpersFile
 	}
-	if gd.Tok == token.IMPORT {
-		return true
-	}
-	_, ok = s.opts.Registry.Generated(gd.Doc)
-	return ok && gd.Tok == token.TYPE
+	return false
 }
 
 // mapCycles finds the pointer fields that close a cycle of partial

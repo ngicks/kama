@@ -117,7 +117,7 @@ func generatedFiles(t *testing.T, root string) []string {
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() &&
 			(strings.HasSuffix(p, FileSuffix+".go") ||
-				filepath.Base(p) == FlagSetFile) {
+				filepath.Base(p) == FlagSetFile || filepath.Base(p) == HelpersFile) {
 			out = append(out, p)
 		}
 		return err
@@ -153,7 +153,7 @@ func TestFixtureExternalParity(t *testing.T) {
 
 	replacer := strings.NewReplacer(pkgPath+directiveDir+"/", pkgPath+fileDir+"/")
 	// Helper names hash the types they convert, import paths included,
-	// and files declare their helpers sorted by name. Helpers are compared
+	// and a helpers file declares them sorted by name. Helpers are compared
 	// as a set with the hashes left out, the rest of each file as is.
 	hash := regexp.MustCompile(
 		`(kamaPartial[A-Za-z]+_)[0-9a-f]{10}_[0-9a-f]{10}(_[0-9a-f]{1,2})?\b`,

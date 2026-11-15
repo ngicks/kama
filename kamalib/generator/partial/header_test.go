@@ -132,8 +132,8 @@ func TestStaleNone(t *testing.T) {
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
 }
 
-// TestStaleHelpersFile reports the helpers file earlier versions of the
-// generator wrote, as the partial files now declare their helpers.
+// TestStaleHelpersFile reports the helpers file of a package whose partial
+// files call no helper.
 func TestStaleHelpersFile(t *testing.T) {
 	_, warnings, err := Generate(load(t, map[string]string{
 		"a.go": staleSources["a.go"],

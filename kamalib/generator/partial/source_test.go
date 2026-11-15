@@ -284,7 +284,7 @@ type A struct {
 	f := &partialFile{nodes: []*typegraph.Node{n}}
 	for range 2 {
 		_, _, err := renderFileWith(
-			sel, hdr, n.Detail.Pkg, f, supportPaths, newHelperSet(), nil,
+			sel, hdr, n.Detail.Pkg, f, supportPaths, newHelperSet(),
 		)
 		assert.NilError(t, err)
 	}

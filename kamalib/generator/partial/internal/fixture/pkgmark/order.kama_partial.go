@@ -3,7 +3,7 @@
 //	merge: "overwrite"
 //	merge_nested: "recursive"
 //	option_file: null
-// generated: 2026-11-13T22:47:58Z
+// generated: 2026-11-15T07:27:24Z
 
 package pkgmark
 
@@ -188,108 +188,4 @@ func (p LinePartial) ApplyTo(v Line) Line {
 	var base LinePartial
 	base.FromValue(v)
 	return base.Merge(p).ToValue()
-}
-
-// kamaPartialFromTarget_3ea584b7cb_a57000ffc0 converts *model.User into
-// und.Und[model.UserPartial], defined, or null for a nil v.
-//
-//kama:generated kama-partial
-func kamaPartialFromTarget_3ea584b7cb_a57000ffc0(v *model.User) und.Und[model.UserPartial] {
-	if v == nil {
-		return und.Null[model.UserPartial]()
-	}
-	var x model.UserPartial
-	x.FromValue(*v)
-	return und.Defined(x)
-}
-
-// kamaPartialFromTarget_c0c6ed0832_693f54335f converts Line into
-// und.Und[LinePartial], defined.
-//
-//kama:generated kama-partial
-func kamaPartialFromTarget_c0c6ed0832_693f54335f(v Line) und.Und[LinePartial] {
-	var x LinePartial
-	x.FromValue(v)
-	return und.Defined(x)
-}
-
-// kamaPartialFromTarget_ceb7f7625e_1abd6328d4 converts Lines into
-// und.Und[LinesPartial], defined, or null for a nil v.
-//
-//kama:generated kama-partial
-func kamaPartialFromTarget_ceb7f7625e_1abd6328d4(v Lines) und.Und[LinesPartial] {
-	if v == nil {
-		return und.Null[LinesPartial]()
-	}
-	var x LinesPartial
-	x.FromValue(v)
-	return und.Defined(x)
-}
-
-// kamaPartialFromTarget_dcf03a89da_01976434d2 converts shared.Money into
-// und.Und[shared.MoneyPartial], defined.
-//
-//kama:generated kama-partial
-func kamaPartialFromTarget_dcf03a89da_01976434d2(v shared.Money) und.Und[shared.MoneyPartial] {
-	var x shared.MoneyPartial
-	x.FromValue(v)
-	return und.Defined(x)
-}
-
-// kamaPartialMergeRecursive_4a2a83e1cf_1abd6328d4 merges r onto l, both
-// und.Und[LinesPartial]: it returns the merge of their values when both are
-// defined, l when r is undefined, and r otherwise.
-//
-//kama:generated kama-partial
-func kamaPartialMergeRecursive_4a2a83e1cf_1abd6328d4(l, r und.Und[LinesPartial]) und.Und[LinesPartial] {
-	if r.IsUndefined() {
-		return l
-	}
-	if !l.IsDefined() || !r.IsDefined() {
-		return r
-	}
-	return und.Defined(l.Value().Merge(r.Value()))
-}
-
-// kamaPartialMergeRecursive_6fb2848db5_a57000ffc0 merges r onto l, both
-// und.Und[model.UserPartial]: it returns the merge of their values when
-// both are defined, l when r is undefined, and r otherwise.
-//
-//kama:generated kama-partial
-func kamaPartialMergeRecursive_6fb2848db5_a57000ffc0(l, r und.Und[model.UserPartial]) und.Und[model.UserPartial] {
-	if r.IsUndefined() {
-		return l
-	}
-	if !l.IsDefined() || !r.IsDefined() {
-		return r
-	}
-	return und.Defined(l.Value().Merge(r.Value()))
-}
-
-// kamaPartialMergeRecursive_de043d8097_01976434d2 merges r onto l, both
-// und.Und[shared.MoneyPartial]: it returns the merge of their values when
-// both are defined, l when r is undefined, and r otherwise.
-//
-//kama:generated kama-partial
-func kamaPartialMergeRecursive_de043d8097_01976434d2(l, r und.Und[shared.MoneyPartial]) und.Und[shared.MoneyPartial] {
-	if r.IsUndefined() {
-		return l
-	}
-	if !l.IsDefined() || !r.IsDefined() {
-		return r
-	}
-	return und.Defined(l.Value().Merge(r.Value()))
-}
-
-// kamaPartialToTarget_a57000ffc0_3ea584b7cb converts
-// und.Und[model.UserPartial] into *model.User, newly allocated, or nil when
-// p is undefined or null.
-//
-//kama:generated kama-partial
-func kamaPartialToTarget_a57000ffc0_3ea584b7cb(p und.Und[model.UserPartial]) *model.User {
-	if !p.IsDefined() {
-		return nil
-	}
-	x := p.Value().ToValue()
-	return &x
 }

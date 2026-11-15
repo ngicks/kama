@@ -632,44 +632,78 @@ type partialFile struct {
 	// constrained reports whether the source file has a build constraint,
 	// as a //go:build line or a file name suffix.
 	constrained bool
+	// helpersPath is the helpers file carrying the build constraint of the
+	// source file, and buildLine its //go:build line or empty.
+	helpersPath string
+	buildLine   string
 	// calls are the helpers the file calls, used their names, and support
 	// the paths of supportPaths it spells.
 	calls   map[*helper]bool
 	used    map[string]bool
 	support map[string]bool
-	// hosted are the names of the helpers the file declares.
+}
+
+// helpersFile is a file declaring helpers of a package.
+type helpersFile struct {
+	path string
+	// buildLine is the //go:build line of the file, or empty.
+	buildLine string
+	// hosted are the names of the helpers the file declares, sorted.
 	hosted []string
 }
 
-// hostHelpers sets the helpers each of files, sorted by path, declares.
-// Every helper is declared once in the package: in the first file calling
-// it without a build constraint, or failing that the first file calling it.
+// hostHelpers returns the files declaring the helpers that files, sorted
+// by path, call. Every helper is declared once in the package.
 //
-// A file without a build constraint is in every build variant, and whether
-// it calls a helper does not depend on the variant loaded, so every
-// variant finds the helpers such a file calls in the same place. A helper
-// called by constrained files only lives in one of them, which stays right
-// as long as the files calling it are loaded together.
+// A helper called by a file without a build constraint goes to shared, the
+// helpers file of the package. Such a file is in every build variant, and
+// whether it calls a helper does not depend on the variant loaded, so
+// shared comes out the same whichever variant a run loads.
+//
+// A helper called by constrained files only cannot go there: its types may
+// not exist in another variant, and a run loading another variant would
+// drop it. It goes to the helpers file of the first file calling it, which
+// carries the build constraint of that file and stays right as long as the
+// files calling the helper are loaded together.
 //
 // A file declares its helpers sorted by name, that is by op and then by
 // the hashes of their signatures.
-func hostHelpers(files []*partialFile) {
+func hostHelpers(shared string, files []*partialFile) []*helpersFile {
 	names := map[string]bool{}
 	for _, f := range files {
 		maps.Copy(names, f.used)
 	}
+	byPath := map[string]*helpersFile{}
+	host := func(path, buildLine, name string) {
+		hf := byPath[path]
+		if hf == nil {
+			hf = &helpersFile{path: path, buildLine: buildLine}
+			byPath[path] = hf
+		}
+		hf.hosted = append(hf.hosted, name)
+	}
 	for _, name := range slices.Sorted(maps.Keys(names)) {
-		var host *partialFile
+		var first *partialFile
+		everywhere := false
 		for _, f := range files {
 			if !f.used[name] {
 				continue
 			}
+			first = cmp.Or(first, f)
 			if !f.constrained {
-				host = f
+				everywhere = true
 				break
 			}
-			host = cmp.Or(host, f)
 		}
-		host.hosted = append(host.hosted, name)
+		if everywhere {
+			host(shared, "", name)
+		} else {
+			host(first.helpersPath, first.buildLine, name)
+		}
 	}
+	out := make([]*helpersFile, 0, len(byPath))
+	for _, path := range slices.Sorted(maps.Keys(byPath)) {
+		out = append(out, byPath[path])
+	}
+	return out
 }

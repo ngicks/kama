@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"maps"
 	"regexp"
 	"slices"
 	"strconv"
@@ -378,6 +379,16 @@ func TestHelperSetInvariant(t *testing.T) {
 	assert.Error(t, err, err.Error())
 }
 
+// allFuncs returns the functions of srcs as funcs does for one source.
+func allFuncs(t *testing.T, srcs ...string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	for _, src := range srcs {
+		maps.Copy(out, funcs(t, src))
+	}
+	return out
+}
+
 // TestAllUndefined tests embedded partial values field by field, through
 // nested embedded partials and past blank fields, without reflection.
 func TestAllUndefined(t *testing.T) {
@@ -385,13 +396,14 @@ func TestAllUndefined(t *testing.T) {
 		"a.go": "package x\n\n//kama:partial\ntype A struct {\n\t*B\n}\n\n" +
 			"type B struct {\n\tC\n\tY string\n}\n\ntype C struct {\n\t_ int\n\tX int\n}\n",
 	}
-	src := generatedWith(t, files, Options{MergeNested: MergeNestedOverwrite})["a.kama_partial.go"]
-	assert.Assert(t, !strings.Contains(src, "reflect"), src)
+	out := generatedWith(t, files, Options{MergeNested: MergeNestedOverwrite})
+	src, helpers := out["a.kama_partial.go"], out[HelpersFile]
+	assert.Assert(t, !strings.Contains(src+helpers, "reflect"), src+helpers)
 
-	h := helperIn(t, src)
+	h := helperIn(t, helpers)
 	allB := h("AllUndefined", "every field of p, a BPartial, is undefined")
 	allC := h("AllUndefined", "every field of p, a CPartial, is undefined")
-	fs := funcs(t, src)
+	fs := allFuncs(t, src, helpers)
 	assert.Assert(t, strings.Contains(fs["APartial.Merge"], "if !"+allB+"(r.BPartial) {"),
 		fs["APartial.Merge"])
 	assert.Assert(
@@ -416,4 +428,15 @@ func TestAllUndefinedForeignUnexported(t *testing.T) {
 	}, Options{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, "unexported field y")
+}
+
+// TestHelpersFileConflict reports a helpers file holding a declaration the
+// generator did not write, which writing the file would drop.
+func TestHelpersFileConflict(t *testing.T) {
+	_, err := generate(t, map[string]string{
+		"a.go":      "package x\n\n//kama:partial\ntype A struct{ N *N }\n\ntype N struct{ I int }\n",
+		HelpersFile: "package x\n\nfunc stray() {}\n",
+	}, Options{})
+	assert.ErrorIs(t, err, ErrConflict)
+	assert.ErrorContains(t, err, HelpersFile+" holds a declaration")
 }
