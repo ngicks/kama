@@ -576,7 +576,7 @@ func (s *selection) checkNames(generated map[types.Object]bool) error {
 		}
 		for _, f := range pkg.Syntax {
 			base := filepath.Base(pkg.Fset.Position(f.FileStart).Filename)
-			if base != FlagSetFile && base != HelpersFile {
+			if base != FlagSetFile && !isHelpersFile(base) {
 				continue
 			}
 			for _, decl := range f.Decls {
@@ -594,7 +594,7 @@ func (s *selection) checkNames(generated map[types.Object]bool) error {
 
 // ownDecl reports whether decl of the file named base is one the generator
 // writes there: imports, and marked types in FlagSetFile or marked
-// functions in HelpersFile.
+// functions in a helpers file.
 func (s *selection) ownDecl(base string, decl ast.Decl) bool {
 	switch d := decl.(type) {
 	case *ast.GenDecl:
@@ -605,7 +605,7 @@ func (s *selection) ownDecl(base string, decl ast.Decl) bool {
 		return ok && d.Tok == token.TYPE && base == FlagSetFile
 	case *ast.FuncDecl:
 		_, ok := s.opts.Registry.Generated(d.Doc)
-		return ok && d.Recv == nil && base == HelpersFile
+		return ok && d.Recv == nil && isHelpersFile(base)
 	}
 	return false
 }

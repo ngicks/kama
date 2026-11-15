@@ -358,7 +358,7 @@
 //
 // A helpers file declares its helpers sorted by name. A package-level
 // declaration named like a helper is an error, and so is a declaration in
-// kama_partial_helpers.go that the generator did not write.
+// a helpers file that the generator did not write.
 //
 // # Flags
 //

@@ -44,6 +44,12 @@ const HelpersFile = "kama_partial_helpers.go"
 // a build constraint call.
 const HelpersSuffix = ".kama_partial_helpers"
 
+// isHelpersFile reports whether base names a helpers file.
+func isHelpersFile(base string) bool {
+	return base == HelpersFile || strings.HasSuffix(base, HelpersSuffix+".go") ||
+		strings.Contains(base, HelpersSuffix+"_")
+}
+
 // generatorPath is the import path of the generator, named by the first
 // line of the header of every generated file.
 const generatorPath = "github.com/ngicks/kama/kamalib/generator/partial"
@@ -64,7 +70,8 @@ var (
 	// ErrConflict reports a name the generated declarations would collide
 	// with or shadow: a partial type, a method of one, a helper or the
 	// flag set interface declared by something other than the generator, a
-	// declaration the generator did not write in the flag set file, two
+	// declaration the generator did not write in the flag set file or in a
+	// helpers file, two
 	// partial fields with one name or a partial field named like a method,
 	// more helpers sharing one hashed name than suffixes tell apart, a type
 	// parameter named like a predeclared identifier or like a name the

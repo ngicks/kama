@@ -117,7 +117,7 @@ func generatedFiles(t *testing.T, root string) []string {
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() &&
 			(strings.HasSuffix(p, FileSuffix+".go") ||
-				filepath.Base(p) == FlagSetFile || filepath.Base(p) == HelpersFile) {
+				filepath.Base(p) == FlagSetFile || isHelpersFile(filepath.Base(p))) {
 			out = append(out, p)
 		}
 		return err
