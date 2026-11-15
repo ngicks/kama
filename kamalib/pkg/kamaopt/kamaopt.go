@@ -19,6 +19,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/ngicks/opiter"
+
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
@@ -221,11 +223,10 @@ func fieldComments(f *ast.Field) []*ast.Comment {
 
 func fieldNames(f *ast.Field) []string {
 	if len(f.Names) > 0 {
-		names := make([]string, len(f.Names))
-		for i, n := range f.Names {
-			names[i] = n.Name
-		}
-		return names
+		return slices.Collect(opiter.Map(
+			func(n *ast.Ident) string { return n.Name },
+			slices.Values(f.Names),
+		))
 	}
 	return []string{embeddedName(f.Type)}
 }

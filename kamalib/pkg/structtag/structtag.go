@@ -34,6 +34,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/ngicks/opiter"
 )
 
 var (
@@ -110,10 +112,7 @@ func Parse(tag reflect.StructTag) (Tags, error) {
 
 // StructTag formats t as a reflect.StructTag, pairs separated by a space.
 func (t Tags) StructTag() reflect.StructTag {
-	parts := make([]string, len(t))
-	for i, tag := range t {
-		parts[i] = tag.String()
-	}
+	parts := slices.Collect(opiter.Map(Tag.String, slices.Values(t)))
 	return reflect.StructTag(strings.Join(parts, " "))
 }
 

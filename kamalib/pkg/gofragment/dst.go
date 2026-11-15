@@ -7,6 +7,9 @@ import (
 	"go/ast"
 	"go/printer"
 	"go/token"
+	"slices"
+
+	"github.com/ngicks/opiter"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -181,10 +184,10 @@ func PrintDstDecls(decls []dst.Decl) ([]byte, error) {
 	}
 	// A dst node belongs to one tree. Placing the clones in the wrapper
 	// keeps decls where the caller put them.
-	cloned := make([]dst.Decl, len(decls))
-	for i, d := range decls {
-		cloned[i] = dst.Clone(d).(dst.Decl)
-	}
+	cloned := slices.Collect(opiter.Map(
+		func(d dst.Decl) dst.Decl { return dst.Clone(d).(dst.Decl) },
+		slices.Values(decls),
+	))
 	// A comment leading the first declaration would otherwise follow the
 	// package clause on its line.
 	cloned[0].Decorations().Before = dst.EmptyLine

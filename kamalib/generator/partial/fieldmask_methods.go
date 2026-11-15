@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/ngicks/opiter"
+
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
@@ -58,9 +60,10 @@ func (s *selection) maskFields(n *typegraph.Node, fields []fieldInfo) ([]maskFie
 			if err != nil {
 				return nil, err
 			}
-			for _, seg := range segs {
-				mf.heads = append(mf.heads, seg.name)
-			}
+			mf.heads = slices.AppendSeq(mf.heads, opiter.Map(
+				func(seg maskSegment) string { return seg.name },
+				slices.Values(segs),
+			))
 		case f.class == classSub && s.fieldMasked(s.node(f.named).Id):
 			mf.kind = maskBranch
 		}
@@ -235,10 +238,10 @@ func (w *methodWriter) fromValueWithMaskBody(masks []maskField) (genSteps, error
 				continue
 			}
 			decls = append(decls, lang.Stmt("var %s []string", decl(subRole(f))))
-			heads := make([]genExpr, 0, len(f.heads))
-			for _, h := range f.heads {
-				heads = append(heads, lang.Expr("%s", strconv.Quote(h)))
-			}
+			heads := slices.Collect(opiter.Map(
+				func(h string) genExpr { return lang.Expr("%s", strconv.Quote(h)) },
+				slices.Values(f.heads),
+			))
 			cases = append(cases, lang.Case(
 				lang.Join(", ", heads...),
 				lang.Stmt("%s = append(%s, %s)",

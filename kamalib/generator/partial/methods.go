@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ngicks/opiter"
+
 	"github.com/dave/dst"
 
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
@@ -237,13 +239,10 @@ func (w *methodWriter) applyTo() error {
 
 // fieldSteps returns the step each field of fields not skipped gets.
 func fieldSteps(fields []fieldInfo, step func(f fieldInfo) genStep) genSteps {
-	var out genSteps
-	for _, f := range fields {
-		if f.conv != convSkip {
-			out = append(out, step(f))
-		}
-	}
-	return out
+	return slices.Collect(opiter.Map(step, opiter.Filter(
+		func(f fieldInfo) bool { return f.conv != convSkip },
+		slices.Values(fields),
+	)))
 }
 
 // fieldOf returns the field sel of the value role refers to.

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+
+	"github.com/ngicks/opiter"
 )
 
 var ErrRun = errors.New("workflow: step failed")
@@ -119,10 +121,8 @@ func runNode(
 }
 
 func refValues(refs []string, values map[string]reflect.Value) []reflect.Value {
-	out := make([]reflect.Value, len(refs))
-	for i, r := range refs {
-		out[i] = values[r]
-	}
-
-	return out
+	return slices.Collect(opiter.Map(
+		func(r string) reflect.Value { return values[r] },
+		slices.Values(refs),
+	))
 }

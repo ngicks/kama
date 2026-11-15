@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ngicks/opiter"
+
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/pkg/dstreplace"
@@ -347,12 +349,10 @@ func followed(r *typegraph.EdgeRoute) bool {
 		typegraph.EdgeKindMapValue |
 		typegraph.EdgeKindPointer |
 		typegraph.EdgeKindAlias
-	for _, n := range r.Nodes {
-		if n.Kind&allowed == 0 {
-			return false
-		}
-	}
-	return true
+	return opiter.Every(
+		func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 },
+		slices.Values(r.Nodes),
+	)
 }
 
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
@@ -640,10 +640,10 @@ func (s *selection) mapCycles() error {
 		switch state[n.Id] {
 		case visiting:
 			i := slices.Index(path, n.Id)
-			var names []string
-			for _, id := range append(path[i:], n.Id) {
-				names = append(names, id.TypeName)
-			}
+			names := slices.Collect(opiter.Map(
+				func(id typegraph.QualifiedType) string { return id.TypeName },
+				slices.Values(append(path[i:], n.Id)),
+			))
 			return fmt.Errorf(
 				"%w: %s (%s): partial variants would be recursive through embedded fields: %s",
 				ErrUnsupported, nodeName(n),

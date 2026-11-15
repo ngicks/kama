@@ -29,8 +29,11 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
+
+	"github.com/ngicks/opiter"
 )
 
 var (
@@ -371,12 +374,10 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 		pending[name] = len(deps)
 	}
 
-	var ready []string
-	for name, n := range pending {
-		if n == 0 {
-			ready = append(ready, name)
-		}
-	}
+	ready := slices.Collect(opiter.OmitL(opiter.Filter2(
+		func(_ string, n int) bool { return n == 0 },
+		maps.All(pending),
+	)))
 
 	order := make([]string, 0, len(steps))
 	for len(ready) > 0 {
@@ -394,13 +395,10 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 	}
 
 	if len(order) != len(steps) {
-		var stuck []string
-		for name, n := range pending {
-			if n > 0 {
-				stuck = append(stuck, name)
-			}
-		}
-		slices.Sort(stuck)
+		stuck := slices.Sorted(opiter.OmitL(opiter.Filter2(
+			func(_ string, n int) bool { return n > 0 },
+			maps.All(pending),
+		)))
 
 		return nil, fmt.Errorf("%w: among %v", ErrCycle, stuck)
 	}

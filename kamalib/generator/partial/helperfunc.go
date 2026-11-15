@@ -3,7 +3,10 @@ package partial
 import (
 	"fmt"
 	"go/types"
+	"slices"
 	"strings"
+
+	"github.com/ngicks/opiter"
 )
 
 // call returns the call of h with args, recording h in the helpers of the
@@ -52,10 +55,10 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 
 		var targs string
 		if tps := h.typeParams(); len(tps) > 0 {
-			names := make([]string, 0, len(tps))
-			for _, tp := range tps {
-				names = append(names, tp.Obj().Name())
-			}
+			names := slices.Collect(opiter.Map(
+				func(tp *types.TypeParam) string { return tp.Obj().Name() },
+				slices.Values(tps),
+			))
 			// Type arguments are given rather than inferred: a parameter only a
 			// constraint mentions cannot be inferred from the arguments.
 			targs = "[" + strings.Join(names, ", ") + "]"

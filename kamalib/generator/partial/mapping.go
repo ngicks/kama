@@ -19,6 +19,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typeprint"
+	"github.com/ngicks/opiter"
 )
 
 const (
@@ -261,11 +262,10 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 		return st, infos, nil
 	}
 	fields := &dst.FieldList{Opening: true, Closing: true}
-	for _, f := range synth {
-		if f != nil {
-			fields.List = append(fields.List, f)
-		}
-	}
+	fields.List = slices.Collect(opiter.Filter(
+		func(f *dst.Field) bool { return f != nil },
+		slices.Values(synth),
+	))
 	return &dst.StructType{Fields: fields}, infos, nil
 }
 

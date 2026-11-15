@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/ngicks/opiter"
+
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -424,12 +426,13 @@ func (e *encoder) typ(t types.Type) {
 		}
 		// Embedded interfaces contribute their methods above; the other
 		// embedded elements restrict the type set.
-		var elems []types.Type
-		for et := range t.EmbeddedTypes() {
-			if _, ok := types.Unalias(et).Underlying().(*types.Interface); !ok {
-				elems = append(elems, et)
-			}
-		}
+		elems := slices.Collect(opiter.Filter(
+			func(et types.Type) bool {
+				_, ok := types.Unalias(et).Underlying().(*types.Interface)
+				return !ok
+			},
+			t.EmbeddedTypes(),
+		))
 		e.int(len(elems))
 		for _, et := range elems {
 			e.typ(et)
@@ -701,9 +704,5 @@ func hostHelpers(shared string, files []*partialFile) []*helpersFile {
 			host(first.helpersPath, first.buildLine, name)
 		}
 	}
-	out := make([]*helpersFile, 0, len(byPath))
-	for _, path := range slices.Sorted(maps.Keys(byPath)) {
-		out = append(out, byPath[path])
-	}
-	return out
+	return slices.Collect(opiter.OmitF(opiter.MapsSorted(byPath)))
 }

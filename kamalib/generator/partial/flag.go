@@ -11,6 +11,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/ngicks/opiter"
+
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"golang.org/x/tools/go/packages"
@@ -282,12 +284,10 @@ func (f *flagField) setKind(t types.Type) (types.Type, bool) {
 // flagMethods writes RegisterFlags and FromFlagSet for the fields with a
 // flag option. It writes nothing when there are none.
 func (w *methodWriter) flagMethods(fields []fieldInfo) error {
-	var flags []fieldInfo
-	for _, f := range fields {
-		if f.flag != nil {
-			flags = append(flags, f)
-		}
-	}
+	flags := slices.Collect(opiter.Filter(
+		func(f fieldInfo) bool { return f.flag != nil },
+		slices.Values(fields),
+	))
 	if len(flags) == 0 {
 		return nil
 	}
@@ -327,14 +327,15 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 // registerFlags returns the statements defining the flag of each of flags
 // on the flag set f.
 func registerFlags(flags []fieldInfo) genSteps {
-	var out genSteps
-	for _, fl := range flags {
-		k := fl.flag.kind
-		out = append(out, lang.Stmt("%s.%s(%s, %s, %s, %s)", lang.Name("f"), k.define,
-			strconv.Quote(fl.flag.name), strconv.Quote(fl.flag.short), k.zero,
-			strconv.Quote(fl.flag.usage)))
-	}
-	return out
+	return slices.Collect(opiter.Map(
+		func(fl fieldInfo) genStep {
+			k := fl.flag.kind
+			return lang.Stmt("%s.%s(%s, %s, %s, %s)", lang.Name("f"), k.define,
+				strconv.Quote(fl.flag.name), strconv.Quote(fl.flag.short), k.zero,
+				strconv.Quote(fl.flag.usage))
+		},
+		slices.Values(flags),
+	))
 }
 
 // readFlags returns the statements setting the field of p of each of flags
@@ -454,9 +455,10 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 		),
 		lang.Stmt("type %s interface {", flagSetName),
 	}
-	for _, method := range slices.Sorted(maps.Keys(sigs)) {
-		body = append(body, lang.Stmt("%s", replacer.Replace(sigs[method])))
-	}
+	body = slices.AppendSeq(body, opiter.Map(
+		func(sig string) genStep { return lang.Stmt("%s", replacer.Replace(sig)) },
+		opiter.OmitF(opiter.MapsSorted(sigs)),
+	))
 	body = append(body, lang.Stmt("}"))
 	gpkg := &genhelper.Package{Imports: m, Path: pkg.PkgPath}
 	_, src, err := body.Render(genhelper.NewBaseContext(genhelper.NewScope(), gpkg), nil)
