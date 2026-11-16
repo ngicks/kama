@@ -11,8 +11,8 @@
 // It starts with the header base.Header prints: the generated-code line,
 // the params package and key_type_func, and the time of the run.
 //
-// The proc of NewProc keeps a file that would change in the generated:
-// line only, and warns, wrapping base.ErrStale, about each file of its
+// Proc keeps a file that would change in the generated: line only, and
+// warns, wrapping base.ErrStale, about each file of its
 // output directory that carries the marker of the generator and that the
 // run did not produce. Every generated file of a directory must therefore
 // come from one step.

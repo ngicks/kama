@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"reflect"
 	"slices"
-
-	"github.com/ngicks/kama/kamalib/generator/base"
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/generator/base"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/fileloader"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -22,7 +22,7 @@ func init() { workflow.Register("contextkey.generate", NewProc) }
 
 var ErrNoEntries = errors.New("contextkey: no entries")
 
-// ProcParam configures the proc of NewProc.
+// ProcParam configures Proc.
 type ProcParam struct {
 	// Dir is the output directory, relative to the project root.
 	Dir string `json:"dir"`
@@ -33,26 +33,45 @@ type ProcParam struct {
 	KeyTypeFunc string `json:"key_type_func"`
 }
 
-// NewProc returns the proc rendering the Template its in decodes to and
-// staging the files in its out. A file of its out that would change in the
-// generated: line of its header only is not staged. The proc reports a
-// warning for each stale file of its output directory, and the number of
-// files written and unchanged.
+// Proc renders the Template its in decodes to and stages the files in its
+// out. A file of its out that would change in the generated: line of its
+// header only is not staged. Proc reports a warning for each stale file of
+// its output directory, and the number of files written and unchanged.
 //
 //	Param(ProcParam) error
 //	In(*fileloader.Document)
 //	Out(*overlayfs.Fs)
-func NewProc() workflow.Proc { return base.NewProc(newGenerator)() }
+type Proc struct{}
 
-// generator runs Render as a step.
-type generator struct {
-	dir  string
-	opts Options
+// NewProc returns a new Proc.
+func NewProc() workflow.Proc { return Proc{} }
+
+func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParam]() }
+
+func (Proc) InTypes() []reflect.Type {
+	return []reflect.Type{reflect.TypeFor[*fileloader.Document]()}
 }
 
-func newGenerator() base.Generator[ProcParam, *fileloader.Document] { return &generator{} }
+func (Proc) OutTypes() []reflect.Type {
+	return []reflect.Type{reflect.TypeFor[*overlayfs.Fs]()}
+}
 
-func (g *generator) Configure(p ProcParam) error {
+func (Proc) AsInputType() reflect.Type { return nil }
+
+func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
+	return &instance{}, nil
+}
+
+func (Proc) CleanUp(context.Context) error { return nil }
+
+type instance struct {
+	dir  string
+	opts Options
+	doc  *fileloader.Document
+	fs   *overlayfs.Fs
+}
+
+func (i *instance) Param(p ProcParam) error {
 	if p.Dir == "" {
 		p.Dir = "."
 	}
@@ -65,40 +84,43 @@ func (g *generator) Configure(p ProcParam) error {
 		return err
 	}
 
-	g.dir, g.opts = p.Dir, opts
+	i.dir, i.opts = p.Dir, opts
 	return nil
 }
 
-func (g *generator) Generate(
-	_ context.Context,
-	doc *fileloader.Document,
-	out *overlayfs.Fs,
-) ([]base.File, []error, error) {
-	tmpl, err := decodeTemplate(doc.Data)
+func (i *instance) In(doc *fileloader.Document) { i.doc = doc }
+
+func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
+
+func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
+	tmpl, err := decodeTemplate(i.doc.Data)
 	if err != nil {
-		return nil, nil, fmt.Errorf("contextkey: %s: %w", doc.Path, err)
+		return fmt.Errorf("contextkey: %s: %w", i.doc.Path, err)
 	}
 	if len(tmpl.Entries) == 0 {
-		return nil, nil, fmt.Errorf("%w: %s", ErrNoEntries, doc.Path)
+		return fmt.Errorf("%w: %s", ErrNoEntries, i.doc.Path)
 	}
 
-	files, err := Render(tmpl.Entries, g.opts)
+	files, err := Render(tmpl.Entries, i.opts)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s: %w", doc.Path, err)
+		return fmt.Errorf("%s: %w", i.doc.Path, err)
 	}
 
 	inDir := func(name string, src []byte) base.File {
-		return base.File{Path: path.Join(g.dir, name), Content: src}
+		return base.File{Path: path.Join(i.dir, name), Content: src}
 	}
 	produced := slices.Collect(opiter.Unify(inDir, opiter.MapsSorted(files)))
 
-	opts := g.opts.withDefaults()
+	opts := i.opts.withDefaults()
 	stale := base.StaleCheck{Registry: opts.Registry, Generator: GeneratorName}
-	warnings, err := stale.Dir(out.FS(), g.dir, produced)
+	warnings, err := stale.Dir(i.fs.FS(), i.dir, produced)
 	if err != nil {
-		return nil, nil, fmt.Errorf("contextkey: %w", err)
+		return fmt.Errorf("contextkey: %w", err)
 	}
-	return produced, warnings, nil
+	for _, w := range warnings {
+		r.Warn(w)
+	}
+	return base.Stage(ctx, i.fs, produced, r)
 }
 
 // decodeTemplate converts the format-neutral data fileloader decodes into

@@ -131,7 +131,7 @@ func TestRenderMarksDeclarations(t *testing.T) {
 }
 
 func TestProcParamErrors(t *testing.T) {
-	i := base.NewInstance(newGenerator())
+	i := &instance{}
 
 	assert.ErrorContains(
 		t,
@@ -156,7 +156,7 @@ entries:
   - {file_name: b, name: B, type: int, default_expr: "1"}
 `), &data))
 
-	i := base.NewInstance(newGenerator())
+	i := &instance{}
 	assert.NilError(t, i.Param(ProcParam{Dir: "gen", Package: "p", KeyTypeFunc: "k"}))
 	i.In(&fileloader.Document{Path: "t.yaml", Data: data})
 	i.Out(f)
@@ -171,7 +171,7 @@ entries:
 }
 
 func TestProcRunNoEntries(t *testing.T) {
-	i := base.NewInstance(newGenerator())
+	i := &instance{}
 	assert.NilError(t, i.Param(ProcParam{Package: "p", KeyTypeFunc: "k"}))
 	i.In(&fileloader.Document{Path: "t.yaml", Data: map[string]any{}})
 	assert.ErrorIs(t, i.Run(context.Background(), nopReporter{}), ErrNoEntries)
@@ -282,10 +282,9 @@ func TestProcStale(t *testing.T) {
 	b := map[string]any{"file_name": "b", "name": "B", "type": "int", "default_expr": "1"}
 	run := func(now time.Time, entries ...any) *recordReporter {
 		t.Helper()
-		g := &generator{}
-		i := base.NewInstance[ProcParam, *fileloader.Document](g)
+		i := &instance{}
 		assert.NilError(t, i.Param(ProcParam{Dir: "gen", Package: "p", KeyTypeFunc: "k"}))
-		g.opts.Now = func() time.Time { return now }
+		i.opts.Now = func() time.Time { return now }
 		i.In(&fileloader.Document{Path: "t.yaml", Data: map[string]any{"entries": entries}})
 		i.Out(f)
 		r := &recordReporter{}

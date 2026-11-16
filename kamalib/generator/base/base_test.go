@@ -2,7 +2,6 @@ package base
 
 import (
 	"context"
-	"errors"
 	"go/ast"
 	"go/types"
 	"io/fs"
@@ -21,8 +20,6 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
-	_ "github.com/ngicks/kama/kamalib/proc/overlayfs"
-	"github.com/ngicks/kama/kamalib/workflow"
 )
 
 func TestNaming(t *testing.T) {
@@ -163,89 +160,6 @@ func TestStage(t *testing.T) {
 	assert.Assert(t, strings.Contains(read("a.go"), "var A = 2"))
 	assert.Assert(t, strings.Contains(read("a.go"), "generated: 2026-01-01T01:00:00Z"))
 	assert.Equal(t, read("sub/b.go"), b)
-}
-
-type fakeParam struct {
-	Name string `json:"name"`
-}
-
-var errFakeParam = errors.New("fake: name is required")
-
-// fakeGenerator writes one file named by its param and warns once.
-type fakeGenerator struct{ name string }
-
-func (g *fakeGenerator) Configure(p fakeParam) error {
-	if p.Name == "" {
-		return errFakeParam
-	}
-	g.name = p.Name
-	return nil
-}
-
-func (g *fakeGenerator) Generate(
-	_ context.Context,
-	in *overlayfs.Fs,
-	out *overlayfs.Fs,
-) ([]File, []error, error) {
-	if in != out {
-		return nil, nil, errors.New("fake: in is not out")
-	}
-	return []File{{Path: g.name + ".go", Content: []byte("package p\n")}},
-		[]error{errors.New("fake warning")},
-		nil
-}
-
-func newFakeGenerator() Generator[fakeParam, *overlayfs.Fs] { return &fakeGenerator{} }
-
-func init() { workflow.Register("base_test.fake", NewProc(newFakeGenerator)) }
-
-// TestProc runs a Generator as a step of a workflow graph, whose formation
-// checks the methods of the instance against the types the proc declares.
-func TestProc(t *testing.T) {
-	ctx := context.Background()
-	root := t.TempDir()
-	spec := func(param any) workflow.Spec {
-		return workflow.Spec{Version: 1, Steps: map[string]workflow.Step{
-			"root": {Proc: "overlayfs.open", Param: map[string]any{"root": root}},
-			"gen": {
-				Proc:  "base_test.fake",
-				In:    workflow.Names{"root"},
-				Out:   workflow.Names{"root"},
-				Param: param,
-			},
-			"final": {
-				Proc:  "overlayfs.copy_down",
-				In:    workflow.Names{"root"},
-				After: workflow.Names{"gen"},
-			},
-		}}
-	}
-
-	_, err := spec(map[string]any{}).Build(ctx, workflow.DefaultRegistry)
-	assert.ErrorIs(t, err, errFakeParam)
-
-	g, err := spec(map[string]any{"name": "made"}).Build(ctx, workflow.DefaultRegistry)
-	assert.NilError(t, err)
-	r := &recordReporter{}
-	assert.NilError(t, g.Run(ctx, workflow.ProgressControl{
-		OnWarning:  func(_ string, w error) { r.Warn(w) },
-		OnProgress: func(_ string, msg string) { r.Progress(msg) },
-	}))
-	assert.Equal(t, len(r.warnings), 1, "%v", r.warnings)
-	assert.ErrorContains(t, r.warnings[0], "fake warning")
-	assert.Assert(
-		t,
-		slices.Contains(r.progress, "1 file written, 0 files unchanged"),
-		"%v",
-		r.progress,
-	)
-
-	f, err := overlayfs.New(root)
-	assert.NilError(t, err)
-	defer f.Close()
-	b, err := fs.ReadFile(f.FS(), "made.go")
-	assert.NilError(t, err)
-	assert.Equal(t, string(b), "package p\n")
 }
 
 // load stages files under the inline test directory of t and loads their

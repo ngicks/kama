@@ -154,13 +154,13 @@ func TestOptions(t *testing.T) {
 	r := genmark.NewRegistry()
 	assert.Equal(t, Options{Registry: r}.WithDefaults().Registry, r)
 
-	g := &generator{}
-	assert.ErrorContains(t, g.Configure(ProcParam{Merge: "replace"}), "merge")
-	assert.ErrorContains(t, g.Configure(ProcParam{MergeNested: "deep"}), "merge_nested")
-	assert.NilError(t, g.Configure(ProcParam{Merge: "append"}))
-	assert.Equal(t, g.opts.Merge, MergeAppend)
-	assert.Equal(t, g.opts.MergeNested, MergeNestedRecursive)
-	assert.Equal(t, g.opts.Registry, genmark.DefaultRegistry)
+	i := &instance{}
+	assert.ErrorContains(t, i.Param(ProcParam{Merge: "replace"}), "merge")
+	assert.ErrorContains(t, i.Param(ProcParam{MergeNested: "deep"}), "merge_nested")
+	assert.NilError(t, i.Param(ProcParam{Merge: "append"}))
+	assert.Equal(t, i.opts.Merge, MergeAppend)
+	assert.Equal(t, i.opts.MergeNested, MergeNestedRecursive)
+	assert.Equal(t, i.opts.Registry, genmark.DefaultRegistry)
 }
 
 func TestTargetErrors(t *testing.T) {

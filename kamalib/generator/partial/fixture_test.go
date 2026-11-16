@@ -13,8 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ngicks/kama/kamalib/generator/base"
-
 	"github.com/ngicks/opiter"
 
 	"go.yaml.in/yaml/v4"
@@ -77,13 +75,11 @@ func TestFixtureUpToDate(t *testing.T) {
 			)
 			assert.NilError(t, err)
 
-			in := &gopackages.Packages{Pkgs: pkgs}
-			g := newGenerator()
-			i := base.NewInstance(g)
+			i := &instance{}
 			assert.NilError(t, i.Param(fx.param))
-			i.In(in)
+			i.In(&gopackages.Packages{Pkgs: pkgs})
 			i.Out(f)
-			files, _, err := g.Generate(ctx, in, f)
+			files, _, err := i.generate()
 			assert.NilError(t, err)
 			r := &recordReporter{}
 			assert.NilError(t, i.Run(ctx, r))
