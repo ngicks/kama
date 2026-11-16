@@ -644,7 +644,7 @@ func TestProcOptionFile(t *testing.T) {
 	assert.NilError(t, run(dir+"/partial"))
 	staged, err := f.Overlay()
 	assert.NilError(t, err)
-	names := slices.Collect(opiter.Filter(isXPartialFile, maps.Keys(staged)))
+	names := slices.Collect(opiter.WrapSeq(maps.Keys(staged)).Filter(isXPartialFile).Iter())
 	assert.Equal(t, len(names), 1, names)
 }
 

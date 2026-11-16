@@ -350,7 +350,7 @@ func followed(r *typegraph.EdgeRoute) bool {
 		typegraph.EdgeKindPointer |
 		typegraph.EdgeKindAlias
 	isAllowed := func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 }
-	return opiter.Every(isAllowed, slices.Values(r.Nodes))
+	return opiter.WrapSeq(slices.Values(r.Nodes)).Every(isAllowed)
 }
 
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
@@ -477,8 +477,13 @@ func (s *selection) checkMerges() error {
 			ErrDirective, origin(r), spelling(r), k.PkgPath, k.Type, k.Field, k.Type,
 		)
 	}
-	keys := slices.SortedFunc(opiter.Filter(hasNoTarget, maps.Keys(s.merges)), compareKey)
-	return errors.Join(slices.Collect(opiter.Map(mergeErr, slices.Values(keys)))...)
+	keys := slices.SortedFunc(
+		opiter.WrapSeq(maps.Keys(s.merges)).
+			Filter(hasNoTarget).
+			Iter(),
+		compareKey,
+	)
+	return errors.Join(slices.Collect(opiter.WrapSeq(slices.Values(keys)).Map(mergeErr).Iter())...)
 }
 
 // checkFlagTargets reports //kama:partial:flag on fields of types without
@@ -511,7 +516,7 @@ func compareKey(a, b kamaopt.Key) int {
 
 func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Object {
 	hasPath := func(pkg *packages.Package) bool { return pkg.PkgPath == id.PackagePath }
-	pkg := opiter.First(opiter.Filter(hasPath, slices.Values(pkgs)))
+	pkg := opiter.WrapSeq(slices.Values(pkgs)).Filter(hasPath).First()
 	if pkg.IsNone() {
 		return nil
 	}
@@ -638,7 +643,11 @@ func (s *selection) mapCycles() error {
 		switch state[n.Id] {
 		case visiting:
 			i := slices.Index(path, n.Id)
-			names := slices.Collect(opiter.Map(typeNameOf, slices.Values(append(path[i:], n.Id))))
+			names := slices.Collect(
+				opiter.WrapSeq(slices.Values(append(path[i:], n.Id))).
+					Map(typeNameOf).
+					Iter(),
+			)
 			return fmt.Errorf(
 				"%w: %s (%s): partial variants would be recursive through embedded fields: %s",
 				ErrUnsupported, nodeName(n),

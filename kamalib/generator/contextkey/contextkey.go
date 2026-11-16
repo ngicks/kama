@@ -170,7 +170,9 @@ func Render(entries []Entry, opts Options) (map[string][]byte, error) {
 func renderEntry(e Entry, opts Options, header string) ([]byte, error) {
 	imports := slices.Concat([]string{"context"}, e.Imports)
 	slices.Sort(imports)
-	imports = slices.Collect(opiter.Map(strconv.Quote, slices.Values(slices.Compact(imports))))
+	imports = slices.Collect(
+		opiter.WrapSeq(slices.Values(slices.Compact(imports))).Map(strconv.Quote).Iter(),
+	)
 
 	var buf bytes.Buffer
 	err := fileTemplate.Execute(&buf, templateData{

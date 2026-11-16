@@ -208,7 +208,7 @@ func TestSourcePackages(t *testing.T) {
 	assert.Assert(t, slices.ContainsFunc(pkgs, isTestVariant), "a test variant is loaded")
 	src := SourcePackages(pkgs)
 	assert.Assert(t, !slices.ContainsFunc(src, isTestVariant))
-	paths := slices.Collect(opiter.Map(pkgPathOf, slices.Values(src)))
+	paths := slices.Collect(opiter.WrapSeq(slices.Values(src)).Map(pkgPathOf).Iter())
 	assert.DeepEqual(t, paths, slices.Compact(slices.Clone(paths)))
 	assert.Assert(t, slices.Contains(paths, pkgs[0].PkgPath))
 }
@@ -233,10 +233,10 @@ func TestShadowedPredeclared(t *testing.T) {
 	}))
 	names := func(contents ...string) []string {
 		t.Helper()
-		in := slices.Collect(opiter.Map(toBytes, slices.Values(contents)))
+		in := slices.Collect(opiter.WrapSeq(slices.Values(contents)).Map(toBytes).Iter())
 		objs, err := ShadowedPredeclared(pkgs[0], in)
 		assert.NilError(t, err)
-		return slices.Collect(opiter.Map(objectName, slices.Values(objs)))
+		return slices.Collect(opiter.WrapSeq(slices.Values(objs)).Map(objectName).Iter())
 	}
 	assert.DeepEqual(t, names("package x\n\nvar V string\n\nfunc f() error { return nil }\n"),
 		[]string{"error", "string"})

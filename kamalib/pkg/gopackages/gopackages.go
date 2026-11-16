@@ -81,11 +81,14 @@ func Load(ctx context.Context, fsys *overlayfs.Fs, opts Options) ([]*packages.Pa
 type PackageErrors map[string][]packages.Error
 
 func (e PackageErrors) Error() string {
-	return strings.Join(slices.Collect(opiter.Unify(packageErrorBlock, opiter.MapsSorted(e))), "\n")
+	return strings.Join(
+		slices.Collect(opiter.WrapSeq2(opiter.MapsSorted(e)).Unify(packageErrorBlock).Iter()),
+		"\n",
+	)
 }
 
 func packageErrorBlock(path string, errs []packages.Error) string {
 	header := opiter.Once(path + ":")
-	msgs := opiter.Map(packages.Error.Error, slices.Values(errs))
-	return strings.Join(slices.Collect(opiter.Concat(header, msgs)), "\n\t")
+	msgs := opiter.WrapSeq(slices.Values(errs)).Map(packages.Error.Error)
+	return strings.Join(slices.Collect(opiter.WrapSeq(header).Concat(msgs.Iter()).Iter()), "\n\t")
 }

@@ -36,16 +36,16 @@ func helperIn(t *testing.T, srcs ...string) func(op, doc string) string {
 	for _, src := range srcs {
 		f, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments)
 		assert.NilError(t, err)
-		helpers := opiter.Filter(isHelperFunc, slices.Values(f.Decls))
-		decls = slices.AppendSeq(decls, opiter.Map(toDecl, helpers))
+		helpers := opiter.WrapSeq(slices.Values(f.Decls)).Filter(isHelperFunc)
+		decls = slices.AppendSeq(decls, helpers.Map(toDecl).Iter())
 	}
 	return func(op, doc string) string {
 		t.Helper()
 		isOpStating := func(d decl) bool {
 			return strings.HasPrefix(d.name, "kamaPartial"+op+"_") && strings.Contains(d.doc, doc)
 		}
-		stating := opiter.Filter(isOpStating, slices.Values(decls))
-		found := slices.Collect(opiter.Map(declName, stating))
+		stating := opiter.WrapSeq(slices.Values(decls)).Filter(isOpStating)
+		found := slices.Collect(stating.Map(declName).Iter())
 		assert.Equal(t, len(found), 1, "helpers of %s stating %q: %v", op, doc, found)
 		return found[0]
 	}
@@ -81,7 +81,7 @@ func params(pkg *types.Package, names []string, ts ...types.Type) *types.Tuple {
 		}
 		return types.NewParam(token.NoPos, pkg, name, t)
 	}
-	return types.NewTuple(slices.Collect(opiter.Unify(toParam, slices.All(ts)))...)
+	return types.NewTuple(slices.Collect(opiter.WrapSeq2(slices.All(ts)).Unify(toParam).Iter())...)
 }
 
 func method(pkg *types.Package, name string) *types.Func {
@@ -225,7 +225,7 @@ func names(t *testing.T, set *helperSet, hs ...*helper) ([]string, error) {
 	if err := set.resolve(); err != nil {
 		return nil, err
 	}
-	return slices.Collect(opiter.Map(set.name, slices.Values(added))), nil
+	return slices.Collect(opiter.WrapSeq(slices.Values(added)).Map(set.name).Iter()), nil
 }
 
 func mustNames(t *testing.T, hs ...*helper) []string {
@@ -302,7 +302,7 @@ func colliding() *helperSet {
 
 // sliceHelpers returns append helpers of slices of n distinct named types.
 func sliceHelpers(n int) []*helper {
-	return slices.Collect(opiter.Map(sliceHelper, opiter.Range(0, n)))
+	return slices.Collect(opiter.WrapSeq(opiter.Range(0, n)).Map(sliceHelper).Iter())
 }
 
 // sliceHelper returns the append helper of a slice of the named type Ti.

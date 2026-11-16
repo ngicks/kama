@@ -206,8 +206,8 @@ func (c *collector) add(key Key, comments []*ast.Comment) {
 			Origin:    Origin{Source: SourceDirective, Pos: c.fset.Position(cm.Slash)},
 		}, true
 	}
-	raws := opiter.OmitL(opiter.Filter2(isRaw, opiter.Divide(toRaw, slices.Values(comments))))
-	c.out = slices.AppendSeq(c.out, raws)
+	raws := opiter.WrapSeq(slices.Values(comments)).Divide(toRaw).Filter(isRaw).OmitL()
+	c.out = slices.AppendSeq(c.out, raws.Iter())
 }
 
 func isRaw(_ Raw, ok bool) bool { return ok }
@@ -227,7 +227,11 @@ func fieldComments(f *ast.Field) []*ast.Comment {
 
 func fieldNames(f *ast.Field) []string {
 	if len(f.Names) > 0 {
-		return slices.Collect(opiter.Map((*ast.Ident).String, slices.Values(f.Names)))
+		return slices.Collect(
+			opiter.WrapSeq(slices.Values(f.Names)).
+				Map((*ast.Ident).String).
+				Iter(),
+		)
 	}
 	return []string{embeddedName(f.Type)}
 }

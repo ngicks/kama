@@ -219,7 +219,7 @@ func (s *Scope) Unbound() []string {
 }
 
 func (s *Scope) appendUnbound(out []string) []string {
-	out = slices.AppendSeq(out, opiter.OmitL(opiter.Filter2(isPending, maps.All(s.roles))))
+	out = slices.AppendSeq(out, opiter.WrapSeq2(maps.All(s.roles)).Filter(isPending).OmitL().Iter())
 	for _, child := range s.children {
 		out = child.appendUnbound(out)
 	}
@@ -253,5 +253,5 @@ func (s *Scope) takenBelow(name string) bool {
 		return true
 	}
 	holdsBelow := func(child *Scope) bool { return child.takenBelow(name) }
-	return opiter.ContainsFunc(holdsBelow, slices.Values(s.children))
+	return opiter.WrapSeq(slices.Values(s.children)).ContainsFunc(holdsBelow)
 }

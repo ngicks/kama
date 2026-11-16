@@ -239,7 +239,7 @@ func (w *methodWriter) applyTo() error {
 
 // fieldSteps returns the step each field of fields not skipped gets.
 func fieldSteps(fields []fieldInfo, step func(f fieldInfo) genStep) genSteps {
-	return slices.Collect(opiter.Map(step, opiter.Filter(notSkipped, slices.Values(fields))))
+	return slices.Collect(opiter.WrapSeq(slices.Values(fields)).Filter(notSkipped).Map(step).Iter())
 }
 
 func notSkipped(f fieldInfo) bool { return f.conv != convSkip }

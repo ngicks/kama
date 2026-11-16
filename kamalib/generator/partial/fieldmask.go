@@ -109,7 +109,7 @@ func notMaskNameKey(k string) bool { return k != "name" }
 // maskNameFromArgs validates the args of //kama:partial:fieldmask on a
 // field, keyed by name.
 func maskNameFromArgs(kv map[string]string) (maskName, error) {
-	if k := opiter.Min(opiter.Filter(notMaskNameKey, maps.Keys(kv))); k.IsSome() {
+	if k := opiter.Min(opiter.WrapSeq(maps.Keys(kv)).Filter(notMaskNameKey)); k.IsSome() {
 		return maskName{}, fmt.Errorf("unknown key %q; want name", k.Value())
 	}
 	o := maskName{name: kv["name"]}
@@ -187,7 +187,7 @@ func (s *selection) checkFieldMaskTargets() error {
 		isEmbeddedPartial := func(v *types.Var) bool {
 			return v.Name() == k.Field && s.embeddedPartial(n, v) != nil
 		}
-		if opiter.ContainsFunc(isEmbeddedPartial, st.Fields()) {
+		if opiter.WrapSeq(st.Fields()).ContainsFunc(isEmbeddedPartial) {
 			bad("the paths of the fields of an embedded partial value are those of " +
 				"the parent, so the field has no path segment of its own")
 		}
@@ -325,5 +325,11 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 		)
 	}
 	// errors.Join drops the nil errors of fields that are fine.
-	return errors.Join(slices.Collect(opiter.Map(maskedEmbeddingErr, st.Fields()))...)
+	return errors.Join(
+		slices.Collect(
+			opiter.WrapSeq(st.Fields()).
+				Map(maskedEmbeddingErr).
+				Iter(),
+		)...,
+	)
 }

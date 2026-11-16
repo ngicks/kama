@@ -60,15 +60,15 @@ func HostShared(shared string, callers []Caller) []Host {
 	}
 	for _, name := range slices.Sorted(maps.Keys(names)) {
 		usesName := func(c Caller) bool { return c.Uses[name] }
-		users := opiter.Filter(usesName, slices.Values(callers))
-		if opiter.ContainsFunc(isUnconstrained, users) {
+		users := opiter.WrapSeq(slices.Values(callers)).Filter(usesName)
+		if users.ContainsFunc(isUnconstrained) {
 			host(shared, "", name)
 		} else {
-			first := opiter.First(users).Value()
+			first := users.First().Value()
 			host(first.Own, first.BuildLine, name)
 		}
 	}
-	return slices.Collect(opiter.Map(hostValue, opiter.OmitF(opiter.MapsSorted(byPath))))
+	return slices.Collect(opiter.WrapSeq2(opiter.MapsSorted(byPath)).OmitF().Map(hostValue).Iter())
 }
 
 func isUnconstrained(c Caller) bool { return !c.Constrained }

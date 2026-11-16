@@ -49,7 +49,7 @@ func TestLoadSeesStagedFiles(t *testing.T) {
 	assert.Equal(t, len(pkgs), 1)
 	pkg := pkgs[0]
 
-	files := slices.Sorted(opiter.Map(filepath.Base, slices.Values(pkg.GoFiles)))
+	files := slices.Sorted(opiter.WrapSeq(slices.Values(pkg.GoFiles)).Map(filepath.Base).Iter())
 	assert.DeepEqual(t, files, []string{"a.go", "b.gen.go"})
 }
 

@@ -168,7 +168,7 @@ func (d *optionDecoder) table(v any, path []string) (map[string]any, bool) {
 // keys reports the keys of t other than known.
 func (d *optionDecoder) keys(t map[string]any, path []string, known ...string) {
 	isUnknown := func(k string) bool { return !slices.Contains(known, k) }
-	for _, k := range slices.Sorted(opiter.Filter(isUnknown, maps.Keys(t))) {
+	for _, k := range slices.Sorted(opiter.WrapSeq(maps.Keys(t)).Filter(isUnknown).Iter()) {
 		d.fail(appendPath(path, k), "unknown key; want %s", strings.Join(known, ", "))
 	}
 }
@@ -304,7 +304,14 @@ var bareKey = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 // keyPath spells path as a TOML dotted key, quoting the keys that need it
 // such as package import paths.
 func keyPath(path []string) string {
-	return strings.Join(slices.Collect(opiter.Map(quoteKey, slices.Values(path))), ".")
+	return strings.Join(
+		slices.Collect(
+			opiter.WrapSeq(slices.Values(path)).
+				Map(quoteKey).
+				Iter(),
+		),
+		".",
+	)
 }
 
 // quoteKey quotes k unless it is a bare TOML key.
@@ -390,7 +397,7 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 			for _, fieldName := range slices.Sorted(maps.Keys(to.Fields)) {
 				fo := to.Fields[fieldName]
 				isField := func(v *types.Var) bool { return v.Name() == fieldName }
-				if !opiter.ContainsFunc(isField, st.Fields()) {
+				if !opiter.WrapSeq(st.Fields()).ContainsFunc(isField) {
 					fail(&errs, appendPath(typePath, "fields", fieldName),
 						"field %s is not declared in %s.%s", fieldName, pkgPath, typeName)
 					continue

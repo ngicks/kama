@@ -34,8 +34,8 @@ func parse(t *testing.T, src string) (*dstreplace.Cache, *dst.StructType) {
 func typeSpec(t *testing.T, f *ast.File, name string) *ast.TypeSpec {
 	t.Helper()
 	hasName := func(ts *ast.TypeSpec) bool { return ts.Name.Name == name }
-	specs := opiter.Flatten(opiter.Map(typeDeclSpecs, slices.Values(f.Decls)))
-	found := opiter.First(opiter.Filter(hasName, opiter.Map(asTypeSpec, specs)))
+	specs := opiter.Flatten(opiter.WrapSeq(slices.Values(f.Decls)).Map(typeDeclSpecs))
+	found := opiter.WrapSeq(specs).Map(asTypeSpec).Filter(hasName).First()
 	if found.IsNone() {
 		t.Fatalf("no type %s", name)
 	}

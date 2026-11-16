@@ -69,7 +69,7 @@ func AstField(f *ast.Field) []Comment {
 	if f.Comment != nil && len(f.Comment.List) > 0 {
 		trailing = []string{f.Comment.List[0].Text}
 	}
-	return collect(opiter.Concat(astTexts(f.Doc), slices.Values(trailing)))
+	return collect(opiter.WrapSeq(astTexts(f.Doc)).Concat(slices.Values(trailing)).Iter())
 }
 
 // Dst returns the directive comments decorating the start of a node, after
@@ -83,10 +83,9 @@ func Dst(decs dst.NodeDecs) []Comment {
 // comment decorating its end.
 func DstField(decs dst.FieldDecorations) []Comment {
 	return collect(
-		opiter.Concat(
-			slices.Values(afterLastEmptyLine(decs.Start)),
-			slices.Values(decs.End[:min(len(decs.End), 1)]),
-		),
+		opiter.WrapSeq(slices.Values(afterLastEmptyLine(decs.Start))).
+			Concat(slices.Values(decs.End[:min(len(decs.End), 1)])).
+			Iter(),
 	)
 }
 
@@ -94,7 +93,7 @@ func astTexts(cg *ast.CommentGroup) iter.Seq[string] {
 	if cg == nil {
 		return opiter.Empty[string]()
 	}
-	return opiter.Map(commentText, slices.Values(cg.List))
+	return opiter.WrapSeq(slices.Values(cg.List)).Map(commentText).Iter()
 }
 
 func commentText(c *ast.Comment) string { return c.Text }
@@ -119,7 +118,7 @@ func afterLastEmptyLine(lines []string) []string {
 }
 
 func collect(texts iter.Seq[string]) []Comment {
-	return slices.Collect(opiter.OmitL(opiter.Filter2(isParsed, opiter.Divide(Parse, texts))))
+	return slices.Collect(opiter.WrapSeq(texts).Divide(Parse).Filter(isParsed).OmitL().Iter())
 }
 
 func isParsed(_ Comment, ok bool) bool { return ok }

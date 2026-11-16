@@ -108,7 +108,7 @@ func checkShape(fset *token.FileSet, k partialKind, f *ast.File, src []byte) err
 		}
 		return nil
 	default:
-		if opiter.ContainsFunc(isImportDecl, slices.Values(f.Decls)) {
+		if opiter.WrapSeq(slices.Values(f.Decls)).ContainsFunc(isImportDecl) {
 			return fmt.Errorf(
 				"%w: text declares imports, which the caller adds to the file",
 				ErrNotPartial,

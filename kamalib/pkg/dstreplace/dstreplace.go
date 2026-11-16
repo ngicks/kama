@@ -187,7 +187,7 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 	}
 
 	sameAsFirst := func(k string) bool { return k == keys[0] }
-	if opiter.Every(sameAsFirst, slices.Values(keys[1:])) {
+	if opiter.WrapSeq(slices.Values(keys[1:])).Every(sameAsFirst) {
 		f.Names = names
 		f.Type = dst.Clone(reps[0].Type).(dst.Expr)
 		f.Tag = tagLit(f.Tag, fields[0].Tag, reps[0].Tag)
@@ -209,7 +209,7 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 		nf.Decs.Before, nf.Decs.After = dst.NewLine, dst.NewLine
 		return nf
 	}
-	out := slices.Collect(opiter.Unify(splitField, slices.All(reps)))
+	out := slices.Collect(opiter.WrapSeq2(slices.All(reps)).Unify(splitField).Iter())
 	out[0].Decs.Before = f.Decs.Before
 	out[len(out)-1].Decs.After = f.Decs.After
 	return out, nil

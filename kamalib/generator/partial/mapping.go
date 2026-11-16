@@ -262,7 +262,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 		return st, infos, nil
 	}
 	fields := &dst.FieldList{Opening: true, Closing: true}
-	fields.List = slices.Collect(opiter.Filter(isSynthesized, slices.Values(synth)))
+	fields.List = slices.Collect(opiter.WrapSeq(slices.Values(synth)).Filter(isSynthesized).Iter())
 	return &dst.StructType{Fields: fields}, infos, nil
 }
 
@@ -548,7 +548,7 @@ func (p *mapper) partial(named *types.Named) (dst.Expr, error) {
 		p.refs[partialName(obj.Name())] = true
 	}
 
-	args, err := opiter.TryCollect(opiter.Divide(p.print, named.TypeArgs().Types()))
+	args, err := opiter.TryCollect(opiter.WrapSeq(named.TypeArgs().Types()).Divide(p.print))
 	if err != nil {
 		return nil, err
 	}

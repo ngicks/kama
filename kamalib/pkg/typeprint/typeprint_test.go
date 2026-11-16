@@ -122,7 +122,10 @@ func modelCases(t *testing.T, pkg *packages.Package) []testCase {
 		cases = append(cases, testCase{name: name, ty: ty, want: buf.String()})
 	}
 
-	for spec := range opiter.Flatten(opiter.Map(genDeclSpecs, slices.Values(pkg.Syntax[0].Decls))) {
+	for spec := range opiter.Flatten(
+		opiter.WrapSeq(slices.Values(pkg.Syntax[0].Decls)).
+			Map(genDeclSpecs),
+	) {
 		switch spec := spec.(type) {
 		case *ast.ValueSpec:
 			name := spec.Names[0].Name

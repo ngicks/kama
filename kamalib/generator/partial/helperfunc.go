@@ -19,7 +19,7 @@ import (
 func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 	return func(c genCtx) (string, error) {
 		render := func(arg genExpr) (string, error) { return arg(c) }
-		in, err := opiter.TryCollect(opiter.Divide(render, slices.Values(args)))
+		in, err := opiter.TryCollect(opiter.WrapSeq(slices.Values(args)).Divide(render))
 		if err != nil {
 			return "", err
 		}
@@ -52,7 +52,7 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 
 		var targs string
 		if tps := h.typeParams(); len(tps) > 0 {
-			names := slices.Collect(opiter.Map(typeParamName, slices.Values(tps)))
+			names := slices.Collect(opiter.WrapSeq(slices.Values(tps)).Map(typeParamName).Iter())
 			// Type arguments are given rather than inferred: a parameter only a
 			// constraint mentions cannot be inferred from the arguments.
 			targs = "[" + strings.Join(names, ", ") + "]"
@@ -129,11 +129,11 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 		c, err := p.constraintString(tp)
 		return tp.Obj().Name() + " " + c, err
 	}
-	tparams, err := opiter.TryCollect(opiter.Divide(declare, slices.Values(tps)))
+	tparams, err := opiter.TryCollect(opiter.WrapSeq(slices.Values(tps)).Divide(declare))
 	if err != nil {
 		return helperFunc{}, err
 	}
-	names := slices.Collect(opiter.Map(typeParamName, slices.Values(tps)))
+	names := slices.Collect(opiter.WrapSeq(slices.Values(tps)).Map(typeParamName).Iter())
 	// p.m is the Map in effect now, which call swaps while it renders.
 	f := helperFunc{c: p.funcContext(names)}
 	if len(tparams) > 0 {

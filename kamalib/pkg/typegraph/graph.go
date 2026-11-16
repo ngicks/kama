@@ -134,7 +134,7 @@ func New(
 
 func loadError(pkg *packages.Package) error {
 	if len(pkg.Errors) > 0 {
-		errs := slices.Collect(opiter.Map(packageError, slices.Values(pkg.Errors)))
+		errs := slices.Collect(opiter.WrapSeq(slices.Values(pkg.Errors)).Map(packageError).Iter())
 		return fmt.Errorf("%w: %s: %w", ErrLoad, pkg.PkgPath, errors.Join(errs...))
 	}
 	if pkg.Types == nil || pkg.TypesInfo == nil {
@@ -283,7 +283,13 @@ func (g *Graph) Trim(
 
 	// First pass: identify matched nodes
 	matches := func(_ QualifiedType, node *Node) bool { return nodeMatcher(node) }
-	maps.Insert(mg.matched, opiter.Map2(newMatchedNode, opiter.Filter2(matches, maps.All(g.all))))
+	maps.Insert(
+		mg.matched,
+		opiter.WrapSeq2(maps.All(g.all)).
+			Filter(matches).
+			Map(newMatchedNode).
+			Iter2(),
+	)
 
 	markDependants(mg, edgeMatcher, routeFilter)
 
@@ -322,7 +328,11 @@ func markDependants(
 
 			routes := edge.Routes
 			if routeFilter != nil {
-				routes = slices.Collect(opiter.Filter(routeFilter, slices.Values(routes)))
+				routes = slices.Collect(
+					opiter.WrapSeq(slices.Values(routes)).
+						Filter(routeFilter).
+						Iter(),
+				)
 			}
 
 			parent := mg.dependantNode(parentId, edge.Parent)
@@ -418,7 +428,8 @@ func (g *MatchedGraph) All() iter.Seq2[QualifiedType, *MatchedNode] {
 		_, matched := g.matched[id]
 		return !matched
 	}
-	return opiter.Concat2(maps.All(g.matched), opiter.Filter2(notMatched, maps.All(g.dependant)))
+	unmatched := opiter.WrapSeq2(maps.All(g.dependant)).Filter(notMatched)
+	return opiter.WrapSeq2(maps.All(g.matched)).Concat(unmatched.Iter2()).Iter2()
 }
 
 func (g *MatchedGraph) Matched() iter.Seq2[QualifiedType, *MatchedNode] {

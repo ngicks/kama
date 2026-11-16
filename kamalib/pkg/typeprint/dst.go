@@ -103,7 +103,7 @@ func (p dstPrinter) named(
 	}
 	x := dstName(qual, name)
 
-	indices, err := opiter.TryCollect(opiter.Divide(p.expr, targs.Types()))
+	indices, err := opiter.TryCollect(opiter.WrapSeq(targs.Types()).Divide(p.expr))
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (p dstPrinter) signature(sig *types.Signature) (*dst.FuncType, error) {
 }
 
 func (p dstPrinter) tuple(t *types.Tuple) (*dst.FieldList, error) {
-	fields, err := opiter.TryCollect(opiter.Divide(p.tupleField, t.Variables()))
+	fields, err := opiter.TryCollect(opiter.WrapSeq(t.Variables()).Divide(p.tupleField))
 	if err != nil {
 		return nil, err
 	}

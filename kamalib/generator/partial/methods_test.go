@@ -89,7 +89,11 @@ type Kids[T any] []L[T]
 	src := files["a.kama_partial.go"]
 
 	types := func(name string) map[string]string {
-		return maps.Collect(opiter.Map2(withoutTag, maps.All(fieldTypes(t, src, name))))
+		return maps.Collect(
+			opiter.WrapSeq2(maps.All(fieldTypes(t, src, name))).
+				Map(withoutTag).
+				Iter2(),
+		)
 	}
 	assert.DeepEqual(t, types("APartial"), map[string]string{
 		"B":    "und.Und[*BPartial]",
@@ -284,7 +288,11 @@ func TestUnexportedAliasField(t *testing.T) {
 		"sub/s.go": "package sub\n\ntype Public = hidden\n\ntype hidden struct{ I int }\n",
 	})
 	src := files["a.kama_partial.go"]
-	got := maps.Collect(opiter.Map2(withoutTag, maps.All(fieldTypes(t, src, "APartial"))))
+	got := maps.Collect(
+		opiter.WrapSeq2(maps.All(fieldTypes(t, src, "APartial"))).
+			Map(withoutTag).
+			Iter2(),
+	)
 	assert.DeepEqual(t, got, map[string]string{
 		"Public": "und.Und[sub.Public]",
 		"X":      "und.Und[sub.Public]",

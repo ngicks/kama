@@ -173,7 +173,7 @@ func TestRequire(t *testing.T) {
 	assert.NilError(t, err)
 	got, _ = m.Ident("example.com/y")
 	assert.Equal(t, got, "y")
-	assert.Assert(t, !opiter.ContainsFunc(isExampleY, m.Missing()))
+	assert.Assert(t, !opiter.WrapSeq(m.Missing()).ContainsFunc(isExampleY))
 
 	// A requirement without a package name does not tell the name of an
 	// unnamed import.
@@ -408,7 +408,8 @@ func TestInferName(t *testing.T) {
 }
 
 func TestInferNameKeywords(t *testing.T) {
-	for tok := range opiter.Filter(token.Token.IsKeyword, opiter.Range(token.BREAK, token.VAR+1)) {
+	for tok := range opiter.WrapSeq(opiter.Range(token.BREAK, token.VAR+1)).
+		Filter(token.Token.IsKeyword) {
 		kw := tok.String()
 		assert.Equal(t, inferName("example.com/"+kw), "_"+kw)
 	}

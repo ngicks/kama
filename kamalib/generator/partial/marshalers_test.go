@@ -174,7 +174,11 @@ func probeStruct(fields []probeField, tagKey, option string) reflect.Type {
 			Tag:  reflect.StructTag(fmt.Sprintf("%s:%q", tagKey, tag)),
 		}
 	}
-	return reflect.StructOf(slices.Collect(opiter.Unify(toStructField, slices.All(fields))))
+	return reflect.StructOf(slices.Collect(
+		opiter.WrapSeq2(slices.All(fields)).
+			Unify(toStructField).
+			Iter(),
+	))
 }
 
 func probe(b *strings.Builder, f probeFormat, option string) {
@@ -252,7 +256,11 @@ func describe(v any) string {
 		case x.IsNull():
 			return "null"
 		}
-		vals := slices.Collect(opiter.Map(describeOption, slices.Values(x.Options())))
+		vals := slices.Collect(
+			opiter.WrapSeq(slices.Values(x.Options())).
+				Map(describeOption).
+				Iter(),
+		)
 		return "defined[" + strings.Join(vals, ", ") + "]"
 	case opt.Option[string]:
 		if x.IsNone() {
@@ -306,7 +314,7 @@ func moduleVersions(t *testing.T, paths []string) string {
 	versions := make([]string, 0, len(paths))
 	for _, p := range paths {
 		isModule := func(dep *debug.Module) bool { return dep.Path == p }
-		dep := opiter.First(opiter.Filter(isModule, slices.Values(info.Deps)))
+		dep := opiter.WrapSeq(slices.Values(info.Deps)).Filter(isModule).First()
 		if dep.IsNone() {
 			t.Fatalf("module %s is missing from build info", p)
 		}

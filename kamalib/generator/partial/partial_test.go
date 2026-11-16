@@ -128,8 +128,8 @@ func partialTypes(t *testing.T, src string) []string {
 
 	f, err := parser.ParseFile(token.NewFileSet(), "x.go", src, 0)
 	assert.NilError(t, err)
-	specs := opiter.Flatten(opiter.Map(typeSpecs, slices.Values(f.Decls)))
-	return slices.Collect(opiter.Map(typeSpecName, specs))
+	specs := opiter.Flatten(opiter.WrapSeq(slices.Values(f.Decls)).Map(typeSpecs))
+	return slices.Collect(opiter.WrapSeq(specs).Map(typeSpecName).Iter())
 }
 
 // typeSpecs returns the specs of d when it declares types.
@@ -606,7 +606,11 @@ type Om map[int]opt.Option[M]
 		"Alias":             "und.Und[MPartial]",
 		"private":           "und.Und[int]",
 	}
-	got := maps.Collect(opiter.Map2(withoutTag, maps.All(fieldTypes(t, src, "APartial"))))
+	got := maps.Collect(
+		opiter.WrapSeq2(maps.All(fieldTypes(t, src, "APartial"))).
+			Map(withoutTag).
+			Iter2(),
+	)
 	assert.DeepEqual(t, got, want)
 
 	assert.Assert(t, strings.Contains(src, "type SPartial []und.Und[MPartial]"), src)

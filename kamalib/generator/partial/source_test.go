@@ -279,7 +279,7 @@ type A struct {
 	opts = opts.WithDefaults()
 	sel, err := selectTargets(base.SourcePackages(pkgs), opts)
 	assert.NilError(t, err)
-	n := opiter.First(maps.Values(sel.targets)).Value()
+	n := opiter.WrapSeq(maps.Values(sel.targets)).First().Value()
 	assert.Assert(t, n != nil)
 	hdr, err := fileHeader(opts, testNow())
 	assert.NilError(t, err)
@@ -300,7 +300,11 @@ type A struct {
 	assert.DeepEqual(t, identNames(fields[0].Names), []string{"_", "X"})
 	assert.DeepEqual(t, identNames(fields[1].Names), []string{"a", "B"})
 	assert.Equal(t, fields[1].Type.(*dst.Ident).Name, "int")
-	assert.Assert(t, opiter.ContainsFunc(isMergeAppend, slices.Values(n.Detail.File.Comments)))
+	assert.Assert(
+		t,
+		opiter.WrapSeq(slices.Values(n.Detail.File.Comments)).
+			ContainsFunc(isMergeAppend),
+	)
 }
 
 func isMergeAppend(cg *ast.CommentGroup) bool {
@@ -308,7 +312,7 @@ func isMergeAppend(cg *ast.CommentGroup) bool {
 }
 
 func identNames(ids []*dst.Ident) []string {
-	return slices.Collect(opiter.Map(identName, slices.Values(ids)))
+	return slices.Collect(opiter.WrapSeq(slices.Values(ids)).Map(identName).Iter())
 }
 
 func identName(id *dst.Ident) string { return id.Name }
