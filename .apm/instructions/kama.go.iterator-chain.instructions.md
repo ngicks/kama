@@ -22,6 +22,7 @@ Go code in this repository transforms sequences with `github.com/ngicks/opiter` 
 
 - Enter a chain through `opiter.WrapSeq` or `opiter.WrapSeq2`.
 - Put the source on its own line inside the parentheses.
+  - Keep a source that is a bare variable on the opening line, as in `opiter.WrapSeq(specs).`.
 - Put every method on its own line. This holds for short chains and for chains with one method.
 - End a chain with `.Collect()` to get a slice.
 - End a chain with `.Iter()` or `.Iter2()` only when the consumer takes `iter.Seq` or `iter.Seq2`, such as `slices.Sorted`, `slices.AppendSeq`, `maps.Collect` or the `Concat` method.
