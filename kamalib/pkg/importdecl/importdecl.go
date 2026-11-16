@@ -204,7 +204,13 @@ func (p *Parser) Reserve(idents ...string) {
 // ParseAst parses the import specs of a file, as ast.File.Imports holds
 // them.
 func (p *Parser) ParseAst(specs []*ast.ImportSpec) (*Map, error) {
-	return p.parse(opiter.WrapSeq(slices.Values(specs)).Disassemble(astSpecNamePath).Iter2())
+	return p.parse(
+		opiter.WrapSeq(
+			slices.Values(specs),
+		).
+			Disassemble(astSpecNamePath).
+			Iter2(),
+	)
 }
 
 func astSpecNamePath(s *ast.ImportSpec) (name, pathLit string) {
@@ -217,7 +223,13 @@ func astSpecNamePath(s *ast.ImportSpec) (name, pathLit string) {
 // ParseDst parses the import specs of a file, as dst.File.Imports holds
 // them.
 func (p *Parser) ParseDst(specs []*dst.ImportSpec) (*Map, error) {
-	return p.parse(opiter.WrapSeq(slices.Values(specs)).Disassemble(dstSpecNamePath).Iter2())
+	return p.parse(
+		opiter.WrapSeq(
+			slices.Values(specs),
+		).
+			Disassemble(dstSpecNamePath).
+			Iter2(),
+	)
 }
 
 func dstSpecNamePath(s *dst.ImportSpec) (name, pathLit string) {
@@ -275,8 +287,6 @@ func asGenDecl(d dst.Decl) *dst.GenDecl {
 	return g
 }
 
-func isImportDecl(g *dst.GenDecl) bool { return g != nil && g.Tok == token.IMPORT }
-
 // Map maps package paths to the identifiers a file accesses them through.
 type Map struct {
 	known map[string]Package
@@ -297,9 +307,15 @@ func (m *Map) lookup(pkgPath string, required []Import) Package {
 	if pkg, ok := m.known[pkgPath]; ok {
 		return pkg
 	}
-	hasPath := func(imp Import) bool { return imp.Package.Path == pkgPath }
-	if imp := opiter.WrapSeq(slices.Values(required)).Filter(hasPath).First(); imp.IsSome() {
-		return imp.Value().Package
+	found := opiter.WrapSeq(
+		slices.Values(required),
+	).
+		Filter(
+			func(imp Import) bool { return imp.Package.Path == pkgPath },
+		).
+		First()
+	if found.IsSome() {
+		return found.Value().Package
 	}
 	return Package{Path: pkgPath}
 }
@@ -436,8 +452,16 @@ func (m *Map) AddMissingDst(f *dst.File) {
 		has[spec{name, pkgPath}] = true
 	}
 
-	genDecls := opiter.WrapSeq(slices.Values(f.Decls)).Map(asGenDecl)
-	decl := genDecls.Filter(isImportDecl).First().UnwrapOrDefault()
+	genDecls := opiter.WrapSeq(
+		slices.Values(f.Decls),
+	).
+		Map(asGenDecl)
+	decl := genDecls.
+		Filter(
+			func(g *dst.GenDecl) bool { return g != nil && g.Tok == token.IMPORT },
+		).
+		First().
+		UnwrapOrDefault()
 
 	for imp := range m.Missing() {
 		if has[spec{imp.Name, imp.Package.Path}] {

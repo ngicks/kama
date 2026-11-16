@@ -90,7 +90,9 @@ type Kids[T any] []L[T]
 
 	types := func(name string) map[string]string {
 		return maps.Collect(
-			opiter.WrapSeq2(maps.All(fieldTypes(t, src, name))).
+			opiter.WrapSeq2(
+				maps.All(fieldTypes(t, src, name)),
+			).
 				Map(withoutTag).
 				Iter2(),
 		)
@@ -289,7 +291,9 @@ func TestUnexportedAliasField(t *testing.T) {
 	})
 	src := files["a.kama_partial.go"]
 	got := maps.Collect(
-		opiter.WrapSeq2(maps.All(fieldTypes(t, src, "APartial"))).
+		opiter.WrapSeq2(
+			maps.All(fieldTypes(t, src, "APartial")),
+		).
 			Map(withoutTag).
 			Iter2(),
 	)

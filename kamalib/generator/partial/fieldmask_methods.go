@@ -62,8 +62,12 @@ func (s *selection) maskFields(n *typegraph.Node, fields []fieldInfo) ([]maskFie
 			}
 			mf.heads = slices.AppendSeq(
 				mf.heads,
-				opiter.WrapSeq(slices.Values(segs)).
-					Map(segmentName).
+				opiter.WrapSeq(
+					slices.Values(segs),
+				).
+					Map(
+						func(m maskSegment) string { return m.name },
+					).
 					Iter(),
 			)
 		case f.class == classSub && s.fieldMasked(s.node(f.named).Id):
@@ -166,9 +170,6 @@ func (w *methodWriter) fieldMaskBody(masks []maskField) genSteps {
 	)
 }
 
-// quotedExpr spells s as a Go string literal.
-func quotedExpr(s string) genExpr { return lang.Expr("%s", strconv.Quote(s)) }
-
 // subRole and wholeRole name the locals collecting the child paths of the
 // field f and telling whether a path selects it whole.
 func subRole(f maskField) string   { return "sub" + f.name }
@@ -243,7 +244,13 @@ func (w *methodWriter) fromValueWithMaskBody(masks []maskField) (genSteps, error
 				continue
 			}
 			decls = append(decls, lang.Stmt("var %s []string", decl(subRole(f))))
-			heads := opiter.WrapSeq(slices.Values(f.heads)).Map(quotedExpr).Collect()
+			heads := opiter.WrapSeq(
+				slices.Values(f.heads),
+			).
+				Map(
+					func(s string) genExpr { return lang.Expr("%s", strconv.Quote(s)) },
+				).
+				Collect()
 			cases = append(cases, lang.Case(
 				lang.Join(", ", heads...),
 				lang.Stmt("%s = append(%s, %s)",

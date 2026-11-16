@@ -134,7 +134,13 @@ func New(
 
 func loadError(pkg *packages.Package) error {
 	if len(pkg.Errors) > 0 {
-		errs := opiter.WrapSeq(slices.Values(pkg.Errors)).Map(packageError).Collect()
+		errs := opiter.WrapSeq(
+			slices.Values(pkg.Errors),
+		).
+			Map(
+				func(e packages.Error) error { return e },
+			).
+			Collect()
 		return fmt.Errorf("%w: %s: %w", ErrLoad, pkg.PkgPath, errors.Join(errs...))
 	}
 	if pkg.Types == nil || pkg.TypesInfo == nil {
@@ -142,8 +148,6 @@ func loadError(pkg *packages.Package) error {
 	}
 	return nil
 }
-
-func packageError(e packages.Error) error { return e }
 
 func listTypes(
 	g *Graph,
@@ -282,11 +286,14 @@ func (g *Graph) Trim(
 	}
 
 	// First pass: identify matched nodes
-	matches := func(_ QualifiedType, node *Node) bool { return nodeMatcher(node) }
 	maps.Insert(
 		mg.matched,
-		opiter.WrapSeq2(maps.All(g.all)).
-			Filter(matches).
+		opiter.WrapSeq2(
+			maps.All(g.all),
+		).
+			Filter(
+				func(_ QualifiedType, node *Node) bool { return nodeMatcher(node) },
+			).
 			Map(newMatchedNode).
 			Iter2(),
 	)
@@ -328,7 +335,11 @@ func markDependants(
 
 			routes := edge.Routes
 			if routeFilter != nil {
-				routes = opiter.WrapSeq(slices.Values(routes)).Filter(routeFilter).Collect()
+				routes = opiter.WrapSeq(
+					slices.Values(routes),
+				).
+					Filter(routeFilter).
+					Collect()
 			}
 
 			parent := mg.dependantNode(parentId, edge.Parent)
@@ -424,8 +435,15 @@ func (g *MatchedGraph) All() iter.Seq2[QualifiedType, *MatchedNode] {
 		_, matched := g.matched[id]
 		return !matched
 	}
-	unmatched := opiter.WrapSeq2(maps.All(g.dependant)).Filter(notMatched)
-	return opiter.WrapSeq2(maps.All(g.matched)).Concat(unmatched.Iter2()).Iter2()
+	unmatched := opiter.WrapSeq2(
+		maps.All(g.dependant),
+	).
+		Filter(notMatched)
+	return opiter.WrapSeq2(
+		maps.All(g.matched),
+	).
+		Concat(unmatched.Iter2()).
+		Iter2()
 }
 
 func (g *MatchedGraph) Matched() iter.Seq2[QualifiedType, *MatchedNode] {

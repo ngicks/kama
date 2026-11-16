@@ -208,7 +208,11 @@ func TestSourcePackages(t *testing.T) {
 	assert.Assert(t, slices.ContainsFunc(pkgs, isTestVariant), "a test variant is loaded")
 	src := SourcePackages(pkgs)
 	assert.Assert(t, !slices.ContainsFunc(src, isTestVariant))
-	paths := opiter.WrapSeq(slices.Values(src)).Map(pkgPathOf).Collect()
+	paths := opiter.WrapSeq(
+		slices.Values(src),
+	).
+		Map(pkgPathOf).
+		Collect()
 	assert.DeepEqual(t, paths, slices.Compact(slices.Clone(paths)))
 	assert.Assert(t, slices.Contains(paths, pkgs[0].PkgPath))
 }
@@ -233,10 +237,22 @@ func TestShadowedPredeclared(t *testing.T) {
 	}))
 	names := func(contents ...string) []string {
 		t.Helper()
-		in := opiter.WrapSeq(slices.Values(contents)).Map(toBytes).Collect()
+		in := opiter.WrapSeq(
+			slices.Values(contents),
+		).
+			Map(
+				func(s string) []byte { return []byte(s) },
+			).
+			Collect()
 		objs, err := ShadowedPredeclared(pkgs[0], in)
 		assert.NilError(t, err)
-		return opiter.WrapSeq(slices.Values(objs)).Map(objectName).Collect()
+		return opiter.WrapSeq(
+			slices.Values(objs),
+		).
+			Map(
+				func(o types.Object) string { return o.Name() },
+			).
+			Collect()
 	}
 	assert.DeepEqual(t, names("package x\n\nvar V string\n\nfunc f() error { return nil }\n"),
 		[]string{"error", "string"})
@@ -247,10 +263,6 @@ func TestShadowedPredeclared(t *testing.T) {
 	_, err := ShadowedPredeclared(pkgs[0], [][]byte{[]byte("not go")})
 	assert.ErrorContains(t, err, "parse generated file")
 }
-
-func toBytes(s string) []byte { return []byte(s) }
-
-func objectName(o types.Object) string { return o.Name() }
 
 func TestStaleCheck(t *testing.T) {
 	const gen = "base-test-gen"

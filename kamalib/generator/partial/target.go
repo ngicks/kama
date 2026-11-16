@@ -349,8 +349,12 @@ func followed(r *typegraph.EdgeRoute) bool {
 		typegraph.EdgeKindMapValue |
 		typegraph.EdgeKindPointer |
 		typegraph.EdgeKindAlias
-	isAllowed := func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 }
-	return opiter.WrapSeq(slices.Values(r.Nodes)).Every(isAllowed)
+	return opiter.WrapSeq(
+		slices.Values(r.Nodes),
+	).
+		Every(
+			func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 },
+		)
 }
 
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
@@ -478,12 +482,20 @@ func (s *selection) checkMerges() error {
 		)
 	}
 	keys := slices.SortedFunc(
-		opiter.WrapSeq(maps.Keys(s.merges)).
+		opiter.WrapSeq(
+			maps.Keys(s.merges),
+		).
 			Filter(hasNoTarget).
 			Iter(),
 		compareKey,
 	)
-	return errors.Join(opiter.WrapSeq(slices.Values(keys)).Map(mergeErr).Collect()...)
+	return errors.Join(
+		opiter.WrapSeq(
+			slices.Values(keys),
+		).
+			Map(mergeErr).
+			Collect()...,
+	)
 }
 
 // checkFlagTargets reports //kama:partial:flag on fields of types without
@@ -515,8 +527,13 @@ func compareKey(a, b kamaopt.Key) int {
 }
 
 func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Object {
-	hasPath := func(pkg *packages.Package) bool { return pkg.PkgPath == id.PackagePath }
-	pkg := opiter.WrapSeq(slices.Values(pkgs)).Filter(hasPath).First()
+	pkg := opiter.WrapSeq(
+		slices.Values(pkgs),
+	).
+		Filter(
+			func(pkg *packages.Package) bool { return pkg.PkgPath == id.PackagePath },
+		).
+		First()
 	if pkg.IsNone() {
 		return nil
 	}
@@ -643,7 +660,13 @@ func (s *selection) mapCycles() error {
 		switch state[n.Id] {
 		case visiting:
 			i := slices.Index(path, n.Id)
-			names := opiter.WrapSeq(slices.Values(append(path[i:], n.Id))).Map(typeNameOf).Collect()
+			names := opiter.WrapSeq(
+				slices.Values(append(path[i:], n.Id)),
+			).
+				Map(
+					func(id typegraph.QualifiedType) string { return id.TypeName },
+				).
+				Collect()
 			return fmt.Errorf(
 				"%w: %s (%s): partial variants would be recursive through embedded fields: %s",
 				ErrUnsupported, nodeName(n),
@@ -675,8 +698,6 @@ func (s *selection) mapCycles() error {
 	}
 	return nil
 }
-
-func typeNameOf(id typegraph.QualifiedType) string { return id.TypeName }
 
 // components returns the strongly connected components of the targets
 // under valueChildren, numbered by Tarjan's algorithm.

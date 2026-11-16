@@ -174,7 +174,13 @@ func probeStruct(fields []probeField, tagKey, option string) reflect.Type {
 			Tag:  reflect.StructTag(fmt.Sprintf("%s:%q", tagKey, tag)),
 		}
 	}
-	return reflect.StructOf(opiter.WrapSeq2(slices.All(fields)).Assemble(toStructField).Collect())
+	return reflect.StructOf(
+		opiter.WrapSeq2(
+			slices.All(fields),
+		).
+			Assemble(toStructField).
+			Collect(),
+	)
 }
 
 func probe(b *strings.Builder, f probeFormat, option string) {
@@ -252,7 +258,13 @@ func describe(v any) string {
 		case x.IsNull():
 			return "null"
 		}
-		vals := opiter.WrapSeq(slices.Values(x.Options())).Map(describeOption).Collect()
+		vals := opiter.WrapSeq(
+			slices.Values(x.Options()),
+		).
+			Map(
+				func(o opt.Option[string]) string { return describe(o) },
+			).
+			Collect()
 		return "defined[" + strings.Join(vals, ", ") + "]"
 	case opt.Option[string]:
 		if x.IsNone() {
@@ -262,8 +274,6 @@ func describe(v any) string {
 	}
 	panic(fmt.Sprintf("unexpected probe field type %T", v))
 }
-
-func describeOption(o opt.Option[string]) string { return describe(o) }
 
 func writeIndented(b *strings.Builder, s string) {
 	s = strings.TrimSuffix(s, "\n")
@@ -305,8 +315,13 @@ func moduleVersions(t *testing.T, paths []string) string {
 	}
 	versions := make([]string, 0, len(paths))
 	for _, p := range paths {
-		isModule := func(dep *debug.Module) bool { return dep.Path == p }
-		dep := opiter.WrapSeq(slices.Values(info.Deps)).Filter(isModule).First()
+		dep := opiter.WrapSeq(
+			slices.Values(info.Deps),
+		).
+			Filter(
+				func(dep *debug.Module) bool { return dep.Path == p },
+			).
+			First()
 		if dep.IsNone() {
 			t.Fatalf("module %s is missing from build info", p)
 		}

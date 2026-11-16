@@ -428,7 +428,11 @@ func (e *encoder) typ(t types.Type) {
 		}
 		// Embedded interfaces contribute their methods above; the other
 		// embedded elements restrict the type set.
-		elems := opiter.WrapSeq(t.EmbeddedTypes()).Filter(notInterface).Collect()
+		elems := opiter.WrapSeq(
+			t.EmbeddedTypes(),
+		).
+			Filter(notInterface).
+			Collect()
 		e.int(len(elems))
 		for _, et := range elems {
 			e.typ(et)
@@ -561,8 +565,13 @@ func (s *helperSet) add(h *helper) (*helper, error) {
 			bytes.Equal(prev.inEnc, h.inEnc) && bytes.Equal(prev.outEnc, h.outEnc)
 	}
 	sameBase := slices.Values(s.groups[base])
-	if prev := opiter.WrapSeq(sameBase).Filter(servesSignature).First(); prev.IsSome() {
-		return prev.Value(), nil
+	served := opiter.WrapSeq(
+		sameBase,
+	).
+		Filter(servesSignature).
+		First()
+	if served.IsSome() {
+		return served.Value(), nil
 	}
 	for other, group := range s.groups {
 		for _, prev := range group {
@@ -651,7 +660,11 @@ type partialFile struct {
 
 // callers returns files as the callers of the helpers of their package.
 func callers(files []*partialFile) []base.Caller {
-	return opiter.WrapSeq(slices.Values(files)).Map((*partialFile).caller).Collect()
+	return opiter.WrapSeq(
+		slices.Values(files),
+	).
+		Map((*partialFile).caller).
+		Collect()
 }
 
 func (f *partialFile) caller() base.Caller {

@@ -219,14 +219,22 @@ func (s *Scope) Unbound() []string {
 }
 
 func (s *Scope) appendUnbound(out []string) []string {
-	out = slices.AppendSeq(out, opiter.WrapSeq2(maps.All(s.roles)).Filter(isPending).OmitL().Iter())
+	out = slices.AppendSeq(
+		out,
+		opiter.WrapSeq2(
+			maps.All(s.roles),
+		).
+			Filter(
+				func(_ string, b binding) bool { return b.pending },
+			).
+			OmitL().
+			Iter(),
+	)
 	for _, child := range s.children {
 		out = child.appendUnbound(out)
 	}
 	return out
 }
-
-func isPending(_ string, b binding) bool { return b.pending }
 
 func (s *Scope) fresh(hint string) string {
 	name := hint
@@ -252,6 +260,10 @@ func (s *Scope) takenBelow(name string) bool {
 	if s.names[name] {
 		return true
 	}
-	holdsBelow := func(child *Scope) bool { return child.takenBelow(name) }
-	return opiter.WrapSeq(slices.Values(s.children)).ContainsFunc(holdsBelow)
+	return opiter.WrapSeq(
+		slices.Values(s.children),
+	).
+		ContainsFunc(
+			func(child *Scope) bool { return child.takenBelow(name) },
+		)
 }

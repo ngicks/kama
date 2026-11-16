@@ -82,7 +82,13 @@ func notFlagKey(k string) bool {
 
 // flagFromArgs validates the args of //kama:partial:flag, keyed by name.
 func flagFromArgs(kv map[string]string) (flagOption, error) {
-	if k := opiter.Min(opiter.WrapSeq(maps.Keys(kv)).Filter(notFlagKey)); k.IsSome() {
+	k := opiter.Min(
+		opiter.WrapSeq(
+			maps.Keys(kv),
+		).
+			Filter(notFlagKey),
+	)
+	if k.IsSome() {
 		return flagOption{}, fmt.Errorf("unknown key %q; want name, short or usage", k.Value())
 	}
 	o := flagOption{name: kv["name"], short: kv["short"], usage: kv["usage"]}
@@ -288,7 +294,13 @@ func (f *flagField) setKind(t types.Type) (types.Type, bool) {
 // flagMethods writes RegisterFlags and FromFlagSet for the fields with a
 // flag option. It writes nothing when there are none.
 func (w *methodWriter) flagMethods(fields []fieldInfo) error {
-	flags := opiter.WrapSeq(slices.Values(fields)).Filter(hasFlag).Collect()
+	flags := opiter.WrapSeq(
+		slices.Values(fields),
+	).
+		Filter(
+			func(f fieldInfo) bool { return f.flag != nil },
+		).
+		Collect()
 	if len(flags) == 0 {
 		return nil
 	}
@@ -325,12 +337,14 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 	)
 }
 
-func hasFlag(f fieldInfo) bool { return f.flag != nil }
-
 // registerFlags returns the statements defining the flag of each of flags
 // on the flag set f.
 func registerFlags(flags []fieldInfo) genSteps {
-	return opiter.WrapSeq(slices.Values(flags)).Map(registerFlag).Collect()
+	return opiter.WrapSeq(
+		slices.Values(flags),
+	).
+		Map(registerFlag).
+		Collect()
 }
 
 func registerFlag(fl fieldInfo) genStep {
@@ -373,7 +387,11 @@ func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
 		}
 		return lang.If(lang.Expr("%s.Changed(%s)", lang.Name("f"), flagName), body, nil)
 	}
-	return opiter.WrapSeq(slices.Values(flags)).Map(readFlag).Collect()
+	return opiter.WrapSeq(
+		slices.Values(flags),
+	).
+		Map(readFlag).
+		Collect()
 }
 
 // checkFlags reports duplicate flag names and shorthands among fields.
@@ -415,9 +433,6 @@ func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 	return nil
 }
 
-// spellsTime reports whether the method signature sig spells package time.
-func spellsTime(sig string) bool { return strings.Contains(sig, "$time.") }
-
 // renderFlagSet prints FlagSetFile of pkg declaring flagSetName.
 func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	sigs := flagSetSignatures()
@@ -426,7 +441,12 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	parser.Reserve(pkg.Types.Scope().Names()...)
 	parser.Reserve(flagSetParams...)
 
-	usesTime := opiter.WrapSeq(maps.Values(sigs)).Any(spellsTime)
+	usesTime := opiter.WrapSeq(
+		maps.Values(sigs),
+	).
+		Any(
+			func(sig string) bool { return strings.Contains(sig, "$time.") },
+		)
 	if usesTime {
 		err := parser.Require(
 			importdecl.Import{Package: importdecl.Package{Path: "time", Name: "time"}},
@@ -456,12 +476,15 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 		),
 		lang.Stmt("type %s interface {", flagSetName),
 	}
-	toStmt := func(sig string) genStep { return lang.Stmt("%s", replacer.Replace(sig)) }
 	body = slices.AppendSeq(
 		body,
-		opiter.WrapSeq2(opiter.MapsSorted(sigs)).
+		opiter.WrapSeq2(
+			opiter.MapsSorted(sigs),
+		).
 			OmitF().
-			Map(toStmt).
+			Map(
+				func(sig string) genStep { return lang.Stmt("%s", replacer.Replace(sig)) },
+			).
 			Iter(),
 	)
 	body = append(body, lang.Stmt("}"))

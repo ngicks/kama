@@ -88,7 +88,13 @@ func TestFixtureUpToDate(t *testing.T) {
 			absPath := func(file File) string {
 				return filepath.Join(f.Root(), filepath.FromSlash(file.Path))
 			}
-			produced := slices.Sorted(opiter.WrapSeq(slices.Values(files)).Map(absPath).Iter())
+			produced := slices.Sorted(
+				opiter.WrapSeq(
+					slices.Values(files),
+				).
+					Map(absPath).
+					Iter(),
+			)
 			assert.DeepEqual(t, produced, generatedFiles(t, f.Root()))
 
 			for _, name := range produced {
@@ -162,7 +168,13 @@ func TestFixtureExternalParity(t *testing.T) {
 	hideHash := func(src string) string { return hash.ReplaceAllString(src, "${1}<hash>") }
 	normalize := func(src string) string {
 		rest, helpers := splitHelpers(t, src)
-		hidden := slices.Sorted(opiter.WrapSeq(slices.Values(helpers)).Map(hideHash).Iter())
+		hidden := slices.Sorted(
+			opiter.WrapSeq(
+				slices.Values(helpers),
+			).
+				Map(hideHash).
+				Iter(),
+		)
 		return hideHash(rest) + "\n" + strings.Join(hidden, "\n")
 	}
 	for _, name := range names {

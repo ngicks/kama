@@ -33,9 +33,22 @@ func parse(t *testing.T, src string) (*dstreplace.Cache, *dst.StructType) {
 
 func typeSpec(t *testing.T, f *ast.File, name string) *ast.TypeSpec {
 	t.Helper()
-	hasName := func(ts *ast.TypeSpec) bool { return ts.Name.Name == name }
-	specs := opiter.Flatten(opiter.WrapSeq(slices.Values(f.Decls)).Map(typeDeclSpecs))
-	found := opiter.WrapSeq(specs).Map(asTypeSpec).Filter(hasName).First()
+	specs := opiter.Flatten(
+		opiter.WrapSeq(
+			slices.Values(f.Decls),
+		).
+			Map(typeDeclSpecs),
+	)
+	found := opiter.WrapSeq(
+		specs,
+	).
+		Map(
+			func(s ast.Spec) *ast.TypeSpec { return s.(*ast.TypeSpec) },
+		).
+		Filter(
+			func(ts *ast.TypeSpec) bool { return ts.Name.Name == name },
+		).
+		First()
 	if found.IsNone() {
 		t.Fatalf("no type %s", name)
 	}
@@ -48,8 +61,6 @@ func typeDeclSpecs(d ast.Decl) []ast.Spec {
 	}
 	return nil
 }
-
-func asTypeSpec(s ast.Spec) *ast.TypeSpec { return s.(*ast.TypeSpec) }
 
 // printStruct prints st as the type B.
 func printStruct(t *testing.T, st *dst.StructType) string {

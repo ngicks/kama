@@ -147,7 +147,11 @@ func newStepError(i int, err error) error {
 func (e *stepError) Error() string {
 	var sb strings.Builder
 	sb.WriteString("genhelper: step ")
-	indices := opiter.WrapSeq(slices.Values(e.path)).Map(strconv.Itoa).Collect()
+	indices := opiter.WrapSeq(
+		slices.Values(e.path),
+	).
+		Map(strconv.Itoa).
+		Collect()
 	sb.WriteString(strings.Join(indices, "."))
 	sb.WriteString(": ")
 	sb.WriteString(e.err.Error())

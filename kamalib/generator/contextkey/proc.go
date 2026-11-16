@@ -108,7 +108,11 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 	inDir := func(name string, src []byte) base.File {
 		return base.File{Path: path.Join(i.dir, name), Content: src}
 	}
-	produced := opiter.WrapSeq2(opiter.MapsSorted(files)).Assemble(inDir).Collect()
+	produced := opiter.WrapSeq2(
+		opiter.MapsSorted(files),
+	).
+		Assemble(inDir).
+		Collect()
 
 	opts := i.opts.withDefaults()
 	stale := base.StaleCheck{Registry: opts.Registry, Generator: GeneratorName}

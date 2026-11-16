@@ -112,7 +112,11 @@ func Parse(tag reflect.StructTag) (Tags, error) {
 
 // StructTag formats t as a reflect.StructTag, pairs separated by a space.
 func (t Tags) StructTag() reflect.StructTag {
-	parts := opiter.WrapSeq(slices.Values(t)).Map(Tag.String).Collect()
+	parts := opiter.WrapSeq(
+		slices.Values(t),
+	).
+		Map(Tag.String).
+		Collect()
 	return reflect.StructTag(strings.Join(parts, " "))
 }
 
@@ -122,7 +126,11 @@ func (t Tags) StructTag() reflect.StructTag {
 // raw is the part as written. unescaped differs from raw when the name is
 // single-quoted.
 func (t Tags) Get(key, option string) (raw, unescaped string, err error) {
-	found := opiter.WrapSeq(slices.Values(t)).Filter(hasKey(key)).First()
+	found := opiter.WrapSeq(
+		slices.Values(t),
+	).
+		Filter(hasKey(key)).
+		First()
 	if found.IsNone() {
 		return "", "", fmt.Errorf("%w: key %q", ErrNotFound, key)
 	}

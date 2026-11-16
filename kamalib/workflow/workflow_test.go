@@ -139,17 +139,26 @@ func build(t *testing.T, p procs, steps map[string]Step) (*Graph, error) {
 	return Spec{Version: SpecVersion, Steps: steps}.Build(context.Background(), p.registry(t))
 }
 
-func nodeName(n Node) string { return n.Name }
-
 func names(g *Graph) []string {
-	return opiter.WrapSeq(slices.Values(g.Nodes())).Map(nodeName).Collect()
+	return opiter.WrapSeq(
+		slices.Values(g.Nodes()),
+	).
+		Map(
+			func(n Node) string { return n.Name },
+		).
+		Collect()
 }
 
 func node(t *testing.T, g *Graph, name string) Node {
 	t.Helper()
 
-	isNamed := func(n Node) bool { return n.Name == name }
-	found := opiter.WrapSeq(slices.Values(g.Nodes())).Filter(isNamed).First()
+	found := opiter.WrapSeq(
+		slices.Values(g.Nodes()),
+	).
+		Filter(
+			func(n Node) bool { return n.Name == name },
+		).
+		First()
 	if found.IsNone() {
 		t.Fatalf("no node %q", name)
 	}

@@ -32,8 +32,14 @@ func loadPackages(t *testing.T, patterns ...string) []*packages.Package {
 }
 
 func pkgNamed(pkgs []*packages.Package, name string) *packages.Package {
-	hasName := func(pkg *packages.Package) bool { return pkg.Name == name }
-	return opiter.WrapSeq(slices.Values(pkgs)).Filter(hasName).First().UnwrapOrDefault()
+	return opiter.WrapSeq(
+		slices.Values(pkgs),
+	).
+		Filter(
+			func(pkg *packages.Package) bool { return pkg.Name == name },
+		).
+		First().
+		UnwrapOrDefault()
 }
 
 func pkgPathOf(t *testing.T, pkgs []*packages.Package, name string) string {
@@ -67,10 +73,16 @@ func definedNamed(pkg *packages.Package, name string) *types.Named {
 		return ok
 	}
 	defs := maps.Values(pkg.TypesInfo.Defs)
-	return opiter.WrapSeq(defs).Filter(isNamedType).Map(objNamed).First().UnwrapOrDefault()
+	return opiter.WrapSeq(
+		defs,
+	).
+		Filter(isNamedType).
+		Map(
+			func(obj types.Object) *types.Named { return obj.Type().(*types.Named) },
+		).
+		First().
+		UnwrapOrDefault()
 }
-
-func objNamed(obj types.Object) *types.Named { return obj.Type().(*types.Named) }
 
 func compareQualifiedType(a, b QualifiedType) int {
 	if c := cmp.Compare(a.PackagePath, b.PackagePath); c != 0 {
@@ -87,14 +99,23 @@ func keysSorted[V any](m map[QualifiedType]V) []QualifiedType {
 	keys := make([]QualifiedType, 0, len(m))
 	return slices.AppendSeq(
 		keys,
-		opiter.WrapSeq2(opiter.MapsSortedFunc(m, compareQualifiedType)).
+		opiter.WrapSeq2(
+			opiter.MapsSortedFunc(m, compareQualifiedType),
+		).
 			OmitL().
 			Iter(),
 	)
 }
 
 func collectKeysSorted[V any](seq iter.Seq2[QualifiedType, V]) []QualifiedType {
-	return slices.SortedFunc(opiter.WrapSeq2(seq).OmitL().Iter(), compareQualifiedType)
+	return slices.SortedFunc(
+		opiter.WrapSeq2(
+			seq,
+		).
+			OmitL().
+			Iter(),
+		compareQualifiedType,
+	)
 }
 
 func compareEdgeRoutesByFirstPos(a, b *EdgeRoute) int {
@@ -299,9 +320,16 @@ func TestTrim_MatchAll(t *testing.T) {
 	// A node both matched and dependant is a single node carrying both kinds and its edges.
 	typeAId := NewQualifiedType(basicPkgPath, "TypeA")
 	matchedA, _ := mg.Get(typeAId)
-	isTypeA := func(id QualifiedType, _ *MatchedNode) bool { return id == typeAId }
-	dependants := opiter.WrapSeq2(mg.Dependant()).Filter(isTypeA).OmitF()
-	dependantA := dependants.First().UnwrapOrDefault()
+	dependants := opiter.WrapSeq2(
+		mg.Dependant(),
+	).
+		Filter(
+			func(id QualifiedType, _ *MatchedNode) bool { return id == typeAId },
+		).
+		OmitF()
+	dependantA := dependants.
+		First().
+		UnwrapOrDefault()
 	assert.Assert(t, matchedA == dependantA)
 	assert.Equal(t, MatchKindMatched|MatchKindDependant, matchedA.MatchKind)
 	assert.DeepEqual(t,
@@ -857,8 +885,6 @@ func TestTrim_Diamond(t *testing.T) {
 	}
 }
 
-func isPointerNode(n EdgeRouteNode) bool { return n.Kind == EdgeKindPointer }
-
 func TestTrim_RouteFilter(t *testing.T) {
 	pkgs := loadPackages(t, "./testdata/edges")
 
@@ -873,7 +899,12 @@ func TestTrim_RouteFilter(t *testing.T) {
 		func(n *Node) bool { return n.Id == targetId },
 		func(e *Edge[Node]) bool { return e.Parent.Id == structId },
 		func(r *EdgeRoute) bool {
-			return opiter.WrapSeq(slices.Values(r.Nodes)).ContainsFunc(isPointerNode)
+			return opiter.WrapSeq(
+				slices.Values(r.Nodes),
+			).
+				ContainsFunc(
+					func(n EdgeRouteNode) bool { return n.Kind == EdgeKindPointer },
+				)
 		},
 	)
 

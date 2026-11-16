@@ -69,7 +69,13 @@ func AstField(f *ast.Field) []Comment {
 	if f.Comment != nil && len(f.Comment.List) > 0 {
 		trailing = []string{f.Comment.List[0].Text}
 	}
-	return collect(opiter.WrapSeq(astTexts(f.Doc)).Concat(slices.Values(trailing)).Iter())
+	return collect(
+		opiter.WrapSeq(
+			astTexts(f.Doc),
+		).
+			Concat(slices.Values(trailing)).
+			Iter(),
+	)
 }
 
 // Dst returns the directive comments decorating the start of a node, after
@@ -83,7 +89,9 @@ func Dst(decs dst.NodeDecs) []Comment {
 // comment decorating its end.
 func DstField(decs dst.FieldDecorations) []Comment {
 	return collect(
-		opiter.WrapSeq(slices.Values(afterLastEmptyLine(decs.Start))).
+		opiter.WrapSeq(
+			slices.Values(afterLastEmptyLine(decs.Start)),
+		).
 			Concat(slices.Values(decs.End[:min(len(decs.End), 1)])).
 			Iter(),
 	)
@@ -93,10 +101,14 @@ func astTexts(cg *ast.CommentGroup) iter.Seq[string] {
 	if cg == nil {
 		return opiter.Empty[string]()
 	}
-	return opiter.WrapSeq(slices.Values(cg.List)).Map(commentText).Iter()
+	return opiter.WrapSeq(
+		slices.Values(cg.List),
+	).
+		Map(
+			func(c *ast.Comment) string { return c.Text },
+		).
+		Iter()
 }
-
-func commentText(c *ast.Comment) string { return c.Text }
 
 // afterLastEmptyLine drops the decorations up to and including the last
 // empty line, which separates comments not attached to the node.
@@ -118,7 +130,13 @@ func afterLastEmptyLine(lines []string) []string {
 }
 
 func collect(texts iter.Seq[string]) []Comment {
-	return opiter.WrapSeq(texts).Disassemble(Parse).Filter(isParsed).OmitL().Collect()
+	return opiter.WrapSeq(
+		texts,
+	).
+		Disassemble(Parse).
+		Filter(
+			func(_ Comment, ok bool) bool { return ok },
+		).
+		OmitL().
+		Collect()
 }
-
-func isParsed(_ Comment, ok bool) bool { return ok }

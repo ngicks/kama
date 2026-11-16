@@ -104,12 +104,18 @@ func maskNameOf(r kamaopt.Raw) (maskName, error) {
 	return maskNameFromArgs(kv)
 }
 
-func notMaskNameKey(k string) bool { return k != "name" }
-
 // maskNameFromArgs validates the args of //kama:partial:fieldmask on a
 // field, keyed by name.
 func maskNameFromArgs(kv map[string]string) (maskName, error) {
-	if k := opiter.Min(opiter.WrapSeq(maps.Keys(kv)).Filter(notMaskNameKey)); k.IsSome() {
+	k := opiter.Min(
+		opiter.WrapSeq(
+			maps.Keys(kv),
+		).
+			Filter(
+				func(key string) bool { return key != "name" },
+			),
+	)
+	if k.IsSome() {
 		return maskName{}, fmt.Errorf("unknown key %q; want name", k.Value())
 	}
 	o := maskName{name: kv["name"]}
@@ -187,7 +193,11 @@ func (s *selection) checkFieldMaskTargets() error {
 		isEmbeddedPartial := func(v *types.Var) bool {
 			return v.Name() == k.Field && s.embeddedPartial(n, v) != nil
 		}
-		if opiter.WrapSeq(st.Fields()).ContainsFunc(isEmbeddedPartial) {
+		embedsPartial := opiter.WrapSeq(
+			st.Fields(),
+		).
+			ContainsFunc(isEmbeddedPartial)
+		if embedsPartial {
 			bad("the paths of the fields of an embedded partial value are those of " +
 				"the parent, so the field has no path segment of its own")
 		}
@@ -219,8 +229,6 @@ type maskSegment struct {
 func (m maskSegment) position() string {
 	return m.owner.Detail.Pkg.Fset.Position(m.field.Pos()).String()
 }
-
-func segmentName(m maskSegment) string { return m.name }
 
 // maskSegments returns the segments of the fields of the struct target n
 // in field order. The segments of an embedded partial value take the place
@@ -326,6 +334,10 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 	}
 	// errors.Join drops the nil errors of fields that are fine.
 	return errors.Join(
-		opiter.WrapSeq(st.Fields()).Map(maskedEmbeddingErr).Collect()...,
+		opiter.WrapSeq(
+			st.Fields(),
+		).
+			Map(maskedEmbeddingErr).
+			Collect()...,
 	)
 }

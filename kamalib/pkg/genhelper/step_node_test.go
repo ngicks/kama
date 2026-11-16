@@ -41,10 +41,14 @@ func newPackage(t *testing.T, fset *token.FileSet) (*genhelper.Package, *types.P
 }
 
 func missingPaths(m *importdecl.Map) []string {
-	return opiter.WrapSeq(m.Missing()).Map(importPath).Collect()
+	return opiter.WrapSeq(
+		m.Missing(),
+	).
+		Map(
+			func(imp importdecl.Import) string { return imp.Package.Path },
+		).
+		Collect()
 }
-
-func importPath(imp importdecl.Import) string { return imp.Package.Path }
 
 // marker is a context distinct from the one a step starts with.
 func marker() ctx {

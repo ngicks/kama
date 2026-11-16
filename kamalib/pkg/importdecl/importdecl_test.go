@@ -48,8 +48,6 @@ func parse(t *testing.T, p *Parser, pkg *packages.Package) *Map {
 
 func missing(m *Map) []Import { return slices.Collect(m.Missing()) }
 
-func isExampleY(imp Import) bool { return imp.Package.Path == "example.com/y" }
-
 func TestIdent(t *testing.T) {
 	pkgs, all := load(t)
 
@@ -173,7 +171,13 @@ func TestRequire(t *testing.T) {
 	assert.NilError(t, err)
 	got, _ = m.Ident("example.com/y")
 	assert.Equal(t, got, "y")
-	assert.Assert(t, !opiter.WrapSeq(m.Missing()).ContainsFunc(isExampleY))
+	yMissing := opiter.WrapSeq(
+		m.Missing(),
+	).
+		ContainsFunc(
+			func(imp Import) bool { return imp.Package.Path == "example.com/y" },
+		)
+	assert.Assert(t, !yMissing)
 
 	// A requirement without a package name does not tell the name of an
 	// unnamed import.
@@ -408,8 +412,11 @@ func TestInferName(t *testing.T) {
 }
 
 func TestInferNameKeywords(t *testing.T) {
-	for tok := range opiter.WrapSeq(opiter.Range(token.BREAK, token.VAR+1)).
-		Filter(token.Token.IsKeyword) {
+	keywords := opiter.WrapSeq(
+		opiter.Range(token.BREAK, token.VAR+1),
+	).
+		Filter(token.Token.IsKeyword)
+	for tok := range keywords {
 		kw := tok.String()
 		assert.Equal(t, inferName("example.com/"+kw), "_"+kw)
 	}

@@ -279,7 +279,11 @@ type A struct {
 	opts = opts.WithDefaults()
 	sel, err := selectTargets(base.SourcePackages(pkgs), opts)
 	assert.NilError(t, err)
-	n := opiter.WrapSeq(maps.Values(sel.targets)).First().Value()
+	n := opiter.WrapSeq(
+		maps.Values(sel.targets),
+	).
+		First().
+		Value()
 	assert.Assert(t, n != nil)
 	hdr, err := fileHeader(opts, testNow())
 	assert.NilError(t, err)
@@ -302,7 +306,9 @@ type A struct {
 	assert.Equal(t, fields[1].Type.(*dst.Ident).Name, "int")
 	assert.Assert(
 		t,
-		opiter.WrapSeq(slices.Values(n.Detail.File.Comments)).
+		opiter.WrapSeq(
+			slices.Values(n.Detail.File.Comments),
+		).
 			ContainsFunc(isMergeAppend),
 	)
 }
@@ -312,7 +318,11 @@ func isMergeAppend(cg *ast.CommentGroup) bool {
 }
 
 func identNames(ids []*dst.Ident) []string {
-	return opiter.WrapSeq(slices.Values(ids)).Map(identName).Collect()
+	return opiter.WrapSeq(
+		slices.Values(ids),
+	).
+		Map(
+			func(id *dst.Ident) string { return id.Name },
+		).
+		Collect()
 }
-
-func identName(id *dst.Ident) string { return id.Name }

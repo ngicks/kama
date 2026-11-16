@@ -643,8 +643,12 @@ func TestProcOptionFile(t *testing.T) {
 	assert.NilError(t, run(dir+"/partial"))
 	staged, err := f.Overlay()
 	assert.NilError(t, err)
-	names := opiter.WrapSeq(maps.Keys(staged)).Filter(isXPartialFile).Collect()
+	names := opiter.WrapSeq(
+		maps.Keys(staged),
+	).
+		Filter(
+			func(name string) bool { return strings.HasSuffix(name, "x.kama_partial.go") },
+		).
+		Collect()
 	assert.Equal(t, len(names), 1, names)
 }
-
-func isXPartialFile(name string) bool { return strings.HasSuffix(name, "x.kama_partial.go") }

@@ -206,11 +206,16 @@ func (c *collector) add(key Key, comments []*ast.Comment) {
 			Origin:    Origin{Source: SourceDirective, Pos: c.fset.Position(cm.Slash)},
 		}, true
 	}
-	raws := opiter.WrapSeq(slices.Values(comments)).Disassemble(toRaw).Filter(isRaw).OmitL()
+	raws := opiter.WrapSeq(
+		slices.Values(comments),
+	).
+		Disassemble(toRaw).
+		Filter(
+			func(_ Raw, ok bool) bool { return ok },
+		).
+		OmitL()
 	c.out = slices.AppendSeq(c.out, raws.Iter())
 }
-
-func isRaw(_ Raw, ok bool) bool { return ok }
 
 // fieldComments selects the same comments as dircmnt.AstField, which
 // returns no positions.
@@ -227,7 +232,11 @@ func fieldComments(f *ast.Field) []*ast.Comment {
 
 func fieldNames(f *ast.Field) []string {
 	if len(f.Names) > 0 {
-		return opiter.WrapSeq(slices.Values(f.Names)).Map((*ast.Ident).String).Collect()
+		return opiter.WrapSeq(
+			slices.Values(f.Names),
+		).
+			Map((*ast.Ident).String).
+			Collect()
 	}
 	return []string{embeddedName(f.Type)}
 }
