@@ -68,7 +68,7 @@ func HostShared(shared string, callers []Caller) []Host {
 			host(first.Own, first.BuildLine, name)
 		}
 	}
-	return slices.Collect(opiter.WrapSeq2(opiter.MapsSorted(byPath)).OmitF().Map(hostValue).Iter())
+	return opiter.WrapSeq2(opiter.MapsSorted(byPath)).OmitF().Map(hostValue).Collect()
 }
 
 func isUnconstrained(c Caller) bool { return !c.Constrained }

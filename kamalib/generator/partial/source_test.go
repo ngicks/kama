@@ -312,7 +312,7 @@ func isMergeAppend(cg *ast.CommentGroup) bool {
 }
 
 func identNames(ids []*dst.Ident) []string {
-	return slices.Collect(opiter.WrapSeq(slices.Values(ids)).Map(identName).Iter())
+	return opiter.WrapSeq(slices.Values(ids)).Map(identName).Collect()
 }
 
 func identName(id *dst.Ident) string { return id.Name }

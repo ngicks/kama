@@ -64,7 +64,7 @@ func (p PathInput) Candidates() ([]string, error) {
 	}
 	withBase := func(ext string) string { return p.Base + ext }
 	exts := opiter.Flatten(opiter.WrapSeq(slices.Values(p.Formats)).Map(Format.Extensions))
-	return slices.Collect(opiter.WrapSeq(exts).Map(withBase).Iter()), nil
+	return opiter.WrapSeq(exts).Map(withBase).Collect(), nil
 }
 
 func isUnknown(f Format) bool { return f.Extensions() == nil }

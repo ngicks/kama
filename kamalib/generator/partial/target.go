@@ -483,7 +483,7 @@ func (s *selection) checkMerges() error {
 			Iter(),
 		compareKey,
 	)
-	return errors.Join(slices.Collect(opiter.WrapSeq(slices.Values(keys)).Map(mergeErr).Iter())...)
+	return errors.Join(opiter.WrapSeq(slices.Values(keys)).Map(mergeErr).Collect()...)
 }
 
 // checkFlagTargets reports //kama:partial:flag on fields of types without
@@ -643,11 +643,7 @@ func (s *selection) mapCycles() error {
 		switch state[n.Id] {
 		case visiting:
 			i := slices.Index(path, n.Id)
-			names := slices.Collect(
-				opiter.WrapSeq(slices.Values(append(path[i:], n.Id))).
-					Map(typeNameOf).
-					Iter(),
-			)
+			names := opiter.WrapSeq(slices.Values(append(path[i:], n.Id))).Map(typeNameOf).Collect()
 			return fmt.Errorf(
 				"%w: %s (%s): partial variants would be recursive through embedded fields: %s",
 				ErrUnsupported, nodeName(n),

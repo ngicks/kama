@@ -68,7 +68,7 @@ func (c StaleCheck) Files(pkgs []*packages.Package, produced []File) []error {
 	slices.SortFunc(found, func(a, b stale) int { return cmp.Compare(a.path, b.path) })
 
 	staleErr := func(s stale) error { return c.warning(s.name) }
-	return slices.Collect(opiter.WrapSeq(slices.Values(found)).Map(staleErr).Iter())
+	return opiter.WrapSeq(slices.Values(found)).Map(staleErr).Collect()
 }
 
 // Dir returns a warning wrapping ErrStale for each Go file directly in dir

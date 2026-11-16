@@ -112,7 +112,7 @@ func Parse(tag reflect.StructTag) (Tags, error) {
 
 // StructTag formats t as a reflect.StructTag, pairs separated by a space.
 func (t Tags) StructTag() reflect.StructTag {
-	parts := slices.Collect(opiter.WrapSeq(slices.Values(t)).Map(Tag.String).Iter())
+	parts := opiter.WrapSeq(slices.Values(t)).Map(Tag.String).Collect()
 	return reflect.StructTag(strings.Join(parts, " "))
 }
 

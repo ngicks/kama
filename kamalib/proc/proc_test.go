@@ -53,7 +53,7 @@ steps:
 	g, err := spec.Build(context.Background(), workflow.DefaultRegistry)
 	assert.NilError(t, err)
 
-	names := slices.Collect(opiter.WrapSeq(slices.Values(g.Nodes())).Map(nodeName).Iter())
+	names := opiter.WrapSeq(slices.Values(g.Nodes())).Map(nodeName).Collect()
 	assert.DeepEqual(t, names, []string{"root", "meta", "packages", "final"})
 }
 

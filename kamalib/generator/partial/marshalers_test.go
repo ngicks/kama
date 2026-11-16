@@ -174,11 +174,7 @@ func probeStruct(fields []probeField, tagKey, option string) reflect.Type {
 			Tag:  reflect.StructTag(fmt.Sprintf("%s:%q", tagKey, tag)),
 		}
 	}
-	return reflect.StructOf(slices.Collect(
-		opiter.WrapSeq2(slices.All(fields)).
-			Unify(toStructField).
-			Iter(),
-	))
+	return reflect.StructOf(opiter.WrapSeq2(slices.All(fields)).Assemble(toStructField).Collect())
 }
 
 func probe(b *strings.Builder, f probeFormat, option string) {
@@ -256,11 +252,7 @@ func describe(v any) string {
 		case x.IsNull():
 			return "null"
 		}
-		vals := slices.Collect(
-			opiter.WrapSeq(slices.Values(x.Options())).
-				Map(describeOption).
-				Iter(),
-		)
+		vals := opiter.WrapSeq(slices.Values(x.Options())).Map(describeOption).Collect()
 		return "defined[" + strings.Join(vals, ", ") + "]"
 	case opt.Option[string]:
 		if x.IsNone() {

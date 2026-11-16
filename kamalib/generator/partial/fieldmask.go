@@ -326,10 +326,6 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 	}
 	// errors.Join drops the nil errors of fields that are fine.
 	return errors.Join(
-		slices.Collect(
-			opiter.WrapSeq(st.Fields()).
-				Map(maskedEmbeddingErr).
-				Iter(),
-		)...,
+		opiter.WrapSeq(st.Fields()).Map(maskedEmbeddingErr).Collect()...,
 	)
 }

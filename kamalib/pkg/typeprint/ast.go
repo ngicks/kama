@@ -109,7 +109,7 @@ func (p astPrinter) named(
 	}
 	x := astName(qual, name)
 
-	indices, err := opiter.TryCollect(opiter.WrapSeq(targs.Types()).Divide(p.expr))
+	indices, err := opiter.TryCollect(opiter.WrapSeq(targs.Types()).Disassemble(p.expr))
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (p astPrinter) signature(sig *types.Signature) (*ast.FuncType, error) {
 }
 
 func (p astPrinter) tuple(t *types.Tuple) (*ast.FieldList, error) {
-	fields, err := opiter.TryCollect(opiter.WrapSeq(t.Variables()).Divide(p.tupleField))
+	fields, err := opiter.TryCollect(opiter.WrapSeq(t.Variables()).Disassemble(p.tupleField))
 	if err != nil {
 		return nil, err
 	}

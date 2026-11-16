@@ -305,11 +305,7 @@ var bareKey = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 // such as package import paths.
 func keyPath(path []string) string {
 	return strings.Join(
-		slices.Collect(
-			opiter.WrapSeq(slices.Values(path)).
-				Map(quoteKey).
-				Iter(),
-		),
+		opiter.WrapSeq(slices.Values(path)).Map(quoteKey).Collect(),
 		".",
 	)
 }

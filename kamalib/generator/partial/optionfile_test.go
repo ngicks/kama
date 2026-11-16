@@ -3,7 +3,6 @@ package partial
 import (
 	"context"
 	"maps"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -644,7 +643,7 @@ func TestProcOptionFile(t *testing.T) {
 	assert.NilError(t, run(dir+"/partial"))
 	staged, err := f.Overlay()
 	assert.NilError(t, err)
-	names := slices.Collect(opiter.WrapSeq(maps.Keys(staged)).Filter(isXPartialFile).Iter())
+	names := opiter.WrapSeq(maps.Keys(staged)).Filter(isXPartialFile).Collect()
 	assert.Equal(t, len(names), 1, names)
 }
 

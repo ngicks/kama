@@ -186,7 +186,7 @@ func PrintDstDecls(decls []dst.Decl) ([]byte, error) {
 	}
 	// A dst node belongs to one tree. Placing the clones in the wrapper
 	// keeps decls where the caller put them.
-	cloned := slices.Collect(opiter.WrapSeq(slices.Values(decls)).Map(cloneDecl).Iter())
+	cloned := opiter.WrapSeq(slices.Values(decls)).Map(cloneDecl).Collect()
 	// A comment leading the first declaration would otherwise follow the
 	// package clause on its line.
 	cloned[0].Decorations().Before = dst.EmptyLine

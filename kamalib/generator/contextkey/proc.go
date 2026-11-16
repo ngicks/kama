@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"path"
 	"reflect"
-	"slices"
 
 	"github.com/ngicks/opiter"
 
@@ -109,7 +108,7 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 	inDir := func(name string, src []byte) base.File {
 		return base.File{Path: path.Join(i.dir, name), Content: src}
 	}
-	produced := slices.Collect(opiter.WrapSeq2(opiter.MapsSorted(files)).Unify(inDir).Iter())
+	produced := opiter.WrapSeq2(opiter.MapsSorted(files)).Assemble(inDir).Collect()
 
 	opts := i.opts.withDefaults()
 	stale := base.StaleCheck{Registry: opts.Registry, Generator: GeneratorName}

@@ -129,7 +129,7 @@ func partialTypes(t *testing.T, src string) []string {
 	f, err := parser.ParseFile(token.NewFileSet(), "x.go", src, 0)
 	assert.NilError(t, err)
 	specs := opiter.Flatten(opiter.WrapSeq(slices.Values(f.Decls)).Map(typeSpecs))
-	return slices.Collect(opiter.WrapSeq(specs).Map(typeSpecName).Iter())
+	return opiter.WrapSeq(specs).Map(typeSpecName).Collect()
 }
 
 // typeSpecs returns the specs of d when it declares types.

@@ -372,7 +372,7 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 		pending[name] = len(deps)
 	}
 
-	ready := slices.Collect(opiter.WrapSeq2(maps.All(pending)).Filter(isReady).OmitL().Iter())
+	ready := opiter.WrapSeq2(maps.All(pending)).Filter(isReady).OmitL().Collect()
 
 	order := make([]string, 0, len(steps))
 	for len(ready) > 0 {

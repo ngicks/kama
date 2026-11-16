@@ -19,7 +19,7 @@ import (
 // which declares nothing a generator reads, stays.
 func SourcePackages(pkgs []*packages.Package) []*packages.Package {
 	sources := opiter.WrapSeq(slices.Values(pkgs)).Filter(isSourceVariant)
-	return slices.Collect(sources.UniqueFunc(pkgPathOf).Iter())
+	return sources.UniqueFunc(pkgPathOf).Collect()
 }
 
 func pkgPathOf(p *packages.Package) string { return p.PkgPath }
@@ -85,7 +85,7 @@ func ShadowedPredeclared(pkg *packages.Package, contents [][]byte) ([]types.Obje
 	isDeclared := func(obj types.Object) bool { return obj != nil }
 	predeclared := slices.Sorted(opiter.WrapSeq(maps.Keys(used)).Filter(isPredeclared).Iter())
 	objs := opiter.WrapSeq(slices.Values(predeclared)).Map(pkg.Types.Scope().Lookup)
-	return slices.Collect(objs.Filter(isDeclared).Iter()), nil
+	return objs.Filter(isDeclared).Collect(), nil
 }
 
 func isPredeclared(ident string) bool { return types.Universe.Lookup(ident) != nil }

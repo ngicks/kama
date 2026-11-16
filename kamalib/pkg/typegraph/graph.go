@@ -134,7 +134,7 @@ func New(
 
 func loadError(pkg *packages.Package) error {
 	if len(pkg.Errors) > 0 {
-		errs := slices.Collect(opiter.WrapSeq(slices.Values(pkg.Errors)).Map(packageError).Iter())
+		errs := opiter.WrapSeq(slices.Values(pkg.Errors)).Map(packageError).Collect()
 		return fmt.Errorf("%w: %s: %w", ErrLoad, pkg.PkgPath, errors.Join(errs...))
 	}
 	if pkg.Types == nil || pkg.TypesInfo == nil {
@@ -328,11 +328,7 @@ func markDependants(
 
 			routes := edge.Routes
 			if routeFilter != nil {
-				routes = slices.Collect(
-					opiter.WrapSeq(slices.Values(routes)).
-						Filter(routeFilter).
-						Iter(),
-				)
+				routes = opiter.WrapSeq(slices.Values(routes)).Filter(routeFilter).Collect()
 			}
 
 			parent := mg.dependantNode(parentId, edge.Parent)

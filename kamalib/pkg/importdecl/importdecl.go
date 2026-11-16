@@ -204,7 +204,7 @@ func (p *Parser) Reserve(idents ...string) {
 // ParseAst parses the import specs of a file, as ast.File.Imports holds
 // them.
 func (p *Parser) ParseAst(specs []*ast.ImportSpec) (*Map, error) {
-	return p.parse(opiter.WrapSeq(slices.Values(specs)).Divide(astSpecNamePath).Iter2())
+	return p.parse(opiter.WrapSeq(slices.Values(specs)).Disassemble(astSpecNamePath).Iter2())
 }
 
 func astSpecNamePath(s *ast.ImportSpec) (name, pathLit string) {
@@ -217,7 +217,7 @@ func astSpecNamePath(s *ast.ImportSpec) (name, pathLit string) {
 // ParseDst parses the import specs of a file, as dst.File.Imports holds
 // them.
 func (p *Parser) ParseDst(specs []*dst.ImportSpec) (*Map, error) {
-	return p.parse(opiter.WrapSeq(slices.Values(specs)).Divide(dstSpecNamePath).Iter2())
+	return p.parse(opiter.WrapSeq(slices.Values(specs)).Disassemble(dstSpecNamePath).Iter2())
 }
 
 func dstSpecNamePath(s *dst.ImportSpec) (name, pathLit string) {

@@ -244,7 +244,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 			return nil, nil, err
 		}
 		out = append(out, File{Path: filepath.Join(pf.dir, FlagSetFile), Content: content})
-		contents := slices.Collect(opiter.WrapSeq(slices.Values(out)).Map(fileContent).Iter())
+		contents := opiter.WrapSeq(slices.Values(out)).Map(fileContent).Collect()
 		if err := checkPredeclared(pf.pkg, contents); err != nil {
 			return nil, nil, err
 		}
@@ -347,11 +347,7 @@ func renderHelpers(
 	for _, name := range hf.Names {
 		h := helpers.byName[name]
 		parser.Reserve(
-			slices.Collect(
-				opiter.WrapSeq(slices.Values(h.typeParams())).
-					Map(typeParamName).
-					Iter(),
-			)...,
+			opiter.WrapSeq(slices.Values(h.typeParams())).Map(typeParamName).Collect()...,
 		)
 		maps.Copy(require, h.spelled)
 	}
@@ -423,11 +419,7 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 	// errors.Join drops the nil errors of helpers declared by nothing else.
 	sorted := slices.Sorted(maps.Keys(names))
 	return errors.Join(
-		slices.Collect(
-			opiter.WrapSeq(slices.Values(sorted)).
-				Map(declaredErr).
-				Iter(),
-		)...,
+		opiter.WrapSeq(slices.Values(sorted)).Map(declaredErr).Collect()...,
 	)
 }
 
@@ -474,11 +466,7 @@ func renderFileWith(
 		}
 		tparams := n.Detail.Type.TypeParams()
 		parser.Reserve(
-			slices.Collect(
-				opiter.WrapSeq(tparams.TypeParams()).
-					Map(typeParamName).
-					Iter(),
-			)...,
+			opiter.WrapSeq(tparams.TypeParams()).Map(typeParamName).Collect()...,
 		)
 		parser.Reserve(methodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams())...)
 	}
@@ -624,11 +612,7 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 	}
 	// errors.Join drops the nil errors of type parameters shadowing nothing.
 	return errors.Join(
-		slices.Collect(
-			opiter.WrapSeq(named.TypeParams().TypeParams()).
-				Map(shadowErr).
-				Iter(),
-		)...,
+		opiter.WrapSeq(named.TypeParams().TypeParams()).Map(shadowErr).Collect()...,
 	)
 }
 
@@ -647,7 +631,7 @@ func checkPredeclared(pkg *packages.Package, contents [][]byte) error {
 			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(), obj.Name(),
 		)
 	}
-	return errors.Join(slices.Collect(opiter.WrapSeq(slices.Values(objs)).Map(shadowErr).Iter())...)
+	return errors.Join(opiter.WrapSeq(slices.Values(objs)).Map(shadowErr).Collect()...)
 }
 
 func partialName(typeName string) string { return typeName + "Partial" }

@@ -243,7 +243,7 @@ func (w *methodWriter) fromValueWithMaskBody(masks []maskField) (genSteps, error
 				continue
 			}
 			decls = append(decls, lang.Stmt("var %s []string", decl(subRole(f))))
-			heads := slices.Collect(opiter.WrapSeq(slices.Values(f.heads)).Map(quotedExpr).Iter())
+			heads := opiter.WrapSeq(slices.Values(f.heads)).Map(quotedExpr).Collect()
 			cases = append(cases, lang.Case(
 				lang.Join(", ", heads...),
 				lang.Stmt("%s = append(%s, %s)",

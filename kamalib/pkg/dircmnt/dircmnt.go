@@ -118,7 +118,7 @@ func afterLastEmptyLine(lines []string) []string {
 }
 
 func collect(texts iter.Seq[string]) []Comment {
-	return slices.Collect(opiter.WrapSeq(texts).Divide(Parse).Filter(isParsed).OmitL().Iter())
+	return opiter.WrapSeq(texts).Disassemble(Parse).Filter(isParsed).OmitL().Collect()
 }
 
 func isParsed(_ Comment, ok bool) bool { return ok }

@@ -45,7 +45,7 @@ func helperIn(t *testing.T, srcs ...string) func(op, doc string) string {
 			return strings.HasPrefix(d.name, "kamaPartial"+op+"_") && strings.Contains(d.doc, doc)
 		}
 		stating := opiter.WrapSeq(slices.Values(decls)).Filter(isOpStating)
-		found := slices.Collect(stating.Map(declName).Iter())
+		found := stating.Map(declName).Collect()
 		assert.Equal(t, len(found), 1, "helpers of %s stating %q: %v", op, doc, found)
 		return found[0]
 	}
@@ -81,7 +81,7 @@ func params(pkg *types.Package, names []string, ts ...types.Type) *types.Tuple {
 		}
 		return types.NewParam(token.NoPos, pkg, name, t)
 	}
-	return types.NewTuple(slices.Collect(opiter.WrapSeq2(slices.All(ts)).Unify(toParam).Iter())...)
+	return types.NewTuple(opiter.WrapSeq2(slices.All(ts)).Assemble(toParam).Collect()...)
 }
 
 func method(pkg *types.Package, name string) *types.Func {
@@ -225,7 +225,7 @@ func names(t *testing.T, set *helperSet, hs ...*helper) ([]string, error) {
 	if err := set.resolve(); err != nil {
 		return nil, err
 	}
-	return slices.Collect(opiter.WrapSeq(slices.Values(added)).Map(set.name).Iter()), nil
+	return opiter.WrapSeq(slices.Values(added)).Map(set.name).Collect(), nil
 }
 
 func mustNames(t *testing.T, hs ...*helper) []string {
@@ -302,7 +302,7 @@ func colliding() *helperSet {
 
 // sliceHelpers returns append helpers of slices of n distinct named types.
 func sliceHelpers(n int) []*helper {
-	return slices.Collect(opiter.WrapSeq(opiter.Range(0, n)).Map(sliceHelper).Iter())
+	return opiter.WrapSeq(opiter.Range(0, n)).Map(sliceHelper).Collect()
 }
 
 // sliceHelper returns the append helper of a slice of the named type Ti.

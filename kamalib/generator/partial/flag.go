@@ -288,7 +288,7 @@ func (f *flagField) setKind(t types.Type) (types.Type, bool) {
 // flagMethods writes RegisterFlags and FromFlagSet for the fields with a
 // flag option. It writes nothing when there are none.
 func (w *methodWriter) flagMethods(fields []fieldInfo) error {
-	flags := slices.Collect(opiter.WrapSeq(slices.Values(fields)).Filter(hasFlag).Iter())
+	flags := opiter.WrapSeq(slices.Values(fields)).Filter(hasFlag).Collect()
 	if len(flags) == 0 {
 		return nil
 	}
@@ -330,7 +330,7 @@ func hasFlag(f fieldInfo) bool { return f.flag != nil }
 // registerFlags returns the statements defining the flag of each of flags
 // on the flag set f.
 func registerFlags(flags []fieldInfo) genSteps {
-	return slices.Collect(opiter.WrapSeq(slices.Values(flags)).Map(registerFlag).Iter())
+	return opiter.WrapSeq(slices.Values(flags)).Map(registerFlag).Collect()
 }
 
 func registerFlag(fl fieldInfo) genStep {
@@ -373,7 +373,7 @@ func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
 		}
 		return lang.If(lang.Expr("%s.Changed(%s)", lang.Name("f"), flagName), body, nil)
 	}
-	return slices.Collect(opiter.WrapSeq(slices.Values(flags)).Map(readFlag).Iter())
+	return opiter.WrapSeq(slices.Values(flags)).Map(readFlag).Collect()
 }
 
 // checkFlags reports duplicate flag names and shorthands among fields.

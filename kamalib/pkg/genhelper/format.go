@@ -43,7 +43,7 @@ type Shadow string
 func Expr[C Context[C]](format string, args ...any) Gen[C] {
 	return func(c C) (string, error) {
 		render := func(arg any) (any, error) { return renderArg(c, arg) }
-		out, err := opiter.TryCollect(opiter.WrapSeq(slices.Values(args)).Divide(render))
+		out, err := opiter.TryCollect(opiter.WrapSeq(slices.Values(args)).Disassemble(render))
 		if err != nil {
 			return "", err
 		}
@@ -90,7 +90,7 @@ func Name[C Context[C]](role string) Gen[C] {
 func Join[C Context[C]](sep string, parts ...Gen[C]) Gen[C] {
 	return func(c C) (string, error) {
 		render := func(part Gen[C]) (string, error) { return part(c) }
-		out, err := opiter.TryCollect(opiter.WrapSeq(slices.Values(parts)).Divide(render))
+		out, err := opiter.TryCollect(opiter.WrapSeq(slices.Values(parts)).Disassemble(render))
 		if err != nil {
 			return "", err
 		}

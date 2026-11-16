@@ -209,7 +209,7 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 		nf.Decs.Before, nf.Decs.After = dst.NewLine, dst.NewLine
 		return nf
 	}
-	out := slices.Collect(opiter.WrapSeq2(slices.All(reps)).Unify(splitField).Iter())
+	out := opiter.WrapSeq2(slices.All(reps)).Assemble(splitField).Collect()
 	out[0].Decs.Before = f.Decs.Before
 	out[len(out)-1].Decs.After = f.Decs.After
 	return out, nil
