@@ -134,9 +134,7 @@ func partialTypes(t *testing.T, src string) []string {
 		).
 			Map(typeSpecs),
 	)
-	return opiter.WrapSeq(
-		specs,
-	).
+	return opiter.WrapSeq(specs).
 		Map(
 			func(s ast.Spec) string { return s.(*ast.TypeSpec).Name.Name },
 		).

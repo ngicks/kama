@@ -73,9 +73,7 @@ func definedNamed(pkg *packages.Package, name string) *types.Named {
 		return ok
 	}
 	defs := maps.Values(pkg.TypesInfo.Defs)
-	return opiter.WrapSeq(
-		defs,
-	).
+	return opiter.WrapSeq(defs).
 		Filter(isNamedType).
 		Map(
 			func(obj types.Object) *types.Named { return obj.Type().(*types.Named) },
@@ -109,9 +107,7 @@ func keysSorted[V any](m map[QualifiedType]V) []QualifiedType {
 
 func collectKeysSorted[V any](seq iter.Seq2[QualifiedType, V]) []QualifiedType {
 	return slices.SortedFunc(
-		opiter.WrapSeq2(
-			seq,
-		).
+		opiter.WrapSeq2(seq).
 			OmitL().
 			Iter(),
 		compareQualifiedType,

@@ -39,9 +39,7 @@ func typeSpec(t *testing.T, f *ast.File, name string) *ast.TypeSpec {
 		).
 			Map(typeDeclSpecs),
 	)
-	found := opiter.WrapSeq(
-		specs,
-	).
+	found := opiter.WrapSeq(specs).
 		Map(
 			func(s ast.Spec) *ast.TypeSpec { return s.(*ast.TypeSpec) },
 		).

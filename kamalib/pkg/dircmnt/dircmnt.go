@@ -130,9 +130,7 @@ func afterLastEmptyLine(lines []string) []string {
 }
 
 func collect(texts iter.Seq[string]) []Comment {
-	return opiter.WrapSeq(
-		texts,
-	).
+	return opiter.WrapSeq(texts).
 		Disassemble(Parse).
 		Filter(
 			func(_ Comment, ok bool) bool { return ok },

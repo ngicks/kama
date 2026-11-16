@@ -74,9 +74,7 @@ func (p PathInput) Candidates() ([]string, error) {
 		).
 			Map(Format.Extensions),
 	)
-	return opiter.WrapSeq(
-		exts,
-	).
+	return opiter.WrapSeq(exts).
 		Map(
 			func(ext string) string { return p.Base + ext },
 		).

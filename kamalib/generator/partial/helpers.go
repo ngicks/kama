@@ -565,9 +565,7 @@ func (s *helperSet) add(h *helper) (*helper, error) {
 			bytes.Equal(prev.inEnc, h.inEnc) && bytes.Equal(prev.outEnc, h.outEnc)
 	}
 	sameBase := slices.Values(s.groups[base])
-	served := opiter.WrapSeq(
-		sameBase,
-	).
+	served := opiter.WrapSeq(sameBase).
 		Filter(servesSignature).
 		First()
 	if served.IsSome() {

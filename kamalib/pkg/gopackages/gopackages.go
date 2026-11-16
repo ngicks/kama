@@ -98,9 +98,7 @@ func packageErrorBlock(path string, errs []packages.Error) string {
 	).
 		Map(packages.Error.Error)
 	return strings.Join(
-		opiter.WrapSeq(
-			header,
-		).
+		opiter.WrapSeq(header).
 			Concat(msgs.Iter()).
 			Collect(),
 		"\n\t",
