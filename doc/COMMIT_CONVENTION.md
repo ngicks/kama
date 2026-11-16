@@ -78,7 +78,7 @@ character limit in the scope rules applies to comma-joined scopes.
 | scope     | covers                                                     |
 | :-------- | :--------------------------------------------------------- |
 | `doc`     | `doc/`, including this document                            |
-| `apm`     | `apm.yml`, `apm.lock.yaml`                                 |
+| `apm`     | `apm.yml`, `apm.lock.yaml`, `.apm/`                        |
 | `hk`      | `hk.pkl`, `.hk/`, `.golangci.yaml`                         |
 | `kamalib` | `kamalib/`, the core library module                        |
 | `cli`     | `cli/`, the kama binary module                             |
