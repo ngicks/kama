@@ -661,12 +661,8 @@ func TestProcOptionFile(t *testing.T) {
 	staged, err := f.Overlay()
 	assert.NilError(t, err)
 
-	names := opiter.WrapSeq(
-		maps.Keys(staged),
-	).
-		Filter(
-			func(name string) bool { return strings.HasSuffix(name, "x.kama_partial.go") },
-		).
+	names := opiter.WrapSeq(maps.Keys(staged)).
+		Filter(func(name string) bool { return strings.HasSuffix(name, "x.kama_partial.go") }).
 		Collect()
 
 	assert.Equal(t, len(names), 1, names)

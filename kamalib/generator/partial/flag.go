@@ -86,9 +86,7 @@ func notFlagKey(k string) bool {
 // flagFromArgs validates the args of //kama:partial:flag, keyed by name.
 func flagFromArgs(kv map[string]string) (flagOption, error) {
 	k := opiter.Min(
-		opiter.WrapSeq(
-			maps.Keys(kv),
-		).
+		opiter.WrapSeq(maps.Keys(kv)).
 			Filter(notFlagKey),
 	)
 
@@ -313,12 +311,8 @@ func (f *flagField) setKind(t types.Type) (types.Type, bool) {
 // flagMethods writes RegisterFlags and FromFlagSet for the fields with a
 // flag option. It writes nothing when there are none.
 func (w *methodWriter) flagMethods(fields []fieldInfo) error {
-	flags := opiter.WrapSeq(
-		slices.Values(fields),
-	).
-		Filter(
-			func(f fieldInfo) bool { return f.flag != nil },
-		).
+	flags := opiter.WrapSeq(slices.Values(fields)).
+		Filter(func(f fieldInfo) bool { return f.flag != nil }).
 		Collect()
 
 	if len(flags) == 0 {
@@ -363,9 +357,7 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 // registerFlags returns the statements defining the flag of each of flags
 // on the flag set f.
 func registerFlags(flags []fieldInfo) genSteps {
-	return opiter.WrapSeq(
-		slices.Values(flags),
-	).
+	return opiter.WrapSeq(slices.Values(flags)).
 		Map(registerFlag).
 		Collect()
 }
@@ -414,9 +406,7 @@ func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
 		return lang.If(lang.Expr("%s.Changed(%s)", lang.Name("f"), flagName), body, nil)
 	}
 
-	return opiter.WrapSeq(
-		slices.Values(flags),
-	).
+	return opiter.WrapSeq(slices.Values(flags)).
 		Map(readFlag).
 		Collect()
 }
@@ -473,12 +463,8 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	parser.Reserve(pkg.Types.Scope().Names()...)
 	parser.Reserve(flagSetParams...)
 
-	usesTime := opiter.WrapSeq(
-		maps.Values(sigs),
-	).
-		Any(
-			func(sig string) bool { return strings.Contains(sig, "$time.") },
-		)
+	usesTime := opiter.WrapSeq(maps.Values(sigs)).
+		Any(func(sig string) bool { return strings.Contains(sig, "$time.") })
 
 	if usesTime {
 		err := parser.Require(
@@ -517,13 +503,9 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 
 	body = slices.AppendSeq(
 		body,
-		opiter.WrapSeq2(
-			opiter.MapsSorted(sigs),
-		).
+		opiter.WrapSeq2(opiter.MapsSorted(sigs)).
 			OmitF().
-			Map(
-				func(sig string) genStep { return lang.Stmt("%s", replacer.Replace(sig)) },
-			).
+			Map(func(sig string) genStep { return lang.Stmt("%s", replacer.Replace(sig)) }).
 			Iter(),
 	)
 

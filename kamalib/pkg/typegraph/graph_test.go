@@ -35,12 +35,8 @@ func loadPackages(t *testing.T, patterns ...string) []*packages.Package {
 }
 
 func pkgNamed(pkgs []*packages.Package, name string) *packages.Package {
-	return opiter.WrapSeq(
-		slices.Values(pkgs),
-	).
-		Filter(
-			func(pkg *packages.Package) bool { return pkg.Name == name },
-		).
+	return opiter.WrapSeq(slices.Values(pkgs)).
+		Filter(func(pkg *packages.Package) bool { return pkg.Name == name }).
 		First().
 		UnwrapOrDefault()
 }
@@ -86,9 +82,7 @@ func definedNamed(pkg *packages.Package, name string) *types.Named {
 
 	return opiter.WrapSeq(defs).
 		Filter(isNamedType).
-		Map(
-			func(obj types.Object) *types.Named { return obj.Type().(*types.Named) },
-		).
+		Map(func(obj types.Object) *types.Named { return obj.Type().(*types.Named) }).
 		First().
 		UnwrapOrDefault()
 }
@@ -111,9 +105,7 @@ func keysSorted[V any](m map[QualifiedType]V) []QualifiedType {
 
 	return slices.AppendSeq(
 		keys,
-		opiter.WrapSeq2(
-			opiter.MapsSortedFunc(m, compareQualifiedType),
-		).
+		opiter.WrapSeq2(opiter.MapsSortedFunc(m, compareQualifiedType)).
 			OmitL().
 			Iter(),
 	)
@@ -335,12 +327,8 @@ func TestTrim_MatchAll(t *testing.T) {
 	typeAId := NewQualifiedType(basicPkgPath, "TypeA")
 	matchedA, _ := mg.Get(typeAId)
 
-	dependants := opiter.WrapSeq2(
-		mg.Dependant(),
-	).
-		Filter(
-			func(id QualifiedType, _ *MatchedNode) bool { return id == typeAId },
-		).
+	dependants := opiter.WrapSeq2(mg.Dependant()).
+		Filter(func(id QualifiedType, _ *MatchedNode) bool { return id == typeAId }).
 		OmitF()
 
 	dependantA := dependants.
@@ -926,12 +914,8 @@ func TestTrim_RouteFilter(t *testing.T) {
 		func(n *Node) bool { return n.Id == targetId },
 		func(e *Edge[Node]) bool { return e.Parent.Id == structId },
 		func(r *EdgeRoute) bool {
-			return opiter.WrapSeq(
-				slices.Values(r.Nodes),
-			).
-				ContainsFunc(
-					func(n EdgeRouteNode) bool { return n.Kind == EdgeKindPointer },
-				)
+			return opiter.WrapSeq(slices.Values(r.Nodes)).
+				ContainsFunc(func(n EdgeRouteNode) bool { return n.Kind == EdgeKindPointer })
 		},
 	)
 

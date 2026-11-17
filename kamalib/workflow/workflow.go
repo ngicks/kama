@@ -148,18 +148,14 @@ func checkProc(kind string, p Proc) error {
 		return fmt.Errorf("%w: %q constructs nil", ErrInvalidProc, kind)
 	}
 
-	foundIn := opiter.WrapSeq(
-		slices.Values(p.InTypes()),
-	).
+	foundIn := opiter.WrapSeq(slices.Values(p.InTypes())).
 		FindFunc(isNilType)
 
 	if foundIn.IsSome() {
 		return fmt.Errorf("%w: %q: in %d is nil", ErrInvalidProc, kind, foundIn.Value().K)
 	}
 
-	foundOut := opiter.WrapSeq(
-		slices.Values(p.OutTypes()),
-	).
+	foundOut := opiter.WrapSeq(slices.Values(p.OutTypes())).
 		FindFunc(isNilType)
 
 	if foundOut.IsSome() {
@@ -392,12 +388,8 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 		pending[name] = len(deps)
 	}
 
-	ready := opiter.WrapSeq2(
-		maps.All(pending),
-	).
-		Filter(
-			func(_ string, pending int) bool { return pending == 0 },
-		).
+	ready := opiter.WrapSeq2(maps.All(pending)).
+		Filter(func(_ string, pending int) bool { return pending == 0 }).
 		OmitL().
 		Collect()
 
@@ -419,12 +411,8 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 
 	if len(order) != len(steps) {
 		stuck := slices.Sorted(
-			opiter.WrapSeq2(
-				maps.All(pending),
-			).
-				Filter(
-					func(_ string, pending int) bool { return pending > 0 },
-				).
+			opiter.WrapSeq2(maps.All(pending)).
+				Filter(func(_ string, pending int) bool { return pending > 0 }).
 				OmitL().
 				Iter(),
 		)

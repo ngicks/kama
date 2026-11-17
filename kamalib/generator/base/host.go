@@ -62,16 +62,10 @@ func HostShared(shared string, callers []Caller) []Host {
 		h.Names = append(h.Names, name)
 	}
 	for _, name := range slices.Sorted(maps.Keys(names)) {
-		users := opiter.WrapSeq(
-			slices.Values(callers),
-		).
-			Filter(
-				func(c Caller) bool { return c.Uses[name] },
-			)
+		users := opiter.WrapSeq(slices.Values(callers)).
+			Filter(func(c Caller) bool { return c.Uses[name] })
 
-		if users.ContainsFunc(
-			func(c Caller) bool { return !c.Constrained },
-		) {
+		if users.ContainsFunc(func(c Caller) bool { return !c.Constrained }) {
 			host(shared, "", name)
 		} else {
 			first := users.First().Value()
@@ -79,12 +73,8 @@ func HostShared(shared string, callers []Caller) []Host {
 		}
 	}
 
-	return opiter.WrapSeq2(
-		opiter.MapsSorted(byPath),
-	).
+	return opiter.WrapSeq2(opiter.MapsSorted(byPath)).
 		OmitF().
-		Map(
-			func(h *Host) Host { return *h },
-		).
+		Map(func(h *Host) Host { return *h }).
 		Collect()
 }

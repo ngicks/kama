@@ -182,9 +182,7 @@ func probeStruct(fields []probeField, tagKey, option string) reflect.Type {
 	}
 
 	return reflect.StructOf(
-		opiter.WrapSeq2(
-			slices.All(fields),
-		).
+		opiter.WrapSeq2(slices.All(fields)).
 			Assemble(toStructField).
 			Collect(),
 	)
@@ -278,12 +276,8 @@ func describe(v any) string {
 			return "null"
 		}
 
-		vals := opiter.WrapSeq(
-			slices.Values(x.Options()),
-		).
-			Map(
-				func(o opt.Option[string]) string { return describe(o) },
-			).
+		vals := opiter.WrapSeq(slices.Values(x.Options())).
+			Map(func(o opt.Option[string]) string { return describe(o) }).
 			Collect()
 
 		return "defined[" + strings.Join(vals, ", ") + "]"
@@ -342,12 +336,8 @@ func moduleVersions(t *testing.T, paths []string) string {
 
 	versions := make([]string, 0, len(paths))
 	for _, p := range paths {
-		dep := opiter.WrapSeq(
-			slices.Values(info.Deps),
-		).
-			Filter(
-				func(dep *debug.Module) bool { return dep.Path == p },
-			).
+		dep := opiter.WrapSeq(slices.Values(info.Deps)).
+			Filter(func(dep *debug.Module) bool { return dep.Path == p }).
 			First()
 
 		if dep.IsNone() {

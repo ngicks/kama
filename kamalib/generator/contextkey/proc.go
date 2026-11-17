@@ -112,9 +112,7 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 		return base.File{Path: path.Join(i.dir, name), Content: src}
 	}
 
-	produced := opiter.WrapSeq2(
-		opiter.MapsSorted(files),
-	).
+	produced := opiter.WrapSeq2(opiter.MapsSorted(files)).
 		Assemble(inDir).
 		Collect()
 

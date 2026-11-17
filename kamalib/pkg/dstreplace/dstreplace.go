@@ -210,12 +210,8 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 		return nil, nil
 	}
 
-	allSame := opiter.WrapSeq(
-		slices.Values(keys[1:]),
-	).
-		Every(
-			func(k string) bool { return k == keys[0] },
-		)
+	allSame := opiter.WrapSeq(slices.Values(keys[1:])).
+		Every(func(k string) bool { return k == keys[0] })
 
 	if allSame {
 		f.Names = names
@@ -243,9 +239,7 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 		return nf
 	}
 
-	out := opiter.WrapSeq2(
-		slices.All(reps),
-	).
+	out := opiter.WrapSeq2(slices.All(reps)).
 		Assemble(splitField).
 		Collect()
 

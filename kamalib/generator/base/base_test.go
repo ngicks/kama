@@ -222,9 +222,7 @@ func TestSourcePackages(t *testing.T) {
 	src := SourcePackages(pkgs)
 	assert.Assert(t, !slices.ContainsFunc(src, isTestVariant))
 
-	paths := opiter.WrapSeq(
-		slices.Values(src),
-	).
+	paths := opiter.WrapSeq(slices.Values(src)).
 		Map(pkgPathOf).
 		Collect()
 
@@ -253,23 +251,15 @@ func TestShadowedPredeclared(t *testing.T) {
 	names := func(contents ...string) []string {
 		t.Helper()
 
-		in := opiter.WrapSeq(
-			slices.Values(contents),
-		).
-			Map(
-				func(s string) []byte { return []byte(s) },
-			).
+		in := opiter.WrapSeq(slices.Values(contents)).
+			Map(func(s string) []byte { return []byte(s) }).
 			Collect()
 
 		objs, err := ShadowedPredeclared(pkgs[0], in)
 		assert.NilError(t, err)
 
-		return opiter.WrapSeq(
-			slices.Values(objs),
-		).
-			Map(
-				func(o types.Object) string { return o.Name() },
-			).
+		return opiter.WrapSeq(slices.Values(objs)).
+			Map(func(o types.Object) string { return o.Name() }).
 			Collect()
 	}
 	assert.DeepEqual(t, names("package x\n\nvar V string\n\nfunc f() error { return nil }\n"),

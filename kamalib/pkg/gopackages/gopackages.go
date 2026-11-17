@@ -84,9 +84,7 @@ type PackageErrors map[string][]packages.Error
 
 func (e PackageErrors) Error() string {
 	return strings.Join(
-		opiter.WrapSeq2(
-			opiter.MapsSorted(e),
-		).
+		opiter.WrapSeq2(opiter.MapsSorted(e)).
 			Assemble(packageErrorBlock).
 			Collect(),
 		"\n",
@@ -96,9 +94,7 @@ func (e PackageErrors) Error() string {
 func packageErrorBlock(path string, errs []packages.Error) string {
 	header := opiter.Once(path + ":")
 
-	msgs := opiter.WrapSeq(
-		slices.Values(errs),
-	).
+	msgs := opiter.WrapSeq(slices.Values(errs)).
 		Map(packages.Error.Error)
 
 	return strings.Join(

@@ -261,12 +261,8 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 
 		out = append(out, File{Path: filepath.Join(pf.dir, FlagSetFile), Content: content})
 
-		contents := opiter.WrapSeq(
-			slices.Values(out),
-		).
-			Map(
-				func(f File) []byte { return f.Content },
-			).
+		contents := opiter.WrapSeq(slices.Values(out)).
+			Map(func(f File) []byte { return f.Content }).
 			Collect()
 
 		if err := checkPredeclared(pf.pkg, contents); err != nil {
@@ -384,9 +380,7 @@ func renderHelpers(
 		h := helpers.byName[name]
 
 		parser.Reserve(
-			opiter.WrapSeq(
-				slices.Values(h.typeParams()),
-			).
+			opiter.WrapSeq(slices.Values(h.typeParams())).
 				Map(typeParamName).
 				Collect()...,
 		)
@@ -474,9 +468,7 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 	sorted := slices.Sorted(maps.Keys(names))
 
 	return errors.Join(
-		opiter.WrapSeq(
-			slices.Values(sorted),
-		).
+		opiter.WrapSeq(slices.Values(sorted)).
 			Map(declaredErr).
 			Collect()...,
 	)
@@ -529,9 +521,7 @@ func renderFileWith(
 		tparams := n.Detail.Type.TypeParams()
 
 		parser.Reserve(
-			opiter.WrapSeq(
-				tparams.TypeParams(),
-			).
+			opiter.WrapSeq(tparams.TypeParams()).
 				Map(typeParamName).
 				Collect()...,
 		)
@@ -702,9 +692,7 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 
 	// errors.Join drops the nil errors of type parameters shadowing nothing.
 	return errors.Join(
-		opiter.WrapSeq(
-			named.TypeParams().TypeParams(),
-		).
+		opiter.WrapSeq(named.TypeParams().TypeParams()).
 			Map(shadowErr).
 			Collect()...,
 	)
@@ -728,9 +716,7 @@ func checkPredeclared(pkg *packages.Package, contents [][]byte) error {
 	}
 
 	return errors.Join(
-		opiter.WrapSeq(
-			slices.Values(objs),
-		).
+		opiter.WrapSeq(slices.Values(objs)).
 			Map(shadowErr).
 			Collect()...,
 	)

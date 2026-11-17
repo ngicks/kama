@@ -141,16 +141,12 @@ func partialTypes(t *testing.T, src string) []string {
 	assert.NilError(t, err)
 
 	specs := opiter.Flatten(
-		opiter.WrapSeq(
-			slices.Values(f.Decls),
-		).
+		opiter.WrapSeq(slices.Values(f.Decls)).
 			Map(typeSpecs),
 	)
 
 	return opiter.WrapSeq(specs).
-		Map(
-			func(s ast.Spec) string { return s.(*ast.TypeSpec).Name.Name },
-		).
+		Map(func(s ast.Spec) string { return s.(*ast.TypeSpec).Name.Name }).
 		Collect()
 }
 
@@ -639,9 +635,7 @@ type Om map[int]opt.Option[M]
 	}
 
 	got := maps.Collect(
-		opiter.WrapSeq2(
-			maps.All(fieldTypes(t, src, "APartial")),
-		).
+		opiter.WrapSeq2(maps.All(fieldTypes(t, src, "APartial"))).
 			Map(withoutTag).
 			Iter2(),
 	)

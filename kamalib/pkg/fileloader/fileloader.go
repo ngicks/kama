@@ -58,12 +58,8 @@ type PathInput struct {
 
 // Candidates lists every file name Load probes, in order.
 func (p PathInput) Candidates() ([]string, error) {
-	unknown := opiter.WrapSeq(
-		slices.Values(p.Formats),
-	).
-		Filter(
-			func(f Format) bool { return f.Extensions() == nil },
-		).
+	unknown := opiter.WrapSeq(slices.Values(p.Formats)).
+		Filter(func(f Format) bool { return f.Extensions() == nil }).
 		First()
 
 	if unknown.IsSome() {
@@ -71,16 +67,12 @@ func (p PathInput) Candidates() ([]string, error) {
 	}
 
 	exts := opiter.Flatten(
-		opiter.WrapSeq(
-			slices.Values(p.Formats),
-		).
+		opiter.WrapSeq(slices.Values(p.Formats)).
 			Map(Format.Extensions),
 	)
 
 	return opiter.WrapSeq(exts).
-		Map(
-			func(ext string) string { return p.Base + ext },
-		).
+		Map(func(ext string) string { return p.Base + ext }).
 		Collect(), nil
 }
 

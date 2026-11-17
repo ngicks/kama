@@ -219,13 +219,9 @@ func (c *collector) add(key Key, comments []*ast.Comment) {
 		}, true
 	}
 
-	raws := opiter.WrapSeq(
-		slices.Values(comments),
-	).
+	raws := opiter.WrapSeq(slices.Values(comments)).
 		Disassemble(toRaw).
-		Filter(
-			func(_ Raw, ok bool) bool { return ok },
-		).
+		Filter(func(_ Raw, ok bool) bool { return ok }).
 		OmitL()
 
 	c.out = slices.AppendSeq(c.out, raws.Iter())
@@ -248,9 +244,7 @@ func fieldComments(f *ast.Field) []*ast.Comment {
 
 func fieldNames(f *ast.Field) []string {
 	if len(f.Names) > 0 {
-		return opiter.WrapSeq(
-			slices.Values(f.Names),
-		).
+		return opiter.WrapSeq(slices.Values(f.Names)).
 			Map((*ast.Ident).String).
 			Collect()
 	}

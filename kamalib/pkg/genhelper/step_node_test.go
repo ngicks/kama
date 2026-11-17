@@ -42,12 +42,8 @@ func newPackage(t *testing.T, fset *token.FileSet) (*genhelper.Package, *types.P
 }
 
 func missingPaths(m *importdecl.Map) []string {
-	return opiter.WrapSeq(
-		m.Missing(),
-	).
-		Map(
-			func(imp importdecl.Import) string { return imp.Package.Path },
-		).
+	return opiter.WrapSeq(m.Missing()).
+		Map(func(imp importdecl.Import) string { return imp.Package.Path }).
 		Collect()
 }
 

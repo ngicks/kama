@@ -92,9 +92,7 @@ func TestFixtureUpToDate(t *testing.T) {
 			}
 
 			produced := slices.Sorted(
-				opiter.WrapSeq(
-					slices.Values(files),
-				).
+				opiter.WrapSeq(slices.Values(files)).
 					Map(absPath).
 					Iter(),
 			)
@@ -182,9 +180,7 @@ func TestFixtureExternalParity(t *testing.T) {
 		rest, helpers := splitHelpers(t, src)
 
 		hidden := slices.Sorted(
-			opiter.WrapSeq(
-				slices.Values(helpers),
-			).
+			opiter.WrapSeq(slices.Values(helpers)).
 				Map(hideHash).
 				Iter(),
 		)

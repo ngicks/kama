@@ -73,12 +73,8 @@ func (c StaleCheck) Files(pkgs []*packages.Package, produced []File) []error {
 
 	slices.SortFunc(found, func(a, b stale) int { return cmp.Compare(a.path, b.path) })
 
-	return opiter.WrapSeq(
-		slices.Values(found),
-	).
-		Map(
-			func(s stale) error { return c.warning(s.name) },
-		).
+	return opiter.WrapSeq(slices.Values(found)).
+		Map(func(s stale) error { return c.warning(s.name) }).
 		Collect()
 }
 
@@ -164,17 +160,13 @@ func (c StaleCheck) marked(f *ast.File) bool {
 		case *ast.FuncDecl:
 			return marked(d.Doc)
 		case *ast.GenDecl:
-			return marked(d.Doc) || opiter.WrapSeq(
-				slices.Values(d.Specs),
-			).
+			return marked(d.Doc) || opiter.WrapSeq(slices.Values(d.Specs)).
 				ContainsFunc(markedSpec)
 		}
 
 		return false
 	}
 
-	return opiter.WrapSeq(
-		slices.Values(f.Decls),
-	).
+	return opiter.WrapSeq(slices.Values(f.Decls)).
 		ContainsFunc(markedDecl)
 }

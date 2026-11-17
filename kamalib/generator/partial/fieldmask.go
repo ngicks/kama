@@ -120,12 +120,8 @@ func maskNameOf(r kamaopt.Raw) (maskName, error) {
 // field, keyed by name.
 func maskNameFromArgs(kv map[string]string) (maskName, error) {
 	k := opiter.Min(
-		opiter.WrapSeq(
-			maps.Keys(kv),
-		).
-			Filter(
-				func(key string) bool { return key != "name" },
-			),
+		opiter.WrapSeq(maps.Keys(kv)).
+			Filter(func(key string) bool { return key != "name" }),
 	)
 
 	if k.IsSome() {
@@ -213,9 +209,7 @@ func (s *selection) checkFieldMaskTargets() error {
 			return v.Name() == k.Field && s.embeddedPartial(n, v) != nil
 		}
 
-		embedsPartial := opiter.WrapSeq(
-			st.Fields(),
-		).
+		embedsPartial := opiter.WrapSeq(st.Fields()).
 			ContainsFunc(isEmbeddedPartial)
 
 		if embedsPartial {
@@ -378,9 +372,7 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 
 	// errors.Join drops the nil errors of fields that are fine.
 	return errors.Join(
-		opiter.WrapSeq(
-			st.Fields(),
-		).
+		opiter.WrapSeq(st.Fields()).
 			Map(maskedEmbeddingErr).
 			Collect()...,
 	)

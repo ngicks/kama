@@ -130,11 +130,7 @@ func runNode(
 }
 
 func refValues(refs []string, values map[string]reflect.Value) []reflect.Value {
-	return opiter.WrapSeq(
-		slices.Values(refs),
-	).
-		Map(
-			func(ref string) reflect.Value { return values[ref] },
-		).
+	return opiter.WrapSeq(slices.Values(refs)).
+		Map(func(ref string) reflect.Value { return values[ref] }).
 		Collect()
 }

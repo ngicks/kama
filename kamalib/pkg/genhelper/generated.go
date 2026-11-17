@@ -75,9 +75,7 @@ func (g GeneratorParams) Comment() (string, error) {
 	b.WriteString(GeneratedComment(g.Name))
 
 	if len(g.Argv) > 0 {
-		words := opiter.WrapSeq(
-			slices.Values(g.Argv),
-		).
+		words := opiter.WrapSeq(slices.Values(g.Argv)).
 			Map(word).
 			Collect()
 

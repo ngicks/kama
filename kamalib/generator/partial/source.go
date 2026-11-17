@@ -79,8 +79,6 @@ func matchesFields(fields []dstreplace.Field, s *types.Struct) bool {
 		return f.Name == v.Name() && f.Embedded == v.Embedded()
 	}
 
-	return opiter.WrapSeq2(
-		slices.All(fields),
-	).
+	return opiter.WrapSeq2(slices.All(fields)).
 		Every2(matchesField)
 }

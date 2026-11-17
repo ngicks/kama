@@ -19,12 +19,8 @@ import (
 func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 	return func(c genCtx) (string, error) {
 		in, err := opiter.TryCollect(
-			opiter.WrapSeq(
-				slices.Values(args),
-			).
-				Disassemble(
-					func(arg genExpr) (string, error) { return arg(c) },
-				),
+			opiter.WrapSeq(slices.Values(args)).
+				Disassemble(func(arg genExpr) (string, error) { return arg(c) }),
 		)
 		if err != nil {
 			return "", err
@@ -63,9 +59,7 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 		var targs string
 
 		if tps := h.typeParams(); len(tps) > 0 {
-			names := opiter.WrapSeq(
-				slices.Values(tps),
-			).
+			names := opiter.WrapSeq(slices.Values(tps)).
 				Map(typeParamName).
 				Collect()
 
@@ -150,18 +144,14 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 	}
 
 	tparams, err := opiter.TryCollect(
-		opiter.WrapSeq(
-			slices.Values(tps),
-		).
+		opiter.WrapSeq(slices.Values(tps)).
 			Disassemble(declare),
 	)
 	if err != nil {
 		return helperFunc{}, err
 	}
 
-	names := opiter.WrapSeq(
-		slices.Values(tps),
-	).
+	names := opiter.WrapSeq(slices.Values(tps)).
 		Map(typeParamName).
 		Collect()
 

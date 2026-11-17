@@ -72,9 +72,7 @@ func AstField(f *ast.Field) []Comment {
 	}
 
 	return collect(
-		opiter.WrapSeq(
-			astTexts(f.Doc),
-		).
+		opiter.WrapSeq(astTexts(f.Doc)).
 			Concat(slices.Values(trailing)).
 			Iter(),
 	)
@@ -91,9 +89,7 @@ func Dst(decs dst.NodeDecs) []Comment {
 // comment decorating its end.
 func DstField(decs dst.FieldDecorations) []Comment {
 	return collect(
-		opiter.WrapSeq(
-			slices.Values(afterLastEmptyLine(decs.Start)),
-		).
+		opiter.WrapSeq(slices.Values(afterLastEmptyLine(decs.Start))).
 			Concat(slices.Values(decs.End[:min(len(decs.End), 1)])).
 			Iter(),
 	)
@@ -104,12 +100,8 @@ func astTexts(cg *ast.CommentGroup) iter.Seq[string] {
 		return opiter.Empty[string]()
 	}
 
-	return opiter.WrapSeq(
-		slices.Values(cg.List),
-	).
-		Map(
-			func(c *ast.Comment) string { return c.Text },
-		).
+	return opiter.WrapSeq(slices.Values(cg.List)).
+		Map(func(c *ast.Comment) string { return c.Text }).
 		Iter()
 }
 
@@ -137,9 +129,7 @@ func afterLastEmptyLine(lines []string) []string {
 func collect(texts iter.Seq[string]) []Comment {
 	return opiter.WrapSeq(texts).
 		Disassemble(Parse).
-		Filter(
-			func(_ Comment, ok bool) bool { return ok },
-		).
+		Filter(func(_ Comment, ok bool) bool { return ok }).
 		OmitL().
 		Collect()
 }

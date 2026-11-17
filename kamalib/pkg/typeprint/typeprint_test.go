@@ -133,9 +133,7 @@ func modelCases(t *testing.T, pkg *packages.Package) []testCase {
 	}
 
 	specs := opiter.Flatten(
-		opiter.WrapSeq(
-			slices.Values(pkg.Syntax[0].Decls),
-		).
+		opiter.WrapSeq(slices.Values(pkg.Syntax[0].Decls)).
 			Map(genDeclSpecs),
 	)
 

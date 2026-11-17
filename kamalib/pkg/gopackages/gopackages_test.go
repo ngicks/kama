@@ -51,9 +51,7 @@ func TestLoadSeesStagedFiles(t *testing.T) {
 	pkg := pkgs[0]
 
 	files := slices.Sorted(
-		opiter.WrapSeq(
-			slices.Values(pkg.GoFiles),
-		).
+		opiter.WrapSeq(slices.Values(pkg.GoFiles)).
 			Map(filepath.Base).
 			Iter(),
 	)

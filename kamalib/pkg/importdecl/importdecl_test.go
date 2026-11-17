@@ -177,12 +177,8 @@ func TestRequire(t *testing.T) {
 	got, _ = m.Ident("example.com/y")
 	assert.Equal(t, got, "y")
 
-	yMissing := opiter.WrapSeq(
-		m.Missing(),
-	).
-		ContainsFunc(
-			func(imp Import) bool { return imp.Package.Path == "example.com/y" },
-		)
+	yMissing := opiter.WrapSeq(m.Missing()).
+		ContainsFunc(func(imp Import) bool { return imp.Package.Path == "example.com/y" })
 
 	assert.Assert(t, !yMissing)
 
@@ -422,9 +418,7 @@ func TestInferName(t *testing.T) {
 }
 
 func TestInferNameKeywords(t *testing.T) {
-	keywords := opiter.WrapSeq(
-		opiter.Range(token.BREAK, token.VAR+1),
-	).
+	keywords := opiter.WrapSeq(opiter.Range(token.BREAK, token.VAR+1)).
 		Filter(token.Token.IsKeyword)
 
 	for tok := range keywords {

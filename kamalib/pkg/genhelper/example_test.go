@@ -28,9 +28,7 @@ func lookup(s *genhelper.Scope, roles ...string) ([]string, error) {
 	}
 
 	names, err := opiter.TryCollect(
-		opiter.WrapSeq(
-			slices.Values(roles),
-		).
+		opiter.WrapSeq(slices.Values(roles)).
 			Disassemble(lookupRole),
 	)
 	if err != nil {
@@ -456,12 +454,8 @@ func ExampleForRange() {
 	}
 	printf := func(format string, roles ...string) genhelper.Step[ctx] {
 		return genhelper.Append(func(c ctx) (string, error) {
-			names := opiter.WrapSeq(
-				slices.Values(roles),
-			).
-				Map(
-					func(role string) any { return c.Scope().Use(role) },
-				).
+			names := opiter.WrapSeq(slices.Values(roles)).
+				Map(func(role string) any { return c.Scope().Use(role) }).
 				Collect()
 
 			return fmt.Sprintf(format, names...), nil

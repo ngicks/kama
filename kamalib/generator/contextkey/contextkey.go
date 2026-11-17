@@ -183,9 +183,7 @@ func renderEntry(e Entry, opts Options, header string) ([]byte, error) {
 	imports := slices.Concat([]string{"context"}, e.Imports)
 	slices.Sort(imports)
 
-	imports = opiter.WrapSeq(
-		slices.Values(slices.Compact(imports)),
-	).
+	imports = opiter.WrapSeq(slices.Values(slices.Compact(imports))).
 		Map(strconv.Quote).
 		Collect()
 

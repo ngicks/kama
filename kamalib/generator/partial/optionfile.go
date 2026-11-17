@@ -180,12 +180,8 @@ func (d *optionDecoder) table(v any, path []string) (map[string]any, bool) {
 // keys reports the keys of t other than known.
 func (d *optionDecoder) keys(t map[string]any, path []string, known ...string) {
 	unknown := slices.Sorted(
-		opiter.WrapSeq(
-			maps.Keys(t),
-		).
-			Filter(
-				func(k string) bool { return !slices.Contains(known, k) },
-			).
+		opiter.WrapSeq(maps.Keys(t)).
+			Filter(func(k string) bool { return !slices.Contains(known, k) }).
 			Iter(),
 	)
 
@@ -351,9 +347,7 @@ var bareKey = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 // such as package import paths.
 func keyPath(path []string) string {
 	return strings.Join(
-		opiter.WrapSeq(
-			slices.Values(path),
-		).
+		opiter.WrapSeq(slices.Values(path)).
 			Map(quoteKey).
 			Collect(),
 		".",
@@ -457,12 +451,8 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 			for _, fieldName := range slices.Sorted(maps.Keys(to.Fields)) {
 				fo := to.Fields[fieldName]
 
-				declared := opiter.WrapSeq(
-					st.Fields(),
-				).
-					ContainsFunc(
-						func(v *types.Var) bool { return v.Name() == fieldName },
-					)
+				declared := opiter.WrapSeq(st.Fields()).
+					ContainsFunc(func(v *types.Var) bool { return v.Name() == fieldName })
 
 				if !declared {
 					fail(&errs, appendPath(typePath, "fields", fieldName),

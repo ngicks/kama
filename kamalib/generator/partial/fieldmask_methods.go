@@ -68,12 +68,8 @@ func (s *selection) maskFields(n *typegraph.Node, fields []fieldInfo) ([]maskFie
 
 			mf.heads = slices.AppendSeq(
 				mf.heads,
-				opiter.WrapSeq(
-					slices.Values(segs),
-				).
-					Map(
-						func(m maskSegment) string { return m.name },
-					).
+				opiter.WrapSeq(slices.Values(segs)).
+					Map(func(m maskSegment) string { return m.name }).
 					Iter(),
 			)
 		case f.class == classSub && s.fieldMasked(s.node(f.named).Id):
@@ -266,12 +262,8 @@ func (w *methodWriter) fromValueWithMaskBody(masks []maskField) (genSteps, error
 
 			decls = append(decls, lang.Stmt("var %s []string", decl(subRole(f))))
 
-			heads := opiter.WrapSeq(
-				slices.Values(f.heads),
-			).
-				Map(
-					func(s string) genExpr { return lang.Expr("%s", strconv.Quote(s)) },
-				).
+			heads := opiter.WrapSeq(slices.Values(f.heads)).
+				Map(func(s string) genExpr { return lang.Expr("%s", strconv.Quote(s)) }).
 				Collect()
 
 			cases = append(cases, lang.Case(

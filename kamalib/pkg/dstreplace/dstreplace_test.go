@@ -38,19 +38,13 @@ func typeSpec(t *testing.T, f *ast.File, name string) *ast.TypeSpec {
 	t.Helper()
 
 	specs := opiter.Flatten(
-		opiter.WrapSeq(
-			slices.Values(f.Decls),
-		).
+		opiter.WrapSeq(slices.Values(f.Decls)).
 			Map(typeDeclSpecs),
 	)
 
 	found := opiter.WrapSeq(specs).
-		Map(
-			func(s ast.Spec) *ast.TypeSpec { return s.(*ast.TypeSpec) },
-		).
-		Filter(
-			func(ts *ast.TypeSpec) bool { return ts.Name.Name == name },
-		).
+		Map(func(s ast.Spec) *ast.TypeSpec { return s.(*ast.TypeSpec) }).
+		Filter(func(ts *ast.TypeSpec) bool { return ts.Name.Name == name }).
 		First()
 
 	if found.IsNone() {

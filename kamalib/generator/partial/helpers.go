@@ -459,9 +459,7 @@ func (e *encoder) typ(t types.Type) {
 
 		// Embedded interfaces contribute their methods above; the other
 		// embedded elements restrict the type set.
-		elems := opiter.WrapSeq(
-			t.EmbeddedTypes(),
-		).
+		elems := opiter.WrapSeq(t.EmbeddedTypes()).
 			Filter(notInterface).
 			Collect()
 
@@ -709,9 +707,7 @@ type partialFile struct {
 
 // callers returns files as the callers of the helpers of their package.
 func callers(files []*partialFile) []base.Caller {
-	return opiter.WrapSeq(
-		slices.Values(files),
-	).
+	return opiter.WrapSeq(slices.Values(files)).
 		Map((*partialFile).caller).
 		Collect()
 }

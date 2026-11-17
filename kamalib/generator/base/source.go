@@ -18,9 +18,7 @@ import (
 // package they test, and repeated packages. A generated test main package,
 // which declares nothing a generator reads, stays.
 func SourcePackages(pkgs []*packages.Package) []*packages.Package {
-	sources := opiter.WrapSeq(
-		slices.Values(pkgs),
-	).
+	sources := opiter.WrapSeq(slices.Values(pkgs)).
 		Filter(isSourceVariant)
 
 	return sources.
@@ -95,23 +93,15 @@ func ShadowedPredeclared(pkg *packages.Package, contents [][]byte) ([]types.Obje
 	}
 
 	predeclared := slices.Sorted(
-		opiter.WrapSeq(
-			maps.Keys(used),
-		).
-			Filter(
-				func(ident string) bool { return types.Universe.Lookup(ident) != nil },
-			).
+		opiter.WrapSeq(maps.Keys(used)).
+			Filter(func(ident string) bool { return types.Universe.Lookup(ident) != nil }).
 			Iter(),
 	)
 
-	objs := opiter.WrapSeq(
-		slices.Values(predeclared),
-	).
+	objs := opiter.WrapSeq(slices.Values(predeclared)).
 		Map(pkg.Types.Scope().Lookup)
 
 	return objs.
-		Filter(
-			func(obj types.Object) bool { return obj != nil },
-		).
+		Filter(func(obj types.Object) bool { return obj != nil }).
 		Collect(), nil
 }

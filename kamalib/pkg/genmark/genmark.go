@@ -96,9 +96,7 @@ func (r *Registry) find(comments []dircmnt.Comment) (string, bool) {
 		return ok
 	}
 
-	names := opiter.WrapSeq(
-		slices.Values(comments),
-	).
+	names := opiter.WrapSeq(slices.Values(comments)).
 		Filter(isMarker).
 		Map(markerName)
 

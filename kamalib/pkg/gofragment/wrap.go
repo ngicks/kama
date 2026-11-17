@@ -119,9 +119,7 @@ func checkShape(fset *token.FileSet, k partialKind, f *ast.File, src []byte) err
 
 		return nil
 	default:
-		hasImport := opiter.WrapSeq(
-			slices.Values(f.Decls),
-		).
+		hasImport := opiter.WrapSeq(slices.Values(f.Decls)).
 			ContainsFunc(isImportDecl)
 
 		if hasImport {

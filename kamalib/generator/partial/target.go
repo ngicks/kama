@@ -384,12 +384,8 @@ func followed(r *typegraph.EdgeRoute) bool {
 		typegraph.EdgeKindPointer |
 		typegraph.EdgeKindAlias
 
-	return opiter.WrapSeq(
-		slices.Values(r.Nodes),
-	).
-		Every(
-			func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 },
-		)
+	return opiter.WrapSeq(slices.Values(r.Nodes)).
+		Every(func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 })
 }
 
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
@@ -538,18 +534,14 @@ func (s *selection) checkMerges() error {
 	}
 
 	keys := slices.SortedFunc(
-		opiter.WrapSeq(
-			maps.Keys(s.merges),
-		).
+		opiter.WrapSeq(maps.Keys(s.merges)).
 			Filter(hasNoTarget).
 			Iter(),
 		compareKey,
 	)
 
 	return errors.Join(
-		opiter.WrapSeq(
-			slices.Values(keys),
-		).
+		opiter.WrapSeq(slices.Values(keys)).
 			Map(mergeErr).
 			Collect()...,
 	)
@@ -587,12 +579,8 @@ func compareKey(a, b kamaopt.Key) int {
 }
 
 func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Object {
-	pkg := opiter.WrapSeq(
-		slices.Values(pkgs),
-	).
-		Filter(
-			func(pkg *packages.Package) bool { return pkg.PkgPath == id.PackagePath },
-		).
+	pkg := opiter.WrapSeq(slices.Values(pkgs)).
+		Filter(func(pkg *packages.Package) bool { return pkg.PkgPath == id.PackagePath }).
 		First()
 
 	if pkg.IsNone() {
@@ -740,12 +728,8 @@ func (s *selection) mapCycles() error {
 		case visiting:
 			i := slices.Index(path, n.Id)
 
-			names := opiter.WrapSeq(
-				slices.Values(append(path[i:], n.Id)),
-			).
-				Map(
-					func(id typegraph.QualifiedType) string { return id.TypeName },
-				).
+			names := opiter.WrapSeq(slices.Values(append(path[i:], n.Id))).
+				Map(func(id typegraph.QualifiedType) string { return id.TypeName }).
 				Collect()
 
 			return fmt.Errorf(

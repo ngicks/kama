@@ -283,9 +283,7 @@ type A struct {
 	sel, err := selectTargets(base.SourcePackages(pkgs), opts)
 	assert.NilError(t, err)
 
-	n := opiter.WrapSeq(
-		maps.Values(sel.targets),
-	).
+	n := opiter.WrapSeq(maps.Values(sel.targets)).
 		First().
 		Value()
 
@@ -315,9 +313,7 @@ type A struct {
 
 	assert.Assert(
 		t,
-		opiter.WrapSeq(
-			slices.Values(n.Detail.File.Comments),
-		).
+		opiter.WrapSeq(slices.Values(n.Detail.File.Comments)).
 			ContainsFunc(isMergeAppend),
 	)
 }
@@ -327,11 +323,7 @@ func isMergeAppend(cg *ast.CommentGroup) bool {
 }
 
 func identNames(ids []*dst.Ident) []string {
-	return opiter.WrapSeq(
-		slices.Values(ids),
-	).
-		Map(
-			func(id *dst.Ident) string { return id.Name },
-		).
+	return opiter.WrapSeq(slices.Values(ids)).
+		Map(func(id *dst.Ident) string { return id.Name }).
 		Collect()
 }

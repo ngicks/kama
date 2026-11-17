@@ -214,9 +214,7 @@ func (p *Parser) Reserve(idents ...string) {
 // them.
 func (p *Parser) ParseAst(specs []*ast.ImportSpec) (*Map, error) {
 	return p.parse(
-		opiter.WrapSeq(
-			slices.Values(specs),
-		).
+		opiter.WrapSeq(slices.Values(specs)).
 			Disassemble(astSpecNamePath).
 			Iter2(),
 	)
@@ -234,9 +232,7 @@ func astSpecNamePath(s *ast.ImportSpec) (name, pathLit string) {
 // them.
 func (p *Parser) ParseDst(specs []*dst.ImportSpec) (*Map, error) {
 	return p.parse(
-		opiter.WrapSeq(
-			slices.Values(specs),
-		).
+		opiter.WrapSeq(slices.Values(specs)).
 			Disassemble(dstSpecNamePath).
 			Iter2(),
 	)
@@ -320,12 +316,8 @@ func (m *Map) lookup(pkgPath string, required []Import) Package {
 		return pkg
 	}
 
-	found := opiter.WrapSeq(
-		slices.Values(required),
-	).
-		Filter(
-			func(imp Import) bool { return imp.Package.Path == pkgPath },
-		).
+	found := opiter.WrapSeq(slices.Values(required)).
+		Filter(func(imp Import) bool { return imp.Package.Path == pkgPath }).
 		First()
 
 	if found.IsSome() {
@@ -478,15 +470,11 @@ func (m *Map) AddMissingDst(f *dst.File) {
 		has[spec{name, pkgPath}] = true
 	}
 
-	genDecls := opiter.WrapSeq(
-		slices.Values(f.Decls),
-	).
+	genDecls := opiter.WrapSeq(slices.Values(f.Decls)).
 		Map(asGenDecl)
 
 	decl := genDecls.
-		Filter(
-			func(g *dst.GenDecl) bool { return g != nil && g.Tok == token.IMPORT },
-		).
+		Filter(func(g *dst.GenDecl) bool { return g != nil && g.Tok == token.IMPORT }).
 		First().
 		UnwrapOrDefault()
 
