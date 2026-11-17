@@ -21,20 +21,16 @@ Go code in this repository transforms sequences with `github.com/ngicks/opiter` 
 #### Shape of a chain
 
 - Enter a chain through `opiter.WrapSeq` or `opiter.WrapSeq2`.
-- Put the source on its own line inside the parentheses.
-  - Keep a source that is a bare variable on the opening line, as in `opiter.WrapSeq(specs).`.
+- Keep a short source on the opening line, as in `opiter.WrapSeq(specs).` or `opiter.WrapSeq(slices.Values(fields)).`.
+  - Put the source on its own line inside the parentheses when the opening line would exceed the line length limit.
 - Put every method on its own line. This holds for short chains and for chains with one method.
 - End a chain with `.Collect()` to get a slice.
 - End a chain with `.Iter()` or `.Iter2()` only when the consumer takes `iter.Seq` or `iter.Seq2`, such as `slices.Sorted`, `slices.AppendSeq`, `maps.Collect` or the `Concat` method.
 
 ```go
-out := opiter.WrapSeq2(
-	opiter.MapsSorted(byPath),
-).
+out := opiter.WrapSeq2(opiter.MapsSorted(byPath)).
 	OmitF().
-	Map(
-		func(h *Host) Host { return *h },
-	).
+	Map(func(h *Host) Host { return *h }).
 	Collect()
 ```
 
@@ -48,20 +44,20 @@ out := opiter.WrapSeq2(
 #### Helper functions of opiter
 
 - Some steps have no method, such as `opiter.TryCollect`, `opiter.Flatten`, `opiter.Min`, `opiter.MapsSorted`, `opiter.Range` and `opiter.Once`. Call them as functions around or inside the chain.
-- Put each argument of such a call on its own line.
+- Put each argument of such a call on its own line when the argument is a chain.
 
 ```go
 names, err := opiter.TryCollect(
-	opiter.WrapSeq(
-		slices.Values(tps),
-	).
+	opiter.WrapSeq(slices.Values(tps)).
 		Disassemble(render),
 )
 ```
 
 #### Predicates, mappers and reducers
 
-- Inline a light function as a func literal. Put the literal on its own line inside the parentheses of the method.
+- Inline a light function as a func literal.
+  - Keep a short literal on the line of its method, as in `Filter(func(f fieldInfo) bool { return f.flag != nil })`.
+  - Put the literal on its own line inside the parentheses when the method line would exceed the line length limit.
 - A function is light when all of these hold:
   - Its body is one short `return` expression or one expression statement.
   - The literal fits on one line within the line length limit.
