@@ -18,10 +18,12 @@ func ForRange[C Context[C]](key, value string, x Gen[C], body Step[C]) Step[C] {
 		if err != nil {
 			return c, nil, err
 		}
+
 		outer := c.Scope()
 		c = Push(c)
 
 		p := c.Printer(b)
+
 		switch {
 		case key == "" && value == "":
 			p.Printf("for range %s {\n", over)
@@ -40,7 +42,9 @@ func ForRange[C Context[C]](key, value string, x Gen[C], body Step[C]) Step[C] {
 		if err != nil {
 			return c, nil, err
 		}
+
 		p.Printf("}\n")
+
 		return c.WithScope(outer), p.Bytes(), nil
 	})
 }
@@ -64,11 +68,14 @@ func For[C Context[C]](init, cond, post Gen[C], body Step[C]) Step[C] {
 		c = Push(c)
 
 		var clauses [3]string
+
 		for i, gen := range []Gen[C]{init, cond, post} {
 			if gen == nil {
 				continue
 			}
+
 			var err error
+
 			clauses[i], err = gen(c)
 			if err != nil {
 				return c, nil, err
@@ -76,6 +83,7 @@ func For[C Context[C]](init, cond, post Gen[C], body Step[C]) Step[C] {
 		}
 
 		p := c.Printer(b)
+
 		switch {
 		case init != nil || post != nil:
 			p.Printf("for %s; %s; %s {\n", clauses[0], clauses[1], clauses[2])
@@ -89,7 +97,9 @@ func For[C Context[C]](init, cond, post Gen[C], body Step[C]) Step[C] {
 		if err != nil {
 			return c, nil, err
 		}
+
 		p.Printf("}\n")
+
 		return c.WithScope(outer), p.Bytes(), nil
 	})
 }
@@ -110,22 +120,28 @@ func If[C Context[C]](cond Gen[C], then, els Step[C]) Step[C] {
 		if err != nil {
 			return c, nil, err
 		}
+
 		outer := c.Scope()
 
 		p := c.Printer(b)
 		p.Printf("if %s {\n", expr)
+
 		c, err = printBody(Push(c), p, then)
 		if err != nil {
 			return c, nil, err
 		}
+
 		if els != nil {
 			p.Printf("} else {\n")
+
 			c, err = printBody(Push(c.WithScope(outer)), p, els)
 			if err != nil {
 				return c, nil, err
 			}
 		}
+
 		p.Printf("}\n")
+
 		return c.WithScope(outer), p.Bytes(), nil
 	})
 }
@@ -162,8 +178,10 @@ func Switch[C Context[C]](tag Gen[C], cases ...Case[C]) Step[C] {
 			if err != nil {
 				return c, nil, err
 			}
+
 			p.Printf("switch %s {\n", expr)
 		}
+
 		for _, cs := range cases {
 			if cs.List == nil {
 				p.Printf("default:\n")
@@ -172,16 +190,22 @@ func Switch[C Context[C]](tag Gen[C], cases ...Case[C]) Step[C] {
 				if err != nil {
 					return c, nil, err
 				}
+
 				p.Printf("case %s:\n", list)
 			}
+
 			var err error
+
 			c, err = printBody(Push(c), p, cs.Body)
 			if err != nil {
 				return c, nil, err
 			}
+
 			c = c.WithScope(outer)
 		}
+
 		p.Printf("}\n")
+
 		return c, p.Bytes(), nil
 	})
 }
@@ -192,10 +216,13 @@ func printBody[C Context[C]](c C, p Printer, body Step[C]) (C, error) {
 	if body == nil {
 		return c, nil
 	}
+
 	c, text, err := body.Render(c, nil)
 	if err != nil {
 		return c, err
 	}
+
 	p.Printf("%s", text)
+
 	return c, nil
 }

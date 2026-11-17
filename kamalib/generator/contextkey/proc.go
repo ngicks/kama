@@ -74,6 +74,7 @@ func (i *instance) Param(p ProcParam) error {
 	if p.Dir == "" {
 		p.Dir = "."
 	}
+
 	if !fs.ValidPath(p.Dir) {
 		return fmt.Errorf("contextkey: invalid dir %q", p.Dir)
 	}
@@ -84,6 +85,7 @@ func (i *instance) Param(p ProcParam) error {
 	}
 
 	i.dir, i.opts = p.Dir, opts
+
 	return nil
 }
 
@@ -96,6 +98,7 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 	if err != nil {
 		return fmt.Errorf("contextkey: %s: %w", i.doc.Path, err)
 	}
+
 	if len(tmpl.Entries) == 0 {
 		return fmt.Errorf("%w: %s", ErrNoEntries, i.doc.Path)
 	}
@@ -108,6 +111,7 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 	inDir := func(name string, src []byte) base.File {
 		return base.File{Path: path.Join(i.dir, name), Content: src}
 	}
+
 	produced := opiter.WrapSeq2(
 		opiter.MapsSorted(files),
 	).
@@ -116,13 +120,16 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 
 	opts := i.opts.withDefaults()
 	stale := base.StaleCheck{Registry: opts.Registry, Generator: GeneratorName}
+
 	warnings, err := stale.Dir(i.fs.FS(), i.dir, produced)
 	if err != nil {
 		return fmt.Errorf("contextkey: %w", err)
 	}
+
 	for _, w := range warnings {
 		r.Warn(w)
 	}
+
 	return base.Stage(ctx, i.fs, produced, r)
 }
 

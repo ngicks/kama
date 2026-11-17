@@ -13,6 +13,7 @@ import (
 func TestOpenTwice(t *testing.T) {
 	f, err := New(t.TempDir())
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	assert.ErrorIs(t, f.Open(t.TempDir()), ErrAlreadyOpen)
@@ -23,6 +24,7 @@ func TestWriteFormatsGo(t *testing.T) {
 
 	f, err := New(t.TempDir())
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	assert.NilError(t, f.Write(ctx, "x.go", []byte("package x\nfunc F( ) { fmt.Println() }\n")))
@@ -40,6 +42,7 @@ func TestWriteFormatsGo(t *testing.T) {
 func TestWriteRejectsInvalidGo(t *testing.T) {
 	f, err := New(t.TempDir())
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	assert.ErrorContains(
@@ -63,6 +66,7 @@ func TestWithFormatter(t *testing.T) {
 	root := t.TempDir()
 
 	var gotPath string
+
 	f, err := New(root, WithFormatter(formatterFunc(
 		func(_ context.Context, path string, src []byte) ([]byte, error) {
 			gotPath = path
@@ -70,6 +74,7 @@ func TestWithFormatter(t *testing.T) {
 		},
 	)))
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	assert.NilError(t, f.Write(ctx, "sub/x.go", []byte("package x\n")))
@@ -86,6 +91,7 @@ func TestWithFormatterError(t *testing.T) {
 		func(context.Context, string, []byte) ([]byte, error) { return nil, errFormat },
 	)))
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	assert.ErrorIs(t, f.Write(context.Background(), "x.go", []byte("package x\n")), errFormat)
@@ -136,6 +142,7 @@ func TestFormatLeavesInputIntact(t *testing.T) {
 		},
 	)))
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	content := make([]byte, 0, 100)
@@ -159,6 +166,7 @@ func TestFormatError(t *testing.T) {
 		func(context.Context, string, []byte) ([]byte, error) { return nil, errFormat },
 	)))
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	_, err = f.Format(context.Background(), "x.go", []byte("package x\n"))

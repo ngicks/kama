@@ -80,9 +80,11 @@ func Parse(tag reflect.StructTag) (Tags, error) {
 		for i < len(tag) && tag[i] > ' ' && tag[i] != ':' && tag[i] != '"' && tag[i] != 0x7f {
 			i++
 		}
+
 		if i == 0 || i+1 >= len(tag) || tag[i] != ':' || tag[i+1] != '"' {
 			return nil, fmt.Errorf("%w: %q", ErrUnpairedKey, string(tag))
 		}
+
 		key := string(tag[:i])
 		tag = tag[i+1:]
 
@@ -92,11 +94,14 @@ func Parse(tag reflect.StructTag) (Tags, error) {
 			if tag[i] == '\\' {
 				i++
 			}
+
 			i++
 		}
+
 		if i >= len(tag) {
 			return nil, fmt.Errorf("%w: %s:%s", ErrUnpairedKey, key, string(tag))
 		}
+
 		quoted := string(tag[:i+1])
 		tag = tag[i+1:]
 
@@ -104,6 +109,7 @@ func Parse(tag reflect.StructTag) (Tags, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%w: %s:%s: %w", ErrSyntax, key, quoted, err)
 		}
+
 		out = append(out, Tag{Key: key, Value: value})
 	}
 
@@ -117,6 +123,7 @@ func (t Tags) StructTag() reflect.StructTag {
 	).
 		Map(Tag.String).
 		Collect()
+
 	return reflect.StructTag(strings.Join(parts, " "))
 }
 
@@ -131,11 +138,13 @@ func (t Tags) Get(key, option string) (raw, unescaped string, err error) {
 	).
 		Filter(hasKey(key)).
 		First()
+
 	if found.IsNone() {
 		return "", "", fmt.Errorf("%w: key %q", ErrNotFound, key)
 	}
 
 	v := found.Value().Value
+
 	r, err := locate(v, option)
 	if err != nil {
 		return "", "", err
@@ -145,6 +154,7 @@ func (t Tags) Get(key, option string) (raw, unescaped string, err error) {
 	if r.quoted {
 		return raw, r.unescaped, nil
 	}
+
 	return raw, raw, nil
 }
 
@@ -157,6 +167,7 @@ func (t Tags) Delete(key, option string) (Tags, error) {
 	}
 
 	v := t[i].Value
+
 	r, err := locate(v, option)
 	if err != nil {
 		return nil, err
@@ -167,10 +178,12 @@ func (t Tags) Delete(key, option string) (Tags, error) {
 		// Take the comma before the option along.
 		start--
 	}
+
 	v = v[:start] + v[end:]
 
 	out := slices.Clone(t)
 	out[i].Value = v
+
 	return out, nil
 }
 
@@ -187,6 +200,7 @@ func (t Tags) Add(key, option, value string) (Tags, error) {
 	}
 
 	v := t[i].Value
+
 	_, err := locate(v, option)
 	switch {
 	case err == nil:
@@ -206,6 +220,7 @@ func (t Tags) Add(key, option, value string) (Tags, error) {
 
 	out := slices.Clone(t)
 	out[i].Value = v
+
 	return out, nil
 }
 
@@ -221,9 +236,11 @@ func part(option, value string) string {
 	if option == "" {
 		return value
 	}
+
 	if value == "" {
 		return "," + option
 	}
+
 	return "," + option + ":" + value
 }
 
@@ -244,9 +261,11 @@ func locate(v, option string) (span, error) {
 		if err != nil {
 			return span{}, err
 		}
+
 		if option == "" {
 			return span{0, n, quoted, unescaped}, nil
 		}
+
 		pos = n
 	}
 
@@ -254,15 +273,18 @@ func locate(v, option string) (span, error) {
 		if v[pos] != ',' {
 			return span{}, fmt.Errorf("%w: %q", ErrSyntax, v)
 		}
+
 		if pos+1 == len(v) {
 			break
 		}
+
 		start := pos + 1
 
 		opt, n, err := readOption(v[start:])
 		if err != nil {
 			return span{}, err
 		}
+
 		end := start + n
 
 		if end < len(v) && v[end] == ':' {
@@ -270,18 +292,21 @@ func locate(v, option string) (span, error) {
 			if err != nil {
 				return span{}, err
 			}
+
 			end += 1 + n
 		}
 
 		if option != "" && opt == option {
 			return span{start: start, end: end}, nil
 		}
+
 		pos = end
 	}
 
 	if option == "" {
 		return span{}, fmt.Errorf("%w: name in %q", ErrNotFound, v)
 	}
+
 	return span{}, fmt.Errorf("%w: option %q in %q", ErrNotFound, option, v)
 }
 
@@ -297,6 +322,7 @@ func readName(v string) (unescaped string, n int, quoted bool, err error) {
 	}
 
 	opt, n, err := readOption(v)
+
 	return opt, n, v[0] == '\'', err
 }
 
@@ -312,6 +338,7 @@ func readOption(s string) (opt string, n int, err error) {
 		n = len(s) - len(strings.TrimLeftFunc(s, func(r rune) bool {
 			return r == '_' || unicode.IsLetter(r) || unicode.IsNumber(r)
 		}))
+
 		return s[:n], n, nil
 	case r == '\'':
 		return unescape(s)
@@ -324,6 +351,7 @@ func readOption(s string) (opt string, n int, err error) {
 // follows Go's double-quoted string escapes, with \' for a single quote.
 func unescape(s string) (unescaped string, n int, err error) {
 	buf := []byte{'"'}
+
 	for i := 1; i < len(s); {
 		r, size := utf8.DecodeRuneInString(s[i:])
 		switch r {
@@ -332,27 +360,34 @@ func unescape(s string) (unescaped string, n int, err error) {
 				i = len(s)
 				continue
 			}
+
 			if s[i+1] == '\'' {
 				buf = append(buf, '\'')
 			} else {
 				buf = append(buf, s[i:i+2]...)
 			}
+
 			i += 2
+
 			continue
 		case '"':
 			buf = append(buf, '\\', '"')
 		case '\'':
 			buf = append(buf, '"')
+
 			out, err := strconv.Unquote(string(buf))
 			if err != nil {
 				return "", 0, fmt.Errorf("%w: %q: %w", ErrSyntax, s[:i+1], err)
 			}
+
 			return out, i + 1, nil
 		default:
 			buf = append(buf, s[i:i+size]...)
 		}
+
 		i += size
 	}
+
 	return "", 0, fmt.Errorf("%w: unterminated single-quoted string %q", ErrSyntax, s)
 }
 
@@ -362,13 +397,16 @@ func Unescape(s string) (string, error) {
 	if !strings.HasPrefix(s, "'") {
 		return "", fmt.Errorf("%w: %q is not single-quoted", ErrSyntax, s)
 	}
+
 	unescaped, n, err := unescape(s)
 	if err != nil {
 		return "", err
 	}
+
 	if n != len(s) {
 		return "", fmt.Errorf("%w: trailing characters after position %d", ErrSyntax, n)
 	}
+
 	return unescaped, nil
 }
 

@@ -43,6 +43,7 @@ func TestNaming(t *testing.T) {
 		assert.Assert(t, !n.IsShared("helper", path.Base(c.file)), c.file)
 		assert.Assert(t, !n.IsShared("flagset", path.Base(c.shared)), c.shared)
 	}
+
 	assert.Assert(t, n.IsShared("helper", n.SharedFile("helper")))
 	assert.Assert(t, !n.IsShared("helper", "zz_gen.helper.kama_y.go"))
 
@@ -58,6 +59,7 @@ func TestHostShared(t *testing.T) {
 		for _, n := range names {
 			m[n] = true
 		}
+
 		return m
 	}
 	hosts := HostShared("shared.go", []Caller{
@@ -103,8 +105,10 @@ func (r *recordReporter) Progress(msg string) { r.progress = append(r.progress, 
 // source returns a generated file of package p with the header of now.
 func source(t *testing.T, now time.Time, body string) []byte {
 	t.Helper()
+
 	hdr, err := Header("example.com/gen", map[string]any{"mode": "x"}, now)
 	assert.NilError(t, err)
+
 	return []byte(strings.Join(hdr, "\n") + "\n\npackage p\n\n" + body + "\n")
 }
 
@@ -128,6 +132,7 @@ func TestStage(t *testing.T) {
 	ctx := context.Background()
 	f, err := overlayfs.New(t.TempDir())
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	first := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -140,12 +145,14 @@ func TestStage(t *testing.T) {
 	read := func(name string) string {
 		b, err := fs.ReadFile(f.FS(), name)
 		assert.NilError(t, err)
+
 		return string(b)
 	}
 
 	r := &recordReporter{}
 	assert.NilError(t, Stage(ctx, f, files(first, "var A = 1"), r))
 	assert.DeepEqual(t, r.progress, []string{"2 files written, 0 files unchanged"})
+
 	a, b := read("a.go"), read("sub/b.go")
 
 	// A later run changing nothing but the time keeps both files.
@@ -173,21 +180,25 @@ func load(t *testing.T, files map[string]string, buildFlags ...string) []*packag
 
 	dir := "testdata/inline/" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 	dirs := map[string]bool{}
+
 	for name, src := range files {
 		assert.NilError(t, f.Write(context.Background(), path.Join(dir, name), []byte(src)))
 		dirs["./"+path.Dir(path.Join(dir, name))] = true
 	}
+
 	pkgs, err := gopackages.Load(context.Background(), f, gopackages.Options{
 		Patterns:   slices.Sorted(maps.Keys(dirs)),
 		BuildFlags: buildFlags,
 		Tests:      true,
 	})
 	assert.NilError(t, err)
+
 	return pkgs
 }
 
 func fileOf(t *testing.T, pkgs []*packages.Package, name string) (*packages.Package, *ast.File) {
 	t.Helper()
+
 	for _, pkg := range pkgs {
 		for _, f := range pkg.Syntax {
 			if filepath.Base(pkg.Fset.File(f.Pos()).Name()) == name {
@@ -195,7 +206,9 @@ func fileOf(t *testing.T, pkgs []*packages.Package, name string) (*packages.Pack
 			}
 		}
 	}
+
 	t.Fatalf("no file %s", name)
+
 	return nil, nil
 }
 
@@ -208,11 +221,13 @@ func TestSourcePackages(t *testing.T) {
 	assert.Assert(t, slices.ContainsFunc(pkgs, isTestVariant), "a test variant is loaded")
 	src := SourcePackages(pkgs)
 	assert.Assert(t, !slices.ContainsFunc(src, isTestVariant))
+
 	paths := opiter.WrapSeq(
 		slices.Values(src),
 	).
 		Map(pkgPathOf).
 		Collect()
+
 	assert.DeepEqual(t, paths, slices.Compact(slices.Clone(paths)))
 	assert.Assert(t, slices.Contains(paths, pkgs[0].PkgPath))
 }
@@ -237,6 +252,7 @@ func TestShadowedPredeclared(t *testing.T) {
 	}))
 	names := func(contents ...string) []string {
 		t.Helper()
+
 		in := opiter.WrapSeq(
 			slices.Values(contents),
 		).
@@ -244,8 +260,10 @@ func TestShadowedPredeclared(t *testing.T) {
 				func(s string) []byte { return []byte(s) },
 			).
 			Collect()
+
 		objs, err := ShadowedPredeclared(pkgs[0], in)
 		assert.NilError(t, err)
+
 		return opiter.WrapSeq(
 			slices.Values(objs),
 		).
@@ -260,12 +278,14 @@ func TestShadowedPredeclared(t *testing.T) {
 	assert.Equal(t, len(names(
 		"package x\n\nimport \"y\"\n\ntype T struct{ string int }\n\nvar V = y.error\n",
 	)), 0)
+
 	_, err := ShadowedPredeclared(pkgs[0], [][]byte{[]byte("not go")})
 	assert.ErrorContains(t, err, "parse generated file")
 }
 
 func TestStaleCheck(t *testing.T) {
 	const gen = "base-test-gen"
+
 	reg := genmark.NewRegistry()
 	assert.NilError(t, reg.Register(gen))
 	assert.NilError(t, reg.Register("other-gen"))
@@ -304,6 +324,7 @@ func TestStaleCheck(t *testing.T) {
 
 func TestStaleCheckDir(t *testing.T) {
 	const gen = "base-test-dir-gen"
+
 	reg := genmark.NewRegistry()
 	assert.NilError(t, reg.Register(gen))
 	assert.NilError(t, reg.Register("other-gen"))
@@ -311,7 +332,9 @@ func TestStaleCheckDir(t *testing.T) {
 	ctx := context.Background()
 	f, err := overlayfs.New(t.TempDir())
 	assert.NilError(t, err)
+
 	defer f.Close()
+
 	marked := func(generator, name string) []byte {
 		return []byte("package x\n\n//kama:generated " + generator + "\ntype " + name + " int\n")
 	}

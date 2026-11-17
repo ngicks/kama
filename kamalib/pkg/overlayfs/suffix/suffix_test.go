@@ -61,6 +61,7 @@ func TestListDist(t *testing.T) {
 	assert.Assert(t, slices.ContainsFunc(got, func(l goToolDistListJson) bool {
 		return l.GOOS == "linux" && l.GOARCH == "amd64" && l.CgoSupported && l.FirstClass
 	}))
+
 	for _, l := range got {
 		assert.Assert(t, l.GOOS != "" && l.GOARCH != "", "%+v", l)
 	}

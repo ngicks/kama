@@ -48,6 +48,7 @@ func (k partialKind) String() string {
 
 func (k partialKind) wrap(b []byte) []byte {
 	var prefix, suffix string
+
 	switch k {
 	case exprKind:
 		prefix = exprPrefix
@@ -56,6 +57,7 @@ func (k partialKind) wrap(b []byte) []byte {
 	default:
 		prefix = declsPrefix
 	}
+
 	src := make([]byte, 0, len(prefix)+len(b)+1+len(suffix))
 	src = append(src, prefix...)
 	src = append(src, b...)
@@ -65,6 +67,7 @@ func (k partialKind) wrap(b []byte) []byte {
 	if !bytes.HasSuffix(b, []byte("\n")) {
 		src = append(src, '\n')
 	}
+
 	return append(src, suffix...)
 }
 
@@ -72,13 +75,16 @@ func (k partialKind) wrap(b []byte) []byte {
 // the wrapper.
 func parseWrapped(fset *token.FileSet, k partialKind, b []byte) (*ast.File, error) {
 	src := k.wrap(b)
+
 	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
 	if err != nil {
 		return nil, fmt.Errorf("gofragment: parse %s: %w", k, err)
 	}
+
 	if err := checkShape(fset, k, f, src); err != nil {
 		return nil, fmt.Errorf("gofragment: parse %s: %w", k, err)
 	}
+
 	return f, nil
 }
 
@@ -88,36 +94,43 @@ func checkShape(fset *token.FileSet, k partialKind, f *ast.File, src []byte) err
 		if len(f.Decls) != 1 {
 			return fmt.Errorf("%w: text adds %d declarations", ErrNotPartial, len(f.Decls)-1)
 		}
+
 		gen, ok := f.Decls[0].(*ast.GenDecl)
 		if !ok || gen.Tok != token.VAR || len(gen.Specs) != 1 {
 			return fmt.Errorf("%w: text is not one expression", ErrNotPartial)
 		}
+
 		spec, ok := gen.Specs[0].(*ast.ValueSpec)
 		if !ok || len(spec.Names) != 1 || spec.Type != nil || len(spec.Values) != 1 {
 			return fmt.Errorf("%w: text is not one expression", ErrNotPartial)
 		}
+
 		return checkTrailing(fset, spec.Values[0].End(), src)
 	case stmtsKind:
 		if len(f.Decls) != 1 {
 			return fmt.Errorf("%w: text adds %d declarations", ErrNotPartial, len(f.Decls)-1)
 		}
+
 		fn, ok := f.Decls[0].(*ast.FuncDecl)
 		if !ok || fn.Recv != nil || fn.Name.Name != "_" || fn.Type.TypeParams != nil ||
 			fn.Type.Params.NumFields() != 0 || fn.Type.Results != nil || fn.Body == nil {
 			return fmt.Errorf("%w: text is not statements of a function body", ErrNotPartial)
 		}
+
 		return nil
 	default:
 		hasImport := opiter.WrapSeq(
 			slices.Values(f.Decls),
 		).
 			ContainsFunc(isImportDecl)
+
 		if hasImport {
 			return fmt.Errorf(
 				"%w: text declares imports, which the caller adds to the file",
 				ErrNotPartial,
 			)
 		}
+
 		return nil
 	}
 }
@@ -132,8 +145,10 @@ func isImportDecl(d ast.Decl) bool {
 // not show text like "x;".
 func checkTrailing(fset *token.FileSet, end token.Pos, src []byte) error {
 	rest := src[fset.Position(end).Offset:]
+
 	var s scanner.Scanner
 	s.Init(token.NewFileSet().AddFile("", -1, len(rest)), rest, nil, 0)
+
 	for {
 		_, tok, lit := s.Scan()
 		switch {
@@ -166,15 +181,18 @@ func printBlock(
 	if comments != nil {
 		node = &printer.CommentedNode{Node: block, Comments: comments}
 	}
+
 	var buf bytes.Buffer
 	if err := printConfig(-1).Fprint(&buf, fset, node); err != nil {
 		return nil, err
 	}
+
 	out := buf.Bytes()
 	if len(out) < len(printedOpen)+len(printedClose) ||
 		!bytes.HasPrefix(out, []byte(printedOpen)) || !bytes.HasSuffix(out, []byte(printedClose)) {
 		return nil, fmt.Errorf("unexpected block %q", out)
 	}
+
 	return trimLines(out[len(printedOpen) : len(out)-len(printedClose)]), nil
 }
 
@@ -186,5 +204,6 @@ func trimLines(b []byte) []byte {
 	if len(b) == 0 {
 		return []byte{}
 	}
+
 	return append(b, '\n')
 }

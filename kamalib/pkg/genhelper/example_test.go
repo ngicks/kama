@@ -23,8 +23,10 @@ func lookup(s *genhelper.Scope, roles ...string) ([]string, error) {
 		if !ok {
 			return "", fmt.Errorf("role %q is not declared", role)
 		}
+
 		return name, nil
 	}
+
 	names, err := opiter.TryCollect(
 		opiter.WrapSeq(
 			slices.Values(roles),
@@ -34,6 +36,7 @@ func lookup(s *genhelper.Scope, roles ...string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return names, nil
 }
 
@@ -41,13 +44,16 @@ func lookup(s *genhelper.Scope, roles ...string) ([]string, error) {
 // declares the same roles. No level knows how deep it is nested.
 func rangeLevels(types []string) step {
 	last := len(types) == 1
+
 	block := genhelper.Block[genhelper.BaseContext]{
 		Declare: func(c genhelper.BaseContext) (genhelper.BaseContext, error) {
 			c.Scope().Declare("k")
 			c.Scope().Declare("v")
+
 			if !last {
 				c.Scope().Declare("inner")
 			}
+
 			return c, nil
 		},
 		Wrap: func(c genhelper.BaseContext, body string) (string, error) {
@@ -55,21 +61,26 @@ func rangeLevels(types []string) step {
 			if err != nil {
 				return "", err
 			}
+
 			src, dst := outer[0], outer[1]
+
 			if last {
 				own, err := lookup(c.Scope(), "k", "v")
 				if err != nil {
 					return "", err
 				}
+
 				return fmt.Sprintf(
 					"for %[1]s, %[2]s := range %[3]s {\n%[4]s[%[1]s] = toPartial(%[2]s)\n}\n",
 					own[0], own[1], src, dst,
 				), nil
 			}
+
 			own, err := lookup(c.Scope(), "k", "v", "inner")
 			if err != nil {
 				return "", err
 			}
+
 			return fmt.Sprintf(
 				"for %[1]s, %[2]s := range %[4]s {\n"+
 					"%[3]s := make(%[6]s, len(%[2]s))\n%[7]s%[5]s[%[1]s] = %[3]s\n}\n",
@@ -80,6 +91,7 @@ func rangeLevels(types []string) step {
 	if !last {
 		block.Body = rangeLevels(types[1:])
 	}
+
 	return block
 }
 
@@ -98,6 +110,7 @@ func ExampleBlock() {
 				Declare: func(c genhelper.BaseContext) (genhelper.BaseContext, error) {
 					c.Scope().Declare("v")
 					c.Scope().Declare("inner")
+
 					return c, nil
 				},
 				Body: rangeLevels(types),
@@ -106,6 +119,7 @@ func ExampleBlock() {
 					if err != nil {
 						return "", err
 					}
+
 					return fmt.Sprintf(
 						"func convert(%[1]s map[string][][]T) %[3]s {\n"+
 							"%[2]s := make(%[3]s, len(%[1]s))\n%[4]sreturn %[2]s\n}\n",
@@ -115,14 +129,17 @@ func ExampleBlock() {
 			},
 		},
 	}
+
 	_, b, err := r.Render(nil)
 	if err != nil {
 		panic(err)
 	}
+
 	b, err = format.Source(b)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Print(string(b))
 	// Output:
 	// func convert(v map[string][][]T) map[string][][]Partial {
@@ -166,14 +183,17 @@ func ExampleWrap() {
 			}),
 		},
 	}
+
 	c, b, err := r.Render(nil)
 	if err != nil {
 		panic(err)
 	}
+
 	b, err = format.Source(b)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Print(string(b))
 	fmt.Println("unbound:", c.Scope().Unbound())
 	// Output:
@@ -208,6 +228,7 @@ func ExampleContext() {
 				},
 				Wrap: func(c fieldContext, _ string) (string, error) {
 					v, _ := c.Scope().Lookup("v")
+
 					return fmt.Sprintf(
 						"func(%[1]s T) string { return %[1]s.%[2]s }",
 						v,
@@ -217,10 +238,12 @@ func ExampleContext() {
 			},
 		},
 	}
+
 	_, b, err := r.Render(nil)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Println(string(b))
 	// Output:
 	// func(v T) string { return v.Name }
@@ -256,6 +279,7 @@ func ExampleScope_LookupOrDeclare() {
 		if declared {
 			return name + " := " + call
 		}
+
 		return name + " = " + call
 	}
 
@@ -279,6 +303,7 @@ func ExampleScope_LinkImports() {
 		types.NewPackage(keyPath, "key"),
 		types.NewPackage(valPath, "val"),
 	})
+
 	imports, err := importdecl.NewParser(pkg).ParseDst(nil)
 	if err != nil {
 		panic(err)
@@ -290,6 +315,7 @@ func ExampleScope_LinkImports() {
 	// A local declared first keeps its name, and the import requested later
 	// avoids it.
 	fmt.Println(fn.Declare("key"))
+
 	ident, _ := imports.Ident(keyPath)
 	fmt.Println(ident)
 
@@ -319,10 +345,12 @@ func ExamplePackage() {
 		types.NewPackage(undPath, "und"),
 		types.NewPackage(otherPath, "und"),
 	})
+
 	f, err := decorator.Parse("package dest\n\nimport \"" + otherPath + "\"\n")
 	if err != nil {
 		panic(err)
 	}
+
 	imports, err := importdecl.NewParser(pkg).ParseDst(f.Imports)
 	if err != nil {
 		panic(err)
@@ -339,6 +367,7 @@ func ExamplePackage() {
 				if err != nil {
 					return "", err
 				}
+
 				return fromPointer + "(" + c.Scope().Use("v") + ".X)", nil
 			}),
 			genhelper.Wrap(func(c genhelper.BaseContext, inner string) (string, error) {
@@ -347,6 +376,7 @@ func ExamplePackage() {
 				if err != nil {
 					return "", err
 				}
+
 				return fmt.Sprintf(
 					"func toPartial(%[1]s T) %[2]s {\nreturn %[2]s{X: %[3]s}\n}\n",
 					c.Scope().Declare("v"), partial, inner,
@@ -354,6 +384,7 @@ func ExamplePackage() {
 			}),
 		},
 	}
+
 	_, b, err := r.Render(nil)
 	if err != nil {
 		panic(err)
@@ -364,6 +395,7 @@ func ExamplePackage() {
 	if err := genhelper.AppendDecls(f, r.Context.Package(), b); err != nil {
 		panic(err)
 	}
+
 	if err := decorator.Fprint(os.Stdout, f); err != nil {
 		panic(err)
 	}
@@ -393,15 +425,18 @@ func ExamplePrinter() {
 					p := c.Printer(b)
 					p.Printf("%s := %d\n", c.Scope().Declare("n"), 1)
 					p.Printf("%s := %q\n", c.Scope().Declare("s"), "one")
+
 					return c, p.Bytes(), nil
 				},
 			),
 		},
 	}
+
 	_, b, err := r.Render([]byte("// values\n"))
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Print(string(b))
 	// Output:
 	// // values
@@ -411,6 +446,7 @@ func ExamplePrinter() {
 
 func ExampleForRange() {
 	type ctx = genhelper.BaseContext
+
 	text := func(s string) genhelper.Gen[ctx] {
 		return func(ctx) (string, error) { return s, nil }
 	}
@@ -427,6 +463,7 @@ func ExampleForRange() {
 					func(role string) any { return c.Scope().Use(role) },
 				).
 				Collect()
+
 			return fmt.Sprintf(format, names...), nil
 		})
 	}
@@ -455,14 +492,17 @@ func ExampleForRange() {
 			),
 		},
 	}
+
 	_, b, err := r.Render(nil)
 	if err != nil {
 		panic(err)
 	}
+
 	b, err = format.Source(b)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Print(string(b))
 	// Output:
 	// for k, v2 := range items {
@@ -517,14 +557,17 @@ func ExampleFunc() {
 			),
 		},
 	}
+
 	_, b, err := r.Render(nil)
 	if err != nil {
 		panic(err)
 	}
+
 	b, err = format.Source(b)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Print(string(b))
 	// Output:
 	// func (s Set) Filter(keep func(string) bool) Set {
@@ -569,10 +612,12 @@ func ExampleLang() {
 	if err != nil {
 		panic(err)
 	}
+
 	b, err := format.Source([]byte(s))
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Print(string(b))
 	// Output:
 	// // Count returns the number of n2 in xs.
@@ -614,14 +659,17 @@ func ExampleDocFunc() {
 			),
 		},
 	}
+
 	_, b, err := r.Render(nil)
 	if err != nil {
 		panic(err)
 	}
+
 	b, err = format.Source(b)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Print(string(b))
 	// Output:
 	// // Has reports whether s2 holds key.

@@ -85,6 +85,7 @@ func (i *instance) Param(p ProcParam) error {
 	}
 
 	i.input = in
+
 	return nil
 }
 
@@ -99,6 +100,7 @@ func (i *instance) Run(context.Context, workflow.Reporter) error {
 	}
 
 	i.doc.Path = name
+
 	return nil
 }
 

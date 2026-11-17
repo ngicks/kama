@@ -37,6 +37,7 @@ func (c *Cache) TypeSpec(
 	if c.files == nil {
 		c.files = map[*ast.File]decorated{}
 	}
+
 	e, ok := c.files[file]
 	if !ok {
 		e.d = decorator.NewDecorator(fset)
@@ -49,14 +50,18 @@ func (c *Cache) TypeSpec(
 				),
 			}
 		}
+
 		c.files[file] = e
 	}
+
 	if e.err != nil {
 		return nil, e.err
 	}
+
 	out, ok := e.d.Dst.Nodes[ts].(*dst.TypeSpec)
 	if !ok {
 		return nil, fmt.Errorf("%w: type spec %s", ErrNotFound, ts.Name.Name)
 	}
+
 	return out, nil
 }

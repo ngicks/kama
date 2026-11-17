@@ -30,6 +30,7 @@ func TestGeneratedCommentLine(t *testing.T) {
 func TestFileHeader(t *testing.T) {
 	jst := time.FixedZone("JST", 9*60*60)
 	now := time.Date(2026, 11, 4, 19, 12, 33, 999_000_000, jst)
+
 	cases := []struct {
 		name   string
 		opts   Options
@@ -73,6 +74,7 @@ func TestGenerateNow(t *testing.T) {
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ X int }\n",
 	}, Options{Now: func() time.Time { return time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC) }})
 	assert.Equal(t, len(files), 2)
+
 	for name, src := range files {
 		assert.Assert(
 			t,
@@ -91,6 +93,7 @@ func TestSameExceptGenerated(t *testing.T) {
 	}
 	a, b := at(5), at(6)
 	assert.Equal(t, len(a), 2)
+
 	for name := range a {
 		assert.Assert(t, a[name] != b[name], name)
 		assert.Assert(t, genhelper.SameExceptGenerated([]byte(a[name]), []byte(b[name])), name)
@@ -148,6 +151,7 @@ func TestStaleHelpersFile(t *testing.T) {
 
 func TestStaleKeepsFlagSetOfPackageWithoutOutput(t *testing.T) {
 	support := generated(t, map[string]string{"a.go": staleSources["a.go"]})
+
 	cases := []struct {
 		name  string
 		files map[string]string
@@ -192,13 +196,16 @@ type procEnv struct {
 
 func newProcEnv(t *testing.T, files map[string]string, opts ...overlayfs.Option) *procEnv {
 	t.Helper()
+
 	f, err := overlayfs.New(".", opts...)
 	assert.NilError(t, err)
 	t.Cleanup(func() { f.Close() })
+
 	e := &procEnv{t: t, f: f, dir: "testdata/inline/" + strings.ReplaceAll(t.Name(), "/", "_")}
 	for name, src := range files {
 		e.write(name, src)
 	}
+
 	return e
 }
 
@@ -211,12 +218,14 @@ func (e *procEnv) read(name string) string {
 	e.t.Helper()
 	b, err := fs.ReadFile(e.f.FS(), path.Join(e.dir, name))
 	assert.NilError(e.t, err)
+
 	return string(b)
 }
 
 // run loads the packages, staged files included, and runs Proc with now.
 func (e *procEnv) run(now time.Time) *recordReporter {
 	e.t.Helper()
+
 	ctx := context.Background()
 	pkgs, err := gopackages.Load(ctx, e.f, gopackages.Options{Patterns: []string{"./" + e.dir}})
 	assert.NilError(e.t, err)
@@ -227,8 +236,10 @@ func (e *procEnv) run(now time.Time) *recordReporter {
 	i.opts.Now = func() time.Time { return now }
 	i.In(&procgopackages.Packages{Pkgs: pkgs})
 	i.Out(e.f)
+
 	r := &recordReporter{}
 	assert.NilError(e.t, i.Run(ctx, r))
+
 	return r
 }
 
@@ -257,10 +268,13 @@ func TestProcKeepsUnchanged(t *testing.T) {
 		second = "// generated: 2026-11-05T00:00:00Z\n"
 		third  = "// generated: 2026-11-06T00:00:00Z\n"
 	)
+
 	e := newProcEnv(t, map[string]string{"a.go": staleSources["a.go"]})
 	r := e.run(time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC))
 	assert.DeepEqual(t, r.progress, []string{"2 files written, 0 files unchanged"})
+
 	names := []string{"a.kama_partial.go", FlagSetFile}
+
 	before := map[string]string{}
 	for _, name := range names {
 		before[name] = e.read(name)
@@ -270,6 +284,7 @@ func TestProcKeepsUnchanged(t *testing.T) {
 	r = e.run(time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC))
 	assert.Equal(t, len(r.warnings), 0, "%v", r.warnings)
 	assert.DeepEqual(t, r.progress, []string{"0 files written, 2 files unchanged"})
+
 	for _, name := range names {
 		assert.Equal(t, e.read(name), before[name], name)
 	}
@@ -277,10 +292,12 @@ func TestProcKeepsUnchanged(t *testing.T) {
 	e.write("a.go", "package x\n\n//kama:partial\ntype A struct{ X, Y int }\n")
 	r = e.run(time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
 	assert.DeepEqual(t, r.progress, []string{"1 file written, 1 file unchanged"})
+
 	got := map[string]string{}
 	for _, name := range names {
 		got[name] = e.read(name)
 	}
+
 	assert.Assert(t, strings.Contains(got["a.kama_partial.go"], third))
 	assert.Assert(t, strings.Contains(got["a.kama_partial.go"], "Y und.Und[int]"))
 	assert.Assert(t, !strings.Contains(got["a.kama_partial.go"], second))
@@ -317,6 +334,7 @@ func TestProcKeepsUnchangedNonIdempotentFormatter(t *testing.T) {
 
 	r := e.run(time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC))
 	assert.DeepEqual(t, r.progress, []string{"2 files written, 0 files unchanged"})
+
 	before := map[string]string{}
 	for _, name := range names {
 		before[name] = e.read(name)
@@ -325,6 +343,7 @@ func TestProcKeepsUnchangedNonIdempotentFormatter(t *testing.T) {
 
 	r = e.run(time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC))
 	assert.DeepEqual(t, r.progress, []string{"0 files written, 2 files unchanged"})
+
 	for _, name := range names {
 		assert.Equal(t, e.read(name), before[name], name)
 	}
@@ -332,10 +351,12 @@ func TestProcKeepsUnchangedNonIdempotentFormatter(t *testing.T) {
 	e.write("a.go", "package x\n\n//kama:partial\ntype A struct{ X, Y int }\n")
 	r = e.run(time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
 	assert.DeepEqual(t, r.progress, []string{"1 file written, 1 file unchanged"})
+
 	got := e.read("a.kama_partial.go")
 	singlePrefix("a.kama_partial.go", got)
 	assert.Assert(t, strings.Contains(got, "// generated: 2026-11-06T00:00:00Z\n"))
 	assert.Assert(t, strings.Contains(got, "Y und.Und[int]"))
+
 	for _, name := range names[1:] {
 		assert.Equal(t, e.read(name), before[name], name)
 	}

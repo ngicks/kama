@@ -9,6 +9,7 @@ import (
 
 func TestFieldMaskErrors(t *testing.T) {
 	const head = "package x\n\n"
+
 	cases := []struct {
 		name     string
 		src      string
@@ -237,9 +238,11 @@ func TestFieldMaskErrors(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := generate(t, map[string]string{"x.go": c.src}, Options{})
 			assert.ErrorIs(t, err, c.is)
+
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)
 			}
+
 			for _, s := range c.excludes {
 				assert.Assert(t, !strings.Contains(err.Error(), s), "%q in %v", s, err)
 			}
@@ -253,6 +256,7 @@ func TestFieldMaskErrors(t *testing.T) {
 func TestFieldMaskEmbeddingByOptionFile(t *testing.T) {
 	const src = "package x\n\n//kama:partial\ntype A struct {\n\t*E\n}\n\n" +
 		"type E struct{ I int }\n"
+
 	t.Run("embedded only", func(t *testing.T) {
 		_, err := generate(t, map[string]string{"x.go": src}, Options{
 			OptionFile: optionFile(t, "version: 1\npackages:\n  $pkg:\n    types:\n"+
@@ -293,6 +297,7 @@ func TestFieldMaskOptIn(t *testing.T) {
 	const src = "package x\n\n//kama:partial\ntype A struct {\n" +
 		"\tFieldMask         []string\n\tFromValueWithMask int\n\tB B\n}\n\n" +
 		"//kama:partial:fieldmask\ntype B struct{ I int }\n"
+
 	files := generated(t, map[string]string{"a.go": src})
 	out := files["a.kama_partial.go"]
 	fs := funcs(t, out)
@@ -306,6 +311,7 @@ func TestFieldMaskOptIn(t *testing.T) {
 	files = generated(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n",
 	})
+
 	out = files["a.kama_partial.go"]
 	for _, s := range []string{"FieldMask", "FromValueWithMask", `"slices"`, `"strings"`} {
 		assert.Assert(t, !strings.Contains(out, s), "%s in\n%s", s, out)
@@ -333,6 +339,7 @@ func TestFieldMaskMethods(t *testing.T) {
 	slices.Sort(paths)
 	return paths
 }`)
+
 	got := fs["APartial.FromValueWithMask"]
 	for _, s := range []string{
 		"func (p *APartial) FromValueWithMask(v A, paths []string) error {\n\tvar x APartial\n",

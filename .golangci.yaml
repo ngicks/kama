@@ -16,6 +16,8 @@ linters:
     - copyloopvar
     - gocritic
     - lll
+    # empty lines around blocks and between groups of statements
+    - wsl_v5
   settings:
     govet:
       # Mirror the gopls analyses turned on in

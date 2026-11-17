@@ -59,6 +59,7 @@ func parseFlag(args string) (flagOption, error) {
 	if err != nil {
 		return flagOption{}, err
 	}
+
 	return flagFromArgs(kv)
 }
 
@@ -69,6 +70,7 @@ func flagFromOptions(f FlagOptions) (flagOption, error) {
 	if f.Short != "" {
 		kv["short"] = f.Short
 	}
+
 	return flagFromArgs(kv)
 }
 
@@ -77,6 +79,7 @@ func notFlagKey(k string) bool {
 	case "name", "short", "usage":
 		return false
 	}
+
 	return true
 }
 
@@ -88,9 +91,11 @@ func flagFromArgs(kv map[string]string) (flagOption, error) {
 		).
 			Filter(notFlagKey),
 	)
+
 	if k.IsSome() {
 		return flagOption{}, fmt.Errorf("unknown key %q; want name, short or usage", k.Value())
 	}
+
 	o := flagOption{name: kv["name"], short: kv["short"], usage: kv["usage"]}
 	switch {
 	case o.name == "":
@@ -110,6 +115,7 @@ func flagFromArgs(kv map[string]string) (flagOption, error) {
 			o.short,
 		)
 	}
+
 	return o, nil
 }
 
@@ -179,6 +185,7 @@ func flagSetSignatures() map[string]string {
 		)
 		out[k.get] = fmt.Sprintf("%s(name string) (%s, error)", k.get, k.value)
 	}
+
 	return out
 }
 
@@ -210,6 +217,7 @@ func (p *mapper) flag(n *typegraph.Node, info fieldInfo, o flagOption) (*flagFie
 	if o.raw.Directive == "" {
 		return nil, nil
 	}
+
 	bad := func(format string, args ...any) error {
 		return fmt.Errorf(
 			"%w: %s: %s on field %s.%s.%s: "+format,
@@ -221,6 +229,7 @@ func (p *mapper) flag(n *typegraph.Node, info fieldInfo, o flagOption) (*flagFie
 	}
 
 	var t types.Type
+
 	switch {
 	case info.conv == convSkip:
 		return nil, bad("a blank field cannot be set")
@@ -239,22 +248,26 @@ func (p *mapper) flag(n *typegraph.Node, info fieldInfo, o flagOption) (*flagFie
 	}
 
 	f := &flagField{flagOption: o}
+
 	want, ok := f.setKind(t)
 	if !ok {
 		return nil, bad("unsupported type %s", t)
 	}
+
 	if f.kind.text {
 		var err error
 		if f.typ, err = p.typeString(t); err != nil {
 			return nil, err
 		}
 	}
+
 	if !types.Identical(t, want) {
 		var err error
 		if f.conv, err = p.typeString(t); err != nil {
 			return nil, err
 		}
 	}
+
 	return f, nil
 }
 
@@ -269,25 +282,31 @@ func (f *flagField) setKind(t types.Type) (types.Type, bool) {
 		f.kind = flagDuration
 		return t, true
 	}
+
 	if _, isPtr := t.Underlying().(*types.Pointer); !isPtr &&
 		types.Implements(types.NewPointer(t), textUnmarshaler) {
 		f.kind = flagText
 		return t, true
 	}
+
 	str := types.Typ[types.String]
+
 	switch u := t.Underlying().(type) {
 	case *types.Basic:
 		kind, ok := basicFlagKinds[u.Kind()]
 		f.kind = kind
+
 		return types.Typ[u.Kind()], ok
 	case *types.Slice:
 		f.kind = flagStringSlice
 		return types.NewSlice(str), types.Identical(u.Elem(), str)
 	case *types.Map:
 		f.kind = flagStringToString
+
 		return types.NewMap(str, str), types.Identical(u.Key(), str) &&
 			types.Identical(u.Elem(), str)
 	}
+
 	return nil, false
 }
 
@@ -301,14 +320,18 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 			func(f fieldInfo) bool { return f.flag != nil },
 		).
 		Collect()
+
 	if len(flags) == 0 {
 		return nil
 	}
+
 	w.p.refs[flagSetName] = true
+
 	und, uerr := w.p.ident(undPath)
 	if uerr != nil {
 		return uerr
 	}
+
 	fmtIdent, ferr := w.p.ident(fmtPath)
 	if ferr != nil {
 		return ferr
@@ -349,6 +372,7 @@ func registerFlags(flags []fieldInfo) genSteps {
 
 func registerFlag(fl fieldInfo) genStep {
 	k := fl.flag.kind
+
 	return lang.Stmt("%s.%s(%s, %s, %s, %s)", lang.Name("f"), k.define,
 		strconv.Quote(fl.flag.name), strconv.Quote(fl.flag.short), k.zero,
 		strconv.Quote(fl.flag.usage))
@@ -365,6 +389,7 @@ func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
 			lang.Stmt("return %s.Errorf(%s, %s, %s)",
 				fmtIdent, strconv.Quote("flag --%s: %w"), flagName, lang.Name("err")), nil)
 		lhs := fieldOf("p", fl.partial)
+
 		body := genSteps{
 			lang.Stmt("%s, %s := %s.%s(%s)",
 				decl("v"), decl("err"), lang.Name("f"), k.get, flagName),
@@ -385,8 +410,10 @@ func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
 		default:
 			body = append(body, lang.Stmt("%s = %s.Defined(%s)", lhs, und, lang.Name("v")))
 		}
+
 		return lang.If(lang.Expr("%s.Changed(%s)", lang.Name("f"), flagName), body, nil)
 	}
+
 	return opiter.WrapSeq(
 		slices.Values(flags),
 	).
@@ -398,10 +425,12 @@ func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
 func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 	names := map[string]fieldInfo{}
 	shorts := map[string]fieldInfo{}
+
 	for _, f := range fields {
 		if f.flag == nil {
 			continue
 		}
+
 		for _, c := range []struct {
 			what, key string
 			seen      map[string]fieldInfo
@@ -412,6 +441,7 @@ func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 			if c.key == "" {
 				continue
 			}
+
 			if prev, ok := c.seen[c.key]; ok {
 				return fmt.Errorf(
 					"%w: %s: %s on field %s.%s.%s: flag %s %q is taken by field %s (%s)",
@@ -427,9 +457,11 @@ func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 					origin(prev.flag.raw),
 				)
 			}
+
 			c.seen[c.key] = f
 		}
 	}
+
 	return nil
 }
 
@@ -447,6 +479,7 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 		Any(
 			func(sig string) bool { return strings.Contains(sig, "$time.") },
 		)
+
 	if usesTime {
 		err := parser.Require(
 			importdecl.Import{Package: importdecl.Package{Path: "time", Name: "time"}},
@@ -455,18 +488,23 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 			return nil, err
 		}
 	}
+
 	m, err := parser.ParseDst(nil)
 	if err != nil {
 		return nil, err
 	}
+
 	var pairs []string
+
 	if usesTime {
 		ident, ok := m.Ident("time")
 		if !ok {
 			return nil, fmt.Errorf("partial: unknown package %q", "time")
 		}
+
 		pairs = append(pairs, "$time.", ident+".")
 	}
+
 	replacer := strings.NewReplacer(pairs...)
 
 	body := genSteps{
@@ -476,6 +514,7 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 		),
 		lang.Stmt("type %s interface {", flagSetName),
 	}
+
 	body = slices.AppendSeq(
 		body,
 		opiter.WrapSeq2(
@@ -487,14 +526,17 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 			).
 			Iter(),
 	)
+
 	body = append(body, lang.Stmt("}"))
 	gpkg := &genhelper.Package{Imports: m, Path: pkg.PkgPath}
+
 	_, src, err := body.Render(genhelper.NewBaseContext(genhelper.NewScope(), gpkg), nil)
 	if err != nil {
 		return nil, fmt.Errorf("partial: flag set of %s: %w", pkg.PkgPath, err)
 	}
 
 	f := &dst.File{Name: dst.NewIdent(pkg.Name)}
+
 	f.Decs.Start = append(slices.Clone(hdr), "\n")
 	if err := genhelper.AppendDecls(f, gpkg, src); err != nil {
 		return nil, fmt.Errorf("partial: parse flag set of %s: %w", pkg.PkgPath, err)
@@ -504,5 +546,6 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	if err := decorator.Fprint(&buf, f); err != nil {
 		return nil, fmt.Errorf("partial: print flag set of %s: %w", pkg.PkgPath, err)
 	}
+
 	return buf.Bytes(), nil
 }

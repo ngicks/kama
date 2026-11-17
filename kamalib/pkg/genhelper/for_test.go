@@ -12,7 +12,9 @@ import (
 
 func TestFor(t *testing.T) {
 	type ctx = genhelper.BaseContext
+
 	var g genhelper.Lang[ctx]
+
 	body := g.Stmt("use(%s)", g.Name("i"))
 
 	for _, tc := range []struct {
@@ -69,6 +71,7 @@ func TestFor(t *testing.T) {
 
 func TestForScope(t *testing.T) {
 	type ctx = genhelper.BaseContext
+
 	var g genhelper.Lang[ctx]
 
 	// The variable init declares is gone after the loop, so a loop beside

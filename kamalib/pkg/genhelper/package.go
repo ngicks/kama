@@ -38,13 +38,16 @@ func (p *Package) Qual(pkgPath, name string) (string, error) {
 	if pkgPath == p.Path {
 		return name, nil
 	}
+
 	ident, ok := "", false
 	if p.Imports != nil {
 		ident, ok = p.Imports.Ident(pkgPath)
 	}
+
 	if !ok {
 		return "", fmt.Errorf("genhelper: %w: %s", importdecl.ErrUnknownImport, pkgPath)
 	}
+
 	return ident + "." + name, nil
 }
 
@@ -54,10 +57,12 @@ func (p *Package) Type(t types.Type) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	b, err := gofragment.PrintDstExpr(e)
 	if err != nil {
 		return "", err
 	}
+
 	return string(b), nil
 }
 
@@ -88,5 +93,6 @@ func (p *Package) imports() *importdecl.Map {
 	if p.Imports == nil {
 		return &importdecl.Map{}
 	}
+
 	return p.Imports
 }

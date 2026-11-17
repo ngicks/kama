@@ -36,10 +36,12 @@ func load(t *testing.T) (map[string]*packages.Package, []*packages.Package) {
 	assert.NilError(t, err)
 
 	byPath := map[string]*packages.Package{}
+
 	for _, p := range pkgs {
 		assert.Equal(t, len(p.Errors), 0, "%v", p.Errors)
 		byPath[p.PkgPath] = p
 	}
+
 	return byPath, pkgs
 }
 
@@ -48,6 +50,7 @@ func newMap(t *testing.T, all []*packages.Package, pkg *packages.Package) *impor
 
 	m, err := importdecl.NewParserFromPackages(all).ParseAst(pkg.Syntax[0].Imports)
 	assert.NilError(t, err)
+
 	return m
 }
 
@@ -56,6 +59,7 @@ func formatAst(t *testing.T, expr ast.Expr) string {
 
 	var buf bytes.Buffer
 	assert.NilError(t, format.Node(&buf, token.NewFileSet(), expr))
+
 	return buf.String()
 }
 
@@ -63,6 +67,7 @@ func formatDst(t *testing.T, expr dst.Expr) string {
 	t.Helper()
 
 	const prefix = "package p\n\ntype X "
+
 	f := &dst.File{
 		Name: dst.NewIdent("p"),
 		Decls: []dst.Decl{&dst.GenDecl{
@@ -70,10 +75,12 @@ func formatDst(t *testing.T, expr dst.Expr) string {
 			Specs: []dst.Spec{&dst.TypeSpec{Name: dst.NewIdent("X"), Type: expr}},
 		}},
 	}
+
 	var buf bytes.Buffer
 	assert.NilError(t, decorator.Fprint(&buf, f))
 	out, ok := strings.CutPrefix(buf.String(), prefix)
 	assert.Assert(t, ok, "%s", buf.String())
+
 	return strings.TrimSuffix(out, "\n")
 }
 
@@ -83,12 +90,14 @@ func tokens(t *testing.T, src string) string {
 	t.Helper()
 
 	var s scanner.Scanner
+
 	fset := token.NewFileSet()
 	s.Init(fset.AddFile("", -1, len(src)), []byte(src), func(pos token.Position, msg string) {
 		t.Fatalf("%s: %s", pos, msg)
 	}, 0)
 
 	var toks []string
+
 	for {
 		_, tok, lit := s.Scan()
 		switch {
@@ -116,6 +125,7 @@ func modelCases(t *testing.T, pkg *packages.Package) []testCase {
 	t.Helper()
 
 	var cases []testCase
+
 	add := func(name string, ty types.Type, expr ast.Expr) {
 		var buf bytes.Buffer
 		assert.NilError(t, format.Node(&buf, pkg.Fset, expr))
@@ -128,6 +138,7 @@ func modelCases(t *testing.T, pkg *packages.Package) []testCase {
 		).
 			Map(genDeclSpecs),
 	)
+
 	for spec := range specs {
 		switch spec := spec.(type) {
 		case *ast.ValueSpec:
@@ -140,6 +151,7 @@ func modelCases(t *testing.T, pkg *packages.Package) []testCase {
 			}
 		}
 	}
+
 	return cases
 }
 
@@ -147,6 +159,7 @@ func genDeclSpecs(d ast.Decl) []ast.Spec {
 	if g, ok := d.(*ast.GenDecl); ok {
 		return g.Specs
 	}
+
 	return nil
 }
 
@@ -211,6 +224,7 @@ func TestMissingImport(t *testing.T) {
 			if err != nil {
 				return "", err
 			}
+
 			return formatAst(t, expr), nil
 		},
 		"dst": func(m *importdecl.Map) (string, error) {
@@ -218,6 +232,7 @@ func TestMissingImport(t *testing.T) {
 			if err != nil {
 				return "", err
 			}
+
 			return formatDst(t, expr), nil
 		},
 	} {

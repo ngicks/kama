@@ -74,6 +74,7 @@ func (i *numInst) Param(p numParam) error {
 	}
 
 	i.p = p
+
 	return nil
 }
 
@@ -83,6 +84,7 @@ func (i *numInst) Out() {}
 func (i *numInst) Run(context.Context, Reporter) error {
 	i.rec.add("run num")
 	i.out.V = i.p.V
+
 	return nil
 }
 
@@ -102,6 +104,7 @@ func (i *addInst) Out(dst *num)           { i.dst = dst }
 func (i *addInst) Run(context.Context, Reporter) error {
 	i.rec.add("run add")
 	i.dst.V += i.p.V
+
 	return nil
 }
 
@@ -120,6 +123,7 @@ func (i *addUpInst) AsInput() *num { return &num{V: *i.got} }
 func (i *addUpInst) Run(context.Context, Reporter) error {
 	i.rec.add("run sum")
 	*i.got = i.a.V + i.b.V
+
 	return nil
 }
 
@@ -156,6 +160,7 @@ func (i *reportInst) Run(_ context.Context, r Reporter) error {
 	_ = eg.Wait()
 
 	r.Progress("all")
+
 	return nil
 }
 
@@ -179,9 +184,11 @@ func (i *burstInst) Run(_ context.Context, r Reporter) error {
 				r.Warn(errWarn)
 				r.Progress("tick")
 			}
+
 			return nil
 		})
 	}
+
 	return eg.Wait()
 }
 
@@ -205,6 +212,7 @@ func (i *blockInst) Run(_ context.Context, r Reporter) error {
 	i.bg.Go(func() error {
 		r.Progress("blocked")
 		r.Progress("late")
+
 		return nil
 	})
 	<-i.entered
@@ -259,9 +267,11 @@ func buildRun(
 	t.Helper()
 
 	reg := NewRegistry()
+
 	for kind, proc := range p {
 		proc.kind = kind
 		proc.rec = rec
+
 		assert.NilError(t, reg.Register(kind, func() Proc { return proc }))
 	}
 
@@ -273,6 +283,7 @@ func buildRun(
 
 func TestRunPassesValues(t *testing.T) {
 	rec := &recorder{}
+
 	var got int
 
 	g := buildRun(t, runProcs(rec, &got), rec, map[string]Step{
@@ -364,6 +375,7 @@ func progressLog(log *[]string) ProgressControl {
 
 func TestRunReportsProgress(t *testing.T) {
 	rec := &recorder{}
+
 	var log []string
 
 	g := buildRun(t, runProcs(rec, new(int)), rec, map[string]Step{
@@ -385,6 +397,7 @@ func TestRunReportsProgress(t *testing.T) {
 
 func TestRunReportsFailedStep(t *testing.T) {
 	rec := &recorder{}
+
 	var log []string
 
 	g := buildRun(t, runProcs(rec, new(int)), rec, map[string]Step{
@@ -423,6 +436,7 @@ func TestRunIgnoresNilCallbacks(t *testing.T) {
 
 func TestRunDropsReportsAfterRun(t *testing.T) {
 	rec := &recorder{}
+
 	var (
 		log    []string
 		leaked Reporter
@@ -447,8 +461,10 @@ func TestRunSerializesCallbacks(t *testing.T) {
 		overlapped atomic.Bool
 		calls      atomic.Int32
 	)
+
 	enter := func() {
 		calls.Add(1)
+
 		if active.Add(1) > 1 {
 			overlapped.Store(true)
 		}
@@ -505,6 +521,7 @@ func TestRunEndsStepAfterCallbackInFlight(t *testing.T) {
 					if msg == "blocked" {
 						close(entered)
 						<-release
+
 						log = append(log, step+": released")
 					}
 				},
@@ -526,6 +543,7 @@ func TestRunEndsStepAfterCallbackInFlight(t *testing.T) {
 			} else {
 				assert.NilError(t, err)
 			}
+
 			assert.NilError(t, bg.Wait())
 
 			// "late" races with the reporter's close, so it may or may not be

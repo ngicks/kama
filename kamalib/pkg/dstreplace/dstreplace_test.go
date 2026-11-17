@@ -22,23 +22,28 @@ import (
 // struct literal of A with the cache holding it.
 func parse(t *testing.T, src string) (*dstreplace.Cache, *dst.StructType) {
 	t.Helper()
+
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "a.go", src, parser.ParseComments)
 	assert.NilError(t, err)
+
 	c := &dstreplace.Cache{}
 	ts, err := c.TypeSpec(fset, f, typeSpec(t, f, "A"))
 	assert.NilError(t, err)
+
 	return c, ts.Type.(*dst.StructType)
 }
 
 func typeSpec(t *testing.T, f *ast.File, name string) *ast.TypeSpec {
 	t.Helper()
+
 	specs := opiter.Flatten(
 		opiter.WrapSeq(
 			slices.Values(f.Decls),
 		).
 			Map(typeDeclSpecs),
 	)
+
 	found := opiter.WrapSeq(specs).
 		Map(
 			func(s ast.Spec) *ast.TypeSpec { return s.(*ast.TypeSpec) },
@@ -47,9 +52,11 @@ func typeSpec(t *testing.T, f *ast.File, name string) *ast.TypeSpec {
 			func(ts *ast.TypeSpec) bool { return ts.Name.Name == name },
 		).
 		First()
+
 	if found.IsNone() {
 		t.Fatalf("no type %s", name)
 	}
+
 	return found.Value()
 }
 
@@ -57,18 +64,22 @@ func typeDeclSpecs(d ast.Decl) []ast.Spec {
 	if gd, ok := d.(*ast.GenDecl); ok && gd.Tok == token.TYPE {
 		return gd.Specs
 	}
+
 	return nil
 }
 
 // printStruct prints st as the type B.
 func printStruct(t *testing.T, st *dst.StructType) string {
 	t.Helper()
+
 	f := &dst.File{Name: dst.NewIdent("x"), Decls: []dst.Decl{&dst.GenDecl{
 		Tok:   token.TYPE,
 		Specs: []dst.Spec{&dst.TypeSpec{Name: dst.NewIdent("B"), Type: st}},
 	}}}
+
 	var buf bytes.Buffer
 	assert.NilError(t, decorator.Fprint(&buf, f))
+
 	return strings.TrimPrefix(buf.String(), "package x\n\n")
 }
 
@@ -106,6 +117,7 @@ type A struct { // opens
 				if f.Name == "B" {
 					typ = "Other"
 				}
+
 				return dstreplace.Replacement{Type: dst.NewIdent(typ), Tag: f.Tag}, nil
 			},
 			want: "type B struct {\n\tX Same\n\n" +
@@ -119,6 +131,7 @@ type A struct { // opens
 				if f.Name == "B" {
 					r.Tag = "json:\"b\""
 				}
+
 				return r, nil
 			},
 			want: "type B struct {\n\ta T\n\tB T `json:\"b\"`\n}\n",
@@ -132,6 +145,7 @@ type A struct { // opens
 				if f.Name == "_" {
 					return dstreplace.Replacement{Drop: true}, nil
 				}
+
 				return dstreplace.Replacement{Type: dst.NewIdent("T")}, nil
 			},
 			want: "type B struct {\n\tX T\n\n\tY T\n}\n",
@@ -164,6 +178,7 @@ type A struct { // opens
 				case "Quote":
 					r.Tag = "a:\"`\""
 				}
+
 				return r, nil
 			},
 			want: "type B struct {\n" +
@@ -183,6 +198,7 @@ type A struct { // opens
 				if f.Name == "S" || f.Name == "G" {
 					r = dstreplace.Replacement{Name: f.Name, Type: dst.NewIdent("T")}
 				}
+
 				return r, nil
 			},
 			want: "type B struct {\n\tEX `json:\"e\"`\n\tPX\n\tS T\n\tG T\n}\n",
@@ -247,6 +263,7 @@ func TestCache(t *testing.T) {
 	assert.NilError(t, err)
 
 	var c dstreplace.Cache
+
 	first, err := c.TypeSpec(fset, a, typeSpec(t, a, "A"))
 	assert.NilError(t, err)
 	second, err := c.TypeSpec(fset, a, typeSpec(t, a, "A"))
@@ -262,6 +279,7 @@ func TestCache(t *testing.T) {
 // node belongs to one tree, so Struct must copy it for each field.
 func TestStructSharedType(t *testing.T) {
 	shared := &dst.IndexExpr{X: dst.NewIdent("Box"), Index: dst.NewIdent("int")}
+
 	for _, tc := range []struct {
 		name string
 		tag  func(f dstreplace.Field) string

@@ -25,6 +25,7 @@ func testAccessors[T any](t *testing.T, a accessors[T]) {
 	t.Helper()
 
 	var zero T
+
 	empty := context.Background()
 	other := context.WithValue(empty, a.key, struct{}{})
 	ctx := a.with(empty, a.set)

@@ -38,6 +38,7 @@ func (g *Graph) Run(ctx context.Context, pc ProgressControl) error {
 	)
 
 	var runErr error
+
 	for i := range g.nodes {
 		n := &g.nodes[i]
 
@@ -52,19 +53,24 @@ func (g *Graph) Run(ctx context.Context, pc ProgressControl) error {
 		}
 
 		prog.progress(n.Name, progressStart)
+
 		v, err := runNode(ctx, n, values, prog)
 		if err != nil {
 			prog.progress(n.Name, progressFailed)
 			runErr = fmt.Errorf("%w: step %q: %w", ErrRun, n.Name, err)
+
 			break
 		}
+
 		prog.progress(n.Name, progressDone)
+
 		if v.IsValid() {
 			values[n.Name] = v
 		}
 	}
 
 	errs := []error{runErr}
+
 	for _, p := range slices.Backward(used) {
 		if err := p.CleanUp(ctx); err != nil {
 			errs = append(errs, fmt.Errorf("workflow: clean up: %w", err))
@@ -86,6 +92,7 @@ func runNode(
 	if err != nil {
 		return reflect.Value{}, fmt.Errorf("%w: %w", ErrInstantiate, err)
 	}
+
 	if inst == nil {
 		return reflect.Value{}, fmt.Errorf("%w: nil instance", ErrInvalidProc)
 	}
@@ -99,6 +106,7 @@ func runNode(
 	if n.Param.IsValid() {
 		args = []reflect.Value{n.Param}
 	}
+
 	if err, _ := reflect.TypeAssert[error](m.param.Call(args)[0]); err != nil {
 		return reflect.Value{}, fmt.Errorf("%w: %w", ErrParam, err)
 	}
@@ -109,6 +117,7 @@ func runNode(
 	r := &stepReporter{p: prog, step: n.Name}
 	err = inst.Run(ctx, r)
 	r.close()
+
 	if err != nil {
 		return reflect.Value{}, err
 	}

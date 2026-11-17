@@ -61,6 +61,7 @@ func Load(ctx context.Context, fsys *overlayfs.Fs, opts Options) ([]*packages.Pa
 	}
 
 	errs := PackageErrors{}
+
 	packages.Visit(pkgs, nil, func(p *packages.Package) {
 		for _, e := range p.Errors {
 			// With Tests, a package and its test variants share PkgPath and
@@ -70,6 +71,7 @@ func Load(ctx context.Context, fsys *overlayfs.Fs, opts Options) ([]*packages.Pa
 			}
 		}
 	})
+
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("gopackages: %w", errs)
 	}
@@ -93,10 +95,12 @@ func (e PackageErrors) Error() string {
 
 func packageErrorBlock(path string, errs []packages.Error) string {
 	header := opiter.Once(path + ":")
+
 	msgs := opiter.WrapSeq(
 		slices.Values(errs),
 	).
 		Map(packages.Error.Error)
+
 	return strings.Join(
 		opiter.WrapSeq(header).
 			Concat(msgs.Iter()).

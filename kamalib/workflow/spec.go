@@ -39,6 +39,7 @@ type Step struct {
 func (s Step) deps() []string {
 	deps := slices.Concat(s.In, s.Out, s.After)
 	slices.Sort(deps)
+
 	return slices.Compact(deps)
 }
 
@@ -53,21 +54,27 @@ func (n *Names) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if _, err := dec.ReadToken(); err != nil {
 			return err
 		}
+
 		*n = nil
+
 		return nil
 	case '"':
 		var one string
 		if err := json.UnmarshalDecode(dec, &one); err != nil {
 			return err
 		}
+
 		*n = Names{one}
+
 		return nil
 	default:
 		var many []string
 		if err := json.UnmarshalDecode(dec, &many); err != nil {
 			return err
 		}
+
 		*n = many
+
 		return nil
 	}
 }
@@ -89,5 +96,6 @@ func (n *Names) decode(unmarshal func(any) error) error {
 	}
 
 	*n = many
+
 	return nil
 }

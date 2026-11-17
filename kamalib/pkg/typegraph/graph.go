@@ -50,6 +50,7 @@ func QualifiedTypeFromObject(obj types.Object) QualifiedType {
 	if obj.Pkg() != nil {
 		pkgPath = obj.Pkg().Path()
 	}
+
 	return QualifiedType{
 		PackagePath: pkgPath,
 		TypeName:    obj.Name(),
@@ -96,6 +97,7 @@ func (n *Node) drawEdge(
 		child.Parent[n.Id] = e
 		n.Children[child.Id] = e
 	}
+
 	e.Routes = append(e.Routes, routes...)
 }
 
@@ -141,11 +143,14 @@ func loadError(pkg *packages.Package) error {
 				func(e packages.Error) error { return e },
 			).
 			Collect()
+
 		return fmt.Errorf("%w: %s: %w", ErrLoad, pkg.PkgPath, errors.Join(errs...))
 	}
+
 	if pkg.Types == nil || pkg.TypesInfo == nil {
 		return fmt.Errorf("%w: %s", ErrNoTypesInfo, pkg.PkgPath)
 	}
+
 	return nil
 }
 
@@ -158,6 +163,7 @@ func listTypes(
 	if genDeclFilter == nil {
 		genDeclFilter = func(gd *ast.GenDecl) (bool, error) { return true, nil }
 	}
+
 	if typeSpecFilter == nil {
 		typeSpecFilter = func(ts *ast.TypeSpec, o types.Object) (bool, error) { return true, nil }
 	}
@@ -166,26 +172,32 @@ func listTypes(
 		if err := loadError(pkg); err != nil {
 			return err
 		}
+
 		for _, file := range pkg.Syntax {
 			var pos int
+
 			for _, decl := range file.Decls {
 				genDecl, ok := decl.(*ast.GenDecl)
 				if !ok || genDecl.Tok != token.TYPE {
 					continue
 				}
+
 				ok, err := genDeclFilter(genDecl)
 				if err != nil {
 					return err
 				}
+
 				if !ok {
 					// Pos counts every type spec of the file, filtered or not.
 					pos += len(genDecl.Specs)
 					continue
 				}
+
 				for _, s := range genDecl.Specs {
 					currentPos := pos
 					pos++
 					ts := s.(*ast.TypeSpec)
+
 					obj := pkg.TypesInfo.Defs[ts.Name]
 					if obj == nil {
 						continue
@@ -195,6 +207,7 @@ func listTypes(
 					if err != nil {
 						return err
 					}
+
 					if !ok {
 						continue
 					}
@@ -208,6 +221,7 @@ func listTypes(
 					if _, ok := g.all[id]; ok {
 						continue
 					}
+
 					g.all[id] = &Node{
 						Id:       id,
 						Detail:   &TypeDetail{pkg, file, currentPos, ts, named},
@@ -218,6 +232,7 @@ func listTypes(
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -237,6 +252,7 @@ func buildEdges(g *Graph) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -254,6 +270,7 @@ func visitTypes(
 			if ok {
 				parentNode.drawEdge(node, &EdgeRoute{slices.Clone(stack)})
 			}
+
 			return nil
 		},
 	)
@@ -322,10 +339,12 @@ func markDependants(
 	expanded := make(map[QualifiedType]bool)
 
 	var expand func(child *MatchedNode)
+
 	expand = func(child *MatchedNode) {
 		if expanded[child.Node.Id] {
 			return
 		}
+
 		expanded[child.Node.Id] = true
 
 		for parentId, edge := range child.Node.Parent {
@@ -389,6 +408,7 @@ func (n *MatchedNode) drawEdge(
 		child.Parent[n.Node.Id] = e
 		n.Children[child.Node.Id] = e
 	}
+
 	e.Routes = append(e.Routes, routes...)
 }
 
@@ -406,6 +426,7 @@ func (g *MatchedGraph) dependantNode(id QualifiedType, node *Node) *MatchedNode 
 	if ok {
 		return n
 	}
+
 	n, ok = g.matched[id]
 	if !ok {
 		n = &MatchedNode{
@@ -414,8 +435,10 @@ func (g *MatchedGraph) dependantNode(id QualifiedType, node *Node) *MatchedNode 
 			Children: map[QualifiedType]*Edge[MatchedNode]{},
 		}
 	}
+
 	n.MatchKind |= MatchKindDependant
 	g.dependant[id] = n
+
 	return n
 }
 
@@ -423,9 +446,11 @@ func (g *MatchedGraph) Get(id QualifiedType) (*MatchedNode, bool) {
 	if n, ok := g.matched[id]; ok {
 		return n, true
 	}
+
 	if n, ok := g.dependant[id]; ok {
 		return n, true
 	}
+
 	return nil, false
 }
 
@@ -435,10 +460,12 @@ func (g *MatchedGraph) All() iter.Seq2[QualifiedType, *MatchedNode] {
 		_, matched := g.matched[id]
 		return !matched
 	}
+
 	unmatched := opiter.WrapSeq2(
 		maps.All(g.dependant),
 	).
 		Filter(notMatched)
+
 	return opiter.WrapSeq2(
 		maps.All(g.matched),
 	).

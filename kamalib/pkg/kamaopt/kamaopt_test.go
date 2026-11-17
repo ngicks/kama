@@ -21,6 +21,7 @@ func TestCollect(t *testing.T) {
 
 	dir, err := filepath.Abs("internal/fixture")
 	assert.NilError(t, err)
+
 	a, b, c := filepath.Join(dir, "a.go"), filepath.Join(dir, "b.go"), filepath.Join(dir, "c.go")
 
 	raw := func(key Key, directive, args, file string, line, column int) Raw {
@@ -66,9 +67,11 @@ func TestCollect(t *testing.T) {
 
 	got, err := Collect(pkgs, "kama")
 	assert.NilError(t, err)
+
 	for i := range got {
 		got[i].Origin.Pos.Offset = 0
 	}
+
 	assert.DeepEqual(t, got, want)
 }
 
@@ -119,6 +122,7 @@ func TestParseArgs(t *testing.T) {
 				assert.ErrorContains(t, err, c.err)
 				return
 			}
+
 			assert.NilError(t, err)
 			assert.DeepEqual(t, got, c.want)
 		})

@@ -82,6 +82,7 @@ func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 
 	byKind := map[string]Proc{}
 	procs := map[string]Proc{}
+
 	for name, st := range s.Steps {
 		if st.Proc == "" {
 			return nil, fmt.Errorf("%w: %q names no proc", ErrInvalidStep, name)
@@ -98,6 +99,7 @@ func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 			if err := checkProc(st.Proc, p); err != nil {
 				return nil, err
 			}
+
 			byKind[st.Proc] = p
 		}
 
@@ -118,6 +120,7 @@ func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 		if err := matchRefs(name, "in", st.In, p.InTypes(), procs); err != nil {
 			return nil, err
 		}
+
 		if err := matchRefs(name, "out", st.Out, p.OutTypes(), procs); err != nil {
 			return nil, err
 		}
@@ -149,6 +152,7 @@ func checkProc(kind string, p Proc) error {
 		slices.Values(p.InTypes()),
 	).
 		FindFunc(isNilType)
+
 	if foundIn.IsSome() {
 		return fmt.Errorf("%w: %q: in %d is nil", ErrInvalidProc, kind, foundIn.Value().K)
 	}
@@ -157,6 +161,7 @@ func checkProc(kind string, p Proc) error {
 		slices.Values(p.OutTypes()),
 	).
 		FindFunc(isNilType)
+
 	if foundOut.IsSome() {
 		return fmt.Errorf("%w: %q: out %d is nil", ErrInvalidProc, kind, foundOut.Value().K)
 	}
@@ -217,6 +222,7 @@ func (g *Graph) dryRun(ctx context.Context, steps map[string]Step) error {
 			errs = append(errs, fmt.Errorf("%w: step %q: %w", ErrParam, n.Name, err))
 			continue
 		}
+
 		n.Param = param
 
 		if err := checkInstance(ctx, n); err != nil {
@@ -232,6 +238,7 @@ func checkInstance(ctx context.Context, n *Node) error {
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInstantiate, err)
 	}
+
 	if inst == nil {
 		return fmt.Errorf("%w: nil instance", ErrInvalidProc)
 	}
@@ -245,6 +252,7 @@ func checkInstance(ctx context.Context, n *Node) error {
 	if n.Param.IsValid() {
 		args = []reflect.Value{n.Param}
 	}
+
 	if err, _ := reflect.TypeAssert[error](m.param.Call(args)[0]); err != nil {
 		return fmt.Errorf("%w: %w", ErrParam, err)
 	}
@@ -282,16 +290,20 @@ func methods(inst Instance, p Proc) (instanceMethods, error) {
 	if m.param, err = method(inst, "Param", paramIn, []reflect.Type{errorType}, false); err != nil {
 		return instanceMethods{}, err
 	}
+
 	if m.in, err = method(inst, "In", p.InTypes(), nil, false); err != nil {
 		return instanceMethods{}, err
 	}
+
 	if m.out, err = method(inst, "Out", p.OutTypes(), nil, false); err != nil {
 		return instanceMethods{}, err
 	}
+
 	asInput, err := method(inst, "AsInput", nil, asInputOut, len(asInputOut) == 0)
 	if err != nil {
 		return instanceMethods{}, err
 	}
+
 	if len(asInputOut) > 0 {
 		m.asInput = asInput
 	}
@@ -394,6 +406,7 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 		slices.Sort(ready)
 		name := ready[0]
 		ready = ready[1:]
+
 		order = append(order, name)
 
 		for _, d := range dependents[name] {

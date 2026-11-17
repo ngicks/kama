@@ -67,7 +67,9 @@ func (r *Registry) Register(name string) error {
 	if _, ok := r.names[name]; ok {
 		return fmt.Errorf("%w: %q", ErrDuplicate, name)
 	}
+
 	r.names[name] = struct{}{}
+
 	return nil
 }
 
@@ -93,12 +95,15 @@ func (r *Registry) find(comments []dircmnt.Comment) (string, bool) {
 		_, ok := r.names[name]
 		return ok
 	}
+
 	names := opiter.WrapSeq(
 		slices.Values(comments),
 	).
 		Filter(isMarker).
 		Map(markerName)
+
 	found := names.Filter(isRegistered).First()
+
 	return found.Value(), found.IsSome()
 }
 
@@ -111,5 +116,6 @@ func markerName(c dircmnt.Comment) string {
 	if len(fields) == 0 {
 		return ""
 	}
+
 	return fields[0]
 }

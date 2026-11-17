@@ -40,6 +40,7 @@ func TestParseFlag(t *testing.T) {
 
 func TestFlagErrors(t *testing.T) {
 	const head = "package x\n\n"
+
 	cases := []struct {
 		name     string
 		src      string
@@ -174,6 +175,7 @@ func TestFlagErrors(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := generate(t, map[string]string{"x.go": c.src}, Options{})
 			assert.ErrorIs(t, err, c.is)
+
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)
 			}
@@ -209,6 +211,7 @@ func TestFlagSetFile(t *testing.T) {
 			"\tDurationP(name, shorthand string, value time.Duration, usage string) *time.Duration\n"),
 		src,
 	)
+
 	for name := range flagSetSignatures() {
 		assert.Assert(t, strings.Contains(src, "\t"+name+"("), name)
 	}
@@ -239,6 +242,7 @@ func TestFlagSetFileBuildVariant(t *testing.T) {
 	out := generated(t, files)
 	_, ok := out["b.kama_partial.go"]
 	assert.Assert(t, !ok)
+
 	src := out[FlagSetFile]
 	assert.Assert(t, strings.Contains(src, "\tDurationP("), src)
 	assert.Assert(t, strings.Contains(src, "\tGetDuration("), src)

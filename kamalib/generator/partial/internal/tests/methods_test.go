@@ -39,6 +39,7 @@ func roundTrip[V any, P partial[V, P], PP interface {
 	FromValue(V)
 }](t *testing.T, v V) {
 	t.Helper()
+
 	var p P
 	PP(&p).FromValue(v)
 	equal(t, p.ToValue(), v)
@@ -204,16 +205,19 @@ func TestMergeOverwrite(t *testing.T) {
 	for _, l := range states(1) {
 		for rn, r := range states(2) {
 			got := model.MergingPartial{Flagged: l}.Merge(model.MergingPartial{Flagged: r})
+
 			want := r
 			if rn == "undefined" {
 				want = l
 			}
+
 			equal(t, got.Flagged, want)
 		}
 	}
 
 	for _, r := range states([]string{"r"}) {
 		l := und.Defined([]string{"l"})
+
 		got := model.MergingPartial{Plain: l}.Merge(model.MergingPartial{Plain: r})
 		if r.IsUndefined() {
 			equal(t, got.Plain, l)
@@ -224,13 +228,16 @@ func TestMergeOverwrite(t *testing.T) {
 
 	for _, r := range states(elastic.FromValue(2)) {
 		l := elastic.FromValue(1)
+
 		var re elastic.Elastic[int]
+
 		switch {
 		case r.IsNull():
 			re = elastic.Null[int]()
 		case r.IsDefined():
 			re = r.Value()
 		}
+
 		got := model.UserPartial{Elastic: l}.Merge(model.UserPartial{Elastic: re})
 		if r.IsUndefined() {
 			equal(t, got.Elastic, l)
@@ -244,6 +251,7 @@ func TestMergeAppend(t *testing.T) {
 	for ln, l := range states([]string{"l"}) {
 		for rn, r := range states([]string{"r"}) {
 			got := model.MergingPartial{Tags: l}.Merge(model.MergingPartial{Tags: r}).Tags
+
 			switch {
 			case rn == "undefined":
 				equal(t, got, l)
@@ -258,6 +266,7 @@ func TestMergeAppend(t *testing.T) {
 	for ln, l := range states(map[string]int{"a": 1, "b": 1}) {
 		for rn, r := range states(map[string]int{"b": 2, "c": 3}) {
 			got := model.MergingPartial{Attrs: l}.Merge(model.MergingPartial{Attrs: r}).Attrs
+
 			switch {
 			case rn == "undefined":
 				equal(t, got, l)
@@ -299,6 +308,7 @@ func TestMergeAppendFresh(t *testing.T) {
 		got := model.MergingPartial{Tags: und.Defined(l)}.
 			Merge(model.MergingPartial{Tags: und.Defined(r)}).Tags.Value()
 		got[0] = "x"
+
 		equal(t, l, c.l)
 		equal(t, r, c.r)
 	}
@@ -313,6 +323,7 @@ func TestMergeAppendFresh(t *testing.T) {
 		got := model.MergingPartial{Attrs: und.Defined(l)}.
 			Merge(model.MergingPartial{Attrs: und.Defined(r)}).Attrs.Value()
 		got["x"] = 1
+
 		equal(t, l, c.l)
 		equal(t, r, c.r)
 	}
@@ -331,6 +342,7 @@ func TestMergeNested(t *testing.T) {
 		for rn, ru := range states(r) {
 			got := model.MergingPartial{Nested: lu, Replaced: lu}.
 				Merge(model.MergingPartial{Nested: ru, Replaced: ru})
+
 			switch {
 			case rn == "undefined":
 				equal(t, got.Nested, lu)
@@ -406,6 +418,7 @@ func TestMergeDoesNotWriteInputs(t *testing.T) {
 	equal(t, r.Attrs.Value(), map[string]int{"b": 2})
 
 	got.Tags.Value()[0] = "changed"
+
 	equal(t, tags[0], "l")
 
 	lines := make(mergemodel.LinesPartial, 1, 10)
@@ -455,9 +468,11 @@ func TestMergeOptions(t *testing.T) {
 		if a != 0 {
 			p.A = und.Defined(a)
 		}
+
 		if b != 0 {
 			p.B = und.Defined(b)
 		}
+
 		return und.Defined(p)
 	}
 	l := mergemodel.DocPartial{
@@ -565,6 +580,7 @@ func TestMergeAppendOption(t *testing.T) {
 		for rn, r := range states([]string{"r"}) {
 			got := mergemodel.DocPartial{OptTags: l}.
 				Merge(mergemodel.DocPartial{OptTags: r}).OptTags
+
 			switch {
 			case rn == "undefined":
 				equal(t, got, l)
@@ -580,6 +596,7 @@ func TestMergeAppendOption(t *testing.T) {
 		for rn, r := range states(map[string]string{"b": "r", "c": "r"}) {
 			got := mergemodel.DocPartial{OptAttrs: l}.
 				Merge(mergemodel.DocPartial{OptAttrs: r}).OptAttrs
+
 			switch {
 			case rn == "undefined":
 				equal(t, got, l)

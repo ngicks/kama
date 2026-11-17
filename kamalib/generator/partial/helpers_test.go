@@ -26,19 +26,25 @@ import (
 // Names hash signatures, so tests find helpers by what they state.
 func helperIn(t *testing.T, srcs ...string) func(op, doc string) string {
 	t.Helper()
+
 	type decl struct{ name, doc string }
+
 	toDecl := func(d ast.Decl) decl {
 		fd := d.(*ast.FuncDecl)
 		return decl{fd.Name.Name, strings.Join(strings.Fields(fd.Doc.Text()), " ")}
 	}
+
 	var decls []decl
+
 	for _, src := range srcs {
 		f, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments)
 		assert.NilError(t, err)
+
 		helpers := opiter.WrapSeq(
 			slices.Values(f.Decls),
 		).
 			Filter(isHelperFunc)
+
 		decls = slices.AppendSeq(
 			decls,
 			helpers.
@@ -46,21 +52,26 @@ func helperIn(t *testing.T, srcs ...string) func(op, doc string) string {
 				Iter(),
 		)
 	}
+
 	return func(op, doc string) string {
 		t.Helper()
+
 		isOpStating := func(d decl) bool {
 			return strings.HasPrefix(d.name, "kamaPartial"+op+"_") && strings.Contains(d.doc, doc)
 		}
+
 		stating := opiter.WrapSeq(
 			slices.Values(decls),
 		).
 			Filter(isOpStating)
+
 		found := stating.
 			Map(
 				func(d decl) string { return d.name },
 			).
 			Collect()
 		assert.Equal(t, len(found), 1, "helpers of %s stating %q: %v", op, doc, found)
+
 		return found[0]
 	}
 }
@@ -93,8 +104,10 @@ func params(pkg *types.Package, names []string, ts ...types.Type) *types.Tuple {
 		if i < len(names) {
 			name = names[i]
 		}
+
 		return types.NewParam(token.NoPos, pkg, name, t)
 	}
+
 	return types.NewTuple(
 		opiter.WrapSeq2(
 			slices.All(ts),
@@ -118,6 +131,7 @@ func typeParamOf(name, tparam string, constraint types.Type) *types.TypeParam {
 	named := newNamed(pkgA, name, types.NewStruct(nil, nil))
 	tp := types.NewTypeParam(types.NewTypeName(token.NoPos, pkgA, tparam, nil), constraint)
 	named.SetTypeParams([]*types.TypeParam{tp})
+
 	return tp
 }
 
@@ -227,6 +241,7 @@ func TestEncodeMatchesIdentical(t *testing.T) {
 func TestEncodeTypeParams(t *testing.T) {
 	tpT, tpU := typeParamOf("G", "T", emptyIfc), typeParamOf("H", "U", emptyIfc)
 	assert.DeepEqual(t, encode(types.NewSlice(tpT)), encode(types.NewSlice(tpU)))
+
 	other := typeParamOf("K", "T", types.NewInterfaceType(nil, []types.Type{
 		types.NewUnion([]*types.Term{types.NewTerm(true, intT)}),
 	}).Complete())
@@ -236,15 +251,20 @@ func TestEncodeTypeParams(t *testing.T) {
 // names adds hs to set in order, names them and returns their names.
 func names(t *testing.T, set *helperSet, hs ...*helper) ([]string, error) {
 	t.Helper()
+
 	var added []*helper
+
 	for _, h := range hs {
 		h, err := set.add(h)
 		assert.NilError(t, err)
+
 		added = append(added, h)
 	}
+
 	if err := set.resolve(); err != nil {
 		return nil, err
 	}
+
 	return opiter.WrapSeq(
 		slices.Values(added),
 	).
@@ -256,6 +276,7 @@ func mustNames(t *testing.T, hs ...*helper) []string {
 	t.Helper()
 	out, err := names(t, newHelperSet(), hs...)
 	assert.NilError(t, err)
+
 	return out
 }
 
@@ -321,6 +342,7 @@ func TestHelperNameDocExample(t *testing.T) {
 func colliding() *helperSet {
 	set := newHelperSet()
 	set.hash = func(_, _ []byte) string { return "0000000000_0000000000" }
+
 	return set
 }
 
@@ -343,6 +365,7 @@ func sliceHelper(i int) *helper {
 // of their encodings, whatever order they are added in.
 func TestHelperCollision(t *testing.T) {
 	const base = "kamaPartialMergeAppend_0000000000_0000000000"
+
 	hs := sliceHelpers(3)
 	// Adding sets the encodings the expected order follows.
 	_, err := names(t, newHelperSet(), hs...)
@@ -380,6 +403,7 @@ func TestHelperCollision(t *testing.T) {
 func TestHelperCollisionSuffixes(t *testing.T) {
 	got, err := names(t, colliding(), sliceHelpers(maxCollisions)...)
 	assert.NilError(t, err)
+
 	const base = "kamaPartialMergeAppend_0000000000_0000000000"
 	assert.Assert(t, slices.Contains(got, base+"_ff"))
 	assert.Assert(t, slices.Contains(got, base+"_a"))
@@ -396,6 +420,7 @@ func TestHelperSetInvariant(t *testing.T) {
 	set := newHelperSet()
 	prev, err := set.add(ints)
 	assert.NilError(t, err)
+
 	set.groups = map[string][]*helper{"kamaPartialMergeAppend_other": {prev}}
 	_, err = set.add(&helper{op: opMergeAppend, typ: types.NewSlice(intT)})
 	assert.ErrorIs(t, err, ErrConflict)
@@ -411,10 +436,12 @@ func TestHelperSetInvariant(t *testing.T) {
 // allFuncs returns the functions of srcs as funcs does for one source.
 func allFuncs(t *testing.T, srcs ...string) map[string]string {
 	t.Helper()
+
 	out := map[string]string{}
 	for _, src := range srcs {
 		maps.Copy(out, funcs(t, src))
 	}
+
 	return out
 }
 
@@ -441,6 +468,7 @@ func TestAllUndefined(t *testing.T) {
 		fs[allB],
 	)
 	assert.Assert(t, strings.Contains(fs[allC], "return p.X.IsUndefined()\n"), fs[allC])
+
 	toB := h("ToEmbedded", "converts BPartial into *B,")
 	assert.Assert(t, strings.Contains(fs[toB], "if "+allB+"(p) {"), fs[toB])
 

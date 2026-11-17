@@ -80,10 +80,12 @@ type FlagOptions struct {
 // fileloader.Load does, and returns its options named by the file name.
 func LoadOptionFile(fsys fs.FS, in fileloader.PathInput) (*OptionFile, error) {
 	var data any
+
 	name, err := fileloader.Load(fsys, in, &data)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrOptionFile, err)
 	}
+
 	return DecodeOptionFile(name, data)
 }
 
@@ -97,11 +99,14 @@ func LoadOptionFile(fsys fs.FS, in fileloader.PathInput) (*OptionFile, error) {
 func DecodeOptionFile(name string, data any) (*OptionFile, error) {
 	d := &optionDecoder{name: name}
 	f := &OptionFile{Name: name, Packages: map[string]PackageOptions{}}
+
 	top, ok := d.table(data, nil)
 	if !ok {
 		return nil, errors.Join(d.errs...)
 	}
+
 	d.keys(top, nil, "version", "packages")
+
 	if v, ok := top["version"]; !ok {
 		d.fail([]string{"version"}, "version is required; want %d", OptionFileVersion)
 	} else if n, ok := integer(v); !ok {
@@ -111,13 +116,16 @@ func DecodeOptionFile(name string, data any) (*OptionFile, error) {
 	}
 
 	pkgsPath := []string{"packages"}
+
 	pkgs, _ := d.table(top["packages"], pkgsPath)
 	for _, pkgPath := range slices.Sorted(maps.Keys(pkgs)) {
 		f.Packages[pkgPath] = d.pkg(pkgs[pkgPath], appendPath(pkgsPath, pkgPath))
 	}
+
 	if err := errors.Join(d.errs...); err != nil {
 		return nil, err
 	}
+
 	return f, nil
 }
 
@@ -150,10 +158,13 @@ func (d *optionDecoder) table(v any, path []string) (map[string]any, bool) {
 				d.fail(path, "key %v is not a string", k)
 				return nil, false
 			}
+
 			out[s] = e
 		}
+
 		return out, true
 	}
+
 	if len(path) == 0 {
 		d.errs = append(
 			d.errs,
@@ -162,6 +173,7 @@ func (d *optionDecoder) table(v any, path []string) (map[string]any, bool) {
 	} else {
 		d.fail(path, "%v is not a table", v)
 	}
+
 	return nil, false
 }
 
@@ -176,6 +188,7 @@ func (d *optionDecoder) keys(t map[string]any, path []string, known ...string) {
 			).
 			Iter(),
 	)
+
 	for _, k := range unknown {
 		d.fail(appendPath(path, k), "unknown key; want %s", strings.Join(known, ", "))
 	}
@@ -186,10 +199,12 @@ func (d *optionDecoder) bool(t map[string]any, path []string, key string) bool {
 	if !ok {
 		return false
 	}
+
 	b, ok := v.(bool)
 	if !ok {
 		d.fail(appendPath(path, key), "%v is not a boolean", v)
 	}
+
 	return b
 }
 
@@ -198,10 +213,12 @@ func (d *optionDecoder) string(t map[string]any, path []string, key string) (str
 	if !ok {
 		return "", false
 	}
+
 	s, ok := v.(string)
 	if !ok {
 		d.fail(appendPath(path, key), "%v is not a string", v)
 	}
+
 	return s, ok
 }
 
@@ -210,13 +227,16 @@ func (d *optionDecoder) pkg(v any, path []string) PackageOptions {
 	if !ok {
 		return PackageOptions{}
 	}
+
 	d.keys(t, path, "all_types", "types")
 	o := PackageOptions{AllTypes: d.bool(t, path, "all_types"), Types: map[string]TypeOptions{}}
 	typesPath := appendPath(path, "types")
+
 	ts, _ := d.table(t["types"], typesPath)
 	for _, name := range slices.Sorted(maps.Keys(ts)) {
 		o.Types[name] = d.typ(ts[name], appendPath(typesPath, name))
 	}
+
 	return o
 }
 
@@ -225,6 +245,7 @@ func (d *optionDecoder) typ(v any, path []string) TypeOptions {
 	if !ok {
 		return TypeOptions{}
 	}
+
 	d.keys(t, path, "ignore", "fieldmask", "fields")
 	o := TypeOptions{
 		Ignore:    d.bool(t, path, "ignore"),
@@ -232,10 +253,12 @@ func (d *optionDecoder) typ(v any, path []string) TypeOptions {
 		Fields:    map[string]FieldOptions{},
 	}
 	fieldsPath := appendPath(path, "fields")
+
 	fs, _ := d.table(t["fields"], fieldsPath)
 	for _, name := range slices.Sorted(maps.Keys(fs)) {
 		o.Fields[name] = d.field(fs[name], appendPath(fieldsPath, name))
 	}
+
 	return o
 }
 
@@ -244,19 +267,27 @@ func (d *optionDecoder) field(v any, path []string) FieldOptions {
 	if !ok {
 		return FieldOptions{}
 	}
+
 	d.keys(t, path, "merge", "flag", "fieldmask")
+
 	var o FieldOptions
+
 	o.Merge, _ = d.string(t, path, "merge")
+
 	o.FieldMask = d.fieldMask(t, path)
 	if _, ok := t["flag"]; !ok {
 		return o
 	}
+
 	flagPath := appendPath(path, "flag")
+
 	ft, ok := d.table(t["flag"], flagPath)
 	if !ok {
 		return o
 	}
+
 	d.keys(ft, flagPath, "name", "short", "usage")
+
 	o.Flag = &FlagOptions{}
 	o.Flag.Name, _ = d.string(ft, flagPath, "name")
 	o.Flag.Usage, _ = d.string(ft, flagPath, "usage")
@@ -267,6 +298,7 @@ func (d *optionDecoder) field(v any, path []string) FieldOptions {
 	} else {
 		o.Flag.Short = s
 	}
+
 	return o
 }
 
@@ -276,14 +308,19 @@ func (d *optionDecoder) fieldMask(t map[string]any, path []string) *FieldMaskOpt
 	if _, ok := t["fieldmask"]; !ok {
 		return nil
 	}
+
 	maskPath := appendPath(path, "fieldmask")
+
 	mt, ok := d.table(t["fieldmask"], maskPath)
 	if !ok {
 		return nil
 	}
+
 	d.keys(mt, maskPath, "name")
+
 	o := &FieldMaskOptions{}
 	o.Name, _ = d.string(mt, maskPath, "name")
+
 	return o
 }
 
@@ -300,6 +337,7 @@ func integer(v any) (int64, bool) {
 	case float64:
 		return int64(v), v == float64(int64(v))
 	}
+
 	return 0, false
 }
 
@@ -327,6 +365,7 @@ func quoteKey(k string) string {
 	if bareKey.MatchString(k) {
 		return k
 	}
+
 	return strconv.Quote(k)
 }
 
@@ -338,10 +377,12 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 	if f == nil {
 		return nil, nil
 	}
+
 	byPath := map[string]*packages.Package{}
 	for _, p := range pkgs {
 		byPath[p.PkgPath] = p
 	}
+
 	origin := kamaopt.Origin{Source: kamaopt.SourceFile, Pos: token.Position{Filename: f.Name}}
 	fail := func(errs *[]error, path []string, format string, args ...any) {
 		*errs = append(*errs, fmt.Errorf(
@@ -354,33 +395,41 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 		out  []kamaopt.Raw
 		errs []error
 	)
+
 	for _, pkgPath := range slices.Sorted(maps.Keys(f.Packages)) {
 		po := f.Packages[pkgPath]
 		path := []string{"packages", pkgPath}
+
 		pkg := byPath[pkgPath]
 		if pkg == nil {
 			fail(&errs, path, "package %s is not loaded", pkgPath)
 			continue
 		}
+
 		if po.AllTypes {
 			out = append(out, kamaopt.Raw{
 				Key: kamaopt.Key{PkgPath: pkgPath}, Directive: directive, Args: "package",
 				Value: true, Origin: origin,
 			})
 		}
+
 		for _, typeName := range slices.Sorted(maps.Keys(po.Types)) {
 			to := po.Types[typeName]
 			typePath := appendPath(path, "types", typeName)
+
 			obj, ok := pkg.Types.Scope().Lookup(typeName).(*types.TypeName)
 			if !ok {
 				fail(&errs, typePath, "type %s is not declared in %s", typeName, pkgPath)
 				continue
 			}
+
 			key := kamaopt.Key{PkgPath: pkgPath, Type: typeName}
+
 			r := kamaopt.Raw{Key: key, Directive: directive, Value: to.Ignore, Origin: origin}
 			if to.Ignore {
 				r.Args = "ignore"
 			}
+
 			out = append(out, r)
 			if to.FieldMask {
 				out = append(out, kamaopt.Raw{
@@ -391,6 +440,7 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 			if len(to.Fields) == 0 {
 				continue
 			}
+
 			st, ok := types.Unalias(obj.Type()).Underlying().(*types.Struct)
 			if !ok {
 				fail(
@@ -400,21 +450,27 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 					pkgPath,
 					typeName,
 				)
+
 				continue
 			}
+
 			for _, fieldName := range slices.Sorted(maps.Keys(to.Fields)) {
 				fo := to.Fields[fieldName]
+
 				declared := opiter.WrapSeq(
 					st.Fields(),
 				).
 					ContainsFunc(
 						func(v *types.Var) bool { return v.Name() == fieldName },
 					)
+
 				if !declared {
 					fail(&errs, appendPath(typePath, "fields", fieldName),
 						"field %s is not declared in %s.%s", fieldName, pkgPath, typeName)
+
 					continue
 				}
+
 				key := kamaopt.Key{PkgPath: pkgPath, Type: typeName, Field: fieldName}
 				if fo.Merge != "" {
 					out = append(out, kamaopt.Raw{
@@ -422,11 +478,13 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 						Origin: origin,
 					})
 				}
+
 				if fo.Flag != nil {
 					out = append(out, kamaopt.Raw{
 						Key: key, Directive: directive + ":flag", Value: *fo.Flag, Origin: origin,
 					})
 				}
+
 				if fo.FieldMask != nil {
 					out = append(out, kamaopt.Raw{
 						Key: key, Directive: directive + ":fieldmask", Value: *fo.FieldMask,
@@ -436,6 +494,7 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 			}
 		}
 	}
+
 	return out, errors.Join(errs...)
 }
 
@@ -445,6 +504,7 @@ func optionPath(r kamaopt.Raw) []string {
 	if r.Key.Type == "" {
 		return append(path, "all_types")
 	}
+
 	path = append(path, "types", r.Key.Type)
 	if r.Key.Field != "" {
 		path = append(path, "fields", r.Key.Field)
@@ -452,11 +512,14 @@ func optionPath(r kamaopt.Raw) []string {
 		if strings.TrimSpace(r.Args) == "ignore" {
 			path = append(path, "ignore")
 		}
+
 		return path
 	}
+
 	if sub, ok := strings.CutPrefix(r.Directive, directive+":"); ok {
 		path = append(path, sub)
 	}
+
 	return path
 }
 
@@ -466,6 +529,7 @@ func origin(r kamaopt.Raw) string {
 	if r.Origin.Source == kamaopt.SourceFile {
 		return r.Origin.Pos.Filename + ": " + keyPath(optionPath(r))
 	}
+
 	return r.Origin.Pos.String()
 }
 
@@ -476,8 +540,10 @@ func spelling(r kamaopt.Raw) string {
 		if sub, ok := strings.CutPrefix(r.Directive, directive+":"); ok {
 			name = sub + " option"
 		}
+
 		return "option file " + name
 	}
+
 	return "//" + toolName + ":" + r.Directive
 }
 

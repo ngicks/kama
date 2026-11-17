@@ -50,6 +50,7 @@ func Parse(text string) (Comment, bool) {
 	} else if toolName == "" {
 		return Comment{}, false
 	}
+
 	if directive == "" {
 		return Comment{}, false
 	}
@@ -69,6 +70,7 @@ func AstField(f *ast.Field) []Comment {
 	if f.Comment != nil && len(f.Comment.List) > 0 {
 		trailing = []string{f.Comment.List[0].Text}
 	}
+
 	return collect(
 		opiter.WrapSeq(
 			astTexts(f.Doc),
@@ -101,6 +103,7 @@ func astTexts(cg *ast.CommentGroup) iter.Seq[string] {
 	if cg == nil {
 		return opiter.Empty[string]()
 	}
+
 	return opiter.WrapSeq(
 		slices.Values(cg.List),
 	).
@@ -124,8 +127,10 @@ func afterLastEmptyLine(lines []string) []string {
 		if i > 0 && strings.HasPrefix(lines[i-1], "/*") {
 			continue
 		}
+
 		return lines[i+1:]
 	}
+
 	return lines
 }
 

@@ -18,6 +18,7 @@ func PrintFileHeader(p Printer, header []string, pkgName string) {
 	if printComment(p, header) {
 		p.Printf("\n")
 	}
+
 	p.Printf("package %s\n\n", pkgName)
 }
 
@@ -37,16 +38,21 @@ func PrintComment(p Printer, sections []string) {
 // printComment reports whether it printed a section.
 func printComment(p Printer, sections []string) bool {
 	printed := false
+
 	for _, section := range sections {
 		if section == "" {
 			continue
 		}
+
 		if printed {
 			p.Printf("\n")
 		}
+
 		printed = true
+
 		printSection(p, section)
 	}
+
 	return printed
 }
 
@@ -75,8 +81,10 @@ func isComments(src string) bool {
 		s      scanner.Scanner
 		failed bool
 	)
+
 	file := token.NewFileSet().AddFile("", -1, len(src))
 	s.Init(file, []byte(src), func(token.Position, string) { failed = true }, scanner.ScanComments)
+
 	for {
 		_, tok, lit := s.Scan()
 		switch {
@@ -100,14 +108,17 @@ func PrintImports(p Printer, m *importdecl.Map) {
 	for imp := range m.Imports() {
 		if first {
 			p.Printf("import (\n")
+
 			first = false
 		}
+
 		if imp.Name != "" {
 			p.Printf("\t%s %q\n", imp.Name, imp.Package.Path)
 		} else {
 			p.Printf("\t%q\n", imp.Package.Path)
 		}
 	}
+
 	if !first {
 		p.Printf(")\n\n")
 	}
@@ -122,10 +133,13 @@ func WrapFile[C Context[C]](header []string, pkgName string) Step[C] {
 	return FuncStep[C](func(c C, b []byte) (C, []byte, error) {
 		p := c.Printer(nil)
 		PrintFileHeader(p, header, pkgName)
+
 		if pkg := c.Package(); pkg != nil && pkg.Imports != nil {
 			PrintImports(p, pkg.Imports)
 		}
+
 		p.Printf("%s", b)
+
 		return c, p.Bytes(), nil
 	})
 }
@@ -142,12 +156,15 @@ func AppendDecls(f *dst.File, pkg *Package, decls []byte) error {
 	if err != nil {
 		return err
 	}
+
 	for _, d := range parsed {
 		d.Decorations().Before = dst.EmptyLine
 	}
+
 	f.Decls = append(f.Decls, parsed...)
 	if pkg != nil && pkg.Imports != nil {
 		pkg.Imports.AddMissingDst(f)
 	}
+
 	return nil
 }

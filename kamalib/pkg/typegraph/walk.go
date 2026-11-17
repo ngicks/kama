@@ -55,6 +55,7 @@ func WalkTypesToNamed(
 			if !ok {
 				return nil
 			}
+
 			return cb(named, stack)
 		},
 	)
@@ -86,6 +87,7 @@ func WalkTypes(
 		if err := walkTypeParam(stack, x, stop, cb); err != nil {
 			return err
 		}
+
 		return WalkTypes(append(stack, EdgeRouteNode{Kind: EdgeKindAlias}), x.Rhs(), stop, cb)
 	case *types.Array:
 		return WalkTypes(append(stack, EdgeRouteNode{Kind: EdgeKindArray}), x.Elem(), stop, cb)
@@ -96,11 +98,13 @@ func WalkTypes(
 		if err != nil {
 			return err
 		}
+
 		return WalkTypes(append(stack, EdgeRouteNode{Kind: EdgeKindMapValue}), x.Elem(), stop, cb)
 	case *types.Named:
 		if err := walkTypeParam(stack, x, stop, cb); err != nil {
 			return err
 		}
+
 		return cb(x, stack)
 	case *types.Pointer:
 		return WalkTypes(append(stack, EdgeRouteNode{Kind: EdgeKindPointer}), x.Elem(), stop, cb)
@@ -109,6 +113,7 @@ func WalkTypes(
 	case *types.Struct:
 		for i := range x.NumFields() {
 			f := x.Field(i)
+
 			err := WalkTypes(
 				append(stack, posNode(EdgeKindStruct, i)),
 				f.Type(),
@@ -119,6 +124,7 @@ func WalkTypes(
 				return err
 			}
 		}
+
 		return nil
 	case *types.TypeParam:
 		return cb(x, stack)
@@ -137,6 +143,7 @@ func walkTypeParam[Type interface {
 	if ty.TypeArgs() != nil {
 		for i := range ty.TypeArgs().Len() {
 			arg := ty.TypeArgs().At(i)
+
 			err := WalkTypes(
 				append(stack, posNode(EdgeKindTypeArg, i)),
 				arg,
@@ -150,6 +157,7 @@ func walkTypeParam[Type interface {
 	} else if ty.TypeParams() != nil {
 		for i := range ty.TypeParams().Len() {
 			param := ty.TypeParams().At(i)
+
 			err := WalkTypes(
 				append(stack, posNode(EdgeKindTypeParam, i)),
 				param,
@@ -161,5 +169,6 @@ func walkTypeParam[Type interface {
 			}
 		}
 	}
+
 	return nil
 }

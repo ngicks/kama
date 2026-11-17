@@ -28,10 +28,12 @@ func stage(t *testing.T, files map[string]string) (*overlayfs.Fs, gopackages.Opt
 
 	dir := "testdata/inline/" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 	dirs := map[string]bool{}
+
 	for name, src := range files {
 		assert.NilError(t, f.Write(context.Background(), path.Join(dir, name), []byte(src)))
 		dirs["./"+path.Dir(path.Join(dir, name))] = true
 	}
+
 	return f, gopackages.Options{Patterns: slices.Sorted(maps.Keys(dirs))}
 }
 
@@ -47,6 +49,7 @@ func generateInto(t *testing.T, f *overlayfs.Fs, opts gopackages.Options) {
 	assert.NilError(t, err)
 	// A partial file of a build variant not loaded is not stale.
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
+
 	for _, o := range out {
 		rel, err := filepath.Rel(f.Root(), o.Path)
 		assert.NilError(t, err)
@@ -64,6 +67,7 @@ func generateAndBuild(t *testing.T, files map[string]string, buildFlags ...strin
 	generateInto(t, f, opts)
 	opts.BuildFlags = buildFlags
 	_, err := gopackages.Load(context.Background(), f, opts)
+
 	return err
 }
 
@@ -81,10 +85,13 @@ func TestHelpersAcrossBuildVariants(t *testing.T) {
 
 	opts.BuildFlags = tagged
 	generateInto(t, f, opts)
+
 	read := func(name string) string {
 		t.Helper()
+
 		b, err := fs.ReadFile(f.FS(), path.Join(opts.Patterns[0], name))
 		assert.NilError(t, err)
+
 		return string(b)
 	}
 	shared, own := read(HelpersFile), read("zz_gen.helper.b_tagged.kama_partial.go")
@@ -98,6 +105,7 @@ func TestHelpersAcrossBuildVariants(t *testing.T) {
 	// the same constraint.
 	assert.Assert(t, strings.Contains(own, appendInts), own)
 	assert.Assert(t, strings.Contains(own, "//go:build tagged\n"), own)
+
 	for _, name := range []string{"a.kama_partial.go", "b_tagged.kama_partial.go"} {
 		assert.Assert(t, !strings.Contains(read(name), "\nfunc kamaPartial"), read(name))
 	}
@@ -131,6 +139,7 @@ func TestForeignUnexportedFields(t *testing.T) {
 		"sub/sub.go": "package sub\n\ntype Exported struct {\n\tPublic int\n\tprivate int\n}\n",
 	}, Options{})
 	assert.ErrorIs(t, err, ErrUnsupported)
+
 	for _, s := range []string{"Fields.A (", "field private", "sub.go:5:2", "unexported"} {
 		assert.ErrorContains(t, err, s)
 	}
@@ -148,6 +157,7 @@ func TestForeignUnexportedFields(t *testing.T) {
 // modulePath returns the import path of the inline test directory of t.
 func modulePath(t *testing.T) string {
 	t.Helper()
+
 	return "github.com/ngicks/kama/kamalib/generator/partial/testdata/inline/" +
 		strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 }
@@ -343,6 +353,7 @@ type Emb[T any] struct{ E T }
 type EmbP[T any] struct{ F T }
 `,
 	}
+
 	for _, opts := range []Options{
 		{},
 		{Merge: MergeAppend},
@@ -356,11 +367,13 @@ type EmbP[T any] struct{ F T }
 			opts.Registry = registry(t)
 			out, _, err := Generate(pkgs, opts)
 			assert.NilError(t, err)
+
 			for _, o := range out {
 				rel, err := filepath.Rel(f.Root(), o.Path)
 				assert.NilError(t, err)
 				assert.NilError(t, f.Write(ctx, filepath.ToSlash(rel), o.Content))
 			}
+
 			_, err = gopackages.Load(ctx, f, load)
 			assert.NilError(t, err)
 		})

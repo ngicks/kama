@@ -78,6 +78,7 @@ func (p *OpenProc) CleanUp(context.Context) error {
 
 	err := p.fs.Close()
 	p.root, p.formatter, p.fs = "", nil, nil
+
 	return err
 }
 
@@ -90,6 +91,7 @@ func (p *OpenProc) open(root string, formatter []string) (*overlayfs.Fs, error) 
 		if root != p.root {
 			return nil, fmt.Errorf("overlayfs: %q is open, cannot open %q", p.root, root)
 		}
+
 		if !slices.Equal(formatter, p.formatter) {
 			return nil, fmt.Errorf(
 				"overlayfs: %q is open with formatter %q, cannot use %q",
@@ -111,6 +113,7 @@ func (p *OpenProc) open(root string, formatter []string) (*overlayfs.Fs, error) 
 	}
 
 	p.root, p.formatter, p.fs = root, formatter, f
+
 	return f, nil
 }
 
@@ -150,6 +153,7 @@ func (i *openInstance) Param(p OpenParam) error {
 		if err != nil {
 			return err
 		}
+
 		if !info.IsDir() {
 			return fmt.Errorf("overlayfs: %q is not a directory", abs)
 		}
@@ -158,6 +162,7 @@ func (i *openInstance) Param(p OpenParam) error {
 	}
 
 	i.root, i.formatter = root, p.Formatter
+
 	return nil
 }
 
@@ -172,6 +177,7 @@ func (i *openInstance) Run(context.Context, workflow.Reporter) error {
 	}
 
 	i.fs = f
+
 	return nil
 }
 

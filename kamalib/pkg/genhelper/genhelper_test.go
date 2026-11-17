@@ -26,6 +26,7 @@ func TestRendererPrependKeepsArgs(t *testing.T) {
 	r.Prepend(args...)
 
 	assert.Equal(t, len(args), 2)
+
 	_, b, err := genhelper.Steps[ctx](spare[2:3]).Render(r.Context, nil)
 	assert.NilError(t, err)
 	assert.Equal(t, string(b), "spare\n")
@@ -55,6 +56,7 @@ func TestBlockNilWrap(t *testing.T) {
 
 func TestPackageNilImports(t *testing.T) {
 	const destPath = "example.com/dest"
+
 	dest := types.NewPackage(destPath, "dest")
 	other := types.NewPackage("example.com/other", "other")
 	named := func(pkg *types.Package, name string) types.Type {
@@ -69,6 +71,7 @@ func TestPackageNilImports(t *testing.T) {
 	got, err := pkg.Qual(destPath, "A")
 	assert.NilError(t, err)
 	assert.Equal(t, got, "A")
+
 	_, err = pkg.Qual(other.Path(), "A")
 	assert.ErrorIs(t, err, importdecl.ErrUnknownImport)
 

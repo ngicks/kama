@@ -23,6 +23,7 @@ func TestProcRun(t *testing.T) {
 
 	f, err := overlayfs.New(root)
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	// A staged yaml file wins over the json file on disk.

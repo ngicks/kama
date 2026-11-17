@@ -43,6 +43,7 @@ func TestLoadPriority(t *testing.T) {
 
 func TestLoadErrors(t *testing.T) {
 	fsys := fstest.MapFS{}
+
 	var d doc
 
 	_, err := Load(fsys, PathInput{Base: "none", Formats: []Format{FormatJson}}, &d)
@@ -90,6 +91,7 @@ func TestDecodeJsonErrors(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			var data any
+
 			err := Decode(strings.NewReader(c.src), FormatJson, &data)
 
 			var synErr *jsontext.SyntacticError

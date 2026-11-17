@@ -22,8 +22,10 @@ import (
 // file, from its type keyword to its closing brace.
 func partialDecl(t *testing.T, src, name string) string {
 	t.Helper()
+
 	m := regexp.MustCompile(`(?ms)^type ` + name + `\b.*?(?:struct\{\}|^\})$`).FindString(src)
 	assert.Assert(t, m != "", "no declaration of %s in\n%s", name, src)
+
 	return m
 }
 
@@ -65,6 +67,7 @@ type A struct { // A opens.
 	W und.Und[[]int] `+"`json:\",omitzero\"`"+`
 }`)
 	assert.Assert(t, strings.Contains(src, "// APartial is the partial variant of A.\n//\n"), src)
+
 	for _, s := range []string{
 		"A is documented", "A opens", "X leads", "X trails", "Y is merged",
 		"Z trails", "W is followed", "A closes", "kama:partial:",
@@ -279,14 +282,18 @@ type A struct {
 	opts = opts.WithDefaults()
 	sel, err := selectTargets(base.SourcePackages(pkgs), opts)
 	assert.NilError(t, err)
+
 	n := opiter.WrapSeq(
 		maps.Values(sel.targets),
 	).
 		First().
 		Value()
+
 	assert.Assert(t, n != nil)
+
 	hdr, err := fileHeader(opts, testNow())
 	assert.NilError(t, err)
+
 	f := &partialFile{nodes: []*typegraph.Node{n}}
 	for range 2 {
 		_, _, err := renderFileWith(
@@ -297,6 +304,7 @@ type A struct {
 
 	ts, err := sel.sources.TypeSpec(n.Detail.Pkg.Fset, n.Detail.File, n.Detail.Ts)
 	assert.NilError(t, err)
+
 	fields := ts.Type.(*dst.StructType).Fields.List
 	assert.Equal(t, len(fields), 2)
 	assert.DeepEqual(t, []string(fields[0].Decs.Start), []string{"//kama:partial:merge append"})
@@ -304,6 +312,7 @@ type A struct {
 	assert.DeepEqual(t, identNames(fields[0].Names), []string{"_", "X"})
 	assert.DeepEqual(t, identNames(fields[1].Names), []string{"a", "B"})
 	assert.Equal(t, fields[1].Type.(*dst.Ident).Name, "int")
+
 	assert.Assert(
 		t,
 		opiter.WrapSeq(

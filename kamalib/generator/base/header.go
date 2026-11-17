@@ -22,5 +22,6 @@ func Header(generator string, params map[string]any, now time.Time) ([]string, e
 	if err != nil {
 		return nil, fmt.Errorf("base: file header: %w", err)
 	}
+
 	return strings.Split(comment, "\n"), nil
 }

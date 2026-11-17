@@ -59,6 +59,7 @@ func (s *Scope) Push() *Scope {
 	child := NewScope()
 	child.parent = s
 	s.children = append(s.children, child)
+
 	return child
 }
 
@@ -79,6 +80,7 @@ func (s *Scope) Parent() *Scope {
 // Linking again replaces the link. A nil names unlinks the tree.
 func (s *Scope) LinkImports(names ImportNames) {
 	root := s.root()
+
 	root.imports = names
 	if names != nil {
 		root.pushNames(names)
@@ -87,6 +89,7 @@ func (s *Scope) LinkImports(names ImportNames) {
 
 func (s *Scope) pushNames(names ImportNames) {
 	names.Reserve(slices.Sorted(maps.Keys(s.names))...)
+
 	for _, child := range s.children {
 		child.pushNames(names)
 	}
@@ -96,6 +99,7 @@ func (s *Scope) root() *Scope {
 	for s.parent != nil {
 		s = s.parent
 	}
+
 	return s
 }
 
@@ -104,6 +108,7 @@ func (s *Scope) hold(names ...string) {
 	for _, name := range names {
 		s.names[name] = true
 	}
+
 	if imports := s.root().imports; imports != nil {
 		imports.Reserve(names...)
 	}
@@ -135,9 +140,11 @@ func (s *Scope) Declare(role string) string {
 		s.roles[role] = binding{name: b.name}
 		return b.name
 	}
+
 	name := s.fresh(role)
 	s.hold(name)
 	s.roles[role] = binding{name: name}
+
 	return name
 }
 
@@ -156,14 +163,19 @@ func (s *Scope) Shadow(role string) (string, error) {
 		if b.name != role {
 			return "", fmt.Errorf("%w: %s is already used as %s", ErrRedeclared, role, b.name)
 		}
+
 		s.roles[role] = binding{name: role}
+
 		return role, nil
 	}
+
 	if s.names[role] {
 		return "", fmt.Errorf("%w: %s", ErrRedeclared, role)
 	}
+
 	s.hold(role)
 	s.roles[role] = binding{name: role}
+
 	return role, nil
 }
 
@@ -175,6 +187,7 @@ func (s *Scope) Lookup(role string) (name string, ok bool) {
 			return b.name, true
 		}
 	}
+
 	return "", false
 }
 
@@ -188,9 +201,11 @@ func (s *Scope) LookupOrDeclare(role string) (name string, declared bool) {
 	if b, ok := s.roles[role]; ok && b.pending {
 		return s.Declare(role), true
 	}
+
 	if name, ok := s.Lookup(role); ok {
 		return name, false
 	}
+
 	return s.Declare(role), true
 }
 
@@ -204,9 +219,11 @@ func (s *Scope) Use(role string) string {
 	if name, ok := s.Lookup(role); ok {
 		return name
 	}
+
 	name := s.fresh(role)
 	s.hold(name)
 	s.roles[role] = binding{name: name, pending: true}
+
 	return name
 }
 
@@ -215,6 +232,7 @@ func (s *Scope) Use(role string) string {
 func (s *Scope) Unbound() []string {
 	out := s.appendUnbound(nil)
 	slices.Sort(out)
+
 	return slices.Compact(out)
 }
 
@@ -230,9 +248,11 @@ func (s *Scope) appendUnbound(out []string) []string {
 			OmitL().
 			Iter(),
 	)
+
 	for _, child := range s.children {
 		out = child.appendUnbound(out)
 	}
+
 	return out
 }
 
@@ -241,6 +261,7 @@ func (s *Scope) fresh(hint string) string {
 	for i := 2; s.taken(name); i++ {
 		name = hint + strconv.Itoa(i)
 	}
+
 	return name
 }
 
@@ -248,11 +269,13 @@ func (s *Scope) taken(name string) bool {
 	if imports := s.root().imports; imports != nil && imports.HasIdent(name) {
 		return true
 	}
+
 	for sc := s.parent; sc != nil; sc = sc.parent {
 		if sc.names[name] {
 			return true
 		}
 	}
+
 	return s.takenBelow(name)
 }
 
@@ -260,6 +283,7 @@ func (s *Scope) takenBelow(name string) bool {
 	if s.names[name] {
 		return true
 	}
+
 	return opiter.WrapSeq(
 		slices.Values(s.children),
 	).

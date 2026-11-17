@@ -19,6 +19,7 @@ func TestWalkTypes_TypeParam(t *testing.T) {
 	assert.Assert(t, generic.TypeArgs() == nil)
 
 	var got []visited
+
 	err := WalkTypes(nil, generic, nil, func(ty types.Type, stack []EdgeRouteNode) error {
 		switch x := ty.(type) {
 		case *types.TypeParam:
@@ -26,6 +27,7 @@ func TestWalkTypes_TypeParam(t *testing.T) {
 		case *types.Named:
 			got = append(got, visited{x.Obj().Name(), slices.Clone(stack)})
 		}
+
 		return nil
 	})
 	assert.NilError(t, err)
@@ -45,8 +47,11 @@ func TestWalkTypesToNamed_Stop(t *testing.T) {
 	// NestedType struct { A *map[string][]Target }
 	nested := findNamed(t, pkgs, "edges", "NestedType")
 
-	var stoppedAt [][]EdgeRouteNode
-	var named []string
+	var (
+		stoppedAt [][]EdgeRouteNode
+		named     []string
+	)
+
 	err := WalkTypesToNamed(
 		nil,
 		nested.Underlying(),
@@ -55,6 +60,7 @@ func TestWalkTypesToNamed_Stop(t *testing.T) {
 				stoppedAt = append(stoppedAt, slices.Clone(currentStack))
 				return true
 			}
+
 			return false
 		},
 		func(n *types.Named, stack []EdgeRouteNode) error {

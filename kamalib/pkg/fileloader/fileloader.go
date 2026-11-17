@@ -65,15 +65,18 @@ func (p PathInput) Candidates() ([]string, error) {
 			func(f Format) bool { return f.Extensions() == nil },
 		).
 		First()
+
 	if unknown.IsSome() {
 		return nil, fmt.Errorf("%w: %q", ErrUnknownFormat, unknown.Value())
 	}
+
 	exts := opiter.Flatten(
 		opiter.WrapSeq(
 			slices.Values(p.Formats),
 		).
 			Map(Format.Extensions),
 	)
+
 	return opiter.WrapSeq(exts).
 		Map(
 			func(ext string) string { return p.Base + ext },
@@ -110,22 +113,29 @@ func Load(fsys fs.FS, in PathInput, v any) (string, error) {
 		if exts == nil {
 			return "", fmt.Errorf("%w: %q", ErrUnknownFormat, format)
 		}
+
 		for _, ext := range exts {
 			name := in.Base + ext
+
 			f, err := fsys.Open(name)
 			if err != nil {
 				if errors.Is(err, fs.ErrNotExist) {
 					continue
 				}
+
 				return "", fmt.Errorf("fileloader: open %q: %w", name, err)
 			}
+
 			err = Decode(f, format, v)
 			f.Close()
+
 			if err != nil {
 				return "", fmt.Errorf("fileloader: decode %q: %w", name, err)
 			}
+
 			return name, nil
 		}
 	}
+
 	return "", fmt.Errorf("%w: %q", ErrNotFound, in.Base)
 }

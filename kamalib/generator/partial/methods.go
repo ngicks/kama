@@ -29,9 +29,11 @@ func (s *selection) partialMethodNames(n *typegraph.Node) []string {
 	if s.fieldMasked(n.Id) {
 		out = slices.Concat(out, fieldMaskMethodNames)
 	}
+
 	if s.flagged[n.Id] {
 		out = slices.Concat(out, flagMethodNames)
 	}
+
 	return out
 }
 
@@ -46,16 +48,21 @@ func methodTypeParams(scope *types.Scope, tparams *types.TypeParamList) []string
 	for _, name := range scope.Names() {
 		taken[name] = true
 	}
+
 	for _, name := range types.Universe.Names() {
 		taken[name] = true
 	}
+
 	for tp := range tparams.TypeParams() {
 		taken[tp.Obj().Name()] = true
 	}
+
 	for _, name := range localNames {
 		taken[name] = true
 	}
+
 	var out []string
+
 	for i, tp := range slices.Collect(tparams.TypeParams()) {
 		name := tp.Obj().Name()
 		if name == "_" {
@@ -63,10 +70,13 @@ func methodTypeParams(scope *types.Scope, tparams *types.TypeParamList) []string
 			for taken[name] {
 				name += "_"
 			}
+
 			taken[name] = true
 		}
+
 		out = append(out, name)
 	}
+
 	return out
 }
 
@@ -84,12 +94,17 @@ type methodWriter struct {
 
 func (p *mapper) newMethodWriter(n *typegraph.Node) *methodWriter {
 	named := n.Detail.Type
-	var tparams []string
-	var targs string
+
+	var (
+		tparams []string
+		targs   string
+	)
+
 	if named.TypeParams().Len() > 0 {
 		tparams = methodTypeParams(p.pkg.Types.Scope(), named.TypeParams())
 		targs = "[" + strings.Join(tparams, ", ") + "]"
 	}
+
 	return &methodWriter{
 		p:       p,
 		n:       n,
@@ -109,7 +124,9 @@ func (w *methodWriter) function(doc, signature genExpr, body ...genStep) error {
 	if err != nil {
 		return err
 	}
+
 	w.b.WriteString(s)
+
 	return nil
 }
 
@@ -121,6 +138,7 @@ func (w *methodWriter) from(m mapped, dst, src genExpr) genStep {
 	call := func(op helperOp) genStep {
 		return assign(w.p.call(&helper{op: op, typ: m.source, route: m.route, named: m.named}, src))
 	}
+
 	switch m.conv {
 	case convPlain:
 		return assign(lang.Expr("%s.Defined(%s)", und, src))
@@ -143,6 +161,7 @@ func (w *methodWriter) from(m mapped, dst, src genExpr) genStep {
 	case convEmbeddedPointer:
 		return call(opFromEmbedded)
 	}
+
 	return lang.Fail(unknownConv(m.conv))
 }
 
@@ -154,6 +173,7 @@ func (w *methodWriter) to(m mapped, dst, src genExpr) genStep {
 	call := func(op helperOp) genStep {
 		return assign(w.p.call(&helper{op: op, typ: m.source, route: m.route, named: m.named}, src))
 	}
+
 	switch m.conv {
 	case convPlain, convSlice, convMap:
 		return assign(lang.Expr("%s.Value()", src))
@@ -181,6 +201,7 @@ func (w *methodWriter) to(m mapped, dst, src genExpr) genStep {
 	case convEmbeddedPointer:
 		return call(opToEmbedded)
 	}
+
 	return lang.Fail(unknownConv(m.conv))
 }
 
@@ -197,6 +218,7 @@ func conditional(c conv) bool { return c == convPointer }
 func (w *methodWriter) merge(f fieldInfo, l, r genExpr) genStep {
 	overwrite := lang.If(lang.Expr("!%s.IsUndefined()", r), lang.Stmt("%s = %s", l, r), nil)
 	assign := func(rhs genExpr) genStep { return lang.Stmt("%s = %s", l, rhs) }
+
 	switch {
 	case f.class == classEmbedded && f.strategy == string(MergeNestedRecursive):
 		return assign(lang.Expr("%s.Merge(%s)", l, r))
@@ -221,6 +243,7 @@ func (w *methodWriter) merge(f fieldInfo, l, r genExpr) genStep {
 			&helper{op: opMergeRecursive, typ: f.named, named: f.named, partial: true}, l, r,
 		))
 	}
+
 	return overwrite
 }
 
@@ -301,9 +324,11 @@ func (w *methodWriter) structMethods(fields []fieldInfo) error {
 	if err := w.applyTo(); err != nil {
 		return err
 	}
+
 	if err := w.fieldMaskMethods(fields); err != nil {
 		return err
 	}
+
 	return w.flagMethods(fields)
 }
 
@@ -328,6 +353,7 @@ func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.T
 				conv(elem, lang.Expr("%s[%s]", dst, lang.Name(idx)), lang.Name("e")),
 			)
 		}
+
 		return lang.ForRange(idx, "e", src, genSteps{
 			lang.Stmt("var %s %s", decl("x"), typ),
 			conv(elem, lang.Name("x"), lang.Name("e")),
@@ -354,6 +380,7 @@ func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.T
 	if err != nil {
 		return err
 	}
+
 	err = w.function(
 		docComment("ToValue returns the value %s describes. An undefined or null element\n"+
 			"gives the zero value of the element, and a nil %s gives nil.",
@@ -380,10 +407,12 @@ func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.T
 				lang.Name("p"), lang.Name("r"), lang.Name("p"), lang.Name("r"))
 		}
 	}
+
 	merge := genSteps{
 		lang.If(lang.Expr("%s == nil", lang.Name("r")),
 			lang.Stmt("return %s", lang.Name("p")), nil),
 	}
+
 	switch {
 	case w.p.sel.opts.Merge != MergeAppend:
 		merge = append(merge, lang.Stmt("return %s", lang.Name("r")))
@@ -392,6 +421,7 @@ func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.T
 		if err != nil {
 			return err
 		}
+
 		merge = append(merge,
 			lang.If(lang.Expr("%s == nil", lang.Name("p")),
 				lang.Stmt("return %s", lang.Name("r")), nil),
@@ -411,6 +441,7 @@ func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.T
 			lang.Stmt("return append(%s, %s...)", lang.Name("o"), lang.Name("r")),
 		)
 	}
+
 	err = w.function(
 		docComment("Merge %s Merge writes to neither %s nor %s.",
 			mergeDoc, lang.Name("p"), lang.Name("r")),
@@ -434,8 +465,10 @@ func (w *methodWriter) decls() ([]dst.Decl, error) {
 	if err != nil {
 		return nil, fmt.Errorf("partial: parse methods of %s: %w", w.recv, err)
 	}
+
 	for _, d := range decls {
 		d.Decorations().Before = dst.EmptyLine
 	}
+
 	return decls, nil
 }

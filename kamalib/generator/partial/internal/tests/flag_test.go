@@ -16,11 +16,14 @@ var _ model.PartialFlagSet = (*pflag.FlagSet)(nil)
 
 func parseFlags(t *testing.T, args ...string) (model.FlagsPartial, error) {
 	t.Helper()
+
 	fs := pflag.NewFlagSet("x", pflag.ContinueOnError)
+
 	var p model.FlagsPartial
 	p.RegisterFlags(fs)
 	assert.NilError(t, fs.Parse(args))
 	err := p.FromFlagSet(fs)
+
 	return p, err
 }
 
@@ -119,6 +122,7 @@ func (failingGetInt) GetInt(string) (int, error) { return 0, errGet }
 
 func TestFromFlagSetGetError(t *testing.T) {
 	fs := failingGetInt{pflag.NewFlagSet("x", pflag.ContinueOnError)}
+
 	var p model.FlagsPartial
 	p.RegisterFlags(fs)
 	assert.NilError(t, fs.Parse([]string{"--name", "a", "--count", "1"}))
@@ -130,6 +134,7 @@ func TestFromFlagSetGetError(t *testing.T) {
 
 func TestFromFlagSetGetErrorUnchanged(t *testing.T) {
 	fs := failingGetInt{pflag.NewFlagSet("x", pflag.ContinueOnError)}
+
 	var p model.FlagsPartial
 	p.RegisterFlags(fs)
 	assert.NilError(t, fs.Parse([]string{"--name", "a"}))

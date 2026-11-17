@@ -39,6 +39,7 @@ func load(t *testing.T, files map[string]string) []*packages.Package {
 
 	dir := "testdata/inline/" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 	dirs := map[string]bool{}
+
 	for name, src := range files {
 		assert.NilError(t, f.Write(ctx, path.Join(dir, name), []byte(src)))
 		dirs["./"+path.Dir(path.Join(dir, name))] = true
@@ -48,14 +49,17 @@ func load(t *testing.T, files map[string]string) []*packages.Package {
 		Patterns: slices.Sorted(maps.Keys(dirs)),
 	})
 	assert.NilError(t, err)
+
 	return pkgs
 }
 
 // registry returns a registry of this generator only.
 func registry(t *testing.T) *genmark.Registry {
 	t.Helper()
+
 	r := genmark.NewRegistry()
 	assert.NilError(t, r.Register(GeneratorName))
+
 	return r
 }
 
@@ -85,6 +89,7 @@ func withoutRunParams(src string) string {
 	if loc := generatedLine.FindStringIndex(src); loc != nil {
 		src = src[:loc[0]] + src[loc[1]:]
 	}
+
 	return optionFileParam.ReplaceAllString(src, "${1}null")
 }
 
@@ -92,14 +97,18 @@ func withoutRunParams(src string) string {
 // only and testNow, and fails on a warning.
 func generate(t *testing.T, files map[string]string, opts Options) ([]File, error) {
 	t.Helper()
+
 	if opts.Registry == nil {
 		opts.Registry = registry(t)
 	}
+
 	if opts.Now == nil {
 		opts.Now = testNow
 	}
+
 	out, warnings, err := Generate(load(t, files), opts)
 	assert.Assert(t, len(warnings) == 0, "%v", warnings)
+
 	return out, err
 }
 
@@ -109,10 +118,12 @@ func generatedWith(t *testing.T, files map[string]string, opts Options) map[stri
 
 	out, err := generate(t, files, opts)
 	assert.NilError(t, err)
+
 	m := map[string]string{}
 	for _, f := range out {
 		m[filepath.Base(f.Path)] = string(f.Content)
 	}
+
 	return m
 }
 
@@ -128,12 +139,14 @@ func partialTypes(t *testing.T, src string) []string {
 
 	f, err := parser.ParseFile(token.NewFileSet(), "x.go", src, 0)
 	assert.NilError(t, err)
+
 	specs := opiter.Flatten(
 		opiter.WrapSeq(
 			slices.Values(f.Decls),
 		).
 			Map(typeSpecs),
 	)
+
 	return opiter.WrapSeq(specs).
 		Map(
 			func(s ast.Spec) string { return s.(*ast.TypeSpec).Name.Name },
@@ -146,6 +159,7 @@ func typeSpecs(d ast.Decl) []ast.Spec {
 	if gd, ok := d.(*ast.GenDecl); ok && gd.Tok == token.TYPE {
 		return gd.Specs
 	}
+
 	return nil
 }
 
@@ -154,10 +168,12 @@ func TestOptions(t *testing.T) {
 	assert.NilError(t, Options{Merge: MergeAppend, MergeNested: MergeNestedOverwrite}.Validate())
 	assert.ErrorIs(t, Options{Merge: "x"}.Validate(), ErrOption)
 	assert.ErrorIs(t, Options{MergeNested: "x"}.Validate(), ErrOption)
+
 	def := Options{}.WithDefaults()
 	assert.Equal(t, def.Merge, MergeOverwrite)
 	assert.Equal(t, def.MergeNested, MergeNestedRecursive)
 	assert.Equal(t, def.Registry, genmark.DefaultRegistry)
+
 	r := genmark.NewRegistry()
 	assert.Equal(t, Options{Registry: r}.WithDefaults().Registry, r)
 
@@ -392,6 +408,7 @@ func TestTargetErrors(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := generate(t, map[string]string{"x.go": c.src}, Options{})
 			assert.ErrorIs(t, err, c.is)
+
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)
 			}
@@ -504,29 +521,36 @@ func fieldTypes(t *testing.T, src, name string) map[string][2]string {
 
 	f, err := parser.ParseFile(token.NewFileSet(), "x.go", src, 0)
 	assert.NilError(t, err)
+
 	var st *ast.StructType
+
 	ast.Inspect(f, func(n ast.Node) bool {
 		if ts, ok := n.(*ast.TypeSpec); ok && ts.Name.Name == name {
 			st, _ = ts.Type.(*ast.StructType)
 		}
+
 		return st == nil
 	})
 	assert.Assert(t, st != nil, name)
 
 	out := map[string][2]string{}
+
 	for _, fl := range st.Fields.List {
 		var tag string
 		if fl.Tag != nil {
 			tag = fl.Tag.Value
 		}
+
 		ty := types.ExprString(fl.Type)
 		if len(fl.Names) == 0 {
 			out["embedded "+ty] = [2]string{ty, tag}
 		}
+
 		for _, n := range fl.Names {
 			out[n.Name] = [2]string{ty, tag}
 		}
 	}
+
 	return out
 }
 
@@ -613,6 +637,7 @@ type Om map[int]opt.Option[M]
 		"Alias":             "und.Und[MPartial]",
 		"private":           "und.Und[int]",
 	}
+
 	got := maps.Collect(
 		opiter.WrapSeq2(
 			maps.All(fieldTypes(t, src, "APartial")),
@@ -620,6 +645,7 @@ type Om map[int]opt.Option[M]
 			Map(withoutTag).
 			Iter2(),
 	)
+
 	assert.DeepEqual(t, got, want)
 
 	assert.Assert(t, strings.Contains(src, "type SPartial []und.Und[MPartial]"), src)
@@ -643,6 +669,7 @@ func TestImports(t *testing.T) {
 		strings.Contains(files["b.kama_partial.go"], `import "github.com/ngicks/option/und"`),
 		files["b.kama_partial.go"],
 	)
+
 	for _, src := range files {
 		assert.Assert(t, strings.HasPrefix(src, testHeader+"\n\npackage x\n"), src)
 		assert.Assert(t, strings.Contains(src, "\n//kama:generated kama-partial\ntype "), src)

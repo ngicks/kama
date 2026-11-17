@@ -20,6 +20,7 @@ func decode(t *testing.T, src string) workflow.Spec {
 
 	var spec workflow.Spec
 	assert.NilError(t, yaml.Unmarshal([]byte(src), &spec))
+
 	return spec
 }
 
@@ -60,6 +61,7 @@ steps:
 			func(n workflow.Node) string { return n.Name },
 		).
 		Collect()
+
 	assert.DeepEqual(t, names, []string{"root", "meta", "packages", "final"})
 }
 

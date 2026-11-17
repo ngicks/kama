@@ -164,6 +164,7 @@ func TestGeneratorParamsCommentError(t *testing.T) {
 			Name:   "example.com/gen",
 			Params: map[string]any{"ch": make(chan int)},
 		}.Comment()
+
 		var semantic *json.SemanticError
 		assert.Assert(t, errors.As(err, &semantic), "%v", err)
 	})
@@ -173,6 +174,7 @@ func TestGeneratorParamsCommentError(t *testing.T) {
 			Name:   "example.com/gen",
 			Params: map[string]any{"s": "\xff"},
 		}.Comment()
+
 		var syntactic *jsontext.SyntacticError
 		assert.Assert(t, errors.As(err, &syntactic), "%v", err)
 	})
@@ -188,6 +190,7 @@ func TestGeneratorParamsHeader(t *testing.T) {
 	assert.NilError(t, err)
 
 	type ctx = genhelper.BaseContext
+
 	_, b, err := genhelper.WrapFile[ctx]([]string{comment, "//go:build linux"}, "p").
 		Render(genhelper.NewBaseContext(genhelper.NewScope(), nil), []byte("var x = 1\n"))
 	assert.NilError(t, err)

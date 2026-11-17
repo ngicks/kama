@@ -91,6 +91,7 @@ func listSuffix() (os, arch map[string]bool) {
 	lines, err := listDist()
 	if err != nil {
 		slog.Warn("go tool dist list failed. Falling back to pre-cached list", slog.Any("err", err))
+
 		lines = preCachedList[:]
 	}
 
@@ -112,6 +113,7 @@ func listDist() ([]goToolDistListJson, error) {
 	}
 
 	var out []goToolDistListJson
+
 	err = json.Unmarshal(bin, &out)
 
 	return out, err
@@ -145,6 +147,7 @@ func stripBuildConstrains(f string) (base, sufFormer, sufLatter, sufTest, ext st
 	f, _ = strings.CutSuffix(f, ext)
 
 	base, hadTestSuffix := strings.CutSuffix(f, "_test")
+
 	sufTest = "_test"
 	if !hadTestSuffix {
 		sufTest = ""
@@ -155,6 +158,7 @@ func stripBuildConstrains(f string) (base, sufFormer, sufLatter, sufTest, ext st
 	})
 
 	var suffixedWithOs, suffixedWithArch bool
+
 	if idx := strings.LastIndex(base, "_"); idx >= 0 {
 		suf := base[idx:]
 		switch {
@@ -163,6 +167,7 @@ func stripBuildConstrains(f string) (base, sufFormer, sufLatter, sufTest, ext st
 		case suffixArch[suf]:
 			suffixedWithArch = true
 		}
+
 		if suffixedWithOs || suffixedWithArch {
 			sufLatter = base[idx:]
 			base = base[:idx]

@@ -14,6 +14,7 @@ func mustParse(t *testing.T, tag string) Tags {
 
 	tags, err := Parse(reflect.StructTag(tag))
 	assert.NilError(t, err)
+
 	return tags
 }
 
@@ -95,6 +96,7 @@ func TestTrailingEmptyOption(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, raw, "-")
 	assert.Equal(t, unescaped, "-")
+
 	_, _, err = dash.Get("json", "omitzero")
 	assert.ErrorIs(t, err, ErrNotFound)
 

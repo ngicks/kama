@@ -68,6 +68,7 @@ func TestFixtureUpToDate(t *testing.T) {
 
 			f, err := overlayfs.New(fx.dir)
 			assert.NilError(t, err)
+
 			defer f.Close()
 
 			pkgs, err := pkggopackages.Load(
@@ -81,6 +82,7 @@ func TestFixtureUpToDate(t *testing.T) {
 			i.Out(f)
 			files, _, err := i.generate()
 			assert.NilError(t, err)
+
 			r := &recordReporter{}
 			assert.NilError(t, i.Run(ctx, r))
 			assert.Equal(t, len(r.warnings), 0, "%v", r.warnings)
@@ -88,6 +90,7 @@ func TestFixtureUpToDate(t *testing.T) {
 			absPath := func(file File) string {
 				return filepath.Join(f.Root(), filepath.FromSlash(file.Path))
 			}
+
 			produced := slices.Sorted(
 				opiter.WrapSeq(
 					slices.Values(files),
@@ -95,6 +98,7 @@ func TestFixtureUpToDate(t *testing.T) {
 					Map(absPath).
 					Iter(),
 			)
+
 			assert.DeepEqual(t, produced, generatedFiles(t, f.Root()))
 
 			for _, name := range produced {
@@ -120,16 +124,20 @@ func TestFixtureUpToDate(t *testing.T) {
 // generatedFiles returns the generated files under root, sorted.
 func generatedFiles(t *testing.T, root string) []string {
 	t.Helper()
+
 	var out []string
+
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() &&
 			(strings.HasSuffix(p, FileSuffix+".go") ||
 				filepath.Base(p) == FlagSetFile || isHelpersFile(filepath.Base(p))) {
 			out = append(out, p)
 		}
+
 		return err
 	})
 	assert.NilError(t, err)
+
 	return out
 }
 
@@ -145,13 +153,17 @@ func TestFixtureExternalParity(t *testing.T) {
 		fileDir      = "internal/fixtureexternal"
 		pkgPath      = "github.com/ngicks/kama/kamalib/generator/partial/"
 	)
+
 	rel := func(root string) []string {
 		var out []string
+
 		for _, p := range generatedFiles(t, root) {
 			r, err := filepath.Rel(root, p)
 			assert.NilError(t, err)
+
 			out = append(out, filepath.ToSlash(r))
 		}
+
 		return out
 	}
 	names := rel(directiveDir)
@@ -168,6 +180,7 @@ func TestFixtureExternalParity(t *testing.T) {
 	hideHash := func(src string) string { return hash.ReplaceAllString(src, "${1}<hash>") }
 	normalize := func(src string) string {
 		rest, helpers := splitHelpers(t, src)
+
 		hidden := slices.Sorted(
 			opiter.WrapSeq(
 				slices.Values(helpers),
@@ -175,8 +188,10 @@ func TestFixtureExternalParity(t *testing.T) {
 				Map(hideHash).
 				Iter(),
 		)
+
 		return hideHash(rest) + "\n" + strings.Join(hidden, "\n")
 	}
+
 	for _, name := range names {
 		want, err := os.ReadFile(filepath.Join(directiveDir, name))
 		assert.NilError(t, err)
@@ -195,26 +210,33 @@ func TestFixtureExternalParity(t *testing.T) {
 // declarations, each with its doc comment.
 func splitHelpers(t *testing.T, src string) (string, []string) {
 	t.Helper()
+
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
 	assert.NilError(t, err)
+
 	var (
 		rest    strings.Builder
 		helpers []string
 		last    int
 	)
+
 	for _, d := range f.Decls {
 		fd, ok := d.(*ast.FuncDecl)
 		if !ok || fd.Recv != nil || !strings.HasPrefix(fd.Name.Name, "kamaPartial") {
 			continue
 		}
+
 		start, end := fset.Position(fd.Doc.Pos()).Offset, fset.Position(fd.End()).Offset
 		rest.WriteString(src[last:start])
 		helpers = append(helpers, src[start:end])
 		last = end
 	}
+
 	rest.WriteString(src[last:])
+
 	blank := regexp.MustCompile(`\n{3,}`)
+
 	return blank.ReplaceAllString(rest.String(), "\n\n"), helpers
 }
 

@@ -102,6 +102,7 @@ func TestCollectionRoundTrip(t *testing.T) {
 
 func TestCollectionFromValueStates(t *testing.T) {
 	v := fullShelf()
+
 	var p model.ShelfPartial
 	p.FromValue(v)
 
@@ -169,6 +170,7 @@ func TestCollectionMergeDefault(t *testing.T) {
 	// Unnamed collections overwrite.
 	for _, r := range states([]*model.Book{{Title: "r"}}) {
 		l := und.Defined([]*model.Book{{Title: "l"}})
+
 		got := model.ShelfPartial{BookRefs: l}.Merge(model.ShelfPartial{BookRefs: r})
 		if r.IsUndefined() {
 			equal(t, got.BookRefs, l)
@@ -184,14 +186,17 @@ func TestCollectionMergeDefault(t *testing.T) {
 		for rn, r := range states(model.BooksPartial{pages}) {
 			got := model.ShelfPartial{List: l, ListPtr: l}.
 				Merge(model.ShelfPartial{List: r, ListPtr: r})
+
 			want := r
 			if rn == "undefined" {
 				want = l
 			}
+
 			equal(t, got.List, want)
 			equal(t, got.ListPtr, want)
 		}
 	}
+
 	l := model.ShelfPartial{
 		Map:    und.Defined(model.BookMapPartial{"a": book("l")}),
 		RefMap: und.Defined(model.BookRefMapPartial{"a": book("l")}),
@@ -235,6 +240,7 @@ func TestCollectionMergeAppendDirective(t *testing.T) {
 	for ln, l := range states([]model.Book{book("l")}) {
 		for rn, r := range states([]model.Book{book("r")}) {
 			got := model.CatalogPartial{Books: l}.Merge(model.CatalogPartial{Books: r}).Books
+
 			switch {
 			case rn == "undefined":
 				equal(t, got, l)
@@ -250,6 +256,7 @@ func TestCollectionMergeAppendDirective(t *testing.T) {
 		for rn, r := range states(model.BooksPartial{bookP("r")}) {
 			got := model.CatalogPartial{List: l, ListPtr: l}.
 				Merge(model.CatalogPartial{List: r, ListPtr: r})
+
 			switch {
 			case rn == "undefined":
 				equal(t, got.List, l)
@@ -447,6 +454,7 @@ func TestCollectionJSON(t *testing.T) {
 	p.FromValue(fullShelf())
 	b, err := jsonv2.Marshal(p)
 	assert.NilError(t, err)
+
 	var back model.ShelfPartial
 	assert.NilError(t, jsonv2.Unmarshal(b, &back))
 	equal(t, back.ToValue(), fullShelf())
@@ -462,6 +470,7 @@ func TestCollectionJSON(t *testing.T) {
 	b, err = jsonv2.Marshal(p)
 	assert.NilError(t, err)
 	assert.Equal(t, string(b), `{"list":[null],"ref_map":{"u":null}}`)
+
 	back = model.ShelfPartial{}
 	assert.NilError(t, jsonv2.Unmarshal(b, &back))
 	equal(t, back, model.ShelfPartial{
@@ -480,6 +489,7 @@ func TestCollectionJSON(t *testing.T) {
 	b, err = jsonv2.Marshal(p)
 	assert.NilError(t, err)
 	assert.Assert(t, strings.Contains(string(b), `"list_ptr":[],"ref_map_ptr":{}`), string(b))
+
 	back = model.ShelfPartial{}
 	assert.NilError(t, jsonv2.Unmarshal(b, &back))
 	got := back.ToValue()

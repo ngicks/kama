@@ -11,6 +11,7 @@ func parseAstWrapped(fset *token.FileSet, k partialKind, b []byte) (*ast.File, e
 	if fset == nil {
 		return nil, fmt.Errorf("gofragment: parse %s: %w", k, ErrNoFileSet)
 	}
+
 	return parseWrapped(fset, k, b)
 }
 
@@ -24,6 +25,7 @@ func ParseAstExpr(fset *token.FileSet, b []byte) (ast.Expr, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return f.Decls[0].(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Values[0], nil
 }
 
@@ -38,10 +40,12 @@ func ParseAstStmts(fset *token.FileSet, b []byte) ([]ast.Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	stmts := f.Decls[0].(*ast.FuncDecl).Body.List
 	if stmts == nil {
 		stmts = []ast.Stmt{}
 	}
+
 	return stmts, nil
 }
 
@@ -56,10 +60,12 @@ func ParseAstDecls(fset *token.FileSet, b []byte) ([]ast.Decl, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	decls := f.Decls
 	if decls == nil {
 		decls = []ast.Decl{}
 	}
+
 	return decls, nil
 }
 
@@ -72,12 +78,14 @@ func PrintAst(fset *token.FileSet, n ast.Node) ([]byte, error) {
 	if fset == nil {
 		return nil, fmt.Errorf("gofragment: print: %w", ErrNoFileSet)
 	}
+
 	switch n := n.(type) {
 	case ast.Expr:
 		var buf bytes.Buffer
 		if err := printConfig(0).Fprint(&buf, fset, n); err != nil {
 			return nil, fmt.Errorf("gofragment: print expression: %w", err)
 		}
+
 		return buf.Bytes(), nil
 	case ast.Stmt:
 		return PrintAstStmts(fset, []ast.Stmt{n})
@@ -96,13 +104,16 @@ func PrintAstStmts(fset *token.FileSet, stmts []ast.Stmt) ([]byte, error) {
 	if fset == nil {
 		return nil, fmt.Errorf("gofragment: print statements: %w", ErrNoFileSet)
 	}
+
 	if len(stmts) == 0 {
 		return []byte{}, nil
 	}
+
 	b, err := printBlock(fset, &ast.BlockStmt{List: stmts}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gofragment: print statements: %w", err)
 	}
+
 	return b, nil
 }
 
@@ -114,12 +125,15 @@ func PrintAstDecls(fset *token.FileSet, decls []ast.Decl) ([]byte, error) {
 	if fset == nil {
 		return nil, fmt.Errorf("gofragment: print declarations: %w", ErrNoFileSet)
 	}
+
 	if len(decls) == 0 {
 		return []byte{}, nil
 	}
+
 	var buf bytes.Buffer
 	if err := printConfig(0).Fprint(&buf, fset, decls); err != nil {
 		return nil, fmt.Errorf("gofragment: print declarations: %w", err)
 	}
+
 	return trimLines(buf.Bytes()), nil
 }

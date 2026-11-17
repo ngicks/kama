@@ -72,6 +72,7 @@ func (i *instance) Param(p ProcParam) error {
 	if err := opts.Validate(); err != nil {
 		return err
 	}
+
 	i.opts = opts.WithDefaults()
 
 	if p.OptionFile != nil {
@@ -79,6 +80,7 @@ func (i *instance) Param(p ProcParam) error {
 		if in.Base == "" {
 			return fmt.Errorf("%w: option_file: base is required", ErrOption)
 		}
+
 		if len(in.Formats) == 0 {
 			in.Formats = []fileloader.Format{
 				fileloader.FormatYaml,
@@ -90,8 +92,10 @@ func (i *instance) Param(p ProcParam) error {
 		if _, err := in.Candidates(); err != nil {
 			return fmt.Errorf("%w: option_file: %w", ErrOption, err)
 		}
+
 		i.optionFile = &in
 	}
+
 	return nil
 }
 
@@ -104,9 +108,11 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 	if err != nil {
 		return err
 	}
+
 	for _, w := range warnings {
 		r.Warn(w)
 	}
+
 	return base.Stage(ctx, i.fs, files, r)
 }
 
@@ -119,15 +125,19 @@ func (i *instance) generate() ([]File, []error, error) {
 		if err != nil {
 			return nil, nil, err
 		}
+
 		opts.OptionFile = f
 	}
+
 	files, warnings, err := Generate(i.pkgs.Pkgs, opts)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	files, err = base.RelFiles(i.fs.Root(), files)
 	if err != nil {
 		return nil, nil, fmt.Errorf("partial: %w", err)
 	}
+
 	return files, warnings, nil
 }

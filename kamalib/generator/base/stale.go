@@ -46,25 +46,31 @@ func (c StaleCheck) Files(pkgs []*packages.Package, produced []File) []error {
 	}
 
 	type stale struct{ path, name string }
+
 	var found []stale
+
 	for _, pkg := range pkgs {
 		for _, f := range pkg.Syntax {
 			tf := pkg.Fset.File(f.Pos())
 			if tf == nil || made[filepath.Clean(tf.Name())] || !c.marked(f) {
 				continue
 			}
+
 			if c.Keep != nil && c.Keep(pkg, tf.Name()) {
 				continue
 			}
+
 			shown := tf.Name()
 			if pkg.Module != nil && pkg.Module.Dir != "" {
 				if rel, err := filepath.Rel(pkg.Module.Dir, shown); err == nil && inside(rel) {
 					shown = rel
 				}
 			}
+
 			found = append(found, stale{path: tf.Name(), name: shown})
 		}
 	}
+
 	slices.SortFunc(found, func(a, b stale) int { return cmp.Compare(a.path, b.path) })
 
 	return opiter.WrapSeq(
@@ -94,19 +100,24 @@ func (c StaleCheck) Dir(fsys fs.FS, dir string, produced []File) ([]error, error
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("base: read %q: %w", dir, err)
 	}
+
 	var out []error
+
 	for _, e := range entries {
 		name := path.Join(dir, e.Name())
 		if e.IsDir() || !strings.HasSuffix(name, ".go") || made[name] {
 			continue
 		}
+
 		src, err := fs.ReadFile(fsys, name)
 		if err != nil {
 			return nil, fmt.Errorf("base: read %q: %w", name, err)
 		}
+
 		f, err := parser.ParseFile(
 			token.NewFileSet(), name, src, parser.ParseComments|parser.SkipObjectResolution,
 		)
@@ -115,8 +126,10 @@ func (c StaleCheck) Dir(fsys fs.FS, dir string, produced []File) ([]error, error
 		if err != nil || !c.marked(f) {
 			continue
 		}
+
 		out = append(out, c.warning(name))
 	}
+
 	return out, nil
 }
 
@@ -143,6 +156,7 @@ func (c StaleCheck) marked(f *ast.File) bool {
 		case *ast.ValueSpec:
 			return marked(s.Doc)
 		}
+
 		return false
 	}
 	markedDecl := func(node ast.Decl) bool {
@@ -155,8 +169,10 @@ func (c StaleCheck) marked(f *ast.File) bool {
 			).
 				ContainsFunc(markedSpec)
 		}
+
 		return false
 	}
+
 	return opiter.WrapSeq(
 		slices.Values(f.Decls),
 	).

@@ -73,29 +73,36 @@ const GeneratedTimePrefix = "// generated: "
 func (g GeneratorParams) Comment() (string, error) {
 	var b strings.Builder
 	b.WriteString(GeneratedComment(g.Name))
+
 	if len(g.Argv) > 0 {
 		words := opiter.WrapSeq(
 			slices.Values(g.Argv),
 		).
 			Map(word).
 			Collect()
+
 		b.WriteString("\n// argv: ")
 		b.WriteString(strings.Join(words, " "))
 	}
+
 	if len(g.Params) > 0 {
 		b.WriteString("\n// params:")
+
 		for key, param := range opiter.MapsSorted(g.Params) {
 			value, err := json.Marshal(param, json.Deterministic(true))
 			if err != nil {
 				return "", fmt.Errorf("genhelper: generator parameter %q: %w", key, err)
 			}
+
 			fmt.Fprintf(&b, "\n//\t%s: %s", word(key), value)
 		}
 	}
+
 	if !g.Generated.IsZero() {
 		b.WriteString("\n" + GeneratedTimePrefix)
 		b.WriteString(g.Generated.UTC().Format(time.RFC3339))
 	}
+
 	return b.String(), nil
 }
 
@@ -117,12 +124,15 @@ func dropGenerated(src []byte) []byte {
 		if bytes.HasPrefix(line, []byte("package ")) {
 			break
 		}
+
 		if bytes.HasPrefix(line, []byte(GeneratedTimePrefix)) {
 			start := len(src) - len(rest)
 			return slices.Concat(src[:start], next)
 		}
+
 		rest = next
 	}
+
 	return src
 }
 
@@ -134,5 +144,6 @@ func word(s string) string {
 	if s == "" || quoted != `"`+s+`"` || strings.ContainsAny(s, " :") {
 		return quoted
 	}
+
 	return s
 }

@@ -66,6 +66,7 @@ func (s *selection) target(t types.Type) (*types.Named, bool) {
 	}
 	// Obj of an instantiated type is the TypeName of its origin.
 	_, ok = s.targets[typegraph.QualifiedTypeFromObject(named.Obj())]
+
 	return named, ok
 }
 
@@ -78,6 +79,7 @@ func (s *selection) partialOf(t types.Type, pkgPath string) (*types.Named, bool)
 	if !ok {
 		return nil, false
 	}
+
 	return named, named.Obj().Exported() || named.Obj().Pkg().Path() == pkgPath
 }
 
@@ -137,25 +139,31 @@ func collectMarks(pkgs []*packages.Package, file *OptionFile) (marks, error) {
 	if err != nil {
 		return marks{}, err
 	}
+
 	fileRaws, err := file.raws(pkgs)
 	if err != nil {
 		return marks{}, err
 	}
+
 	raws = append(raws, fileRaws...)
 
 	var errs []error
+
 	for _, r := range raws {
 		if sub, ok := strings.CutPrefix(r.Directive, directive+":"); ok {
 			if err := m.subDirective(sub, r); err != nil {
 				errs = append(errs, err)
 			}
+
 			continue
 		}
+
 		if r.Directive != directive {
 			continue
 		}
 
 		args := strings.TrimSpace(r.Args)
+
 		pos := r.Origin.Pos
 		switch {
 		case r.Key.Field != "":
@@ -165,6 +173,7 @@ func collectMarks(pkgs []*packages.Package, file *OptionFile) (marks, error) {
 			))
 		case r.Key.Type != "":
 			id := typegraph.NewQualifiedType(r.Key.PkgPath, r.Key.Type)
+
 			switch args {
 			case "":
 				if _, ok := m.marked[id]; !ok {
@@ -195,12 +204,14 @@ func collectMarks(pkgs []*packages.Package, file *OptionFile) (marks, error) {
 			}
 		}
 	}
+
 	return m, errors.Join(errs...)
 }
 
 // subDirective records //kama:partial:<sub>.
 func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
 	pos := r.Origin.Pos
+
 	switch sub {
 	case "flag":
 		return m.flag(r)
@@ -216,7 +227,9 @@ func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
 			"%w: %s: //kama:partial:merge applies to struct fields only", ErrDirective, pos,
 		)
 	}
+
 	field := r.Key.PkgPath + "." + r.Key.Type + "." + r.Key.Field
+
 	strategy := strings.TrimSpace(r.Args)
 	switch strategy {
 	case string(MergeOverwrite), string(MergeAppend), string(MergeNestedRecursive):
@@ -226,6 +239,7 @@ func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
 			ErrDirective, origin(r), spelling(r), strategy, field,
 		)
 	}
+
 	if prev, ok := m.merges[r.Key]; ok {
 		if prev.Origin.Source == r.Origin.Source {
 			return fmt.Errorf(
@@ -233,16 +247,20 @@ func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
 				ErrDirective, pos, field, prev.Origin.Pos,
 			)
 		}
+
 		prevStrategy := strings.TrimSpace(prev.Args)
 		if prevStrategy == strategy {
 			return nil
 		}
+
 		return sourceConflict(
 			"the merge strategy of field "+field,
 			prev, strconv.Quote(prevStrategy), r, strconv.Quote(strategy),
 		)
 	}
+
 	m.merges[r.Key] = r
+
 	return nil
 }
 
@@ -254,7 +272,9 @@ func (m *marks) flag(r kamaopt.Raw) error {
 			"%w: %s: //kama:partial:flag applies to struct fields only", ErrDirective, pos,
 		)
 	}
+
 	field := r.Key.PkgPath + "." + r.Key.Type + "." + r.Key.Field
+
 	prev, hasPrev := m.flags[r.Key]
 	if hasPrev && prev.raw.Origin.Source == r.Origin.Source {
 		return fmt.Errorf(
@@ -262,6 +282,7 @@ func (m *marks) flag(r kamaopt.Raw) error {
 			ErrDirective, pos, field, prev.raw.Origin.Pos,
 		)
 	}
+
 	var (
 		o   flagOption
 		err error
@@ -271,6 +292,7 @@ func (m *marks) flag(r kamaopt.Raw) error {
 	} else {
 		o, err = parseFlag(r.Args)
 	}
+
 	if err != nil {
 		return fmt.Errorf(
 			"%w: %s: %s on field %s: %w",
@@ -281,14 +303,18 @@ func (m *marks) flag(r kamaopt.Raw) error {
 			err,
 		)
 	}
+
 	o.raw = r
 	if hasPrev {
 		if prev.same(o) {
 			return nil
 		}
+
 		return sourceConflict("the flag of field "+field, prev.raw, prev.String(), r, o.String())
 	}
+
 	m.flags[r.Key] = o
+
 	return nil
 }
 
@@ -296,6 +322,7 @@ func (m *marks) flag(r kamaopt.Raw) error {
 // declarations carrying the marker of a generator registered in reg.
 func generatedObjects(pkgs []*packages.Package, reg *genmark.Registry) map[types.Object]bool {
 	out := map[types.Object]bool{}
+
 	for _, pkg := range pkgs {
 		for _, f := range pkg.Syntax {
 			for _, decl := range f.Decls {
@@ -305,19 +332,24 @@ func generatedObjects(pkgs []*packages.Package, reg *genmark.Registry) map[types
 							out[obj] = true
 						}
 					}
+
 					continue
 				}
+
 				gd, ok := decl.(*ast.GenDecl)
 				if !ok || gd.Tok != token.TYPE {
 					continue
 				}
+
 				_, declGenerated := reg.Generated(gd.Doc)
 				for _, spec := range gd.Specs {
 					ts := spec.(*ast.TypeSpec)
+
 					_, generated := reg.Generated(ts.Doc)
 					if !declGenerated && !generated {
 						continue
 					}
+
 					if obj := pkg.TypesInfo.Defs[ts.Name]; obj != nil {
 						out[obj] = true
 					}
@@ -325,6 +357,7 @@ func generatedObjects(pkgs []*packages.Package, reg *genmark.Registry) map[types
 			}
 		}
 	}
+
 	return out
 }
 
@@ -335,6 +368,7 @@ func partialKind(n *typegraph.Node) bool {
 	case *types.Struct, *types.Slice, *types.Map:
 		return true
 	}
+
 	return false
 }
 
@@ -349,6 +383,7 @@ func followed(r *typegraph.EdgeRoute) bool {
 		typegraph.EdgeKindMapValue |
 		typegraph.EdgeKindPointer |
 		typegraph.EdgeKindAlias
+
 	return opiter.WrapSeq(
 		slices.Values(r.Nodes),
 	).
@@ -359,6 +394,7 @@ func followed(r *typegraph.EdgeRoute) bool {
 
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	generated := generatedObjects(pkgs, opts.Registry)
+
 	g, err := typegraph.New(pkgs, nil, func(_ *ast.TypeSpec, obj types.Object) (bool, error) {
 		return !generated[obj], nil
 	})
@@ -384,18 +420,22 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	}
 
 	var errs []error
+
 	for _, r := range m.explicit {
 		id := typegraph.NewQualifiedType(r.Key.PkgPath, r.Key.Type)
 		name := id.PackagePath + "." + id.TypeName
+
 		pos := origin(r)
 		if ig, ok := m.ignored[id]; ok {
 			if ig.Origin.Source != r.Origin.Source {
 				errs = append(errs, sourceConflict("type "+name, r, "marked", ig, "ignored"))
 				continue
 			}
+
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s is both marked and ignored", ErrDirective, pos, name,
 			))
+
 			continue
 		}
 
@@ -404,20 +444,26 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 			if obj := lookupType(pkgs, id); obj != nil && generated[obj] {
 				continue
 			}
+
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s is an alias; mark the type it denotes", ErrUnsupported, pos, name,
 			))
+
 			continue
 		}
+
 		if !partialKind(n) {
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s has underlying type %s; want a struct, slice or map",
 				ErrUnsupported, pos, name, n.Detail.Type.Underlying(),
 			))
+
 			continue
 		}
+
 		sel.targets[id] = n
 	}
+
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
 	}
@@ -426,6 +472,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 		if m.isIgnored(id) || !partialKind(n) {
 			continue
 		}
+
 		if m.pkgs[id.PackagePath] || m.files[sel.filename(n)] {
 			sel.targets[id] = n
 		}
@@ -435,11 +482,13 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	for len(queue) > 0 {
 		n := queue[0]
 		queue = queue[1:]
+
 		for id, e := range n.Children {
 			if sel.targets[id] != nil || m.isIgnored(id) || !partialKind(e.Child) ||
 				!slices.ContainsFunc(e.Routes, followed) {
 				continue
 			}
+
 			sel.targets[id] = e.Child
 			queue = append(queue, e.Child)
 		}
@@ -448,15 +497,19 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	if err := sel.checkMerges(); err != nil {
 		return nil, err
 	}
+
 	if err := sel.checkFlagTargets(); err != nil {
 		return nil, err
 	}
+
 	if err := sel.checkFieldMaskTargets(); err != nil {
 		return nil, err
 	}
+
 	if err := sel.checkNames(generated); err != nil {
 		return nil, err
 	}
+
 	if err := sel.mapCycles(); err != nil {
 		return nil, err
 	}
@@ -465,6 +518,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	if err := sel.checkFieldMaskSegments(); err != nil {
 		return nil, err
 	}
+
 	return sel, nil
 }
 
@@ -476,11 +530,13 @@ func (s *selection) checkMerges() error {
 	}
 	mergeErr := func(k kamaopt.Key) error {
 		r := s.merges[k]
+
 		return fmt.Errorf(
 			"%w: %s: %s on field %s.%s.%s; %s has no partial variant",
 			ErrDirective, origin(r), spelling(r), k.PkgPath, k.Type, k.Field, k.Type,
 		)
 	}
+
 	keys := slices.SortedFunc(
 		opiter.WrapSeq(
 			maps.Keys(s.merges),
@@ -489,6 +545,7 @@ func (s *selection) checkMerges() error {
 			Iter(),
 		compareKey,
 	)
+
 	return errors.Join(
 		opiter.WrapSeq(
 			slices.Values(keys),
@@ -502,18 +559,21 @@ func (s *selection) checkMerges() error {
 // partial variants and records the targets with flags in s.flagged.
 func (s *selection) checkFlagTargets() error {
 	var errs []error
+
 	for _, k := range slices.SortedFunc(maps.Keys(s.flags), compareKey) {
 		id := typegraph.NewQualifiedType(k.PkgPath, k.Type)
 		if s.targets[id] != nil {
 			s.flagged[id] = true
 			continue
 		}
+
 		r := s.flags[k].raw
 		errs = append(errs, fmt.Errorf(
 			"%w: %s: %s on field %s.%s.%s; %s has no partial variant",
 			ErrDirective, origin(r), spelling(r), k.PkgPath, k.Type, k.Field, k.Type,
 		))
 	}
+
 	return errors.Join(errs...)
 }
 
@@ -534,9 +594,11 @@ func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Obje
 			func(pkg *packages.Package) bool { return pkg.PkgPath == id.PackagePath },
 		).
 		First()
+
 	if pkg.IsNone() {
 		return nil
 	}
+
 	return pkg.Value().Types.Scope().Lookup(id.TypeName)
 }
 
@@ -549,6 +611,7 @@ func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Obje
 // known.
 func (s *selection) checkNames(generated map[types.Object]bool) error {
 	var errs []error
+
 	conflict := func(fset *token.FileSet, pos token.Pos, format string, args ...any) {
 		errs = append(errs, fmt.Errorf(
 			"%w: %s: "+format,
@@ -557,25 +620,31 @@ func (s *selection) checkNames(generated map[types.Object]bool) error {
 	}
 
 	targetPkgs := map[string]*packages.Package{}
+
 	for _, n := range s.sorted() {
 		pkg := n.Detail.Pkg
 		targetPkgs[pkg.PkgPath] = pkg
 		name := partialName(n.Id.TypeName)
+
 		obj := pkg.Types.Scope().Lookup(name)
 		if obj == nil {
 			continue
 		}
+
 		if !generated[obj] {
 			conflict(pkg.Fset, obj.Pos(),
 				"%s.%s is already declared for the partial variant of %s",
 				n.Id.PackagePath, name, n.Id.TypeName,
 			)
+
 			continue
 		}
+
 		named, ok := obj.Type().(*types.Named)
 		if !ok {
 			continue
 		}
+
 		for m := range named.Methods() {
 			if slices.Contains(s.partialMethodNames(n), m.Name()) && !generated[m] {
 				conflict(pkg.Fset, m.Pos(),
@@ -594,21 +663,25 @@ func (s *selection) checkNames(generated map[types.Object]bool) error {
 				pkgPath, flagSetName,
 			)
 		}
+
 		for _, f := range pkg.Syntax {
 			base := filepath.Base(pkg.Fset.Position(f.FileStart).Filename)
 			if base != FlagSetFile && !isHelpersFile(base) {
 				continue
 			}
+
 			for _, decl := range f.Decls {
 				if s.ownDecl(base, decl) {
 					continue
 				}
+
 				conflict(pkg.Fset, decl.Pos(),
 					"%s holds a declaration the generator did not write", base,
 				)
 			}
 		}
 	}
+
 	return errors.Join(errs...)
 }
 
@@ -621,12 +694,15 @@ func (s *selection) ownDecl(base string, decl ast.Decl) bool {
 		if d.Tok == token.IMPORT {
 			return true
 		}
+
 		_, ok := s.opts.Registry.Generated(d.Doc)
+
 		return ok && d.Tok == token.TYPE && base == FlagSetFile
 	case *ast.FuncDecl:
 		_, ok := s.opts.Registry.Generated(d.Doc)
 		return ok && d.Recv == nil && isHelpersFile(base)
 	}
+
 	return false
 }
 
@@ -652,14 +728,18 @@ func (s *selection) mapCycles() error {
 		visiting = iota + 1
 		done
 	)
+
 	state := map[typegraph.QualifiedType]int{}
+
 	var path []typegraph.QualifiedType
 
 	var visit func(n *typegraph.Node) error
+
 	visit = func(n *typegraph.Node) error {
 		switch state[n.Id] {
 		case visiting:
 			i := slices.Index(path, n.Id)
+
 			names := opiter.WrapSeq(
 				slices.Values(append(path[i:], n.Id)),
 			).
@@ -667,6 +747,7 @@ func (s *selection) mapCycles() error {
 					func(id typegraph.QualifiedType) string { return id.TypeName },
 				).
 				Collect()
+
 			return fmt.Errorf(
 				"%w: %s (%s): partial variants would be recursive through embedded fields: %s",
 				ErrUnsupported, nodeName(n),
@@ -677,17 +758,21 @@ func (s *selection) mapCycles() error {
 		}
 
 		state[n.Id] = visiting
+
 		path = append(path, n.Id)
 		for _, e := range s.valueChildren(n) {
 			if s.refs[e.field] {
 				continue
 			}
+
 			if err := visit(e.child); err != nil {
 				return err
 			}
 		}
+
 		path = path[:len(path)-1]
 		state[n.Id] = done
+
 		return nil
 	}
 
@@ -696,6 +781,7 @@ func (s *selection) mapCycles() error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -709,29 +795,36 @@ func (s *selection) components() map[typegraph.QualifiedType]int {
 		stack   []typegraph.QualifiedType
 		comp    = map[typegraph.QualifiedType]int{}
 		next    int
+		visit   func(n *typegraph.Node)
 	)
-	var visit func(n *typegraph.Node)
+
 	visit = func(n *typegraph.Node) {
 		index[n.Id], low[n.Id] = next, next
 		next++
+
 		stack = append(stack, n.Id)
+
 		onStack[n.Id] = true
 		for _, e := range s.valueChildren(n) {
 			c := e.child.Id
 			if _, seen := index[c]; !seen {
 				visit(e.child)
+
 				low[n.Id] = min(low[n.Id], low[c])
 			} else if onStack[c] {
 				low[n.Id] = min(low[n.Id], index[c])
 			}
 		}
+
 		if low[n.Id] != index[n.Id] {
 			return
 		}
+
 		for {
 			id := stack[len(stack)-1]
 			stack = stack[:len(stack)-1]
 			onStack[id] = false
+
 			comp[id] = index[n.Id]
 			if id == n.Id {
 				return
@@ -743,6 +836,7 @@ func (s *selection) components() map[typegraph.QualifiedType]int {
 			visit(n)
 		}
 	}
+
 	return comp
 }
 
@@ -762,15 +856,20 @@ func (s *selection) valueChildren(n *typegraph.Node) []valueEdge {
 	if !ok {
 		return nil
 	}
+
 	var out []valueEdge
+
 	for v := range st.Fields() {
 		elem := deref(v.Type())
+
 		named, ok := s.partialOf(elem, n.Id.PackagePath)
 		if !ok {
 			continue
 		}
+
 		out = append(out, valueEdge{field: v, child: s.node(named), pointer: elem != v.Type()})
 	}
+
 	return out
 }
 
@@ -779,5 +878,6 @@ func deref(t types.Type) types.Type {
 	if p, ok := types.Unalias(t).(*types.Pointer); ok {
 		return p.Elem()
 	}
+
 	return t
 }

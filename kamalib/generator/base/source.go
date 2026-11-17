@@ -22,6 +22,7 @@ func SourcePackages(pkgs []*packages.Package) []*packages.Package {
 		slices.Values(pkgs),
 	).
 		Filter(isSourceVariant)
+
 	return sources.
 		UniqueFunc(pkgPathOf).
 		Collect()
@@ -39,12 +40,14 @@ func BuildConstraint(f *ast.File) (string, bool) {
 		if cg.Pos() >= f.Package {
 			break
 		}
+
 		for _, c := range cg.List {
 			if constraint.IsGoBuild(c.Text) {
 				return c.Text, true
 			}
 		}
 	}
+
 	return "", false
 }
 
@@ -58,12 +61,15 @@ func BuildConstraint(f *ast.File) (string, bool) {
 // a package-level type string, is returned too.
 func ShadowedPredeclared(pkg *packages.Package, contents [][]byte) ([]types.Object, error) {
 	used := map[string]bool{}
+
 	for _, c := range contents {
 		f, err := parser.ParseFile(token.NewFileSet(), "", c, parser.SkipObjectResolution)
 		if err != nil {
 			return nil, fmt.Errorf("base: parse generated file of %s: %w", pkg.PkgPath, err)
 		}
+
 		declared := map[*ast.Ident]bool{}
+
 		ast.Inspect(f, func(n ast.Node) bool {
 			switch n := n.(type) {
 			case *ast.SelectorExpr:
@@ -83,6 +89,7 @@ func ShadowedPredeclared(pkg *packages.Package, contents [][]byte) ([]types.Obje
 					used[n.Name] = true
 				}
 			}
+
 			return true
 		})
 	}
@@ -96,10 +103,12 @@ func ShadowedPredeclared(pkg *packages.Package, contents [][]byte) ([]types.Obje
 			).
 			Iter(),
 	)
+
 	objs := opiter.WrapSeq(
 		slices.Values(predeclared),
 	).
 		Map(pkg.Types.Scope().Lookup)
+
 	return objs.
 		Filter(
 			func(obj types.Object) bool { return obj != nil },

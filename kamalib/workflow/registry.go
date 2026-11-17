@@ -49,6 +49,7 @@ func (r *Registry) Register(kind string, newProc func() Proc) error {
 	}
 
 	r.procs[kind] = newProc
+
 	return nil
 }
 
@@ -58,5 +59,6 @@ func (r *Registry) Lookup(kind string) (func() Proc, bool) {
 	defer r.mu.RUnlock()
 
 	newProc, ok := r.procs[kind]
+
 	return newProc, ok
 }

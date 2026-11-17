@@ -82,15 +82,19 @@ func (e Entry) validate() error {
 	if e.FileName == "" || strings.ContainsAny(e.FileName, `/\`) {
 		return fmt.Errorf("%w: file name %q", ErrInvalidEntry, e.FileName)
 	}
+
 	if !token.IsIdentifier(e.Name) {
 		return fmt.Errorf("%w: name %q", ErrInvalidEntry, e.Name)
 	}
+
 	if _, err := parser.ParseExpr(e.Type); err != nil {
 		return fmt.Errorf("%w: type %q: %w", ErrInvalidEntry, e.Type, err)
 	}
+
 	if _, err := parser.ParseExpr(e.DefaultExpr); err != nil {
 		return fmt.Errorf("%w: default expr %q: %w", ErrInvalidEntry, e.DefaultExpr, err)
 	}
+
 	return nil
 }
 
@@ -114,9 +118,11 @@ func (o Options) withDefaults() Options {
 	if o.Now == nil {
 		o.Now = time.Now
 	}
+
 	if o.Registry == nil {
 		o.Registry = genmark.DefaultRegistry
 	}
+
 	return o
 }
 
@@ -124,9 +130,11 @@ func (o Options) validate() error {
 	if !token.IsIdentifier(o.Package) {
 		return fmt.Errorf("contextkey: package %q is not an identifier", o.Package)
 	}
+
 	if !token.IsIdentifier(o.KeyTypeFunc) {
 		return fmt.Errorf("contextkey: key type func %q is not an identifier", o.KeyTypeFunc)
 	}
+
 	return nil
 }
 
@@ -136,7 +144,9 @@ func Render(entries []Entry, opts Options) (map[string][]byte, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
+
 	opts = opts.withDefaults()
+
 	hdr, err := base.Header(generatorPath, map[string]any{
 		"package":       opts.Package,
 		"key_type_func": opts.KeyTypeFunc,
@@ -144,6 +154,7 @@ func Render(entries []Entry, opts Options) (map[string][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	header := strings.Join(hdr, "\n")
 
 	out := make(map[string][]byte, len(entries))
@@ -161,6 +172,7 @@ func Render(entries []Entry, opts Options) (map[string][]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("contextkey: render %q: %w", e.FileName, err)
 		}
+
 		out[name] = src
 	}
 
@@ -170,6 +182,7 @@ func Render(entries []Entry, opts Options) (map[string][]byte, error) {
 func renderEntry(e Entry, opts Options, header string) ([]byte, error) {
 	imports := slices.Concat([]string{"context"}, e.Imports)
 	slices.Sort(imports)
+
 	imports = opiter.WrapSeq(
 		slices.Values(slices.Compact(imports)),
 	).
@@ -177,6 +190,7 @@ func renderEntry(e Entry, opts Options, header string) ([]byte, error) {
 		Collect()
 
 	var buf bytes.Buffer
+
 	err := fileTemplate.Execute(&buf, templateData{
 		Entry:       e,
 		Header:      header,

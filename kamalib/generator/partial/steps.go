@@ -33,6 +33,7 @@ func (p *mapper) funcContext(tparams []string) genCtx {
 	s.ReserveUniverse()
 	s.ReserveTypes(p.pkg.Types.Scope())
 	s.Reserve(tparams...)
+
 	return genhelper.NewBaseContext(s, &genhelper.Package{Imports: p.m, Path: p.pkg.PkgPath})
 }
 
@@ -56,24 +57,31 @@ const commentWidth = 76
 func wrapComment(text string) string {
 	// prefix is the length of "// " before each line.
 	const prefix = 3
+
 	var lines []string
+
 	for i, para := range strings.Split(text, "\n\n") {
 		if i > 0 {
 			lines = append(lines, "")
 		}
+
 		line := ""
 		for word := range strings.FieldsSeq(para) {
 			if line != "" && prefix+len(line)+1+len(word) > commentWidth {
 				lines = append(lines, line)
 				line = ""
 			}
+
 			if line != "" {
 				line += " "
 			}
+
 			line += word
 		}
+
 		lines = append(lines, line)
 	}
+
 	return strings.Join(lines, "\n")
 }
 
@@ -90,5 +98,6 @@ func along(
 	if len(route) == 0 {
 		return leaf(in)
 	}
+
 	return wrap(in, func(in genExpr) genStep { return along(route[1:], in, leaf, wrap) })
 }

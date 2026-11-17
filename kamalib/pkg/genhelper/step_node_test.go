@@ -37,6 +37,7 @@ func newPackage(t *testing.T, fset *token.FileSet) (*genhelper.Package, *types.P
 	dest.SetImports([]*types.Package{opt})
 	imports, err := importdecl.NewParser(dest).ParseDst(nil)
 	assert.NilError(t, err)
+
 	return &genhelper.Package{Imports: imports, Path: destPath, Fset: fset}, opt
 }
 
@@ -225,6 +226,7 @@ func TestAppendDecls(t *testing.T) {
 		pkg, _ := newPackage(t, nil)
 		f, err := decorator.Parse(src)
 		assert.NilError(t, err)
+
 		ident, ok := pkg.Imports.Ident(optPath)
 		assert.Assert(t, ok)
 
@@ -249,6 +251,7 @@ func TestAppendDecls(t *testing.T) {
 		pkg, _ := newPackage(t, nil)
 		f, err := decorator.Parse(src)
 		assert.NilError(t, err)
+
 		_, _ = pkg.Imports.Ident(optPath)
 
 		err = genhelper.AppendDecls(f, pkg, []byte("var y = 2\n\nimport \"fmt\"\n"))

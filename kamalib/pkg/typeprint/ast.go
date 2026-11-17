@@ -34,6 +34,7 @@ func (p astPrinter) expr(ty types.Type) (ast.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		return astName(qual, name), nil
 	case *types.Alias:
 		return p.named(ty.Obj(), ty.TypeParams(), ty.TypeArgs())
@@ -46,32 +47,38 @@ func (p astPrinter) expr(ty types.Type) (ast.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		return &ast.StarExpr{X: elem}, nil
 	case *types.Slice:
 		elem, err := p.expr(ty.Elem())
 		if err != nil {
 			return nil, err
 		}
+
 		return &ast.ArrayType{Elt: elem}, nil
 	case *types.Array:
 		n, err := arrayLen(ty)
 		if err != nil {
 			return nil, err
 		}
+
 		elem, err := p.expr(ty.Elem())
 		if err != nil {
 			return nil, err
 		}
+
 		return &ast.ArrayType{Len: &ast.BasicLit{Kind: token.INT, Value: n}, Elt: elem}, nil
 	case *types.Map:
 		key, err := p.expr(ty.Key())
 		if err != nil {
 			return nil, err
 		}
+
 		value, err := p.expr(ty.Elem())
 		if err != nil {
 			return nil, err
 		}
+
 		return &ast.MapType{Key: key, Value: value}, nil
 	case *types.Chan:
 		return p.chanType(ty)
@@ -92,6 +99,7 @@ func astName(qual, name string) ast.Expr {
 	if qual == "" {
 		return ast.NewIdent(name)
 	}
+
 	return &ast.SelectorExpr{X: ast.NewIdent(qual), Sel: ast.NewIdent(name)}
 }
 
@@ -103,10 +111,12 @@ func (p astPrinter) named(
 	if err := checkInstantiated(obj, tparams, targs); err != nil {
 		return nil, err
 	}
+
 	qual, name, err := p.typeName(obj)
 	if err != nil {
 		return nil, err
 	}
+
 	x := astName(qual, name)
 
 	indices, err := opiter.TryCollect(
@@ -134,18 +144,22 @@ func (p astPrinter) chanType(c *types.Chan) (ast.Expr, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if needsParen(c) {
 		elem = &ast.ParenExpr{X: elem}
 	}
 
 	var dir ast.ChanDir
+
 	send, recv := chanDir(c.Dir())
 	if send {
 		dir |= ast.SEND
 	}
+
 	if recv {
 		dir |= ast.RECV
 	}
+
 	return &ast.ChanType{Dir: dir, Value: elem}, nil
 }
 
@@ -158,15 +172,18 @@ func (p astPrinter) signature(sig *types.Signature) (*ast.FuncType, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if sig.Variadic() {
 		elem, err := variadicElem(sig)
 		if err != nil {
 			return nil, err
 		}
+
 		elemExpr, err := p.expr(elem)
 		if err != nil {
 			return nil, err
 		}
+
 		params.List[len(params.List)-1].Type = &ast.Ellipsis{Elt: elemExpr}
 	}
 
@@ -174,6 +191,7 @@ func (p astPrinter) signature(sig *types.Signature) (*ast.FuncType, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if len(results.List) == 0 {
 		results = nil
 	}
@@ -191,6 +209,7 @@ func (p astPrinter) tuple(t *types.Tuple) (*ast.FieldList, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &ast.FieldList{List: fields}, nil
 }
 
@@ -199,79 +218,98 @@ func (p astPrinter) tupleField(v *types.Var) (*ast.Field, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	f := &ast.Field{Type: ty}
 	if v.Name() != "" {
 		f.Names = []*ast.Ident{ast.NewIdent(v.Name())}
 	}
+
 	return f, nil
 }
 
 func (p astPrinter) structType(s *types.Struct) (*ast.StructType, error) {
 	fields := &ast.FieldList{}
+
 	for i := range s.NumFields() {
 		v := s.Field(i)
 		if err := p.checkMemberName(v); err != nil {
 			return nil, err
 		}
+
 		ty, err := p.expr(v.Type())
 		if err != nil {
 			return nil, err
 		}
+
 		f := &ast.Field{Type: ty}
 		if !v.Embedded() {
 			f.Names = []*ast.Ident{ast.NewIdent(v.Name())}
 		}
+
 		if tag := s.Tag(i); tag != "" {
 			f.Tag = &ast.BasicLit{Kind: token.STRING, Value: tagLit(tag)}
 		}
+
 		fields.List = append(fields.List, f)
 	}
+
 	return &ast.StructType{Fields: fields}, nil
 }
 
 func (p astPrinter) interfaceType(iface *types.Interface) (*ast.InterfaceType, error) {
 	methods := &ast.FieldList{}
+
 	for embedded := range iface.EmbeddedTypes() {
 		ty, err := p.expr(embedded)
 		if err != nil {
 			return nil, err
 		}
+
 		methods.List = append(methods.List, &ast.Field{Type: ty})
 	}
+
 	for fn := range iface.ExplicitMethods() {
 		if err := p.checkMemberName(fn); err != nil {
 			return nil, err
 		}
+
 		sig, err := p.signature(fn.Signature())
 		if err != nil {
 			return nil, err
 		}
+
 		methods.List = append(methods.List, &ast.Field{
 			Names: []*ast.Ident{ast.NewIdent(fn.Name())},
 			Type:  sig,
 		})
 	}
+
 	return &ast.InterfaceType{Methods: methods}, nil
 }
 
 func (p astPrinter) union(u *types.Union) (ast.Expr, error) {
 	var x ast.Expr
+
 	for term := range u.Terms() {
 		ty, err := p.expr(term.Type())
 		if err != nil {
 			return nil, err
 		}
+
 		if term.Tilde() {
 			ty = &ast.UnaryExpr{Op: token.TILDE, X: ty}
 		}
+
 		if x == nil {
 			x = ty
 		} else {
 			x = &ast.BinaryExpr{X: x, Op: token.OR, Y: ty}
 		}
 	}
+
 	if x == nil {
 		return nil, fmt.Errorf("%w: empty union", ErrUnsupported)
 	}
+
 	return x, nil
 }

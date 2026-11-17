@@ -43,11 +43,14 @@ func TestSyncMap(t *testing.T) {
 			if v == nil || v == set {
 				return false
 			}
+
 			empty := true
+
 			v.Range(func(any, any) bool {
 				empty = false
 				return false
 			})
+
 			return empty
 		},
 		equal: eq[*sync.Map],

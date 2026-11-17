@@ -38,6 +38,7 @@ func TestLoadSeesStagedFiles(t *testing.T) {
 
 	f, err := overlayfs.New(root)
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	// B exists only in the staged layer; type checking a.go needs it.
@@ -56,6 +57,7 @@ func TestLoadSeesStagedFiles(t *testing.T) {
 			Map(filepath.Base).
 			Iter(),
 	)
+
 	assert.DeepEqual(t, files, []string{"a.go", "b.gen.go"})
 }
 
@@ -109,6 +111,7 @@ func TestLoadFailsOnPackageErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			root := t.TempDir()
+
 			tc.files["go.mod"] = "module example.com/x\n\ngo 1.27\n"
 			for name, src := range tc.files {
 				p := filepath.Join(root, filepath.FromSlash(name))
@@ -118,6 +121,7 @@ func TestLoadFailsOnPackageErrors(t *testing.T) {
 
 			f, err := overlayfs.New(root)
 			assert.NilError(t, err)
+
 			defer f.Close()
 
 			pkgs, err := Load(ctx, f, tc.opts)
@@ -130,9 +134,11 @@ func TestLoadFailsOnPackageErrors(t *testing.T) {
 				slices.Sorted(maps.Keys(pkgErrs)),
 				slices.Sorted(maps.Keys(tc.want)),
 			)
+
 			for path, msgs := range tc.want {
 				got := pkgErrs[path]
 				assert.Equal(t, len(got), len(msgs), "%s: %v", path, got)
+
 				for i, msg := range msgs {
 					assert.Assert(t, strings.Contains(got[i].Msg, msg), "%s: %v", path, got[i])
 				}
@@ -155,6 +161,7 @@ func TestLoadFailsOnMissingPattern(t *testing.T) {
 
 	f, err := overlayfs.New(root)
 	assert.NilError(t, err)
+
 	defer f.Close()
 
 	pkgs, err := Load(ctx, f, Options{Patterns: []string{"./nonexistent"}})

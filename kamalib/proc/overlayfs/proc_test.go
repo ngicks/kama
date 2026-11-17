@@ -22,6 +22,7 @@ func TestStagesThenCopiesDown(t *testing.T) {
 	openProc := &OpenProc{}
 	inst, err := openProc.Instantiate(ctx, false)
 	assert.NilError(t, err)
+
 	open := inst.(*openInstance)
 	assert.NilError(t, open.Param(OpenParam{Root: root}))
 	assert.NilError(t, open.Run(ctx, nopReporter{}))
@@ -90,8 +91,10 @@ func TestOpenSharesFs(t *testing.T) {
 
 		inst, err := p.Instantiate(ctx, false)
 		assert.NilError(t, err)
+
 		i := inst.(*openInstance)
 		assert.NilError(t, i.Param(OpenParam{Root: root}))
+
 		if err := i.Run(ctx, nopReporter{}); err != nil {
 			return nil, err
 		}
@@ -106,6 +109,7 @@ func TestOpenSharesFs(t *testing.T) {
 
 	// A file staged through one step is seen by the other.
 	assert.NilError(t, f1.Write(ctx, "gen.go", []byte("package x\n")))
+
 	got, err := fs.ReadFile(f2.FS(), "gen.go")
 	assert.NilError(t, err)
 	assert.Equal(t, string(got), "package x\n")
@@ -128,8 +132,10 @@ func TestOpenFormatter(t *testing.T) {
 
 		inst, err := p.Instantiate(ctx, false)
 		assert.NilError(t, err)
+
 		i := inst.(*openInstance)
 		assert.NilError(t, i.Param(OpenParam{Root: root, Formatter: formatter}))
+
 		if err := i.Run(ctx, nopReporter{}); err != nil {
 			return nil, err
 		}

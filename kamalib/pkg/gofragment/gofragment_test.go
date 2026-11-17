@@ -123,6 +123,7 @@ func TestParseDstComments(t *testing.T) {
 
 func TestParseRejects(t *testing.T) {
 	type parseFunc func(b []byte) error
+
 	expr := func(b []byte) error { _, err := gofragment.ParseDstExpr(b); return err }
 	stmts := func(b []byte) error { _, err := gofragment.ParseDstStmts(b); return err }
 	decls := func(b []byte) error { _, err := gofragment.ParseDstDecls(b); return err }
@@ -181,6 +182,7 @@ func TestParseRejects(t *testing.T) {
 			for _, parse := range tc.parse {
 				err := parse([]byte(tc.src))
 				assert.Assert(t, err != nil)
+
 				var list scanner.ErrorList
 				if tc.syntax {
 					assert.Assert(t, errors.As(err, &list), "%v", err)
@@ -216,6 +218,7 @@ func TestParseEmpty(t *testing.T) {
 
 func TestPrintDstTwice(t *testing.T) {
 	const src = "// leading\nx := f(func() {\n\ty()\n})\n"
+
 	stmts, err := gofragment.ParseDstStmts([]byte(src))
 	assert.NilError(t, err)
 
@@ -227,6 +230,7 @@ func TestPrintDstTwice(t *testing.T) {
 
 	e, err := gofragment.ParseDstExpr([]byte("a[b]"))
 	assert.NilError(t, err)
+
 	for range 2 {
 		got, err := gofragment.PrintDstExpr(e)
 		assert.NilError(t, err)
@@ -235,12 +239,14 @@ func TestPrintDstTwice(t *testing.T) {
 
 	decls, err := gofragment.ParseDstDecls([]byte("var x = 1\n"))
 	assert.NilError(t, err)
+
 	before := decls[0].Decorations().Before
 	for range 2 {
 		got, err := gofragment.PrintDstDecls(decls)
 		assert.NilError(t, err)
 		assert.Equal(t, string(got), "var x = 1\n")
 	}
+
 	assert.Equal(t, decls[0].Decorations().Before, before)
 }
 
@@ -250,6 +256,7 @@ func TestPrintDstNoMutation(t *testing.T) {
 		Names:  []*dst.Ident{dst.NewIdent("x")},
 		Values: []dst.Expr{dst.NewIdent("y")},
 	}}}
+
 	for range 2 {
 		got, err := gofragment.PrintDstStmts([]dst.Stmt{stmt})
 		assert.NilError(t, err)
@@ -259,6 +266,7 @@ func TestPrintDstNoMutation(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Equal(t, string(got), "var x = y\n")
 	}
+
 	assert.Equal(t, stmt.Decs.Before, dst.None)
 	assert.Equal(t, decl.Decs.Before, dst.None)
 }
@@ -314,6 +322,7 @@ func TestParsePrintAst(t *testing.T) {
 
 	t.Run("stmts", func(t *testing.T) {
 		const src = "s := `a\n\tb`\nL:\nfor {\n\tbreak L\n}\n"
+
 		stmts, err := gofragment.ParseAstStmts(fset, []byte(src))
 		assert.NilError(t, err)
 		assert.Equal(t, len(stmts), 2)
@@ -329,6 +338,7 @@ func TestParsePrintAst(t *testing.T) {
 
 	t.Run("decls", func(t *testing.T) {
 		const src = "// F does nothing.\nfunc F() {}\n"
+
 		decls, err := gofragment.ParseAstDecls(fset, []byte(src))
 		assert.NilError(t, err)
 		assert.Equal(t, len(decls), 1)

@@ -52,9 +52,11 @@ func (p *mapper) ident(path string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("partial: unknown package %q", path)
 	}
+
 	if slices.Contains(supportPaths, path) {
 		p.support[path] = true
 	}
+
 	return ident, nil
 }
 
@@ -64,10 +66,12 @@ func (p *mapper) typeString(t types.Type) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	b, err := gofragment.PrintDstExpr(e)
 	if err != nil {
 		return "", fmt.Errorf("partial: %w", err)
 	}
+
 	return string(b), nil
 }
 
@@ -77,10 +81,12 @@ func (p *mapper) partialString(named *types.Named) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	b, err := gofragment.PrintDstExpr(e)
 	if err != nil {
 		return "", fmt.Errorf("partial: %w", err)
 	}
+
 	return string(b), nil
 }
 
@@ -94,7 +100,9 @@ func (p *mapper) typeParams(n *typegraph.Node, list *types.TypeParamList) (*dst.
 	if list.Len() == 0 {
 		return nil, nil
 	}
+
 	fields := &dst.FieldList{Opening: true, Closing: true}
+
 	for tp := range list.TypeParams() {
 		expr, err := p.print(constraintType(tp))
 		if err != nil {
@@ -103,11 +111,13 @@ func (p *mapper) typeParams(n *typegraph.Node, list *types.TypeParamList) (*dst.
 				nodeName(n), p.position(tp.Obj().Pos()), tp.Obj().Name(), err,
 			)
 		}
+
 		fields.List = append(fields.List, &dst.Field{
 			Names: []*dst.Ident{dst.NewIdent(tp.Obj().Name())},
 			Type:  expr,
 		})
 	}
+
 	return fields, nil
 }
 
@@ -119,6 +129,7 @@ func constraintType(tp *types.TypeParam) types.Type {
 	if iface, ok := c.(*types.Interface); ok && iface.IsImplicit() && iface.NumEmbeddeds() == 1 {
 		return iface.EmbeddedType(0)
 	}
+
 	return c
 }
 
@@ -212,8 +223,11 @@ type fieldInfo struct {
 // other target gets a struct built from s.
 func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fieldInfo, error) {
 	synth := make([]*dst.Field, s.NumFields())
+
 	var infos []fieldInfo
+
 	seen := map[string]*types.Var{}
+
 	for i := range s.NumFields() {
 		v := s.Field(i)
 		// A target defined on a struct type of another package, as in
@@ -229,6 +243,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 				p.pkg.PkgPath,
 			)
 		}
+
 		f, info, err := p.field(n, v, s.Tag(i))
 		if err == nil && info.partial != "_" {
 			switch prev := seen[info.partial]; {
@@ -243,25 +258,34 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 					ErrConflict, info.partial, info.partial,
 				)
 			}
+
 			seen[info.partial] = v
 		}
+
 		if err != nil {
 			return nil, nil, fmt.Errorf("field %s (%s): %w", v.Name(), p.position(v.Pos()), err)
 		}
+
 		synth[i] = f
+
 		infos = append(infos, info)
 	}
+
 	if err := checkFlags(n, infos); err != nil {
 		return nil, nil, err
 	}
+
 	st, err := p.sourceStruct(n, s, synth)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	if st != nil {
 		return st, infos, nil
 	}
+
 	fields := &dst.FieldList{Opening: true, Closing: true}
+
 	// field gives nil for a blank field, which the partial struct leaves out.
 	fields.List = opiter.WrapSeq(
 		slices.Values(synth),
@@ -270,6 +294,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 			func(f *dst.Field) bool { return f != nil },
 		).
 		Collect()
+
 	return &dst.StructType{Fields: fields}, infos, nil
 }
 
@@ -289,51 +314,63 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 		f   *dst.Field
 		err error
 	)
+
 	if v.Name() == "_" {
 		// Nothing refers to a blank field, so the partial struct leaves it
 		// out. Its type is not mapped: a type only blank fields spell would
 		// leave an import unused.
 		info.conv = convSkip
+
 		info.flag, err = p.flag(n, info, p.sel.flags[key])
 		if err != nil {
 			return nil, fieldInfo{}, err
 		}
+
 		return nil, info, nil
 	}
+
 	if named, ok := p.sel.partialOf(deref(v.Type()), p.pkg.PkgPath); ok && v.Embedded() &&
 		isStruct(named) {
 		info.partial = partialName(named.Obj().Name())
 		info.class = classEmbedded
 		info.conv = convEmbedded
 		info.named = named
+
 		info.leaf, info.route = pointerRoute(v.Type())
 		if len(info.route) > 0 {
 			info.conv = convEmbeddedPointer
 		}
+
 		info.expr, err = p.partial(named)
 		if err != nil {
 			return nil, fieldInfo{}, err
 		}
+
 		f = withTag(&dst.Field{Type: info.expr}, tag)
 	} else {
 		info.mapped, err = p.value(v.Type(), p.sel.refs[v])
 		if err != nil {
 			return nil, fieldInfo{}, err
 		}
+
 		tag, err = partialTag(tag, v.Exported())
 		if err != nil {
 			return nil, fieldInfo{}, err
 		}
+
 		f = withTag(&dst.Field{Names: []*dst.Ident{dst.NewIdent(v.Name())}, Type: info.expr}, tag)
 	}
+
 	info.strategy, err = p.strategy(info.class, p.sel.merges[key])
 	if err != nil {
 		return nil, fieldInfo{}, err
 	}
+
 	info.flag, err = p.flag(n, info, p.sel.flags[key])
 	if err != nil {
 		return nil, fieldInfo{}, err
 	}
+
 	return f, info, nil
 }
 
@@ -344,6 +381,7 @@ func (p *mapper) strategy(c class, r kamaopt.Raw) (string, error) {
 		def     string
 		allowed []string
 	)
+
 	switch c {
 	case classPlain, classElastic:
 		def, allowed = string(MergeOverwrite), []string{string(MergeOverwrite)}
@@ -359,9 +397,11 @@ func (p *mapper) strategy(c class, r kamaopt.Raw) (string, error) {
 			string(MergeNestedRecursive), string(MergeNestedOverwrite), string(MergeAppend),
 		}
 	}
+
 	if r.Directive == "" {
 		return def, nil
 	}
+
 	got := strings.TrimSpace(r.Args)
 	if !slices.Contains(allowed, got) {
 		return "", fmt.Errorf(
@@ -370,6 +410,7 @@ func (p *mapper) strategy(c class, r kamaopt.Raw) (string, error) {
 			strings.Join(allowed, " or "),
 		)
 	}
+
 	return got, nil
 }
 
@@ -384,8 +425,10 @@ func withTag(f *dst.Field, tag string) *dst.Field {
 		if strconv.CanBackquote(tag) {
 			lit = "`" + tag + "`"
 		}
+
 		f.Tag = &dst.BasicLit{Kind: token.STRING, Value: lit}
 	}
+
 	return f
 }
 
@@ -407,6 +450,7 @@ func (p *mapper) value(t types.Type, ref bool) (mapped, error) {
 	if len(route) > 1 {
 		return mapped{}, fmt.Errorf("%w: pointer to pointer %s", ErrUnsupported, t)
 	}
+
 	if len(route) == 1 {
 		out, err := p.wrap(leaf, ref)
 		switch out.conv {
@@ -418,18 +462,23 @@ func (p *mapper) value(t types.Type, ref bool) (mapped, error) {
 		default:
 			out.conv = convPointer
 		}
+
 		out.source, out.route = t, route
+
 		return out, err
 	}
 
 	switch {
 	case isNamed(t, optPath, "Option"):
 		arg := types.Unalias(t).(*types.Named).TypeArgs().At(0)
+
 		elem, err := p.print(arg)
 		if err != nil {
 			return mapped{}, err
 		}
+
 		expr, err := p.und(elem)
+
 		return mapped{
 			expr: expr, conv: convOption, class: plainClass(arg), source: t, leaf: arg,
 		}, err
@@ -437,6 +486,7 @@ func (p *mapper) value(t types.Type, ref bool) (mapped, error) {
 		p.support[undPath] = true
 		expr, err := p.print(t)
 		arg := types.Unalias(t).(*types.Named).TypeArgs().At(0)
+
 		return mapped{
 			expr: expr, conv: convCopy, class: plainClass(arg), source: t, leaf: arg,
 		}, err
@@ -444,6 +494,7 @@ func (p *mapper) value(t types.Type, ref bool) (mapped, error) {
 		expr, err := p.print(t)
 		return mapped{expr: expr, conv: convCopy, class: classElastic, source: t, leaf: t}, err
 	}
+
 	return p.wrap(t, false)
 }
 
@@ -466,13 +517,16 @@ func pointerRoute(t types.Type) (leaf types.Type, route []typegraph.EdgeRouteNod
 			}) {
 				return nil
 			}
+
 			leaf = ty
 			route = slices.DeleteFunc(slices.Clone(stack), func(n typegraph.EdgeRouteNode) bool {
 				return n.Kind == typegraph.EdgeKindAlias
 			})
+
 			return nil
 		},
 	)
+
 	return leaf, route
 }
 
@@ -485,7 +539,9 @@ func (p *mapper) wrap(t types.Type, ref bool) (mapped, error) {
 		if err != nil {
 			return mapped{}, err
 		}
+
 		expr, err := p.und(inner)
+
 		out := mapped{expr: expr, conv: convPlain, class: plainClass(t), source: t, leaf: t}
 		switch out.class {
 		case classSlice:
@@ -493,6 +549,7 @@ func (p *mapper) wrap(t types.Type, ref bool) (mapped, error) {
 		case classMap:
 			out.conv = convMap
 		}
+
 		return out, err
 	}
 
@@ -500,10 +557,13 @@ func (p *mapper) wrap(t types.Type, ref bool) (mapped, error) {
 	if err != nil {
 		return mapped{}, err
 	}
+
 	if ref {
 		inner = &dst.StarExpr{X: inner}
 	}
+
 	expr, err := p.und(inner)
+
 	out := mapped{
 		expr: expr, conv: convTarget, class: classSub, source: t, leaf: t, named: named,
 	}
@@ -513,6 +573,7 @@ func (p *mapper) wrap(t types.Type, ref bool) (mapped, error) {
 	case *types.Map:
 		out.class = classSubMap
 	}
+
 	return out, err
 }
 
@@ -524,6 +585,7 @@ func plainClass(t types.Type) class {
 	case *types.Map:
 		return classMap
 	}
+
 	return classPlain
 }
 
@@ -532,7 +594,9 @@ func (p *mapper) und(inner dst.Expr) (dst.Expr, error) {
 	if sel == nil {
 		return nil, fmt.Errorf("partial: unknown package %q", undPath)
 	}
+
 	p.support[undPath] = true
+
 	return &dst.IndexExpr{X: sel, Index: inner}, nil
 }
 
@@ -540,12 +604,14 @@ func (p *mapper) und(inner dst.Expr) (dst.Expr, error) {
 // with the type arguments of named.
 func (p *mapper) partial(named *types.Named) (dst.Expr, error) {
 	obj := named.Obj()
+
 	var x dst.Expr = dst.NewIdent(partialName(obj.Name()))
 	if pkgPath := obj.Pkg().Path(); pkgPath != p.pkg.PkgPath {
 		ident, ok := p.m.Ident(pkgPath)
 		if !ok {
 			return nil, fmt.Errorf("partial: unknown package %q", pkgPath)
 		}
+
 		x = &dst.SelectorExpr{X: dst.NewIdent(ident), Sel: dst.NewIdent(partialName(obj.Name()))}
 	} else {
 		p.refs[partialName(obj.Name())] = true
@@ -560,6 +626,7 @@ func (p *mapper) partial(named *types.Named) (dst.Expr, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	switch len(args) {
 	case 0:
 		return x, nil
@@ -575,7 +642,9 @@ func isNamed(t types.Type, pkgPath, name string) bool {
 	if !ok {
 		return false
 	}
+
 	obj := named.Obj()
+
 	return obj.Pkg() != nil && obj.Pkg().Path() == pkgPath && obj.Name() == name
 }
 
@@ -597,6 +666,7 @@ func partialTag(tag string, exported bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	for _, r := range []struct {
 		key, add, drop string
 		always         bool
@@ -610,6 +680,7 @@ func partialTag(tag string, exported bool) (string, error) {
 			return "", err
 		}
 	}
+
 	return string(tags.StructTag()), nil
 }
 
@@ -620,12 +691,14 @@ func setOption(tags structtag.Tags, key, add, drop string, always bool) (structt
 	if i < 0 && !always {
 		return tags, nil
 	}
+
 	if i >= 0 {
 		// "-" skips the field, and an option after it would make "-" its
 		// name.
 		if tags[i].Value == "-" {
 			return tags, nil
 		}
+
 		_, _, err := tags.Get(key, drop)
 		switch {
 		case err == nil:
@@ -636,5 +709,6 @@ func setOption(tags structtag.Tags, key, add, drop string, always bool) (structt
 			return nil, err
 		}
 	}
+
 	return tags.Add(key, add, "")
 }

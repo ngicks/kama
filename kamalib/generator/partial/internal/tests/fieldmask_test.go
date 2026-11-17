@@ -33,8 +33,10 @@ func fullMasked() model.Masked {
 
 func masked(t *testing.T, v model.Masked, paths ...string) model.MaskedPartial {
 	t.Helper()
+
 	var p model.MaskedPartial
 	assert.NilError(t, p.FromValueWithMask(v, paths))
+
 	return p
 }
 
@@ -146,6 +148,7 @@ func TestFieldMask(t *testing.T) {
 
 func TestFromValueWithMask(t *testing.T) {
 	v := fullMasked()
+
 	var whole model.MaskedPartial
 	whole.FromValue(v)
 
@@ -207,6 +210,7 @@ func TestFromValueWithMask(t *testing.T) {
 		equal(t, masked(t, model.Masked{}, "InnerPtr.Deep.X", "InnerPtr"), want)
 
 		var p model.MaskTreePartial
+
 		paths := []string{"Child.Name", "Child", "Child.Child.Name"}
 		assert.NilError(t, p.FromValueWithMask(model.MaskTree{Name: "a"}, paths))
 		equal(t, p, model.MaskTreePartial{Child: und.Null[*model.MaskTreePartial]()})
@@ -222,6 +226,7 @@ func TestFromValueWithMask(t *testing.T) {
 	})
 	t.Run("generic target", func(t *testing.T) {
 		var p model.MaskPairPartial[string, int]
+
 		err := p.FromValueWithMask(model.MaskPair[string, int]{
 			Key: "k", Box: model.MaskBox[int]{V: 1}, Map: map[string]int{"a": 1},
 		}, []string{"Box.Ptr", "Map"})
@@ -233,6 +238,7 @@ func TestFromValueWithMask(t *testing.T) {
 	})
 	t.Run("cycle", func(t *testing.T) {
 		var p model.MaskTreePartial
+
 		tree := model.MaskTree{Name: "a", Child: &model.MaskTree{Name: "b"}}
 		assert.NilError(t, p.FromValueWithMask(tree, []string{"Child.Name", "Child.Child.Name"}))
 		equal(t, p, model.MaskTreePartial{Child: und.Defined(&model.MaskTreePartial{
@@ -320,6 +326,7 @@ func TestFieldMaskRoundTrip(t *testing.T) {
 	// A branch given whole gives the paths of every field of its value. A
 	// nil pointer branch gives null, which gives its own path.
 	inner := []string{"Inner.A", "Inner.B", "Inner.Deep.X", "Inner.Deep.Y"}
+
 	cases := []struct {
 		name string
 		mask []string
@@ -368,6 +375,7 @@ func TestFieldMaskRoundTrip(t *testing.T) {
 
 	// A mask of leaves of a value without nil pointers comes back as given.
 	mask := []string{"Count", "Name", "Plain", "alias", "e_deep.X", "Inner.B", "Note"}
+
 	var p model.MaskedPartial
 	assert.NilError(t, p.FromValueWithMask(fullMasked(), mask))
 	assert.DeepEqual(t, p.FieldMask(), slices.Sorted(slices.Values(mask)))
@@ -382,6 +390,7 @@ func TestFieldMaskApplyTo(t *testing.T) {
 		MaskAudit: &model.MaskAudit{Note: "changed"},
 		Count:     100,
 	}
+
 	var p model.MaskedPartial
 	assert.NilError(t, p.FromValueWithMask(src, []string{
 		"Name", "Inner.A", "InnerPtr.Deep.X", "Note",
@@ -401,6 +410,7 @@ func TestFieldMaskMutualRecursion(t *testing.T) {
 		Name: "a",
 		Pong: &model.MaskPong{Count: 1, Ping: &model.MaskPing{Name: "b"}},
 	}
+
 	var p model.MaskPingPartial
 	assert.NilError(t, p.FromValueWithMask(v, []string{"Pong.Ping.Name", "Pong.Count"}))
 	equal(t, p, model.MaskPingPartial{Pong: und.Defined(&model.MaskPongPartial{

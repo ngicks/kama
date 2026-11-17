@@ -17,17 +17,20 @@ import (
 
 func loadPackages(t *testing.T, patterns ...string) []*packages.Package {
 	t.Helper()
+
 	pkgs, err := packages.Load(&packages.Config{
 		Mode: packages.NeedName | packages.NeedSyntax | packages.NeedTypes |
 			packages.NeedTypesInfo | packages.NeedTypesSizes | packages.NeedDeps |
 			packages.NeedImports,
 	}, patterns...)
 	assert.NilError(t, err)
+
 	for _, pkg := range pkgs {
 		for _, err := range pkg.Errors {
 			t.Fatalf("package %s has error: %v", pkg.PkgPath, err)
 		}
 	}
+
 	return pkgs
 }
 
@@ -44,23 +47,28 @@ func pkgNamed(pkgs []*packages.Package, name string) *packages.Package {
 
 func pkgPathOf(t *testing.T, pkgs []*packages.Package, name string) string {
 	t.Helper()
+
 	pkg := pkgNamed(pkgs, name)
 	if pkg == nil {
 		t.Fatalf("package %s not loaded", name)
 	}
+
 	return pkg.PkgPath
 }
 
 func findNamed(t *testing.T, pkgs []*packages.Package, pkgName, typeName string) *types.Named {
 	t.Helper()
+
 	pkg := pkgNamed(pkgs, pkgName)
 	if pkg == nil {
 		t.Fatalf("package %s not loaded", pkgName)
 	}
+
 	obj := pkg.Types.Scope().Lookup(typeName)
 	assert.Assert(t, obj != nil)
 	named, ok := obj.Type().(*types.Named)
 	assert.Assert(t, ok)
+
 	return named
 }
 
@@ -69,10 +77,13 @@ func definedNamed(pkg *packages.Package, name string) *types.Named {
 		if obj == nil || obj.Name() != name {
 			return false
 		}
+
 		_, ok := obj.Type().(*types.Named)
+
 		return ok
 	}
 	defs := maps.Values(pkg.TypesInfo.Defs)
+
 	return opiter.WrapSeq(defs).
 		Filter(isNamedType).
 		Map(
@@ -86,15 +97,18 @@ func compareQualifiedType(a, b QualifiedType) int {
 	if c := cmp.Compare(a.PackagePath, b.PackagePath); c != 0 {
 		return c
 	}
+
 	if c := cmp.Compare(a.TypeName, b.TypeName); c != 0 {
 		return c
 	}
+
 	return 0
 }
 
 func keysSorted[V any](m map[QualifiedType]V) []QualifiedType {
 	// Tests compare the keys of an empty map with an empty, non-nil slice.
 	keys := make([]QualifiedType, 0, len(m))
+
 	return slices.AppendSeq(
 		keys,
 		opiter.WrapSeq2(
@@ -118,6 +132,7 @@ func compareEdgeRoutesByFirstPos(a, b *EdgeRoute) int {
 	if len(a.Nodes) == 0 || len(b.Nodes) == 0 {
 		return 0
 	}
+
 	return cmp.Compare(a.Nodes[0].Pos, b.Nodes[0].Pos)
 }
 
@@ -125,14 +140,17 @@ func compareEdgeRoutes(a, b *EdgeRoute) int {
 	if c := cmp.Compare(len(a.Nodes), len(b.Nodes)); c != 0 {
 		return c
 	}
+
 	for i := range a.Nodes {
 		if i >= len(b.Nodes) {
 			return 1
 		}
+
 		if c := cmp.Compare(a.Nodes[i].Kind, b.Nodes[i].Kind); c != 0 {
 			return c
 		}
 	}
+
 	return 0
 }
 
@@ -316,6 +334,7 @@ func TestTrim_MatchAll(t *testing.T) {
 	// A node both matched and dependant is a single node carrying both kinds and its edges.
 	typeAId := NewQualifiedType(basicPkgPath, "TypeA")
 	matchedA, _ := mg.Get(typeAId)
+
 	dependants := opiter.WrapSeq2(
 		mg.Dependant(),
 	).
@@ -323,6 +342,7 @@ func TestTrim_MatchAll(t *testing.T) {
 			func(id QualifiedType, _ *MatchedNode) bool { return id == typeAId },
 		).
 		OmitF()
+
 	dependantA := dependants.
 		First().
 		UnwrapOrDefault()
@@ -378,8 +398,10 @@ func TestTrim_MatchLeaf(t *testing.T) {
 	// Check MatchKind
 	typeD, _ := mg.Get(typeDId)
 	assert.Equal(t, MatchKindMatched, typeD.MatchKind)
+
 	typeA, _ := mg.Get(NewQualifiedType(basicPkgPath, "TypeA"))
 	assert.Equal(t, MatchKindDependant, typeA.MatchKind)
+
 	typeC, _ := mg.Get(NewQualifiedType(basicPkgPath, "TypeC"))
 	assert.Equal(t, MatchKindDependant, typeC.MatchKind)
 }
@@ -446,6 +468,7 @@ func TestTraverseTypes(t *testing.T) {
 
 	// Traverse and collect all named types
 	var namedTypes []string
+
 	err := WalkTypesToNamed(
 		nil,
 		nestedType.Underlying(),
@@ -472,6 +495,7 @@ func TestTraverseTypes_InstantiatedGeneric(t *testing.T) {
 
 	// Traverse and collect all named types
 	var namedTypes []string
+
 	err := WalkTypesToNamed(
 		nil,
 		instantiatedType.Underlying(),
@@ -741,8 +765,10 @@ func TestNew_PosCountsFilteredSpecs(t *testing.T) {
 
 	pos := func(t *testing.T, g *Graph, name string) int {
 		t.Helper()
+
 		n, ok := g.Get(NewQualifiedType(edgesPkgPath, name))
 		assert.Assert(t, ok, "%s", name)
+
 		return n.Detail.Pos
 	}
 
@@ -761,6 +787,7 @@ func TestNew_PosCountsFilteredSpecs(t *testing.T) {
 			return len(gd.Specs) == 1, nil
 		}, nil)
 		assert.NilError(t, err)
+
 		_, ok := g.Get(NewQualifiedType(edgesPkgPath, "SliceType"))
 		assert.Assert(t, !ok)
 		assert.Equal(t, pos(t, g, "Target"), 0)
@@ -773,6 +800,7 @@ func TestNew_PosCountsFilteredSpecs(t *testing.T) {
 			return ts.Name.Name != "SliceType", nil
 		})
 		assert.NilError(t, err)
+
 		_, ok := g.Get(NewQualifiedType(edgesPkgPath, "SliceType"))
 		assert.Assert(t, !ok)
 		assert.Equal(t, pos(t, g, "ArrayType"), 2)
@@ -822,6 +850,7 @@ func TestNew_NamedCollection(t *testing.T) {
 	t.Run("parents", func(t *testing.T) {
 		elem, _ := g.Get(elemId)
 		assert.DeepEqual(t, []QualifiedType{mId, sId}, keysSorted(elem.Parent))
+
 		key, _ := g.Get(keyId)
 		assert.DeepEqual(t, []QualifiedType{mId}, keysSorted(key.Parent))
 	})
@@ -862,8 +891,10 @@ func TestTrim_Diamond(t *testing.T) {
 	assert.DeepEqual(t, []QualifiedType{bId, cId}, keysSorted(a.Children))
 	b, _ := mg.Get(bId)
 	assert.DeepEqual(t, []QualifiedType{aId}, keysSorted(b.Parent))
+
 	c, _ := mg.Get(cId)
 	assert.DeepEqual(t, []QualifiedType{aId}, keysSorted(c.Parent))
+
 	d, _ := mg.Get(dId)
 	assert.DeepEqual(t, []QualifiedType{bId, cId}, keysSorted(d.Parent))
 
@@ -969,6 +1000,7 @@ func TestNew_Cyclic(t *testing.T) {
 	)
 	mTree, _ := mg.Get(treeId)
 	assert.DeepEqual(t, []QualifiedType{treeId, targetId}, keysSorted(mTree.Children))
+
 	mEmbedded, _ := mg.Get(embeddedId)
 	assert.DeepEqual(t, []QualifiedType{r2Id}, keysSorted(mEmbedded.Parent))
 }

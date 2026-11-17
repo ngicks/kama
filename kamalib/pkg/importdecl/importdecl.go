@@ -82,6 +82,7 @@ func inferName(pkgPath string) string {
 		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
 			return r
 		}
+
 		return -1
 	}, base)
 
@@ -123,6 +124,7 @@ func (t QualifiedType) Is(ty types.Type) bool {
 	if pkg := named.Obj().Pkg(); pkg != nil {
 		pkgPath = pkg.Path()
 	}
+
 	return t.PackagePath == pkgPath && t.TypeName == named.Obj().Name()
 }
 
@@ -143,13 +145,16 @@ func NewParser(pkg *types.Package) *Parser {
 	layer := []*types.Package{pkg}
 	for len(layer) > 0 {
 		var next []*types.Package
+
 		for _, pkg := range layer {
 			if _, ok := p.known[pkg.Path()]; ok {
 				continue
 			}
+
 			p.known[pkg.Path()] = Package{Path: pkg.Path(), Name: pkg.Name()}
 			next = append(next, pkg.Imports()...)
 		}
+
 		layer = next
 	}
 
@@ -160,9 +165,11 @@ func NewParser(pkg *types.Package) *Parser {
 // they import, directly or not. pkgs must be loaded with type information.
 func NewParserFromPackages(pkgs []*packages.Package) *Parser {
 	p := &Parser{known: map[string]Package{}}
+
 	packages.Visit(pkgs, nil, func(pkg *packages.Package) {
 		p.known[pkg.PkgPath] = Package{Path: pkg.PkgPath, Name: pkg.Name}
 	})
+
 	return p
 }
 
@@ -184,6 +191,7 @@ func (p *Parser) Require(imports ...Import) error {
 	p.required = append(p.required, imports...)
 	slices.SortFunc(p.required, compareImport)
 	p.required = slices.Compact(p.required)
+
 	return nil
 }
 
@@ -196,6 +204,7 @@ func (p *Parser) Reserve(idents ...string) {
 	if p.reserved == nil {
 		p.reserved = map[string]bool{}
 	}
+
 	for _, ident := range idents {
 		p.reserved[ident] = true
 	}
@@ -217,6 +226,7 @@ func astSpecNamePath(s *ast.ImportSpec) (name, pathLit string) {
 	if s.Name != nil {
 		name = s.Name.Name
 	}
+
 	return name, s.Path.Value
 }
 
@@ -236,6 +246,7 @@ func dstSpecNamePath(s *dst.ImportSpec) (name, pathLit string) {
 	if s.Name != nil {
 		name = s.Name.Name
 	}
+
 	return name, s.Path.Value
 }
 
@@ -267,6 +278,7 @@ func (p *Parser) parse(specs iter.Seq2[string, string]) (*Map, error) {
 		}
 
 		m.idents[imp.Ident()] = true
+
 		m.held[imp.Ident()] = true
 		if _, ok := m.imports[pkgPath]; !ok {
 			m.imports[pkgPath] = imp
@@ -307,6 +319,7 @@ func (m *Map) lookup(pkgPath string, required []Import) Package {
 	if pkg, ok := m.known[pkgPath]; ok {
 		return pkg
 	}
+
 	found := opiter.WrapSeq(
 		slices.Values(required),
 	).
@@ -314,9 +327,11 @@ func (m *Map) lookup(pkgPath string, required []Import) Package {
 			func(imp Import) bool { return imp.Package.Path == pkgPath },
 		).
 		First()
+
 	if found.IsSome() {
 		return found.Value().Package
 	}
+
 	return Package{Path: pkgPath}
 }
 
@@ -328,6 +343,7 @@ func (m *Map) addMissing(imp Import) Import {
 	for i := 2; m.idents[ident]; i++ {
 		ident = imp.Ident() + "_" + strconv.Itoa(i)
 	}
+
 	m.idents[ident] = true
 	m.held[ident] = true
 
@@ -343,6 +359,7 @@ func (m *Map) addMissing(imp Import) Import {
 	m.imports[pkg.Path] = imp
 	i, _ := slices.BinarySearchFunc(m.missing, imp, compareImport)
 	m.missing = slices.Insert(m.missing, i, imp)
+
 	return imp
 }
 
@@ -358,6 +375,7 @@ func (m *Map) Ident(pkgPath string) (ident string, ok bool) {
 	if !ok {
 		return "", false
 	}
+
 	return m.addMissing(Import{Package: pkg}).Ident(), true
 }
 
@@ -385,6 +403,7 @@ func (m *Map) AstExpr(ty QualifiedType) *ast.SelectorExpr {
 	if !ok {
 		return nil
 	}
+
 	return &ast.SelectorExpr{X: ast.NewIdent(ident), Sel: ast.NewIdent(ty.TypeName)}
 }
 
@@ -395,6 +414,7 @@ func (m *Map) DstExpr(ty QualifiedType) *dst.SelectorExpr {
 	if !ok {
 		return nil
 	}
+
 	return &dst.SelectorExpr{X: dst.NewIdent(ident), Sel: dst.NewIdent(ty.TypeName)}
 }
 
@@ -405,7 +425,9 @@ func (m *Map) Qualifier(currentPkgPath string) types.Qualifier {
 		if p.Path() == currentPkgPath {
 			return ""
 		}
+
 		ident, _ := m.Ident(p.Path())
+
 		return ident
 	}
 }
@@ -439,16 +461,20 @@ func (m *Map) AddMissingAst(fset *token.FileSet, f *ast.File) {
 // are skipped, so calling it again is safe.
 func (m *Map) AddMissingDst(f *dst.File) {
 	type spec struct{ name, path string }
+
 	has := map[spec]bool{}
+
 	for _, s := range f.Imports {
 		var name string
 		if s.Name != nil {
 			name = s.Name.Name
 		}
+
 		pkgPath, err := strconv.Unquote(s.Path.Value)
 		if err != nil {
 			continue
 		}
+
 		has[spec{name, pkgPath}] = true
 	}
 
@@ -456,6 +482,7 @@ func (m *Map) AddMissingDst(f *dst.File) {
 		slices.Values(f.Decls),
 	).
 		Map(asGenDecl)
+
 	decl := genDecls.
 		Filter(
 			func(g *dst.GenDecl) bool { return g != nil && g.Tok == token.IMPORT },
@@ -479,6 +506,7 @@ func (m *Map) AddMissingDst(f *dst.File) {
 		if imp.Name != "" {
 			s.Name = dst.NewIdent(imp.Name)
 		}
+
 		decl.Specs = append(decl.Specs, s)
 		f.Imports = append(f.Imports, s)
 	}

@@ -42,6 +42,7 @@ func (c Command) Format(ctx context.Context, _ string, src []byte) ([]byte, erro
 	}
 
 	var stdout, stderr bytes.Buffer
+
 	cmd := exec.CommandContext(ctx, c.Argv[0], c.Argv[1:]...)
 	cmd.Dir = c.Dir
 	cmd.Stdin = bytes.NewReader(src)
@@ -53,6 +54,7 @@ func (c Command) Format(ctx context.Context, _ string, src []byte) ([]byte, erro
 		if msg == "" {
 			return nil, fmt.Errorf("goformat: %q: %w", c.Argv[0], err)
 		}
+
 		return nil, fmt.Errorf("goformat: %q: %w: %s", c.Argv[0], err, msg)
 	}
 

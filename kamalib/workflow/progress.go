@@ -48,6 +48,7 @@ func (p *progress) warn(step string, w error) {
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
 	p.pc.OnWarning(step, w)
 }
 
@@ -58,6 +59,7 @@ func (p *progress) progress(step, msg string) {
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
 	p.pc.OnProgress(step, msg)
 }
 

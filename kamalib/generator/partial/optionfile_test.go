@@ -103,6 +103,7 @@ ignore = true
 			},
 		},
 	}
+
 	for format, doc := range docs {
 		t.Run(string(format), func(t *testing.T) {
 			var data any
@@ -116,6 +117,7 @@ ignore = true
 
 func TestDecodeOptionFileErrors(t *testing.T) {
 	const pb = "packages.\"example.com/gen/pb\""
+
 	cases := []struct {
 		name string
 		doc  string
@@ -233,6 +235,7 @@ func TestDecodeOptionFileErrors(t *testing.T) {
 			_, err := DecodeOptionFile("opts.yaml", data)
 			assert.ErrorIs(t, err, ErrOptionFile)
 			assert.ErrorContains(t, err, "opts.yaml: ")
+
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)
 			}
@@ -273,16 +276,19 @@ func TestLoadOptionFile(t *testing.T) {
 func optionFile(t *testing.T, doc string) *OptionFile {
 	t.Helper()
 	doc = strings.ReplaceAll(doc, "$pkg", strconv.Quote(modulePath(t)))
+
 	var data any
 	assert.NilError(t, fileloader.Decode(strings.NewReader(doc), fileloader.FormatYaml, &data))
 	f, err := DecodeOptionFile("opts.yaml", data)
 	assert.NilError(t, err)
+
 	return f
 }
 
 func TestOptionFileParity(t *testing.T) {
 	const models = "\ntype A struct {\n\tB []int\n\tC string\n\tD D\n}\n\n" +
 		"type D struct{ N int }\n\ntype E struct{ M int }\n"
+
 	byDirective := generated(t, map[string]string{
 		"x.go": "package x\n\n//kama:partial package\n\n//kama:partial\ntype A struct {\n" +
 			"\t//kama:partial:merge append\n\tB []int\n" +
@@ -291,6 +297,7 @@ func TestOptionFileParity(t *testing.T) {
 			"\t//kama:partial:fieldmask name=n\n\tN int\n}\n\n" +
 			"//kama:partial ignore\ntype E struct{ M int }\n",
 	})
+
 	byFile := generatedWith(t, map[string]string{"x.go": "package x\n" + models}, Options{
 		OptionFile: optionFile(t, `
 version: 1
@@ -313,15 +320,18 @@ packages:
 	for name, src := range byFile {
 		byFile[name] = withoutRunParams(src)
 	}
+
 	for name, src := range byDirective {
 		byDirective[name] = withoutRunParams(src)
 	}
+
 	assert.DeepEqual(t, byFile, byDirective)
 }
 
 func TestOptionFileErrors(t *testing.T) {
 	const src = "package x\n\ntype A struct {\n\tB []int\n\tC int\n\tD D\n\tE int\n}\n\n" +
 		"type D struct{ N int }\n\ntype I int\n\ntype L = A\n"
+
 	cases := []struct {
 		name     string
 		doc      string
@@ -463,6 +473,7 @@ func TestOptionFileErrors(t *testing.T) {
 				OptionFile: optionFile(t, "version: 1\n"+c.doc),
 			})
 			assert.ErrorIs(t, err, c.is)
+
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)
 			}
@@ -595,7 +606,9 @@ func TestOptionFileConflicts(t *testing.T) {
 				assert.NilError(t, err)
 				return
 			}
+
 			assert.ErrorIs(t, err, kamaopt.ErrConflict)
+
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)
 			}
@@ -620,7 +633,9 @@ func TestProcOptionFile(t *testing.T) {
 	ctx := context.Background()
 	f, err := overlayfs.New(".")
 	assert.NilError(t, err)
+
 	defer f.Close()
+
 	dir := "testdata/inline/" + t.Name()
 	assert.NilError(t, f.Write(ctx, dir+"/x.go", []byte("package x\n\ntype A struct{ B int }\n")))
 	pkgs, err := gopackages.Load(ctx, f, gopackages.Options{Patterns: []string{"./" + dir}})
@@ -631,6 +646,7 @@ func TestProcOptionFile(t *testing.T) {
 		assert.NilError(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{Base: optionFile}}))
 		i.In(&procgopackages.Packages{Pkgs: pkgs})
 		i.Out(f)
+
 		return i.Run(ctx, nopReporter{})
 	}
 	err = run(dir + "/missing")
@@ -641,8 +657,10 @@ func TestProcOptionFile(t *testing.T) {
 		"version: 1\npackages:\n  "+strconv.Quote(modulePath(t))+":\n    types:\n      A:\n",
 	)))
 	assert.NilError(t, run(dir+"/partial"))
+
 	staged, err := f.Overlay()
 	assert.NilError(t, err)
+
 	names := opiter.WrapSeq(
 		maps.Keys(staged),
 	).
@@ -650,5 +668,6 @@ func TestProcOptionFile(t *testing.T) {
 			func(name string) bool { return strings.HasSuffix(name, "x.kama_partial.go") },
 		).
 		Collect()
+
 	assert.Equal(t, len(names), 1, names)
 }

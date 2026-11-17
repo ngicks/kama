@@ -76,6 +76,7 @@ func (i *instance) Param(p ProcParam) error {
 	}
 
 	i.param = p
+
 	return nil
 }
 
@@ -96,5 +97,6 @@ func (i *instance) Run(ctx context.Context, _ workflow.Reporter) error {
 	}
 
 	i.out.Pkgs = pkgs
+
 	return nil
 }

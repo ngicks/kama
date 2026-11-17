@@ -11,6 +11,7 @@ import (
 
 func TestLang(t *testing.T) {
 	var l genhelper.Lang[ctx]
+
 	errBoom := errors.New("boom")
 
 	type (
@@ -25,6 +26,7 @@ func TestLang(t *testing.T) {
 		root.ReserveUniverse()
 		fn := root.Push()
 		fn.Declare("v")
+
 		return genhelper.NewBaseContext(fn, nil)
 	}
 	paren := func(_ ctx, inner string) (string, error) { return "(" + inner + ")", nil }
@@ -150,13 +152,16 @@ func TestLang(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := l.Render(fnCtx(), tc.method())
+
 			want, wantErr := genhelper.Render(fnCtx(), tc.function())
 			if tc.wantErr != nil {
 				assert.ErrorIs(t, err, tc.wantErr)
 				assert.ErrorIs(t, wantErr, tc.wantErr)
 				assert.Equal(t, err.Error(), wantErr.Error())
+
 				return
 			}
+
 			assert.NilError(t, err)
 			assert.NilError(t, wantErr)
 			assert.Assert(t, got != "")

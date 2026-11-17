@@ -34,6 +34,7 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 		if err != nil {
 			return "", err
 		}
+
 		fn := p.helpers.name(h)
 		// Once named, the calls and imports of every helper are known, and
 		// the calling file may not know the packages the helper spells.
@@ -45,28 +46,34 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 			if err != nil {
 				return "", err
 			}
+
 			fileMap, support := p.m, p.support
 			p.m, p.support = m, map[string]bool{}
 			_, err = p.helperDecl(fn, h)
 			h.spelled = p.support
 			p.m, p.support = fileMap, support
+
 			if err != nil {
 				return "", err
 			}
 		}
+
 		p.refs[fn] = true
 
 		var targs string
+
 		if tps := h.typeParams(); len(tps) > 0 {
 			names := opiter.WrapSeq(
 				slices.Values(tps),
 			).
 				Map(typeParamName).
 				Collect()
+
 			// Type arguments are given rather than inferred: a parameter only a
 			// constraint mentions cannot be inferred from the arguments.
 			targs = "[" + strings.Join(names, ", ") + "]"
 		}
+
 		return fn + targs + "(" + strings.Join(in, ", ") + ")", nil
 	}
 }
@@ -101,8 +108,10 @@ func (p *mapper) helperDecl(fn string, h *helper) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
 		return wrapComment(fn + " " + text), nil
 	}
+
 	return lang.Render(f.c, lang.DocFunc(
 		docComment("%s", doc),
 		lang.Expr("func %s%s(%s) %s", fn, f.tparams, f.params, f.results),
@@ -139,6 +148,7 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 		c, err := p.constraintString(tp)
 		return tp.Obj().Name() + " " + c, err
 	}
+
 	tparams, err := opiter.TryCollect(
 		opiter.WrapSeq(
 			slices.Values(tps),
@@ -148,26 +158,32 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 	if err != nil {
 		return helperFunc{}, err
 	}
+
 	names := opiter.WrapSeq(
 		slices.Values(tps),
 	).
 		Map(typeParamName).
 		Collect()
+
 	// p.m is the Map in effect now, which call swaps while it renders.
 	f := helperFunc{c: p.funcContext(names)}
 	if len(tparams) > 0 {
 		f.tparams = "[" + strings.Join(tparams, ", ") + "]"
 	}
+
 	var t helperTypes
+
 	t.src, err = p.typeString(h.typ)
 	if err != nil {
 		return helperFunc{}, err
 	}
+
 	if h.named != nil {
 		if t.part, err = p.partialString(h.named); err != nil {
 			return helperFunc{}, err
 		}
 	}
+
 	t.held = t.part
 	switch pointer, plain := h.held(); {
 	case plain:
@@ -183,8 +199,10 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 		if t.und, err = p.ident(undPath); err != nil {
 			return helperFunc{}, err
 		}
+
 		t.undSpelled = t.und + ".Und[" + t.held + "]"
 	}
+
 	sigIn, sigOut := signatureOf(h.op, t.src, t.part, t.undSpelled, "bool")
 	t.in, t.out = sigIn[0], sigOut[0]
 
@@ -202,6 +220,7 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 	case opMergeRecursive:
 		return mergeRecursiveFunc(h, f, t), nil
 	}
+
 	return helperFunc{}, fmt.Errorf("partial: unknown helper op %d", h.op)
 }
 
@@ -209,6 +228,7 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 // its partial form held by an und.Und.
 func fromTargetFunc(h *helper, f helperFunc, t helperTypes) helperFunc {
 	null := lang.Expr("%s.Null[%s]()", t.und, t.held)
+
 	leaf := func(in genExpr) genStep {
 		return genSteps{
 			lang.Stmt("var %s %s", decl("x"), t.part),
@@ -225,6 +245,7 @@ func fromTargetFunc(h *helper, f helperFunc, t helperTypes) helperFunc {
 			}
 		}
 	}
+
 	guard := func(in genExpr) genStep {
 		return lang.If(lang.Expr("%s == nil", in), lang.Stmt("return %s", null), nil)
 	}
@@ -234,10 +255,12 @@ func fromTargetFunc(h *helper, f helperFunc, t helperTypes) helperFunc {
 		inner := leaf
 		leaf = func(in genExpr) genStep { return genSteps{guard(in), inner(in)} }
 	}
+
 	wrap := func(in genExpr, next func(genExpr) genStep) genStep {
 		return genSteps{guard(in), next(lang.Expr("*%s", in))}
 	}
 	f.params, f.results = lang.Expr("%s %s", decl("v"), t.src), lang.Expr("%s", t.undSpelled)
+
 	f.body = genSteps{along(h.route, lang.Name("v"), leaf, wrap)}
 	switch {
 	case h.op == opFromTargetRef:
@@ -250,6 +273,7 @@ func fromTargetFunc(h *helper, f helperFunc, t helperTypes) helperFunc {
 	default:
 		f.doc = lang.Expr("converts %s into %s, defined.", t.in, t.out)
 	}
+
 	return f
 }
 
@@ -257,6 +281,7 @@ func fromTargetFunc(h *helper, f helperFunc, t helperTypes) helperFunc {
 // held by an und.Und back into a newly allocated target.
 func toTargetFunc(h *helper, f helperFunc, t helperTypes) helperFunc {
 	cond := func(in genExpr) genExpr { return lang.Expr("!%s.IsDefined()", in) }
+
 	f.doc = lang.Expr("converts %s into %s, newly allocated, or nil when %s is undefined or null.",
 		t.in, t.out, lang.Name("p"))
 	if h.op == opToTargetRef {
@@ -268,6 +293,7 @@ func toTargetFunc(h *helper, f helperFunc, t helperTypes) helperFunc {
 			t.in, t.out, lang.Name("p"),
 		)
 	}
+
 	wrap := func(in genExpr, next func(genExpr) genStep) genStep {
 		return genSteps{
 			lang.If(cond(in), lang.Stmt("return nil"), nil),
@@ -276,6 +302,7 @@ func toTargetFunc(h *helper, f helperFunc, t helperTypes) helperFunc {
 	}
 	f.params, f.results = lang.Expr("%s %s", decl("p"), t.undSpelled), lang.Expr("%s", t.src)
 	f.body = genSteps{along(h.route, lang.Name("p"), allocate, wrap)}
+
 	return f
 }
 
@@ -297,6 +324,7 @@ func (p *mapper) embeddedFunc(h *helper, f helperFunc, t helperTypes) helperFunc
 		}
 		f.doc = lang.Expr("converts %s into %s, or the zero partial value for a nil %s.",
 			t.in, t.out, lang.Name("v"))
+
 		return f
 	}
 
@@ -313,6 +341,7 @@ func (p *mapper) embeddedFunc(h *helper, f helperFunc, t helperTypes) helperFunc
 		t.out,
 		lang.Name("p"),
 	)
+
 	return f
 }
 
@@ -320,17 +349,20 @@ func (p *mapper) embeddedFunc(h *helper, f helperFunc, t helperTypes) helperFunc
 // field of an embedded partial value is undefined.
 func (p *mapper) allUndefinedFunc(h *helper, f helperFunc, t helperTypes) (helperFunc, error) {
 	var tests []genExpr
+
 	st := h.named.Underlying().(*types.Struct)
 	for fv := range st.Fields() {
 		if fv.Name() == "_" {
 			continue
 		}
+
 		named, ok := p.sel.partialOf(deref(fv.Type()), p.pkg.PkgPath)
 		if ok && fv.Embedded() && isStruct(named) {
 			tests = append(tests, p.call(
 				&helper{op: opAllUndefined, typ: named, named: named},
 				lang.Expr("%s.%s", lang.Name("p"), partialName(named.Obj().Name())),
 			))
+
 			continue
 		}
 		// An unexported field of a partial type of another package cannot
@@ -342,15 +374,19 @@ func (p *mapper) allUndefinedFunc(h *helper, f helperFunc, t helperTypes) (helpe
 				ErrUnsupported, t.part, fv.Pkg().Path(), fv.Name(), p.pkg.PkgPath,
 			)
 		}
+
 		tests = append(tests, lang.Expr("%s.%s.IsUndefined()", lang.Name("p"), fv.Name()))
 	}
+
 	if len(tests) == 0 {
 		tests = []genExpr{lang.Expr("true")}
 	}
+
 	f.params, f.results = lang.Expr("%s %s", decl("p"), t.part), lang.Expr("bool")
 	f.body = genSteps{lang.Stmt("return %s", lang.Join(" &&\n", tests...))}
 	f.doc = lang.Expr("reports whether every field of %s, a %s, is undefined, the fields "+
 		"of embedded partial values included. Blank fields are skipped.", lang.Name("p"), t.in)
+
 	return f, nil
 }
 
@@ -371,14 +407,17 @@ func (p *mapper) mergeAppendFunc(h *helper, f helperFunc, t helperTypes) (helper
 			lang.Stmt("return %s", lang.Name("r")), nil,
 		),
 	}
+
 	elems := lang.Expr("a new slice of the elements of %s then %s", lang.Name("l"), lang.Name("r"))
 	if isMapType(h.mergeType()) {
 		elems = lang.Expr("a new map of the entries of %s with the entries of %s set",
 			lang.Name("l"), lang.Name("r"))
+
 		mp, err := p.ident(mapsPath)
 		if err != nil {
 			return helperFunc{}, err
 		}
+
 		f.body = append(f.body,
 			lang.Stmt("%s := make(%s, len(%s)+len(%s))",
 				decl("o"), t.held, lang.Name("lv"), lang.Name("rv")),
@@ -395,6 +434,7 @@ func (p *mapper) mergeAppendFunc(h *helper, f helperFunc, t helperTypes) (helper
 				t.und, lang.Name("o"), lang.Name("rv")),
 		)
 	}
+
 	f.params = lang.Expr("%s, %s %s", decl("l"), decl("r"), t.undSpelled)
 	f.results = lang.Expr("%s", t.undSpelled)
 	f.doc = lang.Expr("merges %s onto %s, both %s: it returns %s when %s is undefined, "+
@@ -404,6 +444,7 @@ func (p *mapper) mergeAppendFunc(h *helper, f helperFunc, t helperTypes) (helper
 		lang.Name("r"), lang.Name("l"), t.in, lang.Name("l"), lang.Name("r"),
 		elems, lang.Name("r"), lang.Name("r"),
 		lang.Name("l"), lang.Name("r"))
+
 	return f, nil
 }
 
@@ -446,8 +487,10 @@ func mergeRecursiveFunc(h *helper, f helperFunc, t helperTypes) helperFunc {
 			"values when both are defined, %s when %s is undefined, and %s otherwise.",
 			lang.Name("r"), lang.Name("l"), t.in, lang.Name("l"), lang.Name("r"), lang.Name("r"))
 	}
+
 	f.params = lang.Expr("%s, %s %s", decl("l"), decl("r"), t.undSpelled)
 	f.results = lang.Expr("%s", t.undSpelled)
+
 	return f
 }
 
@@ -466,5 +509,6 @@ func (h *helper) mergeType() types.Type {
 	if h.partial {
 		return h.named
 	}
+
 	return h.typ
 }

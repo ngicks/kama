@@ -132,13 +132,16 @@ type Options struct {
 // WithDefaults returns o with empty fields set to their defaults.
 func (o Options) WithDefaults() Options {
 	o.Merge = cmp.Or(o.Merge, MergeOverwrite)
+
 	o.MergeNested = cmp.Or(o.MergeNested, MergeNestedRecursive)
 	if o.Registry == nil {
 		o.Registry = genmark.DefaultRegistry
 	}
+
 	if o.Now == nil {
 		o.Now = time.Now
 	}
+
 	return o
 }
 
@@ -149,11 +152,13 @@ func (o Options) Validate() error {
 	default:
 		return fmt.Errorf("%w: merge %q", ErrOption, o.Merge)
 	}
+
 	switch o.MergeNested {
 	case "", MergeNestedRecursive, MergeNestedOverwrite:
 	default:
 		return fmt.Errorf("%w: merge_nested %q", ErrOption, o.MergeNested)
 	}
+
 	return nil
 }
 
@@ -180,19 +185,23 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, nil, err
 	}
+
 	opts = opts.WithDefaults()
+
 	hdr, err := fileHeader(opts, opts.Now())
 	if err != nil {
 		return nil, nil, err
 	}
 
 	srcPkgs := base.SourcePackages(pkgs)
+
 	sel, err := selectTargets(srcPkgs, opts)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	byFile := map[string][]*typegraph.Node{}
+
 	for _, n := range sel.targets {
 		filename := sel.filename(n)
 		byFile[filename] = append(byFile[filename], n)
@@ -203,18 +212,22 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		dir   string
 		files []*partialFile
 	}
+
 	byPkg := map[string]*pkgFiles{}
+
 	for _, filename := range slices.Sorted(maps.Keys(byFile)) {
 		nodes := byFile[filename]
 		slices.SortFunc(nodes, func(a, b *typegraph.Node) int {
 			return cmp.Compare(a.Detail.Ts.Pos(), b.Detail.Ts.Pos())
 		})
 		pkg := nodes[0].Detail.Pkg
+
 		pf := byPkg[pkg.PkgPath]
 		if pf == nil {
 			pf = &pkgFiles{pkg: pkg, dir: filepath.Dir(filename)}
 			byPkg[pkg.PkgPath] = pf
 		}
+
 		buildLine, constrained := base.BuildConstraint(nodes[0].Detail.File)
 		pf.files = append(pf.files, &partialFile{
 			path:        naming.SourceFile(filename),
@@ -226,12 +239,14 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	}
 
 	var files []File
+
 	for _, pkgPath := range slices.Sorted(maps.Keys(byPkg)) {
 		pf := byPkg[pkgPath]
 		slices.SortFunc(
 			pf.files,
 			func(a, b *partialFile) int { return cmp.Compare(a.path, b.path) },
 		)
+
 		out, err := renderPackage(sel, hdr, pf.pkg, pf.dir, pf.files)
 		if err != nil {
 			return nil, nil, err
@@ -243,7 +258,9 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		if err != nil {
 			return nil, nil, err
 		}
+
 		out = append(out, File{Path: filepath.Join(pf.dir, FlagSetFile), Content: content})
+
 		contents := opiter.WrapSeq(
 			slices.Values(out),
 		).
@@ -251,16 +268,21 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 				func(f File) []byte { return f.Content },
 			).
 			Collect()
+
 		if err := checkPredeclared(pf.pkg, contents); err != nil {
 			return nil, nil, err
 		}
+
 		files = append(files, out...)
 	}
+
 	slices.SortFunc(files, func(a, b File) int { return cmp.Compare(a.Path, b.Path) })
+
 	generated := map[string]bool{}
 	for pkgPath := range byPkg {
 		generated[pkgPath] = true
 	}
+
 	stale := base.StaleCheck{
 		Registry:  opts.Registry,
 		Generator: GeneratorName,
@@ -273,6 +295,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 			return !generated[pkg.PkgPath] && filepath.Base(path) == FlagSetFile
 		},
 	}
+
 	return files, stale.Files(srcPkgs, files), nil
 }
 
@@ -298,17 +321,21 @@ func renderPackage(
 		if err != nil {
 			return nil, err
 		}
+
 		f.calls, f.support = p.calls, p.support
 	}
+
 	if err := helpers.resolve(); err != nil {
 		return nil, err
 	}
+
 	for _, f := range files {
 		f.used = map[string]bool{}
 		for h := range f.calls {
 			f.used[helpers.name(h)] = true
 		}
 	}
+
 	if err := checkHelperNames(sel, pkg, files); err != nil {
 		return nil, err
 	}
@@ -321,6 +348,7 @@ func renderPackage(
 		if err != nil {
 			return nil, err
 		}
+
 		out = append(out, File{Path: f.path, Content: content})
 	}
 	// A helpers file declares its helpers sorted by name, that is by op and
@@ -330,8 +358,10 @@ func renderPackage(
 		if err != nil {
 			return nil, err
 		}
+
 		out = append(out, File{Path: hf.Path, Content: content})
 	}
+
 	return out, nil
 }
 
@@ -347,9 +377,12 @@ func renderHelpers(
 	parser.Reserve(types.Universe.Names()...)
 	parser.Reserve(pkg.Types.Scope().Names()...)
 	parser.Reserve(localNames...)
+
 	require := map[string]bool{}
+
 	for _, name := range hf.Names {
 		h := helpers.byName[name]
+
 		parser.Reserve(
 			opiter.WrapSeq(
 				slices.Values(h.typeParams()),
@@ -357,8 +390,10 @@ func renderHelpers(
 				Map(typeParamName).
 				Collect()...,
 		)
+
 		maps.Copy(require, h.spelled)
 	}
+
 	for _, path := range slices.Sorted(maps.Keys(require)) {
 		err := parser.Require(importdecl.Import{
 			Package: importdecl.Package{Path: path, Name: filepath.Base(path)},
@@ -367,6 +402,7 @@ func renderHelpers(
 			return nil, err
 		}
 	}
+
 	m, err := parser.ParseDst(nil)
 	if err != nil {
 		return nil, err
@@ -378,25 +414,32 @@ func renderHelpers(
 		refs: map[string]bool{},
 	}
 	file := &dst.File{Name: dst.NewIdent(pkg.Name)}
+
 	file.Decs.Start = append(slices.Clone(hdr), "\n")
 	if hf.BuildLine != "" {
 		file.Decs.Start = append(file.Decs.Start, hf.BuildLine, "\n")
 	}
+
 	var src strings.Builder
+
 	for _, name := range hf.Names {
 		text, err := p.helperDecl(name, helpers.byName[name])
 		if err != nil {
 			return nil, err
 		}
+
 		src.WriteString(text)
 	}
+
 	decls, err := gofragment.ParseDstDecls([]byte(src.String()))
 	if err != nil {
 		return nil, fmt.Errorf("partial: parse helpers of %s: %w", hf.Path, err)
 	}
+
 	for _, d := range decls {
 		d.Decorations().Before = dst.EmptyLine
 	}
+
 	file.Decls = decls
 	m.AddMissingDst(file)
 
@@ -404,6 +447,7 @@ func renderHelpers(
 	if err := decorator.Fprint(&buf, file); err != nil {
 		return nil, fmt.Errorf("partial: print %s: %w", hf.Path, err)
 	}
+
 	return buf.Bytes(), nil
 }
 
@@ -414,11 +458,13 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 	for _, f := range files {
 		maps.Copy(names, f.used)
 	}
+
 	declaredErr := func(helper string) error {
 		obj := pkg.Types.Scope().Lookup(helper)
 		if obj == nil || sel.generated[obj] {
 			return nil
 		}
+
 		return fmt.Errorf(
 			"%w: %s: %s.%s is already declared for a helper of the generated methods",
 			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, helper,
@@ -426,6 +472,7 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 	}
 	// errors.Join drops the nil errors of helpers declared by nothing else.
 	sorted := slices.Sorted(maps.Keys(names))
+
 	return errors.Join(
 		opiter.WrapSeq(
 			slices.Values(sorted),
@@ -441,6 +488,7 @@ func fileHeader(opts Options, now time.Time) (dst.Decorations, error) {
 	if opts.OptionFile != nil {
 		optionFile = opts.OptionFile.Name
 	}
+
 	return base.Header(generatorPath, map[string]any{
 		"merge":        string(opts.Merge),
 		"merge_nested": string(opts.MergeNested),
@@ -470,13 +518,16 @@ func renderFileWith(
 	parser.Reserve(types.Universe.Names()...)
 	parser.Reserve(pkg.Types.Scope().Names()...)
 	parser.Reserve(localNames...)
+
 	for _, n := range nodes {
 		// Only files with field mask methods reserve their locals, so that the
 		// import names of other files stay as they were.
 		if sel.fieldMasked(n.Id) {
 			parser.Reserve(fieldMaskLocals...)
 		}
+
 		tparams := n.Detail.Type.TypeParams()
+
 		parser.Reserve(
 			opiter.WrapSeq(
 				tparams.TypeParams(),
@@ -484,8 +535,10 @@ func renderFileWith(
 				Map(typeParamName).
 				Collect()...,
 		)
+
 		parser.Reserve(methodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams())...)
 	}
+
 	for _, path := range require {
 		err := parser.Require(importdecl.Import{
 			Package: importdecl.Package{Path: path, Name: filepath.Base(path)},
@@ -494,6 +547,7 @@ func renderFileWith(
 			return nil, nil, err
 		}
 	}
+
 	m, err := parser.ParseDst(nil)
 	if err != nil {
 		return nil, nil, err
@@ -504,6 +558,7 @@ func renderFileWith(
 		helpers: helpers, calls: map[*helper]bool{}, support: map[string]bool{},
 	}
 	file := &dst.File{Name: dst.NewIdent(pkg.Name)}
+
 	file.Decs.Start = append(slices.Clone(hdr), "\n")
 	// The partial types refer to the source types, so they must build under
 	// the same constraint. A constraint in the file name is kept by the
@@ -511,19 +566,23 @@ func renderFileWith(
 	if line, ok := base.BuildConstraint(nodes[0].Detail.File); ok {
 		file.Decs.Start = append(file.Decs.Start, line, "\n")
 	}
+
 	for _, n := range nodes {
 		decls, err := p.decl(n)
 		if err != nil {
 			return nil, nil, err
 		}
+
 		file.Decls = append(file.Decls, decls...)
 	}
+
 	m.AddMissingDst(file)
 
 	var buf bytes.Buffer
 	if err := decorator.Fprint(&buf, file); err != nil {
 		return nil, nil, fmt.Errorf("partial: print %s: %w", nodeName(nodes[0]), err)
 	}
+
 	return buf.Bytes(), p, nil
 }
 
@@ -531,42 +590,54 @@ func renderFileWith(
 func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 	named := n.Detail.Type
 	p.refs = map[string]bool{}
+
 	tparams, err := p.typeParams(n, named.TypeParams())
 	if err != nil {
 		return nil, err
 	}
 
 	w := p.newMethodWriter(n)
+
 	var ty dst.Expr
+
 	switch u := named.Underlying().(type) {
 	case *types.Struct:
 		var fields []fieldInfo
+
 		ty, fields, err = p.structType(n, u)
 		if err == nil {
 			err = w.structMethods(fields)
 		}
 	case *types.Slice:
 		var elem mapped
+
 		elem, err = p.value(u.Elem(), false)
+
 		ty = &dst.ArrayType{Elt: elem.expr}
 		if err == nil {
 			err = w.collectionMethods(false, elem, u.Elem())
 		}
 	case *types.Map:
-		var key dst.Expr
-		var value mapped
+		var (
+			key   dst.Expr
+			value mapped
+		)
+
 		key, err = p.print(u.Key())
 		if err == nil {
 			value, err = p.value(u.Elem(), false)
 		}
+
 		ty = &dst.MapType{Key: key, Value: value.expr}
 		if err == nil {
 			err = w.collectionMethods(true, value, u.Elem())
 		}
 	}
+
 	if err == nil {
 		err = p.checkTypeParams(named)
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("%s (%s): %w", nodeName(n), p.position(named.Obj().Pos()), err)
 	}
@@ -594,6 +665,7 @@ func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return slices.Concat([]dst.Decl{typeDecl}, methods), nil
 }
 
@@ -624,8 +696,10 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 				ErrConflict, p.position(tp.Obj().Pos()), tp.Obj().Name(), tp.Obj().Name(),
 			)
 		}
+
 		return nil
 	}
+
 	// errors.Join drops the nil errors of type parameters shadowing nothing.
 	return errors.Join(
 		opiter.WrapSeq(
@@ -645,12 +719,14 @@ func checkPredeclared(pkg *packages.Package, contents [][]byte) error {
 	if err != nil {
 		return err
 	}
+
 	shadowErr := func(obj types.Object) error {
 		return fmt.Errorf(
 			"%w: %s: %s.%s shadows the predeclared %s the generated code spells",
 			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(), obj.Name(),
 		)
 	}
+
 	return errors.Join(
 		opiter.WrapSeq(
 			slices.Values(objs),

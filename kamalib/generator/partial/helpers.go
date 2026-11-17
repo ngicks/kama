@@ -107,7 +107,9 @@ type helper struct {
 // receiver.
 func (h *helper) typeParams() []*types.TypeParam {
 	seen := map[*types.TypeParam]bool{}
+
 	var visit func(t types.Type)
+
 	visit = func(t types.Type) {
 		for _, tp := range typeParamsOf(t) {
 			if !seen[tp] {
@@ -117,6 +119,7 @@ func (h *helper) typeParams() []*types.TypeParam {
 		}
 	}
 	visit(h.typ)
+
 	return slices.SortedFunc(maps.Keys(seen), func(a, b *types.TypeParam) int {
 		return cmp.Compare(a.Index(), b.Index())
 	})
@@ -133,6 +136,7 @@ func (h *helper) held() (pointer, plain bool) {
 	case opMergeAppend:
 		return false, !h.partial
 	}
+
 	return false, false
 }
 
@@ -154,6 +158,7 @@ func signatureOf[T any](op helperOp, src, part, und, boolean T) (in, out []T) {
 	case opAllUndefined:
 		return []T{part}, []T{boolean}
 	}
+
 	return nil, nil
 }
 
@@ -164,6 +169,7 @@ func (h *helper) signature(syn *synthetic) (in, out []types.Type) {
 	if h.named != nil {
 		part = syn.partial(h.named)
 	}
+
 	held := part
 	switch pointer, plain := h.held(); {
 	case plain:
@@ -171,6 +177,7 @@ func (h *helper) signature(syn *synthetic) (in, out []types.Type) {
 	case pointer:
 		held = types.NewPointer(part)
 	}
+
 	return signatureOf(h.op, h.typ, part, syn.und(held), types.Type(types.Typ[types.Bool]))
 }
 
@@ -217,14 +224,17 @@ func syntheticOrigin(pkg *types.Package, name string, tparams int) *types.Named 
 	named := types.NewNamed(
 		types.NewTypeName(token.NoPos, pkg, name, nil), types.NewStruct(nil, nil), nil,
 	)
+
 	if tparams > 0 {
 		list := make([]*types.TypeParam, tparams)
 		for i := range list {
 			obj := types.NewTypeName(token.NoPos, pkg, "T"+strconv.Itoa(i), nil)
 			list[i] = types.NewTypeParam(obj, types.NewInterfaceType(nil, nil).Complete())
 		}
+
 		named.SetTypeParams(list)
 	}
+
 	return named
 }
 
@@ -234,10 +244,12 @@ func instantiate(origin *types.Named, args []types.Type) types.Type {
 	if len(args) == 0 {
 		return origin
 	}
+
 	t, err := types.Instantiate(nil, origin, args, false)
 	if err != nil {
 		panic(fmt.Errorf("partial: instantiate %s: %w", origin, err))
 	}
+
 	return t
 }
 
@@ -250,6 +262,7 @@ func (s *synthetic) und(t types.Type) types.Type {
 // arguments.
 func (s *synthetic) partial(named *types.Named) types.Type {
 	obj := named.Origin().Obj()
+
 	origin, ok := s.partials[obj]
 	if !ok {
 		origin = syntheticOrigin(
@@ -258,6 +271,7 @@ func (s *synthetic) partial(named *types.Named) types.Type {
 		s.partials[obj] = origin
 		s.targets[origin.Obj()] = obj
 	}
+
 	return instantiate(origin, slices.Collect(named.TypeArgs().Types()))
 }
 
@@ -300,6 +314,7 @@ type encoder struct {
 func (s *synthetic) encodeList(ts []types.Type) []byte {
 	e := &encoder{syn: s, visiting: map[*types.TypeParam]bool{}}
 	e.list(ts)
+
 	return e.b
 }
 
@@ -312,6 +327,7 @@ func (e *encoder) bool(v bool) {
 	if v {
 		b = 1
 	}
+
 	e.b = append(e.b, b)
 }
 
@@ -320,13 +336,16 @@ func (e *encoder) target(obj *types.TypeName) (*types.TypeName, bool) {
 	if e.syn == nil {
 		return nil, false
 	}
+
 	target, ok := e.syn.targets[obj]
+
 	return target, ok
 }
 
 func (e *encoder) list(ts []types.Type) {
 	e.kind(encList)
 	e.int(len(ts))
+
 	for _, t := range ts {
 		e.typ(t)
 	}
@@ -335,6 +354,7 @@ func (e *encoder) list(ts []types.Type) {
 func (e *encoder) tuple(t *types.Tuple) {
 	e.kind(encList)
 	e.int(t.Len())
+
 	for v := range t.Variables() {
 		e.typ(v.Type())
 	}
@@ -345,6 +365,7 @@ func pkgPath(pkg *types.Package) string {
 	if pkg == nil {
 		return ""
 	}
+
 	return pkg.Path()
 }
 
@@ -376,10 +397,12 @@ func (e *encoder) typ(t types.Type) {
 		obj := t.Origin().Obj()
 		if target, ok := e.target(obj); ok {
 			e.kind(encPartial)
+
 			obj = target
 		} else {
 			e.kind(encNamed)
 		}
+
 		e.str(pkgPath(obj.Pkg()))
 		e.str(obj.Name())
 		e.list(slices.Collect(t.TypeArgs().Types()))
@@ -387,8 +410,10 @@ func (e *encoder) typ(t types.Type) {
 		if e.visiting[t] {
 			e.kind(encTypeRef)
 			e.int(t.Index())
+
 			return
 		}
+
 		e.kind(encTypeParam)
 		e.int(t.Index())
 		e.visiting[t] = true
@@ -397,13 +422,16 @@ func (e *encoder) typ(t types.Type) {
 	case *types.Struct:
 		e.kind(encStruct)
 		e.int(t.NumFields())
+
 		for i, f := range slices.Collect(t.Fields()) {
 			e.str(f.Name())
+
 			if f.Exported() {
 				e.str("")
 			} else {
 				e.str(pkgPath(f.Pkg()))
 			}
+
 			e.bool(f.Embedded())
 			e.typ(f.Type())
 			e.str(t.Tag(i))
@@ -416,16 +444,19 @@ func (e *encoder) typ(t types.Type) {
 		e.bool(t.Variadic())
 	case *types.Interface:
 		e.kind(encInterface)
+
 		methods := slices.Collect(t.Methods())
 		slices.SortFunc(methods, func(a, b *types.Func) int {
 			return cmp.Or(cmp.Compare(a.Name(), b.Name()), cmp.Compare(methodPkg(a), methodPkg(b)))
 		})
 		e.int(len(methods))
+
 		for _, m := range methods {
 			e.str(m.Name())
 			e.str(methodPkg(m))
 			e.typ(m.Type())
 		}
+
 		// Embedded interfaces contribute their methods above; the other
 		// embedded elements restrict the type set.
 		elems := opiter.WrapSeq(
@@ -433,14 +464,18 @@ func (e *encoder) typ(t types.Type) {
 		).
 			Filter(notInterface).
 			Collect()
+
 		e.int(len(elems))
+
 		for _, et := range elems {
 			e.typ(et)
 		}
+
 		e.bool(t.IsComparable())
 	case *types.Union:
 		e.kind(encUnion)
 		e.int(t.Len())
+
 		for term := range t.Terms() {
 			e.bool(term.Tilde())
 			e.typ(term.Type())
@@ -456,6 +491,7 @@ func methodPkg(m *types.Func) string {
 	if m.Exported() {
 		return ""
 	}
+
 	return pkgPath(m.Pkg())
 }
 
@@ -471,8 +507,11 @@ func isMapType(t types.Type) bool {
 
 // typeParamsOf returns the type parameters t mentions.
 func typeParamsOf(t types.Type) []*types.TypeParam {
-	var out []*types.TypeParam
-	var visit func(t types.Type)
+	var (
+		out   []*types.TypeParam
+		visit func(t types.Type)
+	)
+
 	visit = func(t types.Type) {
 		switch t := types.Unalias(t).(type) {
 		case *types.TypeParam:
@@ -507,6 +546,7 @@ func typeParamsOf(t types.Type) []*types.TypeParam {
 			for m := range t.ExplicitMethods() {
 				visit(m.Type())
 			}
+
 			for e := range t.EmbeddedTypes() {
 				visit(e)
 			}
@@ -517,6 +557,7 @@ func typeParamsOf(t types.Type) []*types.TypeParam {
 		}
 	}
 	visit(t)
+
 	return out
 }
 
@@ -565,12 +606,15 @@ func (s *helperSet) add(h *helper) (*helper, error) {
 			bytes.Equal(prev.inEnc, h.inEnc) && bytes.Equal(prev.outEnc, h.outEnc)
 	}
 	sameBase := slices.Values(s.groups[base])
+
 	served := opiter.WrapSeq(sameBase).
 		Filter(servesSignature).
 		First()
+
 	if served.IsSome() {
 		return served.Value(), nil
 	}
+
 	for other, group := range s.groups {
 		for _, prev := range group {
 			if other != base && identicalSignature(prev, h) {
@@ -581,10 +625,13 @@ func (s *helperSet) add(h *helper) (*helper, error) {
 			}
 		}
 	}
+
 	if s.names != nil {
 		return nil, fmt.Errorf("partial: helper %s added after naming", h.describe())
 	}
+
 	s.groups[base] = append(s.groups[base], h)
+
 	return h, nil
 }
 
@@ -600,12 +647,14 @@ func (s *helperSet) resolve() error {
 			s.names[group[0]], s.byName[base] = base, group[0]
 			continue
 		}
+
 		if len(group) > maxCollisions {
 			return fmt.Errorf(
 				"%w: %d helpers share the name %s; at most %d can be told apart",
 				ErrConflict, len(group), base, maxCollisions,
 			)
 		}
+
 		sorted := slices.SortedFunc(slices.Values(group), func(a, b *helper) int {
 			return cmp.Or(bytes.Compare(a.inEnc, b.inEnc), bytes.Compare(a.outEnc, b.outEnc))
 		})
@@ -614,6 +663,7 @@ func (s *helperSet) resolve() error {
 			s.names[h], s.byName[name] = name, h
 		}
 	}
+
 	return nil
 }
 
@@ -623,6 +673,7 @@ func (s *helperSet) name(h *helper) string {
 	if name, ok := s.names[h]; ok {
 		return name
 	}
+
 	return helperName(helperOpNames[h.op], s.hash(h.inEnc, h.outEnc))
 }
 

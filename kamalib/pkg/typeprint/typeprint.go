@@ -43,6 +43,7 @@ func (p printer) typeName(obj *types.TypeName) (qual, name string, err error) {
 	if pkg == nil {
 		return "", obj.Name(), nil
 	}
+
 	if parent := obj.Parent(); parent != nil && parent != pkg.Scope() {
 		return "", "", fmt.Errorf(
 			"%w: %s is declared inside a function",
@@ -50,16 +51,20 @@ func (p printer) typeName(obj *types.TypeName) (qual, name string, err error) {
 			obj.Name(),
 		)
 	}
+
 	if pkg.Path() == p.currentPkgPath {
 		return "", obj.Name(), nil
 	}
+
 	if !obj.Exported() {
 		return "", "", fmt.Errorf("%w: %s.%s", ErrUnexported, pkg.Path(), obj.Name())
 	}
+
 	qual, err = p.ident(pkg.Path())
 	if err != nil {
 		return "", "", err
 	}
+
 	return qual, obj.Name(), nil
 }
 
@@ -73,6 +78,7 @@ func checkInstantiated(
 	if tparams.Len() > 0 && targs.Len() == 0 {
 		return fmt.Errorf("%w: generic type %s without type arguments", ErrUnsupported, obj.Name())
 	}
+
 	return nil
 }
 
@@ -90,6 +96,7 @@ func (p printer) checkMemberName(obj types.Object) error {
 	if obj.Exported() || pkg == nil || pkg.Path() == p.currentPkgPath {
 		return nil
 	}
+
 	return fmt.Errorf("%w: %s.%s", ErrUnexported, pkg.Path(), obj.Name())
 }
 
@@ -105,6 +112,7 @@ func (p printer) basicName(b *types.Basic) (qual, name string, err error) {
 		if err != nil {
 			return "", "", err
 		}
+
 		return qual, b.Name(), nil
 	default:
 		// Name keeps byte and rune, which are aliases of uint8 and int32.
@@ -117,6 +125,7 @@ func (p printer) ident(pkgPath string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("%w: %q", ErrUnknownPackage, pkgPath)
 	}
+
 	return ident, nil
 }
 
@@ -124,6 +133,7 @@ func checkSignature(sig *types.Signature) error {
 	if sig.TypeParams().Len() > 0 {
 		return fmt.Errorf("%w: generic signature %s", ErrUnsupported, sig)
 	}
+
 	return nil
 }
 
@@ -131,12 +141,14 @@ func checkSignature(sig *types.Signature) error {
 // sig.
 func variadicElem(sig *types.Signature) (types.Type, error) {
 	last := sig.Params().At(sig.Params().Len() - 1).Type()
+
 	s, ok := last.(*types.Slice)
 	if !ok {
 		// Only the predeclared append takes a string as its variadic
 		// parameter.
 		return nil, fmt.Errorf("%w: variadic parameter of type %s", ErrUnsupported, last)
 	}
+
 	return s.Elem(), nil
 }
 
@@ -145,6 +157,7 @@ func arrayLen(a *types.Array) (string, error) {
 	if a.Len() < 0 {
 		return "", fmt.Errorf("%w: array of unknown length", ErrUnsupported)
 	}
+
 	return strconv.FormatInt(a.Len(), 10), nil
 }
 
@@ -154,7 +167,9 @@ func needsParen(c *types.Chan) bool {
 	if c.Dir() != types.SendRecv {
 		return false
 	}
+
 	elem, ok := c.Elem().(*types.Chan)
+
 	return ok && elem.Dir() == types.RecvOnly
 }
 
@@ -162,6 +177,7 @@ func tagLit(tag string) string {
 	if strconv.CanBackquote(tag) {
 		return "`" + tag + "`"
 	}
+
 	return strconv.Quote(tag)
 }
 

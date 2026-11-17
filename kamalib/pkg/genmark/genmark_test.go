@@ -21,6 +21,7 @@ func parse(t *testing.T, src string) (*token.FileSet, *ast.File) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "x.go", src, parser.ParseComments|parser.AllErrors)
 	assert.NilError(t, err)
+
 	return fset, f
 }
 
@@ -31,6 +32,7 @@ func newRegistry(t *testing.T, names ...string) *Registry {
 	for _, name := range names {
 		assert.NilError(t, r.Register(name))
 	}
+
 	return r
 }
 
@@ -114,9 +116,11 @@ type Baz int
 	assert.NilError(t, err)
 
 	want := []bool{true, false, false}
+
 	for i, decl := range df.Decls {
 		name, ok := r.GeneratedDst(decl.(*dst.GenDecl).Decs.NodeDecs)
 		assert.Equal(t, ok, want[i], "decl %d", i)
+
 		if ok {
 			assert.Equal(t, name, "kama-partial")
 		}
@@ -132,13 +136,16 @@ func TestRegistryConcurrent(t *testing.T) {
 	for i := range 16 {
 		g.Go(func() error {
 			r.Generated(doc)
+
 			err := r.Register(fmt.Sprintf("gen-%d", i%8))
 			if errors.Is(err, ErrDuplicate) {
 				return nil
 			}
+
 			return err
 		})
 	}
+
 	assert.NilError(t, g.Wait())
 
 	name, ok := r.Generated(doc)

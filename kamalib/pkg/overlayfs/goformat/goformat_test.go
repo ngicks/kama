@@ -48,6 +48,7 @@ func TestCommandErrors(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	cancel()
+
 	_, err = Command{Argv: []string{"cat"}}.Format(ctx, "x.go", nil)
 	assert.ErrorIs(t, err, context.Canceled)
 }

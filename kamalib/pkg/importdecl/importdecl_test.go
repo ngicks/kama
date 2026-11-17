@@ -31,10 +31,12 @@ func load(t *testing.T) (map[string]*packages.Package, []*packages.Package) {
 	assert.NilError(t, err)
 
 	byName := map[string]*packages.Package{}
+
 	for _, p := range pkgs {
 		assert.Equal(t, len(p.Errors), 0, "%v", p.Errors)
 		byName[p.Name] = p
 	}
+
 	return byName, pkgs
 }
 
@@ -43,6 +45,7 @@ func parse(t *testing.T, p *Parser, pkg *packages.Package) *Map {
 
 	m, err := p.ParseAst(pkg.Syntax[0].Imports)
 	assert.NilError(t, err)
+
 	return m
 }
 
@@ -62,6 +65,7 @@ func TestIdent(t *testing.T) {
 			assert.Assert(t, ok)
 			assert.Equal(t, got, want)
 		}
+
 		assert.Equal(t, len(missing(m)), 0)
 	})
 
@@ -169,14 +173,17 @@ func TestRequire(t *testing.T) {
 		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/y"`},
 	}})
 	assert.NilError(t, err)
+
 	got, _ = m.Ident("example.com/y")
 	assert.Equal(t, got, "y")
+
 	yMissing := opiter.WrapSeq(
 		m.Missing(),
 	).
 		ContainsFunc(
 			func(imp Import) bool { return imp.Package.Path == "example.com/y" },
 		)
+
 	assert.Assert(t, !yMissing)
 
 	// A requirement without a package name does not tell the name of an
@@ -201,6 +208,7 @@ func TestParseErrors(t *testing.T) {
 		Path: &dst.BasicLit{Kind: token.STRING, Value: `"example.com/unknown"`},
 	}})
 	assert.NilError(t, err)
+
 	got, _ := m.Ident("example.com/unknown")
 	assert.Equal(t, got, "u")
 
@@ -358,6 +366,7 @@ func TestAddMissingDst(t *testing.T) {
 			requireExtra(t, p)
 			m, err := p.ParseDst(df.Imports)
 			assert.NilError(t, err)
+
 			_, _ = m.Ident(pkg22Path)
 
 			m.AddMissingDst(df)
@@ -378,6 +387,7 @@ func formatSource(t *testing.T, src string) string {
 
 	out, err := format.Source([]byte(src))
 	assert.NilError(t, err)
+
 	return string(out)
 }
 
@@ -416,6 +426,7 @@ func TestInferNameKeywords(t *testing.T) {
 		opiter.Range(token.BREAK, token.VAR+1),
 	).
 		Filter(token.Token.IsKeyword)
+
 	for tok := range keywords {
 		kw := tok.String()
 		assert.Equal(t, inferName("example.com/"+kw), "_"+kw)
@@ -472,11 +483,14 @@ func TestRequireInferredNames(t *testing.T) {
 	f := &ast.File{Name: ast.NewIdent("p")}
 	fset := token.NewFileSet()
 	m.AddMissingAst(fset, f)
+
 	var buf bytes.Buffer
 	assert.NilError(t, format.Node(&buf, fset, f))
+
 	for imp := range m.Missing() {
 		fmt.Fprintf(&buf, "\nvar _ = %s.X\n", imp.Ident())
 	}
+
 	formatSource(t, buf.String())
 }
 
@@ -579,6 +593,7 @@ func TestReserve(t *testing.T) {
 	// A Map parsed later starts from the reserved names again.
 	m, err = p.ParseAst(nil)
 	assert.NilError(t, err)
+
 	got, _ = m.Ident("example.com/foo")
 	assert.Equal(t, got, "foo_3")
 }
@@ -589,6 +604,7 @@ func TestImports(t *testing.T) {
 		Import{Package: Package{Path: "example.com/foo", Name: "foo"}},
 		Import{Package: Package{Path: "example.com/other/foo", Name: "foo"}},
 	))
+
 	lit := func(path string) *ast.BasicLit {
 		return &ast.BasicLit{Kind: token.STRING, Value: `"` + path + `"`}
 	}

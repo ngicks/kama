@@ -17,6 +17,7 @@ import (
 
 func main() {
 	specPath := flag.String("spec", "spec.yaml", "workflow spec file")
+
 	flag.Parse()
 
 	if err := run(context.Background(), *specPath); err != nil {

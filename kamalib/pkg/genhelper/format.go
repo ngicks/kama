@@ -53,6 +53,7 @@ func Expr[C Context[C]](format string, args ...any) Gen[C] {
 		if err != nil {
 			return "", err
 		}
+
 		return fmt.Sprintf(format, out...), nil
 	}
 }
@@ -64,6 +65,7 @@ func renderArg[C Context[C]](c C, arg any) (any, error) {
 		if !ok {
 			return nil, fmt.Errorf("%w: %s", ErrUndeclared, string(a))
 		}
+
 		return name, nil
 	case Decl:
 		return c.Scope().Declare(string(a)), nil
@@ -106,6 +108,7 @@ func Join[C Context[C]](sep string, parts ...Gen[C]) Gen[C] {
 		if err != nil {
 			return "", err
 		}
+
 		return strings.Join(out, sep), nil
 	}
 }
@@ -133,20 +136,25 @@ func FailGen[C Context[C]](err error) Gen[C] {
 func Comment[C Context[C]](parts ...Gen[C]) Gen[C] {
 	return func(c C) (string, error) {
 		p := c.Printer(nil)
+
 		for _, part := range parts {
 			if part == nil {
 				continue
 			}
+
 			s, err := part(c)
 			if err != nil {
 				return "", err
 			}
+
 			if strings.TrimSuffix(s, "\n") == "" {
 				p.Printf("//\n")
 				continue
 			}
+
 			printSection(p, s)
 		}
+
 		return string(p.Bytes()), nil
 	}
 }
@@ -169,12 +177,14 @@ func Line[C Context[C]](gen Gen[C]) Step[C] {
 		if err != nil {
 			return c, nil, err
 		}
+
 		p := c.Printer(b)
 		if strings.HasSuffix(s, "\n") {
 			p.Printf("%s", s)
 		} else {
 			p.Printf("%s\n", s)
 		}
+
 		return c, p.Bytes(), nil
 	})
 }
@@ -219,6 +229,7 @@ func DocFunc[C Context[C]](doc, signature Gen[C], body ...Step[C]) Step[C] {
 		if err != nil {
 			return c, nil, err
 		}
+
 		var text string
 		if doc != nil {
 			text, err = doc(c)
@@ -226,16 +237,21 @@ func DocFunc[C Context[C]](doc, signature Gen[C], body ...Step[C]) Step[C] {
 				return c, nil, err
 			}
 		}
+
 		p := c.Printer(b)
 		if strings.TrimSuffix(text, "\n") != "" {
 			printSection(p, text)
 		}
+
 		p.Printf("%s {\n", sig)
+
 		c, err = printBody(c, p, Steps[C](body))
 		if err != nil {
 			return c, nil, err
 		}
+
 		p.Printf("}\n")
+
 		return c.WithScope(outer), p.Bytes(), nil
 	})
 }

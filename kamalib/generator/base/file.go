@@ -31,11 +31,14 @@ func RelFiles(root string, files []File) ([]File, error) {
 		if err != nil {
 			return nil, fmt.Errorf("base: %w", err)
 		}
+
 		if !inside(rel) {
 			return nil, fmt.Errorf("base: %q is outside %q", f.Path, root)
 		}
+
 		out = append(out, File{Path: filepath.ToSlash(rel), Content: f.Content})
 	}
+
 	return out, nil
 }
 
@@ -52,18 +55,22 @@ func inside(rel string) bool {
 // for byte as it was.
 func Stage(ctx context.Context, fsys *overlayfs.Fs, files []File, r workflow.Reporter) error {
 	var written, kept int
+
 	for _, f := range files {
 		changed, err := stageFile(ctx, fsys, f)
 		if err != nil {
 			return err
 		}
+
 		if changed {
 			written++
 		} else {
 			kept++
 		}
 	}
+
 	r.Progress(fmt.Sprintf("%s written, %s unchanged", fileCount(written), fileCount(kept)))
+
 	return nil
 }
 
@@ -71,6 +78,7 @@ func fileCount(n int) string {
 	if n == 1 {
 		return "1 file"
 	}
+
 	return fmt.Sprintf("%d files", n)
 }
 
@@ -87,17 +95,21 @@ func stageFile(ctx context.Context, fsys *overlayfs.Fs, f File) (bool, error) {
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return false, fmt.Errorf("base: read %q: %w", f.Path, err)
 	}
+
 	if existing != nil {
 		formatted, err := fsys.Format(ctx, f.Path, f.Content)
 		if err != nil {
 			return false, fmt.Errorf("base: format %q: %w", f.Path, err)
 		}
+
 		if genhelper.SameExceptGenerated(existing, formatted) {
 			return false, nil
 		}
 	}
+
 	if err := fsys.Write(ctx, f.Path, f.Content); err != nil {
 		return false, fmt.Errorf("base: write %q: %w", f.Path, err)
 	}
+
 	return true, nil
 }

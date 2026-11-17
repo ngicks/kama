@@ -50,6 +50,7 @@ func NewBaseContext(s *Scope, d *Package) BaseContext {
 	if s != nil && d != nil && d.Imports != nil {
 		s.LinkImports(d.Imports)
 	}
+
 	return BaseContext{scope: s, pkg: d}
 }
 
@@ -98,11 +99,13 @@ type Steps[C Context[C]] []Step[C]
 func (s Steps[C]) Render(c C, b []byte) (C, []byte, error) {
 	for i, step := range s {
 		var err error
+
 		c, b, err = step.Render(c, b)
 		if err != nil {
 			return c, nil, newStepError(i, err)
 		}
 	}
+
 	return c, b, nil
 }
 
@@ -125,6 +128,7 @@ func Render[C Context[C]](c C, steps ...Step[C]) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return string(b), nil
 }
 
@@ -141,20 +145,24 @@ func newStepError(i int, err error) error {
 	if se, ok := err.(*stepError); ok {
 		return &stepError{path: slices.Concat([]int{i}, se.path), err: se.err}
 	}
+
 	return &stepError{path: []int{i}, err: err}
 }
 
 func (e *stepError) Error() string {
 	var sb strings.Builder
 	sb.WriteString("genhelper: step ")
+
 	indices := opiter.WrapSeq(
 		slices.Values(e.path),
 	).
 		Map(strconv.Itoa).
 		Collect()
+
 	sb.WriteString(strings.Join(indices, "."))
 	sb.WriteString(": ")
 	sb.WriteString(e.err.Error())
+
 	return sb.String()
 }
 
@@ -192,6 +200,7 @@ func Append[C Context[C]](gen func(c C) (string, error)) Step[C] {
 		if err != nil {
 			return c, nil, err
 		}
+
 		return c, append(b, s...), nil
 	})
 }
@@ -210,6 +219,7 @@ func Wrap[C Context[C]](gen func(c C, inner string) (string, error)) Step[C] {
 		if err != nil {
 			return c, nil, err
 		}
+
 		return c, []byte(s), nil
 	})
 }
@@ -238,27 +248,35 @@ type Block[C Context[C]] struct {
 func (bl Block[C]) Render(c C, b []byte) (C, []byte, error) {
 	outer := c.Scope()
 	c = Push(c)
+
 	if bl.Declare != nil {
 		var err error
+
 		c, err = bl.Declare(c)
 		if err != nil {
 			return c, nil, err
 		}
 	}
+
 	var body []byte
+
 	if bl.Body != nil {
 		var err error
+
 		c, body, err = bl.Body.Render(c, nil)
 		if err != nil {
 			return c, nil, err
 		}
 	}
+
 	if bl.Wrap == nil {
 		return c.WithScope(outer), append(b, body...), nil
 	}
+
 	s, err := bl.Wrap(c, string(body))
 	if err != nil {
 		return c, nil, err
 	}
+
 	return c.WithScope(outer), append(b, s...), nil
 }

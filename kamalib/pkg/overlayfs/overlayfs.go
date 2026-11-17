@@ -92,6 +92,7 @@ func (f *Fs) Open(root string, opts ...Option) error {
 	if err != nil {
 		return fmt.Errorf("overlayfs: open %q: %w", root, err)
 	}
+
 	lower := upstream.NewDataSource(lowerRoot)
 
 	top, err := upstream.NewDataSourceCanonical(memfs.New("top"))
@@ -104,6 +105,7 @@ func (f *Fs) Open(root string, opts ...Option) error {
 	if err != nil {
 		top.Close()
 		lower.Close()
+
 		return fmt.Errorf("overlayfs: mount: %w", err)
 	}
 
@@ -117,6 +119,7 @@ func (f *Fs) Open(root string, opts ...Option) error {
 	for _, opt := range opts {
 		opt(f)
 	}
+
 	return nil
 }
 
@@ -144,6 +147,7 @@ func (f *Fs) Format(ctx context.Context, name string, content []byte) ([]byte, e
 	if err != nil {
 		return nil, fmt.Errorf("overlayfs: format %q: %w", name, err)
 	}
+
 	return formatted, nil
 }
 
@@ -223,6 +227,7 @@ func (f *Fs) walkTop(fn func(name string, content []byte) error) error {
 			if err != nil {
 				return err
 			}
+
 			if !d.Mode().IsRegular() {
 				return nil
 			}
@@ -250,5 +255,6 @@ func (f *Fs) Close() error {
 
 	err := f.merged.Close()
 	f.merged, f.top, f.lower, f.formatter = nil, nil, nil, nil
+
 	return err
 }

@@ -22,6 +22,7 @@ type bufPrinter struct {
 func newBufPrinter(b []byte) *bufPrinter {
 	buf := bytes.Buffer{}
 	buf.Write(b)
+
 	return &bufPrinter{buf: buf}
 }
 

@@ -134,6 +134,7 @@ func TestExpr(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := genhelper.NewScope()
 			root.Reserve("v")
+
 			fn := root.Push()
 			if tc.setup != nil {
 				tc.setup(fn)
@@ -146,6 +147,7 @@ func TestExpr(t *testing.T) {
 				assert.ErrorIs(t, err, tc.wantErr)
 				return
 			}
+
 			assert.NilError(t, err)
 			assert.Equal(t, got, tc.want)
 		})
@@ -239,8 +241,10 @@ func TestStmtLine(t *testing.T) {
 			if tc.wantErr != nil {
 				assert.ErrorIs(t, err, tc.wantErr)
 				assert.Assert(t, b == nil)
+
 				return
 			}
+
 			assert.NilError(t, err)
 			assert.Equal(t, string(b), tc.want)
 		})
@@ -336,8 +340,10 @@ func TestFunc(t *testing.T) {
 			if tc.wantErr != nil {
 				assert.ErrorIs(t, err, tc.wantErr)
 				assert.Error(t, err, tc.wantMsg)
+
 				return
 			}
+
 			assert.NilError(t, err)
 			assert.Equal(t, string(b), tc.want)
 			assert.Equal(t, c.Scope(), root)
@@ -426,6 +432,7 @@ func TestStepsErrorPath(t *testing.T) {
 					if err != nil {
 						return c, nil, fmt.Errorf("wrap: %w", err)
 					}
+
 					return c, b, nil
 				}),
 			},
@@ -436,6 +443,7 @@ func TestStepsErrorPath(t *testing.T) {
 			_, _, err := tc.step.Render(genhelper.NewBaseContext(genhelper.NewScope(), nil), nil)
 			assert.Error(t, err, tc.want)
 			assert.ErrorIs(t, err, pathError{})
+
 			var pe pathError
 			assert.Assert(t, errors.As(err, &pe))
 		})
@@ -489,6 +497,7 @@ func TestJoin(t *testing.T) {
 				assert.Equal(t, err, tc.wantErr)
 				return
 			}
+
 			assert.NilError(t, err)
 			assert.Equal(t, got, tc.want)
 		})
@@ -602,6 +611,7 @@ func TestComment(t *testing.T) {
 				assert.Equal(t, err, tc.wantErr)
 				return
 			}
+
 			assert.NilError(t, err)
 			assert.Equal(t, got, tc.want)
 		})
@@ -676,6 +686,7 @@ func TestDocFunc(t *testing.T) {
 			if tc.setup != nil {
 				tc.setup(root)
 			}
+
 			s := sig
 			if tc.sig != nil {
 				s = tc.sig
@@ -687,8 +698,10 @@ func TestDocFunc(t *testing.T) {
 				assert.ErrorIs(t, err, tc.wantErr)
 				assert.Error(t, err, tc.wantMsg)
 				assert.Assert(t, b == nil)
+
 				return
 			}
+
 			assert.NilError(t, err)
 			assert.Equal(t, string(b), tc.want)
 			assert.Equal(t, c.Scope(), root)

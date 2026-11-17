@@ -71,6 +71,7 @@ func (l *LogLevel) UnmarshalText(text []byte) error {
 	default:
 		return fmt.Errorf("unknown level %q", text)
 	}
+
 	return nil
 }
 

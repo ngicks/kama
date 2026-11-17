@@ -25,18 +25,22 @@ func funcs(t *testing.T, src string) map[string]string {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "x.go", src, parser.ParseComments)
 	assert.NilError(t, err)
+
 	out := map[string]string{}
+
 	for _, d := range f.Decls {
 		fd, ok := d.(*ast.FuncDecl)
 		if !ok {
 			continue
 		}
+
 		name := fd.Name.Name
 		if fd.Recv != nil {
 			recv := fd.Recv.List[0].Type
 			if s, ok := recv.(*ast.StarExpr); ok {
 				recv = s.X
 			}
+
 			for {
 				switch x := recv.(type) {
 				case *ast.IndexExpr:
@@ -46,14 +50,18 @@ func funcs(t *testing.T, src string) map[string]string {
 					recv = x.X
 					continue
 				}
+
 				break
 			}
+
 			name = recv.(*ast.Ident).Name + "." + name
 		}
+
 		out[name] = src[fset.Position(fd.Pos()).Offset:fset.Position(fd.End()).Offset]
 		_, marked := genmark.DefaultRegistry.Generated(fd.Doc)
 		assert.Assert(t, marked, "%s has no marker", name)
 	}
+
 	return out
 }
 
@@ -127,6 +135,7 @@ type Kids[T any] []L[T]
 	mergeRefL := h("MergeRecursive", "both und.Und[*LPartial[T]]:")
 
 	fs := allFuncs(t, src, files[HelpersFile])
+
 	for name, want := range map[string][]string{
 		"APartial.FromValue": {
 			"p.Self = " + fromRefA + "(v.Self)",
@@ -145,10 +154,13 @@ type Kids[T any] []L[T]
 			assert.Assert(t, strings.Contains(fs[name], w), "%s\n%s", w, fs[name])
 		}
 	}
+
 	for _, h := range []string{fromRefA, fromC, toRefA, toC, mergeRefA, mergeC, mergeRefL} {
 		assert.Assert(t, fs[h] != "", "%s is missing", h)
 	}
+
 	assert.Assert(t, !strings.Contains(src, "func("), "a function literal remains")
+
 	for name := range fs {
 		assert.Assert(t, !strings.Contains(name, "_L"), "%s spells a type parameter", name)
 	}
@@ -227,6 +239,7 @@ func TestDocNamesRenamedParams(t *testing.T) {
 			"//kama:partial\ntype S[p any] []p\n\n" +
 			"//kama:partial:fieldmask\ntype N[T any] struct{ V T }\n",
 	})
+
 	src := files["a.kama_partial.go"]
 	for _, want := range []string{
 		"// FromValue sets every field of p2 to the partial form of the field of v2.\n",
@@ -249,6 +262,7 @@ func TestDocNamesRenamedParams(t *testing.T) {
 		"a.go": "package x\n\n//kama:partial\ntype B[l, r any] struct{ L *N[l]; R *N[r] }\n\n" +
 			"//kama:partial\ntype N[T any] struct{ V T }\n",
 	})
+
 	helper := helperIn(t, files[HelpersFile], merged[HelpersFile])
 	for _, c := range []struct{ op, doc string }{
 		{"FromTarget", "into und.Und[NPartial[v]], defined, or null for a nil v2."},
@@ -268,11 +282,13 @@ func TestDocNamesRenamedParams(t *testing.T) {
 	} {
 		f, err := parser.ParseFile(token.NewFileSet(), "x.go", out, parser.ParseComments)
 		assert.NilError(t, err)
+
 		for _, d := range f.Decls {
 			fd, ok := d.(*ast.FuncDecl)
 			if !ok || fd.Recv != nil {
 				continue
 			}
+
 			for _, c := range fd.Doc.List {
 				assert.Assert(t, len(c.Text) <= commentWidth || !strings.Contains(c.Text[3:], " "),
 					"%s: %q", fd.Name.Name, c.Text)
@@ -284,12 +300,14 @@ func TestDocNamesRenamedParams(t *testing.T) {
 func TestUnexportedAliasField(t *testing.T) {
 	const sub = "github.com/ngicks/kama/kamalib/generator/partial/testdata/inline/" +
 		"TestUnexportedAliasField/sub"
+
 	files := generated(t, map[string]string{
 		"a.go": "package x\n\nimport \"" + sub + "\"\n\n//kama:partial\n" +
 			"type A struct {\n\tsub.Public\n\tX sub.Public\n\tP *sub.Public\n}\n",
 		"sub/s.go": "package sub\n\ntype Public = hidden\n\ntype hidden struct{ I int }\n",
 	})
 	src := files["a.kama_partial.go"]
+
 	got := maps.Collect(
 		opiter.WrapSeq2(
 			maps.All(fieldTypes(t, src, "APartial")),
@@ -297,6 +315,7 @@ func TestUnexportedAliasField(t *testing.T) {
 			Map(withoutTag).
 			Iter2(),
 	)
+
 	assert.DeepEqual(t, got, map[string]string{
 		"Public": "und.Und[sub.Public]",
 		"X":      "und.Und[sub.Public]",
@@ -458,6 +477,7 @@ type L []int
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			files := generatedWith(t, src, c.opts)
+
 			fs := funcs(t, files["a.kama_partial.go"])
 			for _, w := range c.want(helperIn(t, files[HelpersFile])) {
 				assert.Assert(
@@ -468,6 +488,7 @@ type L []int
 					fs["APartial.Merge"],
 				)
 			}
+
 			assert.Assert(t, strings.Contains(fs["LPartial.Merge"], c.l), fs["LPartial.Merge"])
 		})
 	}
@@ -483,6 +504,7 @@ func TestHelperPlacement(t *testing.T) {
 			"\t//kama:partial:merge append\n\tM map[string]int\n}\n",
 	})
 	declared := map[string][]string{}
+
 	for _, name := range slices.Sorted(maps.Keys(files)) {
 		for fn := range funcs(t, files[name]) {
 			if strings.HasPrefix(fn, "kamaPartial") {
@@ -490,6 +512,7 @@ func TestHelperPlacement(t *testing.T) {
 			}
 		}
 	}
+
 	h := helperIn(t, slices.Collect(maps.Values(files))...)
 	assert.DeepEqual(t, declared, map[string][]string{
 		h("FromTarget", "converts *N into und.Und[NPartial],"): {HelpersFile},
@@ -499,6 +522,7 @@ func TestHelperPlacement(t *testing.T) {
 	})
 	// Only the helpers file imports what the helpers spell.
 	assert.Assert(t, strings.Contains(files[HelpersFile], `"maps"`), files[HelpersFile])
+
 	for _, name := range []string{"a.kama_partial.go", "b.kama_partial.go", "c.kama_partial.go"} {
 		assert.Assert(t, !strings.Contains(files[name], `"maps"`), files[name])
 	}
@@ -518,21 +542,26 @@ func TestHelperNamesSamePackageName(t *testing.T) {
 	src := out["a.kama_partial.go"]
 	fs := allFuncs(t, src, out[HelpersFile])
 	call := regexp.MustCompile(`p\.([XY]) = (kamaPartialMergeAppend_[0-9a-f_]+)\(`)
+
 	names := map[string]string{}
 	for _, m := range call.FindAllStringSubmatch(fs["APartial.Merge"], -1) {
 		names[m[1]] = m[2]
 	}
+
 	assert.Equal(t, len(names), 2, fs["APartial.Merge"])
 	assert.Assert(t, names["X"] != names["Y"], src)
+
 	for _, name := range names {
 		assert.Assert(t, fs[name] != "", "%s is not declared", name)
 	}
+
 	assert.NilError(t, generateAndBuild(t, files))
 }
 
 // TestHelperDeclared reports a declaration named like a helper.
 func TestHelperDeclared(t *testing.T) {
 	const src = "package x\n\n//kama:partial\ntype A struct{ X M }\n\ntype M struct{}\n"
+
 	name := helperIn(t, generated(t, map[string]string{"x.go": src})[HelpersFile])(
 		"FromTarget", "converts M into und.Und[MPartial],")
 	_, err := generate(t, map[string]string{

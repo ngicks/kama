@@ -41,6 +41,7 @@ func (m *marks) fieldMask(r kamaopt.Raw) error {
 	}
 
 	field := r.Key.PkgPath + "." + r.Key.Type + "." + r.Key.Field
+
 	prev, hasPrev := m.maskNames[r.Key]
 	if hasPrev && prev.raw.Origin.Source == r.Origin.Source {
 		return fmt.Errorf(
@@ -48,23 +49,28 @@ func (m *marks) fieldMask(r kamaopt.Raw) error {
 			ErrDirective, pos, field, prev.raw.Origin.Pos,
 		)
 	}
+
 	o, err := maskNameOf(r)
 	if err != nil {
 		return fmt.Errorf(
 			"%w: %s: %s on field %s: %w", ErrDirective, origin(r), spelling(r), field, err,
 		)
 	}
+
 	o.raw = r
 	if hasPrev {
 		if prev.name == o.name {
 			return nil
 		}
+
 		return sourceConflict(
 			"the field mask name of field "+field,
 			prev.raw, strconv.Quote(prev.name), r, strconv.Quote(o.name),
 		)
 	}
+
 	m.maskNames[r.Key] = o
+
 	return nil
 }
 
@@ -77,6 +83,7 @@ func (m *marks) typeFieldMask(r kamaopt.Raw) error {
 			ErrDirective, pos, args, r.Key.PkgPath, r.Key.Type,
 		)
 	}
+
 	id := typegraph.NewQualifiedType(r.Key.PkgPath, r.Key.Type)
 	if prev, ok := m.masked[id]; ok {
 		if prev.Origin.Source == r.Origin.Source {
@@ -85,9 +92,12 @@ func (m *marks) typeFieldMask(r kamaopt.Raw) error {
 				ErrDirective, pos, r.Key.PkgPath, r.Key.Type, prev.Origin.Pos,
 			)
 		}
+
 		return nil
 	}
+
 	m.masked[id] = r
+
 	return nil
 }
 
@@ -97,10 +107,12 @@ func maskNameOf(r kamaopt.Raw) (maskName, error) {
 	if v, ok := r.Value.(FieldMaskOptions); ok {
 		return maskNameFromArgs(map[string]string{"name": v.Name})
 	}
+
 	kv, err := kamaopt.ParseArgs(r.Args)
 	if err != nil {
 		return maskName{}, err
 	}
+
 	return maskNameFromArgs(kv)
 }
 
@@ -115,9 +127,11 @@ func maskNameFromArgs(kv map[string]string) (maskName, error) {
 				func(key string) bool { return key != "name" },
 			),
 	)
+
 	if k.IsSome() {
 		return maskName{}, fmt.Errorf("unknown key %q; want name", k.Value())
 	}
+
 	o := maskName{name: kv["name"]}
 	switch {
 	case o.name == "":
@@ -125,6 +139,7 @@ func maskNameFromArgs(kv map[string]string) (maskName, error) {
 	case strings.Contains(o.name, "."):
 		return maskName{}, fmt.Errorf("name %q; want a path segment without a dot", o.name)
 	}
+
 	return o, nil
 }
 
@@ -139,6 +154,7 @@ func (s *selection) fieldMasked(id typegraph.QualifiedType) bool {
 // blank fields and of embedded partial values.
 func (s *selection) checkFieldMaskTargets() error {
 	var errs []error
+
 	ids := slices.SortedFunc(maps.Keys(s.masked), func(a, b typegraph.QualifiedType) int {
 		return cmp.Or(
 			cmp.Compare(a.PackagePath, b.PackagePath),
@@ -147,6 +163,7 @@ func (s *selection) checkFieldMaskTargets() error {
 	})
 	for _, id := range ids {
 		r := s.masked[id]
+
 		n := s.targets[id]
 		switch {
 		case n == nil:
@@ -173,6 +190,7 @@ func (s *selection) checkFieldMaskTargets() error {
 				}, args)...,
 			))
 		}
+
 		n := s.targets[id]
 		switch {
 		case n == nil:
@@ -185,6 +203,7 @@ func (s *selection) checkFieldMaskTargets() error {
 			bad("a blank field has no path")
 			continue
 		}
+
 		st, ok := n.Detail.Type.Underlying().(*types.Struct)
 		if !ok {
 			continue
@@ -193,15 +212,18 @@ func (s *selection) checkFieldMaskTargets() error {
 		isEmbeddedPartial := func(v *types.Var) bool {
 			return v.Name() == k.Field && s.embeddedPartial(n, v) != nil
 		}
+
 		embedsPartial := opiter.WrapSeq(
 			st.Fields(),
 		).
 			ContainsFunc(isEmbeddedPartial)
+
 		if embedsPartial {
 			bad("the paths of the fields of an embedded partial value are those of " +
 				"the parent, so the field has no path segment of its own")
 		}
 	}
+
 	return errors.Join(errs...)
 }
 
@@ -211,10 +233,12 @@ func (s *selection) embeddedPartial(n *typegraph.Node, v *types.Var) *typegraph.
 	if !v.Embedded() {
 		return nil
 	}
+
 	named, ok := s.partialOf(deref(v.Type()), n.Id.PackagePath)
 	if !ok || !isStruct(named) {
 		return nil
 	}
+
 	return s.node(named)
 }
 
@@ -236,11 +260,14 @@ func (m maskSegment) position() string {
 // have field masks enabled is an error.
 func (s *selection) maskSegments(n *typegraph.Node) ([]maskSegment, error) {
 	st := n.Detail.Type.Underlying().(*types.Struct)
+
 	var out []maskSegment
+
 	for v := range st.Fields() {
 		if v.Name() == "_" {
 			continue
 		}
+
 		if child := s.embeddedPartial(n, v); child != nil {
 			if !s.fieldMasked(child.Id) {
 				return nil, fmt.Errorf(
@@ -250,20 +277,27 @@ func (s *selection) maskSegments(n *typegraph.Node) ([]maskSegment, error) {
 					nodeName(child), n.Id.TypeName,
 				)
 			}
+
 			sub, err := s.maskSegments(child)
 			if err != nil {
 				return nil, err
 			}
+
 			out = append(out, sub...)
+
 			continue
 		}
+
 		seg := v.Name()
+
 		key := kamaopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: v.Name()}
 		if o, ok := s.maskNames[key]; ok {
 			seg = o.name
 		}
+
 		out = append(out, maskSegment{name: seg, owner: n, field: v})
 	}
+
 	return out, nil
 }
 
@@ -273,18 +307,22 @@ func (s *selection) maskSegments(n *typegraph.Node) ([]maskSegment, error) {
 // partial value of a target with field masks.
 func (s *selection) checkFieldMaskSegments() error {
 	var errs []error
+
 	for _, n := range s.sorted() {
 		if !s.fieldMasked(n.Id) {
 			if err := s.checkUnmaskedEmbedding(n); err != nil {
 				errs = append(errs, err)
 			}
+
 			continue
 		}
+
 		segs, err := s.maskSegments(n)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
+
 		seen := map[string]maskSegment{}
 		for _, seg := range segs {
 			prev, ok := seen[seg.name]
@@ -292,6 +330,7 @@ func (s *selection) checkFieldMaskSegments() error {
 				seen[seg.name] = seg
 				continue
 			}
+
 			errs = append(errs, fmt.Errorf(
 				"%w: %s (%s): field mask path segment %q of field %s.%s is taken by field %s.%s (%s)",
 				ErrDirective,
@@ -304,9 +343,11 @@ func (s *selection) checkFieldMaskSegments() error {
 				prev.field.Name(),
 				prev.position(),
 			))
+
 			break
 		}
 	}
+
 	return errors.Join(errs...)
 }
 
@@ -320,11 +361,13 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 	if !ok {
 		return nil
 	}
+
 	maskedEmbeddingErr := func(v *types.Var) error {
 		child := s.embeddedPartial(n, v)
 		if child == nil || !s.fieldMasked(child.Id) {
 			return nil
 		}
+
 		return fmt.Errorf(
 			"%w: %s (%s): embedded %s has field masks enabled, "+
 				"so %s needs //kama:partial:fieldmask too",
@@ -332,6 +375,7 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 			nodeName(child), n.Id.TypeName,
 		)
 	}
+
 	// errors.Join drops the nil errors of fields that are fine.
 	return errors.Join(
 		opiter.WrapSeq(

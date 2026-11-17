@@ -22,6 +22,7 @@ func newImports(t *testing.T) *importdecl.Map {
 	pkg.SetImports([]*types.Package{types.NewPackage(linkVPath, "v")})
 	m, err := importdecl.NewParser(pkg).ParseAst(nil)
 	assert.NilError(t, err)
+
 	return m
 }
 
@@ -35,6 +36,7 @@ func newFakeImports(idents ...string) *fakeImports {
 	for _, ident := range idents {
 		f.idents[ident] = true
 	}
+
 	return f
 }
 
@@ -53,6 +55,7 @@ func TestLinkImports(t *testing.T) {
 		s.LinkImports(m)
 
 		assert.Equal(t, s.Push().Declare("v"), "v")
+
 		got, _ := m.Ident(linkVPath)
 		assert.Equal(t, got, "v_2")
 	})
@@ -64,6 +67,7 @@ func TestLinkImports(t *testing.T) {
 
 		got, _ := m.Ident(linkVPath)
 		assert.Equal(t, got, "v")
+
 		fn := s.Push()
 		assert.Equal(t, fn.Declare("v"), "v2")
 		assert.Equal(t, fn.Use("w"), "w")
@@ -116,6 +120,7 @@ func TestLinkImports(t *testing.T) {
 		)
 
 		assert.Equal(t, c.Scope().Push().Declare("v"), "v")
+
 		got, _ := m.Ident(linkVPath)
 		assert.Equal(t, got, "v_2")
 	})

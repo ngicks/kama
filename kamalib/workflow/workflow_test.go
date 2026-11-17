@@ -159,6 +159,7 @@ func node(t *testing.T, g *Graph, name string) Node {
 			func(n Node) bool { return n.Name == name },
 		).
 		First()
+
 	if found.IsNone() {
 		t.Fatalf("no node %q", name)
 	}
@@ -441,6 +442,7 @@ func TestBuildRejectsInvalidProc(t *testing.T) {
 
 func TestBuildConstructsProcsPerGraph(t *testing.T) {
 	var built int
+
 	reg := NewRegistry()
 	assert.NilError(t, reg.Register("show", func() Proc {
 		built++
@@ -482,6 +484,7 @@ steps:
     in: [dbl]
     after: src
 `
+
 	var spec Spec
 	assert.NilError(t, yaml.Unmarshal([]byte(src), &spec))
 
@@ -498,6 +501,7 @@ func TestDecodeJson(t *testing.T) {
 		"src":{"proc":"seed","param":{"value":2}},
 		"dbl":{"proc":"double","in":"src"}
 	}}`
+
 	var spec Spec
 	assert.NilError(t, json.Unmarshal([]byte(src), &spec))
 
@@ -528,6 +532,7 @@ func TestDecodeJsonNames(t *testing.T) {
 func TestDecodeJsonNamesErrors(t *testing.T) {
 	for _, src := range []string{`{"in":1}`, `{"in":["a",1]}`, `{"in":{}}`} {
 		var st Step
+
 		err := json.Unmarshal([]byte(src), &st)
 
 		var semErr *json.SemanticError
@@ -537,6 +542,7 @@ func TestDecodeJsonNamesErrors(t *testing.T) {
 
 func TestDecodeJsonRejectsDuplicateNames(t *testing.T) {
 	var spec Spec
+
 	err := json.Unmarshal([]byte(`{"version":1,"version":1}`), &spec)
 
 	var synErr *jsontext.SyntacticError

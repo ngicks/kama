@@ -36,10 +36,12 @@ func TestMarshalers(t *testing.T) {
 				"# Regenerate with: go test ./generator/partial -run %s -update\n",
 				t.Name(),
 			)
+
 			for _, option := range f.options {
 				b.WriteString("\n")
 				probe(&b, f, option)
 			}
+
 			golden.Assert(t, b.String(), "marshalers/"+f.name+".txt")
 		})
 	}
@@ -104,6 +106,7 @@ var probeFormats = []probeFormat{
 			case docValue:
 				return key + ": x\n", true
 			}
+
 			return "{}\n", true
 		},
 	},
@@ -122,6 +125,7 @@ var probeFormats = []probeFormat{
 			case docValue:
 				return key + ` = "x"` + "\n", true
 			}
+
 			return "", true
 		},
 	},
@@ -134,6 +138,7 @@ func jsonDoc(key string, state docState) (string, bool) {
 	case docValue:
 		return `{"` + key + `":"x"}`, true
 	}
+
 	return `{}`, true
 }
 
@@ -168,12 +173,14 @@ func probeStruct(fields []probeField, tagKey, option string) reflect.Type {
 		if option != "" {
 			tag += "," + option
 		}
+
 		return reflect.StructField{
 			Name: fmt.Sprintf("F%d", i),
 			Type: reflect.TypeOf(f.value),
 			Tag:  reflect.StructTag(fmt.Sprintf("%s:%q", tagKey, tag)),
 		}
 	}
+
 	return reflect.StructOf(
 		opiter.WrapSeq2(
 			slices.All(fields),
@@ -188,21 +195,27 @@ func probe(b *strings.Builder, f probeFormat, option string) {
 	if option != "" {
 		tag = fmt.Sprintf("%s:%q", f.tagKey, "<key>,"+option)
 	}
+
 	fmt.Fprintf(b, "## tag `%s`\n", tag)
 
 	encType := probeStruct(encodeFields, f.tagKey, option)
+
 	enc := reflect.New(encType).Elem()
 	for i, field := range encodeFields {
 		enc.Field(i).Set(reflect.ValueOf(field.value))
 	}
+
 	out, err := recovered(func() ([]byte, error) { return f.marshal(enc.Addr().Interface()) })
+
 	b.WriteString("encode:\n")
 	writeIndented(b, string(out))
+
 	if err != nil {
 		fmt.Fprintf(b, "encode error: %s\n", oneLine(err, encType))
 	}
 
 	b.WriteString("decode:\n")
+
 	decType := probeStruct(decodeFields, f.tagKey, option)
 	for i, field := range decodeFields {
 		for _, state := range []docState{docMissing, docNull, docValue} {
@@ -211,10 +224,12 @@ func probe(b *strings.Builder, f probeFormat, option string) {
 				fmt.Fprintf(b, "  %s %s: not expressible\n", field.key, state)
 				continue
 			}
+
 			dec := reflect.New(decType)
 			_, err := recovered(
 				func() ([]byte, error) { return nil, f.decode([]byte(doc), dec.Interface()) },
 			)
+
 			fmt.Fprintf(
 				b,
 				"  %s %s: %s",
@@ -222,9 +237,11 @@ func probe(b *strings.Builder, f probeFormat, option string) {
 				state,
 				describe(dec.Elem().Field(i).Interface()),
 			)
+
 			if err != nil {
 				fmt.Fprintf(b, " (error: %s)", oneLine(err, decType))
 			}
+
 			b.WriteString("\n")
 		}
 	}
@@ -238,6 +255,7 @@ func recovered(fn func() ([]byte, error)) (out []byte, err error) {
 			err = fmt.Errorf("panic: %v", r)
 		}
 	}()
+
 	return fn()
 }
 
@@ -250,6 +268,7 @@ func describe(v any) string {
 		case x.IsNull():
 			return "null"
 		}
+
 		return fmt.Sprintf("defined(%q)", x.Value())
 	case elastic.Elastic[string]:
 		switch {
@@ -258,6 +277,7 @@ func describe(v any) string {
 		case x.IsNull():
 			return "null"
 		}
+
 		vals := opiter.WrapSeq(
 			slices.Values(x.Options()),
 		).
@@ -265,13 +285,16 @@ func describe(v any) string {
 				func(o opt.Option[string]) string { return describe(o) },
 			).
 			Collect()
+
 		return "defined[" + strings.Join(vals, ", ") + "]"
 	case opt.Option[string]:
 		if x.IsNone() {
 			return "none"
 		}
+
 		return fmt.Sprintf("some(%q)", x.Value())
 	}
+
 	panic(fmt.Sprintf("unexpected probe field type %T", v))
 }
 
@@ -281,6 +304,7 @@ func writeIndented(b *strings.Builder, s string) {
 		b.WriteString("  (empty)\n")
 		return
 	}
+
 	for line := range strings.SplitSeq(s, "\n") {
 		b.WriteString("  ")
 		b.WriteString(line)
@@ -304,15 +328,18 @@ func goMinorVersion() string {
 			return v[:i+1+j]
 		}
 	}
+
 	return v
 }
 
 func moduleVersions(t *testing.T, paths []string) string {
 	t.Helper()
+
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		t.Fatal("build info is unavailable")
 	}
+
 	versions := make([]string, 0, len(paths))
 	for _, p := range paths {
 		dep := opiter.WrapSeq(
@@ -322,10 +349,13 @@ func moduleVersions(t *testing.T, paths []string) string {
 				func(dep *debug.Module) bool { return dep.Path == p },
 			).
 			First()
+
 		if dep.IsNone() {
 			t.Fatalf("module %s is missing from build info", p)
 		}
+
 		versions = append(versions, p+" "+dep.Value().Version)
 	}
+
 	return strings.Join(versions, ", ")
 }

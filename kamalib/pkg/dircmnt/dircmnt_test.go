@@ -18,6 +18,7 @@ func parse(t *testing.T, src string) (*token.FileSet, *ast.File) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "x.go", src, parser.ParseComments|parser.AllErrors)
 	assert.NilError(t, err)
+
 	return fset, f
 }
 
@@ -27,6 +28,7 @@ func decorate(t *testing.T, src string) *dst.File {
 	fset, f := parse(t, src)
 	df, err := decorator.NewDecorator(fset).DecorateFile(f)
 	assert.NilError(t, err)
+
 	return df
 }
 
@@ -97,9 +99,11 @@ kama:ignore
 	}
 
 	assert.Equal(t, len(f.Comments), len(want))
+
 	for i, cg := range f.Comments {
 		assert.DeepEqual(t, Ast(cg), want[i])
 	}
+
 	assert.Assert(t, Ast(nil) == nil)
 }
 
@@ -144,6 +148,7 @@ type E struct{}
 	}
 
 	assert.Equal(t, len(df.Decls), len(want))
+
 	for i, decl := range df.Decls {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			assert.DeepEqual(t, Dst(*decl.Decorations()), want[i])

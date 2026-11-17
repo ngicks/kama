@@ -23,14 +23,17 @@ func nodeStep[C Context[C], N any](
 		if err != nil {
 			return c, nil, err
 		}
+
 		c, n, err = f(c, n)
 		if err != nil {
 			return c, nil, err
 		}
+
 		out, err := printN(c, n)
 		if err != nil {
 			return c, nil, err
 		}
+
 		return c, out, nil
 	})
 }
@@ -63,6 +66,7 @@ func astStep[C Context[C], N any](
 		// The nodes hold positions of the file set they were parsed into,
 		// so printing uses it too, whatever context f returns.
 		fset := pkg.Fset
+
 		return nodeStep(
 			func(_ C, b []byte) (N, error) { return parse(fset, b) },
 			f,

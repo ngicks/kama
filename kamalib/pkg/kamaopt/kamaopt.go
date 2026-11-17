@@ -100,14 +100,17 @@ type Raw struct {
 // ignored.
 func Collect(pkgs []*packages.Package, toolName string) ([]Raw, error) {
 	var out []Raw
+
 	for _, pkg := range pkgs {
 		if pkg.Fset == nil || len(pkg.Syntax) == 0 {
 			return nil, fmt.Errorf("kamaopt: package %q is loaded without syntax", pkg.PkgPath)
 		}
+
 		c := collector{fset: pkg.Fset, pkgPath: pkg.PkgPath, toolName: toolName}
 		for _, f := range pkg.Syntax {
 			c.file(f)
 		}
+
 		slices.SortStableFunc(c.out, func(a, b Raw) int {
 			return cmp.Or(
 				cmp.Compare(a.Origin.Pos.Filename, b.Origin.Pos.Filename),
@@ -116,6 +119,7 @@ func Collect(pkgs []*packages.Package, toolName string) ([]Raw, error) {
 		})
 		out = append(out, c.out...)
 	}
+
 	return out, nil
 }
 
@@ -128,6 +132,7 @@ type collector struct {
 
 func (c *collector) file(f *ast.File) {
 	attached := map[*ast.CommentGroup]bool{}
+
 	for _, decl := range f.Decls {
 		switch decl := decl.(type) {
 		case *ast.FuncDecl:
@@ -144,6 +149,7 @@ func (c *collector) file(f *ast.File) {
 					attached[spec.Doc], attached[spec.Comment] = true, true
 				}
 			}
+
 			if decl.Tok == token.TYPE {
 				c.typeDecl(decl)
 			}
@@ -155,6 +161,7 @@ func (c *collector) file(f *ast.File) {
 		if attached[cg] || insideDecl(f.Decls, cg) || c.declLineComment(f.Decls, cg) {
 			continue
 		}
+
 		c.add(fileKey, cg.List)
 	}
 }
@@ -162,10 +169,12 @@ func (c *collector) file(f *ast.File) {
 func (c *collector) typeDecl(decl *ast.GenDecl) {
 	for _, spec := range decl.Specs {
 		ts := spec.(*ast.TypeSpec)
+
 		key := Key{PkgPath: c.pkgPath, Type: ts.Name.Name}
 		if len(decl.Specs) == 1 && decl.Doc != nil {
 			c.add(key, decl.Doc.List)
 		}
+
 		if ts.Doc != nil {
 			c.add(key, ts.Doc.List)
 		}
@@ -174,6 +183,7 @@ func (c *collector) typeDecl(decl *ast.GenDecl) {
 		if !ok {
 			continue
 		}
+
 		for _, fl := range st.Fields.List {
 			comments := fieldComments(fl)
 			for _, name := range fieldNames(fl) {
@@ -189,6 +199,7 @@ func unparen(expr ast.Expr) ast.Expr {
 		if !ok {
 			return expr
 		}
+
 		expr = p.X
 	}
 }
@@ -199,6 +210,7 @@ func (c *collector) add(key Key, comments []*ast.Comment) {
 		if !ok || d.ToolName != c.toolName {
 			return Raw{}, false
 		}
+
 		return Raw{
 			Key:       key,
 			Directive: d.Directive,
@@ -206,6 +218,7 @@ func (c *collector) add(key Key, comments []*ast.Comment) {
 			Origin:    Origin{Source: SourceDirective, Pos: c.fset.Position(cm.Slash)},
 		}, true
 	}
+
 	raws := opiter.WrapSeq(
 		slices.Values(comments),
 	).
@@ -214,6 +227,7 @@ func (c *collector) add(key Key, comments []*ast.Comment) {
 			func(_ Raw, ok bool) bool { return ok },
 		).
 		OmitL()
+
 	c.out = slices.AppendSeq(c.out, raws.Iter())
 }
 
@@ -224,9 +238,11 @@ func fieldComments(f *ast.Field) []*ast.Comment {
 	if f.Doc != nil {
 		out = append(out, f.Doc.List...)
 	}
+
 	if f.Comment != nil && len(f.Comment.List) > 0 {
 		out = append(out, f.Comment.List[0])
 	}
+
 	return out
 }
 
@@ -238,6 +254,7 @@ func fieldNames(f *ast.Field) []string {
 			Map((*ast.Ident).String).
 			Collect()
 	}
+
 	return []string{embeddedName(f.Type)}
 }
 
@@ -254,6 +271,7 @@ func embeddedName(expr ast.Expr) string {
 	case *ast.Ident:
 		return e.Name
 	}
+
 	return ""
 }
 
@@ -265,8 +283,10 @@ func insideDecl(decls []ast.Decl, cg *ast.CommentGroup) bool {
 		case p < d.Pos():
 			return 1
 		}
+
 		return 0
 	})
+
 	return found
 }
 
@@ -283,11 +303,13 @@ func (c *collector) declLineComment(decls []ast.Decl, cg *ast.CommentGroup) bool
 		if d.End() <= p {
 			return -1
 		}
+
 		return 1
 	})
 	if i == 0 {
 		return false
 	}
+
 	return c.fset.Position(decls[i-1].End()).Line == c.fset.Position(cg.Pos()).Line
 }
 
@@ -307,6 +329,7 @@ func (c *collector) declLineComment(decls []ast.Decl, cg *ast.CommentGroup) bool
 // given twice is an error.
 func ParseArgs(args string) (map[string]string, error) {
 	out := map[string]string{}
+
 	rest := args
 	for {
 		rest = strings.TrimLeftFunc(rest, unicode.IsSpace)
@@ -320,13 +343,16 @@ func ParseArgs(args string) (map[string]string, error) {
 		if i < 0 {
 			i = len(rest)
 		}
+
 		name := rest[:i]
 		if name == "" {
 			return nil, fmt.Errorf("kamaopt: missing name at %q", rest)
 		}
+
 		if _, ok := out[name]; ok {
 			return nil, fmt.Errorf("kamaopt: duplicate name %q", name)
 		}
+
 		rest = rest[i:]
 
 		switch {
@@ -336,6 +362,7 @@ func ParseArgs(args string) (map[string]string, error) {
 		case rest[0] == '"':
 			return nil, fmt.Errorf("kamaopt: unexpected quote after name %q", name)
 		}
+
 		rest = rest[1:] // "="
 
 		var (
@@ -347,6 +374,7 @@ func ParseArgs(args string) (map[string]string, error) {
 			if err != nil {
 				return nil, fmt.Errorf("kamaopt: value of %q: %w", name, err)
 			}
+
 			if rest != "" && !startsWithSpace(rest) {
 				return nil, fmt.Errorf("kamaopt: value of %q: text after closing quote", name)
 			}
@@ -355,11 +383,13 @@ func ParseArgs(args string) (map[string]string, error) {
 			if end < 0 {
 				end = len(rest)
 			}
+
 			value, rest = rest[:end], rest[end:]
 			if strings.Contains(value, `"`) {
 				return nil, fmt.Errorf("kamaopt: value of %q: quote inside unquoted value", name)
 			}
 		}
+
 		out[name] = value
 	}
 }
@@ -381,5 +411,6 @@ func cutQuoted(s string) (value, rest string, err error) {
 			return value, s[i+1:], err
 		}
 	}
+
 	return "", "", errors.New("unterminated quoted string")
 }
