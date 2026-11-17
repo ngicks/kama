@@ -24,14 +24,18 @@ Go code in this repository transforms sequences with `github.com/ngicks/opiter` 
 - Keep a short source on the opening line, as in `opiter.WrapSeq(specs).` or `opiter.WrapSeq(slices.Values(fields)).`.
   - Put the source on its own line inside the parentheses when the opening line would exceed the line length limit.
 - Put every method on its own line. This holds for short chains and for chains with one method.
-- End a chain with `.Collect()` to get a slice.
-- End a chain with `.Iter()` or `.Iter2()` only when the consumer takes `iter.Seq` or `iter.Seq2`, such as `slices.Sorted`, `slices.AppendSeq`, `maps.Collect` or the `Concat` method.
+- End a chain with `.CollectSlice()` to get a slice.
+- End a chain with `.Collect(collector)` to hand it to a collecting function, as in `.Collect(slices.Sorted)` or `.Collect(maps.Collect)`.
+- End a chain with `.Iter()` or `.Iter2()` only when the consumer takes more than the sequence, such as `slices.AppendSeq` or the `Concat` method.
+- Write one chain for one transformation. Do not split a chain over intermediate variables that are used once.
+  - Keep an intermediate variable when two or more statements read it.
+- Use the `FlatMap` method to flatten. The mapper returns an iterator, as in `FlatMap(func(d ast.Decl) iter.Seq[ast.Spec] { return slices.Values(specsOf(d)) })`.
 
 ```go
 out := opiter.WrapSeq2(opiter.MapsSorted(byPath)).
 	OmitF().
 	Map(func(h *Host) Host { return *h }).
-	Collect()
+	CollectSlice()
 ```
 
 - gofmt indents the method lines one tab deeper than the first line. Keep that indentation.
@@ -43,7 +47,7 @@ out := opiter.WrapSeq2(opiter.MapsSorted(byPath)).
 
 #### Helper functions of opiter
 
-- Some steps have no method, such as `opiter.TryCollect`, `opiter.Flatten`, `opiter.Min`, `opiter.MapsSorted`, `opiter.Range` and `opiter.Once`. Call them as functions around or inside the chain.
+- Some steps have no method, such as `opiter.TryCollect`, `opiter.Min`, `opiter.MapsSorted`, `opiter.Range` and `opiter.Once`. Call them as functions around or inside the chain.
 - Put each argument of such a call on its own line when the argument is a chain.
 
 ```go
