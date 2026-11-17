@@ -376,7 +376,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:03054051fac2dc52bf2ca7b7b9fa67812d582ec14ed4514a9d69132c6986eb6f
+  content_hash: sha256:5fe69c0f6bb01c17968d1f7a56843639ec7fe1ddd8b6b2617cd6c824e1399deb
 - kind: project-relative
   target: claude
   value: .claude/skills/go-check-outdated-patterns
@@ -1226,4 +1226,4 @@ deployments:
 local_deployed_files:
 - .claude/rules/kama.go.iterator-chain.md
 local_deployed_file_hashes:
-  .claude/rules/kama.go.iterator-chain.md: sha256:03054051fac2dc52bf2ca7b7b9fa67812d582ec14ed4514a9d69132c6986eb6f
+  .claude/rules/kama.go.iterator-chain.md: sha256:5fe69c0f6bb01c17968d1f7a56843639ec7fe1ddd8b6b2617cd6c824e1399deb

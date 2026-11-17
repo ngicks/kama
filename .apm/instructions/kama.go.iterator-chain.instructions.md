@@ -41,6 +41,9 @@ out := opiter.WrapSeq2(
 - gofmt indents the method lines one tab deeper than the first line. Keep that indentation.
 - A single method call on an intermediate `opiter.Seq` variable stays on one line, as in `users.First()`.
 - Move a chain into a named variable when it would sit in an `if` init or a `for` header.
+- Put an empty line before and after a statement that holds a multi-line chain.
+  - Do not add one at the start or the end of a block.
+  - The `wsl_v5` linter enforces empty lines around blocks and between groups of statements. Run `golangci-lint run --fix ./...` to apply them.
 
 #### Helper functions of opiter
 
