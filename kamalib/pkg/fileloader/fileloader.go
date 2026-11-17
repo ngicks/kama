@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"iter"
 	"slices"
 
 	"github.com/ngicks/opiter"
@@ -66,14 +67,10 @@ func (p PathInput) Candidates() ([]string, error) {
 		return nil, fmt.Errorf("%w: %q", ErrUnknownFormat, unknown.Value())
 	}
 
-	exts := opiter.Flatten(
-		opiter.WrapSeq(slices.Values(p.Formats)).
-			Map(Format.Extensions),
-	)
-
-	return opiter.WrapSeq(exts).
+	return opiter.WrapSeq(slices.Values(p.Formats)).
+		FlatMap(func(f Format) iter.Seq[string] { return slices.Values(f.Extensions()) }).
 		Map(func(ext string) string { return p.Base + ext }).
-		Collect(), nil
+		CollectSlice(), nil
 }
 
 // Decode decodes one document from r into v.

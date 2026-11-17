@@ -265,7 +265,7 @@ func fieldSteps(fields []fieldInfo, step func(f fieldInfo) genStep) genSteps {
 	return opiter.WrapSeq(slices.Values(fields)).
 		Filter(func(f fieldInfo) bool { return f.conv != convSkip }).
 		Map(step).
-		Collect()
+		CollectSlice()
 }
 
 // fieldOf returns the field sel of the value role refers to.

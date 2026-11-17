@@ -86,21 +86,20 @@ func (e PackageErrors) Error() string {
 	return strings.Join(
 		opiter.WrapSeq2(opiter.MapsSorted(e)).
 			Assemble(packageErrorBlock).
-			Collect(),
+			CollectSlice(),
 		"\n",
 	)
 }
 
 func packageErrorBlock(path string, errs []packages.Error) string {
-	header := opiter.Once(path + ":")
-
-	msgs := opiter.WrapSeq(slices.Values(errs)).
-		Map(packages.Error.Error)
-
 	return strings.Join(
-		opiter.WrapSeq(header).
-			Concat(msgs.Iter()).
-			Collect(),
+		opiter.WrapSeq(opiter.Once(path+":")).
+			Concat(
+				opiter.WrapSeq(slices.Values(errs)).
+					Map(packages.Error.Error).
+					Iter(),
+			).
+			CollectSlice(),
 		"\n\t",
 	)
 }

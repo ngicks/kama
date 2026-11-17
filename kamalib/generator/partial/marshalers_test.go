@@ -184,7 +184,7 @@ func probeStruct(fields []probeField, tagKey, option string) reflect.Type {
 	return reflect.StructOf(
 		opiter.WrapSeq2(slices.All(fields)).
 			Assemble(toStructField).
-			Collect(),
+			CollectSlice(),
 	)
 }
 
@@ -278,7 +278,7 @@ func describe(v any) string {
 
 		vals := opiter.WrapSeq(slices.Values(x.Options())).
 			Map(func(o opt.Option[string]) string { return describe(o) }).
-			Collect()
+			CollectSlice()
 
 		return "defined[" + strings.Join(vals, ", ") + "]"
 	case opt.Option[string]:

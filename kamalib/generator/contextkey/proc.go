@@ -114,7 +114,7 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 
 	produced := opiter.WrapSeq2(opiter.MapsSorted(files)).
 		Assemble(inDir).
-		Collect()
+		CollectSlice()
 
 	opts := i.opts.withDefaults()
 	stale := base.StaleCheck{Registry: opts.Registry, Generator: GeneratorName}

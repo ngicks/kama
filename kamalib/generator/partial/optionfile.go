@@ -179,11 +179,9 @@ func (d *optionDecoder) table(v any, path []string) (map[string]any, bool) {
 
 // keys reports the keys of t other than known.
 func (d *optionDecoder) keys(t map[string]any, path []string, known ...string) {
-	unknown := slices.Sorted(
-		opiter.WrapSeq(maps.Keys(t)).
-			Filter(func(k string) bool { return !slices.Contains(known, k) }).
-			Iter(),
-	)
+	unknown := opiter.WrapSeq(maps.Keys(t)).
+		Filter(func(k string) bool { return !slices.Contains(known, k) }).
+		Collect(slices.Sorted)
 
 	for _, k := range unknown {
 		d.fail(appendPath(path, k), "unknown key; want %s", strings.Join(known, ", "))
@@ -349,7 +347,7 @@ func keyPath(path []string) string {
 	return strings.Join(
 		opiter.WrapSeq(slices.Values(path)).
 			Map(quoteKey).
-			Collect(),
+			CollectSlice(),
 		".",
 	)
 }

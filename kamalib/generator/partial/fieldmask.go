@@ -374,6 +374,6 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 	return errors.Join(
 		opiter.WrapSeq(st.Fields()).
 			Map(maskedEmbeddingErr).
-			Collect()...,
+			CollectSlice()...,
 	)
 }

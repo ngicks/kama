@@ -663,7 +663,7 @@ func TestProcOptionFile(t *testing.T) {
 
 	names := opiter.WrapSeq(maps.Keys(staged)).
 		Filter(func(name string) bool { return strings.HasSuffix(name, "x.kama_partial.go") }).
-		Collect()
+		CollectSlice()
 
 	assert.Equal(t, len(names), 1, names)
 }

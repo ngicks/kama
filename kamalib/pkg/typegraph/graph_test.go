@@ -78,9 +78,8 @@ func definedNamed(pkg *packages.Package, name string) *types.Named {
 
 		return ok
 	}
-	defs := maps.Values(pkg.TypesInfo.Defs)
 
-	return opiter.WrapSeq(defs).
+	return opiter.WrapSeq(maps.Values(pkg.TypesInfo.Defs)).
 		Filter(isNamedType).
 		Map(func(obj types.Object) *types.Named { return obj.Type().(*types.Named) }).
 		First().
@@ -327,13 +326,12 @@ func TestTrim_MatchAll(t *testing.T) {
 	typeAId := NewQualifiedType(basicPkgPath, "TypeA")
 	matchedA, _ := mg.Get(typeAId)
 
-	dependants := opiter.WrapSeq2(mg.Dependant()).
+	dependantA := opiter.WrapSeq2(mg.Dependant()).
 		Filter(func(id QualifiedType, _ *MatchedNode) bool { return id == typeAId }).
-		OmitF()
-
-	dependantA := dependants.
+		OmitF().
 		First().
 		UnwrapOrDefault()
+
 	assert.Assert(t, matchedA == dependantA)
 	assert.Equal(t, MatchKindMatched|MatchKindDependant, matchedA.MatchKind)
 	assert.DeepEqual(t,

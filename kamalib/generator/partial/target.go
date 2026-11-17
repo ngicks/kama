@@ -533,17 +533,12 @@ func (s *selection) checkMerges() error {
 		)
 	}
 
-	keys := slices.SortedFunc(
-		opiter.WrapSeq(maps.Keys(s.merges)).
-			Filter(hasNoTarget).
-			Iter(),
-		compareKey,
-	)
-
 	return errors.Join(
-		opiter.WrapSeq(slices.Values(keys)).
+		opiter.WrapSeq2(opiter.MapsSortedFunc(s.merges, compareKey)).
+			OmitL().
+			Filter(hasNoTarget).
 			Map(mergeErr).
-			Collect()...,
+			CollectSlice()...,
 	)
 }
 
@@ -730,7 +725,7 @@ func (s *selection) mapCycles() error {
 
 			names := opiter.WrapSeq(slices.Values(append(path[i:], n.Id))).
 				Map(func(id typegraph.QualifiedType) string { return id.TypeName }).
-				Collect()
+				CollectSlice()
 
 			return fmt.Errorf(
 				"%w: %s (%s): partial variants would be recursive through embedded fields: %s",

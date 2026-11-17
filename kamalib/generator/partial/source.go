@@ -80,5 +80,5 @@ func matchesFields(fields []dstreplace.Field, s *types.Struct) bool {
 	}
 
 	return opiter.WrapSeq2(slices.All(fields)).
-		Every2(matchesField)
+		Every(matchesField)
 }

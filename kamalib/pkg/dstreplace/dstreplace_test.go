@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"iter"
 	"slices"
 	"strings"
 	"testing"
@@ -37,12 +38,8 @@ func parse(t *testing.T, src string) (*dstreplace.Cache, *dst.StructType) {
 func typeSpec(t *testing.T, f *ast.File, name string) *ast.TypeSpec {
 	t.Helper()
 
-	specs := opiter.Flatten(
-		opiter.WrapSeq(slices.Values(f.Decls)).
-			Map(typeDeclSpecs),
-	)
-
-	found := opiter.WrapSeq(specs).
+	found := opiter.WrapSeq(slices.Values(f.Decls)).
+		FlatMap(func(d ast.Decl) iter.Seq[ast.Spec] { return slices.Values(typeDeclSpecs(d)) }).
 		Map(func(s ast.Spec) *ast.TypeSpec { return s.(*ast.TypeSpec) }).
 		Filter(func(ts *ast.TypeSpec) bool { return ts.Name.Name == name }).
 		First()

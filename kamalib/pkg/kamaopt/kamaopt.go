@@ -219,12 +219,14 @@ func (c *collector) add(key Key, comments []*ast.Comment) {
 		}, true
 	}
 
-	raws := opiter.WrapSeq(slices.Values(comments)).
-		Disassemble(toRaw).
-		Filter(func(_ Raw, ok bool) bool { return ok }).
-		OmitL()
-
-	c.out = slices.AppendSeq(c.out, raws.Iter())
+	c.out = slices.AppendSeq(
+		c.out,
+		opiter.WrapSeq(slices.Values(comments)).
+			Disassemble(toRaw).
+			Filter(func(_ Raw, ok bool) bool { return ok }).
+			OmitL().
+			Iter(),
+	)
 }
 
 // fieldComments selects the same comments as dircmnt.AstField, which
@@ -246,7 +248,7 @@ func fieldNames(f *ast.Field) []string {
 	if len(f.Names) > 0 {
 		return opiter.WrapSeq(slices.Values(f.Names)).
 			Map((*ast.Ident).String).
-			Collect()
+			CollectSlice()
 	}
 
 	return []string{embeddedName(f.Type)}

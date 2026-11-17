@@ -325,5 +325,5 @@ func isMergeAppend(cg *ast.CommentGroup) bool {
 func identNames(ids []*dst.Ident) []string {
 	return opiter.WrapSeq(slices.Values(ids)).
 		Map(func(id *dst.Ident) string { return id.Name }).
-		Collect()
+		CollectSlice()
 }

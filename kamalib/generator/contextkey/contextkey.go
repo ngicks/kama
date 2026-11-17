@@ -185,7 +185,7 @@ func renderEntry(e Entry, opts Options, header string) ([]byte, error) {
 
 	imports = opiter.WrapSeq(slices.Values(slices.Compact(imports))).
 		Map(strconv.Quote).
-		Collect()
+		CollectSlice()
 
 	var buf bytes.Buffer
 

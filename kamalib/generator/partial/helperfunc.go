@@ -61,7 +61,7 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 		if tps := h.typeParams(); len(tps) > 0 {
 			names := opiter.WrapSeq(slices.Values(tps)).
 				Map(typeParamName).
-				Collect()
+				CollectSlice()
 
 			// Type arguments are given rather than inferred: a parameter only a
 			// constraint mentions cannot be inferred from the arguments.
@@ -153,7 +153,7 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 
 	names := opiter.WrapSeq(slices.Values(tps)).
 		Map(typeParamName).
-		Collect()
+		CollectSlice()
 
 	// p.m is the Map in effect now, which call swaps while it renders.
 	f := helperFunc{c: p.funcContext(names)}

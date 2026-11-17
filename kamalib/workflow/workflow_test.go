@@ -142,7 +142,7 @@ func build(t *testing.T, p procs, steps map[string]Step) (*Graph, error) {
 func names(g *Graph) []string {
 	return opiter.WrapSeq(slices.Values(g.Nodes())).
 		Map(func(n Node) string { return n.Name }).
-		Collect()
+		CollectSlice()
 }
 
 func node(t *testing.T, g *Graph, name string) Node {

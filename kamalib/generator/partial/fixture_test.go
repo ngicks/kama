@@ -91,11 +91,9 @@ func TestFixtureUpToDate(t *testing.T) {
 				return filepath.Join(f.Root(), filepath.FromSlash(file.Path))
 			}
 
-			produced := slices.Sorted(
-				opiter.WrapSeq(slices.Values(files)).
-					Map(absPath).
-					Iter(),
-			)
+			produced := opiter.WrapSeq(slices.Values(files)).
+				Map(absPath).
+				Collect(slices.Sorted)
 
 			assert.DeepEqual(t, produced, generatedFiles(t, f.Root()))
 
@@ -179,11 +177,9 @@ func TestFixtureExternalParity(t *testing.T) {
 	normalize := func(src string) string {
 		rest, helpers := splitHelpers(t, src)
 
-		hidden := slices.Sorted(
-			opiter.WrapSeq(slices.Values(helpers)).
-				Map(hideHash).
-				Iter(),
-		)
+		hidden := opiter.WrapSeq(slices.Values(helpers)).
+			Map(hideHash).
+			Collect(slices.Sorted)
 
 		return hideHash(rest) + "\n" + strings.Join(hidden, "\n")
 	}

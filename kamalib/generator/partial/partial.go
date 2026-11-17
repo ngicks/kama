@@ -263,7 +263,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 
 		contents := opiter.WrapSeq(slices.Values(out)).
 			Map(func(f File) []byte { return f.Content }).
-			Collect()
+			CollectSlice()
 
 		if err := checkPredeclared(pf.pkg, contents); err != nil {
 			return nil, nil, err
@@ -382,7 +382,7 @@ func renderHelpers(
 		parser.Reserve(
 			opiter.WrapSeq(slices.Values(h.typeParams())).
 				Map(typeParamName).
-				Collect()...,
+				CollectSlice()...,
 		)
 
 		maps.Copy(require, h.spelled)
@@ -464,13 +464,13 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, helper,
 		)
 	}
-	// errors.Join drops the nil errors of helpers declared by nothing else.
-	sorted := slices.Sorted(maps.Keys(names))
 
+	// errors.Join drops the nil errors of helpers declared by nothing else.
 	return errors.Join(
-		opiter.WrapSeq(slices.Values(sorted)).
+		opiter.WrapSeq2(opiter.MapsSorted(names)).
+			OmitL().
 			Map(declaredErr).
-			Collect()...,
+			CollectSlice()...,
 	)
 }
 
@@ -523,7 +523,7 @@ func renderFileWith(
 		parser.Reserve(
 			opiter.WrapSeq(tparams.TypeParams()).
 				Map(typeParamName).
-				Collect()...,
+				CollectSlice()...,
 		)
 
 		parser.Reserve(methodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams())...)
@@ -694,7 +694,7 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 	return errors.Join(
 		opiter.WrapSeq(named.TypeParams().TypeParams()).
 			Map(shadowErr).
-			Collect()...,
+			CollectSlice()...,
 	)
 }
 
@@ -718,7 +718,7 @@ func checkPredeclared(pkg *packages.Package, contents [][]byte) error {
 	return errors.Join(
 		opiter.WrapSeq(slices.Values(objs)).
 			Map(shadowErr).
-			Collect()...,
+			CollectSlice()...,
 	)
 }
 

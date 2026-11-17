@@ -241,7 +241,7 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 
 	out := opiter.WrapSeq2(slices.All(reps)).
 		Assemble(splitField).
-		Collect()
+		CollectSlice()
 
 	out[0].Decs.Before = f.Decs.Before
 	out[len(out)-1].Decs.After = f.Decs.After

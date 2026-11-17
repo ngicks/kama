@@ -155,7 +155,7 @@ func (e *stepError) Error() string {
 
 	indices := opiter.WrapSeq(slices.Values(e.path)).
 		Map(strconv.Itoa).
-		Collect()
+		CollectSlice()
 
 	sb.WriteString(strings.Join(indices, "."))
 	sb.WriteString(": ")

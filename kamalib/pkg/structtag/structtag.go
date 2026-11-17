@@ -120,7 +120,7 @@ func Parse(tag reflect.StructTag) (Tags, error) {
 func (t Tags) StructTag() reflect.StructTag {
 	parts := opiter.WrapSeq(slices.Values(t)).
 		Map(Tag.String).
-		Collect()
+		CollectSlice()
 
 	return reflect.StructTag(strings.Join(parts, " "))
 }

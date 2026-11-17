@@ -313,7 +313,7 @@ func (f *flagField) setKind(t types.Type) (types.Type, bool) {
 func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 	flags := opiter.WrapSeq(slices.Values(fields)).
 		Filter(func(f fieldInfo) bool { return f.flag != nil }).
-		Collect()
+		CollectSlice()
 
 	if len(flags) == 0 {
 		return nil
@@ -359,7 +359,7 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 func registerFlags(flags []fieldInfo) genSteps {
 	return opiter.WrapSeq(slices.Values(flags)).
 		Map(registerFlag).
-		Collect()
+		CollectSlice()
 }
 
 func registerFlag(fl fieldInfo) genStep {
@@ -408,7 +408,7 @@ func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
 
 	return opiter.WrapSeq(slices.Values(flags)).
 		Map(readFlag).
-		Collect()
+		CollectSlice()
 }
 
 // checkFlags reports duplicate flag names and shorthands among fields.

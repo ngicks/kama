@@ -289,7 +289,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 	// field gives nil for a blank field, which the partial struct leaves out.
 	fields.List = opiter.WrapSeq(slices.Values(synth)).
 		Filter(func(f *dst.Field) bool { return f != nil }).
-		Collect()
+		CollectSlice()
 
 	return &dst.StructType{Fields: fields}, infos, nil
 }

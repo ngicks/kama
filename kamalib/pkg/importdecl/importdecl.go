@@ -470,10 +470,8 @@ func (m *Map) AddMissingDst(f *dst.File) {
 		has[spec{name, pkgPath}] = true
 	}
 
-	genDecls := opiter.WrapSeq(slices.Values(f.Decls)).
-		Map(asGenDecl)
-
-	decl := genDecls.
+	decl := opiter.WrapSeq(slices.Values(f.Decls)).
+		Map(asGenDecl).
 		Filter(func(g *dst.GenDecl) bool { return g != nil && g.Tok == token.IMPORT }).
 		First().
 		UnwrapOrDefault()

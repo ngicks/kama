@@ -461,7 +461,7 @@ func (e *encoder) typ(t types.Type) {
 		// embedded elements restrict the type set.
 		elems := opiter.WrapSeq(t.EmbeddedTypes()).
 			Filter(notInterface).
-			Collect()
+			CollectSlice()
 
 		e.int(len(elems))
 
@@ -603,9 +603,8 @@ func (s *helperSet) add(h *helper) (*helper, error) {
 		return identicalSignature(prev, h) || len(h.typeParams()) > 0 &&
 			bytes.Equal(prev.inEnc, h.inEnc) && bytes.Equal(prev.outEnc, h.outEnc)
 	}
-	sameBase := slices.Values(s.groups[base])
 
-	served := opiter.WrapSeq(sameBase).
+	served := opiter.WrapSeq(slices.Values(s.groups[base])).
 		Filter(servesSignature).
 		First()
 
@@ -709,7 +708,7 @@ type partialFile struct {
 func callers(files []*partialFile) []base.Caller {
 	return opiter.WrapSeq(slices.Values(files)).
 		Map((*partialFile).caller).
-		Collect()
+		CollectSlice()
 }
 
 func (f *partialFile) caller() base.Caller {

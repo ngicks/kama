@@ -264,7 +264,7 @@ func (w *methodWriter) fromValueWithMaskBody(masks []maskField) (genSteps, error
 
 			heads := opiter.WrapSeq(slices.Values(f.heads)).
 				Map(func(s string) genExpr { return lang.Expr("%s", strconv.Quote(s)) }).
-				Collect()
+				CollectSlice()
 
 			cases = append(cases, lang.Case(
 				lang.Join(", ", heads...),

@@ -75,7 +75,7 @@ func (c StaleCheck) Files(pkgs []*packages.Package, produced []File) []error {
 
 	return opiter.WrapSeq(slices.Values(found)).
 		Map(func(s stale) error { return c.warning(s.name) }).
-		Collect()
+		CollectSlice()
 }
 
 // Dir returns a warning wrapping ErrStale for each Go file directly in dir

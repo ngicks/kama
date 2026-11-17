@@ -138,7 +138,7 @@ func loadError(pkg *packages.Package) error {
 	if len(pkg.Errors) > 0 {
 		errs := opiter.WrapSeq(slices.Values(pkg.Errors)).
 			Map(func(e packages.Error) error { return e }).
-			Collect()
+			CollectSlice()
 
 		return fmt.Errorf("%w: %s: %w", ErrLoad, pkg.PkgPath, errors.Join(errs...))
 	}
@@ -348,7 +348,7 @@ func markDependants(
 			if routeFilter != nil {
 				routes = opiter.WrapSeq(slices.Values(routes)).
 					Filter(routeFilter).
-					Collect()
+					CollectSlice()
 			}
 
 			parent := mg.dependantNode(parentId, edge.Parent)
@@ -451,11 +451,12 @@ func (g *MatchedGraph) All() iter.Seq2[QualifiedType, *MatchedNode] {
 		return !matched
 	}
 
-	unmatched := opiter.WrapSeq2(maps.All(g.dependant)).
-		Filter(notMatched)
-
 	return opiter.WrapSeq2(maps.All(g.matched)).
-		Concat(unmatched.Iter2()).
+		Concat(
+			opiter.WrapSeq2(maps.All(g.dependant)).
+				Filter(notMatched).
+				Iter2(),
+		).
 		Iter2()
 }
 

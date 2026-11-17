@@ -76,5 +76,5 @@ func HostShared(shared string, callers []Caller) []Host {
 	return opiter.WrapSeq2(opiter.MapsSorted(byPath)).
 		OmitF().
 		Map(func(h *Host) Host { return *h }).
-		Collect()
+		CollectSlice()
 }

@@ -7,7 +7,6 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
-	"maps"
 	"slices"
 
 	"github.com/ngicks/opiter"
@@ -18,12 +17,10 @@ import (
 // package they test, and repeated packages. A generated test main package,
 // which declares nothing a generator reads, stays.
 func SourcePackages(pkgs []*packages.Package) []*packages.Package {
-	sources := opiter.WrapSeq(slices.Values(pkgs)).
-		Filter(isSourceVariant)
-
-	return sources.
+	return opiter.WrapSeq(slices.Values(pkgs)).
+		Filter(isSourceVariant).
 		UniqueFunc(pkgPathOf).
-		Collect()
+		CollectSlice()
 }
 
 func pkgPathOf(p *packages.Package) string { return p.PkgPath }
@@ -92,16 +89,10 @@ func ShadowedPredeclared(pkg *packages.Package, contents [][]byte) ([]types.Obje
 		})
 	}
 
-	predeclared := slices.Sorted(
-		opiter.WrapSeq(maps.Keys(used)).
-			Filter(func(ident string) bool { return types.Universe.Lookup(ident) != nil }).
-			Iter(),
-	)
-
-	objs := opiter.WrapSeq(slices.Values(predeclared)).
-		Map(pkg.Types.Scope().Lookup)
-
-	return objs.
+	return opiter.WrapSeq2(opiter.MapsSorted(used)).
+		OmitL().
+		Filter(func(ident string) bool { return types.Universe.Lookup(ident) != nil }).
+		Map(pkg.Types.Scope().Lookup).
 		Filter(func(obj types.Object) bool { return obj != nil }).
-		Collect(), nil
+		CollectSlice(), nil
 }

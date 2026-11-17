@@ -131,5 +131,5 @@ func collect(texts iter.Seq[string]) []Comment {
 		Disassemble(Parse).
 		Filter(func(_ Comment, ok bool) bool { return ok }).
 		OmitL().
-		Collect()
+		CollectSlice()
 }

@@ -210,7 +210,7 @@ func PrintDstDecls(decls []dst.Decl) ([]byte, error) {
 	// keeps decls where the caller put them.
 	cloned := opiter.WrapSeq(slices.Values(decls)).
 		Map(func(d dst.Decl) dst.Decl { return dst.Clone(d).(dst.Decl) }).
-		Collect()
+		CollectSlice()
 
 	// A comment leading the first declaration would otherwise follow the
 	// package clause on its line.

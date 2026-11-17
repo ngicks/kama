@@ -96,11 +96,11 @@ func (r *Registry) find(comments []dircmnt.Comment) (string, bool) {
 		return ok
 	}
 
-	names := opiter.WrapSeq(slices.Values(comments)).
+	found := opiter.WrapSeq(slices.Values(comments)).
 		Filter(isMarker).
-		Map(markerName)
-
-	found := names.Filter(isRegistered).First()
+		Map(markerName).
+		Filter(isRegistered).
+		First()
 
 	return found.Value(), found.IsSome()
 }

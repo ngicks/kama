@@ -40,12 +40,10 @@ func helperIn(t *testing.T, srcs ...string) func(op, doc string) string {
 		f, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments)
 		assert.NilError(t, err)
 
-		helpers := opiter.WrapSeq(slices.Values(f.Decls)).
-			Filter(isHelperFunc)
-
 		decls = slices.AppendSeq(
 			decls,
-			helpers.
+			opiter.WrapSeq(slices.Values(f.Decls)).
+				Filter(isHelperFunc).
 				Map(toDecl).
 				Iter(),
 		)
@@ -58,12 +56,11 @@ func helperIn(t *testing.T, srcs ...string) func(op, doc string) string {
 			return strings.HasPrefix(d.name, "kamaPartial"+op+"_") && strings.Contains(d.doc, doc)
 		}
 
-		stating := opiter.WrapSeq(slices.Values(decls)).
-			Filter(isOpStating)
-
-		found := stating.
+		found := opiter.WrapSeq(slices.Values(decls)).
+			Filter(isOpStating).
 			Map(func(d decl) string { return d.name }).
-			Collect()
+			CollectSlice()
+
 		assert.Equal(t, len(found), 1, "helpers of %s stating %q: %v", op, doc, found)
 
 		return found[0]
@@ -105,7 +102,7 @@ func params(pkg *types.Package, names []string, ts ...types.Type) *types.Tuple {
 	return types.NewTuple(
 		opiter.WrapSeq2(slices.All(ts)).
 			Assemble(toParam).
-			Collect()...,
+			CollectSlice()...,
 	)
 }
 
@@ -259,7 +256,7 @@ func names(t *testing.T, set *helperSet, hs ...*helper) ([]string, error) {
 
 	return opiter.WrapSeq(slices.Values(added)).
 		Map(set.name).
-		Collect(), nil
+		CollectSlice(), nil
 }
 
 func mustNames(t *testing.T, hs ...*helper) []string {
@@ -340,7 +337,7 @@ func colliding() *helperSet {
 func sliceHelpers(n int) []*helper {
 	return opiter.WrapSeq(opiter.Range(0, n)).
 		Map(sliceHelper).
-		Collect()
+		CollectSlice()
 }
 
 // sliceHelper returns the append helper of a slice of the named type Ti.

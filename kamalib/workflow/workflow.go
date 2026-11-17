@@ -391,7 +391,7 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 	ready := opiter.WrapSeq2(maps.All(pending)).
 		Filter(func(_ string, pending int) bool { return pending == 0 }).
 		OmitL().
-		Collect()
+		CollectSlice()
 
 	order := make([]string, 0, len(steps))
 	for len(ready) > 0 {
@@ -410,12 +410,10 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 	}
 
 	if len(order) != len(steps) {
-		stuck := slices.Sorted(
-			opiter.WrapSeq2(maps.All(pending)).
-				Filter(func(_ string, pending int) bool { return pending > 0 }).
-				OmitL().
-				Iter(),
-		)
+		stuck := opiter.WrapSeq2(maps.All(pending)).
+			Filter(func(_ string, pending int) bool { return pending > 0 }).
+			OmitL().
+			Collect(slices.Sorted)
 
 		return nil, fmt.Errorf("%w: among %v", ErrCycle, stuck)
 	}

@@ -456,7 +456,7 @@ func ExampleForRange() {
 		return genhelper.Append(func(c ctx) (string, error) {
 			names := opiter.WrapSeq(slices.Values(roles)).
 				Map(func(role string) any { return c.Scope().Use(role) }).
-				Collect()
+				CollectSlice()
 
 			return fmt.Sprintf(format, names...), nil
 		})

@@ -6,7 +6,7 @@ require (
 	github.com/dave/dst v0.27.3
 	github.com/ngicks/go-fsys-helper/vroot v0.0.2
 	github.com/ngicks/go-fsys-helper/vroot-adapter/overlayfs v0.0.0-20261115192526-4e496cb4e8cc
-	github.com/ngicks/opiter v0.0.0-20261116230751-c5682fdf3f9c
+	github.com/ngicks/opiter v0.0.0-20261117042451-388e5e6df86b
 	github.com/ngicks/option v0.0.4
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/spf13/pflag v1.0.10

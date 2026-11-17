@@ -56,7 +56,7 @@ steps:
 
 	names := opiter.WrapSeq(slices.Values(g.Nodes())).
 		Map(func(n workflow.Node) string { return n.Name }).
-		Collect()
+		CollectSlice()
 
 	assert.DeepEqual(t, names, []string{"root", "meta", "packages", "final"})
 }
