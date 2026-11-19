@@ -3,7 +3,8 @@
 //	merge: "append"
 //	merge_nested: "overwrite"
 //	option_file: null
-// generated: 2026-11-13T22:48:01Z
+//	package_option_file: null
+// generated: 2026-11-19T04:49:38Z
 
 package model
 

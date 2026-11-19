@@ -1,0 +1,6 @@
+# The options of the pkgmark package, named by the directive in its doc.go.
+version: 1
+all_types: true
+types:
+  Draft:
+    ignore: true

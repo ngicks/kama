@@ -76,16 +76,17 @@ var testHeader = header + `
 //	merge: "overwrite"
 //	merge_nested: "recursive"
 //	option_file: null
+//	package_option_file: null
 // generated: 2026-11-04T10:12:33Z`
 
 var (
-	optionFileParam = regexp.MustCompile(`(?m)^(//\toption_file: ).*$`)
+	optionFileParam = regexp.MustCompile(`(?m)^(//\t(?:package_)?option_file: ).*$`)
 	generatedLine   = regexp.MustCompile(`(?m)^` + genhelper.GeneratedTimePrefix + `.*\n`)
 )
 
 // withoutRunParams returns src, a generated file, without the generated:
-// line and with a null option_file, the header fields that tell how a run
-// was made rather than what it generated.
+// line and with a null option_file and package_option_file, the header
+// fields that tell how a run was made rather than what it generated.
 func withoutRunParams(src string) string {
 	if loc := generatedLine.FindStringIndex(src); loc != nil {
 		src = src[:loc[0]] + src[loc[1]:]

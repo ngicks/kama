@@ -35,6 +35,41 @@ func PrintComment(p Printer, sections []string) {
 	printComment(p, sections)
 }
 
+// WrapComment wraps text into lines that stay within width bytes once
+// [PrintComment] prefixes them with "// ". A word longer than that takes a
+// line of its own. An empty line separates the paragraphs of text, which
+// text separates by "\n\n".
+func WrapComment(text string, width int) string {
+	// prefix is the length of "// " before each line.
+	const prefix = 3
+
+	var lines []string
+
+	for i, para := range strings.Split(text, "\n\n") {
+		if i > 0 {
+			lines = append(lines, "")
+		}
+
+		line := ""
+		for word := range strings.FieldsSeq(para) {
+			if line != "" && prefix+len(line)+1+len(word) > width {
+				lines = append(lines, line)
+				line = ""
+			}
+
+			if line != "" {
+				line += " "
+			}
+
+			line += word
+		}
+
+		lines = append(lines, line)
+	}
+
+	return strings.Join(lines, "\n")
+}
+
 // printComment reports whether it printed a section.
 func printComment(p Printer, sections []string) bool {
 	printed := false

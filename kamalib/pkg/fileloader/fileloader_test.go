@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"io/fs"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -51,6 +52,44 @@ func TestLoadErrors(t *testing.T) {
 
 	_, err = Load(fsys, PathInput{Base: "none", Formats: []Format{"ini"}}, &d)
 	assert.ErrorIs(t, err, ErrUnknownFormat)
+}
+
+func TestFormatOf(t *testing.T) {
+	cases := []struct {
+		name string
+		want Format
+		ok   bool
+	}{
+		{"a/meta.json", FormatJson, true},
+		{"meta.yaml", FormatYaml, true},
+		{"meta.yml", FormatYaml, true},
+		{"meta.toml", FormatToml, true},
+		{"meta.ini", "", false},
+		{"meta", "", false},
+		{"meta.YAML", "", false},
+	}
+
+	for _, c := range cases {
+		got, ok := FormatOf(c.name)
+		assert.Equal(t, got, c.want, c.name)
+		assert.Equal(t, ok, c.ok, c.name)
+	}
+}
+
+func TestLoadFile(t *testing.T) {
+	fsys := fstest.MapFS{
+		"a/meta.yml": {Data: []byte("name: yaml\n")},
+		"meta.ini":   {Data: []byte("name = ini\n")},
+		"bad.json":   {Data: []byte("{")},
+	}
+
+	var d doc
+	assert.NilError(t, LoadFile(fsys, "a/meta.yml", &d))
+	assert.Equal(t, d.Name, "yaml")
+
+	assert.ErrorIs(t, LoadFile(fsys, "meta.ini", &d), ErrUnknownFormat)
+	assert.ErrorIs(t, LoadFile(fsys, "none.json", &d), fs.ErrNotExist)
+	assert.ErrorContains(t, LoadFile(fsys, "bad.json", &d), `fileloader: decode "bad.json"`)
 }
 
 func TestCandidates(t *testing.T) {

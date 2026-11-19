@@ -1,7 +1,6 @@
 package partial
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -90,10 +89,7 @@ func (s *selection) node(named *types.Named) *typegraph.Node {
 // sorted returns the targets ordered by package path and type name.
 func (s *selection) sorted() []*typegraph.Node {
 	return slices.SortedFunc(maps.Values(s.targets), func(a, b *typegraph.Node) int {
-		return cmp.Or(
-			cmp.Compare(a.Id.PackagePath, b.Id.PackagePath),
-			cmp.Compare(a.Id.TypeName, b.Id.TypeName),
-		)
+		return a.Id.Compare(b.Id)
 	})
 }
 
@@ -120,10 +116,10 @@ func (m *marks) isIgnored(id typegraph.QualifiedType) bool {
 	return ok
 }
 
-// collectMarks collects the directives of pkgs and the entries of file,
-// which may be nil. The entries follow the directives, so a conflict
-// between the two names the directive first.
-func collectMarks(pkgs []*packages.Package, file *OptionFile) (marks, error) {
+// collectMarks collects the directives of pkgs and the entries of files,
+// which may hold nil. The entries follow the directives in the order of
+// files, so a conflict between the two names the directive first.
+func collectMarks(pkgs []*packages.Package, files []*OptionFile) (marks, error) {
 	m := marks{
 		merges:    map[kamaopt.Key]kamaopt.Raw{},
 		flags:     map[kamaopt.Key]flagOption{},
@@ -140,12 +136,14 @@ func collectMarks(pkgs []*packages.Package, file *OptionFile) (marks, error) {
 		return marks{}, err
 	}
 
-	fileRaws, err := file.raws(pkgs)
-	if err != nil {
-		return marks{}, err
-	}
+	for _, f := range files {
+		fileRaws, err := f.raws(pkgs)
+		if err != nil {
+			return marks{}, err
+		}
 
-	raws = append(raws, fileRaws...)
+		raws = append(raws, fileRaws...)
+	}
 
 	var errs []error
 
@@ -398,7 +396,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 		return nil, fmt.Errorf("partial: %w", err)
 	}
 
-	m, err := collectMarks(pkgs, opts.OptionFile)
+	m, err := collectMarks(pkgs, append([]*OptionFile{opts.OptionFile}, opts.PackageOptionFiles...))
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +417,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 
 	for _, r := range m.explicit {
 		id := typegraph.NewQualifiedType(r.Key.PkgPath, r.Key.Type)
-		name := id.PackagePath + "." + id.TypeName
+		name := id.String()
 
 		pos := origin(r)
 		if ig, ok := m.ignored[id]; ok {
@@ -534,7 +532,7 @@ func (s *selection) checkMerges() error {
 	}
 
 	return errors.Join(
-		opiter.WrapSeq2(opiter.MapsSortedFunc(s.merges, compareKey)).
+		opiter.WrapSeq2(opiter.MapsSortedFunc(s.merges, kamaopt.Key.Compare)).
 			OmitL().
 			Filter(hasNoTarget).
 			Map(mergeErr).
@@ -547,7 +545,7 @@ func (s *selection) checkMerges() error {
 func (s *selection) checkFlagTargets() error {
 	var errs []error
 
-	for _, k := range slices.SortedFunc(maps.Keys(s.flags), compareKey) {
+	for _, k := range slices.SortedFunc(maps.Keys(s.flags), kamaopt.Key.Compare) {
 		id := typegraph.NewQualifiedType(k.PkgPath, k.Type)
 		if s.targets[id] != nil {
 			s.flagged[id] = true
@@ -562,15 +560,6 @@ func (s *selection) checkFlagTargets() error {
 	}
 
 	return errors.Join(errs...)
-}
-
-func compareKey(a, b kamaopt.Key) int {
-	return cmp.Or(
-		cmp.Compare(a.PkgPath, b.PkgPath),
-		cmp.Compare(a.File, b.File),
-		cmp.Compare(a.Type, b.Type),
-		cmp.Compare(a.Field, b.Field),
-	)
 }
 
 func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Object {
@@ -729,7 +718,7 @@ func (s *selection) mapCycles() error {
 
 			return fmt.Errorf(
 				"%w: %s (%s): partial variants would be recursive through embedded fields: %s",
-				ErrUnsupported, nodeName(n),
+				ErrUnsupported, n.Id.String(),
 				n.Detail.Pkg.Fset.Position(n.Detail.Ts.Pos()), strings.Join(names, " -> "),
 			)
 		case done:

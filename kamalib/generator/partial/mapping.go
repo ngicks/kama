@@ -7,7 +7,6 @@ import (
 	"go/types"
 	"reflect"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/dave/dst"
@@ -108,7 +107,7 @@ func (p *mapper) typeParams(n *typegraph.Node, list *types.TypeParamList) (*dst.
 		if err != nil {
 			return nil, fmt.Errorf(
 				"%s (%s): type parameter %s: %w",
-				nodeName(n), p.position(tp.Obj().Pos()), tp.Obj().Name(), err,
+				n.Id.String(), p.position(tp.Obj().Pos()), tp.Obj().Name(), err,
 			)
 		}
 
@@ -332,7 +331,7 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 		info.conv = convEmbedded
 		info.named = named
 
-		info.leaf, info.route = pointerRoute(v.Type())
+		info.leaf, info.route = typegraph.PointerRoute(v.Type())
 		if len(info.route) > 0 {
 			info.conv = convEmbeddedPointer
 		}
@@ -417,12 +416,7 @@ func isStruct(named *types.Named) bool {
 
 func withTag(f *dst.Field, tag string) *dst.Field {
 	if tag != "" {
-		lit := strconv.Quote(tag)
-		if strconv.CanBackquote(tag) {
-			lit = "`" + tag + "`"
-		}
-
-		f.Tag = &dst.BasicLit{Kind: token.STRING, Value: lit}
+		f.Tag = &dst.BasicLit{Kind: token.STRING, Value: structtag.Literal(tag)}
 	}
 
 	return f
@@ -442,7 +436,7 @@ func withTag(f *dst.Field, tag string) *dst.Field {
 // does. So does a target whose partial variant cannot be spelled in the
 // package of the mapper.
 func (p *mapper) value(t types.Type, ref bool) (mapped, error) {
-	leaf, route := pointerRoute(t)
+	leaf, route := typegraph.PointerRoute(t)
 	if len(route) > 1 {
 		return mapped{}, fmt.Errorf("%w: pointer to pointer %s", ErrUnsupported, t)
 	}
@@ -492,38 +486,6 @@ func (p *mapper) value(t types.Type, ref bool) (mapped, error) {
 	}
 
 	return p.wrap(t, false)
-}
-
-// pointerRoute returns the type t points to through its pointers and the
-// pointer steps leading there, aliases dropped. leaf keeps the alias it is
-// spelled by, if any.
-func pointerRoute(t types.Type) (leaf types.Type, route []typegraph.EdgeRouteNode) {
-	_ = typegraph.WalkTypes(
-		nil,
-		t,
-		func(ty types.Type, _ []typegraph.EdgeRouteNode) bool {
-			_, ok := types.Unalias(ty).(*types.Pointer)
-			return !ok
-		},
-		func(ty types.Type, stack []typegraph.EdgeRouteNode) error {
-			// The type arguments of a generic alias are walked too; they are
-			// not where the value leads.
-			if slices.ContainsFunc(stack, func(n typegraph.EdgeRouteNode) bool {
-				return n.Kind == typegraph.EdgeKindTypeArg || n.Kind == typegraph.EdgeKindTypeParam
-			}) {
-				return nil
-			}
-
-			leaf = ty
-			route = slices.DeleteFunc(slices.Clone(stack), func(n typegraph.EdgeRouteNode) bool {
-				return n.Kind == typegraph.EdgeKindAlias
-			})
-
-			return nil
-		},
-	)
-
-	return leaf, route
 }
 
 // wrap returns und.Und of t, or of the partial variant of t when it is a

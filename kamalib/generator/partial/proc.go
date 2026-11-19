@@ -2,11 +2,15 @@ package partial
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
+	"golang.org/x/tools/go/packages"
+
 	"github.com/ngicks/kama/kamalib/generator/base"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -29,8 +33,11 @@ type ProcParam struct {
 
 // Proc generates the partial types of the packages its in loaded and
 // stages the files in its out. The packages must lie under the root of
-// its out. The option file is read from its out, so a file staged by an
-// earlier step is read too. A file of its out that would change in the
+// its out. The option file and the package option files are read from its
+// out, so a file staged by an earlier step is read too. A package option
+// file is the file //kama:option-file partial=<path> names, or else
+// kama_partial.yaml, .yml, .json or .toml in the package directory when
+// present. A file of its out that would change in the
 // generated: line of its header only is not staged. Proc reports the
 // warnings of Generate and the number of files written and unchanged.
 //
@@ -109,15 +116,12 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 		return err
 	}
 
-	for _, w := range warnings {
-		r.Warn(w)
-	}
-
-	return base.Stage(ctx, i.fs, files, r)
+	return base.StageWithWarnings(ctx, i.fs, files, warnings, r)
 }
 
-// generate runs Generate with the options of i and its option file, and
-// returns the files with paths relative to the root of the out of i.
+// generate runs Generate with the options of i, its option file and the
+// package option files, and returns the files with paths relative to the
+// root of the out of i.
 func (i *instance) generate() ([]File, []error, error) {
 	opts := i.opts
 	if i.optionFile != nil {
@@ -128,6 +132,13 @@ func (i *instance) generate() ([]File, []error, error) {
 
 		opts.OptionFile = f
 	}
+
+	pkgFiles, err := loadPackageOptionFiles(i.fs, i.pkgs.Pkgs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	opts.PackageOptionFiles = pkgFiles
 
 	files, warnings, err := Generate(i.pkgs.Pkgs, opts)
 	if err != nil {
@@ -140,4 +151,48 @@ func (i *instance) generate() ([]File, []error, error) {
 	}
 
 	return files, warnings, nil
+}
+
+// packageOptionFileBase is the name of the package option file, without
+// extension, read from a package directory without //kama:option-file
+// partial=<path>.
+const packageOptionFileBase = "kama_partial"
+
+// loadPackageOptionFiles returns the package option files of the source
+// packages of pkgs.
+func loadPackageOptionFiles(f *overlayfs.Fs, pkgs []*packages.Package) ([]*OptionFile, error) {
+	found, err := kamaopt.LoadPackageFiles(
+		f.FS(), f.Root(), base.SourcePackages(pkgs), toolName,
+		kamaopt.PackageFileInput{
+			Generator: directive,
+			Default: fileloader.PathInput{
+				Base: packageOptionFileBase,
+				Formats: []fileloader.Format{
+					fileloader.FormatYaml,
+					fileloader.FormatJson,
+					fileloader.FormatToml,
+				},
+			},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrOptionFile, err)
+	}
+
+	var (
+		out  []*OptionFile
+		errs []error
+	)
+
+	for _, pf := range found {
+		o, err := DecodePackageOptionFile(pf.Name, pf.PkgPath, pf.Data)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		out = append(out, o)
+	}
+
+	return out, errors.Join(errs...)
 }

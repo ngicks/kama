@@ -124,11 +124,7 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 		return fmt.Errorf("contextkey: %w", err)
 	}
 
-	for _, w := range warnings {
-		r.Warn(w)
-	}
-
-	return base.Stage(ctx, i.fs, produced, r)
+	return base.StageWithWarnings(ctx, i.fs, produced, warnings, r)
 }
 
 // decodeTemplate converts the format-neutral data fileloader decodes into

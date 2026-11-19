@@ -7,6 +7,7 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
+	"github.com/ngicks/kama/kamalib/pkg/structtag"
 	"github.com/ngicks/opiter"
 )
 
@@ -244,7 +245,7 @@ func (p dstPrinter) structType(s *types.Struct) (*dst.StructType, error) {
 		}
 
 		if tag := s.Tag(i); tag != "" {
-			f.Tag = &dst.BasicLit{Kind: token.STRING, Value: tagLit(tag)}
+			f.Tag = &dst.BasicLit{Kind: token.STRING, Value: structtag.Literal(tag)}
 		}
 
 		fields.List = append(fields.List, f)

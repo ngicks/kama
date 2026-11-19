@@ -289,7 +289,7 @@ type A struct {
 
 	assert.Assert(t, n != nil)
 
-	hdr, err := fileHeader(opts, testNow())
+	hdr, err := fileHeader(opts, n.Id.PackagePath, testNow())
 	assert.NilError(t, err)
 
 	f := &partialFile{nodes: []*typegraph.Node{n}}

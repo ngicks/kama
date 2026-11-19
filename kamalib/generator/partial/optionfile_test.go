@@ -32,8 +32,12 @@ packages:
         fields:
           Addr:
             merge: append
-            flag: {name: addr, short: a, usage: listen address}
-            fieldmask: {name: address}
+            flag:
+              name: addr
+              short: a
+              usage: listen address
+            fieldmask:
+              name: address
           Port:
       Client:
         ignore: true
@@ -307,14 +311,21 @@ packages:
     types:
       A:
         fields:
-          B: {merge: append}
+          B:
+            merge: append
           C:
-            flag: {name: c, short: c, usage: the c}
+            flag:
+              name: c
+              short: c
+              usage: the c
       D:
         fieldmask: true
         fields:
-          N: {fieldmask: {name: n}}
-      E: {ignore: true}
+          N:
+            fieldmask:
+              name: n
+      E:
+        ignore: true
 `),
 	})
 	for name, src := range byFile {

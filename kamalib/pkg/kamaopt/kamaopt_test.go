@@ -105,13 +105,13 @@ func TestParseArgs(t *testing.T) {
 		{"a=b=c", map[string]string{"a": "b=c"}, ""},
 		{"a=1 a=2", nil, `duplicate name "a"`},
 		{"a a", nil, `duplicate name "a"`},
-		{"=1", nil, "missing name"},
-		{`"a"=1`, nil, "missing name"},
-		{`a"b"`, nil, "unexpected quote"},
+		{"=1", nil, "missing key"},
+		{`"a b"=1 ` + "`c`", map[string]string{"a b": "1", "c": ""}, ""},
+		{`a"b"`, nil, "quote inside unquoted text"},
 		{`a="unterminated`, nil, "unterminated"},
 		{`a="x\"`, nil, "unterminated"},
 		{`a="x"y`, nil, "after closing quote"},
-		{`a=x"y"`, nil, "quote inside unquoted value"},
+		{`a=x"y"`, nil, "quote inside unquoted text"},
 		{`a="\q"`, nil, "invalid syntax"},
 	}
 

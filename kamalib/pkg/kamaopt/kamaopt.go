@@ -1,10 +1,14 @@
-// Package kamaopt collects the raw options of a kama generator, keyed by
+// Package kamaopt collects the raw options of a code generator, keyed by
 // the package, file, type or field they apply to.
 //
-// Options come from directive comments //tool:directive args in the source
-// or from an option file using the same vocabulary. The package does not
-// interpret directives or args; generators decode Raw values into their
-// own options.
+// Options come from directive comments //tool:directive args in the source,
+// from an option file using the same vocabulary, or from the option file
+// of a single package. The tool-wide directive //tool:option-file names the
+// option file of each generator for a package, and a package without it
+// may hold a file of a default name; LoadPackageFiles finds and decodes
+// those files. The package does not interpret directives, args or option
+// file entries; generators decode Raw values and documents into their own
+// options.
 package kamaopt
 
 import (
@@ -14,10 +18,6 @@ import (
 	"go/ast"
 	"go/token"
 	"slices"
-	"strconv"
-	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/ngicks/opiter"
 
@@ -33,15 +33,21 @@ var ErrConflict = errors.New("kamaopt: conflicting options")
 type Source int
 
 const (
+	// SourceDirective is a directive comment.
 	SourceDirective Source = iota + 1
+	// SourceFile is an option file holding options of any package.
 	SourceFile
+	// SourcePackageFile is an option file of a single package, as
+	// LoadPackageFiles finds it.
+	SourcePackageFile
 )
 
 // Origin locates a Raw option for error messages.
 type Origin struct {
 	Source Source
 	// Pos is the position of the directive comment for SourceDirective.
-	// For SourceFile only Pos.Filename, the option file name, is set.
+	// For SourceFile and SourcePackageFile only Pos.Filename, the option
+	// file name, is set.
 	Pos token.Position
 }
 
@@ -55,6 +61,17 @@ type Key struct {
 	File    string
 	Type    string
 	Field   string
+}
+
+// Compare orders k and other by PkgPath, File, Type and Field. It returns
+// -1, 0 or +1 as cmp.Compare does.
+func (k Key) Compare(other Key) int {
+	return cmp.Or(
+		cmp.Compare(k.PkgPath, other.PkgPath),
+		cmp.Compare(k.File, other.File),
+		cmp.Compare(k.Type, other.Type),
+		cmp.Compare(k.Field, other.Field),
+	)
 }
 
 // Raw is an option before a generator decodes it.
@@ -309,104 +326,25 @@ func (c *collector) declLineComment(decls []ast.Decl, cg *ast.CommentGroup) bool
 	return c.fset.Position(decls[i-1].End()).Line == c.fset.Position(cg.Pos()).Line
 }
 
-// ParseArgs parses args as space-separated name=value pairs.
+// ParseArgs parses args as space-separated name=value pairs, following the
+// grammar of [dircmnt.ParseArgsKeyValue].
 //
-// The grammar is:
-//
-//	args  = { space } [ pair { space { space } pair } ] { space } .
-//	pair  = name [ "=" value ] .
-//	name  = non-empty run of characters other than space, `=` and `"` .
-//	value = quoted | bare .
-//	quoted = Go double-quoted string literal, unquoted with strconv.Unquote .
-//	bare  = run of characters other than space and `"`, possibly empty .
-//
-// space is a character for which unicode.IsSpace reports true. A pair
-// without "=" maps name to "", as for a flag word like "append". A name
-// given twice is an error.
+// A pair without "=" maps name to "", as for a flag word like "append". A
+// name given twice is an error.
 func ParseArgs(args string) (map[string]string, error) {
-	out := map[string]string{}
-
-	rest := args
-	for {
-		rest = strings.TrimLeftFunc(rest, unicode.IsSpace)
-		if rest == "" {
-			return out, nil
-		}
-
-		i := strings.IndexFunc(rest, func(r rune) bool {
-			return r == '=' || r == '"' || unicode.IsSpace(r)
-		})
-		if i < 0 {
-			i = len(rest)
-		}
-
-		name := rest[:i]
-		if name == "" {
-			return nil, fmt.Errorf("kamaopt: missing name at %q", rest)
-		}
-
-		if _, ok := out[name]; ok {
-			return nil, fmt.Errorf("kamaopt: duplicate name %q", name)
-		}
-
-		rest = rest[i:]
-
-		switch {
-		case rest == "" || startsWithSpace(rest):
-			out[name] = ""
-			continue
-		case rest[0] == '"':
-			return nil, fmt.Errorf("kamaopt: unexpected quote after name %q", name)
-		}
-
-		rest = rest[1:] // "="
-
-		var (
-			value string
-			err   error
-		)
-		if strings.HasPrefix(rest, `"`) {
-			value, rest, err = cutQuoted(rest)
-			if err != nil {
-				return nil, fmt.Errorf("kamaopt: value of %q: %w", name, err)
-			}
-
-			if rest != "" && !startsWithSpace(rest) {
-				return nil, fmt.Errorf("kamaopt: value of %q: text after closing quote", name)
-			}
-		} else {
-			end := strings.IndexFunc(rest, unicode.IsSpace)
-			if end < 0 {
-				end = len(rest)
-			}
-
-			value, rest = rest[:end], rest[end:]
-			if strings.Contains(value, `"`) {
-				return nil, fmt.Errorf("kamaopt: value of %q: quote inside unquoted value", name)
-			}
-		}
-
-		out[name] = value
-	}
-}
-
-func startsWithSpace(s string) bool {
-	r, _ := utf8.DecodeRuneInString(s)
-	return unicode.IsSpace(r)
-}
-
-// cutQuoted unquotes the Go string literal at the start of s and returns
-// the text after it.
-func cutQuoted(s string) (value, rest string, err error) {
-	for i := 1; i < len(s); i++ {
-		switch s[i] {
-		case '\\':
-			i++
-		case '"':
-			value, err = strconv.Unquote(s[:i+1])
-			return value, s[i+1:], err
-		}
+	kvs, err := dircmnt.ParseArgsKeyValue(args)
+	if err != nil {
+		return nil, fmt.Errorf("kamaopt: %w", err)
 	}
 
-	return "", "", errors.New("unterminated quoted string")
+	out := make(map[string]string, len(kvs))
+	for _, kv := range kvs {
+		if _, ok := out[kv.Key]; ok {
+			return nil, fmt.Errorf("kamaopt: duplicate name %q", kv.Key)
+		}
+
+		out[kv.Key] = kv.Value
+	}
+
+	return out, nil
 }

@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"iter"
+	"path"
 	"slices"
 
 	"github.com/ngicks/opiter"
@@ -46,6 +47,16 @@ func (f Format) Extensions() []string {
 	default:
 		return nil
 	}
+}
+
+// FormatOf returns the format whose Extensions hold the extension of name.
+func FormatOf(name string) (Format, bool) {
+	ext := path.Ext(name)
+
+	return opiter.WrapSeq(slices.Values([]Format{FormatJson, FormatYaml, FormatToml})).
+		Filter(func(f Format) bool { return slices.Contains(f.Extensions(), ext) }).
+		First().
+		Unpack()
 }
 
 // PathInput names a metadata file without its extension and the formats it
@@ -106,20 +117,13 @@ func Load(fsys fs.FS, in PathInput, v any) (string, error) {
 		for _, ext := range exts {
 			name := in.Base + ext
 
-			f, err := fsys.Open(name)
-			if err != nil {
-				if errors.Is(err, fs.ErrNotExist) {
-					continue
-				}
-
-				return "", fmt.Errorf("fileloader: open %q: %w", name, err)
+			err := decodeFile(fsys, name, format, v)
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
 			}
 
-			err = Decode(f, format, v)
-			f.Close()
-
 			if err != nil {
-				return "", fmt.Errorf("fileloader: decode %q: %w", name, err)
+				return "", err
 			}
 
 			return name, nil
@@ -127,4 +131,30 @@ func Load(fsys fs.FS, in PathInput, v any) (string, error) {
 	}
 
 	return "", fmt.Errorf("%w: %q", ErrNotFound, in.Base)
+}
+
+// LoadFile decodes the file name of fsys into v, in the format FormatOf
+// gives for name. An extension of no format is an error wrapping
+// ErrUnknownFormat, and a missing file an error wrapping fs.ErrNotExist.
+func LoadFile(fsys fs.FS, name string, v any) error {
+	format, ok := FormatOf(name)
+	if !ok {
+		return fmt.Errorf("%w: extension of %q", ErrUnknownFormat, name)
+	}
+
+	return decodeFile(fsys, name, format, v)
+}
+
+func decodeFile(fsys fs.FS, name string, format Format, v any) error {
+	f, err := fsys.Open(name)
+	if err != nil {
+		return fmt.Errorf("fileloader: open %q: %w", name, err)
+	}
+	defer f.Close()
+
+	if err := Decode(f, format, v); err != nil {
+		return fmt.Errorf("fileloader: decode %q: %w", name, err)
+	}
+
+	return nil
 }

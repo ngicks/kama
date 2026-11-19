@@ -2,6 +2,7 @@ package structtag
 
 import (
 	"reflect"
+	"strconv"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -46,6 +47,26 @@ func TestParseErrors(t *testing.T) {
 
 	_, err := Parse(`json:"\q"`)
 	assert.ErrorIs(t, err, ErrSyntax)
+}
+
+func TestLiteral(t *testing.T) {
+	for _, tc := range []struct {
+		name, tag, want string
+	}{
+		{"empty", "", "``"},
+		{"plain", `json:"a,omitempty"`, "`json:\"a,omitempty\"`"},
+		{"backquote", "json:\"`\"", `"json:\"` + "`" + `\""`},
+		{"newline", "json:\"a\nb\"", `"json:\"a\nb\""`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := Literal(tc.tag)
+			assert.Equal(t, got, tc.want)
+
+			unquoted, err := strconv.Unquote(got)
+			assert.NilError(t, err)
+			assert.Equal(t, unquoted, tc.tag)
+		})
+	}
 }
 
 func TestGet(t *testing.T) {

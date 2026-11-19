@@ -1,8 +1,6 @@
 package partial
 
 import (
-	"strings"
-
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
@@ -50,40 +48,6 @@ func docComment(format string, args ...any) genExpr {
 
 // commentWidth is the width doc comments of helpers are wrapped at.
 const commentWidth = 76
-
-// wrapComment returns text as lines that are at most commentWidth bytes
-// long as // comment lines, except for words longer than that. Paragraphs
-// of text are separated by an empty line.
-func wrapComment(text string) string {
-	// prefix is the length of "// " before each line.
-	const prefix = 3
-
-	var lines []string
-
-	for i, para := range strings.Split(text, "\n\n") {
-		if i > 0 {
-			lines = append(lines, "")
-		}
-
-		line := ""
-		for word := range strings.FieldsSeq(para) {
-			if line != "" && prefix+len(line)+1+len(word) > commentWidth {
-				lines = append(lines, line)
-				line = ""
-			}
-
-			if line != "" {
-				line += " "
-			}
-
-			line += word
-		}
-
-		lines = append(lines, line)
-	}
-
-	return strings.Join(lines, "\n")
-}
 
 // along returns the steps converting the value in denotes along route:
 // wrap once for each node of route, the first node outermost, then leaf.

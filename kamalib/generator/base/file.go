@@ -74,6 +74,22 @@ func Stage(ctx context.Context, fsys *overlayfs.Fs, files []File, r workflow.Rep
 	return nil
 }
 
+// StageWithWarnings reports each of warnings to r and then calls [Stage]
+// with fsys, files and r.
+func StageWithWarnings(
+	ctx context.Context,
+	fsys *overlayfs.Fs,
+	files []File,
+	warnings []error,
+	r workflow.Reporter,
+) error {
+	for _, w := range warnings {
+		r.Warn(w)
+	}
+
+	return Stage(ctx, fsys, files, r)
+}
+
 func fileCount(n int) string {
 	if n == 1 {
 		return "1 file"

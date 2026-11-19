@@ -76,7 +76,10 @@ var (
 	// ErrOption reports an invalid Options value.
 	ErrOption = errors.New("partial: invalid option")
 	// ErrOptionFile reports an option file that does not decode, or whose
-	// entries name packages, types or fields that are not loaded.
+	// entries name packages, types or fields that are not loaded. Proc also
+	// wraps errors wrapping kamaopt.ErrPackageFile in it: an invalid
+	// //kama:option-file directive and a package option file that cannot be
+	// loaded.
 	ErrOptionFile = errors.New("partial: invalid option file")
 	// ErrStale reports a file of a loaded package that carries the marker of
 	// the generator but that the run did not produce. It is a warning.
@@ -124,6 +127,10 @@ type Options struct {
 	// OptionFile holds options given beside the directives, as
 	// LoadOptionFile or DecodeOptionFile return them. It is none when nil.
 	OptionFile *OptionFile
+	// PackageOptionFiles hold the options of package option files, as
+	// DecodePackageOptionFile returns them, at most one per package. The
+	// options of each apply to its own package.
+	PackageOptionFiles []*OptionFile
 	// Now gives the time the header of the generated files records. It is
 	// time.Now when nil.
 	Now func() time.Time
@@ -159,6 +166,24 @@ func (o Options) Validate() error {
 		return fmt.Errorf("%w: merge_nested %q", ErrOption, o.MergeNested)
 	}
 
+	seen := map[string]string{}
+
+	for _, f := range o.PackageOptionFiles {
+		switch {
+		case f == nil || f.Package == "":
+			return fmt.Errorf("%w: a package option file names no package", ErrOption)
+		}
+
+		if prev, ok := seen[f.Package]; ok {
+			return fmt.Errorf(
+				"%w: package %s has two option files, %s and %s",
+				ErrOption, f.Package, prev, f.Name,
+			)
+		}
+
+		seen[f.Package] = f.Name
+	}
+
 	return nil
 }
 
@@ -187,11 +212,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	}
 
 	opts = opts.WithDefaults()
-
-	hdr, err := fileHeader(opts, opts.Now())
-	if err != nil {
-		return nil, nil, err
-	}
+	now := opts.Now()
 
 	srcPkgs := base.SourcePackages(pkgs)
 
@@ -246,6 +267,11 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 			pf.files,
 			func(a, b *partialFile) int { return cmp.Compare(a.path, b.path) },
 		)
+
+		hdr, err := fileHeader(opts, pkgPath, now)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		out, err := renderPackage(sel, hdr, pf.pkg, pf.dir, pf.files)
 		if err != nil {
@@ -474,17 +500,27 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 	)
 }
 
-// fileHeader returns the comment lines every generated file starts with.
-func fileHeader(opts Options, now time.Time) (dst.Decorations, error) {
-	var optionFile any
+// fileHeader returns the comment lines every generated file of the package
+// at pkgPath starts with.
+func fileHeader(opts Options, pkgPath string, now time.Time) (dst.Decorations, error) {
+	var optionFile, packageOptionFile any
 	if opts.OptionFile != nil {
 		optionFile = opts.OptionFile.Name
 	}
 
+	pf := opiter.WrapSeq(slices.Values(opts.PackageOptionFiles)).
+		Filter(func(f *OptionFile) bool { return f.Package == pkgPath }).
+		First()
+
+	if pf.IsSome() {
+		packageOptionFile = pf.Value().Name
+	}
+
 	return base.Header(generatorPath, map[string]any{
-		"merge":        string(opts.Merge),
-		"merge_nested": string(opts.MergeNested),
-		"option_file":  optionFile,
+		"merge":               string(opts.Merge),
+		"merge_nested":        string(opts.MergeNested),
+		"option_file":         optionFile,
+		"package_option_file": packageOptionFile,
 	}, now)
 }
 
@@ -570,7 +606,7 @@ func renderFileWith(
 
 	var buf bytes.Buffer
 	if err := decorator.Fprint(&buf, file); err != nil {
-		return nil, nil, fmt.Errorf("partial: print %s: %w", nodeName(nodes[0]), err)
+		return nil, nil, fmt.Errorf("partial: print %s: %w", nodes[0].Id.String(), err)
 	}
 
 	return buf.Bytes(), p, nil
@@ -629,7 +665,7 @@ func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("%s (%s): %w", nodeName(n), p.position(named.Obj().Pos()), err)
+		return nil, fmt.Errorf("%s (%s): %w", n.Id.String(), p.position(named.Obj().Pos()), err)
 	}
 
 	typeDecl := &dst.GenDecl{
@@ -723,7 +759,3 @@ func checkPredeclared(pkg *packages.Package, contents [][]byte) error {
 }
 
 func partialName(typeName string) string { return typeName + "Partial" }
-
-func nodeName(n *typegraph.Node) string {
-	return n.Id.PackagePath + "." + n.Id.TypeName
-}

@@ -95,6 +95,26 @@ func TestPrintComment(t *testing.T) {
 	}
 }
 
+func TestWrapComment(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		text  string
+		width int
+		want  string
+	}{
+		{name: "empty text"},
+		{name: "fits on one line", text: "a b c", width: 8, want: "a b c"},
+		{name: "prefix counts toward width", text: "aaaa bb", width: 8, want: "aaaa\nbb"},
+		{name: "collapses spaces", text: " a \n b  c ", width: 20, want: "a b c"},
+		{name: "long word takes its own line", text: "a abcdefgh b", width: 6, want: "a\nabcdefgh\nb"},
+		{name: "paragraphs", text: "a b\n\nc", width: 20, want: "a b\n\nc"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, genhelper.WrapComment(tc.text, tc.width), tc.want)
+		})
+	}
+}
+
 func TestWrapFile(t *testing.T) {
 	const (
 		fooPath = "example.com/foo"

@@ -1,0 +1,146 @@
+# The options of this package, standing for the directives of the fixture
+# package. The option file has no file scope, so the types of the file
+# marked there are listed one by one.
+version: 1
+types:
+  User:
+  Box:
+  Pair:
+  Stat:
+  Tree:
+  Ring:
+  Config:
+  Limits:
+  Meta:
+    ignore: true
+  Merging:
+    fields:
+      Tags:
+        merge: append
+      Attrs:
+        merge: append
+      Replaced:
+        merge: overwrite
+      Items:
+        merge: append
+      Ptr:
+        merge: append
+      Flagged:
+        flag:
+          name: flagged
+  Embeds:
+  Flags:
+    fields:
+      Name:
+        flag:
+          name: name
+          short: n
+          usage: the name
+      Verbose:
+        flag:
+          name: verbose
+          short: v
+      Count:
+        flag:
+          name: count
+      Size:
+        flag:
+          name: size
+      Workers:
+        flag:
+          name: workers
+      Limit:
+        flag:
+          name: limit
+      Ratio:
+        flag:
+          name: ratio
+      Timeout:
+        flag:
+          name: timeout
+          short: t
+          usage: time to wait
+      Tags:
+        flag:
+          name: tag
+      Labels:
+        flag:
+          name: label
+      Level:
+        flag:
+          name: level
+          short: l
+      Since:
+        flag:
+          name: since
+      Mode:
+        flag:
+          name: mode
+      Hosts:
+        flag:
+          name: host
+      Retry:
+        flag:
+          name: retry
+      Nick:
+        flag:
+          name: nick
+      Port:
+        flag:
+          name: port
+      MinLevel:
+        flag:
+          name: min-level
+  Hosts:
+    ignore: true
+  Shelf:
+  Catalog:
+    fields:
+      Books:
+        merge: append
+      BookRefs:
+        merge: append
+      ByID:
+        merge: append
+      RefsByID:
+        merge: append
+      List:
+        merge: append
+      RefMap:
+        merge: append
+      Map:
+        merge: overwrite
+      ListPtr:
+        merge: append
+      Sections:
+        merge: append
+  Masked:
+    fieldmask: true
+    fields:
+      Renamed:
+        fieldmask:
+          name: alias
+  MaskInner:
+    fieldmask: true
+  MaskDeep:
+    fieldmask: true
+  MaskEmbedded:
+    fieldmask: true
+    fields:
+      EDeep:
+        fieldmask:
+          name: e_deep
+  MaskAudit:
+    fieldmask: true
+  MaskBox:
+    fieldmask: true
+  MaskPair:
+    fieldmask: true
+  MaskTree:
+    fieldmask: true
+  MaskPing:
+    fieldmask: true
+  MaskPong:
+    fieldmask: true
+  MaskHolder:
+    fieldmask: true

@@ -9,6 +9,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
+	"github.com/ngicks/kama/kamalib/pkg/structtag"
 )
 
 // Ast returns the go/ast type expression spelling ty. Types declared in
@@ -243,7 +244,7 @@ func (p astPrinter) structType(s *types.Struct) (*ast.StructType, error) {
 		}
 
 		if tag := s.Tag(i); tag != "" {
-			f.Tag = &ast.BasicLit{Kind: token.STRING, Value: tagLit(tag)}
+			f.Tag = &ast.BasicLit{Kind: token.STRING, Value: structtag.Literal(tag)}
 		}
 
 		fields.List = append(fields.List, f)

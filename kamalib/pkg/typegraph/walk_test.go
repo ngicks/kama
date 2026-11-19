@@ -1,6 +1,9 @@
 package typegraph
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"go/types"
 	"slices"
 	"testing"
@@ -80,4 +83,52 @@ func TestWalkTypesToNamed_Stop(t *testing.T) {
 		},
 		stoppedAt,
 	)
+}
+
+func TestPointerRoute(t *testing.T) {
+	const src = `package p
+
+type T struct{}
+
+type IntAlias = int
+
+type PtrAlias = *T
+
+type Generic[X any] = *X
+
+var (
+	plain       T
+	ptrPtr      **T
+	viaPtrAlias *PtrAlias
+	toAlias     *IntAlias
+	generic     Generic[*int]
+)
+`
+
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "p.go", src, 0)
+	assert.NilError(t, err)
+
+	pkg, err := new(types.Config).Check("p", fset, []*ast.File{f}, nil)
+	assert.NilError(t, err)
+
+	pointer := EdgeRouteNode{Kind: EdgeKindPointer}
+
+	for _, tc := range []struct {
+		name     string
+		wantLeaf string
+		want     []EdgeRouteNode
+	}{
+		{"plain", "p.T", nil},
+		{"ptrPtr", "p.T", []EdgeRouteNode{pointer, pointer}},
+		{"viaPtrAlias", "p.T", []EdgeRouteNode{pointer, pointer}},
+		{"toAlias", "p.IntAlias", []EdgeRouteNode{pointer}},
+		{"generic", "int", []EdgeRouteNode{pointer, pointer}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			leaf, route := PointerRoute(pkg.Scope().Lookup(tc.name).Type())
+			assert.Equal(t, leaf.String(), tc.wantLeaf)
+			assert.DeepEqual(t, route, tc.want)
+		})
+	}
 }

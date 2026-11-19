@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/ngicks/opiter"
+
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
 // call returns the call of h with args, recording h in the helpers of the
@@ -103,7 +105,7 @@ func (p *mapper) helperDecl(fn string, h *helper) (string, error) {
 			return "", err
 		}
 
-		return wrapComment(fn + " " + text), nil
+		return genhelper.WrapComment(fn+" "+text, commentWidth), nil
 	}
 
 	return lang.Render(f.c, lang.DocFunc(

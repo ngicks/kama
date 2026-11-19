@@ -40,8 +40,9 @@
 //
 // An option file gives the options of the directives for types that cannot
 // carry them, such as generated code. Options.OptionFile holds it, and
-// ProcParam.OptionFile names the file Proc reads. The file is JSON, YAML or
-// TOML:
+// ProcParam.OptionFile names the file Proc reads. A package may also have
+// an option file of its own, described under Package option file. The file
+// is JSON, YAML or TOML:
 //
 //	version: 1
 //	packages:
@@ -53,8 +54,12 @@
 //	        fields:
 //	          Addr:
 //	            merge: append     # //kama:partial:merge append
-//	            flag: {name: addr, short: a, usage: listen address}
-//	            fieldmask: {name: address}  # //kama:partial:fieldmask name=address
+//	            flag:
+//	              name: addr
+//	              short: a
+//	              usage: listen address
+//	            fieldmask:        # //kama:partial:fieldmask name=address
+//	              name: address
 //	      Client:
 //	        ignore: true          # //kama:partial ignore on Client
 //
@@ -78,6 +83,46 @@
 // origins. Errors
 // about an option name its directive position or its key path in the
 // file.
+//
+// # Package option file
+//
+// A package option file gives the options of a single package. Its
+// document has no packages level: version, all_types and types sit at the
+// top, with the meaning and vocabulary of one entry of packages of the
+// option file. Options.PackageOptionFiles holds such files, as
+// DecodePackageOptionFile returns them, and Proc reads them for every
+// loaded package:
+//
+//	version: 1
+//	all_types: true
+//	types:
+//	  Client:
+//	    ignore: true
+//
+// A free-floating comment of the package, the package clause doc comment
+// included, names the file:
+//
+//	//kama:option-file partial=../options/pb.yaml
+//
+// option-file is a directive of the tool shared by its generators. Each
+// arg is <generator>=<path>. partial reads the arg keyed partial and
+// leaves the others to their generators. The path is
+// slash-separated and relative to the package directory. It may hold "..",
+// but an absolute path or a path leaving the root of the out of Proc is an
+// error. The extension gives the format: .yaml, .yml, .json or .toml. A
+// named file that does not exist is an error, and so is a second
+// partial=<path> for one package. Several packages may name one file; its
+// options apply to each of them.
+//
+// A package without the directive gets kama_partial.yaml, .yml, .json or
+// .toml in its directory, the first one present in that order, and no
+// package option file when none is present.
+//
+// The options of a package option file meet those of the directives and of
+// the option file under the rule above: the same option with the same
+// value is allowed, and different values are errors wrapping
+// kamaopt.ErrConflict and naming both origins. Errors about an entry name
+// the file and the key path from its top level.
 //
 // # Type mapping
 //
@@ -546,13 +591,16 @@
 //	//	merge: "overwrite"
 //	//	merge_nested: "recursive"
 //	//	option_file: "kama/partial.yaml"
+//	//	package_option_file: "model/kama_partial.yaml"
 //	// generated: 2026-11-04T10:12:33Z
 //
 // genhelper.GeneratorParams prints the header. params lists merge,
-// merge_nested and option_file sorted by key, with the defaults applied,
-// each value as JSON. option_file is the name of the option file read, as
-// OptionFile.Name gives it, and null without an option file. generated is
-// the time Options.Now returns, in UTC to the second.
+// merge_nested, option_file and package_option_file sorted by key, with
+// the defaults applied, each value as JSON. option_file is the name of the
+// option file read, as OptionFile.Name gives it, and null without an
+// option file. package_option_file is the name of the package option file
+// of the package the file belongs to, and null when the package has none.
+// generated is the time Options.Now returns, in UTC to the second.
 //
 // Proc keeps a file that already exists, on disk or staged by an earlier
 // step, when the file it would write differs from it in the generated:

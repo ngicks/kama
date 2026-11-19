@@ -38,6 +38,7 @@ var fixtures = []struct {
 		dir:   "internal/fixtureexternal",
 		param: ProcParam{OptionFile: &fileloader.PathInput{Base: "partial"}},
 	},
+	{dir: "internal/fixturepackage"},
 }
 
 func TestFixtureSpecBuild(t *testing.T) {
@@ -135,16 +136,25 @@ func generatedFiles(t *testing.T, root string) []string {
 	return out
 }
 
-// TestFixtureExternalParity checks that the options of
-// internal/fixtureexternal/partial.yaml generate what the directives of
-// internal/fixture do: its packages copy those of internal/fixture without
-// directives, so every generated file matches its counterpart once the
-// import paths are replaced. The headers differ in the time of the run and
-// in the option file.
-func TestFixtureExternalParity(t *testing.T) {
+// TestFixtureFileParity checks that option files generate what the
+// directives of internal/fixture do. The packages of each fixture copy
+// those of internal/fixture without directives, so every generated file
+// matches its counterpart once the import paths are replaced. The headers
+// differ in the time of the run and in the option files.
+//
+// internal/fixtureexternal gives the options in its central partial.yaml.
+// internal/fixturepackage gives them in package option files: one found
+// by its default name, and one named by //kama:option-file with a path
+// into another directory.
+func TestFixtureFileParity(t *testing.T) {
+	for _, fileDir := range []string{"internal/fixtureexternal", "internal/fixturepackage"} {
+		t.Run(fileDir, func(t *testing.T) { testFixtureFileParity(t, fileDir) })
+	}
+}
+
+func testFixtureFileParity(t *testing.T, fileDir string) {
 	const (
 		directiveDir = "internal/fixture"
-		fileDir      = "internal/fixtureexternal"
 		pkgPath      = "github.com/ngicks/kama/kamalib/generator/partial/"
 	)
 

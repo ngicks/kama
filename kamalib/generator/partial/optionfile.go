@@ -26,11 +26,16 @@ const OptionFileVersion = 1
 // OptionFile holds the options of an option file. Each entry stands for the
 // directive the package documentation names under Option file.
 type OptionFile struct {
-	// Name names the file in error messages and is the option_file value
-	// of the header of every generated file. Pass a stable name relative to
-	// the project, so that committed output holds no path specific to one
-	// machine.
+	// Name names the file in error messages. It is the option_file value of
+	// the header of every generated file for a central option file, and the
+	// package_option_file value of the files of its package for a package
+	// option file. Pass a stable name relative to the project, so that
+	// committed output holds no path specific to one machine.
 	Name string
+	// Package is the import path of the package a package option file
+	// belongs to, the only key of Packages then. It is empty for a central
+	// option file.
+	Package string
 	// Packages are keyed by package import path.
 	Packages map[string]PackageOptions
 }
@@ -106,14 +111,7 @@ func DecodeOptionFile(name string, data any) (*OptionFile, error) {
 	}
 
 	d.keys(top, nil, "version", "packages")
-
-	if v, ok := top["version"]; !ok {
-		d.fail([]string{"version"}, "version is required; want %d", OptionFileVersion)
-	} else if n, ok := integer(v); !ok {
-		d.fail([]string{"version"}, "%v is not an integer", v)
-	} else if n != OptionFileVersion {
-		d.fail([]string{"version"}, "unsupported version %d; want %d", n, OptionFileVersion)
-	}
+	d.version(top)
 
 	pkgsPath := []string{"packages"}
 
@@ -127,6 +125,36 @@ func DecodeOptionFile(name string, data any) (*OptionFile, error) {
 	}
 
 	return f, nil
+}
+
+// DecodePackageOptionFile returns the options of data, the document of the
+// package option file of the package at pkgPath, decoded as for
+// DecodeOptionFile. name names the file in error messages.
+//
+// The document holds version, all_types and types at the top level, as one
+// entry of packages of a central option file holds all_types and types.
+// The key paths of errors start at that level.
+func DecodePackageOptionFile(name, pkgPath string, data any) (*OptionFile, error) {
+	d := &optionDecoder{name: name}
+
+	top, ok := d.table(data, nil)
+	if !ok {
+		return nil, errors.Join(d.errs...)
+	}
+
+	d.keys(top, nil, "version", "all_types", "types")
+	d.version(top)
+
+	o := d.pkgEntries(top, nil)
+	if err := errors.Join(d.errs...); err != nil {
+		return nil, err
+	}
+
+	return &OptionFile{
+		Name:     name,
+		Package:  pkgPath,
+		Packages: map[string]PackageOptions{pkgPath: o},
+	}, nil
 }
 
 type optionDecoder struct {
@@ -188,6 +216,20 @@ func (d *optionDecoder) keys(t map[string]any, path []string, known ...string) {
 	}
 }
 
+// version reports a version of the top-level table t other than
+// OptionFileVersion.
+func (d *optionDecoder) version(t map[string]any) {
+	path := []string{"version"}
+
+	if v, ok := t["version"]; !ok {
+		d.fail(path, "version is required; want %d", OptionFileVersion)
+	} else if n, ok := integer(v); !ok {
+		d.fail(path, "%v is not an integer", v)
+	} else if n != OptionFileVersion {
+		d.fail(path, "unsupported version %d; want %d", n, OptionFileVersion)
+	}
+}
+
 func (d *optionDecoder) bool(t map[string]any, path []string, key string) bool {
 	v, ok := t[key]
 	if !ok {
@@ -223,6 +265,12 @@ func (d *optionDecoder) pkg(v any, path []string) PackageOptions {
 	}
 
 	d.keys(t, path, "all_types", "types")
+
+	return d.pkgEntries(t, path)
+}
+
+// pkgEntries decodes all_types and types of the package table t.
+func (d *optionDecoder) pkgEntries(t map[string]any, path []string) PackageOptions {
 	o := PackageOptions{AllTypes: d.bool(t, path, "all_types"), Types: map[string]TypeOptions{}}
 	typesPath := appendPath(path, "types")
 
@@ -375,11 +423,17 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 		byPath[p.PkgPath] = p
 	}
 
-	origin := kamaopt.Origin{Source: kamaopt.SourceFile, Pos: token.Position{Filename: f.Name}}
+	origin := kamaopt.Origin{Source: f.source(), Pos: token.Position{Filename: f.Name}}
 	fail := func(errs *[]error, path []string, format string, args ...any) {
+		at := f.Name
+		// The whole of a package option file stands for its package.
+		if len(path) > 0 {
+			at += ": " + keyPath(path)
+		}
+
 		*errs = append(*errs, fmt.Errorf(
-			"%w: %s: %s: "+format,
-			append([]any{ErrOptionFile, f.Name, keyPath(path)}, args...)...,
+			"%w: %s: "+format,
+			append([]any{ErrOptionFile, at}, args...)...,
 		))
 	}
 
@@ -390,7 +444,7 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 
 	for _, pkgPath := range slices.Sorted(maps.Keys(f.Packages)) {
 		po := f.Packages[pkgPath]
-		path := []string{"packages", pkgPath}
+		path := packagePath(f.source(), pkgPath)
 
 		pkg := byPath[pkgPath]
 		if pkg == nil {
@@ -486,9 +540,28 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 	return out, errors.Join(errs...)
 }
 
+// source tells the kind of f.
+func (f *OptionFile) source() kamaopt.Source {
+	if f.Package != "" {
+		return kamaopt.SourcePackageFile
+	}
+
+	return kamaopt.SourceFile
+}
+
+// packagePath returns the key path of the entry of the package at pkgPath
+// in an option file of source. A package option file is that entry itself.
+func packagePath(source kamaopt.Source, pkgPath string) []string {
+	if source == kamaopt.SourcePackageFile {
+		return nil
+	}
+
+	return []string{"packages", pkgPath}
+}
+
 // optionPath returns the key path of the option file entry r stands for.
 func optionPath(r kamaopt.Raw) []string {
-	path := []string{"packages", r.Key.PkgPath}
+	path := packagePath(r.Origin.Source, r.Key.PkgPath)
 	if r.Key.Type == "" {
 		return append(path, "all_types")
 	}
@@ -514,25 +587,29 @@ func optionPath(r kamaopt.Raw) []string {
 // origin locates r for error messages: the position of a directive, or the
 // option file and key path of a file entry.
 func origin(r kamaopt.Raw) string {
-	if r.Origin.Source == kamaopt.SourceFile {
-		return r.Origin.Pos.Filename + ": " + keyPath(optionPath(r))
+	if r.Origin.Source == kamaopt.SourceDirective {
+		return r.Origin.Pos.String()
 	}
 
-	return r.Origin.Pos.String()
+	return r.Origin.Pos.Filename + ": " + keyPath(optionPath(r))
 }
 
 // spelling names the option r sets as its source spells it.
 func spelling(r kamaopt.Raw) string {
-	if r.Origin.Source == kamaopt.SourceFile {
-		name := "type entry"
-		if sub, ok := strings.CutPrefix(r.Directive, directive+":"); ok {
-			name = sub + " option"
-		}
-
-		return "option file " + name
+	if r.Origin.Source == kamaopt.SourceDirective {
+		return "//" + toolName + ":" + r.Directive
 	}
 
-	return "//" + toolName + ":" + r.Directive
+	name := "type entry"
+	if sub, ok := strings.CutPrefix(r.Directive, directive+":"); ok {
+		name = sub + " option"
+	}
+
+	if r.Origin.Source == kamaopt.SourcePackageFile {
+		return "package option file " + name
+	}
+
+	return "option file " + name
 }
 
 // sourceConflict reports the option what set to av by a and to bv by b, which

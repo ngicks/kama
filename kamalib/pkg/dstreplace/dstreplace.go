@@ -12,6 +12,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
+	"github.com/ngicks/kama/kamalib/pkg/structtag"
 )
 
 var (
@@ -266,10 +267,7 @@ func tagLit(lit *dst.BasicLit, src, tag string) *dst.BasicLit {
 		lit = &dst.BasicLit{Kind: token.STRING}
 	}
 
-	lit.Value = strconv.Quote(tag)
-	if strconv.CanBackquote(tag) {
-		lit.Value = "`" + tag + "`"
-	}
+	lit.Value = structtag.Literal(tag)
 
 	return lit
 }

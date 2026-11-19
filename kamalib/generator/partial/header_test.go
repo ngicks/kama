@@ -40,7 +40,7 @@ func TestFileHeader(t *testing.T) {
 			name: "defaults",
 			opts: Options{},
 			params: "//\tmerge: \"overwrite\"\n//\tmerge_nested: \"recursive\"\n" +
-				"//\toption_file: null",
+				"//\toption_file: null\n//\tpackage_option_file: null",
 		},
 		{
 			name: "set",
@@ -48,20 +48,33 @@ func TestFileHeader(t *testing.T) {
 				Merge:       MergeAppend,
 				MergeNested: MergeNestedOverwrite,
 				OptionFile:  &OptionFile{Name: "kama/partial.yaml"},
+				PackageOptionFiles: []*OptionFile{
+					{Name: "other/kama_partial.yaml", Package: "example.com/other"},
+					{Name: "x/kama_partial.yaml", Package: "example.com/x"},
+				},
 			},
 			params: "//\tmerge: \"append\"\n//\tmerge_nested: \"overwrite\"\n" +
-				"//\toption_file: \"kama/partial.yaml\"",
+				"//\toption_file: \"kama/partial.yaml\"\n" +
+				"//\tpackage_option_file: \"x/kama_partial.yaml\"",
+		},
+		{
+			name: "package option file of another package",
+			opts: Options{PackageOptionFiles: []*OptionFile{
+				{Name: "other/kama_partial.yaml", Package: "example.com/other"},
+			}},
+			params: "//\tmerge: \"overwrite\"\n//\tmerge_nested: \"recursive\"\n" +
+				"//\toption_file: null\n//\tpackage_option_file: null",
 		},
 		{
 			name: "quoted",
 			opts: Options{OptionFile: &OptionFile{Name: "my \"opts\".yaml"}},
 			params: "//\tmerge: \"overwrite\"\n//\tmerge_nested: \"recursive\"\n" +
-				"//\toption_file: \"my \\\"opts\\\".yaml\"",
+				"//\toption_file: \"my \\\"opts\\\".yaml\"\n//\tpackage_option_file: null",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			hdr, err := fileHeader(c.opts.WithDefaults(), now)
+			hdr, err := fileHeader(c.opts.WithDefaults(), "example.com/x", now)
 			assert.NilError(t, err)
 			assert.Equal(t, strings.Join(hdr, "\n"), header+"\n// params:\n"+
 				c.params+"\n// generated: 2026-11-04T10:12:33Z")

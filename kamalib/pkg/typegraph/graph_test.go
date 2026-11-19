@@ -86,25 +86,13 @@ func definedNamed(pkg *packages.Package, name string) *types.Named {
 		UnwrapOrDefault()
 }
 
-func compareQualifiedType(a, b QualifiedType) int {
-	if c := cmp.Compare(a.PackagePath, b.PackagePath); c != 0 {
-		return c
-	}
-
-	if c := cmp.Compare(a.TypeName, b.TypeName); c != 0 {
-		return c
-	}
-
-	return 0
-}
-
 func keysSorted[V any](m map[QualifiedType]V) []QualifiedType {
 	// Tests compare the keys of an empty map with an empty, non-nil slice.
 	keys := make([]QualifiedType, 0, len(m))
 
 	return slices.AppendSeq(
 		keys,
-		opiter.WrapSeq2(opiter.MapsSortedFunc(m, compareQualifiedType)).
+		opiter.WrapSeq2(opiter.MapsSortedFunc(m, QualifiedType.Compare)).
 			OmitL().
 			Iter(),
 	)
@@ -115,7 +103,7 @@ func collectKeysSorted[V any](seq iter.Seq2[QualifiedType, V]) []QualifiedType {
 		opiter.WrapSeq2(seq).
 			OmitL().
 			Iter(),
-		compareQualifiedType,
+		QualifiedType.Compare,
 	)
 }
 
@@ -143,6 +131,40 @@ func compareEdgeRoutes(a, b *EdgeRoute) int {
 	}
 
 	return 0
+}
+
+func TestQualifiedTypeString(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   QualifiedType
+		want string
+	}{
+		{"package type", NewQualifiedType("example.com/a", "T"), "example.com/a.T"},
+		{"universe type", NewQualifiedType("", "error"), ".error"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.in.String(), tc.want)
+		})
+	}
+}
+
+func TestQualifiedTypeCompare(t *testing.T) {
+	base := NewQualifiedType("b", "B")
+
+	for _, tc := range []struct {
+		name  string
+		other QualifiedType
+		want  int
+	}{
+		{"equal", base, 0},
+		{"package path first", NewQualifiedType("a", "Z"), 1},
+		{"type name second", NewQualifiedType("b", "C"), -1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, base.Compare(tc.other), tc.want)
+			assert.Equal(t, tc.other.Compare(base), -tc.want)
+		})
+	}
 }
 
 func TestNew_Basic(t *testing.T) {

@@ -173,14 +173,6 @@ func needsParen(c *types.Chan) bool {
 	return ok && elem.Dir() == types.RecvOnly
 }
 
-func tagLit(tag string) string {
-	if strconv.CanBackquote(tag) {
-		return "`" + tag + "`"
-	}
-
-	return strconv.Quote(tag)
-}
-
 func chanDir(dir types.ChanDir) (send, recv bool) {
 	switch dir {
 	case types.SendOnly:

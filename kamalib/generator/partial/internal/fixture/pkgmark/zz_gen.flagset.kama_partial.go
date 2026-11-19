@@ -3,7 +3,8 @@
 //	merge: "overwrite"
 //	merge_nested: "recursive"
 //	option_file: null
-// generated: 2026-11-13T22:47:58Z
+//	package_option_file: null
+// generated: 2026-11-19T04:49:35Z
 
 package pkgmark
 

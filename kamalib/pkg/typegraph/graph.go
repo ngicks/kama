@@ -14,6 +14,7 @@
 package typegraph
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -38,6 +39,21 @@ var (
 type QualifiedType struct {
 	PackagePath string
 	TypeName    string
+}
+
+// String returns PackagePath and TypeName joined by a dot.
+// A type without a package, such as error, keeps the leading dot.
+func (q QualifiedType) String() string {
+	return q.PackagePath + "." + q.TypeName
+}
+
+// Compare orders q and other by PackagePath and then TypeName. It returns
+// -1, 0 or +1 as cmp.Compare does.
+func (q QualifiedType) Compare(other QualifiedType) int {
+	return cmp.Or(
+		cmp.Compare(q.PackagePath, other.PackagePath),
+		cmp.Compare(q.TypeName, other.TypeName),
+	)
 }
 
 func NewQualifiedType(pkgPath, typeName string) QualifiedType {

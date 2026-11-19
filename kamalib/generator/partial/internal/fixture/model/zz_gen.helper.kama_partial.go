@@ -3,7 +3,8 @@
 //	merge: "overwrite"
 //	merge_nested: "recursive"
 //	option_file: null
-// generated: 2026-11-15T07:27:24Z
+//	package_option_file: null
+// generated: 2026-11-19T04:49:35Z
 
 package model
 

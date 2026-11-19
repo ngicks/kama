@@ -2,6 +2,7 @@ package typegraph
 
 import (
 	"go/types"
+	"slices"
 )
 
 // EdgeRoute is the path from a parent type to a child named type.
@@ -129,6 +130,38 @@ func WalkTypes(
 	case *types.TypeParam:
 		return cb(x, stack)
 	}
+}
+
+// PointerRoute returns the type t points to through its pointers and the
+// pointer steps leading there, aliases dropped. leaf keeps the alias it is
+// spelled by, if any.
+func PointerRoute(t types.Type) (leaf types.Type, route []EdgeRouteNode) {
+	_ = WalkTypes(
+		nil,
+		t,
+		func(ty types.Type, _ []EdgeRouteNode) bool {
+			_, ok := types.Unalias(ty).(*types.Pointer)
+			return !ok
+		},
+		func(ty types.Type, stack []EdgeRouteNode) error {
+			// The type arguments of a generic alias are walked too; they are
+			// not where the value leads.
+			if slices.ContainsFunc(stack, func(n EdgeRouteNode) bool {
+				return n.Kind == EdgeKindTypeArg || n.Kind == EdgeKindTypeParam
+			}) {
+				return nil
+			}
+
+			leaf = ty
+			route = slices.DeleteFunc(slices.Clone(stack), func(n EdgeRouteNode) bool {
+				return n.Kind == EdgeKindAlias
+			})
+
+			return nil
+		},
+	)
+
+	return leaf, route
 }
 
 func walkTypeParam[Type interface {

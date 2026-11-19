@@ -17,83 +17,135 @@ packages:
         ignore: true
       Merging:
         fields:
-          Tags: { merge: append }
-          Attrs: { merge: append }
-          Replaced: { merge: overwrite }
-          Items: { merge: append }
-          Ptr: { merge: append }
+          Tags:
+            merge: append
+          Attrs:
+            merge: append
+          Replaced:
+            merge: overwrite
+          Items:
+            merge: append
+          Ptr:
+            merge: append
           Flagged:
-            flag: { name: flagged }
+            flag:
+              name: flagged
       Embeds:
       Flags:
         fields:
           Name:
-            flag: { name: name, short: n, usage: the name }
+            flag:
+              name: name
+              short: n
+              usage: the name
           Verbose:
-            flag: { name: verbose, short: v }
+            flag:
+              name: verbose
+              short: v
           Count:
-            flag: { name: count }
+            flag:
+              name: count
           Size:
-            flag: { name: size }
+            flag:
+              name: size
           Workers:
-            flag: { name: workers }
+            flag:
+              name: workers
           Limit:
-            flag: { name: limit }
+            flag:
+              name: limit
           Ratio:
-            flag: { name: ratio }
+            flag:
+              name: ratio
           Timeout:
-            flag: { name: timeout, short: t, usage: time to wait }
+            flag:
+              name: timeout
+              short: t
+              usage: time to wait
           Tags:
-            flag: { name: tag }
+            flag:
+              name: tag
           Labels:
-            flag: { name: label }
+            flag:
+              name: label
           Level:
-            flag: { name: level, short: l }
+            flag:
+              name: level
+              short: l
           Since:
-            flag: { name: since }
+            flag:
+              name: since
           Mode:
-            flag: { name: mode }
+            flag:
+              name: mode
           Hosts:
-            flag: { name: host }
+            flag:
+              name: host
           Retry:
-            flag: { name: retry }
+            flag:
+              name: retry
           Nick:
-            flag: { name: nick }
+            flag:
+              name: nick
           Port:
-            flag: { name: port }
+            flag:
+              name: port
           MinLevel:
-            flag: { name: min-level }
+            flag:
+              name: min-level
       Hosts:
         ignore: true
       Shelf:
       Catalog:
         fields:
-          Books: { merge: append }
-          BookRefs: { merge: append }
-          ByID: { merge: append }
-          RefsByID: { merge: append }
-          List: { merge: append }
-          RefMap: { merge: append }
-          Map: { merge: overwrite }
-          ListPtr: { merge: append }
-          Sections: { merge: append }
+          Books:
+            merge: append
+          BookRefs:
+            merge: append
+          ByID:
+            merge: append
+          RefsByID:
+            merge: append
+          List:
+            merge: append
+          RefMap:
+            merge: append
+          Map:
+            merge: overwrite
+          ListPtr:
+            merge: append
+          Sections:
+            merge: append
       Masked:
         fieldmask: true
         fields:
-          Renamed: { fieldmask: { name: alias } }
-      MaskInner: { fieldmask: true }
-      MaskDeep: { fieldmask: true }
+          Renamed:
+            fieldmask:
+              name: alias
+      MaskInner:
+        fieldmask: true
+      MaskDeep:
+        fieldmask: true
       MaskEmbedded:
         fieldmask: true
         fields:
-          EDeep: { fieldmask: { name: e_deep } }
-      MaskAudit: { fieldmask: true }
-      MaskBox: { fieldmask: true }
-      MaskPair: { fieldmask: true }
-      MaskTree: { fieldmask: true }
-      MaskPing: { fieldmask: true }
-      MaskPong: { fieldmask: true }
-      MaskHolder: { fieldmask: true }
+          EDeep:
+            fieldmask:
+              name: e_deep
+      MaskAudit:
+        fieldmask: true
+      MaskBox:
+        fieldmask: true
+      MaskPair:
+        fieldmask: true
+      MaskTree:
+        fieldmask: true
+      MaskPing:
+        fieldmask: true
+      MaskPong:
+        fieldmask: true
+      MaskHolder:
+        fieldmask: true
   github.com/ngicks/kama/kamalib/generator/partial/internal/fixtureexternal/pkgmark:
     all_types: true
     types:

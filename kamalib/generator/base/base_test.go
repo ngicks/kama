@@ -2,6 +2,7 @@ package base
 
 import (
 	"context"
+	"errors"
 	"go/ast"
 	"go/types"
 	"io/fs"
@@ -167,6 +168,24 @@ func TestStage(t *testing.T) {
 	assert.Assert(t, strings.Contains(read("a.go"), "var A = 2"))
 	assert.Assert(t, strings.Contains(read("a.go"), "generated: 2026-01-01T01:00:00Z"))
 	assert.Equal(t, read("sub/b.go"), b)
+}
+
+func TestStageWithWarnings(t *testing.T) {
+	f, err := overlayfs.New(t.TempDir())
+	assert.NilError(t, err)
+
+	defer f.Close()
+
+	errA, errB := errors.New("a"), errors.New("b")
+	files := []File{{Path: "a.go", Content: source(t, time.Now(), "var A = 1")}}
+
+	r := &recordReporter{}
+	assert.NilError(t, StageWithWarnings(context.Background(), f, files, []error{errA, errB}, r))
+	assert.Assert(t, slices.Equal(r.warnings, []error{errA, errB}))
+	assert.DeepEqual(t, r.progress, []string{"1 file written, 0 files unchanged"})
+
+	_, err = fs.Stat(f.FS(), "a.go")
+	assert.NilError(t, err)
 }
 
 // load stages files under the inline test directory of t and loads their

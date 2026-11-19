@@ -1,7 +1,6 @@
 package partial
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"go/types"
@@ -151,12 +150,7 @@ func (s *selection) fieldMasked(id typegraph.QualifiedType) bool {
 func (s *selection) checkFieldMaskTargets() error {
 	var errs []error
 
-	ids := slices.SortedFunc(maps.Keys(s.masked), func(a, b typegraph.QualifiedType) int {
-		return cmp.Or(
-			cmp.Compare(a.PackagePath, b.PackagePath),
-			cmp.Compare(a.TypeName, b.TypeName),
-		)
-	})
+	ids := slices.SortedFunc(maps.Keys(s.masked), typegraph.QualifiedType.Compare)
 	for _, id := range ids {
 		r := s.masked[id]
 
@@ -175,7 +169,7 @@ func (s *selection) checkFieldMaskTargets() error {
 		}
 	}
 
-	for _, k := range slices.SortedFunc(maps.Keys(s.maskNames), compareKey) {
+	for _, k := range slices.SortedFunc(maps.Keys(s.maskNames), kamaopt.Key.Compare) {
 		r := s.maskNames[k].raw
 		id := typegraph.NewQualifiedType(k.PkgPath, k.Type)
 		bad := func(format string, args ...any) {
@@ -265,8 +259,8 @@ func (s *selection) maskSegments(n *typegraph.Node) ([]maskSegment, error) {
 				return nil, fmt.Errorf(
 					"%w: %s (%s): embedded %s does not have field masks enabled, "+
 						"and the paths of its fields are paths of %s",
-					ErrDirective, nodeName(n), n.Detail.Pkg.Fset.Position(v.Pos()),
-					nodeName(child), n.Id.TypeName,
+					ErrDirective, n.Id.String(), n.Detail.Pkg.Fset.Position(v.Pos()),
+					child.Id.String(), n.Id.TypeName,
 				)
 			}
 
@@ -326,7 +320,7 @@ func (s *selection) checkFieldMaskSegments() error {
 			errs = append(errs, fmt.Errorf(
 				"%w: %s (%s): field mask path segment %q of field %s.%s is taken by field %s.%s (%s)",
 				ErrDirective,
-				nodeName(n),
+				n.Id.String(),
 				seg.position(),
 				seg.name,
 				seg.owner.Id.TypeName,
@@ -363,8 +357,8 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 		return fmt.Errorf(
 			"%w: %s (%s): embedded %s has field masks enabled, "+
 				"so %s needs //kama:partial:fieldmask too",
-			ErrDirective, nodeName(n), n.Detail.Pkg.Fset.Position(v.Pos()),
-			nodeName(child), n.Id.TypeName,
+			ErrDirective, n.Id.String(), n.Detail.Pkg.Fset.Position(v.Pos()),
+			child.Id.String(), n.Id.TypeName,
 		)
 	}
 

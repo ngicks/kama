@@ -125,6 +125,17 @@ func (t Tags) StructTag() reflect.StructTag {
 	return reflect.StructTag(strings.Join(parts, " "))
 }
 
+// Literal returns tag spelled as a Go string literal for the tag of a struct
+// field. It returns a raw string literal when tag can be backquoted and an
+// interpreted string literal otherwise.
+func Literal(tag string) string {
+	if strconv.CanBackquote(tag) {
+		return "`" + tag + "`"
+	}
+
+	return strconv.Quote(tag)
+}
+
 // Get returns the part of the value of key that option names: the name when
 // option is empty, option itself for a bare option, or option:value.
 //
