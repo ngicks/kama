@@ -9,8 +9,8 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
-	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -161,9 +161,9 @@ const packageOptionFileBase = "kama_partial"
 // loadPackageOptionFiles returns the package option files of the source
 // packages of pkgs.
 func loadPackageOptionFiles(f *overlayfs.Fs, pkgs []*packages.Package) ([]*OptionFile, error) {
-	found, err := kamaopt.LoadPackageFiles(
+	found, err := genopt.LoadPackageFiles(
 		f.FS(), f.Root(), base.SourcePackages(pkgs), toolName,
-		kamaopt.PackageFileInput{
+		genopt.PackageFileInput{
 			Generator: directive,
 			Default: fileloader.PathInput{
 				Base: packageOptionFileBase,

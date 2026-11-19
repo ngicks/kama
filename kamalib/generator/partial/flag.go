@@ -17,9 +17,9 @@ import (
 	"github.com/dave/dst/decorator"
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
-	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -42,7 +42,7 @@ var flagSetParams = []string{"name", "shorthand", "value", "usage"}
 // entry.
 type flagOption struct {
 	name, short, usage string
-	raw                kamaopt.Raw
+	raw                genopt.Raw
 }
 
 func (o flagOption) same(other flagOption) bool {
@@ -55,7 +55,7 @@ func (o flagOption) String() string {
 
 // parseFlag decodes the args of //kama:partial:flag.
 func parseFlag(args string) (flagOption, error) {
-	kv, err := kamaopt.ParseArgs(args)
+	kv, err := genopt.ParseArgs(args)
 	if err != nil {
 		return flagOption{}, err
 	}

@@ -1,4 +1,4 @@
-package kamaopt
+package genopt
 
 import (
 	"errors"
@@ -21,7 +21,7 @@ const OptionFileDirective = "option-file"
 
 // ErrPackageFile reports an invalid option-file directive or a package
 // option file that cannot be loaded.
-var ErrPackageFile = errors.New("kamaopt: invalid package option file")
+var ErrPackageFile = errors.New("genopt: invalid package option file")
 
 // PackageFileInput selects the package option files of one generator.
 type PackageFileInput struct {

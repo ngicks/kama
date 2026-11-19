@@ -16,8 +16,8 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
-	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 )
 
 // OptionFileVersion is the only version of the option file format.
@@ -413,7 +413,7 @@ func quoteKey(k string) string {
 // stand for, ordered by package, type and field. A package not in pkgs, a
 // type not declared in its package and a field not declared in its struct
 // type are errors.
-func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
+func (f *OptionFile) raws(pkgs []*packages.Package) ([]genopt.Raw, error) {
 	if f == nil {
 		return nil, nil
 	}
@@ -423,7 +423,7 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 		byPath[p.PkgPath] = p
 	}
 
-	origin := kamaopt.Origin{Source: f.source(), Pos: token.Position{Filename: f.Name}}
+	origin := genopt.Origin{Source: f.source(), Pos: token.Position{Filename: f.Name}}
 	fail := func(errs *[]error, path []string, format string, args ...any) {
 		at := f.Name
 		// The whole of a package option file stands for its package.
@@ -438,7 +438,7 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 	}
 
 	var (
-		out  []kamaopt.Raw
+		out  []genopt.Raw
 		errs []error
 	)
 
@@ -453,8 +453,8 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 		}
 
 		if po.AllTypes {
-			out = append(out, kamaopt.Raw{
-				Key: kamaopt.Key{PkgPath: pkgPath}, Directive: directive, Args: "package",
+			out = append(out, genopt.Raw{
+				Key: genopt.Key{PkgPath: pkgPath}, Directive: directive, Args: "package",
 				Value: true, Origin: origin,
 			})
 		}
@@ -469,16 +469,16 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 				continue
 			}
 
-			key := kamaopt.Key{PkgPath: pkgPath, Type: typeName}
+			key := genopt.Key{PkgPath: pkgPath, Type: typeName}
 
-			r := kamaopt.Raw{Key: key, Directive: directive, Value: to.Ignore, Origin: origin}
+			r := genopt.Raw{Key: key, Directive: directive, Value: to.Ignore, Origin: origin}
 			if to.Ignore {
 				r.Args = "ignore"
 			}
 
 			out = append(out, r)
 			if to.FieldMask {
-				out = append(out, kamaopt.Raw{
+				out = append(out, genopt.Raw{
 					Key: key, Directive: directive + ":fieldmask", Value: true, Origin: origin,
 				})
 			}
@@ -513,22 +513,22 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 					continue
 				}
 
-				key := kamaopt.Key{PkgPath: pkgPath, Type: typeName, Field: fieldName}
+				key := genopt.Key{PkgPath: pkgPath, Type: typeName, Field: fieldName}
 				if fo.Merge != "" {
-					out = append(out, kamaopt.Raw{
+					out = append(out, genopt.Raw{
 						Key: key, Directive: directive + ":merge", Args: fo.Merge, Value: fo.Merge,
 						Origin: origin,
 					})
 				}
 
 				if fo.Flag != nil {
-					out = append(out, kamaopt.Raw{
+					out = append(out, genopt.Raw{
 						Key: key, Directive: directive + ":flag", Value: *fo.Flag, Origin: origin,
 					})
 				}
 
 				if fo.FieldMask != nil {
-					out = append(out, kamaopt.Raw{
+					out = append(out, genopt.Raw{
 						Key: key, Directive: directive + ":fieldmask", Value: *fo.FieldMask,
 						Origin: origin,
 					})
@@ -541,18 +541,18 @@ func (f *OptionFile) raws(pkgs []*packages.Package) ([]kamaopt.Raw, error) {
 }
 
 // source tells the kind of f.
-func (f *OptionFile) source() kamaopt.Source {
+func (f *OptionFile) source() genopt.Source {
 	if f.Package != "" {
-		return kamaopt.SourcePackageFile
+		return genopt.SourcePackageFile
 	}
 
-	return kamaopt.SourceFile
+	return genopt.SourceFile
 }
 
 // packagePath returns the key path of the entry of the package at pkgPath
 // in an option file of source. A package option file is that entry itself.
-func packagePath(source kamaopt.Source, pkgPath string) []string {
-	if source == kamaopt.SourcePackageFile {
+func packagePath(source genopt.Source, pkgPath string) []string {
+	if source == genopt.SourcePackageFile {
 		return nil
 	}
 
@@ -560,7 +560,7 @@ func packagePath(source kamaopt.Source, pkgPath string) []string {
 }
 
 // optionPath returns the key path of the option file entry r stands for.
-func optionPath(r kamaopt.Raw) []string {
+func optionPath(r genopt.Raw) []string {
 	path := packagePath(r.Origin.Source, r.Key.PkgPath)
 	if r.Key.Type == "" {
 		return append(path, "all_types")
@@ -586,8 +586,8 @@ func optionPath(r kamaopt.Raw) []string {
 
 // origin locates r for error messages: the position of a directive, or the
 // option file and key path of a file entry.
-func origin(r kamaopt.Raw) string {
-	if r.Origin.Source == kamaopt.SourceDirective {
+func origin(r genopt.Raw) string {
+	if r.Origin.Source == genopt.SourceDirective {
 		return r.Origin.Pos.String()
 	}
 
@@ -595,8 +595,8 @@ func origin(r kamaopt.Raw) string {
 }
 
 // spelling names the option r sets as its source spells it.
-func spelling(r kamaopt.Raw) string {
-	if r.Origin.Source == kamaopt.SourceDirective {
+func spelling(r genopt.Raw) string {
+	if r.Origin.Source == genopt.SourceDirective {
 		return "//" + toolName + ":" + r.Directive
 	}
 
@@ -605,7 +605,7 @@ func spelling(r kamaopt.Raw) string {
 		name = sub + " option"
 	}
 
-	if r.Origin.Source == kamaopt.SourcePackageFile {
+	if r.Origin.Source == genopt.SourcePackageFile {
 		return "package option file " + name
 	}
 
@@ -614,9 +614,9 @@ func spelling(r kamaopt.Raw) string {
 
 // sourceConflict reports the option what set to av by a and to bv by b, which
 // come from different sources.
-func sourceConflict(what string, a kamaopt.Raw, av string, b kamaopt.Raw, bv string) error {
+func sourceConflict(what string, a genopt.Raw, av string, b genopt.Raw, bv string) error {
 	return fmt.Errorf(
 		"%w: %s is %s by %s (%s) and %s by %s (%s)",
-		kamaopt.ErrConflict, what, av, spelling(a), origin(a), bv, spelling(b), origin(b),
+		genopt.ErrConflict, what, av, spelling(a), origin(a), bv, spelling(b), origin(b),
 	)
 }

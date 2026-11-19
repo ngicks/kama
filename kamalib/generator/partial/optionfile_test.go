@@ -12,9 +12,9 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
-	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	procgopackages "github.com/ngicks/kama/kamalib/proc/gopackages"
 )
@@ -618,7 +618,7 @@ func TestOptionFileConflicts(t *testing.T) {
 				return
 			}
 
-			assert.ErrorIs(t, err, kamaopt.ErrConflict)
+			assert.ErrorIs(t, err, genopt.ErrConflict)
 
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)

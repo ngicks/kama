@@ -11,7 +11,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
-	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -23,11 +23,11 @@ var fieldMaskMethodNames = []string{"FieldMask", "FromValueWithMask"}
 // entry of a field.
 type maskName struct {
 	name string
-	raw  kamaopt.Raw
+	raw  genopt.Raw
 }
 
 // fieldMask records //kama:partial:fieldmask.
-func (m *marks) fieldMask(r kamaopt.Raw) error {
+func (m *marks) fieldMask(r genopt.Raw) error {
 	pos := r.Origin.Pos
 	switch {
 	case r.Key.Type == "":
@@ -74,7 +74,7 @@ func (m *marks) fieldMask(r kamaopt.Raw) error {
 }
 
 // typeFieldMask records //kama:partial:fieldmask on a type.
-func (m *marks) typeFieldMask(r kamaopt.Raw) error {
+func (m *marks) typeFieldMask(r genopt.Raw) error {
 	pos := r.Origin.Pos
 	if args := strings.TrimSpace(r.Args); args != "" {
 		return fmt.Errorf(
@@ -102,12 +102,12 @@ func (m *marks) typeFieldMask(r kamaopt.Raw) error {
 
 // maskNameOf decodes the field mask name of r. r is an option file entry
 // or a directive with args.
-func maskNameOf(r kamaopt.Raw) (maskName, error) {
+func maskNameOf(r genopt.Raw) (maskName, error) {
 	if v, ok := r.Value.(FieldMaskOptions); ok {
 		return maskNameFromArgs(map[string]string{"name": v.Name})
 	}
 
-	kv, err := kamaopt.ParseArgs(r.Args)
+	kv, err := genopt.ParseArgs(r.Args)
 	if err != nil {
 		return maskName{}, err
 	}
@@ -169,7 +169,7 @@ func (s *selection) checkFieldMaskTargets() error {
 		}
 	}
 
-	for _, k := range slices.SortedFunc(maps.Keys(s.maskNames), kamaopt.Key.Compare) {
+	for _, k := range slices.SortedFunc(maps.Keys(s.maskNames), genopt.Key.Compare) {
 		r := s.maskNames[k].raw
 		id := typegraph.NewQualifiedType(k.PkgPath, k.Type)
 		bad := func(format string, args ...any) {
@@ -276,7 +276,7 @@ func (s *selection) maskSegments(n *typegraph.Node) ([]maskSegment, error) {
 
 		seg := v.Name()
 
-		key := kamaopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: v.Name()}
+		key := genopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: v.Name()}
 		if o, ok := s.maskNames[key]; ok {
 			seg = o.name
 		}

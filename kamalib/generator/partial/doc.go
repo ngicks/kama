@@ -79,7 +79,7 @@
 // option set by both a directive and the file is allowed when both give
 // the same value. Different values, as for a type marked by one and
 // ignored by the other, or two merge strategies, flags or path segments of
-// one field, are errors wrapping kamaopt.ErrConflict and naming both
+// one field, are errors wrapping genopt.ErrConflict and naming both
 // origins. Errors
 // about an option name its directive position or its key path in the
 // file.
@@ -121,7 +121,7 @@
 // The options of a package option file meet those of the directives and of
 // the option file under the rule above: the same option with the same
 // value is allowed, and different values are errors wrapping
-// kamaopt.ErrConflict and naming both origins. Errors about an entry name
+// genopt.ErrConflict and naming both origins. Errors about an entry name
 // the file and the key path from its top level.
 //
 // # Type mapping
@@ -414,7 +414,7 @@
 //
 //	//kama:partial:flag name=<name> short=<c> usage="<text>"
 //
-// The args are parsed by kamaopt.ParseArgs. name is required, and has no
+// The args are parsed by genopt.ParseArgs. name is required, and has no
 // leading -, no white space, no control character and no =. short is
 // optional and is a single ASCII character. usage is optional. An unknown
 // key, a second directive on a field, the directive on a type or a file,
@@ -489,7 +489,7 @@
 //
 //	//kama:partial:fieldmask name=<segment>
 //
-// on the field sets another segment. kamaopt.ParseArgs parses the args.
+// on the field sets another segment. genopt.ParseArgs parses the args.
 // name is required. It must not be empty or hold a dot. Json tags and
 // other spellings of the field name give no segments. A path holds no
 // index, map key or wildcard. These are errors:

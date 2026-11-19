@@ -16,9 +16,9 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/dstreplace"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
-	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -32,15 +32,15 @@ type selection struct {
 	opts    Options
 	targets map[typegraph.QualifiedType]*typegraph.Node
 	// merges are the //kama:partial:merge directives keyed by field.
-	merges map[kamaopt.Key]kamaopt.Raw
+	merges map[genopt.Key]genopt.Raw
 	// flags are the //kama:partial:flag directives keyed by field.
-	flags map[kamaopt.Key]flagOption
+	flags map[genopt.Key]flagOption
 	// flagged are the targets with a field holding a flag directive.
 	flagged map[typegraph.QualifiedType]bool
 	// masked are the //kama:partial:fieldmask directives keyed by type, and
 	// maskNames those keyed by field.
-	masked    map[typegraph.QualifiedType]kamaopt.Raw
-	maskNames map[kamaopt.Key]maskName
+	masked    map[typegraph.QualifiedType]genopt.Raw
+	maskNames map[genopt.Key]maskName
 	// refs are the pointer fields mapped to und.Und[*MPartial] since they
 	// close a cycle of partial variants.
 	refs map[*types.Var]bool
@@ -96,16 +96,16 @@ func (s *selection) sorted() []*typegraph.Node {
 // marks are the //kama:partial directives of the source packages and the
 // option file entries standing for them.
 type marks struct {
-	merges    map[kamaopt.Key]kamaopt.Raw
-	flags     map[kamaopt.Key]flagOption
-	masked    map[typegraph.QualifiedType]kamaopt.Raw
-	maskNames map[kamaopt.Key]maskName
+	merges    map[genopt.Key]genopt.Raw
+	flags     map[genopt.Key]flagOption
+	masked    map[typegraph.QualifiedType]genopt.Raw
+	maskNames map[genopt.Key]maskName
 	// explicit are the type marks, the first one of each type, in source
 	// order and then in option file order.
-	explicit []kamaopt.Raw
+	explicit []genopt.Raw
 	// marked and ignored are the first type mark and ignore of each type.
-	marked  map[typegraph.QualifiedType]kamaopt.Raw
-	ignored map[typegraph.QualifiedType]kamaopt.Raw
+	marked  map[typegraph.QualifiedType]genopt.Raw
+	ignored map[typegraph.QualifiedType]genopt.Raw
 	// files are the file names as packages reports them.
 	files map[string]bool
 	pkgs  map[string]bool
@@ -121,17 +121,17 @@ func (m *marks) isIgnored(id typegraph.QualifiedType) bool {
 // files, so a conflict between the two names the directive first.
 func collectMarks(pkgs []*packages.Package, files []*OptionFile) (marks, error) {
 	m := marks{
-		merges:    map[kamaopt.Key]kamaopt.Raw{},
-		flags:     map[kamaopt.Key]flagOption{},
-		masked:    map[typegraph.QualifiedType]kamaopt.Raw{},
-		maskNames: map[kamaopt.Key]maskName{},
-		marked:    map[typegraph.QualifiedType]kamaopt.Raw{},
-		ignored:   map[typegraph.QualifiedType]kamaopt.Raw{},
+		merges:    map[genopt.Key]genopt.Raw{},
+		flags:     map[genopt.Key]flagOption{},
+		masked:    map[typegraph.QualifiedType]genopt.Raw{},
+		maskNames: map[genopt.Key]maskName{},
+		marked:    map[typegraph.QualifiedType]genopt.Raw{},
+		ignored:   map[typegraph.QualifiedType]genopt.Raw{},
 		files:     map[string]bool{},
 		pkgs:      map[string]bool{},
 	}
 
-	raws, err := kamaopt.Collect(pkgs, toolName)
+	raws, err := genopt.Collect(pkgs, toolName)
 	if err != nil {
 		return marks{}, err
 	}
@@ -207,7 +207,7 @@ func collectMarks(pkgs []*packages.Package, files []*OptionFile) (marks, error) 
 }
 
 // subDirective records //kama:partial:<sub>.
-func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
+func (m *marks) subDirective(sub string, r genopt.Raw) error {
 	pos := r.Origin.Pos
 
 	switch sub {
@@ -263,7 +263,7 @@ func (m *marks) subDirective(sub string, r kamaopt.Raw) error {
 }
 
 // flag records //kama:partial:flag.
-func (m *marks) flag(r kamaopt.Raw) error {
+func (m *marks) flag(r genopt.Raw) error {
 	pos := r.Origin.Pos
 	if r.Key.Field == "" {
 		return fmt.Errorf(
@@ -519,10 +519,10 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 // checkMerges reports //kama:partial:merge on fields of types without
 // partial variants, where it would have no effect.
 func (s *selection) checkMerges() error {
-	hasNoTarget := func(k kamaopt.Key) bool {
+	hasNoTarget := func(k genopt.Key) bool {
 		return s.targets[typegraph.NewQualifiedType(k.PkgPath, k.Type)] == nil
 	}
-	mergeErr := func(k kamaopt.Key) error {
+	mergeErr := func(k genopt.Key) error {
 		r := s.merges[k]
 
 		return fmt.Errorf(
@@ -532,7 +532,7 @@ func (s *selection) checkMerges() error {
 	}
 
 	return errors.Join(
-		opiter.WrapSeq2(opiter.MapsSortedFunc(s.merges, kamaopt.Key.Compare)).
+		opiter.WrapSeq2(opiter.MapsSortedFunc(s.merges, genopt.Key.Compare)).
 			OmitL().
 			Filter(hasNoTarget).
 			Map(mergeErr).
@@ -545,7 +545,7 @@ func (s *selection) checkMerges() error {
 func (s *selection) checkFlagTargets() error {
 	var errs []error
 
-	for _, k := range slices.SortedFunc(maps.Keys(s.flags), kamaopt.Key.Compare) {
+	for _, k := range slices.SortedFunc(maps.Keys(s.flags), genopt.Key.Compare) {
 		id := typegraph.NewQualifiedType(k.PkgPath, k.Type)
 		if s.targets[id] != nil {
 			s.flagged[id] = true

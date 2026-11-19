@@ -77,7 +77,7 @@ var (
 	ErrOption = errors.New("partial: invalid option")
 	// ErrOptionFile reports an option file that does not decode, or whose
 	// entries name packages, types or fields that are not loaded. Proc also
-	// wraps errors wrapping kamaopt.ErrPackageFile in it: an invalid
+	// wraps errors wrapping genopt.ErrPackageFile in it: an invalid
 	// //kama:option-file directive and a package option file that cannot be
 	// loaded.
 	ErrOptionFile = errors.New("partial: invalid option file")

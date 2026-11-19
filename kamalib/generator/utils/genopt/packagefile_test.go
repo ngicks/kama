@@ -1,4 +1,4 @@
-package kamaopt
+package genopt
 
 import (
 	"go/parser"

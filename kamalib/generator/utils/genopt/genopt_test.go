@@ -1,4 +1,4 @@
-package kamaopt
+package genopt
 
 import (
 	"go/token"
@@ -9,7 +9,7 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-const fixturePath = "github.com/ngicks/kama/kamalib/pkg/kamaopt/internal/fixture"
+const fixturePath = "github.com/ngicks/kama/kamalib/generator/utils/genopt/internal/fixture"
 
 func TestCollect(t *testing.T) {
 	pkgs, err := packages.Load(&packages.Config{

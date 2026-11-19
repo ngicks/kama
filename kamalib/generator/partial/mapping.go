@@ -12,9 +12,9 @@ import (
 	"github.com/dave/dst"
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
-	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typeprint"
@@ -303,7 +303,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 // embedded slice or map either, so keeping its name keeps its wire name.
 func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field, fieldInfo, error) {
 	info := fieldInfo{source: v.Type(), name: v.Name(), partial: v.Name()}
-	key := kamaopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: v.Name()}
+	key := genopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: v.Name()}
 
 	var (
 		f   *dst.Field
@@ -371,7 +371,7 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 
 // strategy returns the merge strategy of a value of class c, set by the
 // directive or option file entry r or defaulted by the options.
-func (p *mapper) strategy(c class, r kamaopt.Raw) (string, error) {
+func (p *mapper) strategy(c class, r genopt.Raw) (string, error) {
 	var (
 		def     string
 		allowed []string

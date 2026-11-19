@@ -1,4 +1,4 @@
-// Package kamaopt collects the raw options of a code generator, keyed by
+// Package genopt collects the raw options of a code generator, keyed by
 // the package, file, type or field they apply to.
 //
 // Options come from directive comments //tool:directive args in the source,
@@ -9,7 +9,7 @@
 // those files. The package does not interpret directives, args or option
 // file entries; generators decode Raw values and documents into their own
 // options.
-package kamaopt
+package genopt
 
 import (
 	"cmp"
@@ -27,7 +27,7 @@ import (
 )
 
 // ErrConflict reports options that cannot apply together.
-var ErrConflict = errors.New("kamaopt: conflicting options")
+var ErrConflict = errors.New("genopt: conflicting options")
 
 // Source is where a Raw option comes from.
 type Source int
@@ -120,7 +120,7 @@ func Collect(pkgs []*packages.Package, toolName string) ([]Raw, error) {
 
 	for _, pkg := range pkgs {
 		if pkg.Fset == nil || len(pkg.Syntax) == 0 {
-			return nil, fmt.Errorf("kamaopt: package %q is loaded without syntax", pkg.PkgPath)
+			return nil, fmt.Errorf("genopt: package %q is loaded without syntax", pkg.PkgPath)
 		}
 
 		c := collector{fset: pkg.Fset, pkgPath: pkg.PkgPath, toolName: toolName}
@@ -334,13 +334,13 @@ func (c *collector) declLineComment(decls []ast.Decl, cg *ast.CommentGroup) bool
 func ParseArgs(args string) (map[string]string, error) {
 	kvs, err := dircmnt.ParseArgsKeyValue(args)
 	if err != nil {
-		return nil, fmt.Errorf("kamaopt: %w", err)
+		return nil, fmt.Errorf("genopt: %w", err)
 	}
 
 	out := make(map[string]string, len(kvs))
 	for _, kv := range kvs {
 		if _, ok := out[kv.Key]; ok {
-			return nil, fmt.Errorf("kamaopt: duplicate name %q", kv.Key)
+			return nil, fmt.Errorf("genopt: duplicate name %q", kv.Key)
 		}
 
 		out[kv.Key] = kv.Value

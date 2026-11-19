@@ -1,4 +1,4 @@
-// Package fixture holds directive comments for kamaopt tests.
+// Package fixture holds directive comments for genopt tests.
 //
 //kama:partial package
 package fixture

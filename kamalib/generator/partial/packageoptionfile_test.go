@@ -13,9 +13,9 @@ import (
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
-	"github.com/ngicks/kama/kamalib/pkg/kamaopt"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	procgopackages "github.com/ngicks/kama/kamalib/proc/gopackages"
 )
@@ -373,7 +373,7 @@ func TestPackageOptionFileConflicts(t *testing.T) {
 				return
 			}
 
-			assert.ErrorIs(t, err, kamaopt.ErrConflict)
+			assert.ErrorIs(t, err, genopt.ErrConflict)
 
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)
@@ -481,7 +481,7 @@ func TestProcPackageOptionFile(t *testing.T) {
 
 	err = run("c")
 	assert.ErrorIs(t, err, ErrOptionFile)
-	assert.ErrorIs(t, err, kamaopt.ErrPackageFile)
+	assert.ErrorIs(t, err, genopt.ErrPackageFile)
 	assert.ErrorIs(t, err, fs.ErrNotExist)
 
 	write("d/kama_partial.yaml", "version: 1\ntypes:\n  Z:\n")
