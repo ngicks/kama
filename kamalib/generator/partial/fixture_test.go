@@ -87,12 +87,10 @@ func TestFixtureUpToDate(t *testing.T) {
 			assert.NilError(t, i.Run(ctx, r))
 			assert.Equal(t, len(r.warnings), 0, "%v", r.warnings)
 
-			absPath := func(file File) string {
-				return filepath.Join(f.Root(), filepath.FromSlash(file.Path))
-			}
-
 			produced := opiter.WrapSeq(slices.Values(files)).
-				Map(absPath).
+				Map(
+					func(file File) string { return filepath.Join(f.Root(), filepath.FromSlash(file.Path)) },
+				).
 				Collect(slices.Sorted)
 
 			assert.DeepEqual(t, produced, generatedFiles(t, f.Root()))

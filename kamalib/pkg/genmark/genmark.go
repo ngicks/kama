@@ -96,17 +96,14 @@ func (r *Registry) find(comments []dircmnt.Comment) (string, bool) {
 		return ok
 	}
 
-	found := opiter.WrapSeq(slices.Values(comments)).
-		Filter(isMarker).
+	return opiter.WrapSeq(slices.Values(comments)).
+		Filter(
+			func(c dircmnt.Comment) bool { return c.ToolName == toolName && c.Directive == directive },
+		).
 		Map(markerName).
 		Filter(isRegistered).
-		First()
-
-	return found.Value(), found.IsSome()
-}
-
-func isMarker(c dircmnt.Comment) bool {
-	return c.ToolName == toolName && c.Directive == directive
+		First().
+		Unpack()
 }
 
 func markerName(c dircmnt.Comment) string {

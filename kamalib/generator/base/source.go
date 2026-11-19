@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"iter"
 	"slices"
 
 	"github.com/ngicks/opiter"
@@ -17,33 +18,24 @@ import (
 // package they test, and repeated packages. A generated test main package,
 // which declares nothing a generator reads, stays.
 func SourcePackages(pkgs []*packages.Package) []*packages.Package {
+	// The ID of a test variant differs from its path.
 	return opiter.WrapSeq(slices.Values(pkgs)).
-		Filter(isSourceVariant).
+		Filter(func(p *packages.Package) bool { return p.ID == p.PkgPath }).
 		UniqueFunc(pkgPathOf).
 		CollectSlice()
 }
 
 func pkgPathOf(p *packages.Package) string { return p.PkgPath }
 
-// isSourceVariant reports whether p is the package itself rather than a test
-// variant, whose ID differs from its path.
-func isSourceVariant(p *packages.Package) bool { return p.ID == p.PkgPath }
-
 // BuildConstraint returns the //go:build line of f.
 func BuildConstraint(f *ast.File) (string, bool) {
-	for _, cg := range f.Comments {
-		if cg.Pos() >= f.Package {
-			break
-		}
-
-		for _, c := range cg.List {
-			if constraint.IsGoBuild(c.Text) {
-				return c.Text, true
-			}
-		}
-	}
-
-	return "", false
+	return opiter.WrapSeq(slices.Values(f.Comments)).
+		LimitUntil(func(cg *ast.CommentGroup) bool { return cg.Pos() < f.Package }).
+		FlatMap(func(cg *ast.CommentGroup) iter.Seq[*ast.Comment] { return slices.Values(cg.List) }).
+		Filter(func(c *ast.Comment) bool { return constraint.IsGoBuild(c.Text) }).
+		First().
+		Map(func(c *ast.Comment) string { return c.Text }).
+		Unpack()
 }
 
 // ShadowedPredeclared returns the package-level objects of pkg named like a

@@ -1,4 +1,4 @@
-# Produced by TestMarshalers/toml_v2 (go1.27; github.com/ngicks/option v0.0.4, github.com/pelletier/go-toml/v2 v2.4.3) using toml.Marshal/toml.Unmarshal.
+# Produced by TestMarshalers/toml_v2 (go1.27; github.com/ngicks/option v0.0.5, github.com/pelletier/go-toml/v2 v2.4.3) using toml.Marshal/toml.Unmarshal.
 # Regenerate with: go test ./generator/partial -run TestMarshalers/toml_v2 -update
 
 ## tag `toml:"<key>"`

@@ -314,12 +314,10 @@ type A struct {
 	assert.Assert(
 		t,
 		opiter.WrapSeq(slices.Values(n.Detail.File.Comments)).
-			ContainsFunc(isMergeAppend),
+			ContainsFunc(
+				func(cg *ast.CommentGroup) bool { return cg.List[0].Text == "//kama:partial:merge append" },
+			),
 	)
-}
-
-func isMergeAppend(cg *ast.CommentGroup) bool {
-	return cg.List[0].Text == "//kama:partial:merge append"
 }
 
 func identNames(ids []*dst.Ident) []string {

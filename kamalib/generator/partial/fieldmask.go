@@ -205,12 +205,10 @@ func (s *selection) checkFieldMaskTargets() error {
 			continue
 		}
 		// Field names other than _ are unique, so at most one field matches.
-		isEmbeddedPartial := func(v *types.Var) bool {
-			return v.Name() == k.Field && s.embeddedPartial(n, v) != nil
-		}
-
 		embedsPartial := opiter.WrapSeq(st.Fields()).
-			ContainsFunc(isEmbeddedPartial)
+			ContainsFunc(
+				func(v *types.Var) bool { return v.Name() == k.Field && s.embeddedPartial(n, v) != nil },
+			)
 
 		if embedsPartial {
 			bad("the paths of the fields of an embedded partial value are those of " +

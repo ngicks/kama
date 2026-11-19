@@ -1,4 +1,4 @@
-# Produced by TestMarshalers/yaml_v4 (go1.27; github.com/ngicks/option v0.0.4, go.yaml.in/yaml/v4 v4.0.0-rc.5) using yaml.Marshal/yaml.Unmarshal.
+# Produced by TestMarshalers/yaml_v4 (go1.27; github.com/ngicks/option v0.0.5, go.yaml.in/yaml/v4 v4.0.0-rc.5) using yaml.Marshal/yaml.Unmarshal.
 # Regenerate with: go test ./generator/partial -run TestMarshalers/yaml_v4 -update
 
 ## tag `yaml:"<key>"`

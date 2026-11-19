@@ -18,8 +18,8 @@ github.com/ngicks/go-fsys-helper/vroot-adapter/overlayfs v0.0.0-20261115192526-4
 github.com/ngicks/go-fsys-helper/vroot-adapter/overlayfs v0.0.0-20261115192526-4e496cb4e8cc/go.mod h1:IutIHPcwRuKi/R++1waxUqya2EjZpHCDcuGWYy8xCsY=
 github.com/ngicks/opiter v0.0.0-20261117042451-388e5e6df86b h1:HBod7awdvzNi0qiXhRfJk3wCkypKLrqYdDWfAjzXC5c=
 github.com/ngicks/opiter v0.0.0-20261117042451-388e5e6df86b/go.mod h1:AJKk0Qca0XTb4fGMg+N/aR5ZILeXXZKPKubDO7W5Yss=
-github.com/ngicks/option v0.0.4 h1:5poCsAr9gtByk2v2w+MHZkydaTPxp4AprZXvd87FS0g=
-github.com/ngicks/option v0.0.4/go.mod h1:lcx5EV1gvJjLPgHdDeY2MKyWOvw8UpwJyaL+dC0kn2Q=
+github.com/ngicks/option v0.0.5 h1:uOGEJjePFZA6Q3DBdXfjEbI/cPlqkn8/yrXbeudZ+d4=
+github.com/ngicks/option v0.0.5/go.mod h1:lcx5EV1gvJjLPgHdDeY2MKyWOvw8UpwJyaL+dC0kn2Q=
 github.com/pelletier/go-toml/v2 v2.4.3 h1:GTRvJQutkOSftxIFD5xw9aepkYNuPWmVJpffdDPYVpY=
 github.com/pelletier/go-toml/v2 v2.4.3/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/sergi/go-diff v1.2.0 h1:XU+rvMAioB0UC3q1MFrIQy4Vo5/4VsRDQQXHsEya6xQ=
