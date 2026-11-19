@@ -27,6 +27,11 @@ type Comment struct {
 	ToolName  string
 	Directive string
 	// Args is the text after the first whitespace following Directive.
+	//
+	// Args stays as written because the args of a directive follow the
+	// grammar of its tool, as the command line of //go:generate does.
+	// [ParseArgsKeyValue] parses Args of a directive that takes key=value
+	// pairs.
 	Args string
 }
 
