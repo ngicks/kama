@@ -12,7 +12,6 @@ import (
 	"github.com/dave/dst"
 	"golang.org/x/tools/go/packages"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
@@ -303,7 +302,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 // embedded slice or map either, so keeping its name keeps its wire name.
 func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field, fieldInfo, error) {
 	info := fieldInfo{source: v.Type(), name: v.Name(), partial: v.Name()}
-	key := genopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: v.Name()}
+	key := fieldKeyOf(n.Id, v.Name())
 
 	var (
 		f   *dst.Field
@@ -356,7 +355,7 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 		f = withTag(&dst.Field{Names: []*dst.Ident{dst.NewIdent(v.Name())}, Type: info.expr}, tag)
 	}
 
-	info.strategy, err = p.strategy(info.class, p.sel.merges[key])
+	info.strategy, err = p.strategy(info.class, key, p.sel.merges[key])
 	if err != nil {
 		return nil, fieldInfo{}, err
 	}
@@ -369,9 +368,9 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 	return f, info, nil
 }
 
-// strategy returns the merge strategy of a value of class c, set by the
-// directive or option file entry r or defaulted by the options.
-func (p *mapper) strategy(c class, r genopt.Raw) (string, error) {
+// strategy returns the merge strategy of the field k holding a value of
+// class c, set by o or defaulted by the options.
+func (p *mapper) strategy(c class, k fieldKey, o mergeOption) (string, error) {
 	var (
 		def     string
 		allowed []string
@@ -393,20 +392,19 @@ func (p *mapper) strategy(c class, r genopt.Raw) (string, error) {
 		}
 	}
 
-	if r.Directive == "" {
+	if o.strategy == "" {
 		return def, nil
 	}
 
-	got := strings.TrimSpace(r.Args)
-	if !slices.Contains(allowed, got) {
+	if !slices.Contains(allowed, o.strategy) {
 		return "", fmt.Errorf(
-			"%w: %s: %s %s on field %s.%s.%s; want %s",
-			ErrDirective, origin(r), spelling(r), got, r.Key.PkgPath, r.Key.Type, r.Key.Field,
+			"%w: %s: %s %s on field %s; want %s",
+			ErrDirective, o.src.origin(), o.src.spelling(), o.strategy, k,
 			strings.Join(allowed, " or "),
 		)
 	}
 
-	return got, nil
+	return o.strategy, nil
 }
 
 func isStruct(named *types.Named) bool {

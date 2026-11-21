@@ -2,6 +2,7 @@ package partial
 
 import (
 	"context"
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -21,6 +22,7 @@ import (
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
@@ -38,7 +40,7 @@ func load(t *testing.T, files map[string]string) []*packages.Package {
 	assert.NilError(t, err)
 	t.Cleanup(func() { f.Close() })
 
-	dir := "testdata/inline/" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
+	dir := inlineDir(t)
 	dirs := map[string]bool{}
 
 	for name, src := range files {
@@ -52,6 +54,11 @@ func load(t *testing.T, files map[string]string) []*packages.Package {
 	assert.NilError(t, err)
 
 	return pkgs
+}
+
+// inlineDir is the directory under testdata load writes the files of t to.
+func inlineDir(t *testing.T) string {
+	return "testdata/inline/" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 }
 
 // registry returns a registry of this generator only.
@@ -213,10 +220,17 @@ func TestTargetErrors(t *testing.T) {
 			contains: []string{"x.go:4:2", "_field.A.B"},
 		},
 		{
-			name:     "marked and ignored",
-			src:      "package x\n\n//kama:partial\n//kama:partial ignore\ntype A struct{}\n",
+			name:     "ignore twice",
+			src:      "package x\n\n//kama:partial ignore\n//kama:partial ignore\ntype A struct{}\n",
 			is:       ErrDirective,
-			contains: []string{"x.go:3:1", "both"},
+			contains: []string{"x.go:3:1", `"ignore ignore"`},
+		},
+		{
+			name: "marked by a type group and ignored",
+			src: "package x\n\n//kama:partial\ntype (\n\t//kama:partial ignore\n\tA struct{}\n" +
+				"\tB struct{}\n)\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:3:1", "both marked and ignored", "x.go:5:2"},
 		},
 		{
 			name:     "basic",
@@ -296,6 +310,12 @@ func TestTargetErrors(t *testing.T) {
 			contains: []string{"A -> B -> A"},
 		},
 		{
+			name:     "unparsable args",
+			src:      "package x\n\n//kama:partial ignore=\"x\ntype A struct{}\n",
+			is:       genopt.ErrDirective,
+			contains: []string{"x.go:3:1", "unterminated"},
+		},
+		{
 			name:     "unknown sub-directive",
 			src:      "package x\n\n//kama:partial\n//kama:partial:name B\ntype A struct{}\n",
 			is:       ErrDirective,
@@ -315,11 +335,11 @@ func TestTargetErrors(t *testing.T) {
 			contains: []string{"x.go:5:2", `"deep"`, "_unknown_merge_strategy.A.B"},
 		},
 		{
-			name: "second merge",
+			name: "merge on two lines",
 			src: "package x\n\n//kama:partial\ntype A struct {\n" +
 				"\t//kama:partial:merge append\n\tB []int //kama:partial:merge overwrite\n}\n",
 			is:       ErrDirective,
-			contains: []string{"x.go:6:10", "x.go:5:2", "second"},
+			contains: []string{"x.go:5:2", `"append overwrite"`, "want one strategy"},
 		},
 		{
 			name: "append on a plain field",
@@ -402,6 +422,10 @@ func TestTargetErrors(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := generate(t, map[string]string{"x.go": c.src}, Options{})
 			assert.ErrorIs(t, err, c.is)
+
+			if errors.Is(err, genopt.ErrDirective) {
+				assert.ErrorIs(t, err, ErrDirective)
+			}
 
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)
@@ -487,6 +511,40 @@ type L []S
 		partialTypes(t, files["types.kama_partial.go"]),
 		[]string{"SPartial", "LPartial"},
 	)
+}
+
+// TestTypeGroup checks that the directives in the doc comment of a type
+// declaration with several specs apply to every type of the declaration.
+func TestTypeGroup(t *testing.T) {
+	files := generated(t, map[string]string{
+		"a.go": `package x
+
+//kama:partial
+//kama:partial:fieldmask
+type (
+	A struct{ I int }
+	B struct {
+		//kama:partial:fieldmask name=j
+		J int
+	}
+)
+
+type (
+	// C is not marked by the group of A and B.
+	C struct{ K int }
+)
+`,
+	})
+
+	assert.DeepEqual(
+		t,
+		partialTypes(t, files["a.kama_partial.go"]),
+		[]string{"APartial", "BPartial"},
+	)
+
+	fs := funcs(t, files["a.kama_partial.go"])
+	assert.Assert(t, fs["APartial.FieldMask"] != "")
+	assert.Assert(t, strings.Contains(fs["BPartial.FieldMask"], `"j"`), fs["BPartial.FieldMask"])
 }
 
 func TestGeneratedDeclsAreNotTargets(t *testing.T) {

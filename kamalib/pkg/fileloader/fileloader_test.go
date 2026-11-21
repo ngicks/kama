@@ -144,3 +144,86 @@ func TestPathInputJson(t *testing.T) {
 	assert.NilError(t, json.Unmarshal([]byte(`{"base":"a/meta","formats":["yaml","json"]}`), &in))
 	assert.DeepEqual(t, in, PathInput{Base: "a/meta", Formats: []Format{FormatYaml, FormatJson}})
 }
+
+func TestPathInputFind(t *testing.T) {
+	fsys := fstest.MapFS{
+		"a/meta.yml":  {Data: []byte("name: yaml\n")},
+		"a/meta.json": {Data: []byte(`{"name":"json"}`)},
+	}
+
+	cases := []struct {
+		name string
+		in   PathInput
+		want []string
+		err  error
+	}{
+		{
+			name: "first format present",
+			in:   PathInput{Base: "a/meta", Formats: []Format{FormatYaml, FormatJson}},
+			want: []string{"a/meta.yml"},
+		},
+		{
+			name: "format order",
+			in:   PathInput{Base: "a/meta", Formats: []Format{FormatJson, FormatYaml}},
+			want: []string{"a/meta.json"},
+		},
+		{
+			name: "none present",
+			in:   PathInput{Base: "a/none", Formats: []Format{FormatYaml, FormatJson}},
+		},
+		{
+			name: "unknown format",
+			in:   PathInput{Base: "a/meta", Formats: []Format{"ini"}},
+			err:  ErrUnknownFormat,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := c.in.Find(fsys)
+			if c.err != nil {
+				assert.ErrorIs(t, err, c.err)
+				return
+			}
+
+			assert.NilError(t, err)
+			assert.DeepEqual(t, got, c.want)
+		})
+	}
+}
+
+// namesInput finds a fixed list of names.
+type namesInput []string
+
+func (n namesInput) Find(fs.FS) ([]string, error) { return n, nil }
+
+func TestLoadAll(t *testing.T) {
+	fsys := fstest.MapFS{
+		"b.yaml":   {Data: []byte("name: b\n")},
+		"a.json":   {Data: []byte(`{"name":"a"}`)},
+		"B.toml":   {Data: []byte("name = \"B\"\n")},
+		"bad.json": {Data: []byte("{")},
+		"meta.ini": {Data: []byte("name = ini\n")},
+	}
+
+	docs, err := LoadAll(fsys, namesInput{"b.yaml", "a.json", "B.toml"})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, docs, []Document{
+		{Name: "B.toml", Data: map[string]any{"name": "B"}},
+		{Name: "a.json", Data: map[string]any{"name": "a"}},
+		{Name: "b.yaml", Data: map[string]any{"name": "b"}},
+	})
+
+	docs, err = LoadAll(fsys, PathInput{Base: "none", Formats: []Format{FormatYaml}})
+	assert.NilError(t, err)
+	assert.Equal(t, len(docs), 0)
+
+	_, err = LoadAll(fsys, namesInput{"a.json", "bad.json"})
+	assert.ErrorContains(t, err, `fileloader: decode "bad.json"`)
+
+	_, err = LoadAll(fsys, namesInput{"meta.ini"})
+	assert.ErrorIs(t, err, ErrUnknownFormat)
+
+	_, err = LoadAll(fsys, namesInput{"none.json"})
+	assert.ErrorIs(t, err, fs.ErrNotExist)
+}

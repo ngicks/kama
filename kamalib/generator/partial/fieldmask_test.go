@@ -31,11 +31,11 @@ func TestFieldMaskErrors(t *testing.T) {
 			contains: []string{"x.go:4:1", `unknown args "json"`, "_args_on_a_type.A; want none"},
 		},
 		{
-			name: "second on a type",
-			src: head + "//kama:partial\n//kama:partial:fieldmask\n//kama:partial:fieldmask\n" +
+			name: "args on a second line on a type",
+			src: head + "//kama:partial\n//kama:partial:fieldmask\n//kama:partial:fieldmask json\n" +
 				"type A struct{ B int }\n",
 			is:       ErrDirective,
-			contains: []string{"x.go:5:1", "second //kama:partial:fieldmask on type", "x.go:4:1"},
+			contains: []string{"x.go:4:1", `unknown args "json"`},
 		},
 		{
 			name:     "type without partial variant",
@@ -85,11 +85,11 @@ func TestFieldMaskErrors(t *testing.T) {
 			contains: []string{"x.go:6:2", `name "b.c"`, "without a dot"},
 		},
 		{
-			name: "second on a field",
+			name: "name on two lines of a field",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
 				"\t//kama:partial:fieldmask name=b\n\tB int //kama:partial:fieldmask name=c\n}\n",
 			is:       ErrDirective,
-			contains: []string{"x.go:7:8", "second //kama:partial:fieldmask on field", "x.go:6:2"},
+			contains: []string{"x.go:6:2", `duplicate name "name"`},
 		},
 		{
 			name: "blank field",
@@ -258,9 +258,9 @@ func TestFieldMaskEmbeddingByOptionFile(t *testing.T) {
 		"type E struct{ I int }\n"
 
 	t.Run("embedded only", func(t *testing.T) {
-		_, err := generate(t, map[string]string{"x.go": src}, Options{
-			OptionFile: optionFile(t, "version: 1\npackages:\n  $pkg:\n    types:\n"+
-				"      E:\n        fieldmask: true\n"),
+		_, _, err := generateWithOptions(t, map[string]string{"x.go": src}, optionDocs{
+			central: "version: 1\npackages:\n  $pkg:\n    types:\n" +
+				"      E:\n        fieldmask: true\n",
 		})
 		assert.ErrorIs(t, err, ErrDirective)
 		assert.ErrorContains(t, err, "so A needs //kama:partial:fieldmask too")
@@ -272,18 +272,20 @@ func TestFieldMaskEmbeddingByOptionFile(t *testing.T) {
 			"//kama:partial\n//kama:partial:fieldmask\n",
 			1,
 		)
-		files := generatedWith(t, map[string]string{"x.go": src}, Options{
-			OptionFile: optionFile(t, "version: 1\npackages:\n  $pkg:\n    types:\n"+
-				"      E:\n        fieldmask: true\n"),
+		files := generatedWithOptions(t, map[string]string{"x.go": src}, optionDocs{
+			central: "version: 1\npackages:\n  $pkg:\n    types:\n" +
+				"      E:\n        fieldmask: true\n",
 		})
 		fs := funcs(t, files["x.kama_partial.go"])
 		assert.Assert(t, fs["APartial.FromValueWithMask"] != "")
 		assert.Assert(t, fs["EPartial.FromValueWithMask"] != "")
 	})
 	t.Run("both by option file", func(t *testing.T) {
-		files := generatedWith(t, map[string]string{"x.go": src}, Options{
-			OptionFile: optionFile(t, "version: 1\npackages:\n  $pkg:\n    types:\n"+
-				"      A:\n        fieldmask: true\n      E:\n        fieldmask: true\n"),
+		// The entry of A marks it, and replaces the directive on A.
+		src := strings.Replace(src, "//kama:partial\n", "", 1)
+		files := generatedWithOptions(t, map[string]string{"x.go": src}, optionDocs{
+			central: "version: 1\npackages:\n  $pkg:\n    types:\n" +
+				"      A:\n        fieldmask: true\n      E:\n        fieldmask: true\n",
 		})
 		fs := funcs(t, files["x.kama_partial.go"])
 		assert.Assert(t, fs["APartial.FromValueWithMask"] != "")

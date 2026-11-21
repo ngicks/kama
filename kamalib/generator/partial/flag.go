@@ -17,7 +17,7 @@ import (
 	"github.com/dave/dst/decorator"
 	"golang.org/x/tools/go/packages"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
@@ -38,29 +38,20 @@ var flagMethodNames = []string{"RegisterFlags", "FromFlagSet"}
 // which import names must not shadow.
 var flagSetParams = []string{"name", "shorthand", "value", "usage"}
 
-// flagOption is a decoded //kama:partial:flag directive or option file
-// entry.
+// flagOption is the flag of a field.
 type flagOption struct {
 	name, short, usage string
-	raw                genopt.Raw
+	src                optionSource
 }
 
-func (o flagOption) same(other flagOption) bool {
-	return o.name == other.name && o.short == other.short && o.usage == other.usage
-}
-
-func (o flagOption) String() string {
-	return fmt.Sprintf("name=%q short=%q usage=%q", o.name, o.short, o.usage)
-}
-
-// parseFlag decodes the args of //kama:partial:flag.
-func parseFlag(args string) (flagOption, error) {
-	kv, err := genopt.ParseArgs(args)
+// flagFromKeyValues decodes the args of //kama:partial:flag.
+func flagFromKeyValues(kv []dircmnt.KeyValue) (flagOption, error) {
+	args, err := keyValueMap(kv)
 	if err != nil {
 		return flagOption{}, err
 	}
 
-	return flagFromArgs(kv)
+	return flagFromArgs(args)
 }
 
 // flagFromOptions decodes an option file flag entry as the directive with
@@ -212,16 +203,15 @@ var textUnmarshaler = types.NewInterfaceType([]*types.Func{
 // flag returns the flag of the field info of n described by o, or nil
 // when o is no directive.
 func (p *mapper) flag(n *typegraph.Node, info fieldInfo, o flagOption) (*flagField, error) {
-	if o.raw.Directive == "" {
+	if o.name == "" {
 		return nil, nil
 	}
 
 	bad := func(format string, args ...any) error {
 		return fmt.Errorf(
-			"%w: %s: %s on field %s.%s.%s: "+format,
+			"%w: %s: %s on field %s: "+format,
 			append([]any{
-				ErrDirective, origin(o.raw), spelling(o.raw),
-				n.Id.PackagePath, n.Id.TypeName, info.name,
+				ErrDirective, o.src.origin(), o.src.spelling(), fieldKeyOf(n.Id, info.name),
 			}, args...)...,
 		)
 	}
@@ -436,15 +426,15 @@ func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 				return fmt.Errorf(
 					"%w: %s: %s on field %s.%s.%s: flag %s %q is taken by field %s (%s)",
 					ErrDirective,
-					origin(f.flag.raw),
-					spelling(f.flag.raw),
+					f.flag.src.origin(),
+					f.flag.src.spelling(),
 					n.Id.PackagePath,
 					n.Id.TypeName,
 					f.name,
 					c.what,
 					c.key,
 					prev.name,
-					origin(prev.flag.raw),
+					prev.flag.src.origin(),
 				)
 			}
 

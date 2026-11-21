@@ -3,6 +3,7 @@ package partial
 import (
 	"context"
 	"maps"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -10,8 +11,10 @@ import (
 
 	"github.com/ngicks/opiter"
 
+	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
@@ -19,12 +22,141 @@ import (
 	procgopackages "github.com/ngicks/kama/kamalib/proc/gopackages"
 )
 
-func TestDecodeOptionFileFormats(t *testing.T) {
-	docs := map[fileloader.Format]string{
-		fileloader.FormatYaml: `
+// optionDocs are the option files of a test, in which $pkg stands for the
+// import path of the inline test directory. Empty means none.
+type optionDocs struct {
+	// central is the central option file opts plus ext, YAML when ext is
+	// empty.
+	central, ext string
+	// pkg is the YAML package option file kama_partial.yaml of the inline
+	// test directory.
+	pkg string
+}
+
+// loadOptions loads files as load does, and the options of their packages
+// from the directives and from docs.
+func loadOptions(
+	t *testing.T,
+	files map[string]string,
+	docs optionDocs,
+) ([]*packages.Package, *LoadedOptions, error) {
+	t.Helper()
+
+	pkgs := load(t, files)
+	expand := func(doc string) *fstest.MapFile {
+		return &fstest.MapFile{
+			Data: []byte(strings.ReplaceAll(doc, "$pkg", strconv.Quote(modulePath(t)))),
+		}
+	}
+
+	fsys := fstest.MapFS{}
+
+	var central fileloader.Input
+
+	if docs.central != "" {
+		ext := docs.ext
+		if ext == "" {
+			ext = "yaml"
+		}
+
+		fsys["opts."+ext] = expand(docs.central)
+		central = fileloader.PathInput{
+			Base:    "opts",
+			Formats: []fileloader.Format{fileloader.Format(ext)},
+		}
+	}
+
+	if docs.pkg != "" {
+		fsys[inlineDir(t)+"/kama_partial.yaml"] = expand(docs.pkg)
+	}
+
+	root, err := filepath.Abs(".")
+	assert.NilError(t, err)
+
+	loaded, err := NewLoader(central).LoadOption(fsys, root, base.SourcePackages(pkgs))
+
+	return pkgs, loaded, loadError(err)
+}
+
+// generateWithOptions runs Generate on files with the options of their
+// directives and of docs, a registry of this generator only and testNow.
+func generateWithOptions(t *testing.T, files map[string]string, docs optionDocs) (
+	[]File, []error, error,
+) {
+	t.Helper()
+
+	pkgs, loaded, err := loadOptions(t, files, docs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return Generate(pkgs, Options{Registry: registry(t), Now: testNow, Loaded: loaded})
+}
+
+// generatedWithOptions returns the files generateWithOptions gives keyed by
+// base name, and fails on an error or a warning.
+func generatedWithOptions(
+	t *testing.T,
+	files map[string]string,
+	docs optionDocs,
+) map[string]string {
+	t.Helper()
+
+	out, warnings, err := generateWithOptions(t, files, docs)
+	assert.NilError(t, err)
+	assert.Equal(t, len(warnings), 0, "%v", warnings)
+
+	m := map[string]string{}
+	for _, f := range out {
+		m[filepath.Base(f.Path)] = string(f.Content)
+	}
+
+	return m
+}
+
+// typeView and fieldView are the exported parts of TypeOptions and
+// FieldOptions.
+type (
+	typeView struct {
+		Ignore, FieldMask bool
+	}
+	fieldView struct {
+		Merge     string
+		Flag      *FlagOptions
+		FieldMask *FieldMaskOptions
+	}
+)
+
+// optionViews spells the options of the package at pkgPath of o by key:
+// all_types, <type> and <type>.<field>.
+func optionViews(
+	o genopt.Option[PackageOptions, TypeOptions, FieldOptions],
+	pkgPath string,
+) map[string]any {
+	po := o.Packages[pkgPath]
+	out := map[string]any{"all_types": po.Package.AllTypes}
+
+	for name, to := range po.Types {
+		out[name] = typeView{Ignore: to.Type.Ignore, FieldMask: to.Type.FieldMask}
+
+		fields, _ := to.Fields.Unpack()
+		for field, f := range fields {
+			out[name+"."+field] = fieldView{Merge: f.Merge, Flag: f.Flag, FieldMask: f.FieldMask}
+		}
+	}
+
+	return out
+}
+
+func TestOptionFileFormats(t *testing.T) {
+	const src = "package x\n\ntype Server struct {\n\tAddr string\n\tPort int\n}\n\n" +
+		"type Client struct{ C int }\n"
+
+	docs := map[string]string{
+		"yaml": `
 version: 1
 packages:
-  example.com/gen/pb:
+  $pkg:
     all_types: true
     types:
       Server:
@@ -42,10 +174,10 @@ packages:
       Client:
         ignore: true
 `,
-		fileloader.FormatJson: `{
+		"json": `{
   "version": 1,
   "packages": {
-    "example.com/gen/pb": {
+    $pkg: {
       "all_types": true,
       "types": {
         "Server": {
@@ -64,229 +196,138 @@ packages:
     }
   }
 }`,
-		fileloader.FormatToml: `
+		"toml": `
 version = 1
 
-[packages."example.com/gen/pb"]
+[packages.$pkg]
 all_types = true
 
-[packages."example.com/gen/pb".types.Server]
+[packages.$pkg.types.Server]
 fieldmask = true
 
-[packages."example.com/gen/pb".types.Server.fields.Addr]
+[packages.$pkg.types.Server.fields.Addr]
 merge = "append"
 flag = { name = "addr", short = "a", usage = "listen address" }
 fieldmask = { name = "address" }
 
-[packages."example.com/gen/pb".types.Server.fields.Port]
+[packages.$pkg.types.Server.fields.Port]
 
-[packages."example.com/gen/pb".types.Client]
+[packages.$pkg.types.Client]
 ignore = true
 `,
 	}
-	want := &OptionFile{
-		Name: "partial",
-		Packages: map[string]PackageOptions{
-			"example.com/gen/pb": {
-				AllTypes: true,
-				Types: map[string]TypeOptions{
-					"Server": {FieldMask: true, Fields: map[string]FieldOptions{
-						"Addr": {
-							Merge: "append",
-							Flag: &FlagOptions{
-								Name:  "addr",
-								Short: "a",
-								Usage: "listen address",
-							},
-							FieldMask: &FieldMaskOptions{Name: "address"},
-						},
-						"Port": {},
-					}},
-					"Client": {Ignore: true, Fields: map[string]FieldOptions{}},
-				},
-			},
-		},
-	}
 
-	for format, doc := range docs {
-		t.Run(string(format), func(t *testing.T) {
-			var data any
-			assert.NilError(t, fileloader.Decode(strings.NewReader(doc), format, &data))
-			got, err := DecodeOptionFile("partial", data)
+	for ext, doc := range docs {
+		t.Run(ext, func(t *testing.T) {
+			_, loaded, err := loadOptions(
+				t,
+				map[string]string{"x.go": src},
+				optionDocs{central: doc, ext: ext},
+			)
 			assert.NilError(t, err)
-			assert.DeepEqual(t, got, want)
+			assert.DeepEqual(t, loaded.Files, []string{"opts." + ext})
+			assert.DeepEqual(t, optionViews(loaded.Option, modulePath(t)), map[string]any{
+				"all_types": true,
+				"Server":    typeView{FieldMask: true},
+				"Server.Addr": fieldView{
+					Merge:     "append",
+					Flag:      &FlagOptions{Name: "addr", Short: "a", Usage: "listen address"},
+					FieldMask: &FieldMaskOptions{Name: "address"},
+				},
+				"Server.Port": fieldView{},
+				"Client":      typeView{Ignore: true},
+			})
 		})
 	}
 }
 
-func TestDecodeOptionFileErrors(t *testing.T) {
-	const pb = "packages.\"example.com/gen/pb\""
+func TestOptionFileDecodeErrors(t *testing.T) {
+	const src = "package x\n\ntype S struct{ F int }\n"
 
 	cases := []struct {
 		name string
 		doc  string
-		// contains are substrings the error must hold besides the file name.
+		// contains are substrings the error must hold after the key path
+		// of the package entry.
 		contains []string
 	}{
-		{name: "not a table", doc: `[1]`, contains: []string{"not a table"}},
-		{name: "missing version", doc: `packages: {}`, contains: []string{"version is required"}},
 		{
-			name:     "unsupported version",
-			doc:      `version: 2`,
-			contains: []string{"version: unsupported version 2"},
-		},
-		{
-			name:     "version not an integer",
-			doc:      `version: "1"`,
-			contains: []string{"version: 1 is not an integer"},
-		},
-		{
-			name:     "fractional version",
-			doc:      `version: 1.5`,
-			contains: []string{"version: 1.5 is not an integer"},
-		},
-		{
-			name:     "unknown top key",
-			doc:      "version: 1\nfiles: {}\n",
-			contains: []string{"files: unknown key"},
-		},
-		{
-			name:     "packages not a table",
-			doc:      "version: 1\npackages: [a]\n",
-			contains: []string{"packages: [a] is not a table"},
+			name:     "all_types not a boolean",
+			doc:      "    all_types: yes please\n",
+			contains: []string{".all_types: cannot decode a string into bool"},
 		},
 		{
 			name:     "unknown package key",
-			doc:      "version: 1\npackages:\n  example.com/gen/pb:\n    file: true\n",
-			contains: []string{pb + ".file: unknown key; want all_types, types"},
+			doc:      "    file: true\n",
+			contains: []string{".file: unknown key"},
 		},
 		{
-			name:     "all_types not a boolean",
-			doc:      "version: 1\npackages:\n  example.com/gen/pb:\n    all_types: yes please\n",
-			contains: []string{pb + ".all_types: yes please is not a boolean"},
+			name:     "unknown type key",
+			doc:      "    types:\n      S:\n        merge: append\n",
+			contains: []string{".types.S.merge: unknown key"},
 		},
 		{
-			name: "unknown type key",
-			doc: "version: 1\npackages:\n  example.com/gen/pb:\n" +
-				"    types:\n      S:\n        merge: append\n",
-			contains: []string{pb + ".types.S.merge: unknown key; want ignore, fieldmask, fields"},
+			name:     "ignore not a boolean",
+			doc:      "    types:\n      S:\n        ignore: 1\n",
+			contains: []string{".types.S.ignore: cannot decode a number into bool"},
 		},
 		{
-			name: "ignore not a boolean",
-			doc: "version: 1\npackages:\n  example.com/gen/pb:\n" +
-				"    types:\n      S:\n        ignore: 1\n",
-			contains: []string{pb + ".types.S.ignore: 1 is not a boolean"},
+			name:     "fieldmask not a boolean",
+			doc:      "    types:\n      S:\n        fieldmask: yes please\n",
+			contains: []string{".types.S.fieldmask: cannot decode a string into bool"},
 		},
 		{
 			name: "merge not a string",
-			doc: "version: 1\npackages:\n  example.com/gen/pb:\n    types:\n      S:\n" +
-				"        fields:\n          F:\n            merge: [append]\n",
-			contains: []string{pb + ".types.S.fields.F.merge: [append] is not a string"},
+			doc: "    types:\n      S:\n        fields:\n          F:\n            merge:\n" +
+				"              - append\n",
+			contains: []string{".types.S.fields.F.merge: cannot decode an array into string"},
 		},
 		{
 			name: "unknown flag key",
-			doc: "version: 1\npackages:\n  example.com/gen/pb:\n    types:\n      S:\n" +
-				"        fields:\n          F:\n            flag: {name: f, prefix: x}\n",
-			contains: []string{
-				pb + ".types.S.fields.F.flag.prefix: unknown key; want name, short, usage",
-			},
+			doc: "    types:\n      S:\n        fields:\n          F:\n            flag:\n" +
+				"              name: f\n              prefix: x\n",
+			contains: []string{".types.S.fields.F.flag.prefix: unknown key"},
 		},
 		{
 			name: "flag not a table",
-			doc: "version: 1\npackages:\n  example.com/gen/pb:\n    types:\n      S:\n" +
-				"        fields:\n          F:\n            flag: f\n",
-			contains: []string{pb + ".types.S.fields.F.flag: f is not a table"},
-		},
-		{
-			name: "empty short",
-			doc: "version: 1\npackages:\n  example.com/gen/pb:\n    types:\n      S:\n" +
-				"        fields:\n          F:\n            flag: {name: f, short: \"\"}\n",
-			contains: []string{pb + ".types.S.fields.F.flag.short: empty shorthand"},
-		},
-		{
-			name: "fieldmask not a boolean",
-			doc: "version: 1\npackages:\n  example.com/gen/pb:\n" +
-				"    types:\n      S:\n        fieldmask: yes please\n",
-			contains: []string{pb + ".types.S.fieldmask: yes please is not a boolean"},
-		},
-		{
-			name: "unknown fieldmask key",
-			doc: "version: 1\npackages:\n  example.com/gen/pb:\n    types:\n      S:\n" +
-				"        fields:\n          F:\n            fieldmask: {name: f, json: true}\n",
+			doc:  "    types:\n      S:\n        fields:\n          F:\n            flag: f\n",
 			contains: []string{
-				pb + ".types.S.fields.F.fieldmask.json: unknown key; want name",
+				".types.S.fields.F.flag: cannot decode a string into ",
 			},
 		},
 		{
-			name: "fieldmask not a table",
-			doc: "version: 1\npackages:\n  example.com/gen/pb:\n    types:\n      S:\n" +
-				"        fields:\n          F:\n            fieldmask: f\n",
-			contains: []string{pb + ".types.S.fields.F.fieldmask: f is not a table"},
+			name: "empty short",
+			doc: "    types:\n      S:\n        fields:\n          F:\n            flag:\n" +
+				"              name: f\n              short: \"\"\n",
+			contains: []string{".types.S.fields.F.flag: empty shorthand"},
 		},
 		{
-			name:     "non-string key",
-			doc:      "version: 1\npackages:\n  example.com/gen/pb:\n    types:\n      1: {}\n",
-			contains: []string{pb + ".types: key 1 is not a string"},
+			name: "unknown fieldmask key",
+			doc: "    types:\n      S:\n        fields:\n          F:\n            fieldmask:\n" +
+				"              name: f\n              json: true\n",
+			contains: []string{".types.S.fields.F.fieldmask.json: unknown key"},
+		},
+		{
+			name: "fieldmask not a table",
+			doc:  "    types:\n      S:\n        fields:\n          F:\n            fieldmask: f\n",
+			contains: []string{
+				".types.S.fields.F.fieldmask: cannot decode a string into partial.FieldMaskOptions",
+			},
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			var data any
-			assert.NilError(
-				t,
-				fileloader.Decode(strings.NewReader(c.doc), fileloader.FormatYaml, &data),
-			)
-			_, err := DecodeOptionFile("opts.yaml", data)
+			_, _, err := loadOptions(t, map[string]string{"x.go": src}, optionDocs{
+				central: "version: 1\npackages:\n  $pkg:\n" + c.doc,
+			})
 			assert.ErrorIs(t, err, ErrOptionFile)
-			assert.ErrorContains(t, err, "opts.yaml: ")
+			assert.ErrorIs(t, err, genopt.ErrOptionFile)
 
 			for _, s := range c.contains {
-				assert.ErrorContains(t, err, s)
+				assert.ErrorContains(t, err, "opts.yaml: packages."+strconv.Quote(modulePath(t))+s)
 			}
 		})
 	}
-}
-
-func TestLoadOptionFile(t *testing.T) {
-	fsys := fstest.MapFS{
-		"conf/partial.json": {Data: []byte(`{"version": 1}`)},
-		"conf/partial.toml": {Data: []byte("version = 2\n")},
-	}
-	f, err := LoadOptionFile(fsys, fileloader.PathInput{
-		Base: "conf/partial", Formats: []fileloader.Format{fileloader.FormatJson},
-	})
-	assert.NilError(t, err)
-	assert.DeepEqual(
-		t,
-		f,
-		&OptionFile{Name: "conf/partial.json", Packages: map[string]PackageOptions{}},
-	)
-
-	_, err = LoadOptionFile(fsys, fileloader.PathInput{
-		Base: "conf/partial", Formats: []fileloader.Format{fileloader.FormatToml},
-	})
-	assert.ErrorIs(t, err, ErrOptionFile)
-	assert.ErrorContains(t, err, "conf/partial.toml: version")
-
-	_, err = LoadOptionFile(fsys, fileloader.PathInput{
-		Base: "missing", Formats: []fileloader.Format{fileloader.FormatYaml},
-	})
-	assert.ErrorIs(t, err, ErrOptionFile)
-	assert.ErrorIs(t, err, fileloader.ErrNotFound)
-}
-
-// optionFile decodes doc, a YAML option file in which $pkg stands for the
-// import path of the inline test directory of t, named opts.yaml.
-func optionFile(t *testing.T, doc string) *OptionFile {
-	t.Helper()
-	doc = strings.ReplaceAll(doc, "$pkg", strconv.Quote(modulePath(t)))
-
-	var data any
-	assert.NilError(t, fileloader.Decode(strings.NewReader(doc), fileloader.FormatYaml, &data))
-	f, err := DecodeOptionFile("opts.yaml", data)
-	assert.NilError(t, err)
-
-	return f
 }
 
 func TestOptionFileParity(t *testing.T) {
@@ -302,8 +343,8 @@ func TestOptionFileParity(t *testing.T) {
 			"//kama:partial ignore\ntype E struct{ M int }\n",
 	})
 
-	byFile := generatedWith(t, map[string]string{"x.go": "package x\n" + models}, Options{
-		OptionFile: optionFile(t, `
+	byFile := generatedWithOptions(t, map[string]string{"x.go": "package x\n" + models}, optionDocs{
+		central: `
 version: 1
 packages:
   $pkg:
@@ -326,9 +367,10 @@ packages:
               name: n
       E:
         ignore: true
-`),
+`,
 	})
 	for name, src := range byFile {
+		assert.Assert(t, strings.Contains(src, "//\toption_file: \"opts.yaml\"\n"))
 		byFile[name] = withoutRunParams(src)
 	}
 
@@ -366,13 +408,14 @@ func TestOptionFileErrors(t *testing.T) {
 		{
 			name: "unknown field",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n" +
-				"        fields:\n          Z: {merge: append}\n",
+				"        fields:\n          Z:\n            merge: append\n",
 			is:       ErrOptionFile,
 			contains: []string{".types.A.fields.Z: field Z is not declared"},
 		},
 		{
-			name:     "fields of a non-struct",
-			doc:      "packages:\n  $pkg:\n    types:\n      I:\n        fields:\n          Z: {}\n",
+			name: "fields of a non-struct",
+			doc: "packages:\n  $pkg:\n    types:\n      I:\n        fields:\n" +
+				"          Z:\n",
 			is:       ErrOptionFile,
 			contains: []string{".types.I.fields: ", "is not a struct type"},
 		},
@@ -391,7 +434,7 @@ func TestOptionFileErrors(t *testing.T) {
 		{
 			name: "unknown strategy",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n" +
-				"        fields:\n          B: {merge: deep}\n",
+				"        fields:\n          B:\n            merge: deep\n",
 			is: ErrDirective,
 			contains: []string{
 				".types.A.fields.B.merge: option file merge option: unknown strategy \"deep\"",
@@ -400,7 +443,7 @@ func TestOptionFileErrors(t *testing.T) {
 		{
 			name: "strategy not allowed",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n" +
-				"        fields:\n          C: {merge: append}\n",
+				"        fields:\n          C:\n            merge: append\n",
 			is: ErrDirective,
 			contains: []string{
 				".types.A.fields.C.merge: option file merge option append on field",
@@ -410,7 +453,7 @@ func TestOptionFileErrors(t *testing.T) {
 		{
 			name: "merge on an ignored type",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n      D:\n        ignore: true\n" +
-				"        fields:\n          N: {merge: overwrite}\n",
+				"        fields:\n          N:\n            merge: overwrite\n",
 			is: ErrDirective,
 			contains: []string{
 				".types.D.fields.N.merge: option file merge option on field",
@@ -420,7 +463,7 @@ func TestOptionFileErrors(t *testing.T) {
 		{
 			name: "flag without name",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
-				"          C:\n            flag: {short: c}\n",
+				"          C:\n            flag:\n              short: c\n",
 			is: ErrDirective,
 			contains: []string{
 				".types.A.fields.C.flag: option file flag option on field",
@@ -430,7 +473,7 @@ func TestOptionFileErrors(t *testing.T) {
 		{
 			name: "flag on a nested partial",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
-				"          D:\n            flag: {name: d}\n",
+				"          D:\n            flag:\n              name: d\n",
 			is: ErrDirective,
 			contains: []string{
 				".types.A.fields.D.flag: option file flag option on field",
@@ -440,7 +483,7 @@ func TestOptionFileErrors(t *testing.T) {
 		{
 			name: "fieldmask without name",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fieldmask: true\n" +
-				"        fields:\n          C:\n            fieldmask: {}\n",
+				"        fields:\n          C:\n            fieldmask:\n",
 			is: ErrDirective,
 			contains: []string{
 				".types.A.fields.C.fieldmask: option file fieldmask option on field",
@@ -450,7 +493,7 @@ func TestOptionFileErrors(t *testing.T) {
 		{
 			name: "fieldmask name on a type without field masks",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
-				"          C:\n            fieldmask: {name: c}\n",
+				"          C:\n            fieldmask:\n              name: c\n",
 			is: ErrDirective,
 			contains: []string{
 				".types.A.fields.C.fieldmask: option file fieldmask option on field",
@@ -470,7 +513,8 @@ func TestOptionFileErrors(t *testing.T) {
 		{
 			name: "flag name taken",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
-				"          C:\n            flag: {name: x}\n          E:\n            flag: {name: x}\n",
+				"          C:\n            flag:\n              name: x\n" +
+				"          E:\n            flag:\n              name: x\n",
 			is: ErrDirective,
 			contains: []string{
 				".types.A.fields.E.flag: ",
@@ -480,8 +524,8 @@ func TestOptionFileErrors(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{"x.go": src}, Options{
-				OptionFile: optionFile(t, "version: 1\n"+c.doc),
+			_, _, err := generateWithOptions(t, map[string]string{"x.go": src}, optionDocs{
+				central: "version: 1\n" + c.doc,
 			})
 			assert.ErrorIs(t, err, c.is)
 
@@ -492,11 +536,18 @@ func TestOptionFileErrors(t *testing.T) {
 	}
 }
 
-func TestOptionFileConflicts(t *testing.T) {
+// TestOptionFileOverrides checks that the option file entry of a type
+// replaces every directive on the type, its group and its fields, with a
+// warning naming both.
+func TestOptionFileOverrides(t *testing.T) {
 	cases := []struct {
 		name string
 		src  string
 		doc  string
+		// at is the line of the first directive of A.
+		at string
+		// partials are the partial types generated.
+		partials []string
 		// contains are substrings the error must hold; empty means no
 		// error.
 		contains []string
@@ -506,123 +557,85 @@ func TestOptionFileConflicts(t *testing.T) {
 			src: "package x\n\n//kama:partial\ntype A struct {\n" +
 				"\t//kama:partial:merge append\n\tB []int\n}\n",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n" +
-				"        fields:\n          B: {merge: overwrite}\n",
-			contains: []string{
-				`"append" by //kama:partial:merge (`,
-				`x.go:5:2) and "overwrite"`,
-				`"overwrite" by option file merge option (opts.yaml: packages.`,
-				".types.A.fields.B.merge)",
-			},
+				"        fields:\n          B:\n            merge: overwrite\n",
+			at:       "x.go:3:1",
+			partials: []string{"APartial"},
 		},
 		{
 			name: "same merge",
 			src: "package x\n\n//kama:partial\ntype A struct {\n" +
 				"\t//kama:partial:merge append\n\tB []int\n}\n",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n" +
-				"        fields:\n          B: {merge: append}\n",
+				"        fields:\n          B:\n            merge: append\n",
+			at:       "x.go:3:1",
+			partials: []string{"APartial"},
 		},
 		{
-			name: "flag",
-			src: "package x\n\n//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:flag name=b\n\tB int\n}\n",
-			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
-				"          B:\n            flag: {name: b, usage: the b}\n",
-			contains: []string{
-				"by //kama:partial:flag (", "x.go:5:2) and",
-				`usage="the b" by option file flag option (opts.yaml: `,
-				".types.A.fields.B.flag)",
-			},
+			name: "marked by directive and ignored by file",
+			src:  "package x\n\n//kama:partial\ntype A struct{ B int }\n",
+			doc:  "packages:\n  $pkg:\n    types:\n      A:\n        ignore: true\n",
+			at:   "x.go:3:1",
 		},
 		{
-			name: "same flag",
-			src: "package x\n\n//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:flag name=b short=b\n\tB int\n}\n",
-			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
-				"          B:\n            flag: {name: b, short: b}\n",
-		},
-		{
-			name: "fieldmask name",
-			src: "package x\n\n//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b\n\tB int\n}\n",
-			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
-				"          B:\n            fieldmask: {name: c}\n",
-			contains: []string{
-				`the field mask name of field `,
-				`"b" by //kama:partial:fieldmask (`, "x.go:6:2) and",
-				`"c" by option file fieldmask option (opts.yaml: `,
-				".types.A.fields.B.fieldmask)",
-			},
-		},
-		{
-			name: "same fieldmask",
-			src: "package x\n\n//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b\n\tB int\n}\n",
-			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fieldmask: true\n" +
-				"        fields:\n          B:\n            fieldmask: {name: b}\n",
-		},
-		{
-			name: "fieldmask type by file and name by directive",
-			src: "package x\n\n//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b\n\tB int\n}\n",
-			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fieldmask: true\n",
+			name:     "ignored by directive and marked by file",
+			src:      "package x\n\n//kama:partial ignore\ntype A struct{ B int }\n",
+			doc:      "packages:\n  $pkg:\n    types:\n      A:\n",
+			at:       "x.go:3:1",
+			partials: []string{"APartial"},
 		},
 		{
 			name: "fieldmask type by directive and name by file",
 			src:  "package x\n\n//kama:partial\n//kama:partial:fieldmask\ntype A struct{ B int }\n",
 			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fields:\n" +
-				"          B:\n            fieldmask: {name: b}\n",
+				"          B:\n            fieldmask:\n              name: b\n",
+			contains: []string{"A does not have field masks enabled"},
 		},
 		{
-			name: "fieldmask name by file conflicting with directive on a type enabled by both",
-			src: "package x\n\n//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b\n\tB int\n}\n",
-			doc: "packages:\n  $pkg:\n    types:\n      A:\n        fieldmask: true\n" +
-				"        fields:\n          B:\n            fieldmask: {name: c}\n",
-			contains: []string{
-				`"b" by //kama:partial:fieldmask (`,
-				`"c" by option file fieldmask option (opts.yaml: `,
-			},
-		},
-		{
-			name: "marked by directive and ignored by file",
-			src:  "package x\n\n//kama:partial\ntype A struct{ B int }\n",
-			doc:  "packages:\n  $pkg:\n    types:\n      A: {ignore: true}\n",
-			contains: []string{
-				"marked by //kama:partial (", "x.go:3:1) and ignored",
-				"ignored by option file type entry (opts.yaml: ",
-				".types.A.ignore)",
-			},
-		},
-		{
-			name: "ignored by directive and marked by file",
-			src:  "package x\n\n//kama:partial ignore\ntype A struct{ B int }\n",
-			doc:  "packages:\n  $pkg:\n    types:\n      A:\n",
-			contains: []string{
-				"marked by option file type entry (opts.yaml: ",
-				"ignored by //kama:partial (", "x.go:3:1)",
-			},
-		},
-		{
-			name: "same mark",
-			src:  "package x\n\n//kama:partial package\n\n//kama:partial\ntype A struct{ B int }\n",
-			doc:  "packages:\n  $pkg:\n    all_types: true\n    types:\n      A:\n",
+			name: "package marks kept beside a type entry",
+			src: "package x\n\n//kama:partial package\n\n//kama:partial\ntype A struct{ B int }\n\n" +
+				"type B struct{ C int }\n",
+			doc:      "packages:\n  $pkg:\n    types:\n      A:\n        ignore: true\n",
+			at:       "x.go:5:1",
+			partials: []string{"BPartial"},
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{"x.go": c.src}, Options{
-				OptionFile: optionFile(t, "version: 1\n"+c.doc),
-			})
-			if len(c.contains) == 0 {
-				assert.NilError(t, err)
+			files, warnings, err := generateWithOptions(
+				t,
+				map[string]string{"x.go": c.src},
+				optionDocs{central: "version: 1\n" + c.doc},
+			)
+			if len(c.contains) > 0 {
+				assert.ErrorIs(t, err, ErrDirective)
+
+				for _, s := range c.contains {
+					assert.ErrorContains(t, err, s)
+				}
+
 				return
 			}
 
-			assert.ErrorIs(t, err, genopt.ErrConflict)
+			assert.NilError(t, err)
+			assert.Equal(t, len(warnings), 1, "%v", warnings)
+			assert.ErrorIs(t, warnings[0], genopt.ErrOverridden)
+			assert.ErrorContains(
+				t,
+				warnings[0],
+				"type "+modulePath(t)+".A: opts.yaml: packages."+strconv.Quote(modulePath(t))+
+					".types.A overrides ",
+			)
+			assert.ErrorContains(t, warnings[0], inlineDir(t)+"/"+c.at)
 
-			for _, s := range c.contains {
-				assert.ErrorContains(t, err, s)
+			var partials []string
+
+			for _, f := range files {
+				if strings.HasSuffix(f.Path, "x.kama_partial.go") {
+					partials = partialTypes(t, string(f.Content))
+				}
 			}
+
+			assert.DeepEqual(t, partials, c.partials)
 		})
 	}
 }
@@ -661,7 +674,13 @@ func TestProcOptionFile(t *testing.T) {
 		return i.Run(ctx, nopReporter{})
 	}
 	err = run(dir + "/missing")
+	assert.ErrorIs(t, err, ErrOptionFile)
 	assert.ErrorIs(t, err, fileloader.ErrNotFound)
+
+	assert.NilError(t, f.Write(ctx, dir+"/bad.toml", []byte("version = 2\n")))
+	err = run(dir + "/bad")
+	assert.ErrorIs(t, err, ErrOptionFile)
+	assert.ErrorContains(t, err, dir+"/bad.toml: version: unsupported version 2")
 
 	// The option file is staged only, so Run reads it through the overlay.
 	assert.NilError(t, f.Write(ctx, dir+"/partial.yaml", []byte(

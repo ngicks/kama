@@ -47,10 +47,12 @@ func TestFileHeader(t *testing.T) {
 			opts: Options{
 				Merge:       MergeAppend,
 				MergeNested: MergeNestedOverwrite,
-				OptionFile:  &OptionFile{Name: "kama/partial.yaml"},
-				PackageOptionFiles: []*OptionFile{
-					{Name: "other/kama_partial.yaml", Package: "example.com/other"},
-					{Name: "x/kama_partial.yaml", Package: "example.com/x"},
+				Loaded: &LoadedOptions{
+					Files: []string{"kama/partial.yaml"},
+					PackageFiles: map[string]string{
+						"example.com/other": "other/kama_partial.yaml",
+						"example.com/x":     "x/kama_partial.yaml",
+					},
 				},
 			},
 			params: "//\tmerge: \"append\"\n//\tmerge_nested: \"overwrite\"\n" +
@@ -59,17 +61,23 @@ func TestFileHeader(t *testing.T) {
 		},
 		{
 			name: "package option file of another package",
-			opts: Options{PackageOptionFiles: []*OptionFile{
-				{Name: "other/kama_partial.yaml", Package: "example.com/other"},
+			opts: Options{Loaded: &LoadedOptions{
+				PackageFiles: map[string]string{"example.com/other": "other/kama_partial.yaml"},
 			}},
 			params: "//\tmerge: \"overwrite\"\n//\tmerge_nested: \"recursive\"\n" +
 				"//\toption_file: null\n//\tpackage_option_file: null",
 		},
 		{
 			name: "quoted",
-			opts: Options{OptionFile: &OptionFile{Name: "my \"opts\".yaml"}},
+			opts: Options{Loaded: &LoadedOptions{Files: []string{"my \"opts\".yaml"}}},
 			params: "//\tmerge: \"overwrite\"\n//\tmerge_nested: \"recursive\"\n" +
 				"//\toption_file: \"my \\\"opts\\\".yaml\"\n//\tpackage_option_file: null",
+		},
+		{
+			name: "several option files",
+			opts: Options{Loaded: &LoadedOptions{Files: []string{"a.yaml", "b.yaml"}}},
+			params: "//\tmerge: \"overwrite\"\n//\tmerge_nested: \"recursive\"\n" +
+				"//\toption_file: [\"a.yaml\",\"b.yaml\"]\n//\tpackage_option_file: null",
 		},
 	}
 	for _, c := range cases {

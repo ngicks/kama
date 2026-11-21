@@ -1,8 +1,8 @@
 // Package fileloader decodes structured metadata files in JSON, YAML or TOML.
 //
-// Callers name one base path and the formats they accept, in priority order.
-// The first format whose file is present is decoded. JSON files are decoded
-// with encoding/json/v2.
+// An Input finds the files to load. PathInput names one base path and the
+// formats it accepts, in priority order, and finds the first format whose
+// file is present. JSON files are decoded with encoding/json/v2.
 package fileloader
 
 import (
@@ -59,6 +59,45 @@ func FormatOf(name string) (Format, bool) {
 		Unpack()
 }
 
+// Input finds metadata files.
+type Input interface {
+	// Find returns the names of the files to load, slash-separated and
+	// relative to the root of fsys. It returns no name when no file is
+	// present.
+	Find(fsys fs.FS) ([]string, error)
+}
+
+// Document is a file LoadAll decoded.
+type Document struct {
+	// Name is the name of the file as Input.Find returned it.
+	Name string
+	// Data is the document decoded into an any.
+	Data any
+}
+
+// LoadAll decodes every file in finds in fsys, sorted by name in byte
+// order. The extension of each name gives its format, as FormatOf does.
+func LoadAll(fsys fs.FS, in Input) ([]Document, error) {
+	names, err := in.Find(fsys)
+	if err != nil {
+		return nil, err
+	}
+
+	names = slices.Sorted(slices.Values(names))
+	docs := make([]Document, 0, len(names))
+
+	for _, name := range names {
+		var data any
+		if err := LoadFile(fsys, name, &data); err != nil {
+			return nil, err
+		}
+
+		docs = append(docs, Document{Name: name, Data: data})
+	}
+
+	return docs, nil
+}
+
 // PathInput names a metadata file without its extension and the formats it
 // may be written in. Its keys in a workflow spec are base and formats.
 type PathInput struct {
@@ -82,6 +121,30 @@ func (p PathInput) Candidates() ([]string, error) {
 		FlatMap(func(f Format) iter.Seq[string] { return slices.Values(f.Extensions()) }).
 		Map(func(ext string) string { return p.Base + ext }).
 		CollectSlice(), nil
+}
+
+// Find returns the first candidate of p present in fsys, or no name when
+// none is present. It implements Input.
+func (p PathInput) Find(fsys fs.FS) ([]string, error) {
+	candidates, err := p.Candidates()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, name := range candidates {
+		_, err := fs.Stat(fsys, name)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("fileloader: stat %q: %w", name, err)
+		}
+
+		return []string{name}, nil
+	}
+
+	return nil, nil
 }
 
 // Decode decodes one document from r into v.

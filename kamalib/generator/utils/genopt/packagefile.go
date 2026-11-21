@@ -4,8 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"path"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/ngicks/opiter"
 
@@ -15,237 +18,292 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 )
 
-// OptionFileDirective is the tool-wide directive naming the option files of
+// optionFileDirective is the tool-wide directive naming the option files of
 // a package, as in //kama:option-file partial=opts.yaml.
-const OptionFileDirective = "option-file"
+const optionFileDirective = "option-file"
 
-// ErrPackageFile reports an invalid option-file directive or a package
-// option file that cannot be loaded.
-var ErrPackageFile = errors.New("genopt: invalid package option file")
-
-// PackageFileInput selects the package option files of one generator.
-type PackageFileInput struct {
-	// Generator is the key of the generator in the args of the option-file
-	// directive.
-	Generator string
-	// Default is probed in the directory of each package whose directives
-	// name no file for Generator. Its Base is relative to the package
-	// directory. An empty Base probes nothing.
-	Default fileloader.PathInput
-}
-
-// PackageFile is the option file of a package.
-type PackageFile struct {
-	PkgPath string
-	// Name is the slash-separated path of the file relative to the root of
-	// the fs.FS it is read from.
-	Name string
-	// Data is the document decoded into an any.
-	Data any
-}
-
-// LoadPackageFiles returns the option files of in.Generator for pkgs, at
-// most one per package, ordered by package path.
-//
-// fsys is rooted at root, an absolute directory of the OS. pkgs must be
-// loaded as Collect requires, and their directories must lie under root.
-// A package path given twice, as by a test variant, counts once.
-//
-// A free-floating comment //toolName:option-file <generator>=<path> ...
-// names the option file of each generator for the package of its file.
-// path is slash-separated and relative to the package directory. It may
-// hold "..", but it must not be absolute or leave root. Its extension
-// gives the format, as fileloader.FormatOf does. Keys other than
-// in.Generator are left to other generators.
-//
-// A package without the directive for in.Generator gets the first file of
-// in.Default present in its directory, or none.
-//
-// The directive on a type or a field, an arg without "=", an empty path,
-// in.Generator named twice for one package, and a named file that is
-// missing or does not decode are errors wrapping ErrPackageFile.
-func LoadPackageFiles(
-	fsys fs.FS,
-	root string,
-	pkgs []*packages.Package,
-	toolName string,
-	in PackageFileInput,
-) ([]PackageFile, error) {
-	if in.Default.Base != "" {
-		if len(in.Default.Formats) == 0 {
-			return nil, fmt.Errorf("%w: default %q has no formats", ErrPackageFile, in.Default.Base)
-		}
-
-		if _, err := in.Default.Candidates(); err != nil {
-			return nil, fmt.Errorf("%w: default: %w", ErrPackageFile, err)
-		}
-	}
-
-	// A test variant shares the path of its package and holds the test
-	// files too, so the package itself is preferred.
+// fromFiles loads the central option files and the package option files
+// of the packages of ws and keeps the options of each type from the file
+// that comes first.
+func (l Loader[P, T, F]) fromFiles(fsys fs.FS, root string, ws []walked) (*Loaded[P, T, F], error) {
 	byPath := map[string]*packages.Package{}
-	for _, pkg := range pkgs {
-		if prev, ok := byPath[pkg.PkgPath]; !ok ||
-			(prev.ID != prev.PkgPath && pkg.ID == pkg.PkgPath) {
-			byPath[pkg.PkgPath] = pkg
+	for _, w := range ws {
+		byPath[w.pkg.PkgPath] = w.pkg
+	}
+
+	loaded := &Loaded[P, T, F]{
+		Option:       Option[P, T, F]{Packages: map[string]PackageOption[P, T, F]{}},
+		PackageFiles: map[string]string{},
+	}
+
+	var (
+		layers []map[string]filePackage[P, T, F]
+		errs   []error
+	)
+
+	if l.File != nil {
+		docs, err := fileloader.LoadAll(fsys, l.File)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrOptionFile, err)
+		}
+
+		for _, doc := range docs {
+			loaded.Files = append(loaded.Files, doc.Name)
+
+			layer, err := l.decodeCentral(doc, byPath)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+
+			layers = append(layers, layer)
 		}
 	}
 
-	sorted := opiter.WrapSeq2(opiter.MapsSorted(byPath)).
-		OmitF().
-		CollectSlice()
+	pkgLayer := map[string]filePackage[P, T, F]{}
 
-	raws, err := Collect(sorted, toolName)
-	if err != nil {
-		return nil, err
-	}
+	for _, w := range ws {
+		doc, ok, warnings, err := l.packageFile(fsys, root, w)
+		loaded.Warnings = append(loaded.Warnings, warnings...)
 
-	named, errs := namedFiles(raws, toolName, in.Generator)
-
-	var out []PackageFile
-
-	for _, pkg := range sorted {
-		f, ok, err := loadPackageFile(fsys, root, pkg, named[pkg.PkgPath], in.Default)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
 
-		if ok {
-			out = append(out, f)
+		if !ok {
+			continue
 		}
+
+		loaded.PackageFiles[w.pkg.PkgPath] = doc.Name
+
+		fp, err := l.decodePackageFile(doc, w.pkg)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		pkgLayer[w.pkg.PkgPath] = fp
 	}
 
 	if err := errors.Join(errs...); err != nil {
 		return nil, err
 	}
 
-	return out, nil
-}
+	pkgSources := map[string]Source{}
 
-// namedFile is the path an option-file directive gives a generator.
-type namedFile struct {
-	raw  Raw
-	path string
-}
+	for _, layer := range append(layers, pkgLayer) {
+		for _, pkgPath := range slices.Sorted(maps.Keys(layer)) {
+			fp := layer[pkgPath]
+			po := loaded.Option.Packages[pkgPath]
 
-// namedFiles returns the paths the option-file directives of raws give
-// generator, keyed by package path.
-func namedFiles(raws []Raw, toolName, generator string) (map[string]namedFile, []error) {
-	out := map[string]namedFile{}
+			if fp.hasPackage {
+				if prev, ok := pkgSources[pkgPath]; ok {
+					loaded.Warnings = append(
+						loaded.Warnings,
+						overridden("package "+pkgPath, fp.src, prev),
+					)
+				}
 
-	var errs []error
+				pkgSources[pkgPath] = fp.src
+				po.Package = fp.p
+			}
 
-	fail := func(r Raw, format string, args ...any) {
-		errs = append(errs, fmt.Errorf(
-			"%w: %s: //%s:%s: "+format,
-			append([]any{ErrPackageFile, r.Origin.Pos, toolName, OptionFileDirective}, args...)...,
-		))
+			loaded.Warnings = append(loaded.Warnings, overlayTypes(&po, pkgPath, fp.types)...)
+			loaded.Option.Packages[pkgPath] = po
+		}
 	}
 
-	for _, r := range raws {
-		if r.Directive != OptionFileDirective {
-			continue
+	return loaded, nil
+}
+
+// namedFile is the path an option-file directive gives the generator.
+type namedFile struct {
+	path string
+	pos  string
+}
+
+// packageFile reads the package option file of the package of w: the file
+// its option-file directives name, or else the last file PackageFile finds
+// in its directory.
+func (l Loader[P, T, F]) packageFile(
+	fsys fs.FS,
+	root string,
+	w walked,
+) (fileloader.Document, bool, []error, error) {
+	named, warnings, err := l.namedFiles(w)
+	if err != nil {
+		return fileloader.Document{}, false, nil, err
+	}
+
+	pkg := w.pkg
+
+	if len(named) == 0 {
+		if l.PackageFile == nil {
+			return fileloader.Document{}, false, warnings, nil
 		}
 
-		if r.Key.Type != "" {
-			fail(r, "applies to free-floating comments only")
-			continue
-		}
-
-		kvs, err := dircmnt.ParseArgsKeyValue(r.Args)
+		dir, err := packageDir(root, pkg)
 		if err != nil {
-			fail(r, "%w", err)
+			// A package outside root cannot hold a file of fsys, which a
+			// default file does not require.
+			return fileloader.Document{}, false, warnings, nil
+		}
+
+		sub, err := fs.Sub(fsys, dir)
+		if err != nil {
+			return fileloader.Document{}, false, nil, fmt.Errorf(
+				"%w: package %s: %w", ErrPackageFile, pkg.PkgPath, err,
+			)
+		}
+
+		names, err := l.PackageFile.Find(sub)
+		if err != nil {
+			return fileloader.Document{}, false, nil, fmt.Errorf(
+				"%w: package %s: %w", ErrPackageFile, pkg.PkgPath, err,
+			)
+		}
+
+		if len(names) == 0 {
+			return fileloader.Document{}, false, warnings, nil
+		}
+
+		names = slices.Sorted(slices.Values(names))
+		for i := range names {
+			names[i] = path.Join(dir, names[i])
+		}
+
+		// Every file is read so that a file the last one overrides still
+		// fails to load when it does not decode.
+		var doc fileloader.Document
+
+		last := names[len(names)-1]
+		for _, name := range names {
+			doc, err = loadDocument(fsys, name)
+			if err != nil {
+				return fileloader.Document{}, false, nil, fmt.Errorf(
+					"%w: package %s: %w", ErrPackageFile, pkg.PkgPath, err,
+				)
+			}
+
+			if name != last {
+				warnings = append(warnings, fmt.Errorf(
+					"%w: package %s: %s overrides %s", ErrOverridden, pkg.PkgPath, last, name,
+				))
+			}
+		}
+
+		return doc, true, warnings, nil
+	}
+
+	last := named[len(named)-1]
+
+	dir, err := packageDir(root, pkg)
+	if err != nil {
+		return fileloader.Document{}, false, nil, fmt.Errorf(
+			"%w: %s: %w", ErrPackageFile, last.pos, err,
+		)
+	}
+
+	name, err := resolve(dir, last.path)
+	if err != nil {
+		return fileloader.Document{}, false, nil, fmt.Errorf(
+			"%w: %s: %w", ErrPackageFile, last.pos, err,
+		)
+	}
+
+	doc, err := loadDocument(fsys, name)
+	if err != nil {
+		return fileloader.Document{}, false, nil, fmt.Errorf(
+			"%w: %s: %w", ErrPackageFile, last.pos, err,
+		)
+	}
+
+	return doc, true, warnings, nil
+}
+
+// namedFiles returns the paths the option-file directives of w give the
+// generator in position order, with a warning for each but the last.
+func (l Loader[P, T, F]) namedFiles(w walked) ([]namedFile, []error, error) {
+	var (
+		out  []namedFile
+		errs []error
+	)
+
+	spelled := "//" + l.ToolName + ":" + optionFileDirective
+	isOptionFile := func(ln line) (string, bool) { return "", ln.directive == optionFileDirective }
+
+	for _, tl := range groupLines(w.lines, isOptionFile) {
+		pos := tl.names[0].lines[0].pos
+		fail := func(format string, args ...any) {
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: %s: "+format,
+				append([]any{ErrPackageFile, pos, spelled}, args...)...,
+			))
+		}
+
+		if tl.target.Kind != TargetFreeFloating {
+			fail("applies to free-floating comments only")
+			continue
+		}
+
+		kvs, err := dircmnt.ParseArgsKeyValue(joinArgs(tl.names[0].lines))
+		if err != nil {
+			fail("%w", err)
 			continue
 		}
 
 		for _, kv := range kvs {
 			switch {
 			case !kv.HasValue:
-				fail(r, "%q has no path; want <generator>=<path>", kv.Key)
-				continue
-			case kv.Key != generator:
-				continue
+				fail("%q has no path; want <generator>=<path>", kv.Key)
+			case kv.Key != l.Generator:
 			case kv.Value == "":
-				fail(r, "empty path for %s", generator)
-				continue
+				fail("empty path for %s", l.Generator)
+			default:
+				out = append(out, namedFile{path: kv.Value, pos: pos.String()})
 			}
-
-			prev, ok := out[r.Key.PkgPath]
-			if !ok {
-				out[r.Key.PkgPath] = namedFile{raw: r, path: kv.Value}
-				continue
-			}
-
-			fail(r, "second file for %s in package %s; the first is at %s",
-				generator, r.Key.PkgPath, prev.raw.Origin.Pos)
 		}
 	}
 
-	return out, errs
+	if err := errors.Join(errs...); err != nil {
+		return nil, nil, err
+	}
+
+	var warnings []error
+
+	if len(out) > 1 {
+		last := out[len(out)-1]
+		for _, n := range out[:len(out)-1] {
+			warnings = append(warnings, fmt.Errorf(
+				"%w: package %s: %s %s=%s (%s) overrides %s=%s (%s)",
+				ErrOverridden, w.pkg.PkgPath, spelled,
+				l.Generator, last.path, last.pos, l.Generator, n.path, n.pos,
+			))
+		}
+	}
+
+	return out, warnings, nil
 }
 
-// loadPackageFile loads the file named by the directive, or the default
-// file of pkg when named is the zero value.
-func loadPackageFile(
-	fsys fs.FS,
-	root string,
-	pkg *packages.Package,
-	named namedFile,
-	def fileloader.PathInput,
-) (PackageFile, bool, error) {
-	if named.path == "" && def.Base == "" {
-		return PackageFile{}, false, nil
-	}
+// joinArgs joins the args of lines, the lines of one directive on one
+// target, as if they were written on one line.
+func joinArgs(lines []line) string {
+	return strings.Join(
+		opiter.WrapSeq(slices.Values(lines)).
+			Map(func(ln line) string { return ln.args }).
+			CollectSlice(),
+		" ",
+	)
+}
 
-	dir, err := packageDir(root, pkg)
-
-	if named.path == "" {
-		if err != nil {
-			// A package outside root cannot hold a file of fsys, which
-			// probing does not require.
-			return PackageFile{}, false, nil
-		}
-
-		var data any
-
-		name, err := fileloader.Load(
-			fsys,
-			fileloader.PathInput{Base: path.Join(dir, def.Base), Formats: def.Formats},
-			&data,
-		)
-		if errors.Is(err, fileloader.ErrNotFound) {
-			return PackageFile{}, false, nil
-		}
-
-		if err != nil {
-			return PackageFile{}, false, fmt.Errorf(
-				"%w: package %s: %w",
-				ErrPackageFile,
-				pkg.PkgPath,
-				err,
-			)
-		}
-
-		return PackageFile{PkgPath: pkg.PkgPath, Name: name, Data: data}, true, nil
-	}
-
-	pos := named.raw.Origin.Pos
-	if err != nil {
-		return PackageFile{}, false, fmt.Errorf("%w: %s: %w", ErrPackageFile, pos, err)
-	}
-
-	name, err := resolve(dir, named.path)
-	if err != nil {
-		return PackageFile{}, false, fmt.Errorf("%w: %s: %w", ErrPackageFile, pos, err)
-	}
-
+func loadDocument(fsys fs.FS, name string) (fileloader.Document, error) {
 	var data any
 	if err := fileloader.LoadFile(fsys, name, &data); err != nil {
-		return PackageFile{}, false, fmt.Errorf("%w: %s: %w", ErrPackageFile, pos, err)
+		return fileloader.Document{}, err
 	}
 
-	return PackageFile{PkgPath: pkg.PkgPath, Name: name, Data: data}, true, nil
+	return fileloader.Document{Name: name, Data: data}, nil
 }
 
 // resolve returns the path p names relative to the root, p being relative

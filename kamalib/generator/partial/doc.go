@@ -10,7 +10,10 @@
 // Targets are taken from the loaded packages only, by directives or by the
 // option file entries standing for them:
 //
-//   - //kama:partial in the doc comment of a type marks it.
+//   - //kama:partial in the doc comment of a type marks it. In the doc
+//     comment of a type declaration with several specs, as in
+//     type ( A struct{}; B struct{} ), it marks every type of the
+//     declaration, and so do the other directives of types.
 //   - //kama:partial file in a free-floating comment, one that is not the
 //     doc or line comment of any declaration, marks every type of the
 //     file.
@@ -36,13 +39,21 @@
 // //kama:partial:flag under Flags, //kama:partial:fieldmask under Field
 // mask, and any other //kama:partial:<name> is an error.
 //
+// Several lines of one directive on one target count as one line. Their
+// args are joined in source order, so //kama:partial:flag name=a on one
+// line and //kama:partial:flag usage="the a" on the next give one flag. A
+// name given twice in the joined args is an error. Errors about joined
+// lines name the position of the first line. The free-floating comments
+// of one file are one target.
+//
 // # Option file
 //
 // An option file gives the options of the directives for types that cannot
-// carry them, such as generated code. Options.OptionFile holds it, and
-// ProcParam.OptionFile names the file Proc reads. A package may also have
-// an option file of its own, described under Package option file. The file
-// is JSON, YAML or TOML:
+// carry them, such as generated code. ProcParam.OptionFile names the file
+// Proc reads. Options.Loaded holds the options of the directives and the
+// option files. The Loader of NewLoader loads them. A package may also
+// have an option file of its own, described under Package option
+// file. The file is JSON, YAML or TOML:
 //
 //	version: 1
 //	packages:
@@ -70,28 +81,29 @@
 // //kama:partial:flag and of the args of //kama:partial:fieldmask. The file has no equivalent of
 // //kama:partial file. version is required and is 1. An unknown key, a
 // value of the wrong type, a package that is not loaded, a type the
-// package does not declare and a field its struct type does not declare
-// are errors naming the file and the key path. Keys are case-sensitive.
-// A JSON file is decoded with encoding/json/v2. A duplicate key, invalid
-// UTF-8 and data after the top-level value make it fail to load.
+// package does not declare, a field its struct type does not declare and
+// fields of a type that is not a struct type are errors naming the file
+// and the key path. Keys are case-sensitive. A JSON file is decoded with
+// encoding/json/v2. A duplicate key, invalid UTF-8 and data after the
+// top-level value make it fail to load.
 //
-// The entries of the file and the directives give the same output. An
-// option set by both a directive and the file is allowed when both give
-// the same value. Different values, as for a type marked by one and
-// ignored by the other, or two merge strategies, flags or path segments of
-// one field, are errors wrapping genopt.ErrConflict and naming both
-// origins. Errors
-// about an option name its directive position or its key path in the
-// file.
+// The entries of the file and the directives give the same output. The
+// options of one type come from one source: its entry in an option file,
+// or else its directives. The entry of a type replaces every directive on
+// the type, on its type declaration and on its fields, even those the entry
+// does not set. Generate returns a warning wrapping genopt.ErrOverridden
+// for a type whose directives are replaced, naming the position of the
+// first directive and the key path of the entry. The free-floating
+// directives stay in effect beside the file, so //kama:partial file and
+// //kama:partial package still mark types. Errors about an option name its
+// directive position or its key path in the file.
 //
 // # Package option file
 //
 // A package option file gives the options of a single package. Its
 // document has no packages level: version, all_types and types sit at the
 // top, with the meaning and vocabulary of one entry of packages of the
-// option file. Options.PackageOptionFiles holds such files, as
-// DecodePackageOptionFile returns them, and Proc reads them for every
-// loaded package:
+// option file. Proc reads the package option file of every loaded package:
 //
 //	version: 1
 //	all_types: true
@@ -110,19 +122,24 @@
 // slash-separated and relative to the package directory. It may hold "..",
 // but an absolute path or a path leaving the root of the out of Proc is an
 // error. The extension gives the format: .yaml, .yml, .json or .toml. A
-// named file that does not exist is an error, and so is a second
-// partial=<path> for one package. Several packages may name one file; its
-// options apply to each of them.
+// named file that does not exist is an error. Several packages may name one
+// file; its options apply to each of them. The directive follows the rule
+// of joined lines. A package naming partial more than once, in one comment
+// or in several files, uses the last one in file name and position order,
+// and Proc reports a warning for each other one.
 //
 // A package without the directive gets kama_partial.yaml, .yml, .json or
 // .toml in its directory, the first one present in that order, and no
 // package option file when none is present.
 //
 // The options of a package option file meet those of the directives and of
-// the option file under the rule above: the same option with the same
-// value is allowed, and different values are errors wrapping
-// genopt.ErrConflict and naming both origins. Errors about an entry name
-// the file and the key path from its top level.
+// the option file under the rule above, with the package option file first:
+// the entry of a type in the package option file replaces the entry of the
+// type in the option file and the directives of the type, with a warning
+// for each. all_types of a package option file replaces the all_types of
+// the entry of the package in the option file the same way, when both set
+// it. Errors about an entry name the file and the key path from its top
+// level.
 //
 // # Type mapping
 //
@@ -280,9 +297,9 @@
 // overwrite. //kama:partial:merge <strategy> on a source field sets its
 // strategy: overwrite or append for slices and maps, recursive or
 // overwrite for partial values, any of the three for slice and map
-// partial values, and overwrite for other fields. Any other strategy, a
-// second directive on a field, the directive on a type or a file, and the
-// directive on a field of a type without partial variant are errors.
+// partial values, and overwrite for other fields. Any other strategy, args
+// holding more than one strategy, the directive on a type or a file, and
+// the directive on a field of a type without partial variant are errors.
 //
 // The Merge of a slice or map partial takes Options.Merge and treats nil
 // as undefined: overwrite gives r unless r is nil, append concatenates the
@@ -414,10 +431,10 @@
 //
 //	//kama:partial:flag name=<name> short=<c> usage="<text>"
 //
-// The args are parsed by genopt.ParseArgs. name is required, and has no
-// leading -, no white space, no control character and no =. short is
+// The args are parsed by dircmnt.ParseArgsKeyValue. name is required, and
+// has no leading -, no white space, no control character and no =. short is
 // optional and is a single ASCII character. usage is optional. An unknown
-// key, a second directive on a field, the directive on a type or a file,
+// key, a key given twice, the directive on a type or a file,
 // the directive on a field of a type without partial variant, the
 // directive on a blank field, and two fields of one partial type with one
 // flag name or shorthand are errors.
@@ -489,12 +506,13 @@
 //
 //	//kama:partial:fieldmask name=<segment>
 //
-// on the field sets another segment. genopt.ParseArgs parses the args.
+// on the field sets another segment. dircmnt.ParseArgsKeyValue parses the
+// args.
 // name is required. It must not be empty or hold a dot. Json tags and
 // other spellings of the field name give no segments. A path holds no
 // index, map key or wildcard. These are errors:
 //
-//   - an unknown key, or a second directive on a type or a field
+//   - an unknown key, or a key given twice
 //   - args on a type
 //   - the directive on a type without a struct partial variant, or on a
 //     free-floating comment
@@ -597,9 +615,11 @@
 // genhelper.GeneratorParams prints the header. params lists merge,
 // merge_nested, option_file and package_option_file sorted by key, with
 // the defaults applied, each value as JSON. option_file is the name of the
-// option file read, as OptionFile.Name gives it, and null without an
-// option file. package_option_file is the name of the package option file
-// of the package the file belongs to, and null when the package has none.
+// option file read, relative to the root of the out of Proc, and null
+// without an option file. It is the list of names when Options.Loaded
+// holds several. package_option_file is the name of the package option
+// file of the package the file belongs to, and null when the package has
+// none.
 // generated is the time Options.Now returns, in UTC to the second.
 //
 // Proc keeps a file that already exists, on disk or staged by an earlier

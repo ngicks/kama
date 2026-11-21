@@ -6,12 +6,10 @@ import (
 	"go/types"
 	"maps"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/ngicks/opiter"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -19,100 +17,10 @@ import (
 // gets.
 var fieldMaskMethodNames = []string{"FieldMask", "FromValueWithMask"}
 
-// maskName is a decoded //kama:partial:fieldmask directive or option file
-// entry of a field.
+// maskName is the field mask name of a field.
 type maskName struct {
 	name string
-	raw  genopt.Raw
-}
-
-// fieldMask records //kama:partial:fieldmask.
-func (m *marks) fieldMask(r genopt.Raw) error {
-	pos := r.Origin.Pos
-	switch {
-	case r.Key.Type == "":
-		return fmt.Errorf(
-			"%w: %s: //kama:partial:fieldmask applies to types and struct fields only",
-			ErrDirective, pos,
-		)
-	case r.Key.Field == "":
-		return m.typeFieldMask(r)
-	}
-
-	field := r.Key.PkgPath + "." + r.Key.Type + "." + r.Key.Field
-
-	prev, hasPrev := m.maskNames[r.Key]
-	if hasPrev && prev.raw.Origin.Source == r.Origin.Source {
-		return fmt.Errorf(
-			"%w: %s: second //kama:partial:fieldmask on field %s; the first is at %s",
-			ErrDirective, pos, field, prev.raw.Origin.Pos,
-		)
-	}
-
-	o, err := maskNameOf(r)
-	if err != nil {
-		return fmt.Errorf(
-			"%w: %s: %s on field %s: %w", ErrDirective, origin(r), spelling(r), field, err,
-		)
-	}
-
-	o.raw = r
-	if hasPrev {
-		if prev.name == o.name {
-			return nil
-		}
-
-		return sourceConflict(
-			"the field mask name of field "+field,
-			prev.raw, strconv.Quote(prev.name), r, strconv.Quote(o.name),
-		)
-	}
-
-	m.maskNames[r.Key] = o
-
-	return nil
-}
-
-// typeFieldMask records //kama:partial:fieldmask on a type.
-func (m *marks) typeFieldMask(r genopt.Raw) error {
-	pos := r.Origin.Pos
-	if args := strings.TrimSpace(r.Args); args != "" {
-		return fmt.Errorf(
-			"%w: %s: unknown args %q of //kama:partial:fieldmask on type %s.%s; want none",
-			ErrDirective, pos, args, r.Key.PkgPath, r.Key.Type,
-		)
-	}
-
-	id := typegraph.NewQualifiedType(r.Key.PkgPath, r.Key.Type)
-	if prev, ok := m.masked[id]; ok {
-		if prev.Origin.Source == r.Origin.Source {
-			return fmt.Errorf(
-				"%w: %s: second //kama:partial:fieldmask on type %s.%s; the first is at %s",
-				ErrDirective, pos, r.Key.PkgPath, r.Key.Type, prev.Origin.Pos,
-			)
-		}
-
-		return nil
-	}
-
-	m.masked[id] = r
-
-	return nil
-}
-
-// maskNameOf decodes the field mask name of r. r is an option file entry
-// or a directive with args.
-func maskNameOf(r genopt.Raw) (maskName, error) {
-	if v, ok := r.Value.(FieldMaskOptions); ok {
-		return maskNameFromArgs(map[string]string{"name": v.Name})
-	}
-
-	kv, err := genopt.ParseArgs(r.Args)
-	if err != nil {
-		return maskName{}, err
-	}
-
-	return maskNameFromArgs(kv)
+	src  optionSource
 }
 
 // maskNameFromArgs validates the args of //kama:partial:fieldmask on a
@@ -152,44 +60,47 @@ func (s *selection) checkFieldMaskTargets() error {
 
 	ids := slices.SortedFunc(maps.Keys(s.masked), typegraph.QualifiedType.Compare)
 	for _, id := range ids {
-		r := s.masked[id]
+		src := s.masked[id]
 
 		n := s.targets[id]
 		switch {
 		case n == nil:
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s on type %s.%s; %s has no partial variant",
-				ErrDirective, origin(r), spelling(r), id.PackagePath, id.TypeName, id.TypeName,
+				ErrDirective,
+				src.origin(),
+				src.spelling(),
+				id.PackagePath,
+				id.TypeName,
+				id.TypeName,
 			))
 		case !isStruct(n.Detail.Type):
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s on type %s.%s; field masks apply to struct targets only",
-				ErrDirective, origin(r), spelling(r), id.PackagePath, id.TypeName,
+				ErrDirective, src.origin(), src.spelling(), id.PackagePath, id.TypeName,
 			))
 		}
 	}
 
-	for _, k := range slices.SortedFunc(maps.Keys(s.maskNames), genopt.Key.Compare) {
-		r := s.maskNames[k].raw
-		id := typegraph.NewQualifiedType(k.PkgPath, k.Type)
+	for _, k := range slices.SortedFunc(maps.Keys(s.maskNames), fieldKey.compare) {
+		src := s.maskNames[k].src
+		id := typegraph.NewQualifiedType(k.pkgPath, k.typeName)
 		bad := func(format string, args ...any) {
 			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s on field %s.%s.%s; "+format,
-				slices.Concat([]any{
-					ErrDirective, origin(r), spelling(r), k.PkgPath, k.Type, k.Field,
-				}, args)...,
+				"%w: %s: %s on field %s; "+format,
+				slices.Concat([]any{ErrDirective, src.origin(), src.spelling(), k}, args)...,
 			))
 		}
 
 		n := s.targets[id]
 		switch {
 		case n == nil:
-			bad("%s has no partial variant", k.Type)
+			bad("%s has no partial variant", k.typeName)
 			continue
 		case !s.fieldMasked(id):
-			bad("%s does not have field masks enabled", k.Type)
+			bad("%s does not have field masks enabled", k.typeName)
 			continue
-		case k.Field == "_":
+		case k.field == "_":
 			bad("a blank field has no path")
 			continue
 		}
@@ -201,7 +112,7 @@ func (s *selection) checkFieldMaskTargets() error {
 		// Field names other than _ are unique, so at most one field matches.
 		embedsPartial := opiter.WrapSeq(st.Fields()).
 			ContainsFunc(
-				func(v *types.Var) bool { return v.Name() == k.Field && s.embeddedPartial(n, v) != nil },
+				func(v *types.Var) bool { return v.Name() == k.field && s.embeddedPartial(n, v) != nil },
 			)
 
 		if embedsPartial {
@@ -276,8 +187,7 @@ func (s *selection) maskSegments(n *typegraph.Node) ([]maskSegment, error) {
 
 		seg := v.Name()
 
-		key := genopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: v.Name()}
-		if o, ok := s.maskNames[key]; ok {
+		if o, ok := s.maskNames[fieldKeyOf(n.Id, v.Name())]; ok {
 			seg = o.name
 		}
 

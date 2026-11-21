@@ -7,7 +7,19 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
+
+// parseFlag decodes args as the args of //kama:partial:flag.
+func parseFlag(args string) (flagOption, error) {
+	kv, err := dircmnt.ParseArgsKeyValue(args)
+	if err != nil {
+		return flagOption{}, err
+	}
+
+	return flagFromKeyValues(kv)
+}
 
 func TestParseFlag(t *testing.T) {
 	o, err := parseFlag(`name=dry-run short=d usage="do \"nothing\""`)
@@ -62,11 +74,11 @@ func TestFlagErrors(t *testing.T) {
 			contains: []string{"x.go:5:2", "A.B", `unknown key "x"`},
 		},
 		{
-			name: "second flag",
+			name: "name on two lines",
 			src: head + "//kama:partial\ntype A struct {\n" +
 				"\t//kama:partial:flag name=b\n\tB int //kama:partial:flag name=c\n}\n",
 			is:       ErrDirective,
-			contains: []string{"x.go:6:8", "x.go:5:2", "second", "A.B"},
+			contains: []string{"x.go:5:2", `duplicate name "name"`, "A.B"},
 		},
 		{
 			name:     "on a type",

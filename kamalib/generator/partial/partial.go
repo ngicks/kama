@@ -75,11 +75,10 @@ var (
 	ErrConflict = errors.New("partial: name conflict")
 	// ErrOption reports an invalid Options value.
 	ErrOption = errors.New("partial: invalid option")
-	// ErrOptionFile reports an option file that does not decode, or whose
-	// entries name packages, types or fields that are not loaded. Proc also
-	// wraps errors wrapping genopt.ErrPackageFile in it: an invalid
-	// //kama:option-file directive and a package option file that cannot be
-	// loaded.
+	// ErrOptionFile reports an option file that cannot be loaded or does
+	// not decode, an option file whose entries name packages, types or
+	// fields that are not loaded, and an invalid //kama:option-file
+	// directive. It wraps the error of genopt too.
 	ErrOptionFile = errors.New("partial: invalid option file")
 	// ErrStale reports a file of a loaded package that carries the marker of
 	// the generator but that the run did not produce. It is a warning.
@@ -124,13 +123,11 @@ type Options struct {
 	// Registry tells the declarations emitted by generators. It is
 	// genmark.DefaultRegistry when nil.
 	Registry *genmark.Registry
-	// OptionFile holds options given beside the directives, as
-	// LoadOptionFile or DecodeOptionFile return them. It is none when nil.
-	OptionFile *OptionFile
-	// PackageOptionFiles hold the options of package option files, as
-	// DecodePackageOptionFile returns them, at most one per package. The
-	// options of each apply to its own package.
-	PackageOptionFiles []*OptionFile
+	// Loaded holds the options of the directives and the option files of
+	// the packages Generate is given. The Loader of NewLoader loads them.
+	// When Loaded is nil, Generate loads the directives itself with
+	// LoadPackages and reads no option file.
+	Loaded *LoadedOptions
 	// Now gives the time the header of the generated files records. It is
 	// time.Now when nil.
 	Now func() time.Time
@@ -166,24 +163,6 @@ func (o Options) Validate() error {
 		return fmt.Errorf("%w: merge_nested %q", ErrOption, o.MergeNested)
 	}
 
-	seen := map[string]string{}
-
-	for _, f := range o.PackageOptionFiles {
-		switch {
-		case f == nil || f.Package == "":
-			return fmt.Errorf("%w: a package option file names no package", ErrOption)
-		}
-
-		if prev, ok := seen[f.Package]; ok {
-			return fmt.Errorf(
-				"%w: package %s has two option files, %s and %s",
-				ErrOption, f.Package, prev, f.Name,
-			)
-		}
-
-		seen[f.Package] = f.Name
-	}
-
 	return nil
 }
 
@@ -198,10 +177,10 @@ type File = base.File
 // package documentation for target selection, the type mapping, the
 // methods and their helpers.
 //
-// The warnings wrap ErrStale, one for each file of pkgs carrying the
-// marker of the generator that is not among the returned files, sorted by
-// path. The flag set file of a package the run produces no files for is
-// not reported.
+// The warnings are those of Options.Loaded, followed by one wrapping
+// ErrStale for each file of pkgs carrying the marker of the generator that
+// is not among the returned files, sorted by path. The flag set file of a
+// package the run produces no files for is not reported.
 //
 // pkgs must be loaded as gopackages.Load does. Test variants are skipped.
 // The returned content is not formatted beyond what printing the syntax
@@ -215,6 +194,15 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	now := opts.Now()
 
 	srcPkgs := base.SourcePackages(pkgs)
+
+	if opts.Loaded == nil {
+		loaded, err := NewLoader(nil).LoadPackages(srcPkgs)
+		if err != nil {
+			return nil, nil, loadError(err)
+		}
+
+		opts.Loaded = loaded
+	}
 
 	sel, err := selectTargets(srcPkgs, opts)
 	if err != nil {
@@ -318,7 +306,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		},
 	}
 
-	return files, stale.Files(srcPkgs, files), nil
+	return files, slices.Concat(opts.Loaded.Warnings, stale.Files(srcPkgs, files)), nil
 }
 
 // renderPackage prints the partial files of pkg, sorted by path, and the
@@ -504,16 +492,19 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 // at pkgPath starts with.
 func fileHeader(opts Options, pkgPath string, now time.Time) (dst.Decorations, error) {
 	var optionFile, packageOptionFile any
-	if opts.OptionFile != nil {
-		optionFile = opts.OptionFile.Name
-	}
 
-	pf := opiter.WrapSeq(slices.Values(opts.PackageOptionFiles)).
-		Filter(func(f *OptionFile) bool { return f.Package == pkgPath }).
-		First()
+	if l := opts.Loaded; l != nil {
+		switch len(l.Files) {
+		case 0:
+		case 1:
+			optionFile = l.Files[0]
+		default:
+			optionFile = l.Files
+		}
 
-	if pf.IsSome() {
-		packageOptionFile = pf.Value().Name
+		if name, ok := l.PackageFiles[pkgPath]; ok {
+			packageOptionFile = name
+		}
 	}
 
 	return base.Header(generatorPath, map[string]any{

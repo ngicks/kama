@@ -280,6 +280,9 @@ type A struct {
 	assert.DeepEqual(t, second, first)
 
 	opts = opts.WithDefaults()
+	opts.Loaded, err = NewLoader(nil).LoadPackages(base.SourcePackages(pkgs))
+	assert.NilError(t, err)
+
 	sel, err := selectTargets(base.SourcePackages(pkgs), opts)
 	assert.NilError(t, err)
 

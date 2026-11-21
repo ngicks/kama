@@ -2,14 +2,10 @@ package partial
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 
-	"golang.org/x/tools/go/packages"
-
 	"github.com/ngicks/kama/kamalib/generator/base"
-	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
@@ -123,22 +119,26 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 // package option files, and returns the files with paths relative to the
 // root of the out of i.
 func (i *instance) generate() ([]File, []error, error) {
-	opts := i.opts
+	var optionFile fileloader.Input
 	if i.optionFile != nil {
-		f, err := LoadOptionFile(i.fs.FS(), *i.optionFile)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		opts.OptionFile = f
+		optionFile = *i.optionFile
 	}
 
-	pkgFiles, err := loadPackageOptionFiles(i.fs, i.pkgs.Pkgs)
+	loaded, err := NewLoader(optionFile).LoadOption(
+		i.fs.FS(), i.fs.Root(), base.SourcePackages(i.pkgs.Pkgs),
+	)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, loadError(err)
 	}
 
-	opts.PackageOptionFiles = pkgFiles
+	if i.optionFile != nil && len(loaded.Files) == 0 {
+		return nil, nil, fmt.Errorf(
+			"%w: %w: %q", ErrOptionFile, fileloader.ErrNotFound, i.optionFile.Base,
+		)
+	}
+
+	opts := i.opts
+	opts.Loaded = loaded
 
 	files, warnings, err := Generate(i.pkgs.Pkgs, opts)
 	if err != nil {
@@ -151,48 +151,4 @@ func (i *instance) generate() ([]File, []error, error) {
 	}
 
 	return files, warnings, nil
-}
-
-// packageOptionFileBase is the name of the package option file, without
-// extension, read from a package directory without //kama:option-file
-// partial=<path>.
-const packageOptionFileBase = "kama_partial"
-
-// loadPackageOptionFiles returns the package option files of the source
-// packages of pkgs.
-func loadPackageOptionFiles(f *overlayfs.Fs, pkgs []*packages.Package) ([]*OptionFile, error) {
-	found, err := genopt.LoadPackageFiles(
-		f.FS(), f.Root(), base.SourcePackages(pkgs), toolName,
-		genopt.PackageFileInput{
-			Generator: directive,
-			Default: fileloader.PathInput{
-				Base: packageOptionFileBase,
-				Formats: []fileloader.Format{
-					fileloader.FormatYaml,
-					fileloader.FormatJson,
-					fileloader.FormatToml,
-				},
-			},
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrOptionFile, err)
-	}
-
-	var (
-		out  []*OptionFile
-		errs []error
-	)
-
-	for _, pf := range found {
-		o, err := DecodePackageOptionFile(pf.Name, pf.PkgPath, pf.Data)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
-
-		out = append(out, o)
-	}
-
-	return out, errors.Join(errs...)
 }

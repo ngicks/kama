@@ -1,6 +1,7 @@
 package partial
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -9,7 +10,6 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/ngicks/opiter"
@@ -31,16 +31,16 @@ const (
 type selection struct {
 	opts    Options
 	targets map[typegraph.QualifiedType]*typegraph.Node
-	// merges are the //kama:partial:merge directives keyed by field.
-	merges map[genopt.Key]genopt.Raw
-	// flags are the //kama:partial:flag directives keyed by field.
-	flags map[genopt.Key]flagOption
-	// flagged are the targets with a field holding a flag directive.
+	// merges are the merge strategies keyed by field.
+	merges map[fieldKey]mergeOption
+	// flags are the flag options keyed by field.
+	flags map[fieldKey]flagOption
+	// flagged are the targets with a field holding a flag option.
 	flagged map[typegraph.QualifiedType]bool
-	// masked are the //kama:partial:fieldmask directives keyed by type, and
-	// maskNames those keyed by field.
-	masked    map[typegraph.QualifiedType]genopt.Raw
-	maskNames map[genopt.Key]maskName
+	// masked are the types with field masks enabled, and maskNames the
+	// field mask names keyed by field.
+	masked    map[typegraph.QualifiedType]optionSource
+	maskNames map[fieldKey]maskName
 	// refs are the pointer fields mapped to und.Und[*MPartial] since they
 	// close a cycle of partial variants.
 	refs map[*types.Var]bool
@@ -51,6 +51,32 @@ type selection struct {
 	// partial file is rendered twice, so the files are decorated once per
 	// run rather than once per rendering.
 	sources dstreplace.Cache
+}
+
+// fieldKey names a struct field of a type.
+type fieldKey struct {
+	pkgPath, typeName, field string
+}
+
+func fieldKeyOf(id typegraph.QualifiedType, field string) fieldKey {
+	return fieldKey{pkgPath: id.PackagePath, typeName: id.TypeName, field: field}
+}
+
+// compare orders k and other by package path, type name and field name.
+func (k fieldKey) compare(other fieldKey) int {
+	return cmp.Or(
+		cmp.Compare(k.pkgPath, other.pkgPath),
+		cmp.Compare(k.typeName, other.typeName),
+		cmp.Compare(k.field, other.field),
+	)
+}
+
+func (k fieldKey) String() string { return k.pkgPath + "." + k.typeName + "." + k.field }
+
+// mergeOption is the merge strategy of a field.
+type mergeOption struct {
+	strategy string
+	src      optionSource
 }
 
 func (s *selection) filename(n *typegraph.Node) string {
@@ -93,22 +119,26 @@ func (s *selection) sorted() []*typegraph.Node {
 	})
 }
 
-// marks are the //kama:partial directives of the source packages and the
-// option file entries standing for them.
+// marks are the options of the source packages, from the directives and
+// the option files.
 type marks struct {
-	merges    map[genopt.Key]genopt.Raw
-	flags     map[genopt.Key]flagOption
-	masked    map[typegraph.QualifiedType]genopt.Raw
-	maskNames map[genopt.Key]maskName
-	// explicit are the type marks, the first one of each type, in source
-	// order and then in option file order.
-	explicit []genopt.Raw
-	// marked and ignored are the first type mark and ignore of each type.
-	marked  map[typegraph.QualifiedType]genopt.Raw
-	ignored map[typegraph.QualifiedType]genopt.Raw
+	merges    map[fieldKey]mergeOption
+	flags     map[fieldKey]flagOption
+	masked    map[typegraph.QualifiedType]optionSource
+	maskNames map[fieldKey]maskName
+	// explicit are the marked types ordered by package path and type name.
+	explicit []markedType
+	ignored  map[typegraph.QualifiedType]optionSource
 	// files are the file names as packages reports them.
 	files map[string]bool
 	pkgs  map[string]bool
+}
+
+// markedType is a type marked by //kama:partial or by its option file
+// entry.
+type markedType struct {
+	id  typegraph.QualifiedType
+	src optionSource
 }
 
 func (m *marks) isIgnored(id typegraph.QualifiedType) bool {
@@ -116,89 +146,47 @@ func (m *marks) isIgnored(id typegraph.QualifiedType) bool {
 	return ok
 }
 
-// collectMarks collects the directives of pkgs and the entries of files,
-// which may hold nil. The entries follow the directives in the order of
-// files, so a conflict between the two names the directive first.
-func collectMarks(pkgs []*packages.Package, files []*OptionFile) (marks, error) {
+// collectMarks collects the options of o and checks their values.
+func collectMarks(o genopt.Option[PackageOptions, TypeOptions, FieldOptions]) (marks, error) {
 	m := marks{
-		merges:    map[genopt.Key]genopt.Raw{},
-		flags:     map[genopt.Key]flagOption{},
-		masked:    map[typegraph.QualifiedType]genopt.Raw{},
-		maskNames: map[genopt.Key]maskName{},
-		marked:    map[typegraph.QualifiedType]genopt.Raw{},
-		ignored:   map[typegraph.QualifiedType]genopt.Raw{},
+		merges:    map[fieldKey]mergeOption{},
+		flags:     map[fieldKey]flagOption{},
+		masked:    map[typegraph.QualifiedType]optionSource{},
+		maskNames: map[fieldKey]maskName{},
+		ignored:   map[typegraph.QualifiedType]optionSource{},
 		files:     map[string]bool{},
 		pkgs:      map[string]bool{},
 	}
 
-	raws, err := genopt.Collect(pkgs, toolName)
-	if err != nil {
-		return marks{}, err
-	}
-
-	for _, f := range files {
-		fileRaws, err := f.raws(pkgs)
-		if err != nil {
-			return marks{}, err
-		}
-
-		raws = append(raws, fileRaws...)
-	}
-
 	var errs []error
 
-	for _, r := range raws {
-		if sub, ok := strings.CutPrefix(r.Directive, directive+":"); ok {
-			if err := m.subDirective(sub, r); err != nil {
+	for _, pkgPath := range slices.Sorted(maps.Keys(o.Packages)) {
+		po := o.Packages[pkgPath]
+		if po.Package.AllTypes {
+			m.pkgs[pkgPath] = true
+		}
+
+		for file, p := range po.Files {
+			if p.AllTypes {
+				m.pkgs[pkgPath] = true
+			}
+
+			if p.file {
+				m.files[file] = true
+			}
+		}
+
+		for _, typeName := range slices.Sorted(maps.Keys(po.Types)) {
+			to := po.Types[typeName]
+			id := typegraph.NewQualifiedType(pkgPath, typeName)
+
+			if err := m.typeMarks(id, to.Group, to.Type); err != nil {
 				errs = append(errs, err)
 			}
 
-			continue
-		}
-
-		if r.Directive != directive {
-			continue
-		}
-
-		args := strings.TrimSpace(r.Args)
-
-		pos := r.Origin.Pos
-		switch {
-		case r.Key.Field != "":
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: //kama:partial on field %s.%s.%s; mark the type instead",
-				ErrDirective, pos, r.Key.PkgPath, r.Key.Type, r.Key.Field,
-			))
-		case r.Key.Type != "":
-			id := typegraph.NewQualifiedType(r.Key.PkgPath, r.Key.Type)
-
-			switch args {
-			case "":
-				if _, ok := m.marked[id]; !ok {
-					m.marked[id] = r
-					m.explicit = append(m.explicit, r)
-				}
-			case "ignore":
-				if !m.isIgnored(id) {
-					m.ignored[id] = r
-				}
-			default:
-				errs = append(errs, fmt.Errorf(
-					"%w: %s: unknown args %q on type %s.%s; want none or ignore",
-					ErrDirective, pos, args, r.Key.PkgPath, r.Key.Type,
-				))
-			}
-		default:
-			switch args {
-			case "file":
-				m.files[r.Key.File] = true
-			case "package":
-				m.pkgs[r.Key.PkgPath] = true
-			default:
-				errs = append(errs, fmt.Errorf(
-					"%w: %s: unknown args %q on a free-floating comment; want file or package",
-					ErrDirective, pos, args,
-				))
+			fields, _ := to.Fields.Unpack()
+			for _, fieldName := range slices.Sorted(maps.Keys(fields)) {
+				errs = append(errs, m.fieldMarks(fieldKeyOf(id, fieldName), fields[fieldName])...)
 			}
 		}
 	}
@@ -206,114 +194,89 @@ func collectMarks(pkgs []*packages.Package, files []*OptionFile) (marks, error) 
 	return m, errors.Join(errs...)
 }
 
-// subDirective records //kama:partial:<sub>.
-func (m *marks) subDirective(sub string, r genopt.Raw) error {
-	pos := r.Origin.Pos
+// typeMarks records the options of the type id, those of its type group
+// and its own.
+func (m *marks) typeMarks(id typegraph.QualifiedType, group, typ TypeOptions) error {
+	var (
+		mark, ignore        optionSource
+		isMarked, isIgnored bool
+	)
 
-	switch sub {
-	case "flag":
-		return m.flag(r)
-	case "fieldmask":
-		return m.fieldMask(r)
-	case "merge":
-	default:
-		return fmt.Errorf("%w: %s: unknown directive //kama:%s", ErrDirective, pos, r.Directive)
-	}
-
-	if r.Key.Field == "" {
-		return fmt.Errorf(
-			"%w: %s: //kama:partial:merge applies to struct fields only", ErrDirective, pos,
-		)
-	}
-
-	field := r.Key.PkgPath + "." + r.Key.Type + "." + r.Key.Field
-
-	strategy := strings.TrimSpace(r.Args)
-	switch strategy {
-	case string(MergeOverwrite), string(MergeAppend), string(MergeNestedRecursive):
-	default:
-		return fmt.Errorf(
-			"%w: %s: %s: unknown strategy %q on field %s; want overwrite, append or recursive",
-			ErrDirective, origin(r), spelling(r), strategy, field,
-		)
-	}
-
-	if prev, ok := m.merges[r.Key]; ok {
-		if prev.Origin.Source == r.Origin.Source {
-			return fmt.Errorf(
-				"%w: %s: second //kama:partial:merge on field %s; the first is at %s",
-				ErrDirective, pos, field, prev.Origin.Pos,
-			)
+	for _, o := range []TypeOptions{group, typ} {
+		if o.marked && !isMarked {
+			mark, isMarked = o.markSrc, true
 		}
 
-		prevStrategy := strings.TrimSpace(prev.Args)
-		if prevStrategy == strategy {
-			return nil
+		if o.Ignore && !isIgnored {
+			ignore, isIgnored = o.markSrc, true
 		}
 
-		return sourceConflict(
-			"the merge strategy of field "+field,
-			prev, strconv.Quote(prevStrategy), r, strconv.Quote(strategy),
+		if _, ok := m.masked[id]; o.FieldMask && !ok {
+			m.masked[id] = o.maskSrc
+		}
+	}
+
+	if isMarked && isIgnored {
+		return fmt.Errorf(
+			"%w: %s: %s is both marked and ignored (%s)",
+			ErrDirective, mark.origin(), id.String(), ignore.origin(),
 		)
 	}
 
-	m.merges[r.Key] = r
+	if isMarked {
+		m.explicit = append(m.explicit, markedType{id: id, src: mark})
+	}
+
+	if isIgnored {
+		m.ignored[id] = ignore
+	}
 
 	return nil
 }
 
-// flag records //kama:partial:flag.
-func (m *marks) flag(r genopt.Raw) error {
-	pos := r.Origin.Pos
-	if r.Key.Field == "" {
-		return fmt.Errorf(
-			"%w: %s: //kama:partial:flag applies to struct fields only", ErrDirective, pos,
-		)
-	}
+// fieldMarks records the options of the field k.
+func (m *marks) fieldMarks(k fieldKey, o FieldOptions) []error {
+	var errs []error
 
-	field := r.Key.PkgPath + "." + r.Key.Type + "." + r.Key.Field
-
-	prev, hasPrev := m.flags[r.Key]
-	if hasPrev && prev.raw.Origin.Source == r.Origin.Source {
-		return fmt.Errorf(
-			"%w: %s: second //kama:partial:flag on field %s; the first is at %s",
-			ErrDirective, pos, field, prev.raw.Origin.Pos,
-		)
-	}
-
-	var (
-		o   flagOption
-		err error
-	)
-	if v, ok := r.Value.(FlagOptions); ok {
-		o, err = flagFromOptions(v)
-	} else {
-		o, err = parseFlag(r.Args)
-	}
-
-	if err != nil {
-		return fmt.Errorf(
-			"%w: %s: %s on field %s: %w",
-			ErrDirective,
-			origin(r),
-			spelling(r),
-			field,
-			err,
-		)
-	}
-
-	o.raw = r
-	if hasPrev {
-		if prev.same(o) {
-			return nil
+	if o.Merge != "" {
+		switch o.Merge {
+		case string(MergeOverwrite), string(MergeAppend), string(MergeNestedRecursive):
+			m.merges[k] = mergeOption{strategy: o.Merge, src: o.mergeSrc}
+		default:
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: %s: unknown strategy %q on field %s; want overwrite, append or recursive",
+				ErrDirective, o.mergeSrc.origin(), o.mergeSrc.spelling(), o.Merge, k,
+			))
 		}
-
-		return sourceConflict("the flag of field "+field, prev.raw, prev.String(), r, o.String())
 	}
 
-	m.flags[r.Key] = o
+	if o.Flag != nil {
+		f, err := flagFromOptions(*o.Flag)
+		if err != nil {
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: %s on field %s: %w",
+				ErrDirective, o.flagSrc.origin(), o.flagSrc.spelling(), k, err,
+			))
+		} else {
+			f.src = o.flagSrc
+			m.flags[k] = f
+		}
+	}
 
-	return nil
+	if o.FieldMask != nil {
+		mn, err := maskNameFromArgs(map[string]string{"name": o.FieldMask.Name})
+		if err != nil {
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: %s on field %s: %w",
+				ErrDirective, o.maskSrc.origin(), o.maskSrc.spelling(), k, err,
+			))
+		} else {
+			mn.src = o.maskSrc
+			m.maskNames[k] = mn
+		}
+	}
+
+	return errs
 }
 
 // generatedObjects returns the types, functions and methods declared by
@@ -396,7 +359,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 		return nil, fmt.Errorf("partial: %w", err)
 	}
 
-	m, err := collectMarks(pkgs, append([]*OptionFile{opts.OptionFile}, opts.PackageOptionFiles...))
+	m, err := collectMarks(opts.Loaded.Option)
 	if err != nil {
 		return nil, err
 	}
@@ -416,22 +379,9 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	var errs []error
 
 	for _, r := range m.explicit {
-		id := typegraph.NewQualifiedType(r.Key.PkgPath, r.Key.Type)
+		id := r.id
 		name := id.String()
-
-		pos := origin(r)
-		if ig, ok := m.ignored[id]; ok {
-			if ig.Origin.Source != r.Origin.Source {
-				errs = append(errs, sourceConflict("type "+name, r, "marked", ig, "ignored"))
-				continue
-			}
-
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s is both marked and ignored", ErrDirective, pos, name,
-			))
-
-			continue
-		}
+		pos := r.src.origin()
 
 		n, ok := g.Get(id)
 		if !ok {
@@ -519,20 +469,20 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 // checkMerges reports //kama:partial:merge on fields of types without
 // partial variants, where it would have no effect.
 func (s *selection) checkMerges() error {
-	hasNoTarget := func(k genopt.Key) bool {
-		return s.targets[typegraph.NewQualifiedType(k.PkgPath, k.Type)] == nil
+	hasNoTarget := func(k fieldKey) bool {
+		return s.targets[typegraph.NewQualifiedType(k.pkgPath, k.typeName)] == nil
 	}
-	mergeErr := func(k genopt.Key) error {
-		r := s.merges[k]
+	mergeErr := func(k fieldKey) error {
+		src := s.merges[k].src
 
 		return fmt.Errorf(
-			"%w: %s: %s on field %s.%s.%s; %s has no partial variant",
-			ErrDirective, origin(r), spelling(r), k.PkgPath, k.Type, k.Field, k.Type,
+			"%w: %s: %s on field %s; %s has no partial variant",
+			ErrDirective, src.origin(), src.spelling(), k, k.typeName,
 		)
 	}
 
 	return errors.Join(
-		opiter.WrapSeq2(opiter.MapsSortedFunc(s.merges, genopt.Key.Compare)).
+		opiter.WrapSeq2(opiter.MapsSortedFunc(s.merges, fieldKey.compare)).
 			OmitL().
 			Filter(hasNoTarget).
 			Map(mergeErr).
@@ -545,17 +495,17 @@ func (s *selection) checkMerges() error {
 func (s *selection) checkFlagTargets() error {
 	var errs []error
 
-	for _, k := range slices.SortedFunc(maps.Keys(s.flags), genopt.Key.Compare) {
-		id := typegraph.NewQualifiedType(k.PkgPath, k.Type)
+	for _, k := range slices.SortedFunc(maps.Keys(s.flags), fieldKey.compare) {
+		id := typegraph.NewQualifiedType(k.pkgPath, k.typeName)
 		if s.targets[id] != nil {
 			s.flagged[id] = true
 			continue
 		}
 
-		r := s.flags[k].raw
+		src := s.flags[k].src
 		errs = append(errs, fmt.Errorf(
-			"%w: %s: %s on field %s.%s.%s; %s has no partial variant",
-			ErrDirective, origin(r), spelling(r), k.PkgPath, k.Type, k.Field, k.Type,
+			"%w: %s: %s on field %s; %s has no partial variant",
+			ErrDirective, src.origin(), src.spelling(), k, k.typeName,
 		))
 	}
 

@@ -6,7 +6,6 @@ import (
 
 	"github.com/ngicks/opiter"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
@@ -52,8 +51,7 @@ func (s *selection) maskFields(n *typegraph.Node, fields []fieldInfo) ([]maskFie
 
 		mf := maskField{fieldInfo: f, segment: f.name}
 
-		key := genopt.Key{PkgPath: n.Id.PackagePath, Type: n.Id.TypeName, Field: f.name}
-		if o, ok := s.maskNames[key]; ok {
+		if o, ok := s.maskNames[fieldKeyOf(n.Id, f.name)]; ok {
 			mf.segment = o.name
 		}
 
