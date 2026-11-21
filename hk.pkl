@@ -6,20 +6,25 @@ import ".hk/go-golangci-lint.pkl" as go_golangci_lint
 import ".hk/go-vet-ngcheckers.pkl" as go_vet_ngcheckers
 import ".hk/markdown-mermaid-lint.pkl" as markdown_mermaid_lint
 
+// The override amends the scaffolded mapping before the spread. Pkl rejects
+// a key defined again after a spread already gave it.
+local golangci_lint_steps = (go_golangci_lint.steps) {
+  // The repository has several modules, and hk runs the step once per
+  // go.mod in parallel. golangci-lint refuses to run concurrently unless told to.
+  ["golangci-lint"] {
+    check {
+      command = "golangci-lint run --fix=false --allow-parallel-runners ./..."
+    }
+    fix {
+      command = "golangci-lint run --fix --allow-parallel-runners ./..."
+    }
+  }
+}
+
 hooks {
   ["pre-commit"] {
     steps {
-      ...go_golangci_lint.steps
-      // The repository has several modules, and hk runs the step once per
-      // go.mod in parallel. golangci-lint refuses to run concurrently unless told to.
-      ["golangci-lint"] = (go_golangci_lint.steps["golangci-lint"]) {
-        check {
-          command = "golangci-lint run --fix=false --allow-parallel-runners ./..."
-        }
-        fix {
-          command = "golangci-lint run --fix --allow-parallel-runners ./..."
-        }
-      }
+      ...golangci_lint_steps
       ...go_vet_ngcheckers.steps
       ...markdown_mermaid_lint.steps
     }
