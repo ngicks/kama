@@ -4,7 +4,9 @@ package overlayfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +15,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ngicks/opiter"
+
+	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs/goformat"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -183,10 +188,34 @@ func (i *openInstance) Run(context.Context, workflow.Reporter) error {
 
 func (i *openInstance) AsInput() *overlayfs.Fs { return i.fs }
 
+// CopyDownParam configures CopyDownProc.
+type CopyDownParam struct {
+	// FastIgnoreCompileErrors skips the check that the staged Go files
+	// compile. The step gets faster, and staged code that does not compile
+	// reaches the project directory.
+	FastIgnoreCompileErrors bool `json:"fast_ignore_compile_errors"`
+	// Patterns are the package patterns the check loads. Empty means
+	// "./...".
+	Patterns []string `json:"patterns"`
+	// BuildFlags are passed to the build system by the check, for example
+	// "-tags=foo".
+	BuildFlags []string `json:"build_flags"`
+	// Tests makes the check load test packages too.
+	Tests bool `json:"tests"`
+}
+
 // CopyDownProc copies every staged file of its in into the project
 // directory.
 //
-//	Param() error
+// It first checks that the staged Go files compile: it loads the packages
+// of the project with the staged files on top, as gopackages.Load does, and
+// fails without copying anything when a loaded package has an error. The
+// formatter of the filesystem rejects only source that does not parse, so
+// this check is what keeps code with type errors off the disk. The check is
+// skipped when no Go file is staged, and when
+// CopyDownParam.FastIgnoreCompileErrors is set.
+//
+//	Param(CopyDownParam) error
 //	In(*overlayfs.Fs)
 //	Out()
 type CopyDownProc struct{}
@@ -194,7 +223,7 @@ type CopyDownProc struct{}
 // NewCopyDownProc returns a new CopyDownProc.
 func NewCopyDownProc() workflow.Proc { return CopyDownProc{} }
 
-func (CopyDownProc) ParamType() reflect.Type   { return nil }
+func (CopyDownProc) ParamType() reflect.Type   { return reflect.TypeFor[CopyDownParam]() }
 func (CopyDownProc) InTypes() []reflect.Type   { return []reflect.Type{fsType} }
 func (CopyDownProc) OutTypes() []reflect.Type  { return nil }
 func (CopyDownProc) AsInputType() reflect.Type { return nil }
@@ -206,15 +235,63 @@ func (CopyDownProc) Instantiate(context.Context, bool) (workflow.Instance, error
 func (CopyDownProc) CleanUp(context.Context) error { return nil }
 
 type copyDownInstance struct {
-	in *overlayfs.Fs
+	param CopyDownParam
+	in    *overlayfs.Fs
 }
 
-func (i *copyDownInstance) Param() error { return nil }
+func (i *copyDownInstance) Param(p CopyDownParam) error {
+	if slices.Contains(p.Patterns, "") {
+		return errors.New("overlayfs: copy down: empty pattern")
+	}
+
+	if len(p.Patterns) == 0 {
+		p.Patterns = []string{"./..."}
+	}
+
+	i.param = p
+
+	return nil
+}
 
 func (i *copyDownInstance) In(in *overlayfs.Fs) { i.in = in }
 
 func (i *copyDownInstance) Out() {}
 
 func (i *copyDownInstance) Run(ctx context.Context, _ workflow.Reporter) error {
+	if !i.param.FastIgnoreCompileErrors {
+		if err := i.checkCompiles(ctx); err != nil {
+			return err
+		}
+	}
+
 	return i.in.CopyDown(ctx)
+}
+
+// checkCompiles fails when a package of the project, staged files included,
+// has an error.
+func (i *copyDownInstance) checkCompiles(ctx context.Context) error {
+	staged, err := i.in.Overlay()
+	if err != nil {
+		return err
+	}
+
+	// A graph staging no Go file may run on a directory that is not a Go
+	// module, where a load fails.
+	stagesGo := opiter.WrapSeq(maps.Keys(staged)).
+		Any(func(name string) bool { return strings.HasSuffix(name, ".go") })
+
+	if !stagesGo {
+		return nil
+	}
+
+	_, err = gopackages.Load(ctx, i.in, gopackages.Options{
+		Patterns:   i.param.Patterns,
+		BuildFlags: i.param.BuildFlags,
+		Tests:      i.param.Tests,
+	})
+	if err != nil {
+		return fmt.Errorf("overlayfs: copy down: staged files do not compile: %w", err)
+	}
+
+	return nil
 }

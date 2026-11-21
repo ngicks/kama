@@ -18,6 +18,9 @@ func TestStagesThenCopiesDown(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
 	assert.NilError(t, os.WriteFile(filepath.Join(root, "orig.go"), []byte("package x\n"), 0o644))
+	assert.NilError(t, os.WriteFile(
+		filepath.Join(root, "go.mod"), []byte("module example.com/x\n\ngo 1.27\n"), 0o644,
+	))
 
 	openProc := &OpenProc{}
 	inst, err := openProc.Instantiate(ctx, false)
@@ -55,6 +58,7 @@ func TestStagesThenCopiesDown(t *testing.T) {
 
 	down, err := CopyDownProc{}.Instantiate(ctx, false)
 	assert.NilError(t, err)
+	assert.NilError(t, down.(*copyDownInstance).Param(CopyDownParam{}))
 	down.(*copyDownInstance).In(f)
 	assert.NilError(t, down.Run(ctx, nopReporter{}))
 
@@ -185,3 +189,34 @@ type nopReporter struct{}
 
 func (nopReporter) Warn(error)      {}
 func (nopReporter) Progress(string) {}
+
+func TestCopyDownSkipsCheckWithoutGoFiles(t *testing.T) {
+	ctx := context.Background()
+	// The root is not a Go module, so a package load in it fails.
+	root := t.TempDir()
+
+	f, err := overlayfs.New(root)
+	assert.NilError(t, err)
+
+	defer f.Close()
+
+	assert.NilError(t, f.Write(ctx, "notes.txt", []byte("notes\n")))
+
+	down, err := CopyDownProc{}.Instantiate(ctx, false)
+	assert.NilError(t, err)
+	assert.NilError(t, down.(*copyDownInstance).Param(CopyDownParam{}))
+	down.(*copyDownInstance).In(f)
+	assert.NilError(t, down.Run(ctx, nopReporter{}))
+
+	onDisk, err := os.ReadFile(filepath.Join(root, "notes.txt"))
+	assert.NilError(t, err)
+	assert.Equal(t, string(onDisk), "notes\n")
+}
+
+func TestCopyDownParamRejectsEmptyPattern(t *testing.T) {
+	down, err := CopyDownProc{}.Instantiate(context.Background(), true)
+	assert.NilError(t, err)
+	assert.ErrorContains(
+		t, down.(*copyDownInstance).Param(CopyDownParam{Patterns: []string{""}}), "empty pattern",
+	)
+}

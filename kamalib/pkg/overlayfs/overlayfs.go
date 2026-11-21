@@ -7,7 +7,9 @@
 //
 // Write runs a formatter on every Go file before staging it. The default
 // formatter rejects source that does not parse, so generators must emit
-// valid Go.
+// valid Go. It does not type-check. Staged source that parses and does not
+// compile reaches CopyDown. The overlayfs.copy_down proc checks that the
+// staged files compile before it calls CopyDown.
 package overlayfs
 
 import (

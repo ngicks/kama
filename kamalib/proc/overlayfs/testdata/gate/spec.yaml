@@ -1,0 +1,18 @@
+version: 1
+steps:
+  root:
+    proc: overlayfs.open
+  load:
+    proc: packages.load
+    in: root
+  # generate is an incorrect generator: its output calls a helper it never
+  # emits. The output still parses, so the formatter of root accepts it.
+  generate:
+    proc: fixture.generate
+    in: load
+    out: root
+  final:
+    proc: overlayfs.copy_down
+    in: root
+    # copy_down reads root but does not wait for steps writing into it.
+    after: generate
