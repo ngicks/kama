@@ -1,6 +1,6 @@
 # Tasks spanning the Go modules of this repository.
 
-modules := "kamalib cli proto"
+modules := "kamalib cli"
 
 default:
     @just --list

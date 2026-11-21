@@ -82,7 +82,6 @@ character limit in the scope rules applies to comma-joined scopes.
 | `hk`      | `hk.pkl`, `.hk/`, `.golangci.yaml`                         |
 | `kamalib` | `kamalib/`, the core library module                        |
 | `cli`     | `cli/`, the kama binary module                             |
-| `proto`   | `proto/`, the protobuf loader module                       |
 
 Guidelines for rows:
 
