@@ -321,7 +321,7 @@ func TestStaleCheck(t *testing.T) {
 	// The path is relative to the module root.
 	assert.Assert(
 		t,
-		strings.Contains(warnings[1].Error(), ": generator/base/testdata/"),
+		strings.Contains(warnings[1].Error(), ": generator/utils/base/testdata/"),
 		warnings[1],
 	)
 

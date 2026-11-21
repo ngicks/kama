@@ -14,7 +14,7 @@ import (
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/generator/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"

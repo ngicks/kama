@@ -11,7 +11,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
-	"github.com/ngicks/kama/kamalib/generator/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/fileloader"
 	"github.com/ngicks/kama/kamalib/workflow"

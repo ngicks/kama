@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ngicks/kama/kamalib/generator/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 
 	"github.com/ngicks/opiter"
 

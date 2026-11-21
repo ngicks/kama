@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ngicks/kama/kamalib/generator/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 
 	"go.yaml.in/yaml/v4"
 	"gotest.tools/v3/assert"
