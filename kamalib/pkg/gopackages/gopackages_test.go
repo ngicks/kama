@@ -23,7 +23,7 @@ func TestLoadSeesStagedFiles(t *testing.T) {
 		t,
 		os.WriteFile(
 			filepath.Join(root, "go.mod"),
-			[]byte("module example.com/x\n\ngo 1.27\n"),
+			[]byte("module example.invalid/x\n\ngo 1.27\n"),
 			0o644,
 		),
 	)
@@ -69,7 +69,7 @@ func TestLoadFailsOnPackageErrors(t *testing.T) {
 			name:  "type error",
 			files: map[string]string{"a.go": "package x\n\nfunc A() int { return B() }\n"},
 			opts:  Options{Patterns: []string{"./..."}},
-			want:  map[string][]string{"example.com/x": {"undefined: B"}},
+			want:  map[string][]string{"example.invalid/x": {"undefined: B"}},
 		},
 		{
 			name: "errors in several packages",
@@ -79,18 +79,18 @@ func TestLoadFailsOnPackageErrors(t *testing.T) {
 			},
 			opts: Options{Patterns: []string{"./..."}},
 			want: map[string][]string{
-				"example.com/x/a": {"undefined: B"},
-				"example.com/x/b": {"cannot use \"c\""},
+				"example.invalid/x/a": {"undefined: B"},
+				"example.invalid/x/b": {"cannot use \"c\""},
 			},
 		},
 		{
 			name: "errors in a dependency",
 			files: map[string]string{
-				"a/a.go": "package a\n\nimport _ \"example.com/x/b\"\n",
+				"a/a.go": "package a\n\nimport _ \"example.invalid/x/b\"\n",
 				"b/b.go": "package b\n\nfunc B() int { return C() }\n",
 			},
 			opts: Options{Patterns: []string{"./a"}},
-			want: map[string][]string{"example.com/x/b": {"undefined: C"}},
+			want: map[string][]string{"example.invalid/x/b": {"undefined: C"}},
 		},
 		{
 			name: "test variants report once",
@@ -99,7 +99,7 @@ func TestLoadFailsOnPackageErrors(t *testing.T) {
 				"a_test.go": "package x\n",
 			},
 			opts: Options{Patterns: []string{"./..."}, Tests: true},
-			want: map[string][]string{"example.com/x": {"undefined: B"}},
+			want: map[string][]string{"example.invalid/x": {"undefined: B"}},
 		},
 	}
 
@@ -108,7 +108,7 @@ func TestLoadFailsOnPackageErrors(t *testing.T) {
 			ctx := context.Background()
 			root := t.TempDir()
 
-			tc.files["go.mod"] = "module example.com/x\n\ngo 1.27\n"
+			tc.files["go.mod"] = "module example.invalid/x\n\ngo 1.27\n"
 			for name, src := range tc.files {
 				p := filepath.Join(root, filepath.FromSlash(name))
 				assert.NilError(t, os.MkdirAll(filepath.Dir(p), 0o755))
@@ -150,7 +150,7 @@ func TestLoadFailsOnMissingPattern(t *testing.T) {
 		t,
 		os.WriteFile(
 			filepath.Join(root, "go.mod"),
-			[]byte("module example.com/x\n\ngo 1.27\n"),
+			[]byte("module example.invalid/x\n\ngo 1.27\n"),
 			0o644,
 		),
 	)
@@ -170,12 +170,13 @@ func TestLoadFailsOnMissingPattern(t *testing.T) {
 
 func TestPackageErrorsError(t *testing.T) {
 	err := PackageErrors{
-		"example.com/x/b": {{Pos: "b.go:1:1", Msg: "bad b"}},
-		"example.com/x/a": {{Pos: "a.go:1:1", Msg: "bad a1"}, {Msg: "bad a2"}},
+		"example.invalid/x/b": {{Pos: "b.go:1:1", Msg: "bad b"}},
+		"example.invalid/x/a": {{Pos: "a.go:1:1", Msg: "bad a1"}, {Msg: "bad a2"}},
 	}
 	assert.Equal(
 		t,
 		err.Error(),
-		"example.com/x/a:\n\ta.go:1:1: bad a1\n\t-: bad a2\nexample.com/x/b:\n\tb.go:1:1: bad b",
+		"example.invalid/x/a:\n\ta.go:1:1: bad a1\n\t-: bad a2\n"+
+			"example.invalid/x/b:\n\tb.go:1:1: bad b",
 	)
 }

@@ -303,7 +303,7 @@ func TestPrintDstBuilt(t *testing.T) {
 }
 
 func TestPrintDstPath(t *testing.T) {
-	_, err := gofragment.PrintDstExpr(&dst.Ident{Name: "X", Path: "example.com/x"})
+	_, err := gofragment.PrintDstExpr(&dst.Ident{Name: "X", Path: "example.invalid/x"})
 	assert.ErrorContains(t, err, "package path")
 }
 

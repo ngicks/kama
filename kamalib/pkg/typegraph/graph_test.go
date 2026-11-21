@@ -139,7 +139,7 @@ func TestQualifiedTypeString(t *testing.T) {
 		in   QualifiedType
 		want string
 	}{
-		{"package type", NewQualifiedType("example.com/a", "T"), "example.com/a.T"},
+		{"package type", NewQualifiedType("example.invalid/a", "T"), "example.invalid/a.T"},
 		{"universe type", NewQualifiedType("", "error"), ".error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1013,7 +1013,7 @@ func TestNew_Errors(t *testing.T) {
 	t.Run("load error", func(t *testing.T) {
 		_, err := New(
 			[]*packages.Package{
-				{PkgPath: "example.com/broken", Errors: []packages.Error{{Msg: "boom"}}},
+				{PkgPath: "example.invalid/broken", Errors: []packages.Error{{Msg: "boom"}}},
 			},
 			nil,
 			nil,
@@ -1023,7 +1023,7 @@ func TestNew_Errors(t *testing.T) {
 	})
 
 	t.Run("no types info", func(t *testing.T) {
-		_, err := New([]*packages.Package{{PkgPath: "example.com/notypes"}}, nil, nil)
+		_, err := New([]*packages.Package{{PkgPath: "example.invalid/notypes"}}, nil, nil)
 		assert.ErrorIs(t, err, ErrNoTypesInfo)
 	})
 

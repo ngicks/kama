@@ -57,7 +57,7 @@ func fullUser() model.User {
 		Name:    "name",
 		Age:     3,
 		Nick:    new("nick"),
-		Email:   "e@example.com",
+		Email:   "e@example.invalid",
 		Skipped: "s",
 		Address: model.Address{City: "c", Geo: &model.Geo{Lat: 1, Lng: 2}},
 		Geo:     &model.Geo{Lat: 3},

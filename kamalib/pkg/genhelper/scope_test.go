@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	linkDestPath = "example.com/dest"
-	linkVPath    = "example.com/v"
+	linkDestPath = "example.invalid/dest"
+	linkVPath    = "example.invalid/v"
 )
 
 func newImports(t *testing.T) *importdecl.Map {

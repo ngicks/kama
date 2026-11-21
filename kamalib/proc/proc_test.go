@@ -234,7 +234,7 @@ func TestWrongOutputIsNotCopiedDown(t *testing.T) {
 				{name: "a.gen.go", src: "package x\n\nfunc A() int { return B() }\n"},
 			},
 			failedStep:    "final",
-			errorPackages: []string{"example.com/x"},
+			errorPackages: []string{"example.invalid/x"},
 		},
 		{
 			name: "compile error in a directory that is only staged",
@@ -243,7 +243,7 @@ func TestWrongOutputIsNotCopiedDown(t *testing.T) {
 				{name: "sub/b.gen.go", src: "package sub\n\nvar C int = \"c\"\n"},
 			},
 			failedStep:    "final",
-			errorPackages: []string{"example.com/x/sub"},
+			errorPackages: []string{"example.invalid/x/sub"},
 		},
 		{
 			name: "source that does not compile, with the check disabled",
@@ -265,7 +265,12 @@ func TestWrongOutputIsNotCopiedDown(t *testing.T) {
 			ctx := context.Background()
 			root := t.TempDir()
 			assert.NilError(t, os.WriteFile(
-				filepath.Join(root, "go.mod"), []byte("module example.com/x\n\ngo 1.27\n"), 0o644,
+				filepath.Join(
+					root,
+					"go.mod",
+				),
+				[]byte("module example.invalid/x\n\ngo 1.27\n"),
+				0o644,
 			))
 			assert.NilError(t, os.WriteFile(
 				filepath.Join(root, "x.go"), []byte("package x\n"), 0o644,

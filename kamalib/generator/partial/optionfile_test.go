@@ -393,10 +393,10 @@ func TestOptionFileErrors(t *testing.T) {
 	}{
 		{
 			name: "unknown package",
-			doc:  "packages:\n  example.com/none:\n    all_types: true\n",
+			doc:  "packages:\n  example.invalid/none:\n    all_types: true\n",
 			is:   ErrOptionFile,
 			contains: []string{
-				`opts.yaml: packages."example.com/none": package example.com/none is not loaded`,
+				`opts.yaml: packages."example.invalid/none": package example.invalid/none is not loaded`,
 			},
 		},
 		{

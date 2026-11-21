@@ -35,7 +35,7 @@ func TestGateFixture(t *testing.T) {
 	// The fixture has no go.mod of its own: a go.mod under testdata would be
 	// a module the pre-commit hook lints on its own.
 	assert.NilError(t, os.WriteFile(
-		filepath.Join(root, "go.mod"), []byte("module example.com/gate\n\ngo 1.27\n"), 0o644,
+		filepath.Join(root, "go.mod"), []byte("module example.invalid/gate\n\ngo 1.27\n"), 0o644,
 	))
 
 	b, err := os.ReadFile(filepath.Join(root, "spec.yaml"))
@@ -67,7 +67,7 @@ func TestGateFixture(t *testing.T) {
 
 	var pkgErrs gopackages.PackageErrors
 	assert.Assert(t, errors.As(err, &pkgErrs), "err: %v", err)
-	assert.DeepEqual(t, slices.Collect(maps.Keys(pkgErrs)), []string{"example.com/gate/model"})
+	assert.DeepEqual(t, slices.Collect(maps.Keys(pkgErrs)), []string{"example.invalid/gate/model"})
 	assert.ErrorContains(t, err, "undefined: typeNameOf")
 
 	assert.DeepEqual(t, readTree(t, root), before)

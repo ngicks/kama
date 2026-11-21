@@ -23,8 +23,8 @@ import (
 type ctx = genhelper.BaseContext
 
 const (
-	destPath = "example.com/dest"
-	optPath  = "example.com/opt"
+	destPath = "example.invalid/dest"
+	optPath  = "example.invalid/opt"
 )
 
 // newPackage returns a Package for a file of destPath importing nothing.
@@ -204,7 +204,7 @@ func TestPackageType(t *testing.T) {
 	unknown := types.NewNamed(
 		types.NewTypeName(
 			token.NoPos,
-			types.NewPackage("example.com/unknown", "unknown"),
+			types.NewPackage("example.invalid/unknown", "unknown"),
 			"U",
 			nil,
 		),
@@ -238,7 +238,7 @@ func TestAppendDecls(t *testing.T) {
 		var buf bytes.Buffer
 		assert.NilError(t, decorator.Fprint(&buf, f))
 		assert.Equal(t, buf.String(), "package dest\n\n"+
-			"import \"example.com/opt\"\n\n"+
+			"import \"example.invalid/opt\"\n\n"+
 			"var x = 1\n\n"+
 			"// F returns none.\nfunc F() opt.Option {\n\treturn opt.None()\n}\n")
 	})

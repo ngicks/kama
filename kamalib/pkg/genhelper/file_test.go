@@ -117,11 +117,11 @@ func TestWrapComment(t *testing.T) {
 
 func TestWrapFile(t *testing.T) {
 	const (
-		fooPath = "example.com/foo"
-		barPath = "example.com/bar"
+		fooPath = "example.invalid/foo"
+		barPath = "example.invalid/bar"
 	)
 
-	pkg := types.NewPackage("example.com/p", "p")
+	pkg := types.NewPackage("example.invalid/p", "p")
 	pkg.SetImports([]*types.Package{
 		types.NewPackage(fooPath, "foo"),
 		types.NewPackage(barPath, "bar"),
@@ -154,7 +154,7 @@ func TestWrapFile(t *testing.T) {
 	_, b, err := steps.Render(
 		genhelper.NewBaseContext(
 			genhelper.NewScope(),
-			&genhelper.Package{Imports: imports, Path: "example.com/p"},
+			&genhelper.Package{Imports: imports, Path: "example.invalid/p"},
 		),
 		nil,
 	)
@@ -164,8 +164,8 @@ func TestWrapFile(t *testing.T) {
 package p
 
 import (
-	"example.com/bar"
-	f "example.com/foo"
+	"example.invalid/bar"
+	f "example.invalid/foo"
 )
 
 var _ = f.A + bar.B

@@ -55,10 +55,10 @@ func TestBlockNilWrap(t *testing.T) {
 }
 
 func TestPackageNilImports(t *testing.T) {
-	const destPath = "example.com/dest"
+	const destPath = "example.invalid/dest"
 
 	dest := types.NewPackage(destPath, "dest")
-	other := types.NewPackage("example.com/other", "other")
+	other := types.NewPackage("example.invalid/other", "other")
 	named := func(pkg *types.Package, name string) types.Type {
 		return types.NewNamed(
 			types.NewTypeName(token.NoPos, pkg, name, nil),

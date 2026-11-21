@@ -50,8 +50,8 @@ func TestFileHeader(t *testing.T) {
 				Loaded: &LoadedOptions{
 					Files: []string{"kama/partial.yaml"},
 					PackageFiles: map[string]string{
-						"example.com/other": "other/kama_partial.yaml",
-						"example.com/x":     "x/kama_partial.yaml",
+						"example.invalid/other": "other/kama_partial.yaml",
+						"example.invalid/x":     "x/kama_partial.yaml",
 					},
 				},
 			},
@@ -62,7 +62,7 @@ func TestFileHeader(t *testing.T) {
 		{
 			name: "package option file of another package",
 			opts: Options{Loaded: &LoadedOptions{
-				PackageFiles: map[string]string{"example.com/other": "other/kama_partial.yaml"},
+				PackageFiles: map[string]string{"example.invalid/other": "other/kama_partial.yaml"},
 			}},
 			params: "//\tmerge: \"overwrite\"\n//\tmerge_nested: \"recursive\"\n" +
 				"//\toption_file: null\n//\tpackage_option_file: null",
@@ -82,7 +82,7 @@ func TestFileHeader(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			hdr, err := fileHeader(c.opts.WithDefaults(), "example.com/x", now)
+			hdr, err := fileHeader(c.opts.WithDefaults(), "example.invalid/x", now)
 			assert.NilError(t, err)
 			assert.Equal(t, strings.Join(hdr, "\n"), header+"\n// params:\n"+
 				c.params+"\n// generated: 2026-11-04T10:12:33Z")

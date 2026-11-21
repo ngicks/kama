@@ -110,10 +110,10 @@ func TestIdent(t *testing.T) {
 	t.Run("unknown", func(t *testing.T) {
 		m := parse(t, NewParserFromPackages(all), pkgs["pkg1"])
 
-		_, ok := m.Ident("example.com/unknown")
+		_, ok := m.Ident("example.invalid/unknown")
 		assert.Assert(t, !ok)
-		assert.Assert(t, m.AstExpr(QualifiedType{"example.com/unknown", "T"}) == nil)
-		assert.Assert(t, m.DstExpr(QualifiedType{"example.com/unknown", "T"}) == nil)
+		assert.Assert(t, m.AstExpr(QualifiedType{"example.invalid/unknown", "T"}) == nil)
+		assert.Assert(t, m.DstExpr(QualifiedType{"example.invalid/unknown", "T"}) == nil)
 	})
 
 	t.Run("NewParser knows only the package and its imports", func(t *testing.T) {
@@ -136,76 +136,76 @@ func TestRequire(t *testing.T) {
 
 	p := NewParser(pkgs["pkg1"].Types)
 	assert.NilError(t, p.Require(
-		Import{Package: Package{Path: "example.com/foo1", Name: "foo"}},
-		Import{Package: Package{Path: "example.com/foo0", Name: "foo"}},
-		Import{Package: Package{Path: "example.com/foo0", Name: "foo"}},
-		Import{Package: Package{Path: "example.com/foo2", Name: "foo"}},
+		Import{Package: Package{Path: "example.invalid/foo1", Name: "foo"}},
+		Import{Package: Package{Path: "example.invalid/foo0", Name: "foo"}},
+		Import{Package: Package{Path: "example.invalid/foo0", Name: "foo"}},
+		Import{Package: Package{Path: "example.invalid/foo2", Name: "foo"}},
 		// The path does not tell the package name foo, so foo0 is named
 		// explicitly too.
-		// example.com/json conflicts with the file's own import.
-		Import{Package: Package{Path: "example.com/json", Name: "json"}},
+		// example.invalid/json conflicts with the file's own import.
+		Import{Package: Package{Path: "example.invalid/json", Name: "json"}},
 		// The file already imports it.
 		Import{Package: Package{Path: "encoding/json", Name: "json"}},
 		// The name is inferred from the path and made explicit.
-		Import{Package: Package{Path: "example.com/x/v3"}},
-		Import{Name: "renamed", Package: Package{Path: "example.com/y", Name: "y"}},
-		Import{Package: Package{Path: "example.com/z/v2", Name: "z"}},
+		Import{Package: Package{Path: "example.invalid/x/v3"}},
+		Import{Name: "renamed", Package: Package{Path: "example.invalid/y", Name: "y"}},
+		Import{Package: Package{Path: "example.invalid/z/v2", Name: "z"}},
 	))
 	m := parse(t, p, pkgs["pkg1"])
 
 	assert.DeepEqual(t, missing(m), []Import{
-		{Name: "foo", Package: Package{Path: "example.com/foo0", Name: "foo"}},
-		{Name: "foo_2", Package: Package{Path: "example.com/foo1", Name: "foo"}},
-		{Name: "foo_3", Package: Package{Path: "example.com/foo2", Name: "foo"}},
-		{Name: "json_2", Package: Package{Path: "example.com/json", Name: "json"}},
-		{Name: "x", Package: Package{Path: "example.com/x/v3"}},
-		{Name: "renamed", Package: Package{Path: "example.com/y", Name: "y"}},
-		{Package: Package{Path: "example.com/z/v2", Name: "z"}},
+		{Name: "foo", Package: Package{Path: "example.invalid/foo0", Name: "foo"}},
+		{Name: "foo_2", Package: Package{Path: "example.invalid/foo1", Name: "foo"}},
+		{Name: "foo_3", Package: Package{Path: "example.invalid/foo2", Name: "foo"}},
+		{Name: "json_2", Package: Package{Path: "example.invalid/json", Name: "json"}},
+		{Name: "x", Package: Package{Path: "example.invalid/x/v3"}},
+		{Name: "renamed", Package: Package{Path: "example.invalid/y", Name: "y"}},
+		{Package: Package{Path: "example.invalid/z/v2", Name: "z"}},
 	})
 
-	got, ok := m.Ident("example.com/foo1")
+	got, ok := m.Ident("example.invalid/foo1")
 	assert.Assert(t, ok)
 	assert.Equal(t, got, "foo_2")
 
 	// The file's own import of a required package wins, and the package
 	// name comes from the requirement.
 	m, err := p.ParseAst([]*ast.ImportSpec{{
-		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/y"`},
+		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.invalid/y"`},
 	}})
 	assert.NilError(t, err)
 
-	got, _ = m.Ident("example.com/y")
+	got, _ = m.Ident("example.invalid/y")
 	assert.Equal(t, got, "y")
 
 	yMissing := opiter.WrapSeq(m.Missing()).
-		ContainsFunc(func(imp Import) bool { return imp.Package.Path == "example.com/y" })
+		ContainsFunc(func(imp Import) bool { return imp.Package.Path == "example.invalid/y" })
 
 	assert.Assert(t, !yMissing)
 
 	// A requirement without a package name does not tell the name of an
 	// unnamed import.
 	_, err = p.ParseAst([]*ast.ImportSpec{{
-		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/x/v3"`},
+		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.invalid/x/v3"`},
 	}})
 	assert.ErrorIs(t, err, ErrUnknownImport)
 }
 
 func TestParseErrors(t *testing.T) {
-	p := NewParser(types.NewPackage("example.com/p", "p"))
+	p := NewParser(types.NewPackage("example.invalid/p", "p"))
 
 	_, err := p.ParseAst([]*ast.ImportSpec{{
-		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/unknown"`},
+		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.invalid/unknown"`},
 	}})
 	assert.ErrorIs(t, err, ErrUnknownImport)
 
 	// A named import needs no package information.
 	m, err := p.ParseDst([]*dst.ImportSpec{{
 		Name: dst.NewIdent("u"),
-		Path: &dst.BasicLit{Kind: token.STRING, Value: `"example.com/unknown"`},
+		Path: &dst.BasicLit{Kind: token.STRING, Value: `"example.invalid/unknown"`},
 	}})
 	assert.NilError(t, err)
 
-	got, _ := m.Ident("example.com/unknown")
+	got, _ := m.Ident("example.invalid/unknown")
 	assert.Equal(t, got, "u")
 
 	_, err = p.ParseAst([]*ast.ImportSpec{{
@@ -215,31 +215,31 @@ func TestParseErrors(t *testing.T) {
 }
 
 func TestMapReserve(t *testing.T) {
-	pkg := types.NewPackage("example.com/p", "p")
+	pkg := types.NewPackage("example.invalid/p", "p")
 	pkg.SetImports([]*types.Package{
-		types.NewPackage("example.com/bar", "bar"),
-		types.NewPackage("example.com/foo", "foo"),
-		types.NewPackage("example.com/qux", "qux"),
+		types.NewPackage("example.invalid/bar", "bar"),
+		types.NewPackage("example.invalid/foo", "foo"),
+		types.NewPackage("example.invalid/qux", "qux"),
 	})
 	p := NewParser(pkg)
 	p.Reserve("parsed")
 	m, err := p.ParseAst([]*ast.ImportSpec{{
-		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/bar"`},
+		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.invalid/bar"`},
 	}})
 	assert.NilError(t, err)
 
-	got, _ := m.Ident("example.com/qux")
+	got, _ := m.Ident("example.invalid/qux")
 	assert.Equal(t, got, "qux")
 
 	m.Reserve("bar", "foo", "qux", "local")
 
 	// Imports the map already holds keep their identifiers.
-	got, _ = m.Ident("example.com/bar")
+	got, _ = m.Ident("example.invalid/bar")
 	assert.Equal(t, got, "bar")
-	got, _ = m.Ident("example.com/qux")
+	got, _ = m.Ident("example.invalid/qux")
 	assert.Equal(t, got, "qux")
 
-	got, _ = m.Ident("example.com/foo")
+	got, _ = m.Ident("example.invalid/foo")
 	assert.Equal(t, got, "foo_2")
 
 	for ident, want := range map[string]bool{
@@ -286,7 +286,7 @@ func TestQualifiedTypeIs(t *testing.T) {
 
 	assert.Assert(t, QualifiedType{pkg22Path, "Pkg22"}.Is(ty))
 	assert.Assert(t, !QualifiedType{pkg22Path, "Other"}.Is(ty))
-	assert.Assert(t, !QualifiedType{"example.com/other", "Pkg22"}.Is(ty))
+	assert.Assert(t, !QualifiedType{"example.invalid/other", "Pkg22"}.Is(ty))
 	assert.Assert(t, QualifiedType{"", "error"}.Is(types.Universe.Lookup("error").Type()))
 	assert.Assert(t, !QualifiedType{"", "int"}.Is(types.Typ[types.Int]))
 }
@@ -295,8 +295,8 @@ func requireExtra(t *testing.T, p *Parser) {
 	t.Helper()
 
 	assert.NilError(t, p.Require(
-		Import{Package: Package{Path: "example.com/x/v3"}},
-		Import{Package: Package{Path: "example.com/json", Name: "json"}},
+		Import{Package: Package{Path: "example.invalid/x/v3"}},
+		Import{Package: Package{Path: "example.invalid/json", Name: "json"}},
 	))
 }
 
@@ -305,8 +305,8 @@ package pkg1
 
 import (
 	"encoding/json"
-	json_2 "example.com/json"
-	x "example.com/x/v3"
+	json_2 "example.invalid/json"
+	x "example.invalid/x/v3"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl/internal/pkg2/pkg2-2"
 	"math/rand/v2"
 )
@@ -321,8 +321,8 @@ const wantPkg4 = `// Package pkg4 has no imports.
 package pkg4
 
 import (
-	"example.com/json"
-	x "example.com/x/v3"
+	"example.invalid/json"
+	x "example.invalid/x/v3"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl/internal/pkg2/pkg2-2"
 )
 `
@@ -389,27 +389,27 @@ func formatSource(t *testing.T, src string) string {
 
 func TestInferName(t *testing.T) {
 	for pkgPath, want := range map[string]string{
-		"encoding/json":       "json",
-		"math/rand/v2":        "rand",
-		"example.com/v2":      "examplecom",
-		"example.com/x/v":     "v",
-		"example.com/x/v2x":   "v2x",
-		"example.com/go-yaml": "goyaml",
-		"gopkg.in/yaml.v3":    "yamlv3",
-		"example.com/a_b":     "a_b",
-		"example.com/π-1":     "π1",
-		"example.com/1st":     "_1st",
-		"example.com/0":       "_0",
-		"example.com/٣x":      "_٣x",
-		"example.com/type":    "_type",
-		"example.com/func":    "_func",
-		"example.com/go":      "_go",
-		"example.com/ty-pe":   "_type",
-		"example.com/-":       "pkg",
-		"example.com/.-.":     "pkg",
-		"example.com/_":       "pkg",
-		"example.com/_-":      "pkg",
-		"example.com/__":      "__",
+		"encoding/json":           "json",
+		"math/rand/v2":            "rand",
+		"example.invalid/v2":      "exampleinvalid",
+		"example.invalid/x/v":     "v",
+		"example.invalid/x/v2x":   "v2x",
+		"example.invalid/go-yaml": "goyaml",
+		"gopkg.in/yaml.v3":        "yamlv3",
+		"example.invalid/a_b":     "a_b",
+		"example.invalid/π-1":     "π1",
+		"example.invalid/1st":     "_1st",
+		"example.invalid/0":       "_0",
+		"example.invalid/٣x":      "_٣x",
+		"example.invalid/type":    "_type",
+		"example.invalid/func":    "_func",
+		"example.invalid/go":      "_go",
+		"example.invalid/ty-pe":   "_type",
+		"example.invalid/-":       "pkg",
+		"example.invalid/.-.":     "pkg",
+		"example.invalid/_":       "pkg",
+		"example.invalid/_-":      "pkg",
+		"example.invalid/__":      "__",
 	} {
 		t.Run(pkgPath, func(t *testing.T) {
 			assert.Equal(t, inferName(pkgPath), want)
@@ -423,50 +423,50 @@ func TestInferNameKeywords(t *testing.T) {
 
 	for tok := range keywords {
 		kw := tok.String()
-		assert.Equal(t, inferName("example.com/"+kw), "_"+kw)
+		assert.Equal(t, inferName("example.invalid/"+kw), "_"+kw)
 	}
 }
 
 func TestRequireInferredNames(t *testing.T) {
-	p := NewParser(types.NewPackage("example.com/p", "p"))
+	p := NewParser(types.NewPackage("example.invalid/p", "p"))
 	assert.NilError(t, p.Require(
-		Import{Package: Package{Path: "example.com/go-yaml"}},
+		Import{Package: Package{Path: "example.invalid/go-yaml"}},
 		Import{Package: Package{Path: "gopkg.in/yaml.v3"}},
-		Import{Package: Package{Path: "example.com/type"}},
-		Import{Package: Package{Path: "example.com/ty-pe"}},
-		Import{Package: Package{Path: "example.com/1st"}},
+		Import{Package: Package{Path: "example.invalid/type"}},
+		Import{Package: Package{Path: "example.invalid/ty-pe"}},
+		Import{Package: Package{Path: "example.invalid/1st"}},
 		// Every one of these drops to nothing, so they share pkg.
-		Import{Package: Package{Path: "example.com/-"}},
-		Import{Package: Package{Path: "example.com/x/-/v2"}},
-		Import{Package: Package{Path: "example.com/y/_"}},
-		Import{Package: Package{Path: "example.com/z/.."}},
+		Import{Package: Package{Path: "example.invalid/-"}},
+		Import{Package: Package{Path: "example.invalid/x/-/v2"}},
+		Import{Package: Package{Path: "example.invalid/y/_"}},
+		Import{Package: Package{Path: "example.invalid/z/.."}},
 		// A known name the path tells needs no explicit name.
-		Import{Package: Package{Path: "example.com/check", Name: "check"}},
+		Import{Package: Package{Path: "example.invalid/check", Name: "check"}},
 		// A known name the path does not tell is written explicitly.
-		Import{Package: Package{Path: "example.com/go-check", Name: "check"}},
+		Import{Package: Package{Path: "example.invalid/go-check", Name: "check"}},
 	))
 	m, err := p.ParseAst(nil)
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, missing(m), []Import{
-		{Name: "pkg", Package: Package{Path: "example.com/-"}},
-		{Name: "_1st", Package: Package{Path: "example.com/1st"}},
-		{Package: Package{Path: "example.com/check", Name: "check"}},
-		{Name: "check_2", Package: Package{Path: "example.com/go-check", Name: "check"}},
-		{Name: "goyaml", Package: Package{Path: "example.com/go-yaml"}},
-		{Name: "_type", Package: Package{Path: "example.com/ty-pe"}},
-		{Name: "_type_2", Package: Package{Path: "example.com/type"}},
-		{Name: "pkg_2", Package: Package{Path: "example.com/x/-/v2"}},
-		{Name: "pkg_3", Package: Package{Path: "example.com/y/_"}},
-		{Name: "pkg_4", Package: Package{Path: "example.com/z/.."}},
+		{Name: "pkg", Package: Package{Path: "example.invalid/-"}},
+		{Name: "_1st", Package: Package{Path: "example.invalid/1st"}},
+		{Package: Package{Path: "example.invalid/check", Name: "check"}},
+		{Name: "check_2", Package: Package{Path: "example.invalid/go-check", Name: "check"}},
+		{Name: "goyaml", Package: Package{Path: "example.invalid/go-yaml"}},
+		{Name: "_type", Package: Package{Path: "example.invalid/ty-pe"}},
+		{Name: "_type_2", Package: Package{Path: "example.invalid/type"}},
+		{Name: "pkg_2", Package: Package{Path: "example.invalid/x/-/v2"}},
+		{Name: "pkg_3", Package: Package{Path: "example.invalid/y/_"}},
+		{Name: "pkg_4", Package: Package{Path: "example.invalid/z/.."}},
 		{Name: "yamlv3", Package: Package{Path: "gopkg.in/yaml.v3"}},
 	})
 
 	for pkgPath, want := range map[string]string{
-		"example.com/-":      "pkg",
-		"example.com/x/-/v2": "pkg_2",
-		"example.com/y/_":    "pkg_3",
-		"example.com/z/..":   "pkg_4",
+		"example.invalid/-":      "pkg",
+		"example.invalid/x/-/v2": "pkg_2",
+		"example.invalid/y/_":    "pkg_3",
+		"example.invalid/z/..":   "pkg_4",
 	} {
 		got, ok := m.Ident(pkgPath)
 		assert.Assert(t, ok)
@@ -489,14 +489,14 @@ func TestRequireInferredNames(t *testing.T) {
 }
 
 func TestRequireInvalidName(t *testing.T) {
-	p := NewParser(types.NewPackage("example.com/p", "p"))
+	p := NewParser(types.NewPackage("example.invalid/p", "p"))
 
 	for _, imp := range []Import{
-		{Name: "go-yaml", Package: Package{Path: "example.com/go-yaml"}},
-		{Name: "type", Package: Package{Path: "example.com/x"}},
-		{Name: "_", Package: Package{Path: "example.com/x"}},
-		{Name: ".", Package: Package{Path: "example.com/x"}},
-		{Package: Package{Path: "example.com/x", Name: "1x"}},
+		{Name: "go-yaml", Package: Package{Path: "example.invalid/go-yaml"}},
+		{Name: "type", Package: Package{Path: "example.invalid/x"}},
+		{Name: "_", Package: Package{Path: "example.invalid/x"}},
+		{Name: ".", Package: Package{Path: "example.invalid/x"}},
+		{Package: Package{Path: "example.invalid/x", Name: "1x"}},
 	} {
 		assert.ErrorIs(t, p.Require(imp), ErrInvalidName)
 	}
@@ -508,79 +508,79 @@ func TestRequireInvalidName(t *testing.T) {
 
 func TestFallbackSkipsTakenNames(t *testing.T) {
 	t.Run("native name in the file", func(t *testing.T) {
-		p := NewParser(types.NewPackage("example.com/p", "p"))
+		p := NewParser(types.NewPackage("example.invalid/p", "p"))
 		assert.NilError(t, p.Require(
-			Import{Package: Package{Path: "example.com/a/foo", Name: "foo"}},
-			Import{Package: Package{Path: "example.com/b/foo", Name: "foo"}},
-			Import{Package: Package{Path: "example.com/c/foo", Name: "foo"}},
+			Import{Package: Package{Path: "example.invalid/a/foo", Name: "foo"}},
+			Import{Package: Package{Path: "example.invalid/b/foo", Name: "foo"}},
+			Import{Package: Package{Path: "example.invalid/c/foo", Name: "foo"}},
 		))
 		m, err := p.ParseAst([]*ast.ImportSpec{{
 			Name: ast.NewIdent("foo_2"),
-			Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/native"`},
+			Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.invalid/native"`},
 		}})
 		assert.NilError(t, err)
 
 		assert.DeepEqual(t, missing(m), []Import{
-			{Package: Package{Path: "example.com/a/foo", Name: "foo"}},
-			{Name: "foo_3", Package: Package{Path: "example.com/b/foo", Name: "foo"}},
-			{Name: "foo_4", Package: Package{Path: "example.com/c/foo", Name: "foo"}},
+			{Package: Package{Path: "example.invalid/a/foo", Name: "foo"}},
+			{Name: "foo_3", Package: Package{Path: "example.invalid/b/foo", Name: "foo"}},
+			{Name: "foo_4", Package: Package{Path: "example.invalid/c/foo", Name: "foo"}},
 		})
 	})
 
 	t.Run("native name required after the fallback took it", func(t *testing.T) {
-		p := NewParser(types.NewPackage("example.com/p", "p"))
+		p := NewParser(types.NewPackage("example.invalid/p", "p"))
 		assert.NilError(t, p.Require(
-			Import{Package: Package{Path: "example.com/a/foo", Name: "foo"}},
-			Import{Package: Package{Path: "example.com/b/foo", Name: "foo"}},
-			Import{Package: Package{Path: "example.com/c/foo_2", Name: "foo_2"}},
+			Import{Package: Package{Path: "example.invalid/a/foo", Name: "foo"}},
+			Import{Package: Package{Path: "example.invalid/b/foo", Name: "foo"}},
+			Import{Package: Package{Path: "example.invalid/c/foo_2", Name: "foo_2"}},
 		))
 		m, err := p.ParseAst(nil)
 		assert.NilError(t, err)
 
 		assert.DeepEqual(t, missing(m), []Import{
-			{Package: Package{Path: "example.com/a/foo", Name: "foo"}},
-			{Name: "foo_2", Package: Package{Path: "example.com/b/foo", Name: "foo"}},
-			{Name: "foo_2_2", Package: Package{Path: "example.com/c/foo_2", Name: "foo_2"}},
+			{Package: Package{Path: "example.invalid/a/foo", Name: "foo"}},
+			{Name: "foo_2", Package: Package{Path: "example.invalid/b/foo", Name: "foo"}},
+			{Name: "foo_2_2", Package: Package{Path: "example.invalid/c/foo_2", Name: "foo_2"}},
 		})
 	})
 
 	t.Run("fallback through Ident", func(t *testing.T) {
-		p := NewParser(types.NewPackage("example.com/p", "p"))
+		p := NewParser(types.NewPackage("example.invalid/p", "p"))
 		m, err := p.ParseAst([]*ast.ImportSpec{
 			{
 				Name: ast.NewIdent("p"),
-				Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/x"`},
+				Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.invalid/x"`},
 			},
 			{
 				Name: ast.NewIdent("p_2"),
-				Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/y"`},
+				Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.invalid/y"`},
 			},
 		})
 		assert.NilError(t, err)
 
-		got, ok := m.Ident("example.com/p")
+		got, ok := m.Ident("example.invalid/p")
 		assert.Assert(t, ok)
 		assert.Equal(t, got, "p_3")
 	})
 }
 
 func TestReserve(t *testing.T) {
-	p := NewParser(types.NewPackage("example.com/p", "p"))
+	p := NewParser(types.NewPackage("example.invalid/p", "p"))
 	p.Reserve("foo", "foo_2", "bar")
 	assert.NilError(t, p.Require(
-		Import{Package: Package{Path: "example.com/foo", Name: "foo"}},
+		Import{Package: Package{Path: "example.invalid/foo", Name: "foo"}},
 	))
 	m, err := p.ParseAst([]*ast.ImportSpec{{
 		// The file's own import keeps a reserved name.
-		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.com/bar"`},
+		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.invalid/bar"`},
 		Name: ast.NewIdent("bar"),
 	}})
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, missing(m), []Import{
-		{Name: "foo_3", Package: Package{Path: "example.com/foo", Name: "foo"}},
+		{Name: "foo_3", Package: Package{Path: "example.invalid/foo", Name: "foo"}},
 	})
-	got, ok := m.Ident("example.com/bar")
+	got, ok := m.Ident("example.invalid/bar")
 	assert.Assert(t, ok)
 	assert.Equal(t, got, "bar")
 
@@ -588,38 +588,38 @@ func TestReserve(t *testing.T) {
 	m, err = p.ParseAst(nil)
 	assert.NilError(t, err)
 
-	got, _ = m.Ident("example.com/foo")
+	got, _ = m.Ident("example.invalid/foo")
 	assert.Equal(t, got, "foo_3")
 }
 
 func TestImports(t *testing.T) {
-	p := NewParser(types.NewPackage("example.com/p", "p"))
+	p := NewParser(types.NewPackage("example.invalid/p", "p"))
 	assert.NilError(t, p.Require(
-		Import{Package: Package{Path: "example.com/foo", Name: "foo"}},
-		Import{Package: Package{Path: "example.com/other/foo", Name: "foo"}},
+		Import{Package: Package{Path: "example.invalid/foo", Name: "foo"}},
+		Import{Package: Package{Path: "example.invalid/other/foo", Name: "foo"}},
 	))
 
 	lit := func(path string) *ast.BasicLit {
 		return &ast.BasicLit{Kind: token.STRING, Value: `"` + path + `"`}
 	}
 	m, err := p.ParseAst([]*ast.ImportSpec{
-		{Path: lit("example.com/zzz"), Name: ast.NewIdent("z")},
-		{Path: lit("example.com/foo")},
+		{Path: lit("example.invalid/zzz"), Name: ast.NewIdent("z")},
+		{Path: lit("example.invalid/foo")},
 		// Blank and dot imports give no identifier.
-		{Path: lit("example.com/blank"), Name: ast.NewIdent("_")},
-		{Path: lit("example.com/dot"), Name: ast.NewIdent(".")},
+		{Path: lit("example.invalid/blank"), Name: ast.NewIdent("_")},
+		{Path: lit("example.invalid/dot"), Name: ast.NewIdent(".")},
 		// The second import of a package is left out.
-		{Path: lit("example.com/zzz"), Name: ast.NewIdent("again")},
+		{Path: lit("example.invalid/zzz"), Name: ast.NewIdent("again")},
 	})
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, slices.Collect(m.Imports()), []Import{
-		{Package: Package{Path: "example.com/foo", Name: "foo"}},
-		{Name: "foo_2", Package: Package{Path: "example.com/other/foo", Name: "foo"}},
-		{Name: "z", Package: Package{Path: "example.com/zzz"}},
+		{Package: Package{Path: "example.invalid/foo", Name: "foo"}},
+		{Name: "foo_2", Package: Package{Path: "example.invalid/other/foo", Name: "foo"}},
+		{Name: "z", Package: Package{Path: "example.invalid/zzz"}},
 	})
 	assert.DeepEqual(t, missing(m), []Import{
-		{Name: "foo_2", Package: Package{Path: "example.com/other/foo", Name: "foo"}},
+		{Name: "foo_2", Package: Package{Path: "example.invalid/other/foo", Name: "foo"}},
 	})
 
 	empty, err := p.ParseAst(nil)

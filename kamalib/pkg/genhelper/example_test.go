@@ -291,9 +291,9 @@ func ExampleScope_LookupOrDeclare() {
 
 func ExampleScope_LinkImports() {
 	const (
-		destPath = "example.com/dest"
-		keyPath  = "example.com/key"
-		valPath  = "example.com/val"
+		destPath = "example.invalid/dest"
+		keyPath  = "example.invalid/key"
+		valPath  = "example.invalid/val"
 	)
 
 	pkg := types.NewPackage(destPath, "dest")
@@ -331,9 +331,9 @@ func ExampleScope_LinkImports() {
 
 func ExamplePackage() {
 	const (
-		destPath  = "example.com/dest"
+		destPath  = "example.invalid/dest"
 		undPath   = "github.com/ngicks/und"
-		otherPath = "example.com/other/und"
+		otherPath = "example.invalid/other/und"
 	)
 
 	// The destination package can import two packages named und. Its file
@@ -398,13 +398,13 @@ func ExamplePackage() {
 		panic(err)
 	}
 
-	_, err = r.Context.Package().Qual("example.com/unknown", "X")
+	_, err = r.Context.Package().Qual("example.invalid/unknown", "X")
 	fmt.Println(errors.Is(err, importdecl.ErrUnknownImport))
 	// Output:
 	// package dest
 	//
 	// import (
-	// 	"example.com/other/und"
+	// 	"example.invalid/other/und"
 	// 	und_2 "github.com/ngicks/und"
 	// )
 	//

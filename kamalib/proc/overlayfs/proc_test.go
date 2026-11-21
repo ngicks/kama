@@ -19,7 +19,7 @@ func TestStagesThenCopiesDown(t *testing.T) {
 	root := t.TempDir()
 	assert.NilError(t, os.WriteFile(filepath.Join(root, "orig.go"), []byte("package x\n"), 0o644))
 	assert.NilError(t, os.WriteFile(
-		filepath.Join(root, "go.mod"), []byte("module example.com/x\n\ngo 1.27\n"), 0o644,
+		filepath.Join(root, "go.mod"), []byte("module example.invalid/x\n\ngo 1.27\n"), 0o644,
 	))
 
 	openProc := &OpenProc{}

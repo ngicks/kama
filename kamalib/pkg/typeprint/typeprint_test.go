@@ -275,7 +275,7 @@ func TestErrors(t *testing.T) {
 	pkgs, all := load(t)
 	model, other := pkgs[modelPath], pkgs[otherPath]
 
-	unknownPkg := types.NewPackage("example.com/unknown", "unknown")
+	unknownPkg := types.NewPackage("example.invalid/unknown", "unknown")
 	unknown := types.NewNamed(
 		types.NewTypeName(token.NoPos, unknownPkg, "T", nil),
 		types.Typ[types.Int],
