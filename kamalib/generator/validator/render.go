@@ -60,7 +60,10 @@ func renderPackage(
 		FlatMap(func(h base.Host) iter.Seq[string] { return slices.Values(h.Names) }).
 		CollectSlice()
 
-	if err := checkHelperNames(sel, pkg, names); err != nil {
+	if err := errors.Join(
+		checkHelperNames(sel, pkg, names),
+		checkTypeParamNames(sel, pkg, names),
+	); err != nil {
 		return nil, err
 	}
 

@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/ngicks/option/elastic"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -61,8 +63,25 @@ type Rules struct {
 }
 
 // Ordered holds maps whose keys the generated code visits in sorted
-// order. It holds Tag, which makes it a dependant.
+// order, and a map of float keys, which it ranges over directly. It holds
+// Tag, which makes it a dependant.
 type Ordered struct {
-	ByName  map[string]Tag `json:"by_name"`
-	ByLevel map[Level]Tag  `json:"by_level"`
+	ByName  map[string]Tag  `json:"by_name"`
+	ByLevel map[Level]Tag   `json:"by_level"`
+	ByRatio map[float64]Tag `json:"by_ratio"`
+}
+
+// Stamp promotes IsZero through an embedded pointer, which would panic on
+// the zero value.
+type Stamp struct{ *time.Time }
+
+// Stamped holds Stamp, which required and zero compare with its zero value.
+//
+//kama:validate
+//kama:validate:hook off
+type Stamped struct {
+	//kama:validate:required
+	At Stamp `json:"at"`
+	//kama:validate:zero
+	Zero Stamp `json:"zero"`
 }

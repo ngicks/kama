@@ -45,3 +45,33 @@ func TestShapes(t *testing.T) {
 	})
 	assert.DeepEqual(t, validation.Pointers(invalid.Validate(true, nil)), []string{"/e/1/name"})
 }
+
+// TestElasticElements walks the options of elastic.Elastic elements of a
+// slice, a map and an array.
+func TestElasticElements(t *testing.T) {
+	ok := elastic.FromOptions(opt.Some(model.Tag{Name: "x"}), opt.None[model.Tag]())
+	bad := elastic.FromOptions(opt.None[model.Tag](), opt.Some(model.Tag{}))
+
+	valid := model.Elastics{
+		S: []elastic.Elastic[model.Tag]{ok},
+		M: map[string]elastic.Elastic[model.Tag]{"k": ok},
+		A: [2]elastic.Elastic[model.Tag]{ok, elastic.Null[model.Tag]()},
+	}
+
+	for _, stop := range []bool{true, false} {
+		assert.NilError(t, valid.Validate(stop))
+	}
+
+	invalid := model.Elastics{
+		S: []elastic.Elastic[model.Tag]{ok, bad},
+		M: map[string]elastic.Elastic[model.Tag]{"k": bad},
+		A: [2]elastic.Elastic[model.Tag]{bad, ok},
+	}
+
+	assert.DeepEqual(t, validation.Pointers(invalid.Validate(false)), []string{
+		"/a/0/1/name",
+		"/m/k/1/name",
+		"/s/1/1/name",
+	})
+	assert.DeepEqual(t, validation.Pointers(invalid.Validate(true)), []string{"/s/1/1/name"})
+}

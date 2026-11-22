@@ -25,6 +25,12 @@
 // name. Because of these parameters no single interface describes every
 // Validate, and the generator finds callable methods by their shape.
 //
+// A type parameter named v, stopOnFirstError, errs or err collides with an
+// identifier the generated Validate declares. A type parameter named like a
+// predeclared identifier the generated code spells, or like a helper the
+// generated code of its package calls, shadows it. Each is an error
+// wrapping ErrConflict.
+//
 // # Targets
 //
 // The generator takes targets from the loaded packages only, by directives
@@ -62,6 +68,14 @@
 // alias, is an error wrapping ErrUnsupported. Types of packages outside the
 // run are never targets.
 //
+// A named array or pointer type of the run holding something to validate,
+// as in type Pair [2]Inner or type PI *Inner, gets no Validate either. A
+// field of a struct type or a slice or map type holding such a type is an
+// error wrapping ErrUnsupported. The error applies to a type that would be
+// a dependant through it as well. So does a type argument reaching such a
+// type in a Validate. Use an unnamed array or pointer type, or a wrapper
+// struct, in its place.
+//
 // Declarations whose doc comment carries the genmark marker of a
 // registered generator are never targets. The generator reads files
 // emitted earlier like any other file and generates them again.
@@ -90,9 +104,9 @@
 // holding it targets in the same way. A type whose Validate of that shape
 // is declared on the pointer receiver only is an error wrapping
 // ErrUnsupported where Validate would call it. Generated code holds values,
-// which cannot call such a method in general. A target with a Validate the generator did not write
-// and that is
-// no implementor is an error wrapping ErrConflict.
+// which cannot call such a method in general. A target with a Validate the
+// generator did not write and that is no implementor is an error wrapping
+// ErrConflict.
 //
 // Validate calls x.Validate(stopOnFirstError, a1, ..., an) on a value x of
 // a target or an implementor. ai is built from the i-th type argument of
@@ -122,8 +136,10 @@
 //     implementor or of a type parameter. A nil pointer, slice or map, a
 //     none opt.Option, an undefined or null und.Und and a null element of
 //     an elastic.Elastic hold nothing and are skipped. The walk never goes
-//     into the underlying type of a named type. A named type of the run
-//     holding something to validate is a target itself.
+//     into the underlying type of a named type. A struct, slice or map type
+//     of the run holding something to validate is a target itself. A named
+//     array or pointer type of the run holding something to validate is an
+//     error, as Targets describes.
 //  3. The hook of the field, described under Hooks.
 //
 // Validate wraps every error of these steps with the path segment of the
@@ -135,8 +151,10 @@
 // calls, to hooks and to the validateT functions.
 //
 // Validate visits the keys of a map in sorted order when the key type is an
-// ordered basic kind or a named type of one. The first error and the order
-// of the errors are then stable. It ranges over other maps directly.
+// integer or string kind or a named type of one. The first error and the
+// order of the errors are then stable. It ranges over other maps directly,
+// float keys included. A lookup by a NaN key never finds its value. Sorting
+// the keys would therefore lose that value.
 //
 // A slice or map target gets a Validate walking its elements as step 2
 // does, with the index or key as the path segment. Validators and hooks do
@@ -158,11 +176,12 @@
 //	func (v T) validateF(stopOnFirstError bool) error
 //
 // Its name is validate followed by the field name with its first letter
-// upper-cased. A field Name and a field name both get the hook
-// validateName. The hook must be callable on a value of T. A hook on the
-// pointer receiver is an error. Validate wraps the error of the hook with
-// the path segment of the field. A plain error of a hook is therefore
-// located at the field.
+// upper-cased. A field Name and a field name both map to the hook
+// validateName. Two fields of one struct whose hooks are on and share a
+// name are an error wrapping ErrConflict. Turn the hook of one of them off.
+// The hook must be callable on a value of T. A hook on the pointer receiver
+// is an error. Validate wraps the error of the hook with the path segment
+// of the field. A plain error of a hook is therefore located at the field.
 //
 // The hook of each field of a marked type is on by default. File and
 // package marks and option file entries count as marks. The hooks of a
@@ -225,6 +244,10 @@
 // map, channel, function or interface is not nil, a type with a method
 // IsZero() bool is not zero by it, and any other comparable type, a
 // comparable type parameter included, does not equal its zero value.
+// IsZero counts when the type declares it or when embedded fields promote
+// it without a pointer or an interface on the way. IsZero promoted through
+// an embedded pointer, as in struct{ *time.Time }, would panic on the zero
+// value. Such a type is compared with its zero value instead.
 //
 // zero takes no args and applies to the types required applies to. The
 // value is the zero value: a nillable value is nil, a type with IsZero,
@@ -235,8 +258,10 @@
 // or interface type is nil.
 //
 // null takes no args. The value is null by its method IsNull() bool, as an
-// und.Und or an elastic.Elastic tells. Pointer, interface and type
-// parameter types cannot call it on nil. A pointer therefore gets the
+// und.Und or an elastic.Elastic tells. The method must be declared or
+// promoted as for IsZero of required. null rejects type parameters and
+// nillable types: pointer, slice, map, channel, function and interface
+// types. Their nil value cannot call IsNull. A pointer therefore gets the
 // validator on its pointee, and a nil pointer passes.
 //
 // regexp takes one pattern, quoted when it holds =, spaces or quotes. The
@@ -293,10 +318,10 @@
 // names its directive, checks a type and args, and emits an expression of
 // type error. Emit may declare helper functions through the Emitter. The
 // Emitter puts them in the helpers file of the package. The expression may
-// refer to stopOnFirstError. It is the bool parameter of the Validate the
-// expression lands in. Clone a registry before changing it. Registering a validator under the name
-// of a
-// built-in replaces both its args and its code:
+// refer to the bool parameter stopOnFirstError of the function it lands
+// in. Emitter.StopOnFirstError returns the name the function spells it by.
+// Clone a registry before changing it. Registering a validator under the
+// name of a built-in replaces both its args and its code:
 //
 //	type even struct{}
 //

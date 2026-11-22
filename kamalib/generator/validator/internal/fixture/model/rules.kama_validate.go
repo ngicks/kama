@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T14:09:26Z
+// generated: 2026-11-22T15:13:18Z
 
 package model
 
@@ -173,6 +173,35 @@ func (v Ordered) Validate(stopOnFirstError bool) error {
 			}
 			errs = append(errs, err)
 		}
+	}
+	for k, e := range v.ByRatio {
+		if err := validation.Field(validation.Key(e.Validate(stopOnFirstError), k), "by_ratio"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama-validate
+func (v Stamped) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := validation.Field(requiredComparable(v.At), "at"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := validation.Field(kamaValidateZeroComparable(v.Zero), "zero"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
 	}
 	return validation.Join(errs...)
 }

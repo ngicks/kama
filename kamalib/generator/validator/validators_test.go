@@ -219,6 +219,12 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 			[]string{"opt.Option[int] has no method IsNull() bool"}},
 		{"null on interface", "//kama:validate:null\n\tN interface{ IsNull() bool }",
 			ErrUnsupported, []string{"is nillable, and nil cannot tell IsNull"}},
+		{
+			"null promoted through a pointer",
+			"//kama:validate:null\n\tN struct{ *elastic.Elastic[int] }",
+			ErrUnsupported,
+			[]string{"has no method IsNull() bool"},
+		},
 		// regexp
 		{"regexp bad pattern", "//kama:validate:regexp \"a(\"\n\tN string", ErrUnsupported,
 			[]string{"//kama:validate:regexp on field V", `pattern "a(" does not compile`}},
@@ -249,6 +255,10 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 			[]string{"1.5 is no value of int", "cannot convert"}},
 		{"length not literal", "//kama:validate:length >=n\n\tN string", ErrUnsupported,
 			[]string{"n is not a Go literal"}},
+		{"length float literal", "//kama:validate:length >=1.0\n\tN string", ErrUnsupported,
+			[]string{"length 1.0 is not an integer literal"}},
+		{"length rune literal", "//kama:validate:length >='a'\n\tN string", ErrUnsupported,
+			[]string{"length 'a' is not an integer literal"}},
 		{"length int", "//kama:validate:length >=1\n\tN int", ErrUnsupported,
 			[]string{"//kama:validate:length on field V",
 				"int is not a string, slice, array, map or channel type"}},
@@ -468,4 +478,70 @@ func TestFormatExtra(t *testing.T) {
 
 	_, err = generate(t, files, Options{})
 	assert.ErrorContains(t, err, `unknown format "lower"; known: date, date-time, url`)
+}
+
+// TestPromotedIsZero calls IsZero only when the zero value can call it. A
+// method promoted through an embedded pointer or interface would panic on
+// nil, so such a type is compared with its zero value.
+func TestPromotedIsZero(t *testing.T) {
+	fn := validateOf(t, map[string]string{
+		"a.go": `package x
+
+import "time"
+
+type Stamp struct{ *time.Time }
+
+type Plain struct{ time.Time }
+
+type Deep struct{ Plain }
+
+type Zeroer interface{ IsZero() bool }
+
+type Iface struct{ Zeroer }
+
+//kama:validate
+//kama:validate:hook off
+type A struct {
+	//kama:validate:required
+	S Stamp
+	//kama:validate:required
+	P Plain
+	//kama:validate:required
+	D Deep
+	//kama:validate:required
+	I Iface
+	//kama:validate:zero
+	ZS Stamp
+	//kama:validate:zero
+	ZP Plain
+}
+`,
+	}, "a.kama_validate.go", "A")
+
+	assertContains(t, fn,
+		"requiredComparable(v.S)",
+		`kamaValidateRequired(!v.P.IsZero(), "the zero value")`,
+		`kamaValidateRequired(!v.D.IsZero(), "the zero value")`,
+		"requiredComparable(v.I)",
+		"kamaValidateZeroComparable(v.ZS)",
+		`kamaValidateZero(v.ZP.IsZero(), "a non-zero value")`,
+	)
+}
+
+// TestStopFlagRenamed passes the stop flag to a helper by the name the
+// method spells its parameter by, which differs when the package declares
+// stopOnFirstError.
+func TestStopFlagRenamed(t *testing.T) {
+	fn := validateOf(t, map[string]string{
+		"a.go": "package x\n\nvar stopOnFirstError = true\n\n" +
+			"//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
+			"\t//kama:validate:cmp >=1 <=3\n\tN int\n}\n",
+	}, "a.kama_validate.go", "A")
+
+	assertContains(t, fn,
+		"func (v A) Validate(stopOnFirstError2 bool) error {",
+		`kamaValidateAll(stopOnFirstError2, kamaValidateCmp(v.N, ">=", 1), `+
+			`kamaValidateCmp(v.N, "<=", 3))`,
+	)
+	assertNotContains(t, fn, "kamaValidateAll(stopOnFirstError,")
 }

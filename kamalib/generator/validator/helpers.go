@@ -56,7 +56,20 @@ func newEmitter(scope *base.FileScope, helpers *helperSet) *emitter {
 	}
 }
 
-var _ Emitter = (*emitter)(nil)
+// exprEmitter is the Emitter of one validator expression: the emitter of
+// its file and the spelled name of the stop flag of the function the
+// expression lands in.
+//
+// The name is known only while that function renders, and a Validator
+// cannot reach the render context to ask for it.
+type exprEmitter struct {
+	*emitter
+	stop string
+}
+
+var _ Emitter = exprEmitter{}
+
+func (e exprEmitter) StopOnFirstError() string { return e.stop }
 
 func (e *emitter) TypeString(t types.Type) (string, error) { return e.scope.TypeString(t) }
 
@@ -213,6 +226,34 @@ func checkHelperNames(sel *selection, pkg *packages.Package, names []string) err
 					ErrConflict, pkg.Fset.Position(d.Pos()), name,
 				))
 			}
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+// checkTypeParamNames reports a type parameter of a target of pkg named like
+// a helper the generated files of pkg call. The generated Validate would
+// refer to the type parameter in place of the helper.
+func checkTypeParamNames(sel *selection, pkg *packages.Package, names []string) error {
+	var errs []error
+
+	for _, n := range sel.sorted() {
+		if n.Id.PackagePath != pkg.PkgPath {
+			continue
+		}
+
+		for tp := range n.Detail.Type.TypeParams().TypeParams() {
+			if !slices.Contains(names, tp.Obj().Name()) {
+				continue
+			}
+
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: type parameter %s of %s shadows the helper %s"+
+					" the generated Validate methods call; rename the type parameter",
+				ErrConflict, pkg.Fset.Position(tp.Obj().Pos()), tp.Obj().Name(), n.Id,
+				tp.Obj().Name(),
+			))
 		}
 	}
 

@@ -3,7 +3,10 @@ package validator
 import (
 	"errors"
 	"fmt"
+	"go/ast"
 	"go/constant"
+	"go/parser"
+	"go/token"
 	"go/types"
 	"slices"
 	"strconv"
@@ -42,6 +45,13 @@ func (Length) Check(t types.Type, args []dircmnt.KeyValue) error {
 
 		if constant.Sign(val) < 0 {
 			return argsError(fmt.Errorf("length %s is negative", n))
+		}
+
+		// int accepts 1.0 and 'a' as well, which are no lengths as written.
+		// literalValue parsed n already.
+		x, _ := parser.ParseExpr(n)
+		if lit, ok := x.(*ast.BasicLit); !ok || lit.Kind != token.INT {
+			return argsError(fmt.Errorf("length %s is not an integer literal", n))
 		}
 	}
 
@@ -143,8 +153,8 @@ func (Cmp) Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue) (str
 }
 
 // joinCalls returns call of the comparison of each arg. It passes several
-// calls to kamaValidateAll. kamaValidateAll returns the first error when
-// stopOnFirstError is true and all of them joined otherwise.
+// calls to kamaValidateAll with the stop flag of e. kamaValidateAll returns
+// the first error when the flag is true and all of them joined otherwise.
 func joinCalls(
 	e Emitter,
 	args []dircmnt.KeyValue,
@@ -166,7 +176,7 @@ func joinCalls(
 
 	e.Declare(allName, allDecl)
 
-	return allName + "(stopOnFirstError, " + strings.Join(calls, ", ") + ")", nil
+	return allName + "(" + e.StopOnFirstError() + ", " + strings.Join(calls, ", ") + ")", nil
 }
 
 // Const is the validator //kama:validate:const <v1> <v2> ...: the value

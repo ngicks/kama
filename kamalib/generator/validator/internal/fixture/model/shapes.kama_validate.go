@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T14:10:04Z
+// generated: 2026-11-22T15:13:18Z
 
 package model
 
@@ -88,6 +88,52 @@ func (v Shapes[T0]) Validate(stopOnFirstError bool, validateT0 func(v T0, stopOn
 			return err
 		}
 		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama-validate
+func (v Elastics) Validate(stopOnFirstError bool) error {
+	var errs []error
+	for i, e := range v.S {
+		for i2, e2 := range e.Options() {
+			if e2.IsSome() {
+				if err := validation.Field(validation.Index(validation.Index(e2.Value().Validate(stopOnFirstError), i2), i), "s"); err != nil {
+					if stopOnFirstError {
+						return err
+					}
+					errs = append(errs, err)
+				}
+			}
+		}
+	}
+	for _, k := range slices.Sorted(maps.Keys(v.M)) {
+		e := v.M[k]
+		for i2, e2 := range e.Options() {
+			if e2.IsSome() {
+				if err := validation.Field(validation.Key(validation.Index(e2.Value().Validate(stopOnFirstError), i2), k), "m"); err != nil {
+					if stopOnFirstError {
+						return err
+					}
+					errs = append(errs, err)
+				}
+			}
+		}
+	}
+	for i, e := range v.A {
+		for i2, e2 := range e.Options() {
+			if e2.IsSome() {
+				if err := validation.Field(validation.Index(validation.Index(e2.Value().Validate(stopOnFirstError), i2), i), "a"); err != nil {
+					if stopOnFirstError {
+						return err
+					}
+					errs = append(errs, err)
+				}
+			}
+		}
 	}
 	return validation.Join(errs...)
 }

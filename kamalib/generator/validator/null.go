@@ -38,9 +38,11 @@ func (Nil) Emit(e Emitter, _ types.Type, v string, _ []dircmnt.KeyValue) (string
 // Null is the validator //kama:validate:null: the value is null by its
 // method IsNull() bool, as an und.Und or an elastic.Elastic tells.
 //
-// It applies to types with that method other than pointer, interface and
-// type parameter types, whose nil value cannot call it. A pointer to a type
-// with the method gets the validator on the value it points to.
+// It applies to types with that method other than type parameters and
+// nillable types: pointer, slice, map, channel, function and interface
+// types. Their nil value cannot call the method. A pointer to a type with
+// the method gets the validator on the value it points to. The method
+// must be declared or promoted as for IsZero of Required.
 type Null struct{}
 
 // Name returns "null".
@@ -61,7 +63,10 @@ func (Null) Check(t types.Type, args []dircmnt.KeyValue) error {
 	case nillable(t):
 		return fmt.Errorf("%s is nillable, and nil cannot tell IsNull", t)
 	case !hasMethod(t, "IsNull", types.Typ[types.Bool]):
-		return fmt.Errorf("%s has no method IsNull() bool", t)
+		return fmt.Errorf(
+			"%s has no method IsNull() bool declared on it or promoted"+
+				" without a pointer or an interface", t,
+		)
 	}
 
 	return nil

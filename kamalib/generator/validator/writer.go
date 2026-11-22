@@ -160,7 +160,7 @@ func (w *writer) field(st *types.Struct, i int) ([]genStep, []error) {
 
 	s, err := w.nested(v.Type(), x, wrap, 0)
 	if err != nil {
-		errs = append(errs, err)
+		errs = append(errs, fmt.Errorf("field %s: %w", v.Name(), err))
 	} else if s != nil {
 		steps = append(steps, s)
 	}
@@ -214,12 +214,14 @@ func (w *writer) fieldWrap(st *types.Struct, i int, outer wrapFunc) wrapFunc {
 	}
 }
 
-// accessible reports whether generated code can read the field v: it is not
-// blank, and it is exported or declared in the package of the code. An
-// unexported field of a struct of another package, as in type T other.S,
-// cannot be spelled.
-func (w *writer) accessible(v *types.Var) bool {
-	return v.Name() != "_" && (v.Exported() || v.Pkg() == w.scope.Pkg.Types)
+// accessible reports whether generated code can read the field v.
+func (w *writer) accessible(v *types.Var) bool { return accessible(v, w.scope.Pkg.Types) }
+
+// accessible reports whether code of pkg can read the field v: it is not
+// blank, and it is exported or declared in pkg. An unexported field of a
+// struct of another package, as in type T other.S, cannot be spelled.
+func accessible(v *types.Var, pkg *types.Package) bool {
+	return v.Name() != "_" && (v.Exported() || v.Pkg() == pkg)
 }
 
 // ident returns the identifier of the package at path, importing it when
@@ -275,7 +277,12 @@ func (w *writer) apply(
 				return "", err
 			}
 
-			return val.Emit(w.emitter, t, xs, vo.kv)
+			stop, err := lang.Name("stopOnFirstError")(c)
+			if err != nil {
+				return "", err
+			}
+
+			return val.Emit(exprEmitter{emitter: w.emitter, stop: stop}, t, xs, vo.kv)
 		})), nil
 	}
 

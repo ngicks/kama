@@ -17,8 +17,11 @@ import (
 // value of a type parameter by the function given for it. The walk goes
 // through pointers, slices, arrays, map values, the option types and the
 // fields of struct type literals, and never into the underlying type of a
-// named type: a type of the run holding
-// something to validate is a target itself.
+// named type. A struct, slice or map type of the run holding something to
+// validate is a target itself. A named array or pointer type of the run
+// holding something to validate is an error. selectTargets reports the
+// fields and types holding one. nestedNamed reports one a type argument
+// reaches.
 func (w *writer) nested(t types.Type, x genExpr, wrap wrapFunc, depth int) (genStep, error) {
 	switch u := types.Unalias(t).(type) {
 	case *types.TypeParam:
@@ -37,11 +40,11 @@ func (w *writer) nested(t types.Type, x genExpr, wrap wrapFunc, depth int) (genS
 
 		return lang.If(lang.Expr("%s != nil", x), s, nil), nil
 	case *types.Slice:
-		return w.elements(u.Elem(), x, wrap, depth, nil)
+		return w.elements(w.walker(u.Elem()), x, wrap, depth, nil)
 	case *types.Array:
-		return w.elements(u.Elem(), x, wrap, depth, nil)
+		return w.elements(w.walker(u.Elem()), x, wrap, depth, nil)
 	case *types.Map:
-		return w.elements(u.Elem(), x, wrap, depth, u.Key())
+		return w.elements(w.walker(u.Elem()), x, wrap, depth, u.Key())
 	case *types.Struct:
 		return w.structFields(u, x, wrap, depth)
 	}
@@ -99,7 +102,11 @@ func (w *writer) nestedNamed(
 		return w.guarded(typeArg(named), lang.Expr("%s.IsDefined()", x), x, wrap, depth)
 	case isNamed(named, elasticPath, "Elastic"):
 		// Options holds an opt.Option per element, none for a null one.
-		return w.elements(named, lang.Expr("%s.Options()", x), wrap, depth, nil)
+		option := func(e genExpr, wrap wrapFunc, depth int) (genStep, error) {
+			return w.guarded(typeArg(named), lang.Expr("%s.IsSome()", e), e, wrap, depth)
+		}
+
+		return w.elements(option, lang.Expr("%s.Options()", x), wrap, depth, nil)
 	case w.sel.callable(named):
 		call, err := w.call(named, x)
 		if err != nil {
@@ -111,6 +118,11 @@ func (w *writer) nestedNamed(
 		return nil, fmt.Errorf(
 			"%w: %s declares Validate on its pointer receiver; declare it on the value receiver",
 			ErrUnsupported, named,
+		)
+	case w.sel.unsupported(named, map[*types.Named]bool{}):
+		return nil, fmt.Errorf(
+			"%w: %s is a named %s type holding values to validate; %s",
+			ErrUnsupported, named, kindName(named.Underlying()), unsupportedNamedHint,
 		)
 	}
 
@@ -133,16 +145,28 @@ func (w *writer) guarded(
 	return lang.If(cond, s, nil), nil
 }
 
-// elements returns the loop validating the elements of x, whose element
-// type is elem: map values keyed by their keys of type key when key is not
-// nil, else elements by their indices. For an elastic.Elastic, elem is the
-// elastic.Elastic type itself and the elements are options.
+// elementFunc returns the step validating the element e, each error passed
+// through wrap, or nil when e holds nothing to validate.
+type elementFunc func(e genExpr, wrap wrapFunc, depth int) (genStep, error)
+
+// walker returns the elementFunc of elements of type elem, which nested
+// walks.
+func (w *writer) walker(elem types.Type) elementFunc {
+	return func(e genExpr, wrap wrapFunc, depth int) (genStep, error) {
+		return w.nested(elem, e, wrap, depth)
+	}
+}
+
+// elements returns the loop validating each element of x by element: map
+// values keyed by their keys of type key when key is not nil, else
+// elements by their indices.
 //
-// The keys of an ordered basic type are visited in sorted order, which
-// makes the first error and the order of the errors stable. Other keys
-// have no order to sort by and are visited in the order of range.
+// Integer and string keys are visited in sorted order. The first error and
+// the order of the errors are then stable. Other keys are visited in the
+// order of range. A lookup by a NaN float key never finds its value. The
+// other kinds have no order to sort by.
 func (w *writer) elements(
-	elem types.Type,
+	element elementFunc,
 	x genExpr,
 	wrap wrapFunc,
 	depth int,
@@ -163,23 +187,12 @@ func (w *writer) elements(
 		))
 	}
 
-	var (
-		s   genStep
-		err error
-	)
-
-	if isNamed(elem, elasticPath, "Elastic") {
-		s, err = w.guarded(typeArg(elem), lang.Expr("%s.IsSome()", lang.Name("e")),
-			lang.Name("e"), inner, depth+1)
-	} else {
-		s, err = w.nested(elem, lang.Name("e"), inner, depth+1)
-	}
-
+	s, err := element(lang.Name("e"), inner, depth+1)
 	if s == nil || err != nil {
 		return nil, err
 	}
 
-	if key == nil || basicInfo(key)&types.IsOrdered == 0 {
+	if key == nil || basicInfo(key)&(types.IsInteger|types.IsString) == 0 {
 		return lang.ForRange(idx, "e", x, s), nil
 	}
 

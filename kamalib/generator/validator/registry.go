@@ -25,10 +25,10 @@ type Validator interface {
 	// expression v of type t. It may ask the Emitter for helpers and
 	// imports. Emit is called only after Check accepted t and args.
 	//
-	// The expression may refer to stopOnFirstError. It is the bool
-	// parameter of the Validate the expression lands in. An expression that
-	// can find several errors should return only the first one when
-	// stopOnFirstError is true.
+	// The expression may refer to the bool parameter stopOnFirstError of
+	// the function it lands in by the name e.StopOnFirstError returns. An
+	// expression that can find several errors should return only the first
+	// one when that parameter is true.
 	Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue) (string, error)
 }
 
@@ -48,11 +48,14 @@ type Emitter interface {
 	// shared helper file of the package. decl returns its source: exactly
 	// one function, variable or constant declaration of name, without doc
 	// comment, spelled through the Spelling of the helper file. Its locals
-	// must not be named like a package it imports. The
-	// first decl given for a name wins; later ones are not called. A
-	// package-level declaration of that name the generator did not write is
-	// an error.
+	// must not be named like a package it imports. The first decl given for
+	// a name wins; later ones are not called. A package-level declaration of
+	// that name the generator did not write is an error.
 	Declare(name string, decl func(s Spelling) (string, error))
+	// StopOnFirstError returns the name by which the function the
+	// expression lands in spells its parameter stopOnFirstError. The name
+	// differs from stopOnFirstError when the package declares that name.
+	StopOnFirstError() string
 }
 
 // Registry holds validators by name.

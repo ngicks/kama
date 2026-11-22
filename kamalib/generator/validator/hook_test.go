@@ -82,6 +82,32 @@ func TestHooks(t *testing.T) {
 			typeName: "B",
 			want:     []string{"v.validateV(stopOnFirstError)"},
 		},
+		{
+			// Fields name and Name share validateName, which only one of them
+			// may call.
+			name: "shared hook off for one field",
+			src: "//kama:validate\ntype A struct {\n\t//kama:validate:hook off\n\tname string\n" +
+				"\tName string `json:\"Name2\"`\n}\n\n" +
+				"func (A) validateName(bool) error { return nil }\n",
+			typeName: "A",
+			want: []string{
+				check(`validation.Field(v.validateName(stopOnFirstError), "Name2")`),
+			},
+		},
+		{
+			// An embedded struct without json name adds no segment, so its hook
+			// error is located at the outer value.
+			name: "embedded field",
+			src: "//kama:validate\ntype A struct {\n\tInner\n\t*Ptr\n}\n\n" +
+				"func (A) validateInner(bool) error { return nil }\n\n" +
+				"func (A) validatePtr(bool) error { return nil }\n\n" +
+				"type Inner struct{ X int }\n\ntype Ptr struct{ Y int }\n",
+			typeName: "A",
+			want: []string{
+				check("v.validateInner(stopOnFirstError)"),
+				check("v.validatePtr(stopOnFirstError)"),
+			},
+		},
 	}
 
 	for _, tc := range cases {

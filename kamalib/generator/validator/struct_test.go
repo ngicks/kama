@@ -212,8 +212,8 @@ func TestAnonymousStruct(t *testing.T) {
 	assertNotContains(t, fn, "v.S.N")
 }
 
-// TestMapKeyOrder sorts the keys of an ordered basic type and ranges over
-// any other keys directly.
+// TestMapKeyOrder sorts the keys of an integer or string type and ranges
+// over any other keys directly.
 func TestMapKeyOrder(t *testing.T) {
 	fn := validateOf(t, map[string]string{
 		"a.go": `package x
@@ -243,10 +243,47 @@ type Inner struct{ X int }
 	assertContains(t, fn,
 		"for _, k := range slices.Sorted(maps.Keys(v.ByString)) {",
 		"for _, k := range slices.Sorted(maps.Keys(v.ByMyInt)) {",
-		"for _, k := range slices.Sorted(maps.Keys(v.ByFloat)) {",
+		// A NaN key would miss the lookup after sorting.
+		"for k, e := range v.ByFloat {",
 		"for k, e := range v.ByStruct {",
 		"for k, e := range v.ByPtr {",
 		"for k, e := range v.ByParam {",
 		"for k, e := range v.ByBool {",
 	)
+}
+
+// TestElasticElements walks the options of each elastic.Elastic element of a
+// slice, a map and an array, as it walks a direct elastic.Elastic field.
+func TestElasticElements(t *testing.T) {
+	fn := validateOf(t, map[string]string{
+		"a.go": `package x
+
+import "github.com/ngicks/option/elastic"
+
+//kama:validate
+//kama:validate:hook off
+type A struct {
+	S []elastic.Elastic[Inner]
+	M map[string]elastic.Elastic[Inner]
+	R [2]elastic.Elastic[Inner]
+	E elastic.Elastic[Inner]
+}
+
+//kama:validate
+//kama:validate:hook off
+type Inner struct{ X int }
+`,
+	}, "a.kama_validate.go", "A")
+
+	assertContains(t, fn,
+		"for i, e := range v.S {\n\t\tfor i2, e2 := range e.Options() {\n\t\t\tif e2.IsSome() {",
+		check(`validation.Field(validation.Index(validation.Index(`+
+			`e2.Value().Validate(stopOnFirstError), i2), i), "S")`),
+		"e := v.M[k]\n\t\tfor i2, e2 := range e.Options() {",
+		check(`validation.Field(validation.Key(validation.Index(`+
+			`e2.Value().Validate(stopOnFirstError), i2), k), "M")`),
+		"for i, e := range v.R {\n\t\tfor i2, e2 := range e.Options() {",
+		"for i, e := range v.E.Options() {\n\t\tif e.IsSome() {",
+	)
+	assertNotContains(t, fn, "if e.IsSome() {\n\t\t\tfor")
 }

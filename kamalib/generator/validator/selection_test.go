@@ -52,13 +52,25 @@ func TestSelection(t *testing.T) {
 			want: []string{"C.Validate", "M.Validate", "P.Validate", "PP.Validate"},
 		},
 		{
-			// A map key, a channel, a function and an array type hold no value
-			// Validate reaches.
+			// A map key, a channel and a function hold no value Validate
+			// reaches.
 			name: "not followed",
 			src: "type K map[C]int\n\ntype Ch struct{ C chan C }\n\n" +
-				"type F struct{ F func(C) }\n\ntype A [2]C\n\ntype AA struct{ A A }\n\n" +
+				"type F struct{ F func(C) }\n\n" +
 				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
 			want: []string{"C.Validate"},
+		},
+		{
+			// A named array or pointer type holding nothing to validate is no
+			// error, a cycle of them included. One with a Validate of its own is
+			// an implementor.
+			name: "named array and pointer",
+			src: "type N [2]int\n\ntype Cy [2]Cp\n\ntype Cp *Cy\n\n" +
+				"type H [2]C\n\nfunc (H) Validate(bool) error { return nil }\n\n" +
+				"//kama:validate\n//kama:validate:hook off\n" +
+				"type A struct {\n\tN  N\n\tCy Cy\n\tH  H\n}\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			want: []string{"A.Validate", "C.Validate"},
 		},
 		{
 			name: "ignored dependant",
@@ -203,6 +215,85 @@ func TestSelectionErrors(t *testing.T) {
 			src:  "//kama:validate\n//kama:validate:hook off\ntype A[error any] struct{ V error }\n",
 			is:   ErrConflict,
 			msgs: []string{"type parameter error"},
+		},
+		{
+			name: "type parameter named like a fixed name",
+			src: "//kama:validate\n//kama:validate:hook off\n" +
+				"type A[errs any, v any] struct{ V errs }\n",
+			is: ErrConflict,
+			msgs: []string{
+				"type parameter errs of", "collides with the identifier errs",
+				"type parameter v of", "collides with the identifier v",
+			},
+		},
+		{
+			name: "type parameter named like a helper",
+			src: "//kama:validate\n//kama:validate:hook off\n" +
+				"type A[requiredComparable comparable, kamaValidateAll any] struct {\n" +
+				"\t//kama:validate:required\n\tX requiredComparable\n" +
+				"\t//kama:validate:cmp >=1 <=3\n\tN int\n}\n",
+			is: ErrConflict,
+			msgs: []string{
+				"type parameter requiredComparable of", "shadows the helper requiredComparable",
+				"type parameter kamaValidateAll of", "shadows the helper kamaValidateAll",
+			},
+		},
+		{
+			name: "named array field",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ P Pair }\n\n" +
+				"type Pair [2]C\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is: ErrUnsupported,
+			msgs: []string{
+				"a.go:5:16", "field P of", "holds", "Pair, a named array type",
+				"only struct, slice and map named types get a Validate",
+				"use an unnamed array or pointer type, or a wrapper struct",
+			},
+		},
+		{
+			name: "named pointer field",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ P []PI }\n\n" +
+				"type PI *C\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field P of", "PI, a named pointer type"},
+		},
+		{
+			// The holder would be a dependant through the named array.
+			name: "named array in a dependant",
+			src: "type Holder struct{ P Pair }\n\ntype Pair [2]C\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field P of", "Holder holds", "Pair, a named array type"},
+		},
+		{
+			name: "named pointer in a slice type",
+			src: "type L []PP\n\ntype PP *Pair\n\ntype Pair [2]C\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"type ", "L holds", "PP, a named pointer type"},
+		},
+		{
+			name: "named array as a type argument",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ B Box[Pair] }\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype Box[T any] struct{ V T }\n\n" +
+				"type Pair [2]C\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is: ErrUnsupported,
+			msgs: []string{
+				"field B:", "Pair is a named array type holding values to validate",
+				"only struct, slice and map named types get a Validate",
+			},
+		},
+		{
+			name: "fields sharing a hook",
+			src: "//kama:validate\ntype A struct {\n\tname string\n\tName string\n}\n\n" +
+				"func (A) validateName(bool) error { return nil }\n",
+			is: ErrConflict,
+			msgs: []string{
+				"a.go:6:2", "fields name and Name of", "share the hook validateName",
+				"//kama:validate:hook off",
+			},
 		},
 		{
 			name: "directive on a field",

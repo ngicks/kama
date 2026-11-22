@@ -13,8 +13,9 @@ import (
 type KeyValue struct {
 	Key   string
 	Value string
-	// HasValue is false for an arg without "=". It tells key from key=,
-	// which both leave Value empty.
+	// HasValue is true for a pair written key=value or key=. It tells key
+	// from key=, which both leave Value empty. A comparison has no value,
+	// even when it holds "=", as in ==3.
 	HasValue bool
 	// KeyQuoted and ValueQuoted tell that Key and Value were written as
 	// quoted strings. They let a reader tell the string "1" from the
@@ -37,9 +38,11 @@ type KeyValue struct {
 //	quoted     = Go interpreted or raw string literal, unquoted with strconv.Unquote .
 //	bare       = run of characters other than space, `"` and "`" .
 //
-// space is a character for which unicode.IsSpace reports true. A bare key
-// is not empty and ends at the first "="; a bare value may be empty and may
-// hold "=". A key is not empty, quoted or not.
+// space is a character for which unicode.IsSpace reports true. An arg
+// starting with an op is always a comparison, so a bare key never starts
+// with "<", ">", "=" or "!". A bare key is not empty and ends at the first
+// "="; a bare value may be empty and may hold "=". A key is not empty,
+// quoted or not.
 //
 // A comparison, such as >=1, ==3 or !="a b", is a key without a value. Its
 // key is the comparison as written: the "=" it holds does not start a

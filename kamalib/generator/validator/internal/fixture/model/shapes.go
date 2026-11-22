@@ -23,6 +23,16 @@ type Shapes[_ any] struct {
 	} `json:"s"`
 }
 
+// Elastics holds elastic.Elastic values as elements of containers.
+//
+//kama:validate
+//kama:validate:hook off
+type Elastics struct {
+	S []elastic.Elastic[Tag]          `json:"s"`
+	M map[string]elastic.Elastic[Tag] `json:"m"`
+	A [2]elastic.Elastic[Tag]         `json:"a"`
+}
+
 //kama:validate
 //kama:validate:hook off
 type Embedded struct {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/token"
 	"go/types"
 	"iter"
 	"slices"
@@ -49,6 +50,10 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	}
 
 	if err := sel.checkConflicts(); err != nil {
+		return nil, err
+	}
+
+	if err := sel.checkUnsupportedHolders(g); err != nil {
 		return nil, err
 	}
 
@@ -214,8 +219,9 @@ func (s *selection) sorted() []*typegraph.Node {
 
 // checkConflicts reports names the generated method would collide with: a
 // method Validate the generator did not write that is no implementor, a
-// field named Validate, and a type parameter shadowing a predeclared
-// identifier the generated code spells.
+// field named Validate, a type parameter shadowing a predeclared
+// identifier the generated code spells or named like one of fixedNames,
+// and two fields whose hooks are on and share a name.
 func (s *selection) checkConflicts() error {
 	var errs []error
 
@@ -252,17 +258,174 @@ func (s *selection) checkConflicts() error {
 		}
 
 		for tp := range named.TypeParams().TypeParams() {
-			if types.Universe.Lookup(tp.Obj().Name()) != nil {
+			name := tp.Obj().Name()
+
+			switch {
+			case types.Universe.Lookup(name) != nil:
 				errs = append(errs, fmt.Errorf(
 					"%w: %s: type parameter %s of %s shadows the predeclared %s"+
 						" the generated code spells",
-					ErrConflict, pos(tp.Obj().Pos()), tp.Obj().Name(), n.Id, tp.Obj().Name(),
+					ErrConflict, pos(tp.Obj().Pos()), name, n.Id, name,
 				))
+			case slices.Contains(fixedNames, name):
+				errs = append(errs, fmt.Errorf(
+					"%w: %s: type parameter %s of %s collides with the identifier %s"+
+						" the generated Validate declares; rename the type parameter",
+					ErrConflict, pos(tp.Obj().Pos()), name, n.Id, name,
+				))
+			}
+		}
+
+		errs = append(errs, s.hookConflicts(n)...)
+	}
+
+	return errors.Join(errs...)
+}
+
+// hookConflicts reports fields of the struct target n whose hooks are on
+// and share a name. Fields name and Name share validateName, for example.
+// The hook cannot tell which field it validates.
+func (s *selection) hookConflicts(n *typegraph.Node) []error {
+	st, ok := n.Detail.Type.Underlying().(*types.Struct)
+	if !ok {
+		return nil
+	}
+
+	var (
+		errs  []error
+		first = map[string]*types.Var{}
+	)
+
+	for v := range st.Fields() {
+		if !accessible(v, n.Detail.Pkg.Types) || !s.hookOn(n, v) {
+			continue
+		}
+
+		name := hookName(v)
+
+		prev, ok := first[name]
+		if !ok {
+			first[name] = v
+			continue
+		}
+
+		errs = append(errs, fmt.Errorf(
+			"%w: %s: fields %s and %s of %s share the hook %s;"+
+				" rename one or turn its hook off with //kama:validate:hook off",
+			ErrConflict, n.Detail.Pkg.Fset.Position(v.Pos()), prev.Name(), v.Name(), n.Id, name,
+		))
+	}
+
+	return errs
+}
+
+// checkUnsupportedHolders reports types holding a named array or pointer
+// type of the run that holds something to validate. It checks the fields of
+// struct types and the slice and map types that get a Validate when the
+// trim reaches them. Such a named type gets no Validate. The values it holds
+// would go unchecked. The check covers types the trim does not reach. They
+// would be dependants if the named type had a Validate.
+func (s *selection) checkUnsupportedHolders(g *typegraph.Graph) error {
+	nodes := slices.SortedFunc(
+		opiter.WrapSeq2(g.All()).
+			OmitF().
+			Filter(s.generates).
+			Iter(),
+		func(a, b *typegraph.Node) int { return a.Id.Compare(b.Id) },
+	)
+
+	var errs []error
+
+	for _, n := range nodes {
+		pos := n.Detail.Pkg.Fset.Position
+		u := n.Detail.Type.Underlying()
+
+		st, ok := u.(*types.Struct)
+		if !ok {
+			if named := s.unsupportedIn(u); named != nil {
+				errs = append(errs, unsupportedHolderError(pos(n.Detail.Type.Obj().Pos()),
+					"type "+n.Id.String(), named))
+			}
+
+			continue
+		}
+
+		for v := range st.Fields() {
+			if !accessible(v, n.Detail.Pkg.Types) {
+				continue
+			}
+
+			if named := s.unsupportedIn(v.Type()); named != nil {
+				errs = append(errs, unsupportedHolderError(pos(v.Pos()),
+					"field "+v.Name()+" of "+n.Id.String(), named))
 			}
 		}
 	}
 
 	return errors.Join(errs...)
+}
+
+// unsupportedNamedHint tells what to use in place of a named array or
+// pointer type holding values to validate.
+const unsupportedNamedHint = "only struct, slice and map named types get a Validate;" +
+	" use an unnamed array or pointer type, or a wrapper struct"
+
+func unsupportedHolderError(pos token.Position, holder string, named *types.Named) error {
+	return fmt.Errorf(
+		"%w: %s: %s holds %s, a named %s type holding values to validate; %s",
+		ErrUnsupported, pos, holder, named, kindName(named.Underlying()), unsupportedNamedHint,
+	)
+}
+
+func kindName(u types.Type) string {
+	if _, ok := u.(*types.Array); ok {
+		return "array"
+	}
+
+	return "pointer"
+}
+
+// unsupportedIn returns the first named array or pointer type of the run
+// holding something to validate that a value of type t holds where
+// Validate walks, or nil.
+func (s *selection) unsupportedIn(t types.Type) *types.Named {
+	var found *types.Named
+
+	seen := map[*types.Named]bool{}
+
+	reaches(t, func(named *types.Named) bool {
+		if s.unsupported(named, seen) {
+			found = named
+		}
+
+		return found != nil
+	})
+
+	return found
+}
+
+// unsupported reports whether named is an array or pointer type of the run
+// without a Validate of its own holding a value of a target, of an
+// implementor or of another such type. seen holds the types visited. It
+// stops a cycle such as type A [2]B; type B *A.
+func (s *selection) unsupported(named *types.Named, seen map[*types.Named]bool) bool {
+	origin := named.Origin()
+
+	switch named.Underlying().(type) {
+	case *types.Array, *types.Pointer:
+	default:
+		return false
+	}
+
+	if seen[origin] || !s.loaded(origin.Obj().Pkg()) || s.implementor(named) {
+		return false
+	}
+
+	seen[origin] = true
+
+	return reaches(named.Underlying(), func(m *types.Named) bool {
+		return s.callable(m) || s.unsupported(m, seen)
+	})
 }
 
 // wantValidate spells the signature of a Validate method of named.

@@ -2,36 +2,66 @@ package validator
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
+	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 )
 
 // generateWithOptionFiles generates from files with the directives and the
-// package option files of their packages.
+// package option files of their packages, and fails on a warning.
 func generateWithOptionFiles(t *testing.T, files map[string]string) (map[string]string, error) {
 	t.Helper()
 
-	f, opts := stage(t, files)
-	pkgs, err := gopackages.Load(context.Background(), f, opts)
-	assert.NilError(t, err)
-
-	loaded, err := NewLoader(nil).LoadOption(f.FS(), f.Root(), base.SourcePackages(pkgs))
-	if err != nil {
-		return nil, loadError(err)
-	}
-
-	out, warnings, err := Generate(pkgs, testOptions(t, Options{Loaded: loaded}))
+	out, warnings, err := generateWithWarnings(t, files, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
 
-	return byBase(out), nil
+	return out, nil
+}
+
+// generateWithWarnings generates from files with the directives, the
+// package option files of their packages and the option file
+// optionFile finds relative to the directory of the test. It returns the
+// warnings of Generate.
+func generateWithWarnings(
+	t *testing.T,
+	files map[string]string,
+	optionFile fileloader.Input,
+) (map[string]string, []error, error) {
+	t.Helper()
+
+	f, opts := stage(t, files)
+	pkgs, err := gopackages.Load(context.Background(), f, opts)
+	assert.NilError(t, err)
+
+	loaded, err := NewLoader(optionFile).LoadOption(f.FS(), f.Root(), base.SourcePackages(pkgs))
+	if err != nil {
+		return nil, nil, loadError(err)
+	}
+
+	out, warnings, err := Generate(pkgs, testOptions(t, Options{Loaded: loaded}))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return byBase(out), warnings, nil
+}
+
+// optionFileOf finds the option file validate.yaml in the directory of t.
+func optionFileOf(t *testing.T) fileloader.Input {
+	return fileloader.PathInput{
+		Base:    inlineDir(t) + "/validate",
+		Formats: []fileloader.Format{fileloader.FormatYaml},
+	}
 }
 
 func TestPackageOptionFile(t *testing.T) {
@@ -109,4 +139,79 @@ func TestOptionFileErrors(t *testing.T) {
 			assert.ErrorContains(t, err, tc.msg)
 		})
 	}
+}
+
+// TestOptionFileAllTypes marks every type of a package by all_types, which
+// skips the types that get no Validate as //kama:validate package does.
+func TestOptionFileAllTypes(t *testing.T) {
+	out, warnings, err := generateWithWarnings(t, map[string]string{
+		"a.go": "package x\n\ntype A struct{}\n\ntype L []int\n\ntype ID int\n",
+		"validate.yaml": "version: 1\npackages:\n  " + modulePath(t) + ":\n" +
+			"    all_types: true\n",
+	}, optionFileOf(t))
+	assert.NilError(t, err)
+	assert.Equal(t, len(warnings), 0, "%v", warnings)
+
+	src := out["a.kama_validate.go"]
+	assertContains(t, src, "func (v A) Validate(", "func (v L) Validate(")
+	assertNotContains(t, src, "func (v ID)")
+}
+
+// TestOptionFileDirective reads the package option file a free-floating
+// //kama:option-file names instead of kama_validate.yaml.
+func TestOptionFileDirective(t *testing.T) {
+	out, err := generateWithOptionFiles(t, map[string]string{
+		"a.go": "//kama:option-file validate=custom.yaml\n\npackage x\n\n" +
+			"type A struct{ N int }\n\ntype B struct{ N int }\n",
+		"custom.yaml": "version: 1\ntypes:\n  A:\n    hook: false\n    fields:\n" +
+			"      N:\n        validators:\n          - name: required\n",
+		"kama_validate.yaml": "version: 1\ntypes:\n  B:\n    hook: false\n",
+	})
+	assert.NilError(t, err)
+
+	src := out["a.kama_validate.go"]
+	assertContains(t, src,
+		"package_option_file: ",
+		"custom.yaml",
+		check(`validation.Field(requiredComparable(v.N), "N")`),
+	)
+	assertNotContains(t, src, "func (v B)")
+}
+
+// TestOptionFileOverride replaces the directives of a type by its entry in
+// the option file, and that entry by the entry in the package option file,
+// with a warning for each.
+func TestOptionFileOverride(t *testing.T) {
+	out, warnings, err := generateWithWarnings(t, map[string]string{
+		"a.go": "package x\n\n//kama:validate\ntype A struct {\n" +
+			"\t//kama:validate:required\n\tN int\n}\n\n" +
+			"//kama:validate\n//kama:validate:hook off\ntype B struct {\n" +
+			"\t//kama:validate:required\n\tN int\n}\n",
+		"validate.yaml": "version: 1\npackages:\n  " + modulePath(t) + ":\n" +
+			"    types:\n      A:\n        hook: false\n        fields:\n" +
+			"          N:\n            validators:\n              - name: zero\n" +
+			"      B:\n        hook: false\n",
+		"kama_validate.yaml": "version: 1\ntypes:\n  B:\n    hook: false\n    fields:\n" +
+			"      N:\n        validators:\n          - name: cmp\n            args: '>0'\n",
+	}, optionFileOf(t))
+	assert.NilError(t, err)
+
+	src := out["a.kama_validate.go"]
+	assertContains(t, src,
+		check(`validation.Field(kamaValidateZeroComparable(v.N), "N")`),
+		check(`validation.Field(kamaValidateCmp(v.N, ">", 0), "N")`),
+	)
+	assertNotContains(t, src, "requiredComparable", "validateN")
+
+	assert.Equal(t, len(warnings), 3, "%v", warnings)
+
+	var msgs []string
+
+	for _, w := range warnings {
+		assert.ErrorIs(t, w, genopt.ErrOverridden)
+		msgs = append(msgs, w.Error())
+	}
+
+	joined := strings.Join(msgs, "\n")
+	assertContains(t, joined, modulePath(t)+".A", modulePath(t)+".B")
 }

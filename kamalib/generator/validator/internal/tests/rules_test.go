@@ -2,8 +2,10 @@ package tests
 
 import (
 	"errors"
+	"math"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/ngicks/option/elastic"
 	"github.com/ngicks/option/opt"
@@ -182,4 +184,31 @@ func TestMapOrder(t *testing.T) {
 		"/by_level/2/name",
 		"/by_level/10/name",
 	})
+}
+
+// TestMapFloatKey ranges over float keys directly, so that the value of a
+// NaN key is validated.
+func TestMapFloatKey(t *testing.T) {
+	o := model.Ordered{ByRatio: map[float64]model.Tag{math.NaN(): {Name: "ok"}, 0.5: {}}}
+	assert.DeepEqual(t, validation.Pointers(o.Validate(false)), []string{"/by_ratio/0.5/name"})
+
+	o = model.Ordered{ByRatio: map[float64]model.Tag{math.NaN(): {}}}
+	assert.DeepEqual(t, validation.Pointers(o.Validate(false)), []string{"/by_ratio/NaN/name"})
+}
+
+// TestStampPromotedIsZero compares a type promoting IsZero through an
+// embedded pointer with its zero value, as calling IsZero would panic.
+func TestStampPromotedIsZero(t *testing.T) {
+	now := time.Unix(1, 0)
+
+	err := model.Stamped{}.Validate(false)
+	assert.DeepEqual(t, validation.Pointers(err), []string{"/at"})
+	assert.ErrorIs(t, err, validation.ErrRequired)
+
+	// A non-nil pointer to the zero time is not the zero value of Stamp.
+	assert.NilError(t, model.Stamped{At: model.Stamp{Time: &time.Time{}}}.Validate(false))
+
+	err = model.Stamped{At: model.Stamp{Time: &now}, Zero: model.Stamp{Time: &now}}.Validate(false)
+	assert.DeepEqual(t, validation.Pointers(err), []string{"/zero"})
+	assert.ErrorIs(t, err, validation.ErrZero)
 }

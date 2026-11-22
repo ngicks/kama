@@ -14,7 +14,9 @@ import (
 // An opt.Option must be some, an und.Und or an elastic.Elastic must be
 // defined, and a pointer, slice, map, channel, function or interface must
 // not be nil. A type with a method IsZero() bool must not be zero by it.
-// Any other comparable type must not equal its zero value.
+// Any other comparable type must not equal its zero value. IsZero counts
+// when the type declares it or embedded fields promote it without a
+// pointer or an interface on the way.
 type Required struct{}
 
 // Name returns "required".
@@ -118,8 +120,11 @@ func nillable(t types.Type) bool {
 	return false
 }
 
-// hasMethod reports whether the method set of t has the method name taking
-// no parameter and returning result.
+// hasMethod reports whether every value of t can call the method name with
+// no parameter and the single result result. t declares the method itself,
+// or embedded fields promote it without a pointer or an interface on the
+// way. A method promoted through an embedded pointer or interface panics on
+// the nil the zero value holds.
 func hasMethod(t types.Type, name string, result types.Type) bool {
 	sel := types.NewMethodSet(t).Lookup(nil, name)
 	if sel == nil {
@@ -127,9 +132,26 @@ func hasMethod(t types.Type, name string, result types.Type) bool {
 	}
 
 	sig := sel.Type().(*types.Signature)
+	if sig.Params().Len() != 0 || sig.Results().Len() != 1 ||
+		!types.Identical(sig.Results().At(0).Type(), result) {
+		return false
+	}
 
-	return sig.Params().Len() == 0 && sig.Results().Len() == 1 &&
-		types.Identical(sig.Results().At(0).Type(), result)
+	path := sel.Index()
+	cur := t
+
+	for _, i := range path[:len(path)-1] {
+		v := cur.Underlying().(*types.Struct).Field(i)
+
+		switch v.Type().Underlying().(type) {
+		case *types.Pointer, *types.Interface:
+			return false
+		}
+
+		cur = v.Type()
+	}
+
+	return true
 }
 
 const (
