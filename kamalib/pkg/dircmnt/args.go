@@ -23,16 +23,24 @@ type KeyValue struct {
 //
 // The grammar is:
 //
-//	args   = { space } [ pair { space { space } pair } ] { space } .
-//	pair   = key [ "=" value ] .
-//	key    = quoted | bare .
-//	value  = quoted | bare .
-//	quoted = Go interpreted or raw string literal, unquoted with strconv.Unquote .
-//	bare   = run of characters other than space, `"` and "`" .
+//	args       = { space } [ arg { space { space } arg } ] { space } .
+//	arg        = comparison | pair .
+//	comparison = op { op } [ quoted | bare ] .
+//	op         = "<" | ">" | "=" | "!" .
+//	pair       = key [ "=" value ] .
+//	key        = quoted | bare .
+//	value      = quoted | bare .
+//	quoted     = Go interpreted or raw string literal, unquoted with strconv.Unquote .
+//	bare       = run of characters other than space, `"` and "`" .
 //
 // space is a character for which unicode.IsSpace reports true. A bare key
 // is not empty and ends at the first "="; a bare value may be empty and may
 // hold "=". A key is not empty, quoted or not.
+//
+// A comparison, such as >=1, ==3 or !="a b", is a key without a value. Its
+// key is the comparison as written: the "=" it holds does not start a
+// value, and a quoted literal in it is kept with its quotes, so that the
+// reader can tell the literal "1" from the number 1.
 //
 // The pairs are returned in the order they are written. A key given twice
 // is returned twice.
@@ -52,6 +60,17 @@ func ParseArgsKeyValue(args string) ([]KeyValue, error) {
 		)
 
 		at := rest
+
+		if strings.ContainsRune(comparisonOps, rune(rest[0])) {
+			kv.Key, rest, err = cutComparison(rest)
+			if err != nil {
+				return nil, fmt.Errorf("dircmnt: comparison at %q: %w", at, err)
+			}
+
+			out = append(out, kv)
+
+			continue
+		}
 
 		kv.Key, rest, err = cutToken(rest, "=")
 		if err != nil {
@@ -76,6 +95,24 @@ func ParseArgsKeyValue(args string) ([]KeyValue, error) {
 }
 
 const quotes = "\"`"
+
+// comparisonOps are the characters a comparison starts with.
+const comparisonOps = "<>=!"
+
+// cutComparison cuts the comparison at the start of s, as written, and
+// returns the text after it.
+func cutComparison(s string) (token, rest string, err error) {
+	ops := len(s) - len(strings.TrimLeft(s, comparisonOps))
+
+	// cutToken unquotes a quoted operand; the comparison keeps it as written,
+	// so only the rest is used.
+	_, rest, err = cutToken(s[ops:], "")
+	if err != nil {
+		return "", "", err
+	}
+
+	return s[:len(s)-len(rest)], rest, nil
+}
 
 // cutToken cuts the quoted or bare token at the start of s and returns the
 // text after it. A bare token ends at a space or at any of terminators,
