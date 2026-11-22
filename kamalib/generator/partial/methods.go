@@ -131,116 +131,117 @@ func (w *methodWriter) function(doc, signature genExpr, body ...genStep) error {
 }
 
 // from returns the statement setting dst to the partial form of the source
-// value src.
-func (w *methodWriter) from(m mapped, dst, src genExpr) genStep {
+// value src, whose type matches as m.
+func (w *methodWriter) from(m match, dst, src genExpr) genStep {
 	assign := func(rhs genExpr) genStep { return lang.Stmt("%s = %s", dst, rhs) }
 	und := func(genCtx) (string, error) { return w.p.ident(undPath) }
 	call := func(op helperOp) genStep {
 		return assign(w.p.call(&helper{op: op, typ: m.source, route: m.route, named: m.named}, src))
 	}
 
-	switch m.conv {
-	case convPlain:
-		return assign(lang.Expr("%s.Defined(%s)", und, src))
-	case convSlice:
-		return assign(lang.Expr("%s.WrapSlice(%s).CollapseToNull()", und, src))
-	case convMap:
-		return assign(lang.Expr("%s.WrapMap(%s).CollapseToNull()", und, src))
-	case convPointer:
-		return assign(lang.Expr("%s.FromPointer(%s).CollapseToNull()", und, src))
-	case convOption:
-		return assign(lang.Expr("%s.FromOption(%s, true)", und, src))
-	case convCopy:
-		return assign(src)
-	case convTarget, convTargetPointer:
-		return call(opFromTarget)
-	case convTargetRef:
-		return call(opFromTargetRef)
-	case convEmbedded:
-		return lang.Stmt("%s.FromValue(%s)", dst, src)
-	case convEmbeddedPointer:
+	switch {
+	case m.embedded && m.pointer():
 		return call(opFromEmbedded)
+	case m.embedded:
+		return lang.Stmt("%s.FromValue(%s)", dst, src)
+	case m.ref:
+		return call(opFromTargetRef)
+	case m.kind == leafTarget:
+		return call(opFromTarget)
+	case m.pointer():
+		return assign(lang.Expr("%s.FromPointer(%s).CollapseToNull()", und, src))
+	case m.kind == leafOption:
+		return assign(lang.Expr("%s.FromOption(%s, true)", und, src))
+	case m.kind == leafUnd, m.kind == leafElastic:
+		return assign(src)
 	}
 
-	return lang.Fail(unknownConv(m.conv))
+	switch m.leaf.Underlying().(type) {
+	case *types.Slice:
+		return assign(lang.Expr("%s.WrapSlice(%s).CollapseToNull()", und, src))
+	case *types.Map:
+		return assign(lang.Expr("%s.WrapMap(%s).CollapseToNull()", und, src))
+	}
+
+	return assign(lang.Expr("%s.Defined(%s)", und, src))
 }
 
 // to returns the statements setting dst to the value the partial value src
-// describes. A conditional conversion leaves dst as it is when src is
-// undefined or null, so dst must hold the zero value.
-func (w *methodWriter) to(m mapped, dst, src genExpr) genStep {
+// describes, for a source type matching as m. A conditional conversion
+// leaves dst as it is when src is undefined or null, so dst must hold the
+// zero value.
+func (w *methodWriter) to(m match, dst, src genExpr) genStep {
 	assign := func(rhs genExpr) genStep { return lang.Stmt("%s = %s", dst, rhs) }
 	call := func(op helperOp) genStep {
 		return assign(w.p.call(&helper{op: op, typ: m.source, route: m.route, named: m.named}, src))
 	}
 
-	switch m.conv {
-	case convPlain, convSlice, convMap:
-		return assign(lang.Expr("%s.Value()", src))
-	case convPointer:
+	switch {
+	case m.embedded && m.pointer():
+		return call(opToEmbedded)
+	case m.embedded:
+		return assign(lang.Expr("%s.ToValue()", src))
+	case m.ref:
+		return call(opToTargetRef)
+	case m.kind == leafTarget && m.pointer():
+		return call(opToTarget)
+	case m.kind == leafTarget:
+		// Value gives the zero partial value for undefined and null, which
+		// converts back to the zero value.
+		return assign(lang.Expr("%s.Value().ToValue()", src))
+	case m.pointer():
 		// opt.Option.Pointer has a pointer receiver, which the result of
 		// Flatten does not provide.
 		return lang.If(lang.Expr("%s.IsDefined()", src), genSteps{
 			lang.Stmt("%s := %s.Value()", decl("o"), src),
 			lang.Stmt("%s = &%s", dst, lang.Name("o")),
 		}, nil)
-	case convOption:
+	case m.kind == leafOption:
 		return assign(lang.Expr("%s.Flatten()", src))
-	case convCopy:
+	case m.kind == leafUnd, m.kind == leafElastic:
 		return assign(src)
-	case convTarget:
-		// Value gives the zero partial value for undefined and null, which
-		// converts back to the zero value.
-		return assign(lang.Expr("%s.Value().ToValue()", src))
-	case convTargetPointer:
-		return call(opToTarget)
-	case convTargetRef:
-		return call(opToTargetRef)
-	case convEmbedded:
-		return assign(lang.Expr("%s.ToValue()", src))
-	case convEmbeddedPointer:
-		return call(opToEmbedded)
 	}
 
-	return lang.Fail(unknownConv(m.conv))
+	return assign(lang.Expr("%s.Value()", src))
 }
 
-// unknownConv returns the error for the unknown conversion c.
-func unknownConv(c conv) error {
-	return fmt.Errorf("partial: unknown conversion %d", c)
-}
+// conditional reports whether the statements of to for a type matching as
+// m leave their destination unset for some values.
+func conditional(m match) bool { return m.pointer() && m.kind != leafTarget }
 
-// conditional reports whether the statements of to for c leave their
-// destination unset for some values.
-func conditional(c conv) bool { return c == convPointer }
+// merge returns the statement merging the field r onto the field l, both
+// partial fields of the field v matched as m.
+func (w *methodWriter) merge(v *types.Var, m match, l, r genExpr) genStep {
+	strategy, err := w.p.strategy(m, fieldKeyOf(w.n.Id, v.Name()))
+	if err != nil {
+		return lang.Fail(err)
+	}
 
-// merge returns the statement merging the field r onto the field l.
-func (w *methodWriter) merge(f fieldInfo, l, r genExpr) genStep {
 	overwrite := lang.If(lang.Expr("!%s.IsUndefined()", r), lang.Stmt("%s = %s", l, r), nil)
 	assign := func(rhs genExpr) genStep { return lang.Stmt("%s = %s", l, rhs) }
 
 	switch {
-	case f.class == classEmbedded && f.strategy == string(MergeNestedRecursive):
+	case m.embedded && strategy == string(MergeNestedRecursive):
 		return assign(lang.Expr("%s.Merge(%s)", l, r))
-	case f.class == classEmbedded:
+	case m.embedded:
 		// An embedded partial has no undefined state of its own.
-		test := w.p.call(&helper{op: opAllUndefined, typ: f.named, named: f.named}, r)
+		test := w.p.call(&helper{op: opAllUndefined, typ: m.named, named: m.named}, r)
 		return lang.If(lang.Expr("!%s", test), lang.Stmt("%s = %s", l, r), nil)
-	case f.class == classElastic:
+	case m.kind == leafElastic:
 		return overwrite
-	case f.strategy == string(MergeAppend) && (f.class == classSubSlice || f.class == classSubMap):
+	case strategy == string(MergeAppend) && m.kind == leafTarget:
 		return assign(w.p.call(
-			&helper{op: opMergeAppend, typ: f.named, named: f.named, partial: true}, l, r,
+			&helper{op: opMergeAppend, typ: m.named, named: m.named, partial: true}, l, r,
 		))
-	case f.strategy == string(MergeAppend):
-		return assign(w.p.call(&helper{op: opMergeAppend, typ: f.leaf}, l, r))
-	case f.strategy == string(MergeNestedRecursive) && f.conv == convTargetRef:
+	case strategy == string(MergeAppend):
+		return assign(w.p.call(&helper{op: opMergeAppend, typ: m.leaf}, l, r))
+	case strategy == string(MergeNestedRecursive) && m.ref:
 		return assign(w.p.call(&helper{
-			op: opMergeRecursive, typ: f.source, route: f.route, named: f.named, partial: true,
+			op: opMergeRecursive, typ: m.source, route: m.route, named: m.named, partial: true,
 		}, l, r))
-	case f.strategy == string(MergeNestedRecursive):
+	case strategy == string(MergeNestedRecursive):
 		return assign(w.p.call(
-			&helper{op: opMergeRecursive, typ: f.named, named: f.named, partial: true}, l, r,
+			&helper{op: opMergeRecursive, typ: m.named, named: m.named, partial: true}, l, r,
 		))
 	}
 
@@ -260,11 +261,15 @@ func (w *methodWriter) applyTo() error {
 	)
 }
 
-// fieldSteps returns the step each field of fields not skipped gets.
-func fieldSteps(fields []fieldInfo, step func(f fieldInfo) genStep) genSteps {
-	return opiter.WrapSeq(slices.Values(fields)).
-		Filter(func(f fieldInfo) bool { return f.conv != convSkip }).
-		Map(step).
+// fieldSteps returns the step each field of st that is not blank gets.
+// step takes the field and what it matches as.
+func (w *methodWriter) fieldSteps(
+	st *types.Struct,
+	step func(v *types.Var, m match) genStep,
+) genSteps {
+	return opiter.WrapSeq(st.Fields()).
+		Filter(func(v *types.Var) bool { return v.Name() != "_" }).
+		Map(func(v *types.Var) genStep { return step(v, w.p.matchField(v)) }).
 		CollectSlice()
 }
 
@@ -273,15 +278,15 @@ func fieldOf(role, sel string) genExpr {
 	return lang.Expr("%s.%s", lang.Name(role), sel)
 }
 
-// structMethods writes the methods of a struct partial type.
-func (w *methodWriter) structMethods(fields []fieldInfo) error {
+// structMethods writes the methods of the partial type of the struct st.
+func (w *methodWriter) structMethods(st *types.Struct) error {
 	err := w.function(
 		docComment("FromValue sets every field of %s to the partial form of the field of %s.\n"+
 			"A nil pointer, slice or map and a none option become null.",
 			lang.Name("p"), lang.Name("v")),
 		lang.Expr("func (%s *%s) FromValue(%s %s)", decl("p"), w.recv, decl("v"), w.source),
-		fieldSteps(fields, func(f fieldInfo) genStep {
-			return w.from(f.mapped, fieldOf("p", f.partial), fieldOf("v", f.name))
+		w.fieldSteps(st, func(v *types.Var, m match) genStep {
+			return w.from(m, fieldOf("p", partialField(v, m)), fieldOf("v", v.Name()))
 		}),
 	)
 	if err != nil {
@@ -293,8 +298,8 @@ func (w *methodWriter) structMethods(fields []fieldInfo) error {
 			"gives the zero value of the field.", lang.Name("p")),
 		lang.Expr("func (%s %s) ToValue() %s", decl("p"), w.recv, w.source),
 		lang.Stmt("var %s %s", decl("v"), w.source),
-		fieldSteps(fields, func(f fieldInfo) genStep {
-			return w.to(f.mapped, fieldOf("v", f.name), fieldOf("p", f.partial))
+		w.fieldSteps(st, func(v *types.Var, m match) genStep {
+			return w.to(m, fieldOf("v", v.Name()), fieldOf("p", partialField(v, m)))
 		}),
 		lang.Stmt("return %s", lang.Name("v")),
 	)
@@ -308,8 +313,9 @@ func (w *methodWriter) structMethods(fields []fieldInfo) error {
 			lang.Name("p"), lang.Name("r"), lang.Name("r"),
 			lang.Name("p"), lang.Name("p"), lang.Name("r")),
 		lang.Expr("func (%s %s) Merge(%s %s) %s", decl("p"), w.recv, decl("r"), w.recv, w.recv),
-		fieldSteps(fields, func(f fieldInfo) genStep {
-			return w.merge(f, fieldOf("p", f.partial), fieldOf("r", f.partial))
+		w.fieldSteps(st, func(v *types.Var, m match) genStep {
+			name := partialField(v, m)
+			return w.merge(v, m, fieldOf("p", name), fieldOf("r", name))
 		}),
 		lang.Stmt("return %s", lang.Name("p")),
 	)
@@ -321,16 +327,18 @@ func (w *methodWriter) structMethods(fields []fieldInfo) error {
 		return err
 	}
 
-	if err := w.fieldMaskMethods(fields); err != nil {
+	if err := w.fieldMaskMethods(st); err != nil {
 		return err
 	}
 
-	return w.flagMethods(fields)
+	return w.flagMethods(st)
 }
 
 // collectionMethods writes the methods of a slice or map partial type,
-// whose elements map as elem from the source element type source.
-func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.Type) error {
+// whose elements are of the source type source.
+func (w *methodWriter) collectionMethods(isMap bool, source types.Type) error {
+	elem := w.p.matchValue(source)
+
 	idx := "i"
 	if isMap {
 		idx = "k"
@@ -344,7 +352,7 @@ func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.T
 	elemLoop := func(
 		dst, src genExpr, conv convFunc, back bool, typ string,
 	) genStep {
-		if !isMap || !back || !conditional(elem.conv) {
+		if !isMap || !back || !conditional(elem) {
 			return lang.ForRange(idx, "e", src,
 				conv(elem, lang.Expr("%s[%s]", dst, lang.Name(idx)), lang.Name("e")),
 			)
@@ -451,9 +459,9 @@ func (w *methodWriter) collectionMethods(isMap bool, elem mapped, source types.T
 	return w.applyTo()
 }
 
-// convFunc returns the statements setting dst to the conversion of src
-// that m describes, as from and to do.
-type convFunc func(m mapped, dst, src genExpr) genStep
+// convFunc returns the statements setting dst to the conversion of src,
+// whose source type matches as m, as from and to do.
+type convFunc func(m match, dst, src genExpr) genStep
 
 // decls parses the methods written.
 func (w *methodWriter) decls() ([]dst.Decl, error) {

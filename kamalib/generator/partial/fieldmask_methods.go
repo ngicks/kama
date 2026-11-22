@@ -1,6 +1,7 @@
 package partial
 
 import (
+	"go/types"
 	"slices"
 	"strconv"
 
@@ -29,9 +30,14 @@ const (
 	maskEmbedded
 )
 
-// maskField is a field of a partial type with field masks.
+// maskField is a field of a partial type with field masks. It names the
+// field; the writers match its type again.
 type maskField struct {
-	fieldInfo
+	// v is the source field. name is its name and partial the name of
+	// its partial field.
+	v             *types.Var
+	name, partial string
+
 	kind maskKind
 	// segment is the segment of a leaf or branch.
 	segment string
@@ -39,27 +45,32 @@ type maskField struct {
 	heads []string
 }
 
-// maskFields classifies the fields of the struct target n that are not
-// skipped.
-func (s *selection) maskFields(n *typegraph.Node, fields []fieldInfo) ([]maskField, error) {
+// maskFields classifies the fields of st, the struct of the target n, that
+// are not blank, for a declaration of the package at pkgPath.
+func (s *selection) maskFields(
+	n *typegraph.Node,
+	st *types.Struct,
+	pkgPath string,
+) ([]maskField, error) {
 	var out []maskField
 
-	for _, f := range fields {
-		if f.conv == convSkip {
+	for v := range st.Fields() {
+		m := s.matchField(v, pkgPath)
+		if m.blank {
 			continue
 		}
 
-		mf := maskField{fieldInfo: f, segment: f.name}
+		mf := maskField{v: v, name: v.Name(), partial: partialField(v, m), segment: v.Name()}
 
-		if o, ok := s.maskNames[fieldKeyOf(n.Id, f.name)]; ok {
+		if o, ok := s.maskNames[fieldKeyOf(n.Id, v.Name())]; ok {
 			mf.segment = o.name
 		}
 
 		switch {
-		case f.class == classEmbedded:
+		case m.embedded:
 			mf.kind = maskEmbedded
 
-			segs, err := s.maskSegments(s.node(f.named))
+			segs, err := s.maskSegments(s.node(m.named))
 			if err != nil {
 				return nil, err
 			}
@@ -70,7 +81,7 @@ func (s *selection) maskFields(n *typegraph.Node, fields []fieldInfo) ([]maskFie
 					Map(func(m maskSegment) string { return m.name }).
 					Iter(),
 			)
-		case f.class == classSub && s.fieldMasked(s.node(f.named).Id):
+		case m.kind == leafTarget && isStruct(m.named) && s.fieldMasked(s.node(m.named).Id):
 			mf.kind = maskBranch
 		}
 
@@ -82,12 +93,12 @@ func (s *selection) maskFields(n *typegraph.Node, fields []fieldInfo) ([]maskFie
 
 // fieldMaskMethods writes FieldMask and FromValueWithMask when the target
 // has field masks enabled. It writes nothing otherwise.
-func (w *methodWriter) fieldMaskMethods(fields []fieldInfo) error {
+func (w *methodWriter) fieldMaskMethods(st *types.Struct) error {
 	if !w.p.sel.fieldMasked(w.n.Id) {
 		return nil
 	}
 
-	masks, err := w.p.sel.maskFields(w.n, fields)
+	masks, err := w.p.sel.maskFields(w.n, st, w.p.pkg.PkgPath)
 	if err != nil {
 		return err
 	}
@@ -153,7 +164,7 @@ func (w *methodWriter) fieldMaskBody(masks []maskField) genSteps {
 			out = append(out,
 				lang.Stmt("%s = append(%s, %s.FieldMask()...)",
 					lang.Name("paths"), lang.Name("paths"), field))
-		case f.kind == maskBranch && f.conv == convTargetRef:
+		case f.kind == maskBranch && w.p.matchField(f.v).ref:
 			// A defined nil pointer converts back to nil as null does.
 			out = append(
 				out,
@@ -215,7 +226,7 @@ func (w *methodWriter) fromValueWithMaskBody(masks []maskField) (genSteps, error
 				lang.If(lang.Name("nested"),
 					fail("%s: field %s has no subfields",
 						lang.Name("path"), lang.Name("head")), nil),
-				w.from(f.mapped, fieldOf("x", f.partial), fieldOf("v", f.name)),
+				w.from(w.p.matchField(f.v), fieldOf("x", f.partial), fieldOf("v", f.name)),
 			}))
 		case maskBranch:
 			useNested, useRest = true, true
@@ -250,8 +261,15 @@ func (w *methodWriter) fromValueWithMaskBody(masks []maskField) (genSteps, error
 
 			after = append(after,
 				lang.If(lang.Expr("%s != nil", lang.Name(subRole(f))), build, nil),
-				lang.If(lang.Name(wholeRole(f)),
-					w.from(f.mapped, fieldOf("x", f.partial), fieldOf("v", f.name)), nil),
+				lang.If(
+					lang.Name(wholeRole(f)),
+					w.from(
+						w.p.matchField(f.v),
+						fieldOf("x", f.partial),
+						fieldOf("v", f.name),
+					),
+					nil,
+				),
 			)
 		case maskEmbedded:
 			if len(f.heads) == 0 {
@@ -326,7 +344,9 @@ func checkErr(call, wrap genExpr) genSteps {
 // maskBranch returns the steps setting the branch f of x to the partial
 // value its child paths select from v.
 func (w *methodWriter) maskBranch(f maskField, fmtIdent genExpr) (genStep, error) {
-	part, err := w.p.partialString(f.named)
+	m := w.p.matchField(f.v)
+
+	part, err := w.p.partialString(m.named)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +363,7 @@ func (w *methodWriter) maskBranch(f maskField, fmtIdent genExpr) (genStep, error
 				strconv.Quote(f.segment), lang.Name("err")),
 		)
 	}
-	if f.conv == convTarget {
+	if !m.pointer() {
 		return genSteps{
 			lang.Stmt("var %s %s", decl("y"), part),
 			call(src),
@@ -351,13 +371,13 @@ func (w *methodWriter) maskBranch(f maskField, fmtIdent genExpr) (genStep, error
 		}, nil
 	}
 
-	leaf, err := w.p.typeString(f.leaf)
+	leaf, err := w.p.typeString(m.leaf)
 	if err != nil {
 		return nil, err
 	}
 
 	y, held := lang.Stmt("var %s %s", decl("y"), part), part
-	if f.conv == convTargetRef {
+	if m.ref {
 		y, held = lang.Stmt("%s := new(%s)", decl("y"), part), "*"+part
 	}
 	// The paths still name fields of the type of the field, so they are
@@ -380,6 +400,7 @@ func (w *methodWriter) maskBranch(f maskField, fmtIdent genExpr) (genStep, error
 // maskEmbedded returns the steps setting the embedded partial value f of x
 // to the partial value the paths routed to it select from v.
 func (w *methodWriter) maskEmbedded(f maskField) (genStep, error) {
+	m := w.p.matchField(f.v)
 	sub := lang.Name(subRole(f))
 	src := fieldOf("v", f.name)
 	dst := fieldOf("x", f.partial)
@@ -387,16 +408,16 @@ func (w *methodWriter) maskEmbedded(f maskField) (genStep, error) {
 	call := func(recv, in genExpr) genSteps {
 		return checkErr(lang.Expr("%s.FromValueWithMask(%s, %s)", recv, in, sub), lang.Name("err"))
 	}
-	if f.conv == convEmbedded {
+	if !m.pointer() {
 		return call(dst, src), nil
 	}
 
-	part, err := w.p.partialString(f.named)
+	part, err := w.p.partialString(m.named)
 	if err != nil {
 		return nil, err
 	}
 
-	leaf, err := w.p.typeString(f.leaf)
+	leaf, err := w.p.typeString(m.leaf)
 	if err != nil {
 		return nil, err
 	}

@@ -619,35 +619,32 @@ func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 
 	switch u := named.Underlying().(type) {
 	case *types.Struct:
-		var fields []fieldInfo
-
-		ty, fields, err = p.structType(n, u)
+		ty, err = p.structType(n, u)
 		if err == nil {
-			err = w.structMethods(fields)
+			err = w.structMethods(u)
 		}
 	case *types.Slice:
-		var elem mapped
+		var elem dst.Expr
 
-		elem, err = p.value(u.Elem(), false)
+		elem, err = p.partialExpr(p.matchValue(u.Elem()))
 
-		ty = &dst.ArrayType{Elt: elem.expr}
+		ty = &dst.ArrayType{Elt: elem}
+
 		if err == nil {
-			err = w.collectionMethods(false, elem, u.Elem())
+			err = w.collectionMethods(false, u.Elem())
 		}
 	case *types.Map:
-		var (
-			key   dst.Expr
-			value mapped
-		)
+		var key, value dst.Expr
 
 		key, err = p.print(u.Key())
 		if err == nil {
-			value, err = p.value(u.Elem(), false)
+			value, err = p.partialExpr(p.matchValue(u.Elem()))
 		}
 
-		ty = &dst.MapType{Key: key, Value: value.expr}
+		ty = &dst.MapType{Key: key, Value: value}
+
 		if err == nil {
-			err = w.collectionMethods(true, value, u.Elem())
+			err = w.collectionMethods(true, u.Elem())
 		}
 	}
 

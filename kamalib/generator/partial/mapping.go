@@ -136,94 +136,24 @@ func (p *mapper) constraintString(tp *types.TypeParam) (string, error) {
 	return p.typeString(constraintType(tp))
 }
 
-// conv selects how a value converts between its source and partial form.
-type conv int
+// matchField matches the struct field v for the package of p.
+func (p *mapper) matchField(v *types.Var) match { return p.sel.matchField(v, p.pkg.PkgPath) }
 
-const (
-	// convPlain: T <-> und.Und[T].
-	convPlain conv = iota
-	// convSlice and convMap: T <-> und.Und[T], nil <-> null.
-	convSlice
-	convMap
-	// convPointer: *T <-> und.Und[T], nil <-> null.
-	convPointer
-	// convOption: opt.Option[T] <-> und.Und[T], none <-> null.
-	convOption
-	// convCopy: und.Und and elastic.Elastic are copied.
-	convCopy
-	// convTarget: M <-> und.Und[MPartial].
-	convTarget
-	// convTargetPointer: *M <-> und.Und[MPartial], nil <-> null.
-	convTargetPointer
-	// convTargetRef: *M <-> und.Und[*MPartial], nil <-> null.
-	convTargetRef
-	// convEmbedded: embedded M <-> embedded MPartial.
-	convEmbedded
-	// convEmbeddedPointer: embedded *M <-> embedded MPartial, nil <-> zero.
-	convEmbeddedPointer
-	// convSkip: a blank field, which the partial struct copies and the
-	// methods do not touch.
-	convSkip
-)
+// matchValue matches t, the type of a slice element or a map value, for
+// the package of p.
+func (p *mapper) matchValue(t types.Type) match { return p.sel.matchValue(t, p.pkg.PkgPath) }
 
-// class groups values by the merge strategies they accept.
-type class int
-
-const (
-	// classPlain accepts overwrite only.
-	classPlain class = iota
-	// classElastic accepts overwrite only.
-	classElastic
-	// classSlice and classMap accept overwrite and append.
-	classSlice
-	classMap
-	// classSub is a partial variant of a struct and accepts recursive and
-	// overwrite.
-	classSub
-	// classSubSlice and classSubMap are partial variants of slices and
-	// maps, and accept recursive, overwrite and append.
-	classSubSlice
-	classSubMap
-	// classEmbedded is an embedded partial variant and accepts recursive
-	// and overwrite.
-	classEmbedded
-)
-
-// mapped is the partial form of a field, slice element or map value.
-type mapped struct {
-	expr  dst.Expr
-	conv  conv
-	class class
-	// source is the source type. route are the pointer steps from source to
-	// leaf, the source type the partial form holds: the target, the type
-	// argument of an option or the source type itself.
-	source types.Type
-	route  []typegraph.EdgeRouteNode
-	leaf   types.Type
-	// named is the target leaf refers to, or nil.
-	named *types.Named
-}
-
-// fieldInfo is a mapped struct field.
-type fieldInfo struct {
-	mapped
-	// name is the name of the source field; partial is the name of the
-	// partial field.
-	name, partial string
-	// strategy is the merge strategy of the field.
-	strategy string
-	// flag is the flag of the field, or nil.
-	flag *flagField
-}
-
-// structType returns the partial struct type of the target n and its
-// mapped fields. A target declared by a struct literal gets a clone of the
-// literal with its field types replaced, as sourceStruct describes; any
-// other target gets a struct built from s.
-func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fieldInfo, error) {
+// structType returns the partial struct type of the target n. A target
+// declared by a struct literal gets a clone of the literal with its field
+// types replaced, as sourceStruct describes; any other target gets a
+// struct built from s.
+//
+// It reports every error of the fields of s, so the method writers, which
+// match the fields again, meet none.
+func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, error) {
 	synth := make([]*dst.Field, s.NumFields())
 
-	var infos []fieldInfo
+	var flags []*flagField
 
 	seen := map[string]*types.Var{}
 
@@ -233,7 +163,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 		// type A sub.S, has the fields of sub.S, and the methods cannot
 		// spell an unexported one.
 		if v.Name() != "_" && !v.Exported() && v.Pkg() != nil && v.Pkg().Path() != p.pkg.PkgPath {
-			return nil, nil, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"field %s (%s): %w: unexported field of package %s cannot be converted in package %s",
 				v.Name(),
 				p.position(v.Pos()),
@@ -243,54 +173,60 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 			)
 		}
 
-		f, info, err := p.field(n, v, s.Tag(i))
-		if err == nil && info.partial != "_" {
-			switch prev := seen[info.partial]; {
+		m := p.matchField(v)
+
+		f, flag, err := p.field(n, v, m, s.Tag(i))
+		if err == nil && !m.blank {
+			name := partialField(v, m)
+
+			switch prev := seen[name]; {
 			case prev != nil:
 				err = fmt.Errorf(
 					"%w: partial field %s is given by %s too (%s)",
-					ErrConflict, info.partial, prev.Name(), p.position(prev.Pos()),
+					ErrConflict, name, prev.Name(), p.position(prev.Pos()),
 				)
-			case slices.Contains(p.sel.partialMethodNames(n), info.partial):
+			case slices.Contains(p.sel.partialMethodNames(n), name):
 				err = fmt.Errorf(
 					"%w: partial field %s collides with the method %s",
-					ErrConflict, info.partial, info.partial,
+					ErrConflict, name, name,
 				)
 			}
 
-			seen[info.partial] = v
+			seen[name] = v
 		}
 
 		if err != nil {
-			return nil, nil, fmt.Errorf("field %s (%s): %w", v.Name(), p.position(v.Pos()), err)
+			return nil, fmt.Errorf("field %s (%s): %w", v.Name(), p.position(v.Pos()), err)
 		}
 
 		synth[i] = f
 
-		infos = append(infos, info)
+		if flag != nil {
+			flags = append(flags, flag)
+		}
 	}
 
-	if err := checkFlags(n, infos); err != nil {
-		return nil, nil, err
+	if err := checkFlags(n, flags); err != nil {
+		return nil, err
 	}
 
 	st, err := p.sourceStruct(n, s, synth)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if st != nil {
-		return st, infos, nil
+		return st, nil
 	}
 
 	fields := &dst.FieldList{Opening: true, Closing: true}
-
 	fields.List = synth
 
-	return &dst.StructType{Fields: fields}, infos, nil
+	return &dst.StructType{Fields: fields}, nil
 }
 
-// field maps a struct field of the target n.
+// field returns the partial field of the struct field v of the target n,
+// matched as m, and the flag of the field, or nil.
 //
 // An embedded struct target, or pointer to one, stays embedded as its
 // partial variant and keeps its tag: adding omitzero to it would stop
@@ -298,105 +234,93 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 // after it, since its partial value is an und.Und, which cannot be
 // embedded by the field name of the source. Encoders do not inline an
 // embedded slice or map either, so keeping its name keeps its wire name.
-func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field, fieldInfo, error) {
-	info := fieldInfo{source: v.Type(), name: v.Name(), partial: v.Name()}
-	key := fieldKeyOf(n.Id, v.Name())
-
-	var (
-		f   *dst.Field
-		err error
-	)
-
-	if v.Name() == "_" {
+func (p *mapper) field(
+	n *typegraph.Node,
+	v *types.Var,
+	m match,
+	tag string,
+) (*dst.Field, *flagField, error) {
+	if m.blank {
 		// Nothing refers to a blank field, so it has no partial value and
 		// the methods skip it. The partial struct keeps it with its type and
 		// tag as written: a blank field may direct the compiler, as
 		// _ structs.HostLayout does.
-		info.conv = convSkip
-
-		info.flag, err = p.flag(n, info, p.sel.flags[key])
-		if err != nil {
-			return nil, fieldInfo{}, err
+		if _, err := p.flag(n, v, m); err != nil {
+			return nil, nil, err
 		}
 
 		expr, err := p.print(v.Type())
 		if err != nil {
-			return nil, fieldInfo{}, err
+			return nil, nil, err
 		}
 
 		return withTag(
 			&dst.Field{Names: []*dst.Ident{dst.NewIdent("_")}, Type: expr},
 			tag,
-		), info, nil
+		), nil, nil
 	}
 
-	if named, ok := p.sel.partialOf(deref(v.Type()), p.pkg.PkgPath); ok && v.Embedded() &&
-		isStruct(named) {
-		info.partial = partialName(named.Obj().Name())
-		info.class = classEmbedded
-		info.conv = convEmbedded
-		info.named = named
+	expr, err := p.partialExpr(m)
+	if err != nil {
+		return nil, nil, err
+	}
 
-		info.leaf, info.route = typegraph.PointerRoute(v.Type())
-		if len(info.route) > 0 {
-			info.conv = convEmbeddedPointer
-		}
+	f := &dst.Field{Type: expr}
 
-		info.expr, err = p.partial(named)
-		if err != nil {
-			return nil, fieldInfo{}, err
-		}
-
-		f = withTag(&dst.Field{Type: info.expr}, tag)
-	} else {
-		info.mapped, err = p.value(v.Type(), p.sel.refs[v])
-		if err != nil {
-			return nil, fieldInfo{}, err
-		}
-
+	if !m.embedded {
 		tag, err = partialTag(tag, v.Exported())
 		if err != nil {
-			return nil, fieldInfo{}, err
+			return nil, nil, err
 		}
 
-		f = withTag(&dst.Field{Names: []*dst.Ident{dst.NewIdent(v.Name())}, Type: info.expr}, tag)
+		f.Names = []*dst.Ident{dst.NewIdent(v.Name())}
 	}
 
-	info.strategy, err = p.strategy(info.class, key, p.sel.merges[key])
+	if _, err := p.strategy(m, fieldKeyOf(n.Id, v.Name())); err != nil {
+		return nil, nil, err
+	}
+
+	flag, err := p.flag(n, v, m)
 	if err != nil {
-		return nil, fieldInfo{}, err
+		return nil, nil, err
 	}
 
-	info.flag, err = p.flag(n, info, p.sel.flags[key])
-	if err != nil {
-		return nil, fieldInfo{}, err
-	}
-
-	return f, info, nil
+	return withTag(f, tag), flag, nil
 }
 
-// strategy returns the merge strategy of the field k holding a value of
-// class c, set by o or defaulted by the options.
-func (p *mapper) strategy(c class, k fieldKey, o mergeOption) (string, error) {
+// strategy returns the merge strategy of the field k matched as m, set by
+// its directive or defaulted by the options.
+//
+// A value held whole and an elastic.Elastic accept overwrite only. A slice
+// or a map accepts overwrite and append. A partial value accepts recursive
+// and overwrite, and append too when it is the partial variant of a slice
+// or a map. An embedded partial value accepts recursive and overwrite.
+func (p *mapper) strategy(m match, k fieldKey) (string, error) {
 	var (
 		def     string
 		allowed []string
+		o       = p.sel.merges[k]
 	)
 
-	switch c {
-	case classPlain, classElastic:
-		def, allowed = string(MergeOverwrite), []string{string(MergeOverwrite)}
-	case classSlice, classMap:
-		def = string(p.sel.opts.Merge)
-		allowed = []string{string(MergeOverwrite), string(MergeAppend)}
-	case classSub, classEmbedded:
+	switch {
+	case m.embedded:
 		def = string(p.sel.opts.MergeNested)
 		allowed = []string{string(MergeNestedRecursive), string(MergeNestedOverwrite)}
-	case classSubSlice, classSubMap:
+	case m.kind == leafElastic:
+		def, allowed = string(MergeOverwrite), []string{string(MergeOverwrite)}
+	case m.kind == leafTarget && m.collection():
 		def = string(p.sel.opts.MergeNested)
 		allowed = []string{
 			string(MergeNestedRecursive), string(MergeNestedOverwrite), string(MergeAppend),
 		}
+	case m.kind == leafTarget:
+		def = string(p.sel.opts.MergeNested)
+		allowed = []string{string(MergeNestedRecursive), string(MergeNestedOverwrite)}
+	case m.collection():
+		def = string(p.sel.opts.Merge)
+		allowed = []string{string(MergeOverwrite), string(MergeAppend)}
+	default:
+		def, allowed = string(MergeOverwrite), []string{string(MergeOverwrite)}
 	}
 
 	if o.strategy == "" {
@@ -427,7 +351,7 @@ func withTag(f *dst.Field, tag string) *dst.Field {
 	return f
 }
 
-// value maps the type of a struct field, a slice element or a map value:
+// partialExpr spells the partial form of a type matched as m:
 //
 //	T              und.Und[T]
 //	M              und.Und[MPartial]  (M a target)
@@ -436,120 +360,45 @@ func withTag(f *dst.Field, tag string) *dst.Field {
 //	opt.Option[T]  und.Und[T]
 //	und.Und[T]     und.Und[T]
 //	elastic.Elastic[T] elastic.Elastic[T]
+//	embedded M, *M MPartial
 //
 // Any other type, a slice, map or array included, maps as a whole as T
 // does. So does a target whose partial variant cannot be spelled in the
 // package of the mapper.
-func (p *mapper) value(t types.Type, ref bool) (mapped, error) {
-	leaf, route := typegraph.PointerRoute(t)
-	if len(route) > 1 {
-		return mapped{}, fmt.Errorf("%w: pointer to pointer %s", ErrUnsupported, t)
+func (p *mapper) partialExpr(m match) (dst.Expr, error) {
+	if m.embedded {
+		return p.partial(m.named)
 	}
 
-	if len(route) == 1 {
-		out, err := p.wrap(leaf, ref)
-		switch out.conv {
-		case convTarget:
-			out.conv = convTargetPointer
-			if ref {
-				out.conv = convTargetRef
-			}
-		default:
-			out.conv = convPointer
-		}
-
-		out.source, out.route = t, route
-
-		return out, err
+	if len(m.route) > 1 {
+		return nil, fmt.Errorf("%w: pointer to pointer %s", ErrUnsupported, m.source)
 	}
 
-	switch {
-	case isNamed(t, optPath, "Option"):
-		arg := types.Unalias(t).(*types.Named).TypeArgs().At(0)
-
-		elem, err := p.print(arg)
-		if err != nil {
-			return mapped{}, err
-		}
-
-		expr, err := p.und(elem)
-
-		return mapped{
-			expr: expr, conv: convOption, class: plainClass(arg), source: t, leaf: arg,
-		}, err
-	case isNamed(t, undPath, "Und"):
+	switch m.kind {
+	case leafUnd:
 		p.support[undPath] = true
-		expr, err := p.print(t)
-		arg := types.Unalias(t).(*types.Named).TypeArgs().At(0)
-
-		return mapped{
-			expr: expr, conv: convCopy, class: plainClass(arg), source: t, leaf: arg,
-		}, err
-	case isNamed(t, elasticPath, "Elastic"):
-		expr, err := p.print(t)
-		return mapped{expr: expr, conv: convCopy, class: classElastic, source: t, leaf: t}, err
-	}
-
-	return p.wrap(t, false)
-}
-
-// wrap returns und.Und of t, or of the partial variant of t when it is a
-// target. ref wraps a pointer to the partial variant.
-func (p *mapper) wrap(t types.Type, ref bool) (mapped, error) {
-	named, ok := p.sel.partialOf(t, p.pkg.PkgPath)
-	if !ok {
-		inner, err := p.print(t)
+		return p.print(m.source)
+	case leafElastic:
+		return p.print(m.source)
+	case leafTarget:
+		inner, err := p.partial(m.named)
 		if err != nil {
-			return mapped{}, err
+			return nil, err
 		}
 
-		expr, err := p.und(inner)
-
-		out := mapped{expr: expr, conv: convPlain, class: plainClass(t), source: t, leaf: t}
-		switch out.class {
-		case classSlice:
-			out.conv = convSlice
-		case classMap:
-			out.conv = convMap
+		if m.ref {
+			inner = &dst.StarExpr{X: inner}
 		}
 
-		return out, err
+		return p.und(inner)
 	}
 
-	inner, err := p.partial(named)
+	inner, err := p.print(m.leaf)
 	if err != nil {
-		return mapped{}, err
+		return nil, err
 	}
 
-	if ref {
-		inner = &dst.StarExpr{X: inner}
-	}
-
-	expr, err := p.und(inner)
-
-	out := mapped{
-		expr: expr, conv: convTarget, class: classSub, source: t, leaf: t, named: named,
-	}
-	switch named.Underlying().(type) {
-	case *types.Slice:
-		out.class = classSubSlice
-	case *types.Map:
-		out.class = classSubMap
-	}
-
-	return out, err
-}
-
-// plainClass is the class of a value of type t held whole.
-func plainClass(t types.Type) class {
-	switch t.Underlying().(type) {
-	case *types.Slice:
-		return classSlice
-	case *types.Map:
-		return classMap
-	}
-
-	return classPlain
+	return p.und(inner)
 }
 
 func (p *mapper) und(inner dst.Expr) (dst.Expr, error) {

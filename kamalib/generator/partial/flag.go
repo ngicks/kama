@@ -181,7 +181,9 @@ func flagSetSignatures() map[string]string {
 // flagField is a field with a flag option.
 type flagField struct {
 	flagOption
-	kind flagKind
+	// field is the name of the field the flag sets.
+	field string
+	kind  flagKind
 	// conv spells the type a flag value converts to, or is empty when the
 	// value has the type the field holds.
 	conv string
@@ -200,9 +202,10 @@ var textUnmarshaler = types.NewInterfaceType([]*types.Func{
 	)),
 }, nil).Complete()
 
-// flag returns the flag of the field info of n described by o, or nil
-// when o is no directive.
-func (p *mapper) flag(n *typegraph.Node, info fieldInfo, o flagOption) (*flagField, error) {
+// flag returns the flag of the field v of n, matched as m, as its
+// directive describes it, or nil when the field has no directive.
+func (p *mapper) flag(n *typegraph.Node, v *types.Var, m match) (*flagField, error) {
+	o := p.sel.flags[fieldKeyOf(n.Id, v.Name())]
 	if o.name == "" {
 		return nil, nil
 	}
@@ -211,7 +214,7 @@ func (p *mapper) flag(n *typegraph.Node, info fieldInfo, o flagOption) (*flagFie
 		return fmt.Errorf(
 			"%w: %s: %s on field %s: "+format,
 			append([]any{
-				ErrDirective, o.src.origin(), o.src.spelling(), fieldKeyOf(n.Id, info.name),
+				ErrDirective, o.src.origin(), o.src.spelling(), fieldKeyOf(n.Id, v.Name()),
 			}, args...)...,
 		)
 	}
@@ -219,23 +222,22 @@ func (p *mapper) flag(n *typegraph.Node, info fieldInfo, o flagOption) (*flagFie
 	var t types.Type
 
 	switch {
-	case info.conv == convSkip:
+	case m.blank:
 		return nil, bad("a blank field cannot be set")
-	case info.class == classSub || info.class == classSubSlice || info.class == classSubMap ||
-		info.class == classEmbedded:
+	case m.kind == leafTarget:
 		return nil, bad("the field holds a partial value; " +
 			"flags apply to fields of the partial type itself, not to nested partial values")
-	case info.class == classElastic:
-		return nil, bad("unsupported type %s", info.source)
-	case info.conv == convPointer:
-		t = deref(info.source)
-	case info.conv == convOption || info.conv == convCopy:
-		t = types.Unalias(info.source).(*types.Named).TypeArgs().At(0)
+	case m.kind == leafElastic:
+		return nil, bad("unsupported type %s", m.source)
+	case m.pointer():
+		t = deref(m.source)
+	case m.kind == leafOption, m.kind == leafUnd:
+		t = m.leaf
 	default:
-		t = info.source
+		t = m.source
 	}
 
-	f := &flagField{flagOption: o}
+	f := &flagField{flagOption: o, field: v.Name()}
 
 	want, ok := f.setKind(t)
 	if !ok {
@@ -298,12 +300,32 @@ func (f *flagField) setKind(t types.Type) (types.Type, bool) {
 	return nil, false
 }
 
-// flagMethods writes RegisterFlags and FromFlagSet for the fields with a
-// flag option. It writes nothing when there are none.
-func (w *methodWriter) flagMethods(fields []fieldInfo) error {
-	flags := opiter.WrapSeq(slices.Values(fields)).
-		Filter(func(f fieldInfo) bool { return f.flag != nil }).
-		CollectSlice()
+// flags returns the flags of the fields of the struct st of n, in field
+// order.
+func (p *mapper) flags(n *typegraph.Node, st *types.Struct) ([]*flagField, error) {
+	var out []*flagField
+
+	for v := range st.Fields() {
+		f, err := p.flag(n, v, p.matchField(v))
+		if err != nil {
+			return nil, err
+		}
+
+		if f != nil {
+			out = append(out, f)
+		}
+	}
+
+	return out, nil
+}
+
+// flagMethods writes RegisterFlags and FromFlagSet for the fields of st
+// with a flag option. It writes nothing when there are none.
+func (w *methodWriter) flagMethods(st *types.Struct) error {
+	flags, err := w.p.flags(w.n, st)
+	if err != nil {
+		return err
+	}
 
 	if len(flags) == 0 {
 		return nil
@@ -321,7 +343,7 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 		return ferr
 	}
 
-	err := w.function(
+	err = w.function(
 		docComment("RegisterFlags defines on %s a flag for each field of %s with a flag\n"+
 			"option. Every flag defaults to the zero value; FromFlagSet reads the\n"+
 			"flags back after %s is parsed.", lang.Name("f"), lang.Name("p"), lang.Name("f")),
@@ -346,31 +368,31 @@ func (w *methodWriter) flagMethods(fields []fieldInfo) error {
 
 // registerFlags returns the statements defining the flag of each of flags
 // on the flag set f.
-func registerFlags(flags []fieldInfo) genSteps {
+func registerFlags(flags []*flagField) genSteps {
 	return opiter.WrapSeq(slices.Values(flags)).
 		Map(registerFlag).
 		CollectSlice()
 }
 
-func registerFlag(fl fieldInfo) genStep {
-	k := fl.flag.kind
+func registerFlag(fl *flagField) genStep {
+	k := fl.kind
 
 	return lang.Stmt("%s.%s(%s, %s, %s, %s)", lang.Name("f"), k.define,
-		strconv.Quote(fl.flag.name), strconv.Quote(fl.flag.short), k.zero,
-		strconv.Quote(fl.flag.usage))
+		strconv.Quote(fl.name), strconv.Quote(fl.short), k.zero,
+		strconv.Quote(fl.usage))
 }
 
 // readFlags returns the statements setting the field of p of each of flags
 // set on the flag set f. und spells the package und. fmtIdent spells the
 // package fmt.
-func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
-	readFlag := func(fl fieldInfo) genStep {
-		k := fl.flag.kind
-		flagName := strconv.Quote(fl.flag.name)
+func readFlags(flags []*flagField, und, fmtIdent string) genSteps {
+	readFlag := func(fl *flagField) genStep {
+		k := fl.kind
+		flagName := strconv.Quote(fl.name)
 		fail := lang.If(lang.Expr("%s != nil", lang.Name("err")),
 			lang.Stmt("return %s.Errorf(%s, %s, %s)",
 				fmtIdent, strconv.Quote("flag --%s: %w"), flagName, lang.Name("err")), nil)
-		lhs := fieldOf("p", fl.partial)
+		lhs := fieldOf("p", fl.field)
 
 		body := genSteps{
 			lang.Stmt("%s, %s := %s.%s(%s)",
@@ -380,15 +402,15 @@ func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
 		switch {
 		case k.text:
 			body = append(body,
-				lang.Stmt("var %s %s", decl("x"), fl.flag.typ),
+				lang.Stmt("var %s %s", decl("x"), fl.typ),
 				lang.Stmt("%s = %s.UnmarshalText([]byte(%s))",
 					lang.Name("err"), lang.Name("x"), lang.Name("v")),
 				fail,
 				lang.Stmt("%s = %s.Defined(%s)", lhs, und, lang.Name("x")),
 			)
-		case fl.flag.conv != "":
+		case fl.conv != "":
 			body = append(body,
-				lang.Stmt("%s = %s.Defined(%s(%s))", lhs, und, fl.flag.conv, lang.Name("v")))
+				lang.Stmt("%s = %s.Defined(%s(%s))", lhs, und, fl.conv, lang.Name("v")))
 		default:
 			body = append(body, lang.Stmt("%s = %s.Defined(%s)", lhs, und, lang.Name("v")))
 		}
@@ -401,22 +423,18 @@ func readFlags(flags []fieldInfo, und, fmtIdent string) genSteps {
 		CollectSlice()
 }
 
-// checkFlags reports duplicate flag names and shorthands among fields.
-func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
-	names := map[string]fieldInfo{}
-	shorts := map[string]fieldInfo{}
+// checkFlags reports duplicate flag names and shorthands among flags.
+func checkFlags(n *typegraph.Node, flags []*flagField) error {
+	names := map[string]*flagField{}
+	shorts := map[string]*flagField{}
 
-	for _, f := range fields {
-		if f.flag == nil {
-			continue
-		}
-
+	for _, f := range flags {
 		for _, c := range []struct {
 			what, key string
-			seen      map[string]fieldInfo
+			seen      map[string]*flagField
 		}{
-			{"name", f.flag.name, names},
-			{"shorthand", f.flag.short, shorts},
+			{"name", f.name, names},
+			{"shorthand", f.short, shorts},
 		} {
 			if c.key == "" {
 				continue
@@ -426,15 +444,15 @@ func checkFlags(n *typegraph.Node, fields []fieldInfo) error {
 				return fmt.Errorf(
 					"%w: %s: %s on field %s.%s.%s: flag %s %q is taken by field %s (%s)",
 					ErrDirective,
-					f.flag.src.origin(),
-					f.flag.src.spelling(),
+					f.src.origin(),
+					f.src.spelling(),
 					n.Id.PackagePath,
 					n.Id.TypeName,
-					f.name,
+					f.field,
 					c.what,
 					c.key,
-					prev.name,
-					prev.flag.src.origin(),
+					prev.field,
+					prev.src.origin(),
 				)
 			}
 
