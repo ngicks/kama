@@ -54,12 +54,14 @@ type match struct {
 	blank bool
 }
 
-// matchField matches the struct field v for a declaration of the package
-// at pkgPath.
+// matchField matches the field v of the struct target n, for a declaration
+// of the package of n.
 //
 // An embedded struct target, or pointer to one, stays embedded. Any other
 // embedded type matches as a field named after it does.
-func (s *selection) matchField(v *types.Var, pkgPath string) match {
+func (s *selection) matchField(n *typegraph.Node, v *types.Var) match {
+	pkgPath := n.Id.PackagePath
+
 	if v.Name() == "_" {
 		return match{source: v.Type(), leaf: v.Type(), blank: true}
 	}
@@ -74,7 +76,7 @@ func (s *selection) matchField(v *types.Var, pkgPath string) match {
 		}
 	}
 
-	return s.matchType(v.Type(), s.refs[v], pkgPath)
+	return s.matchType(v.Type(), s.closesCycle(n, v), pkgPath)
 }
 
 // matchValue matches t, the type of a slice element or a map value, for a

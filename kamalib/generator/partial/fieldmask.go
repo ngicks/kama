@@ -139,34 +139,35 @@ func (s *selection) embeddedPartial(n *typegraph.Node, v *types.Var) *typegraph.
 	return s.node(named)
 }
 
-// maskSegment is a path segment of a struct target with field masks: a
-// field of the target or of a partial value embedded in it.
-type maskSegment struct {
-	name  string
-	owner *typegraph.Node
-	field *types.Var
+// maskSegment returns the path segment of the field v of the target n: its
+// name, or the name its field mask option gives.
+func (s *selection) maskSegment(n *typegraph.Node, v *types.Var) string {
+	if o, ok := s.maskNames[fieldKeyOf(n.Id, v.Name())]; ok {
+		return o.name
+	}
+
+	return v.Name()
 }
 
-func (m maskSegment) position() string {
-	return m.owner.Detail.Pkg.Fset.Position(m.field.Pos()).String()
-}
-
-// maskSegments returns the segments of the fields of the struct target n
-// in field order. The segments of an embedded partial value take the place
-// of the embedding field. An embedded partial value whose type does not
-// have field masks enabled is an error.
-func (s *selection) maskSegments(n *typegraph.Node) ([]maskSegment, error) {
+// walkMaskSegments calls fn for every path segment of the struct target n
+// in field order, with the field v giving the segment seg and the target
+// owner declaring it. The segments of an embedded partial value take the
+// place of the embedding field, so owner is n or a target embedded in it.
+// An embedded partial value whose type does not have field masks enabled
+// is an error, and so is an embedded implementor.
+func (s *selection) walkMaskSegments(
+	n *typegraph.Node,
+	fn func(owner *typegraph.Node, v *types.Var, seg string) error,
+) error {
 	st := n.Detail.Type.Underlying().(*types.Struct)
-
-	var out []maskSegment
 
 	for v := range st.Fields() {
 		if v.Name() == "_" {
 			continue
 		}
 
-		if m := s.matchField(v, n.Id.PackagePath); m.embedded && m.implementor {
-			return nil, fmt.Errorf(
+		if m := s.matchField(n, v); m.embedded && m.implementor {
+			return fmt.Errorf(
 				"%w: %s (%s): embedded %s is declared outside the packages of the run, "+
 					"and the paths of its fields cannot be paths of %s",
 				ErrUnsupported, n.Id.String(), n.Detail.Pkg.Fset.Position(v.Pos()),
@@ -174,36 +175,30 @@ func (s *selection) maskSegments(n *typegraph.Node) ([]maskSegment, error) {
 			)
 		}
 
-		if child := s.embeddedPartial(n, v); child != nil {
-			if !s.fieldMasked(child.Id) {
-				return nil, fmt.Errorf(
-					"%w: %s (%s): embedded %s does not have field masks enabled, "+
-						"and the paths of its fields are paths of %s",
-					ErrDirective, n.Id.String(), n.Detail.Pkg.Fset.Position(v.Pos()),
-					child.Id.String(), n.Id.TypeName,
-				)
+		child := s.embeddedPartial(n, v)
+		if child == nil {
+			if err := fn(n, v, s.maskSegment(n, v)); err != nil {
+				return err
 			}
-
-			sub, err := s.maskSegments(child)
-			if err != nil {
-				return nil, err
-			}
-
-			out = append(out, sub...)
 
 			continue
 		}
 
-		seg := v.Name()
-
-		if o, ok := s.maskNames[fieldKeyOf(n.Id, v.Name())]; ok {
-			seg = o.name
+		if !s.fieldMasked(child.Id) {
+			return fmt.Errorf(
+				"%w: %s (%s): embedded %s does not have field masks enabled, "+
+					"and the paths of its fields are paths of %s",
+				ErrDirective, n.Id.String(), n.Detail.Pkg.Fset.Position(v.Pos()),
+				child.Id.String(), n.Id.TypeName,
+			)
 		}
 
-		out = append(out, maskSegment{name: seg, owner: n, field: v})
+		if err := s.walkMaskSegments(child, fn); err != nil {
+			return err
+		}
 	}
 
-	return out, nil
+	return nil
 }
 
 // checkFieldMaskSegments reports two fields of one struct target with field
@@ -222,34 +217,46 @@ func (s *selection) checkFieldMaskSegments() error {
 			continue
 		}
 
-		segs, err := s.maskSegments(n)
-		if err != nil {
-			errs = append(errs, err)
-			continue
+		var (
+			fields = map[string]*types.Var{}
+			owners = map[string]*typegraph.Node{}
+			shared error
+		)
+
+		position := func(owner *typegraph.Node, v *types.Var) string {
+			return owner.Detail.Pkg.Fset.Position(v.Pos()).String()
 		}
 
-		seen := map[string]maskSegment{}
-		for _, seg := range segs {
-			prev, ok := seen[seg.name]
+		err := s.walkMaskSegments(n, func(owner *typegraph.Node, v *types.Var, seg string) error {
+			prev, ok := fields[seg]
 			if !ok {
-				seen[seg.name] = seg
-				continue
+				fields[seg], owners[seg] = v, owner
+				return nil
+			}
+			// Only the first shared segment of a target is reported.
+			if shared == nil {
+				shared = fmt.Errorf(
+					"%w: %s (%s): field mask path segment %q of field %s.%s is taken by field %s.%s (%s)",
+					ErrDirective,
+					n.Id.String(),
+					position(owner, v),
+					seg,
+					owner.Id.TypeName,
+					v.Name(),
+					owners[seg].Id.TypeName,
+					prev.Name(),
+					position(owners[seg], prev),
+				)
 			}
 
-			errs = append(errs, fmt.Errorf(
-				"%w: %s (%s): field mask path segment %q of field %s.%s is taken by field %s.%s (%s)",
-				ErrDirective,
-				n.Id.String(),
-				seg.position(),
-				seg.name,
-				seg.owner.Id.TypeName,
-				seg.field.Name(),
-				prev.owner.Id.TypeName,
-				prev.field.Name(),
-				prev.position(),
-			))
+			return nil
+		})
+		if err == nil {
+			err = shared
+		}
 
-			break
+		if err != nil {
+			errs = append(errs, err)
 		}
 	}
 
@@ -270,7 +277,7 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 	maskedEmbeddingErr := func(v *types.Var) error {
 		// The run knows no option of an implementor, so the methods of its
 		// partial variant tell whether it has field masks.
-		m := s.matchField(v, n.Id.PackagePath)
+		m := s.matchField(n, v)
 		if m.embedded && m.implementor && declaresFieldMask(m.named) {
 			return fmt.Errorf(
 				"%w: %s (%s): embedded %s is declared outside the packages of the run and "+

@@ -80,6 +80,9 @@ var helperOpNames = map[helperOp]string{
 // types mention. A generic function is instantiated once per GC shape, so
 // every pointer type would share one instantiation dispatching through a
 // dictionary; a helper of concrete types gets code of its own.
+//
+// A helper is a request the emitting code makes, not a fact of the source:
+// op tells what the caller wants done with typ.
 type helper struct {
 	op helperOp
 	// typ is the source type a conversion converts from or to, the type the
@@ -96,10 +99,6 @@ type helper struct {
 	// spelled are the paths of supportPaths the function spells, recorded
 	// when the function is first rendered.
 	spelled map[string]bool
-	// in and out are the parameter and result types, and inEnc and outEnc
-	// their canonical encodings, set when the helper is recorded.
-	in, out       []types.Type
-	inEnc, outEnc []byte
 }
 
 // typeParams returns the type parameters h is generic over: those its types
@@ -567,6 +566,9 @@ const maxCollisions = 0xff
 //
 // Helpers are added while the files are rendered a first time, then
 // resolve names them; the files are rendered again with the names.
+//
+// No source holds the set: it tells which helpers the generated code of
+// the package calls, and a name depends on every helper of the package.
 type helperSet struct {
 	syn *synthetic
 	// hash returns the part of a name standing for a signature encoding to
@@ -596,12 +598,16 @@ func newHelperSet() *helperSet {
 // apart. A signature identical to one of another name breaks the encoding
 // and is an error.
 func (s *helperSet) add(h *helper) (*helper, error) {
-	h.in, h.out = h.signature(s.syn)
-	h.inEnc, h.outEnc = s.syn.encodeList(h.in), s.syn.encodeList(h.out)
-	base := helperName(helperOpNames[h.op], s.hash(h.inEnc, h.outEnc))
+	in, out := s.encodings(h)
+	base := helperName(helperOpNames[h.op], s.hash(in, out))
 	servesSignature := func(prev *helper) bool {
-		return identicalSignature(prev, h) || len(h.typeParams()) > 0 &&
-			bytes.Equal(prev.inEnc, h.inEnc) && bytes.Equal(prev.outEnc, h.outEnc)
+		if s.identicalSignature(prev, h) {
+			return true
+		}
+
+		prevIn, prevOut := s.encodings(prev)
+
+		return len(h.typeParams()) > 0 && bytes.Equal(prevIn, in) && bytes.Equal(prevOut, out)
 	}
 
 	served := opiter.WrapSeq(slices.Values(s.groups[base])).
@@ -614,17 +620,17 @@ func (s *helperSet) add(h *helper) (*helper, error) {
 
 	for other, group := range s.groups {
 		for _, prev := range group {
-			if other != base && identicalSignature(prev, h) {
+			if other != base && s.identicalSignature(prev, h) {
 				return nil, fmt.Errorf(
 					"%w: helpers %s and %s serve one signature %s",
-					ErrConflict, other, base, h.describe(),
+					ErrConflict, other, base, s.describe(h),
 				)
 			}
 		}
 	}
 
 	if s.names != nil {
-		return nil, fmt.Errorf("partial: helper %s added after naming", h.describe())
+		return nil, fmt.Errorf("partial: helper %s added after naming", s.describe(h))
 	}
 
 	s.groups[base] = append(s.groups[base], h)
@@ -653,7 +659,10 @@ func (s *helperSet) resolve() error {
 		}
 
 		sorted := slices.SortedFunc(slices.Values(group), func(a, b *helper) int {
-			return cmp.Or(bytes.Compare(a.inEnc, b.inEnc), bytes.Compare(a.outEnc, b.outEnc))
+			aIn, aOut := s.encodings(a)
+			bIn, bOut := s.encodings(b)
+
+			return cmp.Or(bytes.Compare(aIn, bIn), bytes.Compare(aOut, bOut))
 		})
 		for i, h := range sorted {
 			name := base + "_" + strconv.FormatInt(int64(i+1), 16)
@@ -671,48 +680,55 @@ func (s *helperSet) name(h *helper) string {
 		return name
 	}
 
-	return helperName(helperOpNames[h.op], s.hash(h.inEnc, h.outEnc))
+	in, out := s.encodings(h)
+
+	return helperName(helperOpNames[h.op], s.hash(in, out))
 }
 
-func identicalSignature(a, b *helper) bool {
-	return a.op == b.op && identicalList(a.in, b.in) && identicalList(a.out, b.out)
+// encodings returns the canonical encodings of the parameter types and of
+// the result types of h.
+func (s *helperSet) encodings(h *helper) (in, out []byte) {
+	i, o := h.signature(s.syn)
+	return s.syn.encodeList(i), s.syn.encodeList(o)
+}
+
+func (s *helperSet) identicalSignature(a, b *helper) bool {
+	if a.op != b.op {
+		return false
+	}
+
+	aIn, aOut := a.signature(s.syn)
+	bIn, bOut := b.signature(s.syn)
+
+	return identicalList(aIn, bIn) && identicalList(aOut, bOut)
 }
 
 func identicalList(a, b []types.Type) bool {
 	return slices.EqualFunc(a, b, types.Identical)
 }
 
-func (h *helper) describe() string {
-	return fmt.Sprintf("%s %v -> %v", helperOpNames[h.op], h.in, h.out)
+func (s *helperSet) describe(h *helper) string {
+	in, out := h.signature(s.syn)
+
+	return fmt.Sprintf("%s %v -> %v", helperOpNames[h.op], in, out)
 }
 
-// partialFile is a partial file of a package and the helpers it calls.
+// partialFile is what rendering a partial file found out: the helpers the
+// file calls, the names of those helpers and the paths of supportPaths the
+// file spells. No source holds these: they tell what the generator emitted.
+// src names the source file the partial file is made from, which everything
+// else about the file is read from.
 type partialFile struct {
-	path  string
-	nodes []*typegraph.Node
-	// constrained reports whether the source file has a build constraint,
-	// as a //go:build line or a file name suffix.
-	constrained bool
-	// helpersPath is the helpers file carrying the build constraint of the
-	// source file, and buildLine its //go:build line or empty.
-	helpersPath string
-	buildLine   string
-	// calls are the helpers the file calls, used their names, and support
-	// the paths of supportPaths it spells.
+	src     string
 	calls   map[*helper]bool
 	used    map[string]bool
 	support map[string]bool
 }
 
-// callers returns files as the callers of the helpers of their package.
-func callers(files []*partialFile) []base.Caller {
-	return opiter.WrapSeq(slices.Values(files)).
-		Map((*partialFile).caller).
-		CollectSlice()
-}
+// path returns the path of the partial file.
+func (f *partialFile) path() string { return naming.SourceFile(f.src) }
 
-func (f *partialFile) caller() base.Caller {
-	return base.Caller{
-		Constrained: f.constrained, BuildLine: f.buildLine, Own: f.helpersPath, Uses: f.used,
-	}
+// caller returns f as a caller of the helpers of its package.
+func (f *partialFile) caller(sel *selection) base.Caller {
+	return base.Caller{Src: f.src, File: sel.targetsIn(f.src)[0].Detail.File, Uses: f.used}
 }

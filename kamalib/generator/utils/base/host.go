@@ -1,25 +1,30 @@
 package base
 
 import (
+	"go/ast"
 	"maps"
 	"slices"
 
 	"github.com/ngicks/opiter"
 )
 
-// Caller is a generated file calling declarations its package shares.
+// Caller is a generated file calling declarations its package shares. It
+// names the source file the generated file is made from. HostShared reads
+// the build constraint of the caller from there.
 type Caller struct {
-	// Constrained reports whether the source file has a build constraint,
-	// as a //go:build line or a file name suffix.
-	Constrained bool
-	// BuildLine is the //go:build line of the source file, or empty.
-	BuildLine string
-	// Own is the path of the file declaring what only constrained callers
-	// use, when this caller is the first of them. Naming.SharedFileOf names
-	// it.
-	Own string
-	// Uses are the names of the shared declarations the file calls.
+	// Src is the path of the source file, and File its syntax tree.
+	Src  string
+	File *ast.File
+	// Uses are the names of the shared declarations the file calls. No
+	// source holds them: they tell what the generator emitted.
 	Uses map[string]bool
+}
+
+// constrained reports whether the source file has a build constraint, as a
+// //go:build line or a file name suffix.
+func (c Caller) constrained() bool {
+	_, ok := BuildConstraint(c.File)
+	return ok || Constrained(c.Src)
 }
 
 // Host is a file declaring shared declarations.
@@ -32,7 +37,8 @@ type Host struct {
 }
 
 // HostShared returns the files declaring what callers, in the order
-// given, use, sorted by path. Every name is declared once.
+// given, use, sorted by path. Every name is declared once. n and kind name
+// the files, as Naming.SharedFileOf does.
 //
 // A name a caller without a build constraint uses goes to shared. Such a
 // caller is in every build variant, and what it uses does not depend on
@@ -41,10 +47,11 @@ type Host struct {
 //
 // A name only constrained callers use cannot go there: its types may not
 // exist in another variant, and a run loading another variant would drop
-// it. It goes to the Own file of the first caller using it, under the build
+// it. It goes to the file Naming.SharedFileOf names for the source file of
+// the first caller using it, under the build
 // line of that caller, which stays right as long as the callers using the
 // name are loaded together.
-func HostShared(shared string, callers []Caller) []Host {
+func HostShared(n Naming, kind, shared string, callers []Caller) []Host {
 	names := map[string]bool{}
 	for _, c := range callers {
 		maps.Copy(names, c.Uses)
@@ -65,11 +72,12 @@ func HostShared(shared string, callers []Caller) []Host {
 		users := opiter.WrapSeq(slices.Values(callers)).
 			Filter(func(c Caller) bool { return c.Uses[name] })
 
-		if users.ContainsFunc(func(c Caller) bool { return !c.Constrained }) {
+		if users.ContainsFunc(func(c Caller) bool { return !c.constrained() }) {
 			host(shared, "", name)
 		} else {
 			first := users.First().Value()
-			host(first.Own, first.BuildLine, name)
+			buildLine, _ := BuildConstraint(first.File)
+			host(n.SharedFileOf(kind, first.Src), buildLine, name)
 		}
 	}
 

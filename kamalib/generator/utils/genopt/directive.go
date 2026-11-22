@@ -49,28 +49,27 @@ func (l Loader[P, T, F]) fromDirectives(ws []walked) (Option[P, T, F], error) {
 
 func (l Loader[P, T, F]) packageDirectives(w walked) (PackageOption[P, T, F], []error) {
 	po := PackageOption[P, T, F]{}
-	specs := typeSpecs(w.pkg)
 
 	var errs []error
 
 	typeOption := func(name string, pos token.Position) TypeOption[T, F] {
 		to, ok := po.Types[name]
 		if !ok {
-			spec := specs[name]
+			file, ts := typeSpecOf(w.pkg, name)
 			to.Source = Source{
 				Kind: SourceDirective,
-				Name: spec.file,
+				Name: file,
 				Pos:  pos,
 				Target: Target{
 					Kind:    TargetType,
 					PkgPath: w.pkg.PkgPath,
-					File:    spec.file,
+					File:    file,
 					Type:    name,
-					Node:    spec.ts,
+					Node:    ts,
 				},
 			}
 
-			if isStructSpec(w.pkg, spec.ts) {
+			if isStructSpec(w.pkg, ts) {
 				to.Fields = opt.Some(map[string]F{})
 			}
 		}
@@ -249,19 +248,10 @@ func describe(t Target) string {
 	return "an unknown target"
 }
 
-// typeSpec is a top-level type spec and the file declaring it.
-type typeSpec struct {
-	file string
-	ts   *ast.TypeSpec
-}
-
-// typeSpecs returns the top-level type specs of pkg keyed by name.
-func typeSpecs(pkg *packages.Package) map[string]typeSpec {
-	out := map[string]typeSpec{}
-
+// typeSpecOf returns the top-level type spec of pkg named name and the file
+// declaring it, or nil.
+func typeSpecOf(pkg *packages.Package, name string) (file string, ts *ast.TypeSpec) {
 	for _, f := range pkg.Syntax {
-		file := pkg.Fset.Position(f.FileStart).Filename
-
 		for _, decl := range f.Decls {
 			gd, ok := decl.(*ast.GenDecl)
 			if !ok || gd.Tok != token.TYPE {
@@ -269,13 +259,14 @@ func typeSpecs(pkg *packages.Package) map[string]typeSpec {
 			}
 
 			for _, spec := range gd.Specs {
-				ts := spec.(*ast.TypeSpec)
-				out[ts.Name.Name] = typeSpec{file: file, ts: ts}
+				if ts := spec.(*ast.TypeSpec); ts.Name.Name == name {
+					return pkg.Fset.Position(f.FileStart).Filename, ts
+				}
 			}
 		}
 	}
 
-	return out
+	return "", nil
 }
 
 // isStructSpec reports whether the type ts declares is a struct type: by

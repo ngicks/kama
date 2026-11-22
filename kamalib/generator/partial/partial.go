@@ -208,12 +208,12 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		return nil, nil, err
 	}
 
-	byFile := map[string][]*typegraph.Node{}
-
-	for _, n := range sel.targets {
-		filename := sel.filename(n)
-		byFile[filename] = append(byFile[filename], n)
-	}
+	// The source files declaring targets, sorted.
+	filenames := slices.Compact(
+		opiter.WrapSeq(maps.Values(sel.targets)).
+			Map(sel.filename).
+			Collect(slices.Sorted),
+	)
 
 	type pkgFiles struct {
 		pkg   *packages.Package
@@ -223,12 +223,8 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 
 	byPkg := map[string]*pkgFiles{}
 
-	for _, filename := range slices.Sorted(maps.Keys(byFile)) {
-		nodes := byFile[filename]
-		slices.SortFunc(nodes, func(a, b *typegraph.Node) int {
-			return cmp.Compare(a.Detail.Ts.Pos(), b.Detail.Ts.Pos())
-		})
-		pkg := nodes[0].Detail.Pkg
+	for _, filename := range filenames {
+		pkg := sel.targetsIn(filename)[0].Detail.Pkg
 
 		pf := byPkg[pkg.PkgPath]
 		if pf == nil {
@@ -236,14 +232,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 			byPkg[pkg.PkgPath] = pf
 		}
 
-		buildLine, constrained := base.BuildConstraint(nodes[0].Detail.File)
-		pf.files = append(pf.files, &partialFile{
-			path:        naming.SourceFile(filename),
-			nodes:       nodes,
-			constrained: constrained || base.Constrained(filename),
-			helpersPath: naming.SharedFileOf(helperKind, filename),
-			buildLine:   buildLine,
-		})
+		pf.files = append(pf.files, &partialFile{src: filename})
 	}
 
 	var files []File
@@ -252,7 +241,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		pf := byPkg[pkgPath]
 		slices.SortFunc(
 			pf.files,
-			func(a, b *partialFile) int { return cmp.Compare(a.path, b.path) },
+			func(a, b *partialFile) int { return cmp.Compare(a.path(), b.path()) },
 		)
 
 		hdr, err := fileHeader(opts, pkgPath, now)
@@ -358,11 +347,15 @@ func renderPackage(
 			return nil, err
 		}
 
-		out = append(out, File{Path: f.path, Content: content})
+		out = append(out, File{Path: f.path(), Content: content})
 	}
 	// A helpers file declares its helpers sorted by name, that is by op and
 	// then by the hashes of their signatures.
-	for _, hf := range base.HostShared(filepath.Join(dir, HelpersFile), callers(files)) {
+	callers := opiter.WrapSeq(slices.Values(files)).
+		Map(func(f *partialFile) base.Caller { return f.caller(sel) }).
+		CollectSlice()
+
+	for _, hf := range base.HostShared(naming, helperKind, filepath.Join(dir, HelpersFile), callers) {
 		content, err := renderHelpers(sel, hdr, pkg, hf, helpers)
 		if err != nil {
 			return nil, err
@@ -457,7 +450,7 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 
 	declaredErr := func(helper string) error {
 		obj := pkg.Types.Scope().Lookup(helper)
-		if obj == nil || sel.generated[obj] {
+		if obj == nil || sel.generated(obj) {
 			return nil
 		}
 
@@ -513,7 +506,7 @@ func renderFileWith(
 	require []string,
 	helpers *helperSet,
 ) ([]byte, *mapper, error) {
-	nodes := f.nodes
+	nodes := sel.targetsIn(f.src)
 	// The identifiers the generated declarations declare themselves are
 	// reserved: the type parameters and the locals, which an import of the
 	// same name would shadow or be shadowed by. A local renamed off its

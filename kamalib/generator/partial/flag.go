@@ -300,19 +300,22 @@ func (f *flagField) setKind(t types.Type) (types.Type, bool) {
 	return nil, false
 }
 
-// flags returns the flags of the fields of the struct st of n, in field
-// order.
-func (p *mapper) flags(n *typegraph.Node, st *types.Struct) ([]*flagField, error) {
-	var out []*flagField
+// flagSteps returns the step each field of st with a flag option gets, in
+// field order. step takes the flag of the field.
+func (w *methodWriter) flagSteps(
+	st *types.Struct,
+	step func(fl *flagField) genStep,
+) (genSteps, error) {
+	var out genSteps
 
 	for v := range st.Fields() {
-		f, err := p.flag(n, v, p.matchField(v))
+		fl, err := w.p.flag(w.n, v, w.p.matchField(w.n, v))
 		if err != nil {
 			return nil, err
 		}
 
-		if f != nil {
-			out = append(out, f)
+		if fl != nil {
+			out = append(out, step(fl))
 		}
 	}
 
@@ -322,12 +325,12 @@ func (p *mapper) flags(n *typegraph.Node, st *types.Struct) ([]*flagField, error
 // flagMethods writes RegisterFlags and FromFlagSet for the fields of st
 // with a flag option. It writes nothing when there are none.
 func (w *methodWriter) flagMethods(st *types.Struct) error {
-	flags, err := w.p.flags(w.n, st)
+	register, err := w.flagSteps(st, registerFlag)
 	if err != nil {
 		return err
 	}
 
-	if len(flags) == 0 {
+	if len(register) == 0 {
 		return nil
 	}
 
@@ -348,8 +351,13 @@ func (w *methodWriter) flagMethods(st *types.Struct) error {
 			"option. Every flag defaults to the zero value; FromFlagSet reads the\n"+
 			"flags back after %s is parsed.", lang.Name("f"), lang.Name("p"), lang.Name("f")),
 		lang.Expr("func (%s *%s) RegisterFlags(%s %s)", decl("p"), w.recv, decl("f"), flagSetName),
-		registerFlags(flags),
+		register,
 	)
+	if err != nil {
+		return err
+	}
+
+	read, err := w.flagSteps(st, func(fl *flagField) genStep { return readFlag(fl, und, fmtIdent) })
 	if err != nil {
 		return err
 	}
@@ -361,19 +369,13 @@ func (w *methodWriter) flagMethods(st *types.Struct) error {
 			"flags not set.", lang.Name("p"), lang.Name("f"), lang.Name("p")),
 		lang.Expr("func (%s *%s) FromFlagSet(%s %s) error",
 			decl("p"), w.recv, decl("f"), flagSetName),
-		readFlags(flags, und, fmtIdent),
+		read,
 		lang.Stmt("return nil"),
 	)
 }
 
-// registerFlags returns the statements defining the flag of each of flags
-// on the flag set f.
-func registerFlags(flags []*flagField) genSteps {
-	return opiter.WrapSeq(slices.Values(flags)).
-		Map(registerFlag).
-		CollectSlice()
-}
-
+// registerFlag returns the statement defining the flag fl on the flag set
+// f.
 func registerFlag(fl *flagField) genStep {
 	k := fl.kind
 
@@ -382,53 +384,57 @@ func registerFlag(fl *flagField) genStep {
 		strconv.Quote(fl.usage))
 }
 
-// readFlags returns the statements setting the field of p of each of flags
-// set on the flag set f. und spells the package und. fmtIdent spells the
-// package fmt.
-func readFlags(flags []*flagField, und, fmtIdent string) genSteps {
-	readFlag := func(fl *flagField) genStep {
-		k := fl.kind
-		flagName := strconv.Quote(fl.name)
-		fail := lang.If(lang.Expr("%s != nil", lang.Name("err")),
-			lang.Stmt("return %s.Errorf(%s, %s, %s)",
-				fmtIdent, strconv.Quote("flag --%s: %w"), flagName, lang.Name("err")), nil)
-		lhs := fieldOf("p", fl.field)
+// readFlag returns the statement setting the field of p of the flag fl when
+// fl is set on the flag set f. und spells the package und. fmtIdent spells
+// the package fmt.
+func readFlag(fl *flagField, und, fmtIdent string) genStep {
+	k := fl.kind
+	flagName := strconv.Quote(fl.name)
+	fail := lang.If(lang.Expr("%s != nil", lang.Name("err")),
+		lang.Stmt("return %s.Errorf(%s, %s, %s)",
+			fmtIdent, strconv.Quote("flag --%s: %w"), flagName, lang.Name("err")), nil)
+	lhs := fieldOf("p", fl.field)
 
-		body := genSteps{
-			lang.Stmt("%s, %s := %s.%s(%s)",
-				decl("v"), decl("err"), lang.Name("f"), k.get, flagName),
+	body := genSteps{
+		lang.Stmt("%s, %s := %s.%s(%s)",
+			decl("v"), decl("err"), lang.Name("f"), k.get, flagName),
+		fail,
+	}
+	switch {
+	case k.text:
+		body = append(body,
+			lang.Stmt("var %s %s", decl("x"), fl.typ),
+			lang.Stmt("%s = %s.UnmarshalText([]byte(%s))",
+				lang.Name("err"), lang.Name("x"), lang.Name("v")),
 			fail,
-		}
-		switch {
-		case k.text:
-			body = append(body,
-				lang.Stmt("var %s %s", decl("x"), fl.typ),
-				lang.Stmt("%s = %s.UnmarshalText([]byte(%s))",
-					lang.Name("err"), lang.Name("x"), lang.Name("v")),
-				fail,
-				lang.Stmt("%s = %s.Defined(%s)", lhs, und, lang.Name("x")),
-			)
-		case fl.conv != "":
-			body = append(body,
-				lang.Stmt("%s = %s.Defined(%s(%s))", lhs, und, fl.conv, lang.Name("v")))
-		default:
-			body = append(body, lang.Stmt("%s = %s.Defined(%s)", lhs, und, lang.Name("v")))
-		}
-
-		return lang.If(lang.Expr("%s.Changed(%s)", lang.Name("f"), flagName), body, nil)
+			lang.Stmt("%s = %s.Defined(%s)", lhs, und, lang.Name("x")),
+		)
+	case fl.conv != "":
+		body = append(body,
+			lang.Stmt("%s = %s.Defined(%s(%s))", lhs, und, fl.conv, lang.Name("v")))
+	default:
+		body = append(body, lang.Stmt("%s = %s.Defined(%s)", lhs, und, lang.Name("v")))
 	}
 
-	return opiter.WrapSeq(slices.Values(flags)).
-		Map(readFlag).
-		CollectSlice()
+	return lang.If(lang.Expr("%s.Changed(%s)", lang.Name("f"), flagName), body, nil)
 }
 
-// checkFlags reports duplicate flag names and shorthands among flags.
-func checkFlags(n *typegraph.Node, flags []*flagField) error {
+// checkFlags reports two fields of st, the struct of the target n, with one
+// flag name or shorthand.
+func (p *mapper) checkFlags(n *typegraph.Node, st *types.Struct) error {
 	names := map[string]*flagField{}
 	shorts := map[string]*flagField{}
 
-	for _, f := range flags {
+	for v := range st.Fields() {
+		f, err := p.flag(n, v, p.matchField(n, v))
+		if err != nil {
+			return err
+		}
+
+		if f == nil {
+			continue
+		}
+
 		for _, c := range []struct {
 			what, key string
 			seen      map[string]*flagField

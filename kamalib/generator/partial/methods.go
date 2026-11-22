@@ -3,6 +3,7 @@ package partial
 import (
 	"fmt"
 	"go/types"
+	"maps"
 	"slices"
 	"strings"
 
@@ -30,11 +31,21 @@ func (s *selection) partialMethodNames(n *typegraph.Node) []string {
 		out = slices.Concat(out, fieldMaskMethodNames)
 	}
 
-	if s.flagged[n.Id] {
+	if s.flagged(n.Id) {
 		out = slices.Concat(out, flagMethodNames)
 	}
 
 	return out
+}
+
+// flagged reports whether a field of the target id holds a flag option.
+func (s *selection) flagged(id typegraph.QualifiedType) bool {
+	ofTarget := func(k fieldKey) bool {
+		return k.pkgPath == id.PackagePath && k.typeName == id.TypeName
+	}
+
+	return opiter.WrapSeq(maps.Keys(s.flags)).
+		ContainsFunc(ofTarget)
 }
 
 // methodTypeParams returns the names the methods spell the type parameters
@@ -269,7 +280,7 @@ func (w *methodWriter) fieldSteps(
 ) genSteps {
 	return opiter.WrapSeq(st.Fields()).
 		Filter(func(v *types.Var) bool { return v.Name() != "_" }).
-		Map(func(v *types.Var) genStep { return step(v, w.p.matchField(v)) }).
+		Map(func(v *types.Var) genStep { return step(v, w.p.matchField(w.n, v)) }).
 		CollectSlice()
 }
 

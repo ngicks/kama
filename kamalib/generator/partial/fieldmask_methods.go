@@ -5,8 +5,6 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/ngicks/opiter"
-
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
@@ -16,85 +14,22 @@ import (
 // named after the field and are not listed.
 var fieldMaskLocals = []string{"paths", "path", "head", "rest", "nested", "y"}
 
-// maskKind tells how a field takes part in the paths of a field mask.
-type maskKind int
-
-const (
-	// maskLeaf is a field addressed as a whole.
-	maskLeaf maskKind = iota
-	// maskBranch is a field holding a partial value of a type with field
-	// masks: addressed as a whole and through the paths of its fields.
-	maskBranch
-	// maskEmbedded is an embedded partial value, whose paths are those of
-	// its parent.
-	maskEmbedded
-)
-
-// maskField is a field of a partial type with field masks. It names the
-// field; the writers match its type again.
-type maskField struct {
-	// v is the source field. name is its name and partial the name of
-	// its partial field.
-	v             *types.Var
-	name, partial string
-
-	kind maskKind
-	// segment is the segment of a leaf or branch.
-	segment string
-	// heads are the segments of the fields of an embedded partial value.
-	heads []string
-}
-
-// maskFields classifies the fields of st, the struct of the target n, that
-// are not blank, for a declaration of the package at pkgPath.
-func (s *selection) maskFields(
-	n *typegraph.Node,
-	st *types.Struct,
-	pkgPath string,
-) ([]maskField, error) {
-	var out []maskField
-
-	for v := range st.Fields() {
-		m := s.matchField(v, pkgPath)
-		if m.blank {
-			continue
-		}
-
-		mf := maskField{v: v, name: v.Name(), partial: partialField(v, m), segment: v.Name()}
-
-		if o, ok := s.maskNames[fieldKeyOf(n.Id, v.Name())]; ok {
-			mf.segment = o.name
-		}
-
-		switch {
-		case m.embedded:
-			mf.kind = maskEmbedded
-
-			segs, err := s.maskSegments(s.node(m.named))
-			if err != nil {
-				return nil, err
-			}
-
-			mf.heads = slices.AppendSeq(
-				mf.heads,
-				opiter.WrapSeq(slices.Values(segs)).
-					Map(func(m maskSegment) string { return m.name }).
-					Iter(),
-			)
-		// The run knows no option of an implementor, so the methods of its
-		// partial variant tell whether it has field masks.
-		case m.kind == leafPartial && isStruct(m.named) && m.implementor:
-			if declaresFieldMask(m.named) {
-				mf.kind = maskBranch
-			}
-		case m.kind == leafPartial && isStruct(m.named) && s.fieldMasked(s.node(m.named).Id):
-			mf.kind = maskBranch
-		}
-
-		out = append(out, mf)
+// holdsMasked reports whether a field matched as m holds a partial value of
+// a struct type with field masks. A path addresses such a field as a whole
+// and through the paths of the fields of its value.
+//
+// The run knows no option of an implementor, so the methods of its partial
+// variant tell whether it has field masks.
+func (s *selection) holdsMasked(m match) bool {
+	if m.embedded || m.kind != leafPartial || !isStruct(m.named) {
+		return false
 	}
 
-	return out, nil
+	if m.implementor {
+		return declaresFieldMask(m.named)
+	}
+
+	return s.fieldMasked(s.node(m.named).Id)
 }
 
 // fieldMaskMethods writes FieldMask and FromValueWithMask when the target
@@ -104,12 +39,7 @@ func (w *methodWriter) fieldMaskMethods(st *types.Struct) error {
 		return nil
 	}
 
-	masks, err := w.p.sel.maskFields(w.n, st, w.p.Pkg.PkgPath)
-	if err != nil {
-		return err
-	}
-
-	err = w.function(
+	err := w.function(
 		docComment("FieldMask returns the sorted paths of the fields %s sets. It returns\n"+
 			"nil when %s sets no field. An undefined field gives no path. A null or\n"+
 			"defined field gives its own path. A defined field holding a partial\n"+
@@ -117,13 +47,13 @@ func (w *methodWriter) fieldMaskMethods(st *types.Struct) error {
 			"instead. The paths of an embedded partial value are paths of %s.",
 			lang.Name("p"), lang.Name("p"), lang.Name("p")),
 		lang.Expr("func (%s %s) FieldMask() []string", decl("p"), w.recv),
-		w.fieldMaskBody(masks),
+		w.fieldMaskBody(st),
 	)
 	if err != nil {
 		return err
 	}
 
-	body, err := w.fromValueWithMaskBody(masks)
+	body, err := w.fromValueWithMaskBody(st)
 	if err != nil {
 		return err
 	}
@@ -152,25 +82,32 @@ func (w *methodWriter) pkgIdent(path string) genExpr {
 	return func(genCtx) (string, error) { return w.p.ident(path) }
 }
 
-// fieldMaskBody returns the body of FieldMask.
-func (w *methodWriter) fieldMaskBody(masks []maskField) genSteps {
+// fieldMaskBody returns the body of FieldMask for the fields of st.
+func (w *methodWriter) fieldMaskBody(st *types.Struct) genSteps {
 	appendPath := func(path genExpr) genStep {
 		return lang.Stmt("%s = append(%s, %s)", lang.Name("paths"), lang.Name("paths"), path)
 	}
 	out := genSteps{lang.Stmt("var %s []string", decl("paths"))}
 
-	for _, f := range masks {
-		field := fieldOf("p", f.partial)
-		own := appendPath(lang.Expr("%s", strconv.Quote(f.segment)))
+	for v := range st.Fields() {
+		m := w.p.matchField(w.n, v)
+		if m.blank {
+			continue
+		}
+
+		seg := w.p.sel.maskSegment(w.n, v)
+		field := fieldOf("p", partialField(v, m))
+		own := appendPath(lang.Expr("%s", strconv.Quote(seg)))
 
 		children := lang.ForRange("", "path", lang.Expr("%s.Value().FieldMask()", field),
-			appendPath(lang.Expr("%s+%s", strconv.Quote(f.segment+"."), lang.Name("path"))))
+			appendPath(lang.Expr("%s+%s", strconv.Quote(seg+"."), lang.Name("path"))))
+
 		switch {
-		case f.kind == maskEmbedded:
+		case m.embedded:
 			out = append(out,
 				lang.Stmt("%s = append(%s, %s.FieldMask()...)",
 					lang.Name("paths"), lang.Name("paths"), field))
-		case f.kind == maskBranch && w.p.matchField(f.v).ref:
+		case w.p.sel.holdsMasked(m) && m.ref:
 			// A defined nil pointer converts back to nil as null does.
 			out = append(
 				out,
@@ -181,7 +118,7 @@ func (w *methodWriter) fieldMaskBody(masks []maskField) genSteps {
 				),
 				lang.If(lang.Expr("%s.Value() != nil", field), children, nil),
 			)
-		case f.kind == maskBranch:
+		case w.p.sel.holdsMasked(m):
 			// Value gives the zero partial value for undefined and null, which
 			// sets no field.
 			out = append(out, lang.If(lang.Expr("%s.IsNull()", field), own, nil), children)
@@ -197,11 +134,12 @@ func (w *methodWriter) fieldMaskBody(masks []maskField) genSteps {
 }
 
 // subRole and wholeRole name the locals collecting the child paths of the
-// field f and telling whether a path selects it whole.
-func subRole(f maskField) string   { return "sub" + f.name }
-func wholeRole(f maskField) string { return "whole" + f.name }
+// field named field and telling whether a path selects it whole.
+func subRole(field string) string   { return "sub" + field }
+func wholeRole(field string) string { return "whole" + field }
 
-// fromValueWithMaskBody returns the body of FromValueWithMask.
+// fromValueWithMaskBody returns the body of FromValueWithMask for the
+// fields of st.
 //
 // The loop routes each path by its first segment: a leaf converts at once,
 // which repeats harmlessly for a duplicate path, and the child paths of a
@@ -209,7 +147,7 @@ func wholeRole(f maskField) string { return "whole" + f.name }
 // FromValueWithMask after the loop. That call runs even when a path
 // selects the branch whole, so that a child path is validated whatever the
 // order of the paths and whatever v holds.
-func (w *methodWriter) fromValueWithMaskBody(masks []maskField) (genSteps, error) {
+func (w *methodWriter) fromValueWithMaskBody(st *types.Struct) (genSteps, error) {
 	fmtIdent := w.pkgIdent(fmtPath)
 	fail := func(format string, args ...genExpr) genStep {
 		return lang.Stmt("return %s.Errorf(%s)", fmtIdent, lang.Join(", ",
@@ -222,29 +160,62 @@ func (w *methodWriter) fromValueWithMaskBody(masks []maskField) (genSteps, error
 		useRest, useNested bool
 	)
 
-	for _, f := range masks {
-		seg := lang.Expr("%s", strconv.Quote(f.segment))
-		switch f.kind {
-		case maskLeaf:
-			useNested = true
+	for v := range st.Fields() {
+		m := w.p.matchField(w.n, v)
+		if m.blank {
+			continue
+		}
 
-			cases = append(cases, lang.Case(seg, genSteps{
-				lang.If(lang.Name("nested"),
-					fail("%s: field %s has no subfields",
-						lang.Name("path"), lang.Name("head")), nil),
-				w.from(w.p.matchField(f.v), fieldOf("x", f.partial), fieldOf("v", f.name)),
-			}))
-		case maskBranch:
+		name := v.Name()
+		sub, whole := subRole(name), wholeRole(name)
+		seg := lang.Expr("%s", strconv.Quote(w.p.sel.maskSegment(w.n, v)))
+		from := w.from(m, fieldOf("x", partialField(v, m)), fieldOf("v", name))
+
+		switch {
+		case m.embedded:
+			var heads []genExpr
+
+			// The segments of an embedded partial value are those of its
+			// fields, which route to it.
+			err := w.p.sel.walkMaskSegments(
+				w.p.sel.node(m.named),
+				func(_ *typegraph.Node, _ *types.Var, seg string) error {
+					heads = append(heads, lang.Expr("%s", strconv.Quote(seg)))
+					return nil
+				},
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(heads) == 0 {
+				continue
+			}
+
+			decls = append(decls, lang.Stmt("var %s []string", decl(sub)))
+
+			cases = append(cases, lang.Case(
+				lang.Join(", ", heads...),
+				lang.Stmt("%s = append(%s, %s)", lang.Name(sub), lang.Name(sub), lang.Name("path")),
+			))
+
+			build, err := w.maskEmbedded(v, m)
+			if err != nil {
+				return nil, err
+			}
+
+			after = append(after, lang.If(lang.Expr("%s != nil", lang.Name(sub)), build, nil))
+		case w.p.sel.holdsMasked(m):
 			useNested, useRest = true, true
 
 			decls = append(decls,
-				lang.Stmt("var %s []string", decl(subRole(f))),
-				lang.Stmt("var %s bool", decl(wholeRole(f))),
+				lang.Stmt("var %s []string", decl(sub)),
+				lang.Stmt("var %s bool", decl(whole)),
 			)
 			cases = append(cases, lang.Case(seg, lang.Switch(nil,
 				lang.Case(
 					lang.Expr("!%s", lang.Name("nested")),
-					lang.Stmt("%s = true", lang.Name(wholeRole(f))),
+					lang.Stmt("%s = true", lang.Name(whole)),
 				),
 				lang.Case(
 					lang.Expr(`%s == ""`, lang.Name("rest")),
@@ -253,54 +224,31 @@ func (w *methodWriter) fromValueWithMaskBody(masks []maskField) (genSteps, error
 				lang.Default(
 					lang.Stmt(
 						"%s = append(%s, %s)",
-						lang.Name(subRole(f)),
-						lang.Name(subRole(f)),
+						lang.Name(sub),
+						lang.Name(sub),
 						lang.Name("rest"),
 					),
 				),
 			)))
 
-			build, err := w.maskBranch(f, fmtIdent)
+			build, err := w.maskBranch(v, m, fmtIdent)
 			if err != nil {
 				return nil, err
 			}
 
 			after = append(after,
-				lang.If(lang.Expr("%s != nil", lang.Name(subRole(f))), build, nil),
-				lang.If(
-					lang.Name(wholeRole(f)),
-					w.from(
-						w.p.matchField(f.v),
-						fieldOf("x", f.partial),
-						fieldOf("v", f.name),
-					),
-					nil,
-				),
+				lang.If(lang.Expr("%s != nil", lang.Name(sub)), build, nil),
+				lang.If(lang.Name(whole), from, nil),
 			)
-		case maskEmbedded:
-			if len(f.heads) == 0 {
-				continue
-			}
+		default:
+			useNested = true
 
-			decls = append(decls, lang.Stmt("var %s []string", decl(subRole(f))))
-
-			heads := opiter.WrapSeq(slices.Values(f.heads)).
-				Map(func(s string) genExpr { return lang.Expr("%s", strconv.Quote(s)) }).
-				CollectSlice()
-
-			cases = append(cases, lang.Case(
-				lang.Join(", ", heads...),
-				lang.Stmt("%s = append(%s, %s)",
-					lang.Name(subRole(f)), lang.Name(subRole(f)), lang.Name("path")),
-			))
-
-			build, err := w.maskEmbedded(f)
-			if err != nil {
-				return nil, err
-			}
-
-			after = append(after,
-				lang.If(lang.Expr("%s != nil", lang.Name(subRole(f))), build, nil))
+			cases = append(cases, lang.Case(seg, genSteps{
+				lang.If(lang.Name("nested"),
+					fail("%s: field %s has no subfields",
+						lang.Name("path"), lang.Name("head")), nil),
+				from,
+			}))
 		}
 	}
 
@@ -347,26 +295,24 @@ func checkErr(call, wrap genExpr) genSteps {
 	}
 }
 
-// maskBranch returns the steps setting the branch f of x to the partial
-// value its child paths select from v.
-func (w *methodWriter) maskBranch(f maskField, fmtIdent genExpr) (genStep, error) {
-	m := w.p.matchField(f.v)
-
+// maskBranch returns the steps setting the partial field of the field v,
+// matched as m, of x to the partial value its child paths select from v.
+func (w *methodWriter) maskBranch(v *types.Var, m match, fmtIdent genExpr) (genStep, error) {
 	part, err := w.p.partialString(m.named)
 	if err != nil {
 		return nil, err
 	}
 
 	und := w.pkgIdent(undPath)
-	sub := lang.Name(subRole(f))
-	src := fieldOf("v", f.name)
-	dst := fieldOf("x", f.partial)
+	sub := lang.Name(subRole(v.Name()))
+	src := fieldOf("v", v.Name())
+	dst := fieldOf("x", partialField(v, m))
 
 	call := func(in genExpr) genSteps {
 		return checkErr(
 			lang.Expr("%s.FromValueWithMask(%s, %s)", lang.Name("y"), in, sub),
 			lang.Expr("%s.Errorf(%s, %s, %s)", fmtIdent, strconv.Quote("%s.%w"),
-				strconv.Quote(f.segment), lang.Name("err")),
+				strconv.Quote(w.p.sel.maskSegment(w.n, v)), lang.Name("err")),
 		)
 	}
 	if !m.pointer() {
@@ -403,13 +349,13 @@ func (w *methodWriter) maskBranch(f maskField, fmtIdent genExpr) (genStep, error
 	}, nil
 }
 
-// maskEmbedded returns the steps setting the embedded partial value f of x
-// to the partial value the paths routed to it select from v.
-func (w *methodWriter) maskEmbedded(f maskField) (genStep, error) {
-	m := w.p.matchField(f.v)
-	sub := lang.Name(subRole(f))
-	src := fieldOf("v", f.name)
-	dst := fieldOf("x", f.partial)
+// maskEmbedded returns the steps setting the embedded partial value of the
+// field v, matched as m, of x to the partial value the paths routed to it
+// select from v.
+func (w *methodWriter) maskEmbedded(v *types.Var, m match) (genStep, error) {
+	sub := lang.Name(subRole(v.Name()))
+	src := fieldOf("v", v.Name())
+	dst := fieldOf("x", partialField(v, m))
 
 	call := func(recv, in genExpr) genSteps {
 		return checkErr(lang.Expr("%s.FromValueWithMask(%s, %s)", recv, in, sub), lang.Name("err"))

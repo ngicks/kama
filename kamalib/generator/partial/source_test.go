@@ -15,7 +15,7 @@ import (
 	"github.com/dave/dst"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/dstreplace"
 )
 
 // partialDecl returns the declaration of the type name in src, a generated
@@ -298,7 +298,7 @@ type A struct {
 	hdr, err := fileHeader(opts, n.Id.PackagePath, testNow())
 	assert.NilError(t, err)
 
-	f := &partialFile{nodes: []*typegraph.Node{n}}
+	f := &partialFile{src: sel.filename(n)}
 	for range 2 {
 		_, _, err := renderFileWith(
 			sel, hdr, n.Detail.Pkg, f, supportPaths, newHelperSet(),
@@ -306,7 +306,7 @@ type A struct {
 		assert.NilError(t, err)
 	}
 
-	ts, err := sel.sources.TypeSpec(n.Detail.Pkg.Fset, n.Detail.File, n.Detail.Ts)
+	ts, err := dstreplace.TypeSpec(n.Detail.Pkg.Fset, n.Detail.File, n.Detail.Ts)
 	assert.NilError(t, err)
 
 	fields := ts.Type.(*dst.StructType).Fields.List

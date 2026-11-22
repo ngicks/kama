@@ -352,17 +352,23 @@ func TestHelperCollision(t *testing.T) {
 	const base = "kamaPartialMergeAppend_0000000000_0000000000"
 
 	hs := sliceHelpers(3)
-	// Adding sets the encodings the expected order follows.
-	_, err := names(t, newHelperSet(), hs...)
-	assert.NilError(t, err)
+	// The expected order follows the encodings.
+	enc := newHelperSet()
+
 	slices.SortFunc(hs, func(a, b *helper) int {
-		return cmp.Or(bytes.Compare(a.inEnc, b.inEnc), bytes.Compare(a.outEnc, b.outEnc))
+		aIn, aOut := enc.encodings(a)
+		bIn, bOut := enc.encodings(b)
+
+		return cmp.Or(bytes.Compare(aIn, bIn), bytes.Compare(aOut, bOut))
 	})
 
 	got, err := names(t, colliding(), hs...)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, got, []string{base + "_1", base + "_2", base + "_3"})
-	assert.Assert(t, !bytes.Equal(hs[0].inEnc, hs[1].inEnc))
+
+	first, _ := enc.encodings(hs[0])
+	second, _ := enc.encodings(hs[1])
+	assert.Assert(t, !bytes.Equal(first, second))
 
 	// Another run adding them in another order names them alike.
 	again, err := names(t, colliding(), hs[2], hs[0], hs[1])

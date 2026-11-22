@@ -32,7 +32,7 @@ func (p *mapper) sourceStruct(
 		return nil, nil
 	}
 
-	ts, err := p.sel.sources.TypeSpec(n.Detail.Pkg.Fset, n.Detail.File, n.Detail.Ts)
+	ts, err := dstreplace.TypeSpec(n.Detail.Pkg.Fset, n.Detail.File, n.Detail.Ts)
 	if err != nil {
 		return nil, nil //nolint:nilerr // The caller builds the struct from the types instead.
 	}

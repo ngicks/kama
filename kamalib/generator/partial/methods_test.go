@@ -565,3 +565,28 @@ func TestHelperDeclared(t *testing.T) {
 	assert.ErrorContains(t, err, name)
 	assert.ErrorContains(t, err, "helper")
 }
+
+// TestCycleRefPerOwner maps a pointer field by the target owning it. A and
+// sub.S share the fields of one struct type. Next closes a cycle for S,
+// which holds itself, and not for A, which S does not reach.
+func TestCycleRefPerOwner(t *testing.T) {
+	src := map[string]string{
+		"a.go": "package x\n\nimport \"" + modulePath(t) + "/sub\"\n\n" +
+			"//kama:partial\ntype A sub.S\n",
+		"sub/s.go": "package sub\n\n//kama:partial\ntype S struct{ Next *S }\n",
+	}
+	files := generated(t, src)
+
+	assert.NilError(t, generateAndBuild(t, src))
+
+	typesOf := func(file, name string) map[string]string {
+		return opiter.WrapSeq2(maps.All(fieldTypes(t, files[file], name))).
+			Map(withoutTag).
+			Collect(maps.Collect)
+	}
+
+	assert.DeepEqual(t, typesOf("s.kama_partial.go", "SPartial"),
+		map[string]string{"Next": "und.Und[*SPartial]"})
+	assert.DeepEqual(t, typesOf("a.kama_partial.go", "APartial"),
+		map[string]string{"Next": "und.Und[sub.SPartial]"})
+}

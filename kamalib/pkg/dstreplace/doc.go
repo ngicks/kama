@@ -8,7 +8,7 @@
 // keeps the field order, the blank lines between fields, the names that
 // share one field, as in A, B int, and the tag literals as written.
 //
-// Cache decorates each source file once and finds the decorated node of a
+// TypeSpec decorates a source file and finds the decorated node of a
 // type spec in it. Struct copies a decorated struct literal, asks a
 // Replacer about every field name and returns the new struct type. Fields
 // lists the names Struct asks about, in the same order.

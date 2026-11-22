@@ -20,19 +20,18 @@ import (
 )
 
 // parse parses src, a file declaring the type A, and returns the decorated
-// struct literal of A with the cache holding it.
-func parse(t *testing.T, src string) (*dstreplace.Cache, *dst.StructType) {
+// struct literal of A.
+func parse(t *testing.T, src string) *dst.StructType {
 	t.Helper()
 
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "a.go", src, parser.ParseComments)
 	assert.NilError(t, err)
 
-	c := &dstreplace.Cache{}
-	ts, err := c.TypeSpec(fset, f, typeSpec(t, f, "A"))
+	ts, err := dstreplace.TypeSpec(fset, f, typeSpec(t, f, "A"))
 	assert.NilError(t, err)
 
-	return c, ts.Type.(*dst.StructType)
+	return ts.Type.(*dst.StructType)
 }
 
 func typeSpec(t *testing.T, f *ast.File, name string) *ast.TypeSpec {
@@ -196,7 +195,7 @@ type A struct { // opens
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, src := parse(t, tc.src)
+			src := parse(t, tc.src)
 			before := printStruct(t, dst.Clone(src).(*dst.StructType))
 			got, err := dstreplace.Struct(src, tc.replace)
 			assert.NilError(t, err)
@@ -207,7 +206,7 @@ type A struct { // opens
 }
 
 func TestStructErrors(t *testing.T) {
-	_, src := parse(t, "package x\n\ntype A struct{ X int }\n")
+	src := parse(t, "package x\n\ntype A struct{ X int }\n")
 	errBoom := errors.New("boom")
 	_, err := dstreplace.Struct(src, func(dstreplace.Field) (dstreplace.Replacement, error) {
 		return dstreplace.Replacement{}, errBoom
@@ -222,7 +221,7 @@ func TestStructErrors(t *testing.T) {
 }
 
 func TestFields(t *testing.T) {
-	_, src := parse(t, "package x\n\ntype A struct {\n\tE\n\t*P `t:\"p\"`\n\tsub.S\n\t"+
+	src := parse(t, "package x\n\ntype A struct {\n\tE\n\t*P `t:\"p\"`\n\tsub.S\n\t"+
 		"*G[int, string]\n\tX, _ int `t:\"x\"`\n}\n")
 	got, err := dstreplace.Fields(src)
 	assert.NilError(t, err)
@@ -236,7 +235,7 @@ func TestFields(t *testing.T) {
 	})
 }
 
-func TestCache(t *testing.T) {
+func TestTypeSpec(t *testing.T) {
 	fset := token.NewFileSet()
 	a, err := parser.ParseFile(
 		fset,
@@ -253,16 +252,15 @@ func TestCache(t *testing.T) {
 	)
 	assert.NilError(t, err)
 
-	var c dstreplace.Cache
-
-	first, err := c.TypeSpec(fset, a, typeSpec(t, a, "A"))
+	first, err := dstreplace.TypeSpec(fset, a, typeSpec(t, a, "A"))
 	assert.NilError(t, err)
-	second, err := c.TypeSpec(fset, a, typeSpec(t, a, "A"))
+	second, err := dstreplace.TypeSpec(fset, a, typeSpec(t, a, "A"))
 	assert.NilError(t, err)
-	assert.Assert(t, first == second, "a.go decorated twice")
+	// Every call decorates the file again, so a caller may change what it gets.
+	assert.Assert(t, first != second)
 	assert.Equal(t, first.Name.Name, "A")
 
-	_, err = c.TypeSpec(fset, a, typeSpec(t, b, "B"))
+	_, err = dstreplace.TypeSpec(fset, a, typeSpec(t, b, "B"))
 	assert.ErrorIs(t, err, dstreplace.ErrNotFound)
 }
 
@@ -289,7 +287,7 @@ func TestStructSharedType(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, src := parse(t, "package x\n\ntype A struct {\n\tX, Y int\n\tZ    string\n}\n")
+			src := parse(t, "package x\n\ntype A struct {\n\tX, Y int\n\tZ    string\n}\n")
 			st, err := dstreplace.Struct(
 				src,
 				func(f dstreplace.Field) (dstreplace.Replacement, error) {
@@ -305,7 +303,7 @@ func TestStructSharedType(t *testing.T) {
 // TestStructEmptyTagLiteral drops a source literal that spells the empty
 // tag when the replacement has no tag.
 func TestStructEmptyTagLiteral(t *testing.T) {
-	_, src := parse(t, "package x\n\ntype A struct {\n\tX int \"\"\n\tY int ``\n}\n")
+	src := parse(t, "package x\n\ntype A struct {\n\tX int \"\"\n\tY int ``\n}\n")
 	st, err := dstreplace.Struct(src, func(dstreplace.Field) (dstreplace.Replacement, error) {
 		return dstreplace.Replacement{Type: dst.NewIdent("T")}, nil
 	})

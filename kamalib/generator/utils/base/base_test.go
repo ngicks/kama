@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"go/ast"
+	"go/parser"
+	"go/token"
 	"go/types"
 	"io/fs"
 	"maps"
@@ -63,24 +65,39 @@ func TestHostShared(t *testing.T) {
 
 		return m
 	}
-	hosts := HostShared("shared.go", []Caller{
-		{Uses: uses("everywhere", "both")},
+	file := func(src string) *ast.File {
+		t.Helper()
+
+		f, err := parser.ParseFile(token.NewFileSet(), "x.go", src, parser.ParseComments)
+		assert.NilError(t, err)
+
+		return f
+	}
+	plain := file("package x\n")
+	n := Naming{Name: "kama_x"}
+
+	hosts := HostShared(n, "helper", "shared.go", []Caller{
+		{Src: "p.go", File: plain, Uses: uses("everywhere", "both")},
+		// A build line constrains a caller, and so does a file name suffix.
 		{
-			Constrained: true,
-			BuildLine:   "//go:build a",
-			Own:         "a.go",
-			Uses:        uses("both", "onlyA", "ab"),
+			Src:  "a.go",
+			File: file("//go:build a\n\npackage x\n"),
+			Uses: uses("both", "onlyA", "ab"),
 		},
-		{Constrained: true, BuildLine: "//go:build b", Own: "b.go", Uses: uses("ab", "onlyB")},
-		{Uses: nil},
+		{Src: "b_linux.go", File: plain, Uses: uses("ab", "onlyB")},
+		{Src: "q.go", File: plain, Uses: nil},
 	})
 	assert.DeepEqual(t, hosts, []Host{
-		// A name constrained callers share goes to the first of them.
-		{Path: "a.go", BuildLine: "//go:build a", Names: []string{"ab", "onlyA"}},
-		{Path: "b.go", BuildLine: "//go:build b", Names: []string{"onlyB"}},
 		{Path: "shared.go", Names: []string{"both", "everywhere"}},
+		// A name constrained callers share goes to the first of them.
+		{
+			Path:      "zz_gen.helper.a.kama_x.go",
+			BuildLine: "//go:build a",
+			Names:     []string{"ab", "onlyA"},
+		},
+		{Path: "zz_gen.helper.b.kama_x_linux.go", Names: []string{"onlyB"}},
 	})
-	assert.Equal(t, len(HostShared("shared.go", nil)), 0)
+	assert.Equal(t, len(HostShared(n, "helper", "shared.go", nil)), 0)
 }
 
 func TestRelFiles(t *testing.T) {

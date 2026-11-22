@@ -27,6 +27,9 @@ const (
 
 // mapper builds the partial declarations of a file. Its FileScope spells
 // the packages and the types of the file.
+//
+// calls, support and refs tell what the declarations written so far call
+// and spell. No source holds them: they are facts about the output.
 type mapper struct {
 	sel *selection
 	*base.FileScope
@@ -115,8 +118,10 @@ func (p *mapper) constraintString(tp *types.TypeParam) (string, error) {
 	return p.TypeString(constraintType(tp))
 }
 
-// matchField matches the struct field v for the package of p.
-func (p *mapper) matchField(v *types.Var) match { return p.sel.matchField(v, p.Pkg.PkgPath) }
+// matchField matches the field v of the struct target n.
+func (p *mapper) matchField(n *typegraph.Node, v *types.Var) match {
+	return p.sel.matchField(n, v)
+}
 
 // matchValue matches t, the type of a slice element or a map value, for
 // the package of p.
@@ -131,8 +136,6 @@ func (p *mapper) matchValue(t types.Type) match { return p.sel.matchValue(t, p.P
 // match the fields again, meet none.
 func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, error) {
 	synth := make([]*dst.Field, s.NumFields())
-
-	var flags []*flagField
 
 	seen := map[string]*types.Var{}
 
@@ -152,9 +155,9 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, error
 			)
 		}
 
-		m := p.matchField(v)
+		m := p.matchField(n, v)
 
-		f, flag, err := p.field(n, v, m, s.Tag(i))
+		f, err := p.field(n, v, m, s.Tag(i))
 		if err == nil && !m.blank {
 			name := partialField(v, m)
 
@@ -179,13 +182,9 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, error
 		}
 
 		synth[i] = f
-
-		if flag != nil {
-			flags = append(flags, flag)
-		}
 	}
 
-	if err := checkFlags(n, flags); err != nil {
+	if err := p.checkFlags(n, s); err != nil {
 		return nil, err
 	}
 
@@ -205,7 +204,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, error
 }
 
 // field returns the partial field of the struct field v of the target n,
-// matched as m, and the flag of the field, or nil.
+// matched as m. It reports the errors of the options of the field.
 //
 // An embedded struct target, or pointer to one, stays embedded as its
 // partial variant and keeps its tag: adding omitzero to it would stop
@@ -218,30 +217,30 @@ func (p *mapper) field(
 	v *types.Var,
 	m match,
 	tag string,
-) (*dst.Field, *flagField, error) {
+) (*dst.Field, error) {
 	if m.blank {
 		// Nothing refers to a blank field, so it has no partial value and
 		// the methods skip it. The partial struct keeps it with its type and
 		// tag as written: a blank field may direct the compiler, as
 		// _ structs.HostLayout does.
 		if _, err := p.flag(n, v, m); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		expr, err := p.TypeExpr(v.Type())
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		return withTag(
 			&dst.Field{Names: []*dst.Ident{dst.NewIdent("_")}, Type: expr},
 			tag,
-		), nil, nil
+		), nil
 	}
 
 	expr, err := p.partialExpr(m)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	f := &dst.Field{Type: expr}
@@ -249,22 +248,21 @@ func (p *mapper) field(
 	if !m.embedded {
 		tag, err = partialTag(tag, v.Exported())
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		f.Names = []*dst.Ident{dst.NewIdent(v.Name())}
 	}
 
 	if _, err := p.strategy(m, fieldKeyOf(n.Id, v.Name())); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	flag, err := p.flag(n, v, m)
-	if err != nil {
-		return nil, nil, err
+	if _, err := p.flag(n, v, m); err != nil {
+		return nil, err
 	}
 
-	return withTag(f, tag), flag, nil
+	return withTag(f, tag), nil
 }
 
 // strategy returns the merge strategy of the field k matched as m, set by
