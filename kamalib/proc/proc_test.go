@@ -306,8 +306,7 @@ steps:
 				assert.ErrorContains(t, err, fmt.Sprintf("step %q", c.failedStep))
 			}
 
-			var pkgErrs gopackages.PackageErrors
-			errors.As(err, &pkgErrs)
+			pkgErrs, _ := errors.AsType[gopackages.PackageErrors](err)
 			assert.DeepEqual(t, slices.Sorted(maps.Keys(pkgErrs)), c.errorPackages)
 
 			assert.DeepEqual(t, readTree(t, root), want)

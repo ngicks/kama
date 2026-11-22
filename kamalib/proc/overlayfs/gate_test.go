@@ -65,8 +65,8 @@ func TestGateFixture(t *testing.T) {
 	assert.ErrorIs(t, err, workflow.ErrRun)
 	assert.ErrorContains(t, err, `step "final"`)
 
-	var pkgErrs gopackages.PackageErrors
-	assert.Assert(t, errors.As(err, &pkgErrs), "err: %v", err)
+	pkgErrs, ok := errors.AsType[gopackages.PackageErrors](err)
+	assert.Assert(t, ok, "err: %v", err)
 	assert.DeepEqual(t, slices.Collect(maps.Keys(pkgErrs)), []string{"example.invalid/gate/model"})
 	assert.ErrorContains(t, err, "undefined: typeNameOf")
 
