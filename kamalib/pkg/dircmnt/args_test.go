@@ -9,6 +9,11 @@ import (
 func TestParseArgsKeyValue(t *testing.T) {
 	key := func(k string) KeyValue { return KeyValue{Key: k} }
 	pair := func(k, v string) KeyValue { return KeyValue{Key: k, Value: v, HasValue: true} }
+	// quoted marks kv as written with a quoted key, a quoted value or both.
+	quoted := func(kv KeyValue, key, value bool) KeyValue {
+		kv.KeyQuoted, kv.ValueQuoted = key, value
+		return kv
+	}
 
 	cases := []struct {
 		args string
@@ -20,20 +25,29 @@ func TestParseArgsKeyValue(t *testing.T) {
 		{"append", []KeyValue{key("append")}, ""},
 		{
 			`name=addr short=a usage="listen address"`,
-			[]KeyValue{pair("name", "addr"), pair("short", "a"), pair("usage", "listen address")},
+			[]KeyValue{
+				pair("name", "addr"),
+				pair("short", "a"),
+				quoted(pair("usage", "listen address"), false, true),
+			},
 			"",
 		},
 		{"  a=1\tb  c ", []KeyValue{pair("a", "1"), key("b"), key("c")}, ""},
 		{"a= b", []KeyValue{pair("a", ""), key("b")}, ""},
-		{`a=""`, []KeyValue{pair("a", "")}, ""},
+		{`a=""`, []KeyValue{quoted(pair("a", ""), false, true)}, ""},
 		{"a=b=c", []KeyValue{pair("a", "b=c")}, ""},
 		{"a=1 a a=2", []KeyValue{pair("a", "1"), key("a"), pair("a", "2")}, ""},
-		{`a="x\"y\né"`, []KeyValue{pair("a", "x\"y\né")}, ""},
-		{`a="b c=d"`, []KeyValue{pair("a", "b c=d")}, ""},
-		{"a=`b\\ \"c\"`", []KeyValue{pair("a", `b\ "c"`)}, ""},
-		{`"a b"=1`, []KeyValue{pair("a b", "1")}, ""},
-		{`"a=b"`, []KeyValue{key("a=b")}, ""},
-		{"`a b`=\"c d\" `e`", []KeyValue{pair("a b", "c d"), key("e")}, ""},
+		{`a="x\"y\né"`, []KeyValue{quoted(pair("a", "x\"y\né"), false, true)}, ""},
+		{`a="b c=d"`, []KeyValue{quoted(pair("a", "b c=d"), false, true)}, ""},
+		{"a=`b\\ \"c\"`", []KeyValue{quoted(pair("a", `b\ "c"`), false, true)}, ""},
+		{`"a b"=1`, []KeyValue{quoted(pair("a b", "1"), true, false)}, ""},
+		{`"a=b"`, []KeyValue{quoted(key("a=b"), true, false)}, ""},
+		{`"1" 1`, []KeyValue{quoted(key("1"), true, false), key("1")}, ""},
+		{
+			"`a b`=\"c d\" `e`",
+			[]KeyValue{quoted(pair("a b", "c d"), true, true), quoted(key("e"), true, false)},
+			"",
+		},
 		{
 			"go run ./gen -o x.go",
 			[]KeyValue{key("go"), key("run"), key("./gen"), key("-o"), key("x.go")},

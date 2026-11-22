@@ -16,6 +16,10 @@ type KeyValue struct {
 	// HasValue is false for an arg without "=". It tells key from key=,
 	// which both leave Value empty.
 	HasValue bool
+	// KeyQuoted and ValueQuoted tell that Key and Value were written as
+	// quoted strings. They let a reader tell the string "1" from the
+	// number 1.
+	KeyQuoted, ValueQuoted bool
 }
 
 // ParseArgsKeyValue parses [Comment.Args] as space-separated key=value
@@ -72,6 +76,8 @@ func ParseArgsKeyValue(args string) ([]KeyValue, error) {
 			continue
 		}
 
+		kv.KeyQuoted = startsQuoted(rest)
+
 		kv.Key, rest, err = cutToken(rest, "=")
 		if err != nil {
 			return nil, fmt.Errorf("dircmnt: key at %q: %w", at, err)
@@ -83,6 +89,7 @@ func ParseArgsKeyValue(args string) ([]KeyValue, error) {
 
 		if strings.HasPrefix(rest, "=") {
 			kv.HasValue = true
+			kv.ValueQuoted = startsQuoted(rest[1:])
 
 			kv.Value, rest, err = cutToken(rest[1:], "")
 			if err != nil {
@@ -95,6 +102,9 @@ func ParseArgsKeyValue(args string) ([]KeyValue, error) {
 }
 
 const quotes = "\"`"
+
+// startsQuoted reports whether s starts with a quoted token.
+func startsQuoted(s string) bool { return s != "" && strings.IndexByte(quotes, s[0]) >= 0 }
 
 // comparisonOps are the characters a comparison starts with.
 const comparisonOps = "<>=!"
@@ -120,7 +130,7 @@ func cutComparison(s string) (token, rest string, err error) {
 func cutToken(s, terminators string) (token, rest string, err error) {
 	ends := func(r rune) bool { return unicode.IsSpace(r) || strings.ContainsRune(terminators, r) }
 
-	if s != "" && strings.IndexByte(quotes, s[0]) >= 0 {
+	if startsQuoted(s) {
 		token, rest, err = cutQuoted(s)
 		if err != nil {
 			return "", "", err
