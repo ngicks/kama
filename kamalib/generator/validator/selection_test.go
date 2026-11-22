@@ -217,16 +217,6 @@ func TestSelectionErrors(t *testing.T) {
 			msgs: []string{"type parameter error"},
 		},
 		{
-			name: "type parameter named like a fixed name",
-			src: "//kama:validate\n//kama:validate:hook off\n" +
-				"type A[errs any, v any] struct{ V errs }\n",
-			is: ErrConflict,
-			msgs: []string{
-				"type parameter errs of", "collides with the identifier errs",
-				"type parameter v of", "collides with the identifier v",
-			},
-		},
-		{
 			name: "type parameter named like a helper",
 			src: "//kama:validate\n//kama:validate:hook off\n" +
 				"type A[requiredComparable comparable, kamaValidateAll any] struct {\n" +
@@ -286,6 +276,57 @@ func TestSelectionErrors(t *testing.T) {
 			},
 		},
 		{
+			name: "generic named pointer of a type parameter",
+			src: "//kama:validate\n//kama:validate:hook off\ntype G[T any] struct{ P PT[T] }\n\n" +
+				"type PT[T any] *T\n",
+			is: ErrUnsupported,
+			msgs: []string{
+				"a.go:5:23", "field P of", "G holds", "PT[T], a named pointer type",
+				"use an unnamed array or pointer type, or a wrapper struct",
+			},
+		},
+		{
+			name: "generic named array of a type parameter",
+			src: "//kama:validate\n//kama:validate:hook off\ntype G[T any] struct{ A []AT[T] }\n\n" +
+				"type AT[T any] [2]T\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field A of", "AT[T], a named array type"},
+		},
+		{
+			name: "generic named pointer holding a type parameter",
+			src: "//kama:validate\n//kama:validate:hook off\ntype G[T any] struct{ P PP[T] }\n\n" +
+				"type PP[T any] *PT[T]\n\ntype PT[T any] *[]T\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field P of", "PP[T], a named pointer type"},
+		},
+		{
+			name: "generic named pointer of a type parameter as a type argument",
+			src: "//kama:validate\n//kama:validate:hook off\n" +
+				"type G[T any] struct{ B Box[PT[T]] }\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype Box[T any] struct{ V T }\n\n" +
+				"type PT[T any] *T\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field B:", "PT[T] is a named pointer type holding values to validate"},
+		},
+		{
+			name: "generic named pointer of a target",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ P PT[C] }\n\n" +
+				"type PT[T any] *T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field P of", "C], a named pointer type"},
+		},
+		{
+			// PT[int] holds nothing to validate. PT[C] after it does.
+			name: "second instance of a generic named pointer",
+			src: "//kama:validate\n//kama:validate:hook off\n" +
+				"type A struct{ S struct{ I PT[int]; C PT[C] } }\n\n" +
+				"type PT[T any] *T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field S of", "C], a named pointer type"},
+		},
+		{
 			name: "fields sharing a hook",
 			src: "//kama:validate\ntype A struct {\n\tname string\n\tName string\n}\n\n" +
 				"func (A) validateName(bool) error { return nil }\n",
@@ -329,6 +370,66 @@ func TestSelectionErrors(t *testing.T) {
 			for _, msg := range tc.msgs {
 				assert.ErrorContains(t, err, msg)
 			}
+		})
+	}
+}
+
+// TestSelectionAccepted builds inputs close to the errors of
+// TestSelectionErrors that hold nothing left unchecked or no conflict.
+func TestSelectionAccepted(t *testing.T) {
+	cases := []struct {
+		name string
+		src  string
+		// want are the methods the output declares, keyed as funcs keys them.
+		want []string
+	}{
+		{
+			name: "named array of a non-validatable type",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ Id Id }\n\n" +
+				"type Id [16]byte\n",
+			want: []string{"A.Validate"},
+		},
+		{
+			name: "named pointer to a non-validatable type",
+			src:  "//kama:validate\n//kama:validate:hook off\ntype A struct{ P PI }\n\ntype PI *int\n",
+			want: []string{"A.Validate"},
+		},
+		{
+			name: "generic named pointer of a non-validatable type",
+			src: "//kama:validate\n//kama:validate:hook off\n" +
+				"type G[T any] struct {\n\tP PT[int]\n\tV T\n}\n\ntype PT[T any] *T\n",
+			want: []string{"G.Validate"},
+		},
+		{
+			// A type parameter makes no dependant, so H validates nothing.
+			name: "generic named pointer of a type parameter in a non-target",
+			src: "type H[T any] struct{ P PT[T] }\n\ntype PT[T any] *T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			want: []string{"C.Validate"},
+		},
+		{
+			name: "fields sharing a hook name with one hook off",
+			src: "//kama:validate\ntype A struct {\n\tname string\n" +
+				"\t//kama:validate:hook off\n\tName string\n}\n\n" +
+				"func (A) validateName(bool) error { return nil }\n",
+			want: []string{"A.Validate"},
+		},
+		{
+			name: "fields sharing a hook name in a dependant",
+			src: "type D struct {\n\tname string\n\tName string\n\tC    C\n}\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			want: []string{"C.Validate", "D.Validate"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			out := generateAndBuild(t, map[string]string{"a.go": "package x\n\n" + tc.src})
+			assert.DeepEqual(
+				t,
+				slices.Sorted(maps.Keys(funcs(t, out["a.kama_validate.go"]))),
+				tc.want,
+			)
 		})
 	}
 }

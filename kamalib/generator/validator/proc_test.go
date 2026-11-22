@@ -16,6 +16,8 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	procpackages "github.com/ngicks/kama/kamalib/proc/gopackages"
+	procoverlayfs "github.com/ngicks/kama/kamalib/proc/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
@@ -114,6 +116,13 @@ func procProject(t *testing.T, files map[string]string) string {
 func runProcSpec(t *testing.T, root, param string) error {
 	t.Helper()
 
+	return runProcSpecWith(t, workflow.DefaultRegistry, root, param)
+}
+
+// runProcSpecWith is runProcSpec building the graph from reg.
+func runProcSpecWith(t *testing.T, reg *workflow.Registry, root, param string) error {
+	t.Helper()
+
 	var spec workflow.Spec
 	assert.NilError(t, yaml.Unmarshal(fmt.Appendf(nil, `
 version: 1
@@ -126,7 +135,7 @@ steps:
 
 	ctx := context.Background()
 
-	g, err := spec.Build(ctx, workflow.DefaultRegistry)
+	g, err := spec.Build(ctx, reg)
 	assert.NilError(t, err)
 
 	return g.Run(ctx, workflow.ProgressControl{})
@@ -172,6 +181,44 @@ func TestProcRun(t *testing.T) {
 		t,
 		strings.Contains(readTree(t, root)["b/b.kama_validate.go"], "option_file: null"),
 	)
+}
+
+// TestProcRunWithRegistry runs a graph whose validate.generate proc
+// generates with a registry holding a validator of the test.
+func TestProcRunWithRegistry(t *testing.T) {
+	reg := DefaultRegistry().Clone()
+	reg.Register(positive{})
+
+	procs := workflow.NewRegistry()
+	for kind, newProc := range map[string]func() workflow.Proc{
+		"overlayfs.open":      procoverlayfs.NewOpenProc,
+		"overlayfs.copy_down": procoverlayfs.NewCopyDownProc,
+		"packages.load":       procpackages.NewProc,
+		"validate.generate":   NewProcWith(reg),
+	} {
+		assert.NilError(t, procs.Register(kind, newProc))
+	}
+
+	// A validator registered after NewProcWith does not reach the procs.
+	reg.Register(lengthOne{})
+
+	root := procProject(t, map[string]string{
+		"a/a.go": "package a\n\n//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
+			"\t//kama:validate:positive\n\tN int\n" +
+			"\t//kama:validate:length >=1\n\tS string\n}\n",
+	})
+
+	assert.NilError(t, runProcSpecWith(t, procs, root, `{}`))
+
+	tree := readTree(t, root)
+	assertContains(t, tree["a/a.kama_validate.go"], "kamaValidatePositive(int64(v.N))")
+	assertNotContains(t, tree["a/a.kama_validate.go"], "kamaValidateLengthOne")
+	assertContains(t, tree["a/"+HelpersFile], "func kamaValidatePositive(n int64) error {")
+
+	// The default registry knows no positive.
+	err := runProcSpec(t, root, `{}`)
+	assert.ErrorIs(t, err, ErrDirective)
+	assert.ErrorContains(t, err, "unknown validator")
 }
 
 // TestProcRunFails leaves the project directory untouched when the

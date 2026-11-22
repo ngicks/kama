@@ -25,8 +25,9 @@
 // name. Because of these parameters no single interface describes every
 // Validate, and the generator finds callable methods by their shape.
 //
-// A type parameter named v, stopOnFirstError, errs or err collides with an
-// identifier the generated Validate declares. A type parameter named like a
+// A type parameter may be named like a local of the generated Validate,
+// such as v, stopOnFirstError, errs or err. The local then takes a fresh
+// name, as in func (v2 Box[v]) Validate. A type parameter named like a
 // predeclared identifier the generated code spells, or like a helper the
 // generated code of its package calls, shadows it. Each is an error
 // wrapping ErrConflict.
@@ -73,8 +74,11 @@
 // field of a struct type or a slice or map type holding such a type is an
 // error wrapping ErrUnsupported. The error applies to a type that would be
 // a dependant through it as well. So does a type argument reaching such a
-// type in a Validate. Use an unnamed array or pointer type, or a wrapper
-// struct, in its place.
+// type in a Validate. In a generic target, a type parameter of the target
+// counts as something to validate. Take type PT[T any] *T as an example.
+// A field P PT[T] of a target G[T any] is an error. A field P PT[int] holds
+// nothing to validate. It is no error. Use an unnamed array or pointer
+// type, or a wrapper struct, in its place.
 //
 // Declarations whose doc comment carries the genmark marker of a
 // registered generator are never targets. The generator reads files
@@ -138,8 +142,9 @@
 //     an elastic.Elastic hold nothing and are skipped. The walk never goes
 //     into the underlying type of a named type. A struct, slice or map type
 //     of the run holding something to validate is a target itself. A named
-//     array or pointer type of the run holding something to validate is an
-//     error, as Targets describes.
+//     array or pointer type of the run holding something to validate, a
+//     type parameter of the target included, is an error, as Targets
+//     describes.
 //  3. The hook of the field, described under Hooks.
 //
 // Validate wraps every error of these steps with the path segment of the
@@ -359,6 +364,33 @@
 // Format holds its formats in a map. A caller adds a format by registering
 // a Format holding DefaultFormats and the new FormatHelper, as the doc
 // comment of Format shows.
+//
+// Proc generates with Proc.Registry. The kind validate.generate of
+// workflow.DefaultRegistry uses DefaultRegistry(). NewProcWith returns the
+// constructor of a Proc with another registry. A program runs a workflow
+// spec with that registry through a workflow.Registry of its own. The
+// program registers the constructor under validate.generate in it. It
+// registers the other procs the spec names in it too:
+//
+//	procs := workflow.NewRegistry()
+//	for kind, newProc := range map[string]func() workflow.Proc{
+//		"overlayfs.open":      overlayfs.NewOpenProc,
+//		"overlayfs.copy_down": overlayfs.NewCopyDownProc,
+//		"packages.load":       gopackages.NewProc,
+//		"validate.generate":   validator.NewProcWith(reg),
+//	} {
+//		if err := procs.Register(kind, newProc); err != nil {
+//			return err
+//		}
+//	}
+//	g, err := spec.Build(ctx, procs)
+//
+// The packages overlayfs and gopackages are those under
+// github.com/ngicks/kama/kamalib/proc. A program may instead register the
+// constructor in workflow.DefaultRegistry under a kind of its own. The
+// spec then names that kind:
+//
+//	workflow.Register("validate.generate_even", validator.NewProcWith(reg))
 //
 // # Option file
 //

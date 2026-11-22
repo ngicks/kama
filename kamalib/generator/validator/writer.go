@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/types"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -14,7 +15,8 @@ import (
 
 // fixedNames are the identifiers the signature and the body of every
 // Validate spell. They are reserved against imports so that they keep
-// their names.
+// their names. A type parameter of the same name makes them take fresh
+// names, as local does.
 var fixedNames = []string{"v", "stopOnFirstError", "errs", "err"}
 
 // writer writes the Validate method of the target n as source text.
@@ -80,6 +82,19 @@ func (w *writer) method() (string, error) {
 	)
 }
 
+// local returns the argument of lang.Expr declaring the local named name:
+// under exactly that name, as genhelper.Shadow does, unless a type
+// parameter of w.n has the name. The local would then hide the type
+// parameter from the types spelled in its scope, such as the parameter
+// types of a nested function literal, so it gets a fresh name.
+func (w *writer) local(name string) any {
+	if slices.Contains(w.tparams(), name) {
+		return decl(name)
+	}
+
+	return genhelper.Shadow(name)
+}
+
 // validateRole is the role of the parameter validating values of the type
 // parameter named tp.
 func validateRole(tp string) string { return "validate" + tp }
@@ -124,7 +139,7 @@ func (w *writer) collect(steps []genStep) []genStep {
 
 	// A function literal for a type argument collects into its own errs.
 	// Its errs may shadow the errs of the method.
-	out := []genStep{lang.Stmt("var %s []error", genhelper.Shadow("errs"))}
+	out := []genStep{lang.Stmt("var %s []error", w.local("errs"))}
 	out = append(out, steps...)
 
 	return append(out, lang.Stmt(
@@ -333,7 +348,7 @@ func (w *writer) check(err genExpr) genStep {
 		c = genhelper.Push(c)
 
 		cond, e := lang.Expr(
-			"%s := %s; %s != nil", genhelper.Shadow("err"), err, lang.Name("err"),
+			"%s := %s; %s != nil", w.local("err"), err, lang.Name("err"),
 		)(c)
 		if e != nil {
 			return c, nil, e

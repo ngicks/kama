@@ -54,7 +54,8 @@ type Emitter interface {
 	Declare(name string, decl func(s Spelling) (string, error))
 	// StopOnFirstError returns the name by which the function the
 	// expression lands in spells its parameter stopOnFirstError. The name
-	// differs from stopOnFirstError when the package declares that name.
+	// differs from stopOnFirstError when the package or a type parameter of
+	// the target declares that name.
 	StopOnFirstError() string
 }
 

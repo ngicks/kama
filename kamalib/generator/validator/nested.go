@@ -19,9 +19,9 @@ import (
 // fields of struct type literals, and never into the underlying type of a
 // named type. A struct, slice or map type of the run holding something to
 // validate is a target itself. A named array or pointer type of the run
-// holding something to validate is an error. selectTargets reports the
-// fields and types holding one. nestedNamed reports one a type argument
-// reaches.
+// holding something to validate, a type parameter of the receiver
+// included, is an error. selectTargets reports the fields and types
+// holding one. nestedNamed reports one a type argument reaches.
 func (w *writer) nested(t types.Type, x genExpr, wrap wrapFunc, depth int) (genStep, error) {
 	switch u := types.Unalias(t).(type) {
 	case *types.TypeParam:
@@ -119,7 +119,7 @@ func (w *writer) nestedNamed(
 			"%w: %s declares Validate on its pointer receiver; declare it on the value receiver",
 			ErrUnsupported, named,
 		)
-	case w.sel.unsupported(named, map[*types.Named]bool{}):
+	case w.sel.unsupported(named, true, map[*types.Named]bool{}):
 		return nil, fmt.Errorf(
 			"%w: %s is a named %s type holding values to validate; %s",
 			ErrUnsupported, named, kindName(named.Underlying()), unsupportedNamedHint,
@@ -252,11 +252,12 @@ func (w *writer) typeArgFunc(arg types.Type) (genExpr, error) {
 		if err != nil {
 			return "", err
 		}
-		// The literal has the parameters of a Validate, under their names.
+		// The literal has the parameters of a Validate, under their names
+		// unless a type parameter has one.
 		c = genhelper.Push(c)
 
 		params, err := lang.Expr("%s %s, %s bool",
-			genhelper.Shadow("v"), typ, genhelper.Shadow("stopOnFirstError"))(c)
+			w.local("v"), typ, w.local("stopOnFirstError"))(c)
 		if err != nil {
 			return "", err
 		}

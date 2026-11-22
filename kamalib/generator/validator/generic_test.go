@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -101,4 +102,66 @@ func TestGenericTypeArgs(t *testing.T) {
 		"v.BP.Validate(stopOnFirstError, func(v *Target, stopOnFirstError bool) error {",
 		"if v != nil {",
 	)
+}
+
+// genericNamesSrc declares a generic target whose type parameter X is
+// spelled inside nested function literals, where a local named like X
+// would hide it.
+const genericNamesSrc = `package x
+
+//kama:validate
+//kama:validate:hook off
+type Box[X comparable] struct {
+	//kama:validate:required
+	V  X
+	P  *X
+	S  []X
+	M  map[string]X
+	B  Inner[X]
+	BB Inner[Inner[X]]
+	BS Inner[[]X]
+	BD Inner[[]Inner[[]X]]
+	BM Inner[map[string]Inner[*X]]
+	//kama:validate:cmp >=1 <=3
+	N int
+}
+
+//kama:validate
+//kama:validate:hook off
+type Inner[T any] struct{ V T }
+`
+
+// TestGenericTypeParamNamedLikeLocal builds a target whose type parameter
+// is named like a local of Validate. The local takes a fresh name.
+func TestGenericTypeParamNamedLikeLocal(t *testing.T) {
+	cases := []struct {
+		name string
+		want []string
+	}{
+		{"v", []string{
+			"func (v2 Box[v]) Validate(stopOnFirstError bool, " +
+				"validatev func(v v, stopOnFirstError bool) error) error {",
+			"func(v3 Inner[v], stopOnFirstError bool) error {",
+			"func(v4 []v, stopOnFirstError bool) error {",
+		}},
+		{"stopOnFirstError", []string{
+			"func (v Box[stopOnFirstError]) Validate(stopOnFirstError2 bool, ",
+			"func(v Inner[stopOnFirstError], stopOnFirstError3 bool) error {",
+		}},
+		{"errs", []string{"\tvar errs2 []error\n"}},
+		{
+			"err",
+			[]string{"if err2 := validation.Field(requiredComparable(v.V), \"V\"); err2 != nil {"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fn := validateOf(t, map[string]string{
+				"a.go": strings.ReplaceAll(genericNamesSrc, "X", tc.name),
+			}, "a.kama_validate.go", "Box")
+
+			assertContains(t, fn, tc.want...)
+		})
+	}
 }

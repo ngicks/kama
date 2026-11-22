@@ -44,13 +44,33 @@ func DefaultProcParam() ProcParamPartial {
 // its header only is not staged. Proc reports the warnings of Generate and
 // the number of files written and unchanged.
 //
+// Registry holds the validators the directives name. It is
+// DefaultRegistry() when nil. NewProcWith returns constructors of a Proc
+// with a registry for a workflow.Registry.
+//
 //	Param(ProcParamPartial) error
 //	In(*gopackages.Packages)
 //	Out(*overlayfs.Fs)
-type Proc struct{}
+type Proc struct {
+	Registry *Registry
+}
 
-// NewProc returns a new Proc.
+// NewProc returns a new Proc with the default registry. It is the
+// constructor of the kind validate.generate in workflow.DefaultRegistry.
 func NewProc() workflow.Proc { return Proc{} }
+
+// NewProcWith returns a constructor of Procs generating with the validators
+// of reg, for workflow.Registry.Register. It keeps a clone of reg, so later
+// changes to reg do not reach the Procs. The Procs only read the clone, so
+// the graphs built with them share nothing they change. A nil reg means
+// DefaultRegistry().
+func NewProcWith(reg *Registry) func() workflow.Proc {
+	if reg != nil {
+		reg = reg.Clone()
+	}
+
+	return func() workflow.Proc { return Proc{Registry: reg} }
+}
 
 func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParamPartial]() }
 
@@ -64,13 +84,14 @@ func (Proc) OutTypes() []reflect.Type {
 
 func (Proc) AsInputType() reflect.Type { return nil }
 
-func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
-	return &instance{}, nil
+func (p Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
+	return &instance{registry: p.Registry}, nil
 }
 
 func (Proc) CleanUp(context.Context) error { return nil }
 
 type instance struct {
+	registry   *Registry
 	optionFile *fileloader.PathInput
 	pkgs       *gopackages.Packages
 	fs         *overlayfs.Fs
@@ -138,7 +159,7 @@ func (i *instance) generate() ([]File, []error, error) {
 		)
 	}
 
-	files, warnings, err := Generate(i.pkgs.Pkgs, Options{Loaded: loaded})
+	files, warnings, err := Generate(i.pkgs.Pkgs, Options{Registry: i.registry, Loaded: loaded})
 	if err != nil {
 		return nil, nil, err
 	}

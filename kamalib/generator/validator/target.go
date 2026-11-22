@@ -144,24 +144,35 @@ func validatorKind(n *typegraph.Node) bool {
 // and the type argument of opt.Option, und.Und and elastic.Elastic. Any
 // other named type ends the walk, its type arguments included.
 func reaches(t types.Type, pred func(named *types.Named) bool) bool {
+	return reachesLeaf(t, func(leaf types.Type) bool {
+		named, ok := leaf.(*types.Named)
+		return ok && pred(named)
+	})
+}
+
+// reachesLeaf is reaches with pred over the types that end the walk: the
+// named types and the type parameters.
+func reachesLeaf(t types.Type, pred func(leaf types.Type) bool) bool {
 	switch u := types.Unalias(t).(type) {
 	case *types.Named:
 		if isOptionType(u) {
-			return reaches(typeArg(u), pred)
+			return reachesLeaf(typeArg(u), pred)
 		}
 
 		return pred(u)
+	case *types.TypeParam:
+		return pred(u)
 	case *types.Pointer:
-		return reaches(u.Elem(), pred)
+		return reachesLeaf(u.Elem(), pred)
 	case *types.Slice:
-		return reaches(u.Elem(), pred)
+		return reachesLeaf(u.Elem(), pred)
 	case *types.Array:
-		return reaches(u.Elem(), pred)
+		return reachesLeaf(u.Elem(), pred)
 	case *types.Map:
-		return reaches(u.Elem(), pred)
+		return reachesLeaf(u.Elem(), pred)
 	case *types.Struct:
 		return opiter.WrapSeq(u.Fields()).
-			Any(func(v *types.Var) bool { return reaches(v.Type(), pred) })
+			Any(func(v *types.Var) bool { return reachesLeaf(v.Type(), pred) })
 	}
 
 	return false
@@ -220,8 +231,9 @@ func (s *selection) sorted() []*typegraph.Node {
 // checkConflicts reports names the generated method would collide with: a
 // method Validate the generator did not write that is no implementor, a
 // field named Validate, a type parameter shadowing a predeclared
-// identifier the generated code spells or named like one of fixedNames,
-// and two fields whose hooks are on and share a name.
+// identifier the generated code spells, and two fields whose hooks are on
+// and share a name. A type parameter named like a local of Validate is no
+// conflict. The local takes a fresh name instead.
 func (s *selection) checkConflicts() error {
 	var errs []error
 
@@ -259,18 +271,10 @@ func (s *selection) checkConflicts() error {
 
 		for tp := range named.TypeParams().TypeParams() {
 			name := tp.Obj().Name()
-
-			switch {
-			case types.Universe.Lookup(name) != nil:
+			if types.Universe.Lookup(name) != nil {
 				errs = append(errs, fmt.Errorf(
 					"%w: %s: type parameter %s of %s shadows the predeclared %s"+
 						" the generated code spells",
-					ErrConflict, pos(tp.Obj().Pos()), name, n.Id, name,
-				))
-			case slices.Contains(fixedNames, name):
-				errs = append(errs, fmt.Errorf(
-					"%w: %s: type parameter %s of %s collides with the identifier %s"+
-						" the generated Validate declares; rename the type parameter",
 					ErrConflict, pos(tp.Obj().Pos()), name, n.Id, name,
 				))
 			}
@@ -324,7 +328,10 @@ func (s *selection) hookConflicts(n *typegraph.Node) []error {
 // struct types and the slice and map types that get a Validate when the
 // trim reaches them. Such a named type gets no Validate. The values it holds
 // would go unchecked. The check covers types the trim does not reach. They
-// would be dependants if the named type had a Validate.
+// would be dependants if the named type had a Validate. A type parameter of
+// the holder counts as something to validate only in a target. A type
+// parameter makes no dependant, so a holder the trim does not reach
+// validates nothing behind it.
 func (s *selection) checkUnsupportedHolders(g *typegraph.Graph) error {
 	nodes := slices.SortedFunc(
 		opiter.WrapSeq2(g.All()).
@@ -339,10 +346,11 @@ func (s *selection) checkUnsupportedHolders(g *typegraph.Graph) error {
 	for _, n := range nodes {
 		pos := n.Detail.Pkg.Fset.Position
 		u := n.Detail.Type.Underlying()
+		target := s.isTargetId(n.Id)
 
 		st, ok := u.(*types.Struct)
 		if !ok {
-			if named := s.unsupportedIn(u); named != nil {
+			if named := s.unsupportedIn(u, target); named != nil {
 				errs = append(errs, unsupportedHolderError(pos(n.Detail.Type.Obj().Pos()),
 					"type "+n.Id.String(), named))
 			}
@@ -355,7 +363,7 @@ func (s *selection) checkUnsupportedHolders(g *typegraph.Graph) error {
 				continue
 			}
 
-			if named := s.unsupportedIn(v.Type()); named != nil {
+			if named := s.unsupportedIn(v.Type(), target); named != nil {
 				errs = append(errs, unsupportedHolderError(pos(v.Pos()),
 					"field "+v.Name()+" of "+n.Id.String(), named))
 			}
@@ -387,14 +395,15 @@ func kindName(u types.Type) string {
 
 // unsupportedIn returns the first named array or pointer type of the run
 // holding something to validate that a value of type t holds where
-// Validate walks, or nil.
-func (s *selection) unsupportedIn(t types.Type) *types.Named {
+// Validate walks, or nil. typeParams tells unsupported whether a type
+// parameter counts.
+func (s *selection) unsupportedIn(t types.Type, typeParams bool) *types.Named {
 	var found *types.Named
 
 	seen := map[*types.Named]bool{}
 
 	reaches(t, func(named *types.Named) bool {
-		if s.unsupported(named, seen) {
+		if s.unsupported(named, typeParams, seen) {
 			found = named
 		}
 
@@ -406,9 +415,16 @@ func (s *selection) unsupportedIn(t types.Type) *types.Named {
 
 // unsupported reports whether named is an array or pointer type of the run
 // without a Validate of its own holding a value of a target, of an
-// implementor or of another such type. seen holds the types visited. It
-// stops a cycle such as type A [2]B; type B *A.
-func (s *selection) unsupported(named *types.Named, seen map[*types.Named]bool) bool {
+// implementor or of another such type. With typeParams, a value of a type
+// parameter counts too, as in PT[T] of type PT[T any] *T. The type
+// arguments of named are those of the type holding it, so the type
+// parameter is one of that holder. seen holds the types on the way to
+// named. It stops a cycle such as type A [2]B; type B *A.
+func (s *selection) unsupported(
+	named *types.Named,
+	typeParams bool,
+	seen map[*types.Named]bool,
+) bool {
 	origin := named.Origin()
 
 	switch named.Underlying().(type) {
@@ -421,10 +437,20 @@ func (s *selection) unsupported(named *types.Named, seen map[*types.Named]bool) 
 		return false
 	}
 
+	// Another instance of origin, such as PT[Target] after PT[int], may hold
+	// what this one does not, so origin leaves seen once its walk ends.
 	seen[origin] = true
+	defer delete(seen, origin)
 
-	return reaches(named.Underlying(), func(m *types.Named) bool {
-		return s.callable(m) || s.unsupported(m, seen)
+	return reachesLeaf(named.Underlying(), func(leaf types.Type) bool {
+		switch leaf := leaf.(type) {
+		case *types.TypeParam:
+			return typeParams
+		case *types.Named:
+			return s.callable(leaf) || s.unsupported(leaf, typeParams, seen)
+		}
+
+		return false
 	})
 }
 
