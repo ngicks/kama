@@ -20,6 +20,7 @@ import (
 // Length is the validator //kama:validate:length <op><n> ...: len of the
 // value satisfies every comparison, as in >=1 <=10 or ==3. The operators
 // are >, >=, ==, !=, <= and <, and n is a non-negative integer literal.
+// n may carry a unary plus.
 //
 // It applies to types of a string, slice, array, map or channel underlying
 // type. The length of a string is its number of bytes.
@@ -48,8 +49,13 @@ func (Length) Check(t types.Type, args []dircmnt.KeyValue) error {
 		}
 
 		// int accepts 1.0 and 'a' as well, which are no lengths as written.
-		// literalValue parsed n already.
+		// literalValue parsed n already. cmp accepts a unary plus, so length
+		// does too.
 		x, _ := parser.ParseExpr(n)
+		if u, ok := x.(*ast.UnaryExpr); ok && u.Op == token.ADD {
+			x = u.X
+		}
+
 		if lit, ok := x.(*ast.BasicLit); !ok || lit.Kind != token.INT {
 			return argsError(fmt.Errorf("length %s is not an integer literal", n))
 		}

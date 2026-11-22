@@ -87,7 +87,7 @@ func (s *selection) trim() *typegraph.MatchedGraph {
 			return typegraph.QualifiedTypeFromObject(named.Origin().Obj()) == e.Child.Id
 		}
 
-		return s.generates(e.Parent) && reaches(e.Parent.Detail.Type.Underlying(), isChild)
+		return s.generates(e.Parent) && s.reaches(e.Parent.Detail.Type.Underlying(), isChild)
 	}
 
 	return g.Trim(s.matches, dependsThrough, nil)
@@ -105,7 +105,13 @@ func (s *selection) targets() iter.Seq[*typegraph.Node] {
 
 // isTargetId reports whether the type id gets a Validate.
 func (s *selection) isTargetId(id typegraph.QualifiedType) bool {
-	n, ok := s.trim().Get(id)
+	return s.targetIn(s.trim(), id)
+}
+
+// targetIn reports whether the type id gets a Validate. trimmed is the
+// graph trim returns.
+func (s *selection) targetIn(trimmed *typegraph.MatchedGraph, id typegraph.QualifiedType) bool {
+	n, ok := trimmed.Get(id)
 	return ok && s.generates(n.Node)
 }
 
@@ -141,41 +147,110 @@ func validatorKind(n *typegraph.Node) bool {
 // reaches reports whether a value of type t holds a value of a named type
 // that pred reports true for, where Validate walks: through pointers,
 // slices, arrays, map values, aliases, the fields of struct type literals
-// and the type argument of opt.Option, und.Und and elastic.Elastic. Any
-// other named type ends the walk, its type arguments included.
-func reaches(t types.Type, pred func(named *types.Named) bool) bool {
-	return reachesLeaf(t, func(leaf types.Type) bool {
+// and the type argument of opt.Option, und.Und and elastic.Elastic. A named
+// pointer or array type of a package outside the run is walked through
+// when pred reports false for it, as throughForeign tells. Any other named
+// type ends the walk, its type arguments included.
+func (s *selection) reaches(t types.Type, pred func(named *types.Named) bool) bool {
+	return s.reachesLeaf(t, func(leaf types.Type) bool {
 		named, ok := leaf.(*types.Named)
 		return ok && pred(named)
 	})
 }
 
 // reachesLeaf is reaches with pred over the types that end the walk: the
-// named types and the type parameters.
-func reachesLeaf(t types.Type, pred func(leaf types.Type) bool) bool {
-	switch u := types.Unalias(t).(type) {
-	case *types.Named:
-		if isOptionType(u) {
-			return reachesLeaf(typeArg(u), pred)
+// named types and the type parameters. pred also sees each named type the
+// walk goes through.
+func (s *selection) reachesLeaf(t types.Type, pred func(leaf types.Type) bool) bool {
+	// memo keeps the answers for the types of other packages walked
+	// through in this call. Without it the walk visits such a type once per
+	// path to it, which is exponential in the depth of a chain such as type
+	// A00 [1]struct{ X A01; Y A01 } down to A18 declared in a package
+	// outside the run: generation took 1.7 s at depth 16 and 7.2 s at depth
+	// 18, twice as long per level. With it, generation takes about 6 ms at
+	// depth 22. A false answer that a cut of a cycle gave depends on the
+	// path and is not kept.
+	var (
+		memo = map[*types.Named]bool{}
+		// path holds the types of other packages the walk is going through.
+		// It stops a cycle such as type A [2]B; type B *A.
+		path []*types.Named
+		cuts int
+		walk func(t types.Type) bool
+	)
+
+	walk = func(t types.Type) bool {
+		switch u := types.Unalias(t).(type) {
+		case *types.Named:
+			switch {
+			case isOptionType(u):
+				return walk(typeArg(u))
+			case pred(u):
+				return true
+			case !s.throughForeign(u):
+				return false
+			}
+
+			if v, ok := memo[u]; ok {
+				return v
+			}
+
+			if onPath(path, u) {
+				cuts++
+				return false
+			}
+
+			path = append(path, u)
+			before := cuts
+			v := walk(u.Underlying())
+			path = path[:len(path)-1]
+
+			if v || cuts == before {
+				memo[u] = v
+			}
+
+			return v
+		case *types.TypeParam:
+			return pred(u)
+		case *types.Pointer:
+			return walk(u.Elem())
+		case *types.Slice:
+			return walk(u.Elem())
+		case *types.Array:
+			return walk(u.Elem())
+		case *types.Map:
+			return walk(u.Elem())
+		case *types.Struct:
+			return opiter.WrapSeq(u.Fields()).
+				Any(func(v *types.Var) bool { return walk(v.Type()) })
 		}
 
-		return pred(u)
-	case *types.TypeParam:
-		return pred(u)
-	case *types.Pointer:
-		return reachesLeaf(u.Elem(), pred)
-	case *types.Slice:
-		return reachesLeaf(u.Elem(), pred)
-	case *types.Array:
-		return reachesLeaf(u.Elem(), pred)
-	case *types.Map:
-		return reachesLeaf(u.Elem(), pred)
-	case *types.Struct:
-		return opiter.WrapSeq(u.Fields()).
-			Any(func(v *types.Var) bool { return reachesLeaf(v.Type(), pred) })
+		return false
 	}
 
-	return false
+	return walk(t)
+}
+
+// throughForeign reports whether Validate walks through named as through
+// its underlying type: named is a pointer or array type of a package outside
+// the run without a Validate of its own. Generated code spells *x and
+// ranges over x for such a type as for an unnamed one. A pointer or array
+// type of the run is an error instead, as unsupported tells. The user can
+// change those.
+func (s *selection) throughForeign(named *types.Named) bool {
+	switch named.Underlying().(type) {
+	case *types.Pointer, *types.Array:
+	default:
+		return false
+	}
+
+	return !s.loaded(named.Obj().Pkg()) && !s.implementor(named)
+}
+
+// onPath reports whether path holds a type identical to named. Instances
+// of one generic type are told apart by their type arguments.
+func onPath(path []*types.Named, named *types.Named) bool {
+	return slices.ContainsFunc(path, func(p *types.Named) bool { return types.Identical(p, named) })
 }
 
 // isOptionType reports whether t is opt.Option, und.Und or elastic.Elastic.
@@ -187,7 +262,7 @@ func isOptionType(t types.Type) bool {
 // holdsForeignImplementor reports whether n holds an implementor of a
 // package outside the run where Validate walks.
 func (s *selection) holdsForeignImplementor(n *typegraph.Node) bool {
-	return reaches(n.Detail.Type.Underlying(), func(named *types.Named) bool {
+	return s.reaches(n.Detail.Type.Underlying(), func(named *types.Named) bool {
 		return !s.loaded(named.Obj().Pkg()) && s.implementor(named)
 	})
 }
@@ -195,12 +270,6 @@ func (s *selection) holdsForeignImplementor(n *typegraph.Node) bool {
 // loaded reports whether pkg is one of the packages of the run.
 func (s *selection) loaded(pkg *types.Package) bool {
 	return slices.ContainsFunc(s.pkgs, func(p *packages.Package) bool { return p.Types == pkg })
-}
-
-// isTarget reports whether named refers to a target, through aliases and
-// instantiation.
-func (s *selection) isTarget(named *types.Named) bool {
-	return s.isTargetId(typegraph.QualifiedTypeFromObject(named.Origin().Obj()))
 }
 
 func (s *selection) filename(n *typegraph.Node) string {
@@ -323,15 +392,15 @@ func (s *selection) hookConflicts(n *typegraph.Node) []error {
 	return errs
 }
 
-// checkUnsupportedHolders reports types holding a named array or pointer
-// type of the run that holds something to validate. It checks the fields of
-// struct types and the slice and map types that get a Validate when the
-// trim reaches them. Such a named type gets no Validate. The values it holds
-// would go unchecked. The check covers types the trim does not reach. They
-// would be dependants if the named type had a Validate. A type parameter of
-// the holder counts as something to validate only in a target. A type
-// parameter makes no dependant, so a holder the trim does not reach
-// validates nothing behind it.
+// checkUnsupportedHolders reports types holding a value of a type that gets
+// no Validate although the value holds something to validate, as
+// unsupported tells. It checks the fields of struct types and the slice and
+// map types that get a Validate when the trim reaches them. The values such
+// a type holds would go unchecked. The check covers types the trim does not
+// reach. They would be dependants if the type had a Validate. A type
+// parameter of the holder counts as something to validate only in a
+// target. A type parameter makes no dependant, so a holder the trim does
+// not reach validates nothing behind it.
 func (s *selection) checkUnsupportedHolders(g *typegraph.Graph) error {
 	nodes := slices.SortedFunc(
 		opiter.WrapSeq2(g.All()).
@@ -341,16 +410,19 @@ func (s *selection) checkUnsupportedHolders(g *typegraph.Graph) error {
 		func(a, b *typegraph.Node) int { return a.Id.Compare(b.Id) },
 	)
 
+	trimmed := s.trim()
+	unsupported := s.unsupportedFunc(trimmed)
+
 	var errs []error
 
 	for _, n := range nodes {
 		pos := n.Detail.Pkg.Fset.Position
 		u := n.Detail.Type.Underlying()
-		target := s.isTargetId(n.Id)
+		target := s.targetIn(trimmed, n.Id)
 
 		st, ok := u.(*types.Struct)
 		if !ok {
-			if named := s.unsupportedIn(u, target); named != nil {
+			if named := s.unsupportedIn(u, target, unsupported); named != nil {
 				errs = append(errs, unsupportedHolderError(pos(n.Detail.Type.Obj().Pos()),
 					"type "+n.Id.String(), named))
 			}
@@ -363,7 +435,7 @@ func (s *selection) checkUnsupportedHolders(g *typegraph.Graph) error {
 				continue
 			}
 
-			if named := s.unsupportedIn(v.Type(), target); named != nil {
+			if named := s.unsupportedIn(v.Type(), target, unsupported); named != nil {
 				errs = append(errs, unsupportedHolderError(pos(v.Pos()),
 					"field "+v.Name()+" of "+n.Id.String(), named))
 			}
@@ -379,10 +451,45 @@ const unsupportedNamedHint = "only struct, slice and map named types get a Valid
 	" use an unnamed array or pointer type, or a wrapper struct"
 
 func unsupportedHolderError(pos token.Position, holder string, named *types.Named) error {
+	if isArrayOrPointer(named) {
+		return fmt.Errorf(
+			"%w: %s: %s holds %s, a named %s type holding values to validate; %s",
+			ErrUnsupported, pos, holder, named, kindName(named.Underlying()),
+			unsupportedNamedHint,
+		)
+	}
+
 	return fmt.Errorf(
-		"%w: %s: %s holds %s, a named %s type holding values to validate; %s",
-		ErrUnsupported, pos, holder, named, kindName(named.Underlying()), unsupportedNamedHint,
+		"%w: %s: %s holds %s, which holds values to validate through its type arguments;"+
+			" mark %s with //kama:validate to pass validation on",
+		ErrUnsupported, pos, holder, named, originId(named),
 	)
+}
+
+// unsupportedError reports named, which unsupported reports true for, where
+// a Validate would walk into it.
+func unsupportedError(named *types.Named) error {
+	if isArrayOrPointer(named) {
+		return fmt.Errorf(
+			"%w: %s is a named %s type holding values to validate; %s",
+			ErrUnsupported, named, kindName(named.Underlying()), unsupportedNamedHint,
+		)
+	}
+
+	return fmt.Errorf(
+		"%w: %s holds values to validate through its type arguments;"+
+			" mark %s with //kama:validate to pass validation on",
+		ErrUnsupported, named, originId(named),
+	)
+}
+
+func isArrayOrPointer(named *types.Named) bool {
+	switch named.Underlying().(type) {
+	case *types.Array, *types.Pointer:
+		return true
+	}
+
+	return false
 }
 
 func kindName(u types.Type) string {
@@ -393,17 +500,23 @@ func kindName(u types.Type) string {
 	return "pointer"
 }
 
-// unsupportedIn returns the first named array or pointer type of the run
-// holding something to validate that a value of type t holds where
-// Validate walks, or nil. typeParams tells unsupported whether a type
-// parameter counts.
-func (s *selection) unsupportedIn(t types.Type, typeParams bool) *types.Named {
+// originId returns the id of the generic type named instantiates.
+func originId(named *types.Named) typegraph.QualifiedType {
+	return typegraph.QualifiedTypeFromObject(named.Origin().Obj())
+}
+
+// unsupportedIn returns the first type unsupported reports true for that a
+// value of type t holds where Validate walks, or nil. typeParams tells
+// unsupported whether a type parameter counts.
+func (s *selection) unsupportedIn(
+	t types.Type,
+	typeParams bool,
+	unsupported func(named *types.Named, typeParams bool) bool,
+) *types.Named {
 	var found *types.Named
 
-	seen := map[*types.Named]bool{}
-
-	reaches(t, func(named *types.Named) bool {
-		if s.unsupported(named, typeParams, seen) {
+	s.reaches(t, func(named *types.Named) bool {
+		if unsupported(named, typeParams) {
 			found = named
 		}
 
@@ -413,45 +526,126 @@ func (s *selection) unsupportedIn(t types.Type, typeParams bool) *types.Named {
 	return found
 }
 
-// unsupported reports whether named is an array or pointer type of the run
-// without a Validate of its own holding a value of a target, of an
-// implementor or of another such type. With typeParams, a value of a type
-// parameter counts too, as in PT[T] of type PT[T any] *T. The type
-// arguments of named are those of the type holding it, so the type
-// parameter is one of that holder. seen holds the types on the way to
-// named. It stops a cycle such as type A [2]B; type B *A.
-func (s *selection) unsupported(
-	named *types.Named,
+// unsupported reports whether named gets no Validate although a value of it
+// holds something to validate, as the function unsupportedFunc returns
+// tells.
+func (s *selection) unsupported(named *types.Named, typeParams bool) bool {
+	return s.unsupportedFunc(s.trim())(named, typeParams)
+}
+
+// unsupportedFunc returns the function reporting whether named gets no
+// Validate although a value of it holds something to validate. trimmed is
+// the graph trim returns, which tells the targets. Such a type is one of
+// the run of these:
+//
+//   - an array or pointer type without a Validate of its own.
+//   - an instance of a generic struct, slice or map type that is neither a
+//     target nor ignored. Its type arguments hold what it holds. A type
+//     holding something to validate otherwise is a target itself.
+//
+// Something to validate is a value of a target, of an implementor or of
+// another such type. With typeParams, a value of a type parameter counts
+// too, as in PT[T] of type PT[T any] *T. The type arguments of named are
+// those of the type holding it, so the type parameter is one of that
+// holder.
+func (s *selection) unsupportedFunc(
+	trimmed *typegraph.MatchedGraph,
+) func(named *types.Named, typeParams bool) bool {
+	// memo keeps the answers of one check, and the caller passes one trimmed
+	// graph for all of them. Without both, the walk visits a type once per
+	// path to it and trims the graph again at each type, which is
+	// exponential in the depth of a chain such as
+	// type A00 [1]struct{ X A01; Y A01 } down to A22 held by a target: a
+	// test generating from it ran 0.6 s at depth 10, 13 s at depth 16 and
+	// longer than 6.5 minutes at depth 22. With both, Generate takes 7 ms
+	// at depth 22. The key holds every input of the answer. A false answer
+	// that a cut of a cycle gave depends on the path to named and is not
+	// kept.
+	type key struct {
+		named      *types.Named
+		typeParams bool
+	}
+
+	var (
+		memo = map[key]bool{}
+		// path holds the types on the way to named. It stops a cycle such
+		// as type A [2]B; type B *A.
+		path        []*types.Named
+		cuts        int
+		unsupported func(named *types.Named, typeParams bool) bool
+	)
+
+	unsupported = func(named *types.Named, typeParams bool) bool {
+		k := key{named, typeParams}
+		if v, ok := memo[k]; ok {
+			return v
+		}
+
+		if !s.getsNoValidate(trimmed, named) {
+			return false
+		}
+
+		if onPath(path, named) {
+			cuts++
+			return false
+		}
+
+		path = append(path, named)
+		before := cuts
+
+		holds := s.reachesLeaf(named.Underlying(), s.holdsLeaf(trimmed, typeParams, unsupported))
+
+		path = path[:len(path)-1]
+
+		if holds || cuts == before {
+			memo[k] = holds
+		}
+
+		return holds
+	}
+
+	return unsupported
+}
+
+// holdsLeaf returns the predicate over the types ending a walk that tells
+// something to validate: a target of trimmed, an implementor, a type
+// unsupported reports true for, and with typeParams a type parameter.
+func (s *selection) holdsLeaf(
+	trimmed *typegraph.MatchedGraph,
 	typeParams bool,
-	seen map[*types.Named]bool,
-) bool {
-	origin := named.Origin()
-
-	switch named.Underlying().(type) {
-	case *types.Array, *types.Pointer:
-	default:
-		return false
-	}
-
-	if seen[origin] || !s.loaded(origin.Obj().Pkg()) || s.implementor(named) {
-		return false
-	}
-
-	// Another instance of origin, such as PT[Target] after PT[int], may hold
-	// what this one does not, so origin leaves seen once its walk ends.
-	seen[origin] = true
-	defer delete(seen, origin)
-
-	return reachesLeaf(named.Underlying(), func(leaf types.Type) bool {
+	unsupported func(named *types.Named, typeParams bool) bool,
+) func(leaf types.Type) bool {
+	return func(leaf types.Type) bool {
 		switch leaf := leaf.(type) {
 		case *types.TypeParam:
 			return typeParams
 		case *types.Named:
-			return s.callable(leaf) || s.unsupported(leaf, typeParams, seen)
+			return s.callableIn(trimmed, leaf) || unsupported(leaf, typeParams)
 		}
 
 		return false
-	})
+	}
+}
+
+// getsNoValidate reports whether named is a type of the run that gets no
+// Validate and that Validate cannot walk through: an array or pointer type
+// without a Validate of its own, or an instance of a generic struct, slice
+// or map type that is neither a target nor ignored. An ignored type is
+// left unchecked on purpose.
+func (s *selection) getsNoValidate(trimmed *typegraph.MatchedGraph, named *types.Named) bool {
+	if !s.loaded(named.Obj().Pkg()) || s.implementor(named) {
+		return false
+	}
+
+	switch named.Underlying().(type) {
+	case *types.Array, *types.Pointer:
+		return true
+	case *types.Struct, *types.Slice, *types.Map:
+		id := originId(named)
+		return named.TypeArgs().Len() > 0 && !s.targetIn(trimmed, id) && !s.ignored(id)
+	}
+
+	return false
 }
 
 // wantValidate spells the signature of a Validate method of named.

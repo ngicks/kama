@@ -87,6 +87,8 @@ type A[T comparable] struct {
 	LenOpt opt.Option[[]int]
 	//kama:validate:length >0
 	LenPtr *[]int
+	//kama:validate:length >=+1
+	LenPlus string
 	//kama:validate:cmp >=-1 <10
 	CmpInt int8
 	//kama:validate:cmp >0
@@ -154,6 +156,7 @@ type A[T comparable] struct {
 		"if v.LenOpt.IsSome() {",
 		`kamaValidateLength(len(v.LenOpt.Value()), ">", 0)`,
 		`kamaValidateLength(len((*v.LenPtr)), ">", 0)`,
+		`kamaValidateLength(len(v.LenPlus), ">=", +1)`,
 		`kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.CmpInt, ">=", -1), `+
 			`kamaValidateCmp(v.CmpInt, "<", 10))`,
 		`kamaValidateCmp(v.CmpUint, ">", 0)`,
@@ -203,8 +206,13 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 		// zero
 		{"zero args", "//kama:validate:zero yes\n\tN int", ErrUnsupported,
 			[]string{"//kama:validate:zero on field V", `unknown args "yes"; want none`}},
+		{"zero IsZero promoted through a pointer",
+			"//kama:validate:zero\n\tN struct{ *elastic.Elastic[int]; L []int }", ErrUnsupported,
+			[]string{"has no method IsZero() bool declared on it or promoted" +
+				" without a pointer or an interface"}},
 		{"zero not comparable", "//kama:validate:zero\n\tN struct{ L []int }", ErrUnsupported,
-			[]string{"struct{L []int} is not nillable, has no method IsZero() bool"}},
+			[]string{"struct{L []int} is not nillable, has no method IsZero() bool declared on it" +
+				" or promoted without a pointer or an interface, and is not comparable"}},
 		// nil
 		{"nil args", "//kama:validate:nil x\n\tN *int", ErrUnsupported,
 			[]string{`unknown args "x"`}},
@@ -259,6 +267,14 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 			[]string{"length 1.0 is not an integer literal"}},
 		{"length rune literal", "//kama:validate:length >='a'\n\tN string", ErrUnsupported,
 			[]string{"length 'a' is not an integer literal"}},
+		{"length plus float literal", "//kama:validate:length >=+1.0\n\tN string",
+			ErrUnsupported, []string{"length +1.0 is not an integer literal"}},
+		{"length plus rune literal", "//kama:validate:length >=+'a'\n\tN string",
+			ErrUnsupported, []string{"length +'a' is not an integer literal"}},
+		{"length expression", "//kama:validate:length >=1+1\n\tN string", ErrUnsupported,
+			[]string{"1+1 is not a Go literal"}},
+		{"length plus negative", "//kama:validate:length >=+-1\n\tN string", ErrUnsupported,
+			[]string{"+-1 is not a Go literal"}},
 		{"length int", "//kama:validate:length >=1\n\tN int", ErrUnsupported,
 			[]string{"//kama:validate:length on field V",
 				"int is not a string, slice, array, map or channel type"}},

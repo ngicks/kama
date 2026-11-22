@@ -15,8 +15,8 @@ import (
 
 // fixedNames are the identifiers the signature and the body of every
 // Validate spell. They are reserved against imports so that they keep
-// their names. A type parameter of the same name makes them take fresh
-// names, as local does.
+// their names. A type parameter or a package-level declaration of the same
+// name makes them take fresh names, as local does.
 var fixedNames = []string{"v", "stopOnFirstError", "errs", "err"}
 
 // writer writes the Validate method of the target n as source text.
@@ -84,11 +84,12 @@ func (w *writer) method() (string, error) {
 
 // local returns the argument of lang.Expr declaring the local named name:
 // under exactly that name, as genhelper.Shadow does, unless a type
-// parameter of w.n has the name. The local would then hide the type
-// parameter from the types spelled in its scope, such as the parameter
-// types of a nested function literal, so it gets a fresh name.
+// parameter of w.n or a package-level declaration of the package has the
+// name. The local would then hide that type parameter or declaration from
+// the types spelled in its scope, such as the parameter types of a nested
+// function literal, so it gets a fresh name.
 func (w *writer) local(name string) any {
-	if slices.Contains(w.tparams(), name) {
+	if slices.Contains(w.tparams(), name) || w.scope.Pkg.Types.Scope().Lookup(name) != nil {
 		return decl(name)
 	}
 

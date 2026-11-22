@@ -1,11 +1,18 @@
 package validator
 
 import (
+	"context"
+	"fmt"
 	"maps"
+	"path"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 )
 
 // validated returns the types the files generated from files declare
@@ -327,6 +334,111 @@ func TestSelectionErrors(t *testing.T) {
 			msgs: []string{"field S of", "C], a named pointer type"},
 		},
 		{
+			name: "nested instances of a generic named pointer",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ P PT[PT[C]] }\n\n" +
+				"type PT[T any] *T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field P of", "C]], a named pointer type"},
+		},
+		{
+			// PA and PB hold each other. Either one reaches C.
+			name: "cycle of named pointers",
+			src: "type H struct {\n\tX PA\n\tY PB\n}\n\n" +
+				"type PA *struct {\n\tB PB\n\tC C\n}\n\ntype PB *PA\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is: ErrUnsupported,
+			msgs: []string{
+				"field X of",
+				"PA, a named pointer type",
+				"field Y of",
+				"PB, a named pointer type",
+			},
+		},
+		{
+			name: "unmarked generic slice of a target",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ L LS[C] }\n\n" +
+				"type LS[T any] []T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is: ErrUnsupported,
+			msgs: []string{
+				"a.go:5:16",
+				"field L of",
+				"C], which holds values to validate through its type arguments",
+				"LS with //kama:validate to pass validation on",
+			},
+		},
+		{
+			name: "unmarked generic map of a target",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ M MS[string, C] }\n\n" +
+				"type MS[K comparable, V any] map[K]V\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field M of", "MS[string, ", "MS with //kama:validate"},
+		},
+		{
+			name: "pointer to an unmarked generic slice of a target",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ P *LS[C] }\n\n" +
+				"type LS[T any] []T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field P of", "LS with //kama:validate"},
+		},
+		{
+			name: "unmarked generic slice of an unmarked generic slice of a target",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ L LS[LS[C]] }\n\n" +
+				"type LS[T any] []T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field L of", "C]], which holds values to validate"},
+		},
+		{
+			name: "unmarked generic types of a type parameter",
+			src: "//kama:validate\n//kama:validate:hook off\n" +
+				"type Box[T any] struct {\n\tL LS[T]\n\tW W[T]\n}\n\n" +
+				"type LS[T any] []T\n\ntype W[T any] struct{ X T }\n",
+			is: ErrUnsupported,
+			msgs: []string{
+				"field L of", "LS[T], which holds values to validate", "LS with //kama:validate",
+				"field W of", "W[T], which holds values to validate", "W with //kama:validate",
+			},
+		},
+		{
+			// The holder would be a dependant if LS had a Validate.
+			name: "unmarked generic slice in a dependant",
+			src: "type H struct{ L LS[C] }\n\ntype LS[T any] []T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field L of", "H holds", "LS with //kama:validate"},
+		},
+		{
+			name: "unmarked generic slice in a slice type",
+			src: "type L []LS[C]\n\ntype LS[T any] []T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"type ", "L holds", "LS with //kama:validate"},
+		},
+		{
+			name: "unmarked generic slice as a type argument",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ B Box[LS[C]] }\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype Box[T any] struct{ V T }\n\n" +
+				"type LS[T any] []T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			is: ErrUnsupported,
+			msgs: []string{
+				"field B:", "C] holds values to validate through its type arguments",
+				"LS with //kama:validate to pass validation on",
+			},
+		},
+		{
+			name: "unmarked generic struct of an implementor",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ W W[H] }\n\n" +
+				"type W[T any] struct{ X T }\n\ntype H struct{}\n\n" +
+				"func (H) Validate(bool) error { return nil }\n",
+			is:   ErrUnsupported,
+			msgs: []string{"field W of", "W with //kama:validate"},
+		},
+		{
 			name: "fields sharing a hook",
 			src: "//kama:validate\ntype A struct {\n\tname string\n\tName string\n}\n\n" +
 				"func (A) validateName(bool) error { return nil }\n",
@@ -408,6 +520,29 @@ func TestSelectionAccepted(t *testing.T) {
 			want: []string{"C.Validate"},
 		},
 		{
+			name: "unmarked generic types of non-validatable types",
+			src: "//kama:validate\n//kama:validate:hook off\n" +
+				"type A struct {\n\tL LS[int]\n\tM MS[string, int]\n\tW W[*int]\n}\n\n" +
+				"type LS[T any] []T\n\ntype MS[K comparable, V any] map[K]V\n\n" +
+				"type W[T any] struct{ X T }\n",
+			want: []string{"A.Validate"},
+		},
+		{
+			// An ignored type is left unchecked on purpose.
+			name: "ignored generic slice of a target",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ L LS[C] }\n\n" +
+				"//kama:validate ignore\ntype LS[T any] []T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			want: []string{"A.Validate", "C.Validate"},
+		},
+		{
+			// A type parameter makes no dependant, so H validates nothing.
+			name: "unmarked generic slice of a type parameter in a non-target",
+			src: "type H[T any] struct{ L LS[T] }\n\ntype LS[T any] []T\n\n" +
+				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+			want: []string{"C.Validate"},
+		},
+		{
 			name: "fields sharing a hook name with one hook off",
 			src: "//kama:validate\ntype A struct {\n\tname string\n" +
 				"\t//kama:validate:hook off\n\tName string\n}\n\n" +
@@ -435,9 +570,8 @@ func TestSelectionAccepted(t *testing.T) {
 }
 
 // TestSelectionOptionTypes makes a type holding a target as the type
-// argument of an option type a dependant. The type argument of any other
-// generic type, such as Box, does not: Box[T] gets validated only when Box
-// is a target itself, and its Validate then takes the function for T.
+// argument of an option type a dependant. TestSelectionMarkedGeneric covers
+// the type arguments of other generic types.
 func TestSelectionOptionTypes(t *testing.T) {
 	got := validated(t, map[string]string{
 		"a.go": `package x
@@ -461,10 +595,6 @@ type M map[string]opt.Option[T]
 type Nested struct{ T opt.Option[und.Und[[]T]] }
 
 type ThroughDependant struct{ U opt.Option[U] }
-
-type B struct{ T Box[T] }
-
-type Box[X any] struct{ X X }
 
 type K map[opt.Option[T]]int
 
@@ -492,4 +622,252 @@ func TestSelectionOptionForeignImplementor(t *testing.T) {
 
 	assertContains(t, fn, "if v.H.IsSome() {",
 		check(`validation.Field(v.H.Value().Validate(stopOnFirstError), "H")`))
+}
+
+// TestSelectionMarkedGeneric passes validation on through marked generic
+// struct, slice and map types. Their type arguments make no dependant, so
+// the types holding them are targets by their own marks.
+func TestSelectionMarkedGeneric(t *testing.T) {
+	out := generateAndBuild(t, map[string]string{
+		"a.go": `package x
+
+//kama:validate
+//kama:validate:hook off
+type LS[T any] []T
+
+//kama:validate
+//kama:validate:hook off
+type MS[K comparable, V any] map[K]V
+
+//kama:validate
+//kama:validate:hook off
+type W[T any] struct{ X T }
+
+//kama:validate
+//kama:validate:hook off
+type A struct {
+	L LS[C]
+	M MS[string, C]
+	P *LS[C]
+}
+
+//kama:validate
+//kama:validate:hook off
+type Box[T any] struct {
+	L LS[T]
+	W W[T]
+}
+
+//kama:validate
+//kama:validate:hook off
+type C struct{ X int }
+`,
+	})
+	fs := funcs(t, out["a.kama_validate.go"])
+
+	assertContains(t, fs["A.Validate"],
+		"v.L.Validate(stopOnFirstError, func(v C, stopOnFirstError bool) error {",
+		"v.M.Validate(stopOnFirstError, nil, func(v C, stopOnFirstError bool) error {",
+		"if v.P != nil {",
+		"(*v.P).Validate(stopOnFirstError, func(v C, stopOnFirstError bool) error {",
+	)
+	assertContains(t, fs["Box.Validate"],
+		check(`validation.Field(v.L.Validate(stopOnFirstError, validateT), "L")`),
+		check(`validation.Field(v.W.Validate(stopOnFirstError, validateT), "W")`),
+	)
+}
+
+// foreignSrc declares named array and pointer types of a package the tests
+// load as a dependency only.
+const foreignSrc = `package y
+
+type Impl struct{ A string }
+
+func (Impl) Validate(bool) error { return nil }
+
+type PI *Impl
+
+type AI [2]Impl
+
+type PT[T any] *T
+
+type PN *int
+
+type AN [2]int
+
+type LN *struct {
+	Next LN
+	N    int
+}
+
+type AV [2]Impl
+
+func (AV) Validate(bool) error { return nil }
+
+type L *struct {
+	Next L
+	I    Impl
+}
+`
+
+// TestSelectionForeignNamedArrayAndPointer walks through named array and
+// pointer types of a package outside the run as through unnamed ones.
+func TestSelectionForeignNamedArrayAndPointer(t *testing.T) {
+	out, err := generateLoading(t, map[string]string{
+		"y/y.go": foreignSrc,
+		"x/x.go": `package x
+
+import "` + modulePath(t) + `/y"
+
+//kama:validate
+//kama:validate:hook off
+type S struct {
+	P  y.PI
+	A  y.AI
+	M  map[string]y.AI
+	G  y.PT[Inner]
+	N  y.PN
+	AN y.AN
+	LN y.LN
+	V  y.AV
+}
+
+type D struct{ A y.AI }
+
+//kama:validate
+//kama:validate:hook off
+type Inner struct {
+	//kama:validate:required
+	X string
+}
+`,
+	}, "x")
+	assert.NilError(t, err)
+
+	fs := funcs(t, out["x.kama_validate.go"])
+
+	assert.DeepEqual(t, slices.Sorted(maps.Keys(fs)),
+		[]string{"D.Validate", "Inner.Validate", "S.Validate"})
+	assertContains(t, fs["S.Validate"],
+		"if v.P != nil {",
+		check(`validation.Field((*v.P).Validate(stopOnFirstError), "P")`),
+		"for i, e := range v.A {",
+		check(`validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "A")`),
+		check(`validation.Field(validation.Key(validation.Index(`+
+			`e2.Validate(stopOnFirstError), i2), k), "M")`),
+		"if v.G != nil {",
+		check(`validation.Field((*v.G).Validate(stopOnFirstError), "G")`),
+		check(`validation.Field(v.V.Validate(stopOnFirstError), "V")`),
+	)
+	assertNotContains(t, fs["S.Validate"], "v.N", "v.AN", "v.LN")
+}
+
+// TestSelectionForeignNamedErrors reports a named pointer type of a package
+// outside the run holding itself and something to validate, and keeps the
+// error for named array and pointer types of the run.
+func TestSelectionForeignNamedErrors(t *testing.T) {
+	cases := []struct {
+		name  string
+		field string
+		dirs  []string
+		msgs  []string
+	}{
+		{
+			name:  "recursive",
+			field: "R y.L",
+			dirs:  []string{"x"},
+			msgs: []string{
+				"field R:", "y.L is a named pointer type of another package holding itself" +
+					" and values to validate",
+			},
+		},
+		{
+			name:  "pointer of the run",
+			field: "P y.PI",
+			dirs:  []string{"x", "y"},
+			msgs:  []string{"field P of", "PI, a named pointer type"},
+		},
+		{
+			name:  "array of the run",
+			field: "A y.AI",
+			dirs:  []string{"x", "y"},
+			msgs:  []string{"field A of", "AI, a named array type"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := generateLoading(t, map[string]string{
+				"y/y.go": foreignSrc,
+				"x/x.go": "package x\n\nimport \"" + modulePath(t) + "/y\"\n\n" +
+					"//kama:validate\n//kama:validate:hook off\ntype S struct{ " + tc.field + " }\n",
+			}, tc.dirs...)
+			assert.ErrorIs(t, err, ErrUnsupported)
+
+			for _, msg := range tc.msgs {
+				assert.ErrorContains(t, err, msg)
+			}
+		})
+	}
+}
+
+// chainSrc declares the chain A00 to An in package pkg, each holding the
+// next twice, and the last holding nothing to validate. A walk that visits a
+// type once per path to it takes 2^n steps.
+func chainSrc(pkg string, n int) string {
+	name := func(i int) string { return fmt.Sprintf("A%02d", i) }
+
+	var b strings.Builder
+
+	b.WriteString("package " + pkg + "\n\n")
+
+	for i := range n {
+		fmt.Fprintf(&b, "type %s [1]struct {\n\tX %s\n\tY %s\n}\n\n", name(i), name(i+1), name(i+1))
+	}
+
+	fmt.Fprintf(&b, "type %s [1]int\n", name(n))
+
+	return b.String()
+}
+
+// TestSelectionDeepChain generates from a target holding a deep chain of
+// named arrays, of the run and of a package outside the run. Generate is
+// bounded by a generous 30 s, far below the time an exponential walk takes
+// at depth 22. Loading the chain takes seconds in go/types itself.
+func TestSelectionDeepChain(t *testing.T) {
+	const depth = 22
+
+	target := "//kama:validate\n//kama:validate:hook off\ntype S struct {\n" +
+		"\tF A00\n\t//kama:validate:required\n\tN string\n}\n"
+
+	cases := map[string]map[string]string{
+		"run": {"x/x.go": chainSrc("x", depth) + "\n" + target},
+		"foreign": {
+			"y/y.go": chainSrc("y", depth),
+			// The import path names the subtest, which stage writes to.
+			"x/x.go": "package x\n\nimport . \"MODULE/y\"\n\n" + target,
+		},
+	}
+
+	for name, files := range cases {
+		t.Run(name, func(t *testing.T) {
+			for name, src := range files {
+				files[name] = strings.ReplaceAll(src, "MODULE", modulePath(t))
+			}
+
+			f, opts := stage(t, files)
+			opts.Patterns = []string{"./" + path.Join(inlineDir(t), "x")}
+
+			pkgs, err := gopackages.Load(context.Background(), f, opts)
+			assert.NilError(t, err)
+
+			start := time.Now()
+			out, _, err := Generate(pkgs, testOptions(t, Options{}))
+			elapsed := time.Since(start)
+
+			assert.NilError(t, err)
+			assert.Assert(t, elapsed < 30*time.Second, "Generate took %s", elapsed)
+			assertContains(t, byBase(out)["x.kama_validate.go"], "func (v S) Validate(")
+		})
+	}
 }

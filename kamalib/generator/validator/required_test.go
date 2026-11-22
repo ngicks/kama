@@ -105,6 +105,17 @@ func TestRequiredErrors(t *testing.T) {
 			},
 		},
 		{
+			name: "IsZero promoted through a pointer",
+			src: "//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
+				"\t//kama:validate:required\n\tS struct{ *Z; L []int }\n}\n\n" +
+				"type Z struct{}\n\nfunc (Z) IsZero() bool { return true }\n",
+			is: ErrUnsupported,
+			msgs: []string{
+				"has no method IsZero() bool declared on it or promoted" +
+					" without a pointer or an interface, and is not comparable",
+			},
+		},
+		{
 			name: "type parameter not comparable",
 			src: "//kama:validate\n//kama:validate:hook off\ntype A[T any] struct {\n" +
 				"\t//kama:validate:required\n\tV T\n}\n",

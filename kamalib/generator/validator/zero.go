@@ -14,7 +14,9 @@ import (
 // channel, function or interface must be nil. A type with a method
 // IsZero() bool, the option types among them, must be zero by it: an
 // opt.Option must be none, an und.Und or an elastic.Elastic undefined. Any
-// other comparable type must equal its zero value.
+// other comparable type must equal its zero value. IsZero counts when the
+// type declares it or embedded fields promote it without a pointer or an
+// interface on the way.
 type Zero struct{}
 
 // Name returns "zero".
@@ -28,7 +30,8 @@ func (Zero) Check(t types.Type, args []dircmnt.KeyValue) error {
 
 	if _, _, ok := zeroCall(t, ""); !ok {
 		return fmt.Errorf(
-			"%s is not nillable, has no method IsZero() bool and is not comparable", t,
+			"%s is not nillable, has no method IsZero() bool declared on it or promoted"+
+				" without a pointer or an interface, and is not comparable", t,
 		)
 	}
 

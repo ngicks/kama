@@ -7,12 +7,20 @@ import (
 	"slices"
 
 	"golang.org/x/tools/go/packages"
+
+	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
 // callable reports whether generated code can call Validate on a value of
 // named: named is a target of the run or an implementor.
 func (s *selection) callable(named *types.Named) bool {
-	return s.isTarget(named) || s.implementor(named)
+	return s.callableIn(s.trim(), named)
+}
+
+// callableIn is callable with the targets of trimmed. trimmed is the graph
+// trim returns.
+func (s *selection) callableIn(trimmed *typegraph.MatchedGraph, named *types.Named) bool {
+	return s.targetIn(trimmed, originId(named)) || s.implementor(named)
 }
 
 // implementor reports whether named has a Validate written by hand that

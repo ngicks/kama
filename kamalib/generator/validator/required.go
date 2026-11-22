@@ -30,8 +30,8 @@ func (Required) Check(t types.Type, args []dircmnt.KeyValue) error {
 
 	if _, _, ok := requiredCall(t, ""); !ok {
 		return fmt.Errorf(
-			"%s is not an option type, not nillable, has no method IsZero() bool"+
-				" and is not comparable",
+			"%s is not an option type, not nillable, has no method IsZero() bool declared"+
+				" on it or promoted without a pointer or an interface, and is not comparable",
 			t,
 		)
 	}

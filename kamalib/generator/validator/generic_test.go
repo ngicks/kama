@@ -165,3 +165,76 @@ func TestGenericTypeParamNamedLikeLocal(t *testing.T) {
 		})
 	}
 }
+
+// packageDeclNamesSrc declares a target named X that the target S spells as
+// a field type and as a type argument inside nested function literals,
+// where a local named like X would hide it.
+const packageDeclNamesSrc = `package x
+
+//kama:validate
+//kama:validate:hook off
+type X struct {
+	//kama:validate:required
+	A string
+}
+
+//kama:validate
+//kama:validate:hook off
+type S struct {
+	F X
+	S []X
+	N map[string]X
+	K Box2[Box2[X]]
+	O Box2[map[string]X]
+	L Box2[[]X]
+	M Box2[struct {
+		X X
+		Y Box2[X]
+	}]
+}
+
+//kama:validate
+//kama:validate:hook off
+type Box2[T any] struct{ X T }
+`
+
+// TestPackageDeclNamedLikeLocal builds targets of a package declaring a type
+// named like a local of Validate. The local takes a fresh name, the
+// receiver included.
+func TestPackageDeclNamedLikeLocal(t *testing.T) {
+	cases := []struct {
+		name string
+		want []string
+	}{
+		{"v", []string{
+			"func (v2 S) Validate(stopOnFirstError bool) error {",
+			"func(v3 Box2[v], stopOnFirstError bool) error {",
+			"func(v3 []v, stopOnFirstError bool) error {",
+		}},
+		{
+			"errs",
+			[]string{"\tvar errs2 []error\n", "func(v Box2[errs], stopOnFirstError bool) error {"},
+		},
+		{
+			"err",
+			[]string{
+				`if err2 := validation.Field(v.F.Validate(stopOnFirstError), "F"); err2 != nil {`,
+			},
+		},
+		{"stopOnFirstError", []string{"func (v S) Validate(stopOnFirstError2 bool) error {"}},
+		// The loop variables take fresh names already.
+		{"e", nil},
+		{"i", nil},
+		{"k", nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fn := validateOf(t, map[string]string{
+				"a.go": strings.ReplaceAll(packageDeclNamesSrc, "X", tc.name),
+			}, "a.kama_validate.go", "S")
+
+			assertContains(t, fn, tc.want...)
+		})
+	}
+}

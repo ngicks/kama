@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
@@ -178,6 +179,32 @@ func generateAndBuild(t *testing.T, files map[string]string) map[string]string {
 	assert.NilError(t, build(f, opts))
 
 	return out
+}
+
+// generateLoading is generateAndBuild loading only the packages in dirs,
+// relative to the directory stage writes files to. The other packages load
+// as dependencies, outside the run. It returns the error of Generate
+// instead of failing on it.
+func generateLoading(
+	t *testing.T,
+	files map[string]string,
+	dirs ...string,
+) (map[string]string, error) {
+	t.Helper()
+
+	f, opts := stage(t, files)
+	opts.Patterns = opiter.WrapSeq(slices.Values(dirs)).
+		Map(func(d string) string { return "./" + path.Join(inlineDir(t), d) }).
+		CollectSlice()
+
+	out, err := generateInto(t, f, opts, Options{})
+	if err != nil {
+		return nil, err
+	}
+
+	assert.NilError(t, build(f, opts))
+
+	return out, nil
 }
 
 // build type-checks the packages opts loads from f. go/types reports an

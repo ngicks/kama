@@ -36,7 +36,9 @@ func newHelperSet() *helperSet {
 	return &helperSet{decls: map[string]func(Spelling) (string, error){}}
 }
 
-// emitter is the Emitter of one generated file.
+// emitter spells packages and types for one generated file and records
+// the helpers the file calls. exprEmitter wraps it as the Emitter of one
+// validator expression.
 //
 // uses and imports are facts about the output, which no source holds: the
 // helpers the file calls and the packages it asked for by path.

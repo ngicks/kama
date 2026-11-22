@@ -25,12 +25,12 @@
 // name. Because of these parameters no single interface describes every
 // Validate, and the generator finds callable methods by their shape.
 //
-// A type parameter may be named like a local of the generated Validate,
-// such as v, stopOnFirstError, errs or err. The local then takes a fresh
-// name, as in func (v2 Box[v]) Validate. A type parameter named like a
-// predeclared identifier the generated code spells, or like a helper the
-// generated code of its package calls, shadows it. Each is an error
-// wrapping ErrConflict.
+// A type parameter or a package-level declaration may be named like a
+// local of the generated Validate, such as v, stopOnFirstError, errs or
+// err. The local then takes a fresh name, as in func (v2 Box[v]) Validate.
+// A type parameter named like a predeclared identifier the generated code
+// spells, or like a helper the generated code of its package calls,
+// shadows it. Each is an error wrapping ErrConflict.
 //
 // # Targets
 //
@@ -79,6 +79,23 @@
 // A field P PT[T] of a target G[T any] is an error. A field P PT[int] holds
 // nothing to validate. It is no error. Use an unnamed array or pointer
 // type, or a wrapper struct, in its place.
+//
+// The type arguments of a generic struct, slice or map type make no
+// dependant, so such a type of the run is a target only when it is marked
+// or holds something to validate by itself. An instance of an unmarked
+// one whose type arguments hold something to validate, as LS[Inner] of
+// type LS[T any] []T, is an error wrapping ErrUnsupported in the same
+// places as a named array or pointer type. Mark the generic type with
+// //kama:validate to pass validation on. An instance holding nothing to
+// validate, as LS[int], is no error. A generic type ignored by
+// //kama:validate ignore is no error either. Its values go unchecked.
+//
+// A named array or pointer type of a package outside the run is no error.
+// Validate walks through it as through an unnamed array or pointer type.
+// A type holding an implementor through it is a dependant. Such a type
+// holding itself and something to validate, as in
+// type L *struct{ Next L; I Impl }, is an error wrapping ErrUnsupported.
+// Validate would need a recursive function to walk it.
 //
 // Declarations whose doc comment carries the genmark marker of a
 // registered generator are never targets. The generator reads files
@@ -140,11 +157,14 @@
 //     implementor or of a type parameter. A nil pointer, slice or map, a
 //     none opt.Option, an undefined or null und.Und and a null element of
 //     an elastic.Elastic hold nothing and are skipped. The walk never goes
-//     into the underlying type of a named type. A struct, slice or map type
-//     of the run holding something to validate is a target itself. A named
-//     array or pointer type of the run holding something to validate, a
-//     type parameter of the target included, is an error, as Targets
-//     describes.
+//     into the underlying type of a named type, except for a named array or
+//     pointer type of a package outside the run. A struct, slice or map
+//     type of the run holding something to validate by itself is a target
+//     itself. A named array or pointer type of the run holding something to
+//     validate, a type parameter of the target included, is an error. So
+//     is an instance of an unmarked generic struct, slice or map type of
+//     the run whose type arguments hold something to validate. Targets
+//     describes both.
 //  3. The hook of the field, described under Hooks.
 //
 // Validate wraps every error of these steps with the path segment of the
@@ -257,7 +277,7 @@
 // zero takes no args and applies to the types required applies to. The
 // value is the zero value: a nillable value is nil, a type with IsZero,
 // the option types among them, is zero by it, and any other comparable
-// value equals its zero value.
+// value equals its zero value. IsZero counts as for required.
 //
 // nil takes no args. The value of a pointer, slice, map, channel, function
 // or interface type is nil.
@@ -276,9 +296,9 @@
 //
 // length takes one or more comparisons <op><n> with the operators >, >=,
 // ==, !=, <= and <, and a non-negative integer literal n, as in >=1 <=10.
-// len of the value satisfies every comparison. It applies to string,
-// slice, array, map and channel underlying types. The length of a string
-// is its number of bytes.
+// n may carry a unary plus. len of the value satisfies every comparison.
+// It applies to string, slice, array, map and channel underlying types.
+// The length of a string is its number of bytes.
 //
 // cmp takes one or more comparisons <op><v>, where v is a Go literal of the
 // type of the value: a number, a quoted string, true or false, as in

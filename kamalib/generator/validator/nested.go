@@ -15,12 +15,15 @@ import (
 //
 // A value of a target or an implementor is validated by its Validate and a
 // value of a type parameter by the function given for it. The walk goes
-// through pointers, slices, arrays, map values, the option types and the
-// fields of struct type literals, and never into the underlying type of a
+// through pointers, slices, arrays, map values, the option types, the
+// fields of struct type literals and named array and pointer types of
+// packages outside the run, and never into the underlying type of another
 // named type. A struct, slice or map type of the run holding something to
-// validate is a target itself. A named array or pointer type of the run
-// holding something to validate, a type parameter of the receiver
-// included, is an error. selectTargets reports the fields and types
+// validate by itself is a target itself. A named array or pointer type of
+// the run holding something to validate, a type parameter of the receiver
+// included, is an error. So is an instance of a generic struct, slice or
+// map type of the run that is no target and whose type arguments hold
+// something to validate. selectTargets reports the fields and types
 // holding one. nestedNamed reports one a type argument reaches.
 func (w *writer) nested(t types.Type, x genExpr, wrap wrapFunc, depth int) (genStep, error) {
 	switch u := types.Unalias(t).(type) {
@@ -119,14 +122,50 @@ func (w *writer) nestedNamed(
 			"%w: %s declares Validate on its pointer receiver; declare it on the value receiver",
 			ErrUnsupported, named,
 		)
-	case w.sel.unsupported(named, true, map[*types.Named]bool{}):
-		return nil, fmt.Errorf(
-			"%w: %s is a named %s type holding values to validate; %s",
-			ErrUnsupported, named, kindName(named.Underlying()), unsupportedNamedHint,
-		)
+	case w.sel.throughForeign(named):
+		return w.throughForeign(named, x, wrap, depth)
+	case w.sel.unsupported(named, true):
+		return nil, unsupportedError(named)
 	}
 
 	return nil, nil
+}
+
+// throughForeign is nested for a named pointer or array type of a package
+// outside the run, which nested walks through as through its underlying
+// type. It returns nil for a type holding nothing to validate before
+// walking it, so that a deep chain of such types holding nothing costs no
+// walk per path. A type holding itself, as in
+// type L *struct{ Next L; I Impl }, would need a recursive function, which
+// the generator does not write, so it is an error when it holds something
+// to validate.
+func (w *writer) throughForeign(
+	named *types.Named,
+	x genExpr,
+	wrap wrapFunc,
+	depth int,
+) (genStep, error) {
+	trimmed := w.sel.trim()
+
+	holds := w.sel.reachesLeaf(
+		named.Underlying(),
+		w.sel.holdsLeaf(trimmed, true, w.sel.unsupportedFunc(trimmed)),
+	)
+	if !holds {
+		return nil, nil
+	}
+
+	if w.sel.reaches(named.Underlying(), func(n *types.Named) bool {
+		return types.Identical(n, named)
+	}) {
+		return nil, fmt.Errorf(
+			"%w: %s is a named %s type of another package holding itself and values to"+
+				" validate; Validate cannot walk through it",
+			ErrUnsupported, named, kindName(named.Underlying()),
+		)
+	}
+
+	return w.nested(named.Underlying(), x, wrap, depth)
 }
 
 // guarded returns the step validating the value of type elem that the
