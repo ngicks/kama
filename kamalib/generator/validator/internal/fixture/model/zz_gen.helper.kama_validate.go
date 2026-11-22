@@ -2,11 +2,165 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T13:06:17Z
+// generated: 2026-11-22T13:41:14Z
 
 package model
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import (
+	"cmp"
+	"fmt"
+	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"net/url"
+	"reflect"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// kamaValidateCmp is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateCmp[T cmp.Ordered](got T, op string, want T) error {
+	if !kamaValidateCompare(got, op, want) {
+		return validation.New(validation.ErrCompare, "want %s %s, got %s",
+			op, kamaValidateSpell(want), kamaValidateSpell(got))
+	}
+	return nil
+}
+
+// kamaValidateCompare is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateCompare[T cmp.Ordered](got T, op string, want T) bool {
+	switch op {
+	case ">":
+		return got > want
+	case ">=":
+		return got >= want
+	case "==":
+		return got == want
+	case "!=":
+		return got != want
+	case "<=":
+		return got <= want
+	case "<":
+		return got < want
+	}
+	return false
+}
+
+// kamaValidateConst is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateConst[T comparable](got T, want ...T) error {
+	if !slices.Contains(want, got) {
+		spelled := make([]string, len(want))
+		for i, w := range want {
+			spelled[i] = kamaValidateSpell(w)
+		}
+		return validation.New(validation.ErrConst, "want one of %s, got %s",
+			strings.Join(spelled, ", "), kamaValidateSpell(got))
+	}
+	return nil
+}
+
+// kamaValidateEqual is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateEqual[T comparable](got T, op string, want T) error {
+	if (got == want) != (op == "==") {
+		return validation.New(validation.ErrCompare, "want %s %s, got %s",
+			op, kamaValidateSpell(want), kamaValidateSpell(got))
+	}
+	return nil
+}
+
+// kamaValidateFormatDate is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateFormatDate(got string) error {
+	if _, err := time.Parse(time.DateOnly, got); err != nil {
+		return validation.New(validation.ErrFormat, "want format date (2006-01-02), got %q", got)
+	}
+	return nil
+}
+
+// kamaValidateFormatDateTime is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateFormatDateTime(got string) error {
+	if _, err := time.Parse(time.RFC3339, got); err != nil {
+		return validation.New(validation.ErrFormat, "want format date-time (RFC 3339), got %q", got)
+	}
+	return nil
+}
+
+// kamaValidateFormatUrl is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateFormatUrl(got string) error {
+	if u, err := url.Parse(got); err != nil || u.Scheme == "" || u.Host == "" {
+		return validation.New(validation.ErrFormat, "want format url with a scheme and a host, got %q", got)
+	}
+	return nil
+}
+
+// kamaValidateLength is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateLength(got int, op string, want int) error {
+	if !kamaValidateCompare(got, op, want) {
+		return validation.New(validation.ErrLength, "want length %s %d, got %d", op, want, got)
+	}
+	return nil
+}
+
+// kamaValidateNil is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateNil(ok bool) error {
+	if !ok {
+		return validation.New(validation.ErrNil, "want nil, got a non-nil value")
+	}
+	return nil
+}
+
+// kamaValidateNull is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateNull(ok bool) error {
+	if !ok {
+		return validation.New(validation.ErrNull, "want null, got a non-null value")
+	}
+	return nil
+}
+
+// kamaValidateRegexpBytes is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateRegexpBytes(re *regexp.Regexp, got []byte) error {
+	if !re.Match(got) {
+		return validation.New(validation.ErrPattern, "want a match of %q, got %q", re.String(), got)
+	}
+	return nil
+}
+
+// kamaValidateRegexpString is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateRegexpString(re *regexp.Regexp, got string) error {
+	if !re.MatchString(got) {
+		return validation.New(validation.ErrPattern, "want a match of %q, got %q", re.String(), got)
+	}
+	return nil
+}
+
+// kamaValidateRegexp_39c46b3647 is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+var kamaValidateRegexp_39c46b3647 = regexp.MustCompile("^[a-z]+$")
 
 // kamaValidateRequired is a helper of the generated Validate methods.
 //
@@ -14,6 +168,37 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 func kamaValidateRequired(ok bool, got string) error {
 	if !ok {
 		return validation.New(validation.ErrRequired, "want a value, got %s", got)
+	}
+	return nil
+}
+
+// kamaValidateSpell is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateSpell(v any) string {
+	if rv := reflect.ValueOf(v); rv.Kind() == reflect.String {
+		return strconv.Quote(rv.String())
+	}
+	return fmt.Sprint(v)
+}
+
+// kamaValidateZero is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateZero(ok bool, got string) error {
+	if !ok {
+		return validation.New(validation.ErrZero, "want the zero value, got %s", got)
+	}
+	return nil
+}
+
+// kamaValidateZeroComparable is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateZeroComparable[T comparable](t T) error {
+	var zero T
+	if t != zero {
+		return validation.New(validation.ErrZero, "want the zero value, got %#v", t)
 	}
 	return nil
 }

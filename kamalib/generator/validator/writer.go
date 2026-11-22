@@ -256,8 +256,8 @@ func (w *writer) validator(
 
 // apply returns the step running val on the value x of type t. When val
 // cannot apply to t and t holds one value, as a pointer or an opt.Option
-// does, it applies val to that value when there is one. The error is the
-// one of t itself.
+// does, it applies val to that value when there is one. The error tells
+// why val applies to neither.
 func (w *writer) apply(
 	val Validator,
 	t types.Type,
@@ -284,7 +284,12 @@ func (w *writer) apply(
 
 	s, err := w.apply(val, held, value, vo, wrap)
 	if err != nil {
-		return nil, checkErr
+		// An error of the args alone repeats for the held value.
+		if err.Error() == checkErr.Error() {
+			return nil, checkErr
+		}
+
+		return nil, fmt.Errorf("%w; for the value it holds: %w", checkErr, err)
 	}
 
 	return lang.If(guard, s, nil), nil

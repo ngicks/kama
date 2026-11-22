@@ -2,11 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T13:17:07Z
+// generated: 2026-11-22T13:39:53Z
 
 package model
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import (
+	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"maps"
+	"slices"
+)
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -35,7 +39,8 @@ func (v Shapes[T0]) Validate(stopOnFirstError bool, validateT0 func(v T0, stopOn
 		}
 	}
 	for i, e := range v.N {
-		for k2, e2 := range e {
+		for _, k2 := range slices.Sorted(maps.Keys(e)) {
+			e2 := e[k2]
 			for i3, e3 := range e2 {
 				if e3 != nil {
 					if err := validation.Field(validation.Index(validation.Key(validation.Index((*e3).Validate(stopOnFirstError), i3), k2), i), "n"); err != nil {

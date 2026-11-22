@@ -65,8 +65,22 @@ func NewRegistry(vs ...Validator) *Registry {
 	return r
 }
 
-// DefaultRegistry returns a new registry holding the built-in validators.
-func DefaultRegistry() *Registry { return NewRegistry(Required{}) }
+// DefaultRegistry returns a new registry holding the built-in validators:
+// required, zero, nil, null, regexp, length, cmp, const and format with
+// DefaultFormats.
+func DefaultRegistry() *Registry {
+	return NewRegistry(
+		Required{},
+		Zero{},
+		Nil{},
+		Null{},
+		Regexp{},
+		Length{},
+		Cmp{},
+		Const{},
+		Format{Formats: DefaultFormats()},
+	)
+}
 
 // Register adds v, replacing the validator of the same name.
 func (r *Registry) Register(v Validator) { r.validators[v.Name()] = v }

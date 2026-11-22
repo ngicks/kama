@@ -53,9 +53,15 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	}
 
 	// A parent that gets no Validate cannot pass validation on, so the trim
-	// stops at it.
+	// stops at it. The routes of the edge cannot tell the type argument of an
+	// option type from that of any other generic type, so the type of the
+	// parent is walked again.
 	dependsThrough := func(e *typegraph.Edge[typegraph.Node]) bool {
-		return sel.generates(e.Parent) && slices.ContainsFunc(e.Routes, followed)
+		isChild := func(named *types.Named) bool {
+			return typegraph.QualifiedTypeFromObject(named.Origin().Obj()) == e.Child.Id
+		}
+
+		return sel.generates(e.Parent) && reaches(e.Parent.Detail.Type.Underlying(), isChild)
 	}
 
 	sel.targets = opiter.WrapSeq2(g.Trim(sel.matches, dependsThrough, nil).All()).
@@ -109,42 +115,47 @@ func validatorKind(n *typegraph.Node) bool {
 	return false
 }
 
-// followed reports whether r reaches its child through struct fields,
-// slice and array elements, map values, pointers and aliases.
-func followed(r *typegraph.EdgeRoute) bool {
-	return followedRoute(r.Nodes)
+// reaches reports whether a value of type t holds a value of a named type
+// that pred reports true for, where Validate walks: through pointers,
+// slices, arrays, map values, aliases, the fields of struct type literals
+// and the type argument of opt.Option, und.Und and elastic.Elastic. Any
+// other named type ends the walk, its type arguments included.
+func reaches(t types.Type, pred func(named *types.Named) bool) bool {
+	switch u := types.Unalias(t).(type) {
+	case *types.Named:
+		if isOptionType(u) {
+			return reaches(typeArg(u), pred)
+		}
+
+		return pred(u)
+	case *types.Pointer:
+		return reaches(u.Elem(), pred)
+	case *types.Slice:
+		return reaches(u.Elem(), pred)
+	case *types.Array:
+		return reaches(u.Elem(), pred)
+	case *types.Map:
+		return reaches(u.Elem(), pred)
+	case *types.Struct:
+		return opiter.WrapSeq(u.Fields()).
+			Any(func(v *types.Var) bool { return reaches(v.Type(), pred) })
+	}
+
+	return false
 }
 
-func followedRoute(route []typegraph.EdgeRouteNode) bool {
-	const allowed = typegraph.EdgeKindStruct |
-		typegraph.EdgeKindSlice |
-		typegraph.EdgeKindArray |
-		typegraph.EdgeKindMapValue |
-		typegraph.EdgeKindPointer |
-		typegraph.EdgeKindAlias
-
-	return opiter.WrapSeq(slices.Values(route)).
-		Every(func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 })
+// isOptionType reports whether t is opt.Option, und.Und or elastic.Elastic.
+func isOptionType(t types.Type) bool {
+	return isNamed(t, optPath, "Option") || isNamed(t, undPath, "Und") ||
+		isNamed(t, elasticPath, "Elastic")
 }
 
 // holdsForeignImplementor reports whether n holds an implementor of a
-// package outside the run along a followed route.
+// package outside the run where Validate walks.
 func (s *selection) holdsForeignImplementor(n *typegraph.Node) bool {
-	var found bool
-
-	_ = typegraph.WalkTypesToNamed(
-		nil,
-		n.Detail.Type.Underlying(),
-		nil,
-		func(named *types.Named, route []typegraph.EdgeRouteNode) error {
-			found = found || followedRoute(route) && !s.loaded(named.Obj().Pkg()) &&
-				s.implementor(named)
-
-			return nil
-		},
-	)
-
-	return found
+	return reaches(n.Detail.Type.Underlying(), func(named *types.Named) bool {
+		return !s.loaded(named.Obj().Pkg()) && s.implementor(named)
+	})
 }
 
 // loaded reports whether pkg is one of the packages of the run.

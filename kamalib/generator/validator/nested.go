@@ -37,11 +37,11 @@ func (w *writer) nested(t types.Type, x genExpr, wrap wrapFunc, depth int) (genS
 
 		return lang.If(lang.Expr("%s != nil", x), s, nil), nil
 	case *types.Slice:
-		return w.elements(u.Elem(), x, wrap, depth, false)
+		return w.elements(u.Elem(), x, wrap, depth, nil)
 	case *types.Array:
-		return w.elements(u.Elem(), x, wrap, depth, false)
+		return w.elements(u.Elem(), x, wrap, depth, nil)
 	case *types.Map:
-		return w.elements(u.Elem(), x, wrap, depth, true)
+		return w.elements(u.Elem(), x, wrap, depth, u.Key())
 	case *types.Struct:
 		return w.structFields(u, x, wrap, depth)
 	}
@@ -99,7 +99,7 @@ func (w *writer) nestedNamed(
 		return w.guarded(typeArg(named), lang.Expr("%s.IsDefined()", x), x, wrap, depth)
 	case isNamed(named, elasticPath, "Elastic"):
 		// Options holds an opt.Option per element, none for a null one.
-		return w.elements(named, lang.Expr("%s.Options()", x), wrap, depth, false)
+		return w.elements(named, lang.Expr("%s.Options()", x), wrap, depth, nil)
 	case w.sel.callable(named):
 		call, err := w.call(named, x)
 		if err != nil {
@@ -134,18 +134,22 @@ func (w *writer) guarded(
 }
 
 // elements returns the loop validating the elements of x, whose element
-// type is elem: map values keyed by their keys when isMap is set, else
-// elements by their indices. For an elastic.Elastic, elem is the
+// type is elem: map values keyed by their keys of type key when key is not
+// nil, else elements by their indices. For an elastic.Elastic, elem is the
 // elastic.Elastic type itself and the elements are options.
+//
+// The keys of an ordered basic type are visited in sorted order, which
+// makes the first error and the order of the errors stable. Other keys
+// have no order to sort by and are visited in the order of range.
 func (w *writer) elements(
 	elem types.Type,
 	x genExpr,
 	wrap wrapFunc,
 	depth int,
-	isMap bool,
+	key types.Type,
 ) (genStep, error) {
 	idx, segment := "i", "Index"
-	if isMap {
+	if key != nil {
 		idx, segment = "k", "Key"
 	}
 
@@ -175,7 +179,16 @@ func (w *writer) elements(
 		return nil, err
 	}
 
-	return lang.ForRange(idx, "e", x, s), nil
+	if key == nil || basicInfo(key)&types.IsOrdered == 0 {
+		return lang.ForRange(idx, "e", x, s), nil
+	}
+
+	keys := lang.Expr("%s.Sorted(%s.Keys(%s))", w.ident("slices"), w.ident("maps"), x)
+	// x renders before e is declared in the loop, so that an x spelling an
+	// outer e refers to that one.
+	value := lang.Stmt("%[2]s := %[1]s[%[3]s]", x, decl("e"), lang.Name(idx))
+
+	return lang.ForRange("", idx, keys, genSteps{value, s}), nil
 }
 
 // call returns the call of Validate on the value x of the target or

@@ -3,6 +3,7 @@ package validator
 import (
 	"context"
 	"go/ast"
+	"go/format"
 	"go/parser"
 	"go/token"
 	"maps"
@@ -23,15 +24,35 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
+// gofmtOnly is the formatter of the overlays of the tests. The default
+// formatter of overlayfs works like goimports: it drops an unused import
+// and adds a missing one, which would hide both mistakes of the generator
+// from the type check of the staged output.
+type gofmtOnly struct{}
+
+func (gofmtOnly) Format(_ context.Context, _ string, src []byte) ([]byte, error) {
+	return format.Source(src)
+}
+
+// newOverlay returns an overlay over root staging Go files as they are
+// written, formatted by gofmtOnly.
+func newOverlay(t *testing.T, root string) *overlayfs.Fs {
+	t.Helper()
+
+	f, err := overlayfs.New(root, overlayfs.WithFormatter(gofmtOnly{}))
+	assert.NilError(t, err)
+	t.Cleanup(func() { f.Close() })
+
+	return f
+}
+
 // stage writes files, keyed by slash-separated path relative to a
 // directory of its own under testdata, into an overlay only, and returns
 // the overlay and the options loading their packages.
 func stage(t *testing.T, files map[string]string) (*overlayfs.Fs, gopackages.Options) {
 	t.Helper()
 
-	f, err := overlayfs.New(".")
-	assert.NilError(t, err)
-	t.Cleanup(func() { f.Close() })
+	f := newOverlay(t, ".")
 
 	dir := inlineDir(t)
 	dirs := map[string]bool{}
@@ -145,7 +166,8 @@ func generateInto(
 
 // generateAndBuild generates from files, stages the output next to them and
 // loads the packages again, so that any compile error of the output fails
-// the test. It returns the generated files keyed by base name.
+// the test, unused imports and variables included. It returns the
+// generated files keyed by base name.
 func generateAndBuild(t *testing.T, files map[string]string) map[string]string {
 	t.Helper()
 
@@ -153,44 +175,17 @@ func generateAndBuild(t *testing.T, files map[string]string) map[string]string {
 	out, err := generateInto(t, f, opts, Options{})
 	assert.NilError(t, err)
 
-	_, err = gopackages.Load(context.Background(), f, opts)
-	assert.NilError(t, err)
-
-	for name, src := range out {
-		assertImportsUsed(t, name, src)
-	}
+	assert.NilError(t, build(f, opts))
 
 	return out
 }
 
-// assertImportsUsed fails when src imports a package it does not refer to,
-// which the type check of go/packages does not report.
-func assertImportsUsed(t *testing.T, name, src string) {
-	t.Helper()
-
-	f, err := parser.ParseFile(token.NewFileSet(), name, src, 0)
-	assert.NilError(t, err)
-
-	used := map[string]bool{}
-
-	ast.Inspect(f, func(n ast.Node) bool {
-		if sel, ok := n.(*ast.SelectorExpr); ok {
-			if id, ok := sel.X.(*ast.Ident); ok {
-				used[id.Name] = true
-			}
-		}
-
-		return true
-	})
-
-	for _, imp := range f.Imports {
-		ident := path.Base(strings.Trim(imp.Path.Value, `"`))
-		if imp.Name != nil {
-			ident = imp.Name.Name
-		}
-
-		assert.Assert(t, used[ident], "%s imports %s without using it:\n%s", name, ident, src)
-	}
+// build type-checks the packages opts loads from f. go/types reports an
+// unused import and an unused variable as errors, which fail the load as
+// long as the overlay stages the files as written.
+func build(f *overlayfs.Fs, opts gopackages.Options) error {
+	_, err := gopackages.Load(context.Background(), f, opts)
+	return err
 }
 
 // funcs returns the source of each function declared in src keyed by name,
@@ -273,5 +268,22 @@ func assertNotContains(t *testing.T, src string, subs ...string) {
 
 	for _, s := range subs {
 		assert.Assert(t, !strings.Contains(src, s), "want no %q in\n%s", s, src)
+	}
+}
+
+// TestBuildStrict proves that build fails on the mistakes the type check of
+// go/packages misses under a goimports-like formatter.
+func TestBuildStrict(t *testing.T) {
+	cases := map[string]struct{ src, msg string }{
+		"unused import":   {"package x\n\nimport \"strings\"\n", `"strings" imported and not used`},
+		"unused variable": {"package x\n\nfunc A() { x := 1 }\n", "declared and not used: x"},
+		"missing import":  {"package x\n\nvar _ = strings.ToUpper\n", "undefined: strings"},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			f, opts := stage(t, map[string]string{"a.go": tc.src})
+			assert.ErrorContains(t, build(f, opts), tc.msg)
+		})
 	}
 }

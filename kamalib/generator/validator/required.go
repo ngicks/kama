@@ -85,9 +85,7 @@ func requiredCall(t types.Type, v string) (helper, call string, ok bool) {
 		return "", "", false
 	}
 
-	switch t.Underlying().(type) {
-	case *types.Pointer, *types.Slice, *types.Map, *types.Chan, *types.Signature,
-		*types.Interface:
+	if nillable(t) {
 		return present(v+" != nil", "nil")
 	}
 
@@ -100,6 +98,24 @@ func requiredCall(t types.Type, v string) (helper, call string, ok bool) {
 	}
 
 	return "", "", false
+}
+
+// nillable reports whether the values of t can be nil: t is a pointer,
+// slice, map, channel, function or interface type. The underlying type of
+// a type parameter is its constraint interface, which does not make its
+// values nillable.
+func nillable(t types.Type) bool {
+	if _, isParam := types.Unalias(t).(*types.TypeParam); isParam {
+		return false
+	}
+
+	switch t.Underlying().(type) {
+	case *types.Pointer, *types.Slice, *types.Map, *types.Chan, *types.Signature,
+		*types.Interface:
+		return true
+	}
+
+	return false
 }
 
 // hasMethod reports whether the method set of t has the method name taking

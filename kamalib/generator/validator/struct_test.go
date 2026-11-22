@@ -58,10 +58,10 @@ type Inner struct{ X int }
 		"for i, e := range v.S {",
 		check(`validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "S")`),
 		"for i, e := range v.Arr {",
-		"for k, e := range v.M {",
+		"for _, k := range slices.Sorted(maps.Keys(v.M)) {\n\t\te := v.M[k]\n",
 		check(`validation.Field(validation.Key(e.Validate(stopOnFirstError), k), "M")`),
 		"for i, e := range v.SM {",
-		"for k2, e2 := range e {",
+		"for _, k2 := range slices.Sorted(maps.Keys(e)) {\n\t\t\te2 := e[k2]\n",
 		check(
 			`validation.Field(validation.Index(validation.Key(`+
 				`(*e2).Validate(stopOnFirstError), k2), i), "SM")`,
@@ -132,7 +132,7 @@ type Inner struct{ X int }
 		check(`validation.Index(e.Validate(stopOnFirstError), i)`),
 	)
 	assertContains(t, fs["M.Validate"],
-		"for k, e := range v {",
+		"for _, k := range slices.Sorted(maps.Keys(v)) {\n\t\te := v[k]\n",
 		"if e != nil {",
 		check(`validation.Key((*e).Validate(stopOnFirstError), k)`),
 	)
@@ -210,4 +210,43 @@ func TestAnonymousStruct(t *testing.T) {
 			`(*e.I).Validate(stopOnFirstError), "I"), i), "L")`),
 	)
 	assertNotContains(t, fn, "v.S.N")
+}
+
+// TestMapKeyOrder sorts the keys of an ordered basic type and ranges over
+// any other keys directly.
+func TestMapKeyOrder(t *testing.T) {
+	fn := validateOf(t, map[string]string{
+		"a.go": `package x
+
+type MyInt int
+
+type Key struct{ A, B int }
+
+//kama:validate
+//kama:validate:hook off
+type A[K comparable] struct {
+	ByString map[string]Inner
+	ByMyInt  map[MyInt]Inner
+	ByFloat  map[float64]Inner
+	ByStruct map[struct{ A int }]Inner
+	ByPtr    map[*Key]Inner
+	ByParam  map[K]Inner
+	ByBool   map[bool]Inner
+}
+
+//kama:validate
+//kama:validate:hook off
+type Inner struct{ X int }
+`,
+	}, "a.kama_validate.go", "A")
+
+	assertContains(t, fn,
+		"for _, k := range slices.Sorted(maps.Keys(v.ByString)) {",
+		"for _, k := range slices.Sorted(maps.Keys(v.ByMyInt)) {",
+		"for _, k := range slices.Sorted(maps.Keys(v.ByFloat)) {",
+		"for k, e := range v.ByStruct {",
+		"for k, e := range v.ByPtr {",
+		"for k, e := range v.ByParam {",
+		"for k, e := range v.ByBool {",
+	)
 }

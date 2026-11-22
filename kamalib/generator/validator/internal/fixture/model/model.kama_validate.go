@@ -2,11 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T13:06:17Z
+// generated: 2026-11-22T13:39:53Z
 
 package model
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import (
+	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"maps"
+	"slices"
+)
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -40,7 +44,8 @@ func (v User) Validate(stopOnFirstError bool) error {
 			errs = append(errs, err)
 		}
 	}
-	for k, e := range v.Pets {
+	for _, k := range slices.Sorted(maps.Keys(v.Pets)) {
+		e := v.Pets[k]
 		if e != nil {
 			if err := validation.Field(validation.Key((*e).Validate(stopOnFirstError), k), "Pets"); err != nil {
 				if stopOnFirstError {

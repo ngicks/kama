@@ -34,7 +34,7 @@ func TestFixtureUpToDate(t *testing.T) {
 		t.Run(dir, func(t *testing.T) {
 			ctx := context.Background()
 
-			f, err := overlayfs.New(dir)
+			f, err := overlayfs.New(dir, overlayfs.WithFormatter(gofmtOnly{}))
 			assert.NilError(t, err)
 
 			defer f.Close()

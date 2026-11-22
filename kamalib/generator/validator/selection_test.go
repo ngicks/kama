@@ -241,3 +241,63 @@ func TestSelectionErrors(t *testing.T) {
 		})
 	}
 }
+
+// TestSelectionOptionTypes makes a type holding a target as the type
+// argument of an option type a dependant. The type argument of any other
+// generic type, such as Box, does not: Box[T] gets validated only when Box
+// is a target itself, and its Validate then takes the function for T.
+func TestSelectionOptionTypes(t *testing.T) {
+	got := validated(t, map[string]string{
+		"a.go": `package x
+
+import (
+	"github.com/ngicks/option/elastic"
+	"github.com/ngicks/option/opt"
+	"github.com/ngicks/option/und"
+)
+
+type U struct{ T und.Und[T] }
+
+type O struct{ T opt.Option[*T] }
+
+type S struct{ T []und.Und[T] }
+
+type E struct{ T elastic.Elastic[T] }
+
+type M map[string]opt.Option[T]
+
+type Nested struct{ T opt.Option[und.Und[[]T]] }
+
+type ThroughDependant struct{ U opt.Option[U] }
+
+type B struct{ T Box[T] }
+
+type Box[X any] struct{ X X }
+
+type K map[opt.Option[T]]int
+
+//kama:validate
+//kama:validate:hook off
+type T struct{ X int }
+`,
+	})
+
+	assert.DeepEqual(t, got, []string{
+		"E.Validate", "M.Validate", "Nested.Validate", "O.Validate", "S.Validate",
+		"T.Validate", "ThroughDependant.Validate", "U.Validate",
+	})
+}
+
+// TestSelectionOptionForeignImplementor makes a type holding an
+// implementor of another package in an option type a dependant.
+func TestSelectionOptionForeignImplementor(t *testing.T) {
+	fn := validateOf(t, map[string]string{
+		"a.go": "package x\n\nimport (\n\t\"github.com/ngicks/option/opt\"\n\n\t\"" +
+			modulePath(t) + "/sub\"\n)\n\ntype A struct{ H opt.Option[sub.H] }\n",
+		"sub/sub.go": "package sub\n\ntype H struct{}\n\n" +
+			"func (H) Validate(bool) error { return nil }\n",
+	}, "a.kama_validate.go", "A")
+
+	assertContains(t, fn, "if v.H.IsSome() {",
+		check(`validation.Field(v.H.Value().Validate(stopOnFirstError), "H")`))
+}

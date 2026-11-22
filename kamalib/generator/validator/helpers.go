@@ -177,7 +177,10 @@ func renderHelpersWith(
 
 // helperLocals are the identifiers the built-in helpers declare, which an
 // import of the same name would shadow.
-var helperLocals = []string{"T", "t", "zero", "ok", "got"}
+var helperLocals = []string{
+	"T", "t", "v", "zero", "ok", "got", "want", "op", "re", "s", "u", "err", "rv", "spelled",
+	"i", "w",
+}
 
 // checkHelperNames reports a package-level declaration of pkg named like a
 // helper the generated files call that the generator did not write, and a

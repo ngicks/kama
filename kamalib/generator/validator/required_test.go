@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
+	"slices"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -121,8 +122,11 @@ func TestRequiredErrors(t *testing.T) {
 			name: "unknown validator",
 			src: "//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
 				"\t//kama:validate:requird\n\tN int\n}\n",
-			is:   ErrDirective,
-			msgs: []string{"unknown validator //kama:validate:requird on field N; known: required"},
+			is: ErrDirective,
+			msgs: []string{
+				"unknown validator //kama:validate:requird on field N;" +
+					" known: cmp, const, format, length, nil, null, regexp, required, zero",
+			},
 		},
 		{
 			name: "helper name taken",
@@ -221,8 +225,8 @@ func (positive) Emit(e Emitter, _ types.Type, v string, _ []dircmnt.KeyValue) (s
 func TestRegistry(t *testing.T) {
 	reg := DefaultRegistry().Clone()
 	reg.Register(positive{})
-	assert.DeepEqual(t, reg.Names(), []string{"positive", "required"})
-	assert.DeepEqual(t, DefaultRegistry().Names(), []string{"required"})
+	assert.Assert(t, slices.Contains(reg.Names(), "positive"))
+	assert.Assert(t, !slices.Contains(DefaultRegistry().Names(), "positive"))
 
 	files := map[string]string{
 		"a.go": `package x
