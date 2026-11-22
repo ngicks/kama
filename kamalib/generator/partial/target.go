@@ -44,6 +44,9 @@ type selection struct {
 	// refs are the pointer fields mapped to und.Und[*MPartial] since they
 	// close a cycle of partial variants.
 	refs map[*types.Var]bool
+	// impls finds the types of packages outside the run that already have
+	// a partial variant.
+	impls *implementors
 	// generated are the objects declared by declarations carrying the
 	// marker of a registered generator.
 	generated map[types.Object]bool
@@ -95,12 +98,28 @@ func (s *selection) target(t types.Type) (*types.Named, bool) {
 	return named, ok
 }
 
-// partialOf reports the target t refers to when a declaration of the
-// package at pkgPath can refer to its partial variant. The partial
+// implementor reports the implementor named type t refers to, through
+// aliases: a type outside the run that already has a partial variant.
+func (s *selection) implementor(t types.Type) (*types.Named, bool) {
+	named, ok := types.Unalias(t).(*types.Named)
+	if !ok {
+		return nil, false
+	}
+
+	return named, s.impls.has(named.Obj())
+}
+
+// partialOf reports the target or the implementor t refers to when a
+// declaration of the package at pkgPath can refer to its partial
+// variant. The partial
 // variant of an unexported type of another package, reached through an
 // exported alias, cannot be spelled there.
 func (s *selection) partialOf(t types.Type, pkgPath string) (*types.Named, bool) {
 	named, ok := s.target(t)
+	if !ok {
+		named, ok = s.implementor(t)
+	}
+
 	if !ok {
 		return nil, false
 	}
@@ -108,6 +127,8 @@ func (s *selection) partialOf(t types.Type, pkgPath string) (*types.Named, bool)
 	return named, named.Obj().Exported() || named.Obj().Pkg().Path() == pkgPath
 }
 
+// node returns the node of the target named, or nil for an implementor,
+// which the graph of the run does not hold.
 func (s *selection) node(named *types.Named) *typegraph.Node {
 	return s.targets[typegraph.QualifiedTypeFromObject(named.Obj())]
 }
@@ -374,6 +395,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 		maskNames: m.maskNames,
 		refs:      map[*types.Var]bool{},
 		generated: generated,
+		impls:     newImplementors(pkgs, opts.Registry),
 	}
 
 	var errs []error
@@ -781,7 +803,8 @@ func (s *selection) valueChildren(n *typegraph.Node) []valueEdge {
 		elem := deref(v.Type())
 
 		named, ok := s.partialOf(elem, n.Id.PackagePath)
-		if !ok {
+		// An implementor lies outside the run and closes no cycle.
+		if !ok || s.node(named) == nil {
 			continue
 		}
 

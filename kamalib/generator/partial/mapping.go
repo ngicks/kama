@@ -41,7 +41,10 @@ type mapper struct {
 	refs map[string]bool
 }
 
-// ident returns the identifier the file refers to the package at path by.
+// ident returns the identifier the file refers to the package at path by,
+// and records a package of supportPaths as spelled. The generated code
+// spells packages through it rather than through Ident, which records
+// nothing.
 func (p *mapper) ident(path string) (string, error) {
 	ident, ok := p.Ident(path)
 	if !ok {
@@ -284,12 +287,12 @@ func (p *mapper) strategy(m match, k fieldKey) (string, error) {
 		allowed = []string{string(MergeNestedRecursive), string(MergeNestedOverwrite)}
 	case m.kind == leafElastic:
 		def, allowed = string(MergeOverwrite), []string{string(MergeOverwrite)}
-	case m.kind == leafTarget && m.collection():
+	case m.kind == leafPartial && m.collection():
 		def = string(p.sel.opts.MergeNested)
 		allowed = []string{
 			string(MergeNestedRecursive), string(MergeNestedOverwrite), string(MergeAppend),
 		}
-	case m.kind == leafTarget:
+	case m.kind == leafPartial:
 		def = string(p.sel.opts.MergeNested)
 		allowed = []string{string(MergeNestedRecursive), string(MergeNestedOverwrite)}
 	case m.collection():
@@ -356,7 +359,7 @@ func (p *mapper) partialExpr(m match) (dst.Expr, error) {
 		return p.TypeExpr(m.source)
 	case leafElastic:
 		return p.TypeExpr(m.source)
-	case leafTarget:
+	case leafPartial:
 		inner, err := p.partial(m.named)
 		if err != nil {
 			return nil, err

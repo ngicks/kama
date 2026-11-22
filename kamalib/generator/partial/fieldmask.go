@@ -125,7 +125,7 @@ func (s *selection) checkFieldMaskTargets() error {
 }
 
 // embeddedPartial returns the target the field v of the target n embeds as
-// an embedded partial value, or nil.
+// an embedded partial value, or nil. It returns nil for an implementor.
 func (s *selection) embeddedPartial(n *typegraph.Node, v *types.Var) *typegraph.Node {
 	if !v.Embedded() {
 		return nil
@@ -163,6 +163,15 @@ func (s *selection) maskSegments(n *typegraph.Node) ([]maskSegment, error) {
 	for v := range st.Fields() {
 		if v.Name() == "_" {
 			continue
+		}
+
+		if m := s.matchField(v, n.Id.PackagePath); m.embedded && m.implementor {
+			return nil, fmt.Errorf(
+				"%w: %s (%s): embedded %s is declared outside the packages of the run, "+
+					"and the paths of its fields cannot be paths of %s",
+				ErrUnsupported, n.Id.String(), n.Detail.Pkg.Fset.Position(v.Pos()),
+				types.TypeString(m.named, nil), n.Id.TypeName,
+			)
 		}
 
 		if child := s.embeddedPartial(n, v); child != nil {
@@ -259,6 +268,18 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 	}
 
 	maskedEmbeddingErr := func(v *types.Var) error {
+		// The run knows no option of an implementor, so the methods of its
+		// partial variant tell whether it has field masks.
+		m := s.matchField(v, n.Id.PackagePath)
+		if m.embedded && m.implementor && declaresFieldMask(m.named) {
+			return fmt.Errorf(
+				"%w: %s (%s): embedded %s is declared outside the packages of the run and "+
+					"has field masks, whose methods %s would promote without its own fields",
+				ErrUnsupported, n.Id.String(), n.Detail.Pkg.Fset.Position(v.Pos()),
+				types.TypeString(m.named, nil), partialName(n.Id.TypeName),
+			)
+		}
+
 		child := s.embeddedPartial(n, v)
 		if child == nil || !s.fieldMasked(child.Id) {
 			return nil
@@ -278,4 +299,18 @@ func (s *selection) checkUnmaskedEmbedding(n *typegraph.Node) error {
 			Map(maskedEmbeddingErr).
 			CollectSlice()...,
 	)
+}
+
+// declaresFieldMask reports whether the partial variant of the implementor
+// named, as its package declares it, has the FieldMask method.
+func declaresFieldMask(named *types.Named) bool {
+	obj := named.Obj().Pkg().Scope().Lookup(partialName(named.Obj().Name()))
+	if obj == nil {
+		return false
+	}
+
+	m, _, _ := types.LookupFieldOrMethod(obj.Type(), false, obj.Pkg(), "FieldMask")
+	_, ok := m.(*types.Func)
+
+	return ok
 }

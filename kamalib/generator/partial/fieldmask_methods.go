@@ -81,7 +81,13 @@ func (s *selection) maskFields(
 					Map(func(m maskSegment) string { return m.name }).
 					Iter(),
 			)
-		case m.kind == leafTarget && isStruct(m.named) && s.fieldMasked(s.node(m.named).Id):
+		// The run knows no option of an implementor, so the methods of its
+		// partial variant tell whether it has field masks.
+		case m.kind == leafPartial && isStruct(m.named) && m.implementor:
+			if declaresFieldMask(m.named) {
+				mf.kind = maskBranch
+			}
+		case m.kind == leafPartial && isStruct(m.named) && s.fieldMasked(s.node(m.named).Id):
 			mf.kind = maskBranch
 		}
 

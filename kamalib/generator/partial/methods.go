@@ -146,7 +146,7 @@ func (w *methodWriter) from(m match, dst, src genExpr) genStep {
 		return lang.Stmt("%s.FromValue(%s)", dst, src)
 	case m.ref:
 		return call(opFromTargetRef)
-	case m.kind == leafTarget:
+	case m.kind == leafPartial:
 		return call(opFromTarget)
 	case m.pointer():
 		return assign(lang.Expr("%s.FromPointer(%s).CollapseToNull()", und, src))
@@ -183,9 +183,9 @@ func (w *methodWriter) to(m match, dst, src genExpr) genStep {
 		return assign(lang.Expr("%s.ToValue()", src))
 	case m.ref:
 		return call(opToTargetRef)
-	case m.kind == leafTarget && m.pointer():
+	case m.kind == leafPartial && m.pointer():
 		return call(opToTarget)
-	case m.kind == leafTarget:
+	case m.kind == leafPartial:
 		// Value gives the zero partial value for undefined and null, which
 		// converts back to the zero value.
 		return assign(lang.Expr("%s.Value().ToValue()", src))
@@ -207,7 +207,7 @@ func (w *methodWriter) to(m match, dst, src genExpr) genStep {
 
 // conditional reports whether the statements of to for a type matching as
 // m leave their destination unset for some values.
-func conditional(m match) bool { return m.pointer() && m.kind != leafTarget }
+func conditional(m match) bool { return m.pointer() && m.kind != leafPartial }
 
 // merge returns the statement merging the field r onto the field l, both
 // partial fields of the field v matched as m.
@@ -229,7 +229,7 @@ func (w *methodWriter) merge(v *types.Var, m match, l, r genExpr) genStep {
 		return lang.If(lang.Expr("!%s", test), lang.Stmt("%s = %s", l, r), nil)
 	case m.kind == leafElastic:
 		return overwrite
-	case strategy == string(MergeAppend) && m.kind == leafTarget:
+	case strategy == string(MergeAppend) && m.kind == leafPartial:
 		return assign(w.p.call(
 			&helper{op: opMergeAppend, typ: m.named, named: m.named, partial: true}, l, r,
 		))

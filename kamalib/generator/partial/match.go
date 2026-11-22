@@ -12,8 +12,9 @@ type leafKind int
 const (
 	// leafOther is a type the partial form holds whole.
 	leafOther leafKind = iota
-	// leafTarget is a target whose partial variant the package can spell.
-	leafTarget
+	// leafPartial is a type with a partial variant the package can spell: a
+	// target of the run or an implementor.
+	leafPartial
 	// leafOption is opt.Option[T].
 	leafOption
 	// leafUnd is und.Und[T].
@@ -37,8 +38,11 @@ type match struct {
 	// pointers.
 	leaf types.Type
 	kind leafKind
-	// named is the target leaf refers to, or nil.
+	// named is the target or the implementor leaf refers to, or nil.
 	named *types.Named
+	// implementor tells that named is an implementor: a type outside the
+	// run, which the graph of the run does not hold.
+	implementor bool
 	// ref tells a pointer field closing a cycle, whose partial form holds
 	// *MPartial.
 	ref bool
@@ -66,7 +70,7 @@ func (s *selection) matchField(v *types.Var, pkgPath string) match {
 
 		return match{
 			source: v.Type(), route: route, leaf: leaf,
-			kind: leafTarget, named: named, embedded: true,
+			kind: leafPartial, named: named, implementor: s.node(named) == nil, embedded: true,
 		}
 	}
 
@@ -102,7 +106,7 @@ func (s *selection) matchType(t types.Type, ref bool, pkgPath string) match {
 	}
 
 	if named, ok := s.partialOf(leaf, pkgPath); ok {
-		m.kind, m.named = leafTarget, named
+		m.kind, m.named, m.implementor = leafPartial, named, s.node(named) == nil
 		m.ref = ref && len(route) == 1
 	}
 

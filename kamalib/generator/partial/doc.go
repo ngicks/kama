@@ -28,6 +28,17 @@
 //     through targets only, so a type behind an ignored type or a named
 //     array type is not reached through it.
 //
+// A type of a package outside the run is an implementor when its package
+// declares its partial variant with the marker of this generator, as an
+// earlier run on that package leaves it. An implementor is no target: the
+// run declares nothing for it. Its fields map as the fields of a target
+// do, to the partial variant its package already has. The packages
+// outside the run are those the loaded packages import, directly or not.
+// A type named like a partial variant without the marker gives no
+// implementor. A type of a loaded package is never an implementor, so a
+// type the run leaves out gets no partial form from a file of an earlier
+// run.
+//
 // Only defined types whose underlying type is a struct, a slice or a map
 // have partial variants. File marks, package marks and reachability skip
 // other types silently; an explicit //kama:partial on one, or on an alias,
@@ -146,7 +157,7 @@
 // A struct target maps each field type:
 //
 //	T                   und.Und[T]
-//	M                   und.Und[MPartial]  (M a target)
+//	M                   und.Und[MPartial]  (M a target or an implementor)
 //	*T, *M              as T and M
 //	*M                  und.Und[*MPartial] (closing a cycle)
 //	**T                 error
@@ -537,6 +548,14 @@
 // fields of an embedded struct. Its type must have field masks too. Its
 // segments must differ from those of the parent and of other embedded
 // partial values.
+//
+// The run knows no option of an implementor, so the FieldMask method of
+// its partial variant tells whether it has field masks. Paths below the
+// segment of a field holding such a partial value address its fields, as
+// for a target with field masks. A target with field masks must not
+// embed an implementor, whose segments the run cannot give. A target
+// without field masks must not embed an implementor whose partial
+// variant has FieldMask. Both are errors wrapping ErrUnsupported.
 //
 // An embedding type and the struct targets it embeds agree on field masks.
 // A target without field masks must not embed a partial value of a target
