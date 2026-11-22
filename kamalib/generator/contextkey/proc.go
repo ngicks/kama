@@ -10,6 +10,7 @@ import (
 	"reflect"
 
 	"github.com/ngicks/opiter"
+	"github.com/ngicks/option/und"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -21,7 +22,10 @@ func init() { workflow.Register("contextkey.generate", NewProc) }
 
 var ErrNoEntries = errors.New("contextkey: no entries")
 
-// ProcParam configures Proc.
+// ProcParam configures Proc. A spec decodes into ProcParamPartial, which
+// Proc merges onto DefaultProcParam.
+//
+//kama:partial
 type ProcParam struct {
 	// Dir is the output directory, relative to the project root.
 	Dir string `json:"dir"`
@@ -32,12 +36,18 @@ type ProcParam struct {
 	KeyTypeFunc string `json:"key_type_func"`
 }
 
+// DefaultProcParam returns the values a ProcParam takes for the keys a spec
+// leaves out.
+func DefaultProcParam() ProcParamPartial {
+	return ProcParamPartial{Dir: und.Defined(".")}
+}
+
 // Proc renders the Template its in decodes to and stages the files in its
 // out. A file of its out that would change in the generated: line of its
 // header only is not staged. Proc reports a warning for each stale file of
 // its output directory, and the number of files written and unchanged.
 //
-//	Param(ProcParam) error
+//	Param(ProcParamPartial) error
 //	In(*fileloader.Document)
 //	Out(*overlayfs.Fs)
 type Proc struct{}
@@ -45,7 +55,7 @@ type Proc struct{}
 // NewProc returns a new Proc.
 func NewProc() workflow.Proc { return Proc{} }
 
-func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParam]() }
+func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParamPartial]() }
 
 func (Proc) InTypes() []reflect.Type {
 	return []reflect.Type{reflect.TypeFor[*fileloader.Document]()}
@@ -70,11 +80,8 @@ type instance struct {
 	fs   *overlayfs.Fs
 }
 
-func (i *instance) Param(p ProcParam) error {
-	if p.Dir == "" {
-		p.Dir = "."
-	}
-
+func (i *instance) Param(partial ProcParamPartial) error {
+	p := DefaultProcParam().Merge(partial).ToValue()
 	if !fs.ValidPath(p.Dir) {
 		return fmt.Errorf("contextkey: invalid dir %q", p.Dir)
 	}
