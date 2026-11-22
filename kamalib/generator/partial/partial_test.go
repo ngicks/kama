@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/ngicks/opiter"
+	"github.com/ngicks/option/und"
 
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
@@ -179,9 +180,17 @@ func TestOptions(t *testing.T) {
 	assert.Equal(t, Options{Registry: r}.WithDefaults().Registry, r)
 
 	i := &instance{}
-	assert.ErrorContains(t, i.Param(ProcParam{Merge: "replace"}), "merge")
-	assert.ErrorContains(t, i.Param(ProcParam{MergeNested: "deep"}), "merge_nested")
-	assert.NilError(t, i.Param(ProcParam{Merge: "append"}))
+	assert.ErrorContains(
+		t,
+		i.Param(ProcParamPartial{MergeStrategy: und.Defined("replace")}),
+		"merge",
+	)
+	assert.ErrorContains(
+		t,
+		i.Param(ProcParamPartial{MergeNestedStrategy: und.Defined("deep")}),
+		"merge_nested",
+	)
+	assert.NilError(t, i.Param(ProcParamPartial{MergeStrategy: und.Defined("append")}))
 	assert.Equal(t, i.opts.Merge, MergeAppend)
 	assert.Equal(t, i.opts.MergeNested, MergeNestedRecursive)
 	assert.Equal(t, i.opts.Registry, genmark.DefaultRegistry)

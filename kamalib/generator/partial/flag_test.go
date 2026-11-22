@@ -1,11 +1,13 @@
 package partial
 
 import (
+	"encoding/json/v2"
 	"maps"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/ngicks/option/und"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
@@ -268,4 +270,57 @@ func TestFlagSetFileConflict(t *testing.T) {
 	}, Options{})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, FlagSetFile+" holds a declaration")
+}
+
+// TestFlagSetOmitted leaves the flag set file out on request, and rejects
+// a flag option then, since its methods take the flag set.
+func TestFlagSetOmitted(t *testing.T) {
+	files := generatedWith(t, map[string]string{
+		"a.go": "package x\n\n//kama:partial\ntype A struct{ N int }\n",
+	}, Options{OmitFlagSet: true})
+	assert.DeepEqual(t, slices.Sorted(maps.Keys(files)), []string{"a.kama_partial.go"})
+
+	_, err := generate(t, map[string]string{
+		"a.go": "package x\n\n//kama:partial\ntype A struct {\n" +
+			"\t//kama:partial:flag name=n\n\tN int\n}\n",
+	}, Options{OmitFlagSet: true})
+	assert.ErrorIs(t, err, ErrOption)
+	assert.ErrorContains(t, err, "TestFlagSetOmitted.A.N")
+	assert.ErrorContains(t, err, "flag_set")
+}
+
+// TestProcParamDefaults merges the param of a spec onto DefaultProcParam: a
+// key left out takes its default, and a key that is set wins, false too.
+func TestProcParamDefaults(t *testing.T) {
+	i := &instance{}
+	assert.NilError(t, i.Param(ProcParamPartial{}))
+	assert.Equal(t, i.opts.Merge, MergeOverwrite)
+	assert.Equal(t, i.opts.MergeNested, MergeNestedRecursive)
+	assert.Assert(t, !i.opts.OmitFlagSet)
+	assert.Assert(t, i.optionFile == nil)
+
+	assert.NilError(t, i.Param(ProcParamPartial{
+		MergeStrategy: und.Defined("append"),
+		FlagSet:       und.Defined(false),
+	}))
+	assert.Equal(t, i.opts.Merge, MergeAppend)
+	assert.Equal(t, i.opts.MergeNested, MergeNestedRecursive)
+	assert.Assert(t, i.opts.OmitFlagSet)
+}
+
+// TestProcParamFlagSetFromSpec decodes the param of a spec as the workflow
+// does: flag_set left out keeps the flag set file, and false leaves it out.
+func TestProcParamFlagSetFromSpec(t *testing.T) {
+	for param, omit := range map[string]bool{
+		`{}`:                 false,
+		`{"flag_set":true}`:  false,
+		`{"flag_set":false}`: true,
+	} {
+		var p ProcParamPartial
+		assert.NilError(t, json.Unmarshal([]byte(param), &p), param)
+
+		i := &instance{}
+		assert.NilError(t, i.Param(p), param)
+		assert.Equal(t, i.opts.OmitFlagSet, omit, param)
+	}
 }

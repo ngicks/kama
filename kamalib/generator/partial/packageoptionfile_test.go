@@ -368,7 +368,7 @@ func TestProcPackageOptionFile(t *testing.T) {
 		t.Helper()
 
 		i := &instance{}
-		assert.NilError(t, i.Param(ProcParam{}))
+		assert.NilError(t, i.Param(ProcParamPartial{}))
 		i.In(&procgopackages.Packages{Pkgs: load(pkgs...)})
 		i.Out(f)
 

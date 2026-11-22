@@ -10,6 +10,7 @@ import (
 	"testing/fstest"
 
 	"github.com/ngicks/opiter"
+	"github.com/ngicks/option/und"
 
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
@@ -642,11 +643,11 @@ func TestOptionFileOverrides(t *testing.T) {
 
 func TestProcOptionFile(t *testing.T) {
 	i := &instance{}
-	assert.ErrorIs(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{}}), ErrOption)
-	assert.ErrorIs(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{
+	assert.ErrorIs(t, i.Param(paramWithOptionFile(fileloader.PathInput{})), ErrOption)
+	assert.ErrorIs(t, i.Param(paramWithOptionFile(fileloader.PathInput{
 		Base: "partial", Formats: []fileloader.Format{"ini"},
-	}}), ErrOption)
-	assert.NilError(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{Base: "partial"}}))
+	})), ErrOption)
+	assert.NilError(t, i.Param(paramWithOptionFile(fileloader.PathInput{Base: "partial"})))
 	assert.DeepEqual(t, i.optionFile, &fileloader.PathInput{
 		Base: "partial",
 		Formats: []fileloader.Format{
@@ -667,7 +668,7 @@ func TestProcOptionFile(t *testing.T) {
 
 	run := func(optionFile string) error {
 		i := &instance{}
-		assert.NilError(t, i.Param(ProcParam{OptionFile: &fileloader.PathInput{Base: optionFile}}))
+		assert.NilError(t, i.Param(paramWithOptionFile(fileloader.PathInput{Base: optionFile})))
 		i.In(&procgopackages.Packages{Pkgs: pkgs})
 		i.Out(f)
 
@@ -696,4 +697,10 @@ func TestProcOptionFile(t *testing.T) {
 		CollectSlice()
 
 	assert.Equal(t, len(names), 1, names)
+}
+
+// paramWithOptionFile returns the param a spec naming the option file in
+// decodes into.
+func paramWithOptionFile(in fileloader.PathInput) ProcParamPartial {
+	return ProcParamPartial{OptionFile: und.Defined(in)}
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
+	"iter"
 	"maps"
 	"slices"
 	"strconv"
@@ -544,4 +545,28 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+// checkNoFlags reports a flag option on a field of a target of the package
+// at pkgPath. The run writes no flag set file, which the methods of such a
+// target need.
+func (s *selection) checkNoFlags(pkgPath string) error {
+	sorted := func(seq iter.Seq[fieldKey]) []fieldKey {
+		return slices.SortedFunc(seq, fieldKey.compare)
+	}
+
+	keys := opiter.WrapSeq(maps.Keys(s.flags)).
+		Filter(func(k fieldKey) bool { return k.pkgPath == pkgPath }).
+		Collect(sorted)
+
+	if len(keys) == 0 {
+		return nil
+	}
+
+	src := s.flags[keys[0]].src
+
+	return fmt.Errorf(
+		"%w: %s: %s on field %s needs the flag set file, which flag_set turns off",
+		ErrOption, src.origin(), src.spelling(), keys[0],
+	)
 }

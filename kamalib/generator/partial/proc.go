@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ngicks/option/opt"
+	"github.com/ngicks/option/und"
+
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -14,17 +17,36 @@ import (
 
 func init() { workflow.Register("partial.generate", NewProc) }
 
-// ProcParam configures Proc. See Options for the modes.
+// ProcParam configures Proc. See Options for the modes. A spec decodes into
+// ProcParamPartial, which Proc merges onto DefaultProcParam.
+//
+//kama:partial
 type ProcParam struct {
-	// Merge is "overwrite" or "append". Empty means "overwrite".
-	Merge string `json:"merge"`
-	// MergeNested is "recursive" or "overwrite". Empty means "recursive".
-	MergeNested string `json:"merge_nested"`
+	// MergeStrategy is "overwrite" or "append". The partial variant has a
+	// Merge method, so the field cannot take that name.
+	MergeStrategy string `json:"merge"`
+	// MergeNestedStrategy is "recursive" or "overwrite".
+	MergeNestedStrategy string `json:"merge_nested"`
 	// OptionFile names the option file, its base path relative to the root
 	// of the out of Proc and its formats, under the lowercase keys base and
-	// formats. Empty formats mean yaml, json, toml. Nil means no option
+	// formats. Empty formats mean yaml, json, toml. None means no option
 	// file. A named file that is not present is an error.
-	OptionFile *fileloader.PathInput `json:"option_file"`
+	OptionFile opt.Option[fileloader.PathInput] `json:"option_file"`
+	// FlagSet tells whether Proc writes the flag set file of the packages it
+	// generates into. A package needs the file when one of its targets has
+	// a flag option, in any build variant. Turning it off with such a target
+	// loaded is an error.
+	FlagSet bool `json:"flag_set"`
+}
+
+// DefaultProcParam returns the values a ProcParam takes for the keys a spec
+// leaves out.
+func DefaultProcParam() ProcParamPartial {
+	return ProcParamPartial{
+		MergeStrategy:       und.Defined(string(MergeOverwrite)),
+		MergeNestedStrategy: und.Defined(string(MergeNestedRecursive)),
+		FlagSet:             und.Defined(true),
+	}
 }
 
 // Proc generates the partial types of the packages its in loaded and
@@ -37,7 +59,7 @@ type ProcParam struct {
 // generated: line of its header only is not staged. Proc reports the
 // warnings of Generate and the number of files written and unchanged.
 //
-//	Param(ProcParam) error
+//	Param(ProcParamPartial) error
 //	In(*gopackages.Packages)
 //	Out(*overlayfs.Fs)
 type Proc struct{}
@@ -45,7 +67,7 @@ type Proc struct{}
 // NewProc returns a new Proc.
 func NewProc() workflow.Proc { return Proc{} }
 
-func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParam]() }
+func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParamPartial]() }
 
 func (Proc) InTypes() []reflect.Type {
 	return []reflect.Type{reflect.TypeFor[*gopackages.Packages]()}
@@ -70,16 +92,22 @@ type instance struct {
 	fs         *overlayfs.Fs
 }
 
-func (i *instance) Param(p ProcParam) error {
-	opts := Options{Merge: MergeMode(p.Merge), MergeNested: MergeNestedMode(p.MergeNested)}
+func (i *instance) Param(partial ProcParamPartial) error {
+	p := DefaultProcParam().Merge(partial).ToValue()
+
+	opts := Options{
+		Merge:       MergeMode(p.MergeStrategy),
+		MergeNested: MergeNestedMode(p.MergeNestedStrategy),
+		OmitFlagSet: !p.FlagSet,
+	}
 	if err := opts.Validate(); err != nil {
 		return err
 	}
 
 	i.opts = opts.WithDefaults()
 
-	if p.OptionFile != nil {
-		in := *p.OptionFile
+	if p.OptionFile.IsSome() {
+		in := p.OptionFile.Value()
 		if in.Base == "" {
 			return fmt.Errorf("%w: option_file: base is required", ErrOption)
 		}

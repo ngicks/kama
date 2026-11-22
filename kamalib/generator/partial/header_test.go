@@ -252,7 +252,7 @@ func (e *procEnv) run(now time.Time) *recordReporter {
 	assert.NilError(e.t, err)
 
 	i := &instance{}
-	assert.NilError(e.t, i.Param(ProcParam{}))
+	assert.NilError(e.t, i.Param(ProcParamPartial{}))
 	i.opts.Registry = registry(e.t)
 	i.opts.Now = func() time.Time { return now }
 	i.In(&procgopackages.Packages{Pkgs: pkgs})

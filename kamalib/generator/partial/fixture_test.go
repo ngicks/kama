@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/ngicks/opiter"
+	"github.com/ngicks/option/und"
 
 	"go.yaml.in/yaml/v4"
 	"gotest.tools/v3/assert"
@@ -30,13 +31,19 @@ import (
 // gives the generate step.
 var fixtures = []struct {
 	dir   string
-	param ProcParam
+	param ProcParamPartial
 }{
 	{dir: "internal/fixture"},
-	{dir: "internal/fixturemerge", param: ProcParam{Merge: "append", MergeNested: "overwrite"}},
+	{
+		dir: "internal/fixturemerge",
+		param: ProcParamPartial{
+			MergeStrategy:       und.Defined("append"),
+			MergeNestedStrategy: und.Defined("overwrite"),
+		},
+	},
 	{
 		dir:   "internal/fixtureexternal",
-		param: ProcParam{OptionFile: &fileloader.PathInput{Base: "partial"}},
+		param: ProcParamPartial{OptionFile: und.Defined(fileloader.PathInput{Base: "partial"})},
 	},
 	{dir: "internal/fixturepackage"},
 }

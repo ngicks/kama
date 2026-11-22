@@ -501,6 +501,12 @@
 // change; a declaration in it the generator did not mark is an error,
 // and so is PartialFlagSet declared elsewhere in the package.
 //
+// Options.OmitFlagSet, the key flag_set: false of the param of Proc,
+// leaves the file out. A run generating into packages without any flag
+// option does not need it. A flag option on a target of the run is an
+// error then, wrapping ErrOption. A flag set file an earlier run wrote is
+// reported as stale.
+//
 // # Field mask
 //
 // A struct target opts in to field masks with //kama:partial:fieldmask in

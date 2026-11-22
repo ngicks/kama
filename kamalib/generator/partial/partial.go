@@ -127,6 +127,10 @@ type Options struct {
 	// When Loaded is nil, Generate loads the directives itself with
 	// LoadPackages and reads no option file.
 	Loaded *LoadedOptions
+	// OmitFlagSet leaves out the flag set file of the packages Generate
+	// writes into. A target with a flag option is an error then: its
+	// methods take the flag set the file declares.
+	OmitFlagSet bool
 	// Now gives the time the header of the generated files records. It is
 	// time.Now when nil.
 	Now func() time.Time
@@ -253,15 +257,22 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		// The flag set holds every method any flag kind calls: a partial
-		// file of a build variant other than the one loaded keeps calling the
-		// methods its flags use.
-		content, err := renderFlagSet(pf.pkg, hdr)
-		if err != nil {
-			return nil, nil, err
-		}
 
-		out = append(out, File{Path: filepath.Join(pf.dir, FlagSetFile), Content: content})
+		if opts.OmitFlagSet {
+			if err := sel.checkNoFlags(pkgPath); err != nil {
+				return nil, nil, err
+			}
+		} else {
+			// The flag set holds every method any flag kind calls: a partial
+			// file of a build variant other than the one loaded keeps calling the
+			// methods its flags use.
+			content, err := renderFlagSet(pf.pkg, hdr)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			out = append(out, File{Path: filepath.Join(pf.dir, FlagSetFile), Content: content})
+		}
 
 		contents := opiter.WrapSeq(slices.Values(out)).
 			Map(func(f File) []byte { return f.Content }).
@@ -288,7 +299,8 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		// files of every build variant. A package the run produced nothing
 		// for may still declare targets in files of a variant not loaded,
 		// which keep needing it. A package the run produced files for
-		// always gets it, so it cannot be stale there.
+		// gets it, so it cannot be stale there, unless OmitFlagSet leaves it
+		// out: a file an earlier run wrote is stale then.
 		Keep: func(pkg *packages.Package, path string) bool {
 			return !generated[pkg.PkgPath] && filepath.Base(path) == FlagSetFile
 		},
