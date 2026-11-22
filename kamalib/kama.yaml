@@ -1,0 +1,32 @@
+# The workflow kamalib generates its own sources with:
+#
+#	go run ./cmd/kama-simple
+#
+# It gives the proc params of the generators their partial variants.
+version: 1
+steps:
+  root:
+    proc: overlayfs.open
+  load:
+    proc: packages.load
+    in: root
+    param:
+      # Listed one by one: ./... would load the fixture packages too, which
+      # have specs of their own.
+      patterns: &packages
+        - ./generator/contextkey
+        - ./generator/partial
+  generate:
+    proc: partial.generate
+    in: load
+    out: root
+    param:
+      # No target here has a flag option, so no package needs the flag set.
+      flag_set: false
+  final:
+    proc: overlayfs.copy_down
+    in: root
+    # copy_down reads root but does not wait for steps writing into it.
+    after: generate
+    param:
+      patterns: *packages

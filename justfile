@@ -17,7 +17,7 @@ tidy:
 
 # Regenerate generated sources.
 generate:
-    cd kamalib && go generate ./...
+    cd kamalib && go run ./cmd/kama-simple && go generate ./...
 
 build:
     for m in {{modules}}; do (cd $m && go build ./...); done
