@@ -21,20 +21,6 @@ type decl = genhelper.Decl
 // state.
 var lang genhelper.Lang[genCtx]
 
-// funcContext returns a context positioned at a new root scope for one
-// generated function, which spells the type parameters tparams. The scope
-// avoids the predeclared identifiers and the package-level identifiers of
-// the package, both of which the function may spell, and the identifiers
-// of the imports of p.m.
-func (p *mapper) funcContext(tparams []string) genCtx {
-	s := genhelper.NewScope()
-	s.ReserveUniverse()
-	s.ReserveTypes(p.pkg.Types.Scope())
-	s.Reserve(tparams...)
-
-	return genhelper.NewBaseContext(s, &genhelper.Package{Imports: p.m, Path: p.pkg.PkgPath})
-}
-
 // docComment returns the doc comment of a generated declaration as one
 // comment group: the text of format and args, an empty comment line and the
 // marker of the generator.

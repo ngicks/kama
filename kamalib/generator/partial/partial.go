@@ -23,7 +23,6 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
-	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -383,41 +382,30 @@ func renderHelpers(
 	hf base.Host,
 	helpers *helperSet,
 ) ([]byte, error) {
-	parser := importdecl.NewParser(pkg.Types)
-	parser.Reserve(types.Universe.Names()...)
-	parser.Reserve(pkg.Types.Scope().Names()...)
-	parser.Reserve(localNames...)
+	reserve := slices.Clone(localNames)
 
 	require := map[string]bool{}
 
 	for _, name := range hf.Names {
 		h := helpers.byName[name]
 
-		parser.Reserve(
+		reserve = slices.AppendSeq(
+			reserve,
 			opiter.WrapSeq(slices.Values(h.typeParams())).
 				Map(typeParamName).
-				CollectSlice()...,
+				Iter(),
 		)
 
 		maps.Copy(require, h.spelled)
 	}
 
-	for _, path := range slices.Sorted(maps.Keys(require)) {
-		err := parser.Require(importdecl.Import{
-			Package: importdecl.Package{Path: path, Name: filepath.Base(path)},
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	m, err := parser.ParseDst(nil)
+	scope, err := base.NewFileScope(pkg, reserve, slices.Sorted(maps.Keys(require)))
 	if err != nil {
 		return nil, err
 	}
 
 	p := &mapper{
-		sel: sel, pkg: pkg, parser: parser, m: m,
+		sel: sel, FileScope: scope,
 		helpers: helpers, calls: map[*helper]bool{}, support: map[string]bool{},
 		refs: map[string]bool{},
 	}
@@ -449,7 +437,7 @@ func renderHelpers(
 	}
 
 	file.Decls = decls
-	m.AddMissingDst(file)
+	scope.AddImports(file)
 
 	var buf bytes.Buffer
 	if err := decorator.Fprint(&buf, file); err != nil {
@@ -526,52 +514,41 @@ func renderFileWith(
 	helpers *helperSet,
 ) ([]byte, *mapper, error) {
 	nodes := f.nodes
-	parser := importdecl.NewParser(pkg.Types)
-	// Import names must not be taken by declarations of the package, nor
-	// by the type parameters and locals of the generated declarations,
-	// which would shadow them. A predeclared name taken by an import would
-	// shadow the predeclared identifier the declarations spell, as a
-	// package named string would for und.Und[string]. A local renamed off
-	// its base name reserves the new name itself, through the link of its
-	// scope to the Map.
-	parser.Reserve(types.Universe.Names()...)
-	parser.Reserve(pkg.Types.Scope().Names()...)
-	parser.Reserve(localNames...)
+	// The identifiers the generated declarations declare themselves are
+	// reserved: the type parameters and the locals, which an import of the
+	// same name would shadow or be shadowed by. A local renamed off its
+	// base name reserves the new name itself, through the link of its
+	// scope to the imports.
+	reserve := slices.Clone(localNames)
 
 	for _, n := range nodes {
 		// Only files with field mask methods reserve their locals, so that the
 		// import names of other files stay as they were.
 		if sel.fieldMasked(n.Id) {
-			parser.Reserve(fieldMaskLocals...)
+			reserve = append(reserve, fieldMaskLocals...)
 		}
 
 		tparams := n.Detail.Type.TypeParams()
 
-		parser.Reserve(
+		reserve = slices.AppendSeq(
+			reserve,
 			opiter.WrapSeq(tparams.TypeParams()).
 				Map(typeParamName).
-				CollectSlice()...,
+				Iter(),
 		)
 
-		parser.Reserve(methodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams())...)
+		reserve = append(
+			reserve,
+			methodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams())...)
 	}
 
-	for _, path := range require {
-		err := parser.Require(importdecl.Import{
-			Package: importdecl.Package{Path: path, Name: filepath.Base(path)},
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	m, err := parser.ParseDst(nil)
+	scope, err := base.NewFileScope(pkg, reserve, require)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	p := &mapper{
-		sel: sel, pkg: pkg, parser: parser, m: m,
+		sel: sel, FileScope: scope,
 		helpers: helpers, calls: map[*helper]bool{}, support: map[string]bool{},
 	}
 	file := &dst.File{Name: dst.NewIdent(pkg.Name)}
@@ -593,7 +570,7 @@ func renderFileWith(
 		file.Decls = append(file.Decls, decls...)
 	}
 
-	m.AddMissingDst(file)
+	scope.AddImports(file)
 
 	var buf bytes.Buffer
 	if err := decorator.Fprint(&buf, file); err != nil {
@@ -636,7 +613,7 @@ func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 	case *types.Map:
 		var key, value dst.Expr
 
-		key, err = p.print(u.Key())
+		key, err = p.TypeExpr(u.Key())
 		if err == nil {
 			value, err = p.partialExpr(p.matchValue(u.Elem()))
 		}
@@ -653,7 +630,7 @@ func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("%s (%s): %w", n.Id.String(), p.position(named.Obj().Pos()), err)
+		return nil, fmt.Errorf("%s (%s): %w", n.Id.String(), p.Position(named.Obj().Pos()), err)
 	}
 
 	typeDecl := &dst.GenDecl{
@@ -699,7 +676,7 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 			return fmt.Errorf(
 				"%w: %s: type parameter %s of %s shadows the predeclared %s the generated code spells",
 				ErrConflict,
-				p.position(tp.Obj().Pos()),
+				p.Position(tp.Obj().Pos()),
 				tp.Obj().Name(),
 				named.Obj().Name(),
 				tp.Obj().Name(),
@@ -707,7 +684,7 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 		case refs[tp.Obj().Name()]:
 			return fmt.Errorf(
 				"%w: %s: type parameter %s shadows %s the partial declarations refer to",
-				ErrConflict, p.position(tp.Obj().Pos()), tp.Obj().Name(), tp.Obj().Name(),
+				ErrConflict, p.Position(tp.Obj().Pos()), tp.Obj().Name(), tp.Obj().Name(),
 			)
 		}
 

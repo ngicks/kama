@@ -246,14 +246,14 @@ func (p *mapper) flag(n *typegraph.Node, v *types.Var, m match) (*flagField, err
 
 	if f.kind.text {
 		var err error
-		if f.typ, err = p.typeString(t); err != nil {
+		if f.typ, err = p.TypeString(t); err != nil {
 			return nil, err
 		}
 	}
 
 	if !types.Identical(t, want) {
 		var err error
-		if f.conv, err = p.typeString(t); err != nil {
+		if f.conv, err = p.TypeString(t); err != nil {
 			return nil, err
 		}
 	}

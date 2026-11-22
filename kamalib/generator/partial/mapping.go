@@ -10,13 +10,12 @@ import (
 	"strings"
 
 	"github.com/dave/dst"
-	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
-	"github.com/ngicks/kama/kamalib/pkg/typeprint"
 	"github.com/ngicks/opiter"
 )
 
@@ -26,13 +25,11 @@ const (
 	elasticPath = "github.com/ngicks/option/elastic"
 )
 
-// mapper builds the partial declarations of a file.
+// mapper builds the partial declarations of a file. Its FileScope spells
+// the packages and the types of the file.
 type mapper struct {
 	sel *selection
-	pkg *packages.Package
-	// parser gave m, the imports of the file.
-	parser *importdecl.Parser
-	m      *importdecl.Map
+	*base.FileScope
 	// helpers are the helpers of the package, shared by its files.
 	helpers *helperSet
 	// calls are the helpers the file calls.
@@ -46,7 +43,7 @@ type mapper struct {
 
 // ident returns the identifier the file refers to the package at path by.
 func (p *mapper) ident(path string) (string, error) {
-	ident, ok := p.m.Ident(path)
+	ident, ok := p.Ident(path)
 	if !ok {
 		return "", fmt.Errorf("partial: unknown package %q", path)
 	}
@@ -56,21 +53,6 @@ func (p *mapper) ident(path string) (string, error) {
 	}
 
 	return ident, nil
-}
-
-// typeString spells t.
-func (p *mapper) typeString(t types.Type) (string, error) {
-	e, err := p.print(t)
-	if err != nil {
-		return "", err
-	}
-
-	b, err := gofragment.PrintDstExpr(e)
-	if err != nil {
-		return "", fmt.Errorf("partial: %w", err)
-	}
-
-	return string(b), nil
 }
 
 // partialString spells the partial variant of the target named.
@@ -88,12 +70,6 @@ func (p *mapper) partialString(named *types.Named) (string, error) {
 	return string(b), nil
 }
 
-func (p *mapper) position(pos token.Pos) token.Position { return p.pkg.Fset.Position(pos) }
-
-func (p *mapper) print(t types.Type) (dst.Expr, error) {
-	return typeprint.Dst(t, p.m, p.pkg.PkgPath)
-}
-
 func (p *mapper) typeParams(n *typegraph.Node, list *types.TypeParamList) (*dst.FieldList, error) {
 	if list.Len() == 0 {
 		return nil, nil
@@ -102,11 +78,11 @@ func (p *mapper) typeParams(n *typegraph.Node, list *types.TypeParamList) (*dst.
 	fields := &dst.FieldList{Opening: true, Closing: true}
 
 	for tp := range list.TypeParams() {
-		expr, err := p.print(constraintType(tp))
+		expr, err := p.TypeExpr(constraintType(tp))
 		if err != nil {
 			return nil, fmt.Errorf(
 				"%s (%s): type parameter %s: %w",
-				n.Id.String(), p.position(tp.Obj().Pos()), tp.Obj().Name(), err,
+				n.Id.String(), p.Position(tp.Obj().Pos()), tp.Obj().Name(), err,
 			)
 		}
 
@@ -133,15 +109,15 @@ func constraintType(tp *types.TypeParam) types.Type {
 
 // constraintString spells the constraint of tp.
 func (p *mapper) constraintString(tp *types.TypeParam) (string, error) {
-	return p.typeString(constraintType(tp))
+	return p.TypeString(constraintType(tp))
 }
 
 // matchField matches the struct field v for the package of p.
-func (p *mapper) matchField(v *types.Var) match { return p.sel.matchField(v, p.pkg.PkgPath) }
+func (p *mapper) matchField(v *types.Var) match { return p.sel.matchField(v, p.Pkg.PkgPath) }
 
 // matchValue matches t, the type of a slice element or a map value, for
 // the package of p.
-func (p *mapper) matchValue(t types.Type) match { return p.sel.matchValue(t, p.pkg.PkgPath) }
+func (p *mapper) matchValue(t types.Type) match { return p.sel.matchValue(t, p.Pkg.PkgPath) }
 
 // structType returns the partial struct type of the target n. A target
 // declared by a struct literal gets a clone of the literal with its field
@@ -162,14 +138,14 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, error
 		// A target defined on a struct type of another package, as in
 		// type A sub.S, has the fields of sub.S, and the methods cannot
 		// spell an unexported one.
-		if v.Name() != "_" && !v.Exported() && v.Pkg() != nil && v.Pkg().Path() != p.pkg.PkgPath {
+		if v.Name() != "_" && !v.Exported() && v.Pkg() != nil && v.Pkg().Path() != p.Pkg.PkgPath {
 			return nil, fmt.Errorf(
 				"field %s (%s): %w: unexported field of package %s cannot be converted in package %s",
 				v.Name(),
-				p.position(v.Pos()),
+				p.Position(v.Pos()),
 				ErrUnsupported,
 				v.Pkg().Path(),
-				p.pkg.PkgPath,
+				p.Pkg.PkgPath,
 			)
 		}
 
@@ -183,7 +159,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, error
 			case prev != nil:
 				err = fmt.Errorf(
 					"%w: partial field %s is given by %s too (%s)",
-					ErrConflict, name, prev.Name(), p.position(prev.Pos()),
+					ErrConflict, name, prev.Name(), p.Position(prev.Pos()),
 				)
 			case slices.Contains(p.sel.partialMethodNames(n), name):
 				err = fmt.Errorf(
@@ -196,7 +172,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, error
 		}
 
 		if err != nil {
-			return nil, fmt.Errorf("field %s (%s): %w", v.Name(), p.position(v.Pos()), err)
+			return nil, fmt.Errorf("field %s (%s): %w", v.Name(), p.Position(v.Pos()), err)
 		}
 
 		synth[i] = f
@@ -249,7 +225,7 @@ func (p *mapper) field(
 			return nil, nil, err
 		}
 
-		expr, err := p.print(v.Type())
+		expr, err := p.TypeExpr(v.Type())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -377,9 +353,9 @@ func (p *mapper) partialExpr(m match) (dst.Expr, error) {
 	switch m.kind {
 	case leafUnd:
 		p.support[undPath] = true
-		return p.print(m.source)
+		return p.TypeExpr(m.source)
 	case leafElastic:
-		return p.print(m.source)
+		return p.TypeExpr(m.source)
 	case leafTarget:
 		inner, err := p.partial(m.named)
 		if err != nil {
@@ -393,7 +369,7 @@ func (p *mapper) partialExpr(m match) (dst.Expr, error) {
 		return p.und(inner)
 	}
 
-	inner, err := p.print(m.leaf)
+	inner, err := p.TypeExpr(m.leaf)
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +378,7 @@ func (p *mapper) partialExpr(m match) (dst.Expr, error) {
 }
 
 func (p *mapper) und(inner dst.Expr) (dst.Expr, error) {
-	sel := p.m.DstExpr(importdecl.QualifiedType{PackagePath: undPath, TypeName: "Und"})
+	sel := p.Imports.DstExpr(importdecl.QualifiedType{PackagePath: undPath, TypeName: "Und"})
 	if sel == nil {
 		return nil, fmt.Errorf("partial: unknown package %q", undPath)
 	}
@@ -418,8 +394,8 @@ func (p *mapper) partial(named *types.Named) (dst.Expr, error) {
 	obj := named.Obj()
 
 	var x dst.Expr = dst.NewIdent(partialName(obj.Name()))
-	if pkgPath := obj.Pkg().Path(); pkgPath != p.pkg.PkgPath {
-		ident, ok := p.m.Ident(pkgPath)
+	if pkgPath := obj.Pkg().Path(); pkgPath != p.Pkg.PkgPath {
+		ident, ok := p.Ident(pkgPath)
 		if !ok {
 			return nil, fmt.Errorf("partial: unknown package %q", pkgPath)
 		}
@@ -431,7 +407,7 @@ func (p *mapper) partial(named *types.Named) (dst.Expr, error) {
 
 	args, err := opiter.TryCollect(
 		opiter.WrapSeq(named.TypeArgs().Types()).
-			Disassemble(p.print),
+			Disassemble(p.TypeExpr),
 	)
 	if err != nil {
 		return nil, err

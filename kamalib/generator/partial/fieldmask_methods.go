@@ -98,7 +98,7 @@ func (w *methodWriter) fieldMaskMethods(st *types.Struct) error {
 		return nil
 	}
 
-	masks, err := w.p.sel.maskFields(w.n, st, w.p.pkg.PkgPath)
+	masks, err := w.p.sel.maskFields(w.n, st, w.p.Pkg.PkgPath)
 	if err != nil {
 		return err
 	}
@@ -371,7 +371,7 @@ func (w *methodWriter) maskBranch(f maskField, fmtIdent genExpr) (genStep, error
 		}, nil
 	}
 
-	leaf, err := w.p.typeString(m.leaf)
+	leaf, err := w.p.TypeString(m.leaf)
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +417,7 @@ func (w *methodWriter) maskEmbedded(f maskField) (genStep, error) {
 		return nil, err
 	}
 
-	leaf, err := w.p.typeString(m.leaf)
+	leaf, err := w.p.TypeString(m.leaf)
 	if err != nil {
 		return nil, err
 	}

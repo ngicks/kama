@@ -40,16 +40,16 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 			p.calls[h] = true
 			// The helpers file imports what the helper spells, which the
 			// calling file may not, so the rendering goes to a separate map.
-			m, err := p.parser.ParseDst(nil)
+			fresh, err := p.Fresh()
 			if err != nil {
 				return "", err
 			}
 
-			fileMap, support := p.m, p.support
-			p.m, p.support = m, map[string]bool{}
+			file, support := p.FileScope, p.support
+			p.FileScope, p.support = fresh, map[string]bool{}
 			_, err = p.helperDecl(fn, h)
 			h.spelled = p.support
-			p.m, p.support = fileMap, support
+			p.FileScope, p.support = file, support
 
 			if err != nil {
 				return "", err
@@ -157,15 +157,16 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 		Map(typeParamName).
 		CollectSlice()
 
-	// p.m is the Map in effect now, which call swaps while it renders.
-	f := helperFunc{c: p.funcContext(names)}
+	// The FileScope of p is the one in effect now, which call swaps while
+	// it renders.
+	f := helperFunc{c: p.FuncContext(names)}
 	if len(tparams) > 0 {
 		f.tparams = "[" + strings.Join(tparams, ", ") + "]"
 	}
 
 	var t helperTypes
 
-	t.src, err = p.typeString(h.typ)
+	t.src, err = p.TypeString(h.typ)
 	if err != nil {
 		return helperFunc{}, err
 	}
@@ -348,7 +349,7 @@ func (p *mapper) allUndefinedFunc(h *helper, f helperFunc, t helperTypes) (helpe
 			continue
 		}
 
-		named, ok := p.sel.partialOf(deref(fv.Type()), p.pkg.PkgPath)
+		named, ok := p.sel.partialOf(deref(fv.Type()), p.Pkg.PkgPath)
 		if ok && fv.Embedded() && isStruct(named) {
 			tests = append(tests, p.call(
 				&helper{op: opAllUndefined, typ: named, named: named},
@@ -359,11 +360,11 @@ func (p *mapper) allUndefinedFunc(h *helper, f helperFunc, t helperTypes) (helpe
 		}
 		// An unexported field of a partial type of another package cannot
 		// be read here.
-		if !fv.Exported() && fv.Pkg() != nil && fv.Pkg().Path() != p.pkg.PkgPath {
+		if !fv.Exported() && fv.Pkg() != nil && fv.Pkg().Path() != p.Pkg.PkgPath {
 			return helperFunc{}, fmt.Errorf(
 				"%w: embedded %s of package %s has the unexported field %s, "+
 					"which package %s cannot test for undefined",
-				ErrUnsupported, t.part, fv.Pkg().Path(), fv.Name(), p.pkg.PkgPath,
+				ErrUnsupported, t.part, fv.Pkg().Path(), fv.Name(), p.Pkg.PkgPath,
 			)
 		}
 

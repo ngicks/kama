@@ -101,7 +101,7 @@ func (p *mapper) newMethodWriter(n *typegraph.Node) *methodWriter {
 	)
 
 	if named.TypeParams().Len() > 0 {
-		tparams = methodTypeParams(p.pkg.Types.Scope(), named.TypeParams())
+		tparams = methodTypeParams(p.Pkg.Types.Scope(), named.TypeParams())
 		targs = "[" + strings.Join(tparams, ", ") + "]"
 	}
 
@@ -118,7 +118,7 @@ func (p *mapper) newMethodWriter(n *typegraph.Node) *methodWriter {
 // receiver and parameters in the scope of the method, where body renders.
 func (w *methodWriter) function(doc, signature genExpr, body ...genStep) error {
 	s, err := lang.Render(
-		w.p.funcContext(w.tparams),
+		w.p.FuncContext(w.tparams),
 		lang.DocFunc(doc, signature, body...),
 	)
 	if err != nil {
@@ -380,7 +380,7 @@ func (w *methodWriter) collectionMethods(isMap bool, source types.Type) error {
 		return err
 	}
 
-	elemType, err := w.p.typeString(source)
+	elemType, err := w.p.TypeString(source)
 	if err != nil {
 		return err
 	}
