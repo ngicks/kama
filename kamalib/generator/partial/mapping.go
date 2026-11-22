@@ -161,7 +161,8 @@ const (
 	convEmbedded
 	// convEmbeddedPointer: embedded *M <-> embedded MPartial, nil <-> zero.
 	convEmbeddedPointer
-	// convSkip: a blank field, which the partial struct leaves out.
+	// convSkip: a blank field, which the partial struct copies and the
+	// methods do not touch.
 	convSkip
 )
 
@@ -284,10 +285,7 @@ func (p *mapper) structType(n *typegraph.Node, s *types.Struct) (dst.Expr, []fie
 
 	fields := &dst.FieldList{Opening: true, Closing: true}
 
-	// field gives nil for a blank field, which the partial struct leaves out.
-	fields.List = opiter.WrapSeq(slices.Values(synth)).
-		Filter(func(f *dst.Field) bool { return f != nil }).
-		CollectSlice()
+	fields.List = synth
 
 	return &dst.StructType{Fields: fields}, infos, nil
 }
@@ -310,9 +308,10 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 	)
 
 	if v.Name() == "_" {
-		// Nothing refers to a blank field, so the partial struct leaves it
-		// out. Its type is not mapped: a type only blank fields spell would
-		// leave an import unused.
+		// Nothing refers to a blank field, so it has no partial value and
+		// the methods skip it. The partial struct keeps it with its type and
+		// tag as written: a blank field may direct the compiler, as
+		// _ structs.HostLayout does.
 		info.conv = convSkip
 
 		info.flag, err = p.flag(n, info, p.sel.flags[key])
@@ -320,7 +319,15 @@ func (p *mapper) field(n *typegraph.Node, v *types.Var, tag string) (*dst.Field,
 			return nil, fieldInfo{}, err
 		}
 
-		return nil, info, nil
+		expr, err := p.print(v.Type())
+		if err != nil {
+			return nil, fieldInfo{}, err
+		}
+
+		return withTag(
+			&dst.Field{Names: []*dst.Ident{dst.NewIdent("_")}, Type: expr},
+			tag,
+		), info, nil
 	}
 
 	if named, ok := p.sel.partialOf(deref(v.Type()), p.pkg.PkgPath); ok && v.Embedded() &&

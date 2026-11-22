@@ -31,8 +31,8 @@ type Doc struct {
 	OptTags  opt.Option[[]string]          `json:"opt_tags"`
 	OptAttrs opt.Option[map[string]string] `json:"opt_attrs"`
 
-	// Blank fields cannot be referred to, so the partial struct leaves
-	// them out.
+	// Blank fields cannot be referred to. The partial struct copies them
+	// as written.
 	_ int
 	_ string
 }

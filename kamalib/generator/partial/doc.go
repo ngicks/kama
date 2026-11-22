@@ -214,7 +214,8 @@
 // and directives are all erased. The doc comment of a partial type is
 // generated.
 //
-// The copy drops blank names. A field holding blank names only disappears.
+// The copy keeps blank names. A blank name keeps the type of the source
+// field, so a blank name grouped with other names gets a field of its own.
 // Grouped names whose partial types or tags differ get one field each. An
 // exported name and an unexported name of one group without a json tag get
 // different tags.
@@ -264,8 +265,11 @@
 // of a non-nil pointer to an M whose fields all give undefined, as for an
 // M holding undefined und.Und fields only, therefore converts back to nil.
 //
-// The partial struct leaves out a blank field _ of the source struct,
-// since nothing can refer to it. FromValue, ToValue and Merge skip it.
+// The partial struct copies a blank field _ of the source struct with its
+// type and tag as written. A blank field may direct the compiler, as
+// _ structs.HostLayout does, so the partial struct needs it too. The type
+// is not wrapped in und.Und and not replaced by a partial type. Nothing
+// can refer to a blank field, so FromValue, ToValue and Merge skip it.
 //
 // ApplyTo returns ToValue of FromValue of v merged with p.
 //
@@ -330,10 +334,10 @@
 //
 // AllUndefined tests the fields of MPartial with IsUndefined, and the
 // fields of a partial value embedded in it with its own AllUndefined. It
-// skips blank fields, which a partial struct does not have. It cannot read an unexported
-// field of a partial type of another package, so embedding a target of
-// another package that has unexported fields, where AllUndefined is
-// needed, is an error wrapping ErrUnsupported.
+// skips blank fields, which hold no partial value. It cannot read an
+// unexported field of a partial type of another package, so embedding a
+// target of another package that has unexported fields, where
+// AllUndefined is needed, is an error wrapping ErrUnsupported.
 //
 // A helper is named kamaPartial, its op as above, _, the first 5 bytes of
 // the SHA-256 of the canonical encoding of its parameter types, _ and

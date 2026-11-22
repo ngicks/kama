@@ -17,8 +17,8 @@ import (
 // sourceStruct returns the partial struct type of the target n built on a
 // copy of its source struct literal, as dstreplace.Struct builds it, or
 // nil when n is not declared by a struct literal. synth holds the
-// synthesized field of each field of s, nil for a blank field. The copy
-// takes the type and the tag of each field from there.
+// synthesized field of each field of s. The copy takes the type and the
+// tag of each field from there.
 //
 // A source the decorator cannot read, or whose fields do not match s, is
 // not an error: the struct built from the types holds the same fields,
@@ -49,9 +49,6 @@ func (p *mapper) sourceStruct(
 
 	return dstreplace.Struct(src, func(f dstreplace.Field) (dstreplace.Replacement, error) {
 		sf := synth[f.Index]
-		if sf == nil {
-			return dstreplace.Replacement{Drop: true}, nil
-		}
 
 		r := dstreplace.Replacement{Type: sf.Type}
 		if len(sf.Names) > 0 {

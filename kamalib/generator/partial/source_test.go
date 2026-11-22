@@ -119,8 +119,8 @@ import "time"
 type A struct {
 	_, A int
 
-	// Gone leads.
-	_, _ time.Time // Gone trails.
+	// Lead is erased.
+	_, _ time.Time // Trail is erased.
 
 	B int
 	_ string
@@ -131,11 +131,14 @@ type A struct {
 
 	src := generated(t, files)["a.kama_partial.go"]
 	assert.Equal(t, partialDecl(t, src, "APartial"), `type APartial struct {
+	_ int
 	A und.Und[int] `+"`json:\",omitzero\"`"+`
 
+	_, _ time.Time
+
 	B und.Und[int] `+"`json:\",omitzero\"`"+`
+	_ string
 }`)
-	assert.Assert(t, !strings.Contains(src, `"time"`), src)
 }
 
 func TestSourceStructTags(t *testing.T) {

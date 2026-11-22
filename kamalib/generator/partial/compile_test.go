@@ -380,14 +380,23 @@ type EmbP[T any] struct{ F T }
 	}
 }
 
-// TestBlankFieldsLeftOut builds partial types of structs with blank
-// fields. A partial struct declaring them would import the packages of
-// their types without using them elsewhere.
-func TestBlankFieldsLeftOut(t *testing.T) {
+// TestBlankFieldsCopied builds partial types of structs with blank
+// fields. A partial struct keeps them with their types as written, and
+// the file imports the packages of those types.
+func TestBlankFieldsCopied(t *testing.T) {
 	files := map[string]string{
 		"a.go": `package x
 
-import "time"
+import (
+	"structs"
+	"time"
+)
+
+//kama:partial
+type Host struct {
+	_ structs.HostLayout
+	N int32
+}
 
 //kama:partial
 type OnlyBlank struct {
@@ -414,7 +423,18 @@ type Inner struct {
 	assert.NilError(t, generateAndBuild(t, files))
 
 	src := generated(t, files)["a.kama_partial.go"]
-	assert.Assert(t, !strings.Contains(src, "\t_ "), src)
-	assert.Assert(t, strings.Contains(src, "type OnlyBlankPartial struct{}"), src)
-	assert.Assert(t, !strings.Contains(src, `"time"`), src)
+	assert.Equal(t, partialDecl(t, src, "OnlyBlankPartial"), `type OnlyBlankPartial struct {
+	_ int
+	_ time.Time
+}`)
+	assert.Equal(t, partialDecl(t, src, "HostPartial"), `type HostPartial struct {
+	_ structs.HostLayout
+	N und.Und[int32] `+"`json:\",omitzero\"`"+`
+}`)
+
+	// A blank field of a target type is copied too, and is not wrapped.
+	mixed := partialDecl(t, src, "MixedPartial")
+	for _, field := range []string{"\t_ [0]func()\n", "\t_ **int\n", "\t_ Inner\n"} {
+		assert.Assert(t, strings.Contains(mixed, field), mixed)
+	}
 }

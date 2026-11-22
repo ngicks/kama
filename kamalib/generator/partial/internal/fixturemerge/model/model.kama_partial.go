@@ -4,7 +4,7 @@
 //	merge_nested: "overwrite"
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-19T04:49:38Z
+// generated: 2026-11-21T18:24:00Z
 
 package model
 
@@ -31,6 +31,9 @@ type DocPartial struct {
 	Index    und.Und[IndexPartial]      `json:"index,omitzero"`
 	OptTags  und.Und[[]string]          `json:"opt_tags,omitzero"`
 	OptAttrs und.Und[map[string]string] `json:"opt_attrs,omitzero"`
+
+	_ int
+	_ string
 }
 
 // FromValue sets every field of p to the partial form of the field of v.
