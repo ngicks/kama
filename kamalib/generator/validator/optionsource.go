@@ -96,10 +96,10 @@ func bareWords(kv []dircmnt.KeyValue) ([]string, bool) {
 func spellArgs(kv []dircmnt.KeyValue) string {
 	spell := func(kv dircmnt.KeyValue) string {
 		if kv.HasValue {
-			return spellToken(kv.Key) + "=" + spellToken(kv.Value)
+			return spellToken(kv.Key, kv.KeyQuoted) + "=" + spellToken(kv.Value, kv.ValueQuoted)
 		}
 
-		return spellToken(kv.Key)
+		return spellToken(kv.Key, kv.KeyQuoted)
 	}
 
 	return strings.Join(
@@ -110,9 +110,9 @@ func spellArgs(kv []dircmnt.KeyValue) string {
 	)
 }
 
-// spellToken quotes s when a bare token cannot hold it.
-func spellToken(s string) string {
-	if s == "" || strings.ContainsAny(s, " \t\"`") {
+// spellToken quotes s when it was quoted or a bare token cannot hold it.
+func spellToken(s string, quoted bool) string {
+	if quoted || s == "" || strings.ContainsAny(s, " \t\"`") {
 		return strconv.Quote(s)
 	}
 

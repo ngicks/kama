@@ -105,7 +105,7 @@ type A[T comparable] struct {
 	ConstInt Int
 	//kama:validate:const 0.5 -1
 	ConstFloat float64
-	//kama:validate:const a "b c"
+	//kama:validate:const "a" ` + "`b c`" + `
 	ConstString string
 	//kama:validate:const false
 	ConstBool bool
@@ -146,7 +146,7 @@ type A[T comparable] struct {
 		`kamaValidateRegexpBytes(`+regexpVarName("^b+$")+`, []byte(v.ReNamedBytes))`,
 		"if v.RePtr != nil {",
 		`kamaValidateRegexpString(`+regexpVarName("^a=b$")+`, (*v.RePtr))`,
-		`validation.Join(kamaValidateLength(len(v.LenString), ">=", 1), `+
+		`kamaValidateAll(stopOnFirstError, kamaValidateLength(len(v.LenString), ">=", 1), `+
 			`kamaValidateLength(len(v.LenString), "<=", 10))`,
 		`kamaValidateLength(len(v.LenArray), "==", 3)`,
 		`kamaValidateLength(len(v.LenMap), "!=", 0)`,
@@ -154,7 +154,8 @@ type A[T comparable] struct {
 		"if v.LenOpt.IsSome() {",
 		`kamaValidateLength(len(v.LenOpt.Value()), ">", 0)`,
 		`kamaValidateLength(len((*v.LenPtr)), ">", 0)`,
-		`validation.Join(kamaValidateCmp(v.CmpInt, ">=", -1), kamaValidateCmp(v.CmpInt, "<", 10))`,
+		`kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.CmpInt, ">=", -1), `+
+			`kamaValidateCmp(v.CmpInt, "<", 10))`,
 		`kamaValidateCmp(v.CmpUint, ">", 0)`,
 		`kamaValidateCmp(v.CmpFloat, ">=", 1.5)`,
 		`kamaValidateCmp(v.CmpString, ">", "a b")`,
@@ -180,6 +181,7 @@ type A[T comparable] struct {
 		"var kamaValidateRegexp_", `regexp.MustCompile("^a=b$")`,
 		"func kamaValidateCompare[T cmp.Ordered](got T, op string, want T) bool {",
 		"func kamaValidateSpell(v any) string {",
+		"func kamaValidateAll(stopOnFirstError bool, errs ...error) error {",
 	)
 }
 
@@ -288,6 +290,13 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 			[]string{`arg "a=b" is a key=value pair; quote a value holding =`}},
 		{"const int rejects word", "//kama:validate:const 1 a\n\tN int", ErrUnsupported,
 			[]string{"//kama:validate:const on field V", "a is not a Go literal"}},
+		{"const string rejects bare word", "//kama:validate:const red\n\tN string",
+			ErrUnsupported,
+			[]string{`red is no value of string; want a quoted string, as in "red"`}},
+		{"const int rejects quoted", "//kama:validate:const \"1\"\n\tN int", ErrUnsupported,
+			[]string{`"1" is no value of int`}},
+		{"const float rejects quoted", "//kama:validate:const `1.5`\n\tN float64",
+			ErrUnsupported, []string{`"1.5" is no value of float64`}},
 		{"const overflow", "//kama:validate:const 256\n\tN uint8", ErrUnsupported,
 			[]string{"256 is no value of uint8"}},
 		{"const slice", "//kama:validate:const 1\n\tN []int", ErrUnsupported,
@@ -344,6 +353,19 @@ func TestHeldValueError(t *testing.T) {
 	assert.ErrorContains(t, err,
 		"*struct{} is not an integer, float, string or bool type;"+
 			" for the value it holds: struct{} is not an integer")
+}
+
+// TestArgsErrorOnHeldValue reports an error of the args alone once,
+// without applying the validator again to the value a pointer holds.
+func TestArgsErrorOnHeldValue(t *testing.T) {
+	_, err := generate(t, map[string]string{
+		"a.go": "package x\n\n//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
+			"\t//kama:validate:length >=1.5\n\tP *string\n}\n",
+	}, Options{})
+	assert.ErrorIs(t, err, ErrUnsupported)
+	assert.ErrorIs(t, err, ErrArgs)
+	assert.Equal(t, strings.Count(err.Error(), "1.5 is no value of int"), 1, err.Error())
+	assert.Assert(t, !strings.Contains(err.Error(), "for the value it holds"), err.Error())
 }
 
 // lengthOne is a test validator replacing the built-in length: the value

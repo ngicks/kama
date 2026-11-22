@@ -1,0 +1,15 @@
+# The options of Line, standing for its directives in
+# internal/fixture/parity.
+version: 1
+types:
+  Line:
+    hook: false
+    fields:
+      Qty:
+        validators:
+          - name: cmp
+            args: ">0 <=100"
+      Url:
+        validators:
+          - name: format
+            args: url

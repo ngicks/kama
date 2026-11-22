@@ -23,7 +23,7 @@ func (Required) Name() string { return "required" }
 // Check accepts the types the doc comment of Required lists, without args.
 func (Required) Check(t types.Type, args []dircmnt.KeyValue) error {
 	if len(args) > 0 {
-		return fmt.Errorf("unknown args %q; want none", spellArgs(args))
+		return argsError(fmt.Errorf("unknown args %q; want none", spellArgs(args)))
 	}
 
 	if _, _, ok := requiredCall(t, ""); !ok {

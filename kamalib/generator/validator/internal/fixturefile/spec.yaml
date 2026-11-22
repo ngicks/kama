@@ -1,0 +1,19 @@
+version: 1
+steps:
+  root:
+    proc: overlayfs.open
+  load:
+    proc: packages.load
+    in: root
+  generate:
+    proc: validate.generate
+    in: load
+    out: root
+    param:
+      option_file:
+        base: validate
+  final:
+    proc: overlayfs.copy_down
+    in: root
+    # copy_down reads root but does not wait for steps writing into it.
+    after: generate

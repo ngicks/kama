@@ -29,7 +29,7 @@ func (Length) Name() string { return "length" }
 // doc comment of Length lists.
 func (Length) Check(t types.Type, args []dircmnt.KeyValue) error {
 	if err := comparisons(args); err != nil {
-		return err
+		return argsError(err)
 	}
 
 	for _, kv := range args {
@@ -37,11 +37,11 @@ func (Length) Check(t types.Type, args []dircmnt.KeyValue) error {
 
 		val, err := literalValue(types.Typ[types.Int], n)
 		if err != nil {
-			return err
+			return argsError(err)
 		}
 
 		if constant.Sign(val) < 0 {
-			return fmt.Errorf("length %s is negative", n)
+			return argsError(fmt.Errorf("length %s is negative", n))
 		}
 	}
 
@@ -96,7 +96,7 @@ func (Cmp) Name() string { return "cmp" }
 // comment of Cmp lists.
 func (Cmp) Check(t types.Type, args []dircmnt.KeyValue) error {
 	if err := comparisons(args); err != nil {
-		return err
+		return argsError(err)
 	}
 
 	info := basicInfo(t)
@@ -142,8 +142,9 @@ func (Cmp) Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue) (str
 	})
 }
 
-// joinCalls returns call of the comparison of each arg, joined into one
-// error by validation.Join when there are several.
+// joinCalls returns call of the comparison of each arg. It passes several
+// calls to kamaValidateAll. kamaValidateAll returns the first error when
+// stopOnFirstError is true and all of them joined otherwise.
 func joinCalls(
 	e Emitter,
 	args []dircmnt.KeyValue,
@@ -163,21 +164,19 @@ func joinCalls(
 		return calls[0], nil
 	}
 
-	v, err := e.Import(validationPath)
-	if err != nil {
-		return "", err
-	}
+	e.Declare(allName, allDecl)
 
-	return v + ".Join(" + strings.Join(calls, ", ") + ")", nil
+	return allName + "(stopOnFirstError, " + strings.Join(calls, ", ") + ")", nil
 }
 
 // Const is the validator //kama:validate:const <v1> <v2> ...: the value
-// equals one of the listed values.
+// equals one of the listed values, as in const 1 2 3 or
+// const "red" "dark blue".
 //
-// It applies to types of a bool, numeric or string underlying type. For a
-// string type each arg is the string itself, quoted or not, as in
-// const red "dark blue". For any other type each arg is a Go literal of
-// the type.
+// It applies to types of a bool, numeric or string underlying type. Each
+// arg is a Go literal of the type. A string type takes quoted strings
+// only, and any other type takes bare literals only, so that const "1"
+// and const 1 do not mean the same.
 type Const struct{}
 
 // Name returns "const".
@@ -187,15 +186,15 @@ func (Const) Name() string { return "const" }
 // Const lists.
 func (Const) Check(t types.Type, args []dircmnt.KeyValue) error {
 	if len(args) == 0 {
-		return errors.New("want one or more values")
+		return argsError(errors.New("want one or more values"))
 	}
 
 	for _, kv := range args {
 		if kv.HasValue {
-			return fmt.Errorf(
+			return argsError(fmt.Errorf(
 				"arg %q is a key=value pair; quote a value holding =",
 				spellArgs([]dircmnt.KeyValue{kv}),
-			)
+			))
 		}
 	}
 
@@ -204,12 +203,14 @@ func (Const) Check(t types.Type, args []dircmnt.KeyValue) error {
 		return fmt.Errorf("%s is not a bool, numeric or string type", t)
 	}
 
-	if info&types.IsString != 0 {
-		return nil
-	}
-
 	for _, kv := range args {
-		if _, err := literalValue(t, kv.Key); err != nil {
+		if info&types.IsString != 0 && !kv.KeyQuoted {
+			return fmt.Errorf(
+				"%s is no value of %s; want a quoted string, as in %q", kv.Key, t, kv.Key,
+			)
+		}
+
+		if _, err := literalValue(t, constLiteral(kv)); err != nil {
 			return err
 		}
 	}
@@ -217,18 +218,23 @@ func (Const) Check(t types.Type, args []dircmnt.KeyValue) error {
 	return nil
 }
 
+// constLiteral returns the Go literal kv spells: kv.Key quoted again when
+// it was written quoted.
+func constLiteral(kv dircmnt.KeyValue) string {
+	if kv.KeyQuoted {
+		return strconv.Quote(kv.Key)
+	}
+
+	return kv.Key
+}
+
 // Emit calls kamaValidateConst with the values.
-func (Const) Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue) (string, error) {
+func (Const) Emit(e Emitter, _ types.Type, v string, args []dircmnt.KeyValue) (string, error) {
 	e.Declare(constName, constDecl)
 	e.Declare(spellName, spellDecl)
 
-	spell := func(kv dircmnt.KeyValue) string { return kv.Key }
-	if isStringType(t) {
-		spell = func(kv dircmnt.KeyValue) string { return strconv.Quote(kv.Key) }
-	}
-
 	values := opiter.WrapSeq(slices.Values(args)).
-		Map(spell).
+		Map(constLiteral).
 		CollectSlice()
 
 	return constName + "(" + v + ", " + strings.Join(values, ", ") + ")", nil
@@ -240,6 +246,7 @@ const (
 	cmpName     = "kamaValidateCmp"
 	equalName   = "kamaValidateEqual"
 	constName   = "kamaValidateConst"
+	allName     = "kamaValidateAll"
 	// spellName is the helper spelling a value in an error message: a
 	// string quoted, as %#v would, and a number in decimal, as %#v would
 	// not for an unsigned integer.
@@ -347,6 +354,25 @@ func constDecl(s Spelling) (string, error) {
 	}
 	return nil
 }`, v, sl, str), nil
+}
+
+func allDecl(s Spelling) (string, error) {
+	v, err := s.Import(validationPath)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(`func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
+	if !stopOnFirstError {
+		return %[1]s.Join(errs...)
+	}
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}`, v), nil
 }
 
 func spellDecl(s Spelling) (string, error) {

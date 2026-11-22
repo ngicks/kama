@@ -18,11 +18,17 @@ type Validator interface {
 	// Name is the directive name: //kama:validate:<Name>.
 	Name() string
 	// Check reports why the validator cannot apply to a value of type t with
-	// these args. It returns nil when it can.
+	// these args. It returns nil when it can. An error the args cause
+	// whatever t is should wrap ErrArgs.
 	Check(t types.Type, args []dircmnt.KeyValue) error
 	// Emit returns the expression of type error that validates the value
 	// expression v of type t. It may ask the Emitter for helpers and
 	// imports. Emit is called only after Check accepted t and args.
+	//
+	// The expression may refer to stopOnFirstError. It is the bool
+	// parameter of the Validate the expression lands in. An expression that
+	// can find several errors should return only the first one when
+	// stopOnFirstError is true.
 	Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue) (string, error)
 }
 
@@ -99,3 +105,13 @@ func (r *Registry) Names() []string { return slices.Sorted(maps.Keys(r.validator
 func (r *Registry) Clone() *Registry {
 	return &Registry{validators: maps.Clone(r.validators)}
 }
+
+// argsError marks err as an error of the args alone. It keeps the message
+// of err. The built-in validators word their messages on their own.
+func argsError(err error) error { return argsErr{err} }
+
+type argsErr struct{ error }
+
+func (e argsErr) Unwrap() error { return e.error }
+
+func (argsErr) Is(target error) bool { return target == ErrArgs }

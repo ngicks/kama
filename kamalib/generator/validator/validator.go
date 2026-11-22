@@ -62,6 +62,12 @@ var (
 	// ErrOptionFile reports an option file that cannot be loaded or does
 	// not decode. It wraps the error of genopt too.
 	ErrOptionFile = errors.New("validator: invalid option file")
+	// ErrArgs marks an error of Validator.Check that the args cause for
+	// any type. A validator wraps it as fmt.Errorf("%w: ...", ErrArgs) does.
+	// The generator reports such an error at once. It does not apply the
+	// validator again to the value a pointer or an option holds. That
+	// attempt would fail the same way.
+	ErrArgs = errors.New("validator: invalid args")
 	// ErrStale reports a file of a loaded package that carries the marker of
 	// the generator but that the run did not produce. It is a warning.
 	ErrStale = base.ErrStale

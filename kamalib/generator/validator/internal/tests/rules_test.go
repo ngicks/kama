@@ -26,6 +26,7 @@ func validRules() model.Rules {
 		Level:     99,
 		Name:      &name,
 		Ratio:     0.5,
+		Score:     11,
 		Agreed:    true,
 		Color:     "dark blue",
 		Pick:      3,
@@ -53,6 +54,7 @@ func invalidRules() model.Rules {
 		Level:     100,
 		Name:      &name,
 		Ratio:     0.25,
+		Score:     0,
 		Agreed:    false,
 		Color:     "green",
 		Pick:      4,
@@ -95,6 +97,7 @@ func TestRulesInvalid(t *testing.T) {
 		{"/level", validation.ErrCompare, "want < 100, got 100"},
 		{"/name", validation.ErrCompare, `want > "b", got "b"`},
 		{"/ratio", validation.ErrCompare, "want >= 0.5, got 0.25"},
+		{"/score", validation.ErrCompare, "want > 10, got 0"},
 		{"/agreed", validation.ErrCompare, "want == true, got false"},
 		{"/color", validation.ErrConst, `want one of "red", "dark blue", got "green"`},
 		{"/pick", validation.ErrConst, "want one of 1, 2, 3, got 4"},
@@ -131,6 +134,22 @@ func TestRulesLengthBounds(t *testing.T) {
 	at := validation.At(r.Validate(false), "/items")
 	assert.Equal(t, len(at), 1)
 	assert.ErrorContains(t, at[0], "want length >= 1, got 0")
+}
+
+// TestRulesStopWithinDirective fails both comparisons of one cmp
+// directive. stopOnFirstError stops at the first of them too.
+func TestRulesStopWithinDirective(t *testing.T) {
+	r := validRules()
+	r.Score = 5
+
+	all := validation.At(r.Validate(false), "/score")
+	assert.Equal(t, len(all), 2)
+	assert.ErrorContains(t, all[0], "want > 10, got 5")
+	assert.ErrorContains(t, all[1], "want != 5, got 5")
+
+	first := validation.At(r.Validate(true), "/score")
+	assert.Equal(t, len(first), 1)
+	assert.ErrorContains(t, first[0], "want > 10, got 5")
 }
 
 // TestMapOrder visits map keys in sorted order: numerically for an integer

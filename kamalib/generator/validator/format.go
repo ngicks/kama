@@ -57,7 +57,7 @@ func (Format) Name() string { return "format" }
 // Check accepts the name of one of f.Formats, on string types.
 func (f Format) Check(t types.Type, args []dircmnt.KeyValue) error {
 	if _, err := f.helper(args); err != nil {
-		return err
+		return argsError(err)
 	}
 
 	if !isStringType(t) {

@@ -179,7 +179,7 @@ func renderHelpersWith(
 // import of the same name would shadow.
 var helperLocals = []string{
 	"T", "t", "v", "zero", "ok", "got", "want", "op", "re", "s", "u", "err", "rv", "spelled",
-	"i", "w",
+	"i", "w", "stopOnFirstError", "errs",
 }
 
 // checkHelperNames reports a package-level declaration of pkg named like a

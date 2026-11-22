@@ -16,6 +16,7 @@ steps:
       patterns: &packages
         - ./generator/contextkey
         - ./generator/partial
+        - ./generator/validator
   generate:
     proc: partial.generate
     in: load

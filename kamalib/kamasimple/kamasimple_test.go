@@ -128,13 +128,14 @@ steps:
   root: {proc: overlayfs.open}
   load: {proc: packages.load, in: root}
   partial: {proc: partial.generate, in: load, out: root}
+  validate: {proc: validate.generate, in: load, out: root}
   template: {proc: file.load, in: root, param: {base: keys}}
   keys:
     proc: contextkey.generate
     in: template
     out: root
     param: {package: keys, key_type_func: keyTypeFunc}
-  final: {proc: overlayfs.copy_down, in: root, after: [partial, keys]}
+  final: {proc: overlayfs.copy_down, in: root, after: [partial, validate, keys]}
 `), 0o644))
 
 	spec, err := LoadSpec(path)

@@ -1,0 +1,25 @@
+# The options of Order, standing for its directives in
+# internal/fixture/parity. kama_validate.yaml of the package gives those
+# of Line.
+version: 1
+packages:
+  github.com/ngicks/kama/kamalib/generator/validator/internal/fixturefile/parity:
+    types:
+      Order:
+        hook: false
+        fields:
+          Id:
+            validators:
+              - name: required
+              - name: regexp
+                args: '"^[A-Z]{3}-[0-9]+$"'
+          Lines:
+            validators:
+              - name: length
+                args: ">=1 <=5"
+          Currency:
+            validators:
+              - name: const
+                args: '"eur" "usd"'
+          Note:
+            hook: true

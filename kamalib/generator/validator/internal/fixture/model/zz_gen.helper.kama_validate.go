@@ -2,14 +2,13 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T13:41:14Z
+// generated: 2026-11-22T14:07:18Z
 
 package model
 
 import (
 	"cmp"
 	"fmt"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
 	"net/url"
 	"reflect"
 	"regexp"
@@ -17,7 +16,24 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
+
+// kamaValidateAll is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
+	if !stopOnFirstError {
+		return validation.Join(errs...)
+	}
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // kamaValidateCmp is a helper of the generated Validate methods.
 //

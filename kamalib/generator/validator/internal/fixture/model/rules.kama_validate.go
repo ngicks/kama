@@ -2,14 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T13:39:53Z
+// generated: 2026-11-22T14:09:26Z
 
 package model
 
 import (
-	"github.com/ngicks/kama/kamalib/pkg/validation"
 	"maps"
 	"slices"
+
+	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -62,7 +63,7 @@ func (v Rules) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(validation.Join(kamaValidateLength(len(v.Items), ">=", 1), kamaValidateLength(len(v.Items), "<=", 3)), "items"); err != nil {
+	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateLength(len(v.Items), ">=", 1), kamaValidateLength(len(v.Items), "<=", 3)), "items"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -76,7 +77,7 @@ func (v Rules) Validate(stopOnFirstError bool) error {
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(validation.Join(kamaValidateCmp(v.Level, ">=", 0), kamaValidateCmp(v.Level, "<", 100)), "level"); err != nil {
+	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Level, ">=", 0), kamaValidateCmp(v.Level, "<", 100)), "level"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -91,6 +92,12 @@ func (v Rules) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if err := validation.Field(kamaValidateCmp(v.Ratio, ">=", 0.5), "ratio"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Score, ">", 10), kamaValidateCmp(v.Score, "!=", 5)), "score"); err != nil {
 		if stopOnFirstError {
 			return err
 		}

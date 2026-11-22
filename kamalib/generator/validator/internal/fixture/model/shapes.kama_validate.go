@@ -2,14 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T13:39:53Z
+// generated: 2026-11-22T14:10:04Z
 
 package model
 
 import (
-	"github.com/ngicks/kama/kamalib/pkg/validation"
 	"maps"
 	"slices"
+
+	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -54,16 +55,16 @@ func (v Shapes[T0]) Validate(stopOnFirstError bool, validateT0 func(v T0, stopOn
 		}
 	}
 	if err := validation.Field(v.BP.Validate(stopOnFirstError, func(v *Tag, stopOnFirstError bool) error {
-		var errs2 []error
+		var errs []error
 		if v != nil {
-			if err2 := (*v).Validate(stopOnFirstError); err2 != nil {
+			if err := (*v).Validate(stopOnFirstError); err != nil {
 				if stopOnFirstError {
-					return err2
+					return err
 				}
-				errs2 = append(errs2, err2)
+				errs = append(errs, err)
 			}
 		}
-		return validation.Join(errs2...)
+		return validation.Join(errs...)
 	}), "bp"); err != nil {
 		if stopOnFirstError {
 			return err

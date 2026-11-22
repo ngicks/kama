@@ -19,7 +19,7 @@ func (Nil) Name() string { return "nil" }
 // Check accepts nillable types, without args.
 func (Nil) Check(t types.Type, args []dircmnt.KeyValue) error {
 	if len(args) > 0 {
-		return fmt.Errorf("unknown args %q; want none", spellArgs(args))
+		return argsError(fmt.Errorf("unknown args %q; want none", spellArgs(args)))
 	}
 
 	if !nillable(t) {
@@ -50,7 +50,7 @@ func (Null) Name() string { return "null" }
 // without args.
 func (Null) Check(t types.Type, args []dircmnt.KeyValue) error {
 	if len(args) > 0 {
-		return fmt.Errorf("unknown args %q; want none", spellArgs(args))
+		return argsError(fmt.Errorf("unknown args %q; want none", spellArgs(args)))
 	}
 
 	_, isParam := types.Unalias(t).(*types.TypeParam)

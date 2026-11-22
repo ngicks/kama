@@ -15,6 +15,7 @@ import (
 	// The procs a spec may name.
 	_ "github.com/ngicks/kama/kamalib/generator/contextkey"
 	_ "github.com/ngicks/kama/kamalib/generator/partial"
+	_ "github.com/ngicks/kama/kamalib/generator/validator"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	_ "github.com/ngicks/kama/kamalib/proc/fileloader"
 	_ "github.com/ngicks/kama/kamalib/proc/gopackages"

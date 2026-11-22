@@ -28,11 +28,11 @@ func (Regexp) Name() string { return "regexp" }
 func (Regexp) Check(t types.Type, args []dircmnt.KeyValue) error {
 	pattern, err := regexpPattern(args)
 	if err != nil {
-		return err
+		return argsError(err)
 	}
 
 	if _, err := regexp.Compile(pattern); err != nil {
-		return fmt.Errorf("pattern %q does not compile: %w", pattern, err)
+		return argsError(fmt.Errorf("pattern %q does not compile: %w", pattern, err))
 	}
 
 	if !isStringType(t) && !isBytesType(t) {

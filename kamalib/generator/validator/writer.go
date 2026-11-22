@@ -122,7 +122,9 @@ func (w *writer) collect(steps []genStep) []genStep {
 		return []genStep{lang.Stmt("return nil")}
 	}
 
-	out := []genStep{lang.Stmt("var %s []error", decl("errs"))}
+	// A function literal for a type argument collects into its own errs.
+	// Its errs may shadow the errs of the method.
+	out := []genStep{lang.Stmt("var %s []error", genhelper.Shadow("errs"))}
 	out = append(out, steps...)
 
 	return append(out, lang.Stmt(
@@ -278,17 +280,13 @@ func (w *writer) apply(
 	}
 
 	held, guard, value, ok := heldValue(t, x)
-	if !ok {
+	// An error of the args alone would repeat for the held value.
+	if !ok || errors.Is(checkErr, ErrArgs) {
 		return nil, checkErr
 	}
 
 	s, err := w.apply(val, held, value, vo, wrap)
 	if err != nil {
-		// An error of the args alone repeats for the held value.
-		if err.Error() == checkErr.Error() {
-			return nil, checkErr
-		}
-
 		return nil, fmt.Errorf("%w; for the value it holds: %w", checkErr, err)
 	}
 
@@ -327,7 +325,9 @@ func (w *writer) check(err genExpr) genStep {
 		// it is declared in a scope of its own.
 		c = genhelper.Push(c)
 
-		cond, e := lang.Expr("%s := %s; %s != nil", decl("err"), err, lang.Name("err"))(c)
+		cond, e := lang.Expr(
+			"%s := %s; %s != nil", genhelper.Shadow("err"), err, lang.Name("err"),
+		)(c)
 		if e != nil {
 			return c, nil, e
 		}

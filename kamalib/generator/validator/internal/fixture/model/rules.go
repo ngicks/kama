@@ -42,9 +42,11 @@ type Rules struct {
 	Name *string `json:"name"`
 	//kama:validate:cmp >=0.5
 	Ratio float64 `json:"ratio"`
+	//kama:validate:cmp >10 !=5
+	Score int `json:"score"`
 	//kama:validate:cmp ==true
 	Agreed bool `json:"agreed"`
-	//kama:validate:const red "dark blue"
+	//kama:validate:const "red" "dark blue"
 	Color Color `json:"color"`
 	//kama:validate:const 1 2 3
 	Pick uint8 `json:"pick"`

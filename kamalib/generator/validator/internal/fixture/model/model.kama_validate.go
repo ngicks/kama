@@ -2,14 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T13:39:53Z
+// generated: 2026-11-22T14:03:36Z
 
 package model
 
 import (
-	"github.com/ngicks/kama/kamalib/pkg/validation"
 	"maps"
 	"slices"
+
+	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
