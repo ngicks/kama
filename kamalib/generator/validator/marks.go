@@ -159,7 +159,7 @@ func (s *selection) checkFieldOptions() error {
 	var errs []error
 
 	for id, to := range s.allTypeOptions() {
-		_, isTarget := s.targets[id]
+		isTarget := s.isTargetId(id)
 
 		for _, o := range []TypeOptions{to.Type, to.Group} {
 			if o.Hook != nil && !isTarget {

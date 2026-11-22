@@ -7,7 +7,6 @@ import (
 	"go/ast"
 	"go/types"
 	"iter"
-	"maps"
 	"slices"
 	"strings"
 
@@ -23,17 +22,12 @@ const (
 	directive = "validate"
 )
 
-// selection is the set of types to generate Validate for, with the options
-// of the run.
-//
-// targets is derived: it is the marked types and the types holding them,
-// trimmed from the type graph. It is kept as the one decision of the run
-// that everything else asks about. Every other fact is read again from the
-// types and from the options, which were decoded once from directive
-// comments and option files.
+// selection is the run: the loaded packages and the options, which were
+// decoded once from directive comments and option files. Every fact,
+// the set of targets included, is read again from the types and from the
+// options where it is needed.
 type selection struct {
-	opts    Options
-	targets map[typegraph.QualifiedType]*typegraph.Node
+	opts Options
 	// pkgs are the loaded packages the run generates into.
 	pkgs []*packages.Package
 }
@@ -41,15 +35,42 @@ type selection struct {
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	sel := &selection{opts: opts, pkgs: pkgs}
 
-	g, err := typegraph.New(pkgs, nil, func(_ *ast.TypeSpec, obj types.Object) (bool, error) {
-		return !sel.generated(obj), nil
-	})
+	g, err := sel.graph()
 	if err != nil {
 		return nil, fmt.Errorf("validator: %w", err)
 	}
 
 	if err := sel.checkMarks(g); err != nil {
 		return nil, err
+	}
+
+	if err := sel.checkFieldOptions(); err != nil {
+		return nil, err
+	}
+
+	if err := sel.checkConflicts(); err != nil {
+		return nil, err
+	}
+
+	return sel, nil
+}
+
+// graph builds the type graph of the packages of the run, leaving out the
+// types of generated files.
+func (s *selection) graph() (*typegraph.Graph, error) {
+	return typegraph.New(s.pkgs, nil, func(_ *ast.TypeSpec, obj types.Object) (bool, error) {
+		return !s.generated(obj), nil
+	})
+}
+
+// trim returns the marked types and the types holding them, trimmed from a
+// type graph built again from the packages.
+func (s *selection) trim() *typegraph.MatchedGraph {
+	g, err := s.graph()
+	if err != nil {
+		// selectTargets built the same graph from the same packages and
+		// stopped the run on its error.
+		panic(fmt.Errorf("validator: %w", err))
 	}
 
 	// A parent that gets no Validate cannot pass validation on, so the trim
@@ -61,29 +82,26 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 			return typegraph.QualifiedTypeFromObject(named.Origin().Obj()) == e.Child.Id
 		}
 
-		return sel.generates(e.Parent) && reaches(e.Parent.Detail.Type.Underlying(), isChild)
+		return s.generates(e.Parent) && reaches(e.Parent.Detail.Type.Underlying(), isChild)
 	}
 
-	sel.targets = opiter.WrapSeq2(g.Trim(sel.matches, dependsThrough, nil).All()).
-		Filter(func(_ typegraph.QualifiedType, n *typegraph.MatchedNode) bool {
-			return sel.generates(n.Node)
-		}).
-		Map(func(id typegraph.QualifiedType, n *typegraph.MatchedNode) (
-			typegraph.QualifiedType, *typegraph.Node,
-		) {
-			return id, n.Node
-		}).
-		Collect(maps.Collect)
+	return g.Trim(s.matches, dependsThrough, nil)
+}
 
-	if err := sel.checkFieldOptions(); err != nil {
-		return nil, err
-	}
+// targets returns the types that get a Validate: the trimmed types the
+// generator can give one.
+func (s *selection) targets() iter.Seq[*typegraph.Node] {
+	return opiter.WrapSeq2(s.trim().All()).
+		OmitF().
+		Map(func(n *typegraph.MatchedNode) *typegraph.Node { return n.Node }).
+		Filter(s.generates).
+		Iter()
+}
 
-	if err := sel.checkConflicts(); err != nil {
-		return nil, err
-	}
-
-	return sel, nil
+// isTargetId reports whether the type id gets a Validate.
+func (s *selection) isTargetId(id typegraph.QualifiedType) bool {
+	n, ok := s.trim().Get(id)
+	return ok && s.generates(n.Node)
 }
 
 // matches reports whether n starts the trim: a marked type, a type holding
@@ -166,8 +184,7 @@ func (s *selection) loaded(pkg *types.Package) bool {
 // isTarget reports whether named refers to a target, through aliases and
 // instantiation.
 func (s *selection) isTarget(named *types.Named) bool {
-	_, ok := s.targets[typegraph.QualifiedTypeFromObject(named.Origin().Obj())]
-	return ok
+	return s.isTargetId(typegraph.QualifiedTypeFromObject(named.Origin().Obj()))
 }
 
 func (s *selection) filename(n *typegraph.Node) string {
@@ -183,14 +200,14 @@ func (s *selection) targetsIn(filename string) []*typegraph.Node {
 		})
 	}
 
-	return opiter.WrapSeq(maps.Values(s.targets)).
+	return opiter.WrapSeq(s.targets()).
 		Filter(func(n *typegraph.Node) bool { return s.filename(n) == filename }).
 		Collect(byPosition)
 }
 
 // sorted returns the targets ordered by package path and type name.
 func (s *selection) sorted() []*typegraph.Node {
-	return slices.SortedFunc(maps.Values(s.targets), func(a, b *typegraph.Node) int {
+	return slices.SortedFunc(s.targets(), func(a, b *typegraph.Node) int {
 		return a.Id.Compare(b.Id)
 	})
 }

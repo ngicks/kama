@@ -144,7 +144,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	byPkg := map[string][]string{}
 	pkgOf := map[string]*packages.Package{}
 
-	for _, n := range sel.targets {
+	for n := range sel.targets() {
 		name := sel.filename(n)
 		if !slices.Contains(byPkg[n.Id.PackagePath], name) {
 			byPkg[n.Id.PackagePath] = append(byPkg[n.Id.PackagePath], name)
