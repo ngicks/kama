@@ -6,7 +6,9 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -20,6 +22,7 @@ import (
 	"go.yaml.in/yaml/v4"
 	"gotest.tools/v3/assert"
 
+	pkgfileloader "github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/fileloader"
@@ -184,6 +187,61 @@ func TestProcRunNoEntries(t *testing.T) {
 	assert.ErrorIs(t, i.Run(context.Background(), gentest.NopReporter{}), ErrNoEntries)
 }
 
+// TestProcRunWarnsUnknownKeys checks that unknown keys of the template file
+// are warned about with their key paths and leave the output unchanged.
+func TestProcRunWarnsUnknownKeys(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC)
+
+	run := func(doc string) (*overlayfs.Fs, *gentest.RecordReporter) {
+		t.Helper()
+
+		f, err := overlayfs.New(t.TempDir())
+		assert.NilError(t, err)
+		t.Cleanup(func() { _ = f.Close() })
+
+		var data any
+		assert.NilError(t, yaml.Unmarshal([]byte(doc), &data))
+
+		i := &instance{}
+		assert.NilError(t, i.Param(param("gen", "p", "k")))
+		i.opts.Now = func() time.Time { return now }
+		i.In(&fileloader.Document{Path: "t.yaml", Data: data})
+		i.Out(f)
+
+		r := &gentest.RecordReporter{}
+		assert.NilError(t, i.Run(ctx, r))
+
+		return f, r
+	}
+
+	clean, r := run(`
+entries:
+  - {file_name: a, name: A, type: string, default_expr: '""'}
+`)
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+
+	dirty, r := run(`
+version: 1
+entries:
+  - {file_name: a, name: A, type: string, default_expr: '""', default: x}
+`)
+	assert.Equal(t, len(r.Warnings), 2, "%v", r.Warnings)
+
+	for _, w := range r.Warnings {
+		assert.ErrorIs(t, w, ErrUnknownKey)
+	}
+
+	assert.Error(t, r.Warnings[0], "contextkey: unknown key: t.yaml: version")
+	assert.Error(t, r.Warnings[1], "contextkey: unknown key: t.yaml: entries.0.default")
+
+	want, err := fs.ReadFile(clean.FS(), "gen/a.contextkey.go")
+	assert.NilError(t, err)
+	got, err := fs.ReadFile(dirty.FS(), "gen/a.contextkey.go")
+	assert.NilError(t, err)
+	assert.Equal(t, string(got), string(want))
+}
+
 func TestFixtureSpecsBuild(t *testing.T) {
 	gentest.BuildSpecs(t, "internal/fixture", "internal/fixture/inline")
 }
@@ -211,9 +269,35 @@ func TestDecodeTemplate(t *testing.T) {
 			Type:        "string",
 			DefaultExpr: `""`,
 			Imports:     []string{"time"},
+			Unknown:     map[string]any{"extra": true},
 		},
-		{},
+		{Unknown: map[string]any{"File_Name": "ignored", "Name": "Ignored"}},
 	}})
+	assert.DeepEqual(t, got.UnknownKeys(), [][]string{
+		{"entries", "0", "extra"},
+		{"entries", "1", "File_Name"},
+		{"entries", "1", "Name"},
+	})
+}
+
+// TestFixtureTemplatesHaveNoUnknownKeys keeps the fixture template files
+// free of the warnings Proc reports about unknown keys.
+func TestFixtureTemplatesHaveNoUnknownKeys(t *testing.T) {
+	fsys := os.DirFS("internal/fixture")
+	names, err := fs.Glob(fsys, "templates/*")
+	assert.NilError(t, err)
+
+	names = append(names, "inline/contextkey.yaml")
+
+	for _, name := range names {
+		var data any
+		assert.NilError(t, pkgfileloader.LoadFile(fsys, name, &data))
+
+		tmpl, err := decodeTemplate(data)
+		assert.NilError(t, err, name)
+		assert.Assert(t, len(tmpl.Entries) > 0, name)
+		assert.Equal(t, len(tmpl.UnknownKeys()), 0, "%s: %v", name, tmpl.UnknownKeys())
+	}
 }
 
 func TestDecodeTemplateRejectsInvalidUtf8(t *testing.T) {

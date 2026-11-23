@@ -143,6 +143,11 @@ func TestPathInputJson(t *testing.T) {
 	var in PathInput
 	assert.NilError(t, json.Unmarshal([]byte(`{"base":"a/meta","formats":["yaml","json"]}`), &in))
 	assert.DeepEqual(t, in, PathInput{Base: "a/meta", Formats: []Format{FormatYaml, FormatJson}})
+	assert.Equal(t, len(in.UnknownKeys()), 0)
+
+	in = PathInput{}
+	assert.NilError(t, json.Unmarshal([]byte(`{"base":"a","path":"b","Base":"c"}`), &in))
+	assert.DeepEqual(t, in.UnknownKeys(), [][]string{{"Base"}, {"path"}})
 }
 
 func TestPathInputFind(t *testing.T) {

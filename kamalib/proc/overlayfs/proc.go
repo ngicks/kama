@@ -20,6 +20,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs/goformat"
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
@@ -43,7 +44,7 @@ type OpenParam struct {
 }
 
 // UnknownKeys implements workflow.UnknownKeyer.
-func (p *OpenParam) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
+func (p *OpenParam) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
 // OpenProc opens the project directory and offers it to other steps.
 //
@@ -212,7 +213,7 @@ type CopyDownParam struct {
 }
 
 // UnknownKeys implements workflow.UnknownKeyer.
-func (p *CopyDownParam) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
+func (p *CopyDownParam) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
 // CopyDownProc copies every staged file of its in into the project
 // directory.

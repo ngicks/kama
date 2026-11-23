@@ -19,6 +19,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 )
 
 // testRoot is the root the packages of the tests lie under. No file is read
@@ -115,9 +116,9 @@ func (l *leaf) UnmarshalKeyValue(src Source, directive string, kv []dircmnt.KeyV
 func (l *leaf) SetSource(src Source) { l.from = relSource(src) }
 
 func (l *leaf) UnknownKeys() [][]string {
-	keys := UnknownKeys(l.Unknown)
+	keys := unknownkey.Paths(l.Unknown)
 	if l.Sub != nil {
-		keys = append(keys, UnknownKeys(l.Sub.Unknown, "sub")...)
+		keys = append(keys, unknownkey.Paths(l.Sub.Unknown, "sub")...)
 	}
 
 	return keys

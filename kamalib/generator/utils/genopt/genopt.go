@@ -301,15 +301,6 @@ type UnknownKeyer interface {
 	UnknownKeys() [][]string
 }
 
-// UnknownKeys returns the keys of unknown, the unknown members a decoded
-// table captures, as key paths below prefix in key order.
-func UnknownKeys(unknown map[string]any, prefix ...string) [][]string {
-	return opiter.WrapSeq2(opiter.MapsSorted(unknown)).
-		OmitL().
-		Map(func(k string) []string { return appendPath(prefix, k) }).
-		CollectSlice()
-}
-
 // SourceKind tells the kind of a Source.
 type SourceKind int
 

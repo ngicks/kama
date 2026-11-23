@@ -9,6 +9,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/opiter"
 	"go.yaml.in/yaml/v4"
 	"gotest.tools/v3/assert"
@@ -44,7 +45,7 @@ type captureSub struct {
 
 // UnknownKeys has a value receiver; Build asks the pointer to the param.
 func (p captureParam) UnknownKeys() [][]string {
-	return slices.Concat(UnknownKeys(p.Sub.Unknown, "sub"), UnknownKeys(p.Unknown))
+	return slices.Concat(unknownkey.Paths(p.Sub.Unknown, "sub"), unknownkey.Paths(p.Unknown))
 }
 
 type noop struct{}

@@ -11,6 +11,10 @@
 // It starts with the header base.Header prints: the generated-code line,
 // the params package and key_type_func, and the time of the run.
 //
+// A key of the template file that names no field of Template or Entry is
+// no error. Proc warns, wrapping ErrUnknownKey, about each of them with
+// the path of the file and the key path, as in entries.0.default.
+//
 // Proc keeps a file that would change in the generated: line only, and
 // warns, wrapping base.ErrStale, about each file of its
 // output directory that carries the marker of the generator and that the
@@ -37,6 +41,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 )
 
 // GeneratorName is the name the generator marks its declarations with.
@@ -44,7 +49,12 @@ const GeneratorName = "kama-contextkey"
 
 func init() { base.MustRegister(GeneratorName) }
 
-var ErrInvalidEntry = errors.New("contextkey: invalid entry")
+var (
+	ErrInvalidEntry = errors.New("contextkey: invalid entry")
+	// ErrUnknownKey is wrapped by the warnings of Proc about the keys of a
+	// template file that name no field of Template or Entry.
+	ErrUnknownKey = errors.New("contextkey: unknown key")
+)
 
 // generatorPath is the import path of the package, as the header of the
 // generated files spells it.
@@ -61,6 +71,19 @@ func FileName(name string) string { return naming.SourceFile(name + ".go") }
 // Entry give its keys. The keys are lowercase snake case.
 type Template struct {
 	Entries []Entry `json:"entries"`
+	// Unknown captures the keys of the file that name no field.
+	Unknown map[string]any `json:",embed"`
+}
+
+// UnknownKeys returns the key paths of the unknown keys of t: those of t
+// first, then those of each entry in order.
+func (t Template) UnknownKeys() [][]string {
+	keys := unknownkey.Paths(t.Unknown)
+	for i, e := range t.Entries {
+		keys = append(keys, unknownkey.Paths(e.Unknown, "entries", strconv.Itoa(i))...)
+	}
+
+	return keys
 }
 
 // Entry describes one context key.
@@ -76,6 +99,9 @@ type Entry struct {
 	DefaultExpr string `json:"default_expr"`
 	// Imports are package paths the generated file needs besides "context".
 	Imports []string `json:"imports"`
+	// Unknown captures the keys of the entry that name no field. Render
+	// ignores it.
+	Unknown map[string]any `json:",embed"`
 }
 
 func (e Entry) validate() error {

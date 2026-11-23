@@ -15,6 +15,7 @@ import (
 	"path"
 	"slices"
 
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/opiter"
 	"github.com/pelletier/go-toml/v2"
 	"go.yaml.in/yaml/v4"
@@ -108,6 +109,10 @@ type PathInput struct {
 	// Unknown captures the keys of its spec entry that name no field.
 	Unknown map[string]any `json:",embed"`
 }
+
+// UnknownKeys returns the key paths of the keys its spec entry holds that
+// name no field.
+func (p PathInput) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
 // Candidates lists every file name Load probes, in order.
 func (p PathInput) Candidates() ([]string, error) {

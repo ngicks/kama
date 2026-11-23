@@ -13,6 +13,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
@@ -22,7 +23,7 @@ type noteParam struct {
 	Unknown map[string]any `json:",embed"`
 }
 
-func (p *noteParam) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
+func (p *noteParam) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
 // noteProc records the text of each of its steps and warns with it.
 type noteProc struct {

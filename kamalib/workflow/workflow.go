@@ -101,15 +101,6 @@ type UnknownKeyer interface {
 	UnknownKeys() [][]string
 }
 
-// UnknownKeys returns the keys of unknown, the unknown members a decoded
-// table captures, as key paths below prefix in key order.
-func UnknownKeys(unknown map[string]any, prefix ...string) [][]string {
-	return opiter.WrapSeq2(opiter.MapsSorted(unknown)).
-		OmitL().
-		Map(func(k string) []string { return append(slices.Clip(prefix), k) }).
-		CollectSlice()
-}
-
 // Build forms the graph s describes from the procs in reg and dry-runs every
 // step.
 func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {

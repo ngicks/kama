@@ -13,6 +13,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
@@ -57,8 +58,8 @@ func DefaultProcParam() ProcParamPartial {
 // of option_file.
 func (p *ProcParamPartial) UnknownKeys() [][]string {
 	return slices.Concat(
-		workflow.UnknownKeys(p.Unknown),
-		workflow.UnknownKeys(p.OptionFile.Value().Unknown, "option_file"),
+		unknownkey.Paths(p.Unknown),
+		unknownkey.Under(p.OptionFile.Value().UnknownKeys(), "option_file"),
 	)
 }
 

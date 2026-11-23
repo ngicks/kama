@@ -5,6 +5,7 @@ import (
 	"encoding/json/v2"
 	"slices"
 
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/opiter"
 )
 
@@ -44,9 +45,9 @@ type Step struct {
 // unknownKeys returns the key paths of the unknown keys of s: those of s
 // first, then those of each step in name order.
 func (s Spec) unknownKeys() [][]string {
-	keys := UnknownKeys(s.Unknown)
+	keys := unknownkey.Paths(s.Unknown)
 	for name, st := range opiter.MapsSorted(s.Steps) {
-		keys = append(keys, UnknownKeys(st.Unknown, "steps", name)...)
+		keys = append(keys, unknownkey.Paths(st.Unknown, "steps", name)...)
 	}
 
 	return keys

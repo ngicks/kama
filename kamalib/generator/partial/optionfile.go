@@ -10,6 +10,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 )
 
 // OptionFileVersion is the only version of the option file format.
@@ -45,7 +46,7 @@ type PackageOptions struct {
 
 // UnknownKeys returns the keys of the option file entry that name no
 // option.
-func (o *PackageOptions) UnknownKeys() [][]string { return genopt.UnknownKeys(o.Unknown) }
+func (o *PackageOptions) UnknownKeys() [][]string { return unknownkey.Paths(o.Unknown) }
 
 // UnmarshalKeyValue decodes a directive in a free-floating comment.
 func (o *PackageOptions) UnmarshalKeyValue(
@@ -171,7 +172,7 @@ func (o *TypeOptions) SetSource(src genopt.Source) {
 
 // UnknownKeys returns the keys of the option file entry that name no
 // option.
-func (o *TypeOptions) UnknownKeys() [][]string { return genopt.UnknownKeys(o.Unknown) }
+func (o *TypeOptions) UnknownKeys() [][]string { return unknownkey.Paths(o.Unknown) }
 
 // FieldOptions are the options of a struct field.
 type FieldOptions struct {
@@ -304,13 +305,13 @@ func (o *FieldOptions) SetSource(src genopt.Source) {
 // UnknownKeys returns the keys of the option file entry that name no
 // option, those of flag and fieldmask included.
 func (o *FieldOptions) UnknownKeys() [][]string {
-	keys := genopt.UnknownKeys(o.Unknown)
+	keys := unknownkey.Paths(o.Unknown)
 	if o.Flag != nil {
-		keys = append(keys, genopt.UnknownKeys(o.Flag.Unknown, "flag")...)
+		keys = append(keys, unknownkey.Paths(o.Flag.Unknown, "flag")...)
 	}
 
 	if o.FieldMask != nil {
-		keys = append(keys, genopt.UnknownKeys(o.FieldMask.Unknown, "fieldmask")...)
+		keys = append(keys, unknownkey.Paths(o.FieldMask.Unknown, "fieldmask")...)
 	}
 
 	return keys

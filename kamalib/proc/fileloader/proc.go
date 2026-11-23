@@ -10,6 +10,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
@@ -35,7 +36,7 @@ type ProcParam struct {
 }
 
 // UnknownKeys implements workflow.UnknownKeyer.
-func (p *ProcParam) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
+func (p *ProcParam) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
 // Proc decodes the first file of a fileloader.PathInput found in the project.
 //

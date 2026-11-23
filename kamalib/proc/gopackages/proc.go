@@ -12,6 +12,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
@@ -35,7 +36,7 @@ type ProcParam struct {
 }
 
 // UnknownKeys implements workflow.UnknownKeyer.
-func (p *ProcParam) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
+func (p *ProcParam) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
 // Proc loads packages from the project as its in shows it, generated files
 // included.

@@ -8,12 +8,15 @@ import (
 	"io/fs"
 	"path"
 	"reflect"
+	"slices"
+	"strings"
 
 	"github.com/ngicks/opiter"
 	"github.com/ngicks/option/und"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/kama/kamalib/proc/fileloader"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
@@ -45,12 +48,13 @@ func DefaultProcParam() ProcParamPartial {
 }
 
 // UnknownKeys implements workflow.UnknownKeyer.
-func (p *ProcParamPartial) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
+func (p *ProcParamPartial) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
 // Proc renders the Template its in decodes to and stages the files in its
 // out. A file of its out that would change in the generated: line of its
-// header only is not staged. Proc reports a warning for each stale file of
-// its output directory, and the number of files written and unchanged.
+// header only is not staged. Proc reports a warning for each unknown key of
+// the template file and for each stale file of its output directory, and
+// the number of files written and unchanged.
 //
 //	Param(ProcParamPartial) error
 //	In(*fileloader.Document)
@@ -131,17 +135,30 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 	opts := i.opts.withDefaults()
 	stale := base.StaleCheck{Registry: opts.Registry, Generator: GeneratorName}
 
-	warnings, err := stale.Dir(i.fs.FS(), i.dir, produced)
+	staleWarnings, err := stale.Dir(i.fs.FS(), i.dir, produced)
 	if err != nil {
 		return fmt.Errorf("contextkey: %w", err)
 	}
 
-	return base.StageWithWarnings(ctx, i.fs, produced, warnings, r)
+	warnings := opiter.WrapSeq(slices.Values(tmpl.UnknownKeys())).
+		Map(func(k []string) error {
+			return fmt.Errorf("%w: %s: %s", ErrUnknownKey, i.doc.Path, strings.Join(k, "."))
+		}).
+		CollectSlice()
+
+	return base.StageWithWarnings(
+		ctx,
+		i.fs,
+		produced,
+		slices.Concat(warnings, staleWarnings),
+		r,
+	)
 }
 
 // decodeTemplate converts the format-neutral data fileloader decodes into
 // a Template with encoding/json/v2. Keys match the JSON names of the fields
-// of Template and Entry case-sensitively. Unknown keys are ignored.
+// of Template and Entry case-sensitively. Unknown keys are captured in the
+// Unknown fields of Template and Entry.
 func decodeTemplate(data any) (Template, error) {
 	b, err := json.Marshal(data)
 	if err != nil {
