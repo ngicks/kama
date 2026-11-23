@@ -81,25 +81,9 @@ func regexpVarName(pattern string) string {
 // bytesType is []byte.
 var bytesType = types.NewSlice(types.Typ[types.Byte])
 
-// isStringType reports whether the underlying type of t is a string type.
-func isStringType(t types.Type) bool {
-	b, ok := t.Underlying().(*types.Basic)
-	return ok && b.Info()&types.IsString != 0
-}
-
 // isBytesType reports whether the underlying type of t is []byte.
 func isBytesType(t types.Type) bool {
 	return types.Identical(t.Underlying(), bytesType)
-}
-
-// convert returns the conversion of the value v of t to the predeclared
-// type to, spelled spelled, or v when t is to already.
-func convert(t, to types.Type, spelled, v string) string {
-	if types.Identical(t, to) {
-		return v
-	}
-
-	return spelled + "(" + v + ")"
 }
 
 const (

@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ngicks/opiter"
+
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
 
@@ -119,12 +121,102 @@ func isLiteral(x ast.Expr) bool {
 	return false
 }
 
-// basicInfo returns the info of the underlying type of t when it is a
-// basic type, else 0. A type parameter has none.
-func basicInfo(t types.Type) types.BasicInfo {
-	if b, ok := t.Underlying().(*types.Basic); ok {
-		return b.Info()
+// joinCalls returns call of the comparison of each arg. It passes several
+// calls to kamaValidateAll with the stop flag of e. kamaValidateAll returns
+// the first error when the flag is true and all of them joined otherwise.
+func joinCalls(
+	e Emitter,
+	args []dircmnt.KeyValue,
+	call func(op, operand string) string,
+) (string, error) {
+	// Check accepted args, so every arg is a comparison.
+	toCall := func(kv dircmnt.KeyValue) string {
+		op, operand, _ := comparison(kv)
+		return call(op, operand)
 	}
 
-	return 0
+	calls := opiter.WrapSeq(slices.Values(args)).
+		Map(toCall).
+		CollectSlice()
+
+	if len(calls) == 1 {
+		return calls[0], nil
+	}
+
+	e.Declare(allName, allDecl)
+
+	return allName + "(" + e.StopOnFirstError() + ", " + strings.Join(calls, ", ") + ")", nil
+}
+
+const (
+	compareName = "kamaValidateCompare"
+	allName     = "kamaValidateAll"
+	// spellName is the helper spelling a value in an error message: a
+	// string quoted, as %#v would, and a number in decimal, as %#v would
+	// not for an unsigned integer.
+	spellName = "kamaValidateSpell"
+)
+
+func compareDecl(s Spelling) (string, error) {
+	c, err := s.Import("cmp")
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(`func kamaValidateCompare[T %s.Ordered](got T, op string, want T) bool {
+	switch op {
+	case ">":
+		return got > want
+	case ">=":
+		return got >= want
+	case "==":
+		return got == want
+	case "!=":
+		return got != want
+	case "<=":
+		return got <= want
+	case "<":
+		return got < want
+	}
+	return false
+}`, c), nil
+}
+
+func allDecl(s Spelling) (string, error) {
+	v, err := s.Import(validationPath)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(`func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
+	if !stopOnFirstError {
+		return %[1]s.Join(errs...)
+	}
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}`, v), nil
+}
+
+func spellDecl(s Spelling) (string, error) {
+	pkgs := map[string]string{}
+
+	for _, p := range []string{"fmt", "reflect", "strconv"} {
+		ident, err := s.Import(p)
+		if err != nil {
+			return "", err
+		}
+
+		pkgs[p] = ident
+	}
+
+	return fmt.Sprintf(`func kamaValidateSpell(v any) string {
+	if rv := %[2]s.ValueOf(v); rv.Kind() == %[2]s.String {
+		return %[3]s.Quote(rv.String())
+	}
+	return %[1]s.Sprint(v)
+}`, pkgs["fmt"], pkgs["reflect"], pkgs["strconv"]), nil
 }
