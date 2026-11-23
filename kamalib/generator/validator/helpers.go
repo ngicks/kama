@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -14,13 +13,12 @@ import (
 	"strings"
 
 	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
-	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 )
 
 // helperSet holds the declarations validators declared for the files of a
@@ -151,7 +149,7 @@ func renderHelpersWith(
 		src.WriteString("\n\n")
 	}
 
-	decls, err := gofragment.ParseDstDecls([]byte(src.String()))
+	decls, err := genhelper.ParseDecls([]byte(src.String()))
 	if err != nil {
 		return nil, nil, fmt.Errorf("validator: parse helpers of %s: %w", hf.Path, err)
 	}
@@ -165,7 +163,6 @@ func renderHelpersWith(
 	}
 
 	for i, d := range decls {
-		d.Decorations().Before = dst.EmptyLine
 		d.Decorations().Start = dst.Decorations{
 			"// " + hf.Names[i] + " is a helper of the generated Validate methods.",
 			"//",
@@ -173,21 +170,12 @@ func renderHelpersWith(
 		}
 	}
 
-	file := &dst.File{Name: dst.NewIdent(pkg.Name), Decls: decls}
-
-	file.Decs.Start = append(slices.Clone(hdr), "\n")
-	if hf.BuildLine != "" {
-		file.Decs.Start = append(file.Decs.Start, hf.BuildLine, "\n")
-	}
-
-	scope.AddImports(file)
-
-	var buf bytes.Buffer
-	if err := decorator.Fprint(&buf, file); err != nil {
+	content, err := genhelper.PrintDstFile(pkg.Name, hdr, hf.BuildLine, decls, scope.Imports)
+	if err != nil {
 		return nil, nil, fmt.Errorf("validator: print %s: %w", hf.Path, err)
 	}
 
-	return buf.Bytes(), e, nil
+	return content, e, nil
 }
 
 // helperLocals are the identifiers the built-in helpers declare, which an

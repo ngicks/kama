@@ -53,7 +53,7 @@ func TestFileScope(t *testing.T) {
 		t.Helper()
 
 		f := &dst.File{Name: dst.NewIdent("x")}
-		s.AddImports(f)
+		s.Imports.AddMissingDst(f)
 
 		var buf bytes.Buffer
 		assert.NilError(t, decorator.Fprint(&buf, f))

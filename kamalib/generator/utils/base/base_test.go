@@ -309,6 +309,40 @@ func TestShadowedPredeclared(t *testing.T) {
 	assert.ErrorContains(t, err, "parse generated file")
 }
 
+func TestCheckPredeclared(t *testing.T) {
+	pkgs := SourcePackages(load(t, map[string]string{
+		"a.go": "package x\n\ntype string int\n\ntype error int\n",
+	}))
+	errConflict := errors.New("conflict")
+
+	err := CheckPredeclared(pkgs[0], []File{
+		{Path: "a.gen.go", Content: []byte("package x\n\nvar V string\n")},
+		{Path: "b.gen.go", Content: []byte("package x\n\nfunc f() error { return nil }\n")},
+	}, errConflict)
+	assert.ErrorIs(t, err, errConflict)
+	assert.ErrorContains(t, err, pkgs[0].PkgPath+".error shadows the predeclared error")
+	assert.ErrorContains(t, err, pkgs[0].PkgPath+".string shadows the predeclared string")
+
+	assert.NilError(t, CheckPredeclared(pkgs[0], []File{
+		{Path: "a.gen.go", Content: []byte("package x\n\nvar V int\n")},
+	}, errConflict))
+}
+
+func TestMethodTypeParams(t *testing.T) {
+	pkgs := SourcePackages(load(t, map[string]string{
+		"a.go": "package x\n\ntype T0 int\n\ntype G[_ any, _ any, K comparable] int\n",
+	}))
+	scope := pkgs[0].Types.Scope()
+	tparams := scope.Lookup("G").Type().(*types.Named).TypeParams()
+
+	assert.DeepEqual(t, MethodTypeParams(scope, tparams, nil), []string{"T0_", "T1", "K"})
+	assert.DeepEqual(
+		t,
+		MethodTypeParams(scope, tparams, []string{"T1", "T1_"}),
+		[]string{"T0_", "T1__", "K"},
+	)
+}
+
 func TestStaleCheck(t *testing.T) {
 	const gen = "base-test-gen"
 

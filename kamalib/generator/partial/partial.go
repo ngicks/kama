@@ -1,7 +1,6 @@
 package partial
 
 import (
-	"bytes"
 	"cmp"
 	"errors"
 	"fmt"
@@ -18,11 +17,10 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
-	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -274,11 +272,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 			out = append(out, File{Path: filepath.Join(pf.dir, FlagSetFile), Content: content})
 		}
 
-		contents := opiter.WrapSeq(slices.Values(out)).
-			Map(func(f File) []byte { return f.Content }).
-			CollectSlice()
-
-		if err := checkPredeclared(pf.pkg, contents); err != nil {
+		if err := base.CheckPredeclared(pf.pkg, out, ErrConflict); err != nil {
 			return nil, nil, err
 		}
 
@@ -414,12 +408,6 @@ func renderHelpers(
 		helpers: helpers, calls: map[*helper]bool{}, support: map[string]bool{},
 		refs: map[string]bool{},
 	}
-	file := &dst.File{Name: dst.NewIdent(pkg.Name)}
-
-	file.Decs.Start = append(slices.Clone(hdr), "\n")
-	if hf.BuildLine != "" {
-		file.Decs.Start = append(file.Decs.Start, hf.BuildLine, "\n")
-	}
 
 	var src strings.Builder
 
@@ -432,24 +420,17 @@ func renderHelpers(
 		src.WriteString(text)
 	}
 
-	decls, err := gofragment.ParseDstDecls([]byte(src.String()))
+	decls, err := genhelper.ParseDecls([]byte(src.String()))
 	if err != nil {
 		return nil, fmt.Errorf("partial: parse helpers of %s: %w", hf.Path, err)
 	}
 
-	for _, d := range decls {
-		d.Decorations().Before = dst.EmptyLine
-	}
-
-	file.Decls = decls
-	scope.AddImports(file)
-
-	var buf bytes.Buffer
-	if err := decorator.Fprint(&buf, file); err != nil {
+	content, err := genhelper.PrintDstFile(pkg.Name, hdr, hf.BuildLine, decls, scope.Imports)
+	if err != nil {
 		return nil, fmt.Errorf("partial: print %s: %w", hf.Path, err)
 	}
 
-	return buf.Bytes(), nil
+	return content, nil
 }
 
 // checkHelperNames reports a package-level declaration of pkg named like a
@@ -527,7 +508,7 @@ func renderFileWith(
 
 		reserve = append(
 			reserve,
-			methodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams())...)
+			base.MethodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams(), localNames)...)
 	}
 
 	scope, err := base.NewFileScope(pkg, reserve, require)
@@ -539,33 +520,29 @@ func renderFileWith(
 		sel: sel, FileScope: scope,
 		helpers: helpers, calls: map[*helper]bool{}, support: map[string]bool{},
 	}
-	file := &dst.File{Name: dst.NewIdent(pkg.Name)}
 
-	file.Decs.Start = append(slices.Clone(hdr), "\n")
-	// The partial types refer to the source types, so they must build under
-	// the same constraint. A constraint in the file name is kept by the
-	// output name.
-	if line, ok := base.BuildConstraint(nodes[0].Detail.File); ok {
-		file.Decs.Start = append(file.Decs.Start, line, "\n")
-	}
+	var decls []dst.Decl
 
 	for _, n := range nodes {
-		decls, err := p.decl(n)
+		d, err := p.decl(n)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		file.Decls = append(file.Decls, decls...)
+		decls = append(decls, d...)
 	}
 
-	scope.AddImports(file)
+	// The partial types refer to the source types, so they must build under
+	// the same constraint. A constraint in the file name is kept by the
+	// output name.
+	line, _ := base.BuildConstraint(nodes[0].Detail.File)
 
-	var buf bytes.Buffer
-	if err := decorator.Fprint(&buf, file); err != nil {
+	content, err := genhelper.PrintDstFile(pkg.Name, hdr, line, decls, scope.Imports)
+	if err != nil {
 		return nil, nil, fmt.Errorf("partial: print %s: %w", nodes[0].Id.String(), err)
 	}
 
-	return buf.Bytes(), p, nil
+	return content, p, nil
 }
 
 // decl returns the partial declaration of n and its methods.
@@ -682,30 +659,6 @@ func (p *mapper) checkTypeParams(named *types.Named) error {
 	// errors.Join drops the nil errors of type parameters shadowing nothing.
 	return errors.Join(
 		opiter.WrapSeq(named.TypeParams().TypeParams()).
-			Map(shadowErr).
-			CollectSlice()...,
-	)
-}
-
-// checkPredeclared reports package-level declarations of pkg named like a
-// predeclared identifier the generated files contents spell, which the
-// declaration would shadow there. See base.ShadowedPredeclared for what
-// counts as spelled.
-func checkPredeclared(pkg *packages.Package, contents [][]byte) error {
-	objs, err := base.ShadowedPredeclared(pkg, contents)
-	if err != nil {
-		return err
-	}
-
-	shadowErr := func(obj types.Object) error {
-		return fmt.Errorf(
-			"%w: %s: %s.%s shadows the predeclared %s the generated code spells",
-			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(), obj.Name(),
-		)
-	}
-
-	return errors.Join(
-		opiter.WrapSeq(slices.Values(objs)).
 			Map(shadowErr).
 			CollectSlice()...,
 	)

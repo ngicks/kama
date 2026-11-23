@@ -1,10 +1,8 @@
 package validator
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"go/types"
 	"iter"
 	"maps"
 	"path/filepath"
@@ -13,12 +11,11 @@ import (
 	"time"
 
 	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
-	"github.com/ngicks/kama/kamalib/pkg/gofragment"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
 // renderPackage prints the files of pkg generated from the source files
@@ -76,11 +73,7 @@ func renderPackage(
 		out = append(out, File{Path: hf.Path, Content: content})
 	}
 
-	contents := opiter.WrapSeq(slices.Values(out)).
-		Map(func(f File) []byte { return f.Content }).
-		CollectSlice()
-
-	if err := checkPredeclared(pkg, contents); err != nil {
+	if err := base.CheckPredeclared(pkg, out, ErrConflict); err != nil {
 		return nil, err
 	}
 
@@ -126,7 +119,8 @@ func renderFileWith(
 	reserve := slices.Clone(fixedNames)
 
 	for _, n := range nodes {
-		for _, tp := range methodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams()) {
+		tparams := base.MethodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams(), fixedNames)
+		for _, tp := range tparams {
 			reserve = append(reserve, tp, validateRole(tp))
 		}
 	}
@@ -160,96 +154,26 @@ func renderFileWith(
 		return nil, nil, err
 	}
 
-	decls, err := gofragment.ParseDstDecls([]byte(text.String()))
+	decls, err := genhelper.ParseDecls([]byte(text.String()))
 	if err != nil {
 		return nil, nil, fmt.Errorf("validator: parse methods of %s: %w", src, err)
 	}
 
-	for _, d := range decls {
-		d.Decorations().Before = dst.EmptyLine
-	}
-
-	file := &dst.File{Name: dst.NewIdent(pkg.Name), Decls: decls}
-
-	file.Decs.Start = append(slices.Clone(hdr), "\n")
 	// The methods are declared on the source types, so they must build under
 	// the same constraint. A constraint in the file name is kept by the
 	// output name.
-	if line, ok := base.BuildConstraint(nodes[0].Detail.File); ok {
-		file.Decs.Start = append(file.Decs.Start, line, "\n")
-	}
+	line, _ := base.BuildConstraint(nodes[0].Detail.File)
 
-	scope.AddImports(file)
-
-	var buf bytes.Buffer
-	if err := decorator.Fprint(&buf, file); err != nil {
+	content, err := genhelper.PrintDstFile(pkg.Name, hdr, line, decls, scope.Imports)
+	if err != nil {
 		return nil, nil, fmt.Errorf("validator: print %s: %w", src, err)
 	}
 
-	return buf.Bytes(), e, nil
+	return content, e, nil
 }
 
 // fileHeader returns the comment lines every generated file of the package
 // at pkgPath starts with.
 func fileHeader(opts Options, pkgPath string, now time.Time) (dst.Decorations, error) {
 	return base.Header(generatorPath, opts.Loaded.HeaderParams(pkgPath), now)
-}
-
-// methodTypeParams returns the names the method spells the type parameters
-// of tparams by. A named parameter keeps its name. A blank one gets a name
-// taken by no package-level identifier of scope, no other type parameter,
-// no fixed name and no predeclared identifier.
-func methodTypeParams(scope *types.Scope, tparams *types.TypeParamList) []string {
-	taken := map[string]bool{}
-
-	for _, names := range [][]string{scope.Names(), types.Universe.Names(), fixedNames} {
-		for _, name := range names {
-			taken[name] = true
-		}
-	}
-
-	for tp := range tparams.TypeParams() {
-		taken[tp.Obj().Name()] = true
-	}
-
-	var out []string
-
-	for i := range tparams.Len() {
-		name := tparams.At(i).Obj().Name()
-		if name == "_" {
-			name = fmt.Sprintf("T%d", i)
-			for taken[name] {
-				name += "_"
-			}
-
-			taken[name] = true
-		}
-
-		out = append(out, name)
-	}
-
-	return out
-}
-
-// checkPredeclared reports package-level declarations of pkg named like a
-// predeclared identifier the generated files contents spell, which the
-// declaration would shadow there.
-func checkPredeclared(pkg *packages.Package, contents [][]byte) error {
-	objs, err := base.ShadowedPredeclared(pkg, contents)
-	if err != nil {
-		return err
-	}
-
-	shadowErr := func(obj types.Object) error {
-		return fmt.Errorf(
-			"%w: %s: %s.%s shadows the predeclared %s the generated code spells",
-			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(), obj.Name(),
-		)
-	}
-
-	return errors.Join(
-		opiter.WrapSeq(slices.Values(objs)).
-			Map(shadowErr).
-			CollectSlice()...,
-	)
 }

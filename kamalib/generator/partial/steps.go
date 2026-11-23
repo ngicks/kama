@@ -2,7 +2,6 @@ package partial
 
 import (
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
-	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -25,11 +24,7 @@ var lang genhelper.Lang[genCtx]
 // comment group: the text of format and args, an empty comment line and the
 // marker of the generator.
 func docComment(format string, args ...any) genExpr {
-	return lang.Comment(
-		lang.Expr(format, args...),
-		lang.Expr(""),
-		lang.Expr("%s", genmark.Marker(GeneratorName)),
-	)
+	return lang.DocComment(GeneratorName, format, args...)
 }
 
 // commentWidth is the width doc comments of helpers are wrapped at.

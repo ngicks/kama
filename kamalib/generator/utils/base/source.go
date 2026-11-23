@@ -1,6 +1,7 @@
 package base
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/build/constraint"
@@ -36,6 +37,76 @@ func BuildConstraint(f *ast.File) (string, bool) {
 		First().
 		Map(func(c *ast.Comment) string { return c.Text }).
 		Unpack()
+}
+
+// CheckPredeclared reports package-level declarations of pkg named like a
+// predeclared identifier the generated files spell, which the declaration
+// would shadow there. Each error wraps conflict. See [ShadowedPredeclared]
+// for what counts as spelled.
+func CheckPredeclared(pkg *packages.Package, files []File, conflict error) error {
+	objs, err := ShadowedPredeclared(
+		pkg,
+		opiter.WrapSeq(slices.Values(files)).
+			Map(func(f File) []byte { return f.Content }).
+			CollectSlice(),
+	)
+	if err != nil {
+		return err
+	}
+
+	shadowErr := func(obj types.Object) error {
+		return fmt.Errorf(
+			"%w: %s: %s.%s shadows the predeclared %s the generated code spells",
+			conflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(), obj.Name(),
+		)
+	}
+
+	return errors.Join(
+		opiter.WrapSeq(slices.Values(objs)).
+			Map(shadowErr).
+			CollectSlice()...,
+	)
+}
+
+// MethodTypeParams returns the names generated methods spell the type
+// parameters of tparams by. A named parameter keeps its name. A blank one,
+// which the methods cannot spell, gets a name taken by no package-level
+// identifier of scope, no other type parameter, none of reserved and no
+// predeclared identifier.
+func MethodTypeParams(
+	scope *types.Scope,
+	tparams *types.TypeParamList,
+	reserved []string,
+) []string {
+	taken := map[string]bool{}
+
+	for _, names := range [][]string{scope.Names(), types.Universe.Names(), reserved} {
+		for _, name := range names {
+			taken[name] = true
+		}
+	}
+
+	for tp := range tparams.TypeParams() {
+		taken[tp.Obj().Name()] = true
+	}
+
+	var out []string
+
+	for i := range tparams.Len() {
+		name := tparams.At(i).Obj().Name()
+		if name == "_" {
+			name = fmt.Sprintf("T%d", i)
+			for taken[name] {
+				name += "_"
+			}
+
+			taken[name] = true
+		}
+
+		out = append(out, name)
+	}
+
+	return out
 }
 
 // ShadowedPredeclared returns the package-level objects of pkg named like a

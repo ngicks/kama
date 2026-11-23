@@ -1,15 +1,71 @@
 package genhelper
 
 import (
+	"bytes"
 	"go/scanner"
 	"go/token"
+	"slices"
 	"strings"
 
 	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 )
+
+// PrintDstFile prints the file of the package pkgName holding decls. The
+// file starts with the comment lines of header, then buildLine unless it is
+// empty. imports adds its missing import declarations to the file. A nil
+// imports adds none.
+//
+// PrintDstFile returns the error of [decorator.Fprint] as it is.
+func PrintDstFile(
+	pkgName string,
+	header []string,
+	buildLine string,
+	decls []dst.Decl,
+	imports *importdecl.Map,
+) ([]byte, error) {
+	f := &dst.File{Name: dst.NewIdent(pkgName), Decls: decls}
+
+	// A lone "\n" decoration would make dst panic on restoring the file.
+	if len(header) > 0 {
+		f.Decs.Start = append(slices.Clone(header), "\n")
+	}
+
+	if buildLine != "" {
+		f.Decs.Start = append(f.Decs.Start, buildLine, "\n")
+	}
+
+	if imports != nil {
+		imports.AddMissingDst(f)
+	}
+
+	var buf bytes.Buffer
+	if err := decorator.Fprint(&buf, f); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+// ParseDecls parses src into declarations, each after an empty line.
+//
+// ParseDecls returns the errors [gofragment.ParseDstDecls] returns as they
+// are.
+func ParseDecls(src []byte) ([]dst.Decl, error) {
+	decls, err := gofragment.ParseDstDecls(src)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, d := range decls {
+		d.Decorations().Before = dst.EmptyLine
+	}
+
+	return decls, nil
+}
 
 // PrintFileHeader prints header with [PrintComment], then the package
 // clause of pkgName. header holds the comment sections before the package
@@ -187,13 +243,9 @@ func WrapFile[C Context[C]](header []string, pkgName string) Step[C] {
 // as one wrapping [gofragment.ErrNotPartial] for an import declaration, and
 // leaves f unchanged then.
 func AppendDecls(f *dst.File, pkg *Package, decls []byte) error {
-	parsed, err := gofragment.ParseDstDecls(decls)
+	parsed, err := ParseDecls(decls)
 	if err != nil {
 		return err
-	}
-
-	for _, d := range parsed {
-		d.Decorations().Before = dst.EmptyLine
 	}
 
 	f.Decls = append(f.Decls, parsed...)

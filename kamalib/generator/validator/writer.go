@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
@@ -30,7 +31,11 @@ type writer struct {
 // tparams returns the names the method spells the type parameters of w.n
 // by.
 func (w *writer) tparams() []string {
-	return methodTypeParams(w.scope.Pkg.Types.Scope(), w.n.Detail.Type.TypeParams())
+	return base.MethodTypeParams(
+		w.scope.Pkg.Types.Scope(),
+		w.n.Detail.Type.TypeParams(),
+		fixedNames,
+	)
 }
 
 // wrapFunc returns the expression wrapping the error err with path

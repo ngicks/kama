@@ -11,7 +11,8 @@ import (
 
 	"github.com/dave/dst"
 
-	"github.com/ngicks/kama/kamalib/pkg/gofragment"
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -49,49 +50,6 @@ func (s *selection) flagged(id typegraph.QualifiedType) bool {
 		ContainsFunc(ofTarget)
 }
 
-// methodTypeParams returns the names the methods spell the type parameters
-// of tparams by. A named parameter keeps its name. A blank one, which the
-// methods cannot spell, gets a name taken by no package-level identifier
-// of scope, no other type parameter, no local name and no predeclared
-// identifier. No field type refers to a blank parameter, so only the
-// receiver and the source type spell the new name.
-func methodTypeParams(scope *types.Scope, tparams *types.TypeParamList) []string {
-	taken := map[string]bool{}
-	for _, name := range scope.Names() {
-		taken[name] = true
-	}
-
-	for _, name := range types.Universe.Names() {
-		taken[name] = true
-	}
-
-	for tp := range tparams.TypeParams() {
-		taken[tp.Obj().Name()] = true
-	}
-
-	for _, name := range localNames {
-		taken[name] = true
-	}
-
-	var out []string
-
-	for i, tp := range slices.Collect(tparams.TypeParams()) {
-		name := tp.Obj().Name()
-		if name == "_" {
-			name = fmt.Sprintf("T%d", i)
-			for taken[name] {
-				name += "_"
-			}
-
-			taken[name] = true
-		}
-
-		out = append(out, name)
-	}
-
-	return out
-}
-
 // methodWriter writes the methods of one partial type as source text.
 type methodWriter struct {
 	p *mapper
@@ -113,7 +71,9 @@ func (p *mapper) newMethodWriter(n *typegraph.Node) *methodWriter {
 	)
 
 	if named.TypeParams().Len() > 0 {
-		tparams = methodTypeParams(p.Pkg.Types.Scope(), named.TypeParams())
+		// No field type refers to a blank parameter, so only the receiver and
+		// the source type spell the name it gets.
+		tparams = base.MethodTypeParams(p.Pkg.Types.Scope(), named.TypeParams(), localNames)
 		targs = "[" + strings.Join(tparams, ", ") + "]"
 	}
 
@@ -477,13 +437,9 @@ type convFunc func(m match, dst, src genExpr) genStep
 
 // decls parses the methods written.
 func (w *methodWriter) decls() ([]dst.Decl, error) {
-	decls, err := gofragment.ParseDstDecls([]byte(w.b.String()))
+	decls, err := genhelper.ParseDecls([]byte(w.b.String()))
 	if err != nil {
 		return nil, fmt.Errorf("partial: parse methods of %s: %w", w.recv, err)
-	}
-
-	for _, d := range decls {
-		d.Decorations().Before = dst.EmptyLine
 	}
 
 	return decls, nil

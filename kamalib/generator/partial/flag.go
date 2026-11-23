@@ -1,7 +1,6 @@
 package partial
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"go/types"
@@ -15,7 +14,6 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
@@ -533,19 +531,17 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 		return nil, fmt.Errorf("partial: flag set of %s: %w", pkg.PkgPath, err)
 	}
 
-	f := &dst.File{Name: dst.NewIdent(pkg.Name)}
-
-	f.Decs.Start = append(slices.Clone(hdr), "\n")
-	if err := genhelper.AppendDecls(f, gpkg, src); err != nil {
+	decls, err := genhelper.ParseDecls(src)
+	if err != nil {
 		return nil, fmt.Errorf("partial: parse flag set of %s: %w", pkg.PkgPath, err)
 	}
 
-	var buf bytes.Buffer
-	if err := decorator.Fprint(&buf, f); err != nil {
+	content, err := genhelper.PrintDstFile(pkg.Name, hdr, "", decls, m)
+	if err != nil {
 		return nil, fmt.Errorf("partial: print flag set of %s: %w", pkg.PkgPath, err)
 	}
 
-	return buf.Bytes(), nil
+	return content, nil
 }
 
 // checkNoFlags reports a flag option on a field of a target of the package

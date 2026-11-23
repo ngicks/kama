@@ -20,8 +20,8 @@ import (
 // file.
 //
 // The imports start empty. Spelling a package or a type records the
-// package as used, and AddImports writes the import declarations of the
-// packages used.
+// package as used. [importdecl.Map.AddMissingDst] of Imports writes the
+// import declarations of the packages used.
 type FileScope struct {
 	// Pkg is the package the file belongs to.
 	Pkg *packages.Package
@@ -113,6 +113,3 @@ func (s *FileScope) FuncContext(tparams []string) genhelper.BaseContext {
 
 	return genhelper.NewBaseContext(sc, &genhelper.Package{Imports: s.Imports, Path: s.Pkg.PkgPath})
 }
-
-// AddImports adds to f the import declarations of the packages used.
-func (s *FileScope) AddImports(f *dst.File) { s.Imports.AddMissingDst(f) }
