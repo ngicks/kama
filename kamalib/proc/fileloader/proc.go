@@ -30,7 +30,12 @@ type ProcParam struct {
 	// Formats are tried in order; earlier entries take priority. Empty means
 	// yaml, json, toml.
 	Formats []fileloader.Format `json:"formats"`
+	// Unknown captures the keys of a param that name no field.
+	Unknown map[string]any `json:",embed"`
 }
+
+// UnknownKeys implements workflow.UnknownKeyer.
+func (p *ProcParam) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
 
 // Proc decodes the first file of a fileloader.PathInput found in the project.
 //

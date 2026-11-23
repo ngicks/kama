@@ -30,7 +30,12 @@ type ProcParam struct {
 	BuildFlags []string `json:"build_flags"`
 	// Tests also loads test packages.
 	Tests bool `json:"tests"`
+	// Unknown captures the keys of a param that name no field.
+	Unknown map[string]any `json:",embed"`
 }
+
+// UnknownKeys implements workflow.UnknownKeyer.
+func (p *ProcParam) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
 
 // Proc loads packages from the project as its in shows it, generated files
 // included.

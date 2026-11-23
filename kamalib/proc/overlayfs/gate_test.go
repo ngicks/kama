@@ -60,6 +60,7 @@ func TestGateFixture(t *testing.T) {
 
 	g, err := spec.Build(ctx, reg)
 	assert.NilError(t, err)
+	assert.Assert(t, len(g.Warnings()) == 0, "%v", g.Warnings())
 
 	err = g.Run(ctx, workflow.ProgressControl{})
 	assert.ErrorIs(t, err, workflow.ErrRun)

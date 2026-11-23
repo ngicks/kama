@@ -3,6 +3,10 @@
 // It is the plain kama interface: a spec file names steps, and the steps
 // read and write the project in the working directory. Importing the
 // package registers the procs of kamalib in workflow.DefaultRegistry.
+//
+// An unknown key of the spec file, of one of its steps or of a param fails
+// nothing. Run reports each one as a warning wrapping
+// workflow.ErrUnknownKey before the first step runs.
 package kamasimple
 
 import (
@@ -31,7 +35,8 @@ type Options struct {
 	// Registry holds the procs the spec may name. It is
 	// workflow.DefaultRegistry when nil.
 	Registry *workflow.Registry
-	// Progress receives the warnings and the progress of the steps.
+	// Progress receives the warnings and the progress of the steps. A
+	// warning about the spec file itself comes with an empty step.
 	Progress workflow.ProgressControl
 }
 
@@ -54,6 +59,12 @@ func Run(ctx context.Context, opts Options) error {
 		return fmt.Errorf("kamasimple: %s: %w", opts.Spec, err)
 	}
 
+	if opts.Progress.OnWarning != nil {
+		for _, w := range g.Warnings() {
+			opts.Progress.OnWarning("", fmt.Errorf("kamasimple: %s: %w", opts.Spec, w))
+		}
+	}
+
 	return g.Run(ctx, opts.Progress)
 }
 
@@ -63,7 +74,7 @@ func Run(ctx context.Context, opts Options) error {
 // Every format is decoded into plain values first and then into the Spec
 // with encoding/json/v2, as a step param is. A spec therefore reads the
 // same in YAML, JSON and TOML: a list of one step name may be written as a
-// scalar in each of them.
+// scalar in each of them. The Spec captures the keys it does not know.
 func LoadSpec(name string) (workflow.Spec, error) {
 	dir, file := filepath.Split(name)
 	if dir == "" {

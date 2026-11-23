@@ -38,7 +38,12 @@ type OpenParam struct {
 	// It reads the source on stdin and writes the result to stdout, and it
 	// runs in Root. Empty means goformat.Imports, in process.
 	Formatter []string `json:"formatter"`
+	// Unknown captures the keys of a param that name no field.
+	Unknown map[string]any `json:",embed"`
 }
+
+// UnknownKeys implements workflow.UnknownKeyer.
+func (p *OpenParam) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
 
 // OpenProc opens the project directory and offers it to other steps.
 //
@@ -202,7 +207,12 @@ type CopyDownParam struct {
 	BuildFlags []string `json:"build_flags"`
 	// Tests makes the check load test packages too.
 	Tests bool `json:"tests"`
+	// Unknown captures the keys of a param that name no field.
+	Unknown map[string]any `json:",embed"`
 }
+
+// UnknownKeys implements workflow.UnknownKeyer.
+func (p *CopyDownParam) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
 
 // CopyDownProc copies every staged file of its in into the project
 // directory.

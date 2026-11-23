@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -38,6 +39,8 @@ type ProcParam struct {
 	// a flag option, in any build variant. Turning it off with such a target
 	// loaded is an error.
 	FlagSet bool `json:"flag_set"`
+	// Unknown captures the keys of a param that name no field.
+	Unknown map[string]any `json:",embed"`
 }
 
 // DefaultProcParam returns the values a ProcParam takes for the keys a spec
@@ -48,6 +51,15 @@ func DefaultProcParam() ProcParamPartial {
 		MergeNestedStrategy: und.Defined(string(MergeNestedRecursive)),
 		FlagSet:             und.Defined(true),
 	}
+}
+
+// UnknownKeys implements workflow.UnknownKeyer. It includes the unknown keys
+// of option_file.
+func (p *ProcParamPartial) UnknownKeys() [][]string {
+	return slices.Concat(
+		workflow.UnknownKeys(p.Unknown),
+		workflow.UnknownKeys(p.OptionFile.Value().Unknown, "option_file"),
+	)
 }
 
 // Proc generates the partial types of the packages its in loaded and

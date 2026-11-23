@@ -159,8 +159,9 @@ func FuncDecls(t *testing.T, src string) (*token.FileSet, map[string]*ast.FuncDe
 	return fset, out
 }
 
-// BuildSpecs decodes the spec.yaml of each of dirs and builds it against
-// workflow.DefaultRegistry. The test registers the procs the specs name.
+// BuildSpecs decodes the spec.yaml of each of dirs, builds it against
+// workflow.DefaultRegistry and checks that the build has no warnings. The
+// test registers the procs the specs name.
 func BuildSpecs(t *testing.T, dirs ...string) {
 	for _, dir := range dirs {
 		t.Run(dir, func(t *testing.T) {
@@ -171,8 +172,9 @@ func BuildSpecs(t *testing.T, dirs ...string) {
 			assert.NilError(t, yaml.Unmarshal(b, &spec))
 
 			// Build only dry-runs, so the fixture directory is not touched.
-			_, err = spec.Build(context.Background(), workflow.DefaultRegistry)
+			g, err := spec.Build(context.Background(), workflow.DefaultRegistry)
 			assert.NilError(t, err)
+			assert.Assert(t, len(g.Warnings()) == 0, "%v", g.Warnings())
 		})
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/ngicks/option/opt"
 
@@ -28,12 +29,23 @@ type ProcParam struct {
 	// formats. Empty formats mean yaml, json, toml. None means no option
 	// file. A named file that is not present is an error.
 	OptionFile opt.Option[fileloader.PathInput] `json:"option_file"`
+	// Unknown captures the keys of a param that name no field.
+	Unknown map[string]any `json:",embed"`
 }
 
 // DefaultProcParam returns the values a ProcParam takes for the keys a spec
 // leaves out.
 func DefaultProcParam() ProcParamPartial {
 	return ProcParamPartial{}
+}
+
+// UnknownKeys implements workflow.UnknownKeyer. It includes the unknown keys
+// of option_file.
+func (p *ProcParamPartial) UnknownKeys() [][]string {
+	return slices.Concat(
+		workflow.UnknownKeys(p.Unknown),
+		workflow.UnknownKeys(p.OptionFile.Value().Unknown, "option_file"),
+	)
 }
 
 // Proc generates the Validate methods of the packages its in loaded and

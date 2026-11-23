@@ -45,7 +45,9 @@ type Proc interface {
 	// ParamType returns the type a step's param is decoded into with
 	// encoding/json/v2. Param keys match the JSON names of its fields
 	// case-sensitively. Give every field meant to be set from a spec a json
-	// tag. Unknown fields are ignored. Nil means the proc takes no param.
+	// tag. An unknown key is no error. Capture it with a field
+	// Unknown map[string]any `json:",embed"` and implement UnknownKeyer, and
+	// Graph.Warnings reports it. Nil means the proc takes no param.
 	ParamType() reflect.Type
 	// InTypes returns the argument types of the instance's In method.
 	InTypes() []reflect.Type

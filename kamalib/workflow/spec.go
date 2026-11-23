@@ -4,6 +4,8 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"slices"
+
+	"github.com/ngicks/opiter"
 )
 
 // SpecVersion is the file format version this package reads.
@@ -13,6 +15,8 @@ const SpecVersion = 1
 type Spec struct {
 	Version int             `json:"version" yaml:"version" toml:"version"`
 	Steps   map[string]Step `json:"steps" yaml:"steps" toml:"steps"`
+	// Unknown captures the keys of the spec that name no field.
+	Unknown map[string]any `json:",embed" yaml:",inline" toml:"-"`
 }
 
 // Step is one named step in a Spec.
@@ -33,6 +37,19 @@ type Step struct {
 	After Names `json:"after,omitzero" yaml:"after,omitempty" toml:"after,omitempty"`
 	// Param is decoded into the proc's ParamType and passed to Param.
 	Param any `json:"param,omitzero" yaml:"param,omitempty" toml:"param,omitempty"`
+	// Unknown captures the keys of the step that name no field.
+	Unknown map[string]any `json:",embed" yaml:",inline" toml:"-"`
+}
+
+// unknownKeys returns the key paths of the unknown keys of s: those of s
+// first, then those of each step in name order.
+func (s Spec) unknownKeys() [][]string {
+	keys := UnknownKeys(s.Unknown)
+	for name, st := range opiter.MapsSorted(s.Steps) {
+		keys = append(keys, UnknownKeys(st.Unknown, "steps", name)...)
+	}
+
+	return keys
 }
 
 // deps returns every step s must run after, without duplicates.

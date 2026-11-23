@@ -4,7 +4,7 @@
 //	merge_nested: "recursive"
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T14:00:28Z
+// generated: 2026-11-23T17:44:03Z
 
 package validator
 
@@ -18,6 +18,7 @@ import (
 //kama:generated kama-partial
 type ProcParamPartial struct {
 	OptionFile und.Und[fileloader.PathInput] `json:"option_file,omitzero"`
+	Unknown    map[string]any                `json:",embed"`
 }
 
 // FromValue sets every field of p to the partial form of the field of v.
@@ -26,6 +27,7 @@ type ProcParamPartial struct {
 //kama:generated kama-partial
 func (p *ProcParamPartial) FromValue(v ProcParam) {
 	p.OptionFile = und.FromOption(v.OptionFile, true)
+	p.Unknown = v.Unknown
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -35,6 +37,7 @@ func (p *ProcParamPartial) FromValue(v ProcParam) {
 func (p ProcParamPartial) ToValue() ProcParam {
 	var v ProcParam
 	v.OptionFile = p.OptionFile.Flatten()
+	v.Unknown = p.Unknown
 	return v
 }
 
@@ -45,6 +48,9 @@ func (p ProcParamPartial) ToValue() ProcParam {
 func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
 	if !r.OptionFile.IsUndefined() {
 		p.OptionFile = r.OptionFile
+	}
+	if r.Unknown != nil {
+		p.Unknown = r.Unknown
 	}
 	return p
 }

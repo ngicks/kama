@@ -4,7 +4,7 @@
 //	merge_nested: "recursive"
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T11:50:55Z
+// generated: 2026-11-23T17:44:03Z
 
 package partial
 
@@ -21,6 +21,7 @@ type ProcParamPartial struct {
 	MergeNestedStrategy und.Und[string]               `json:"merge_nested,omitzero"`
 	OptionFile          und.Und[fileloader.PathInput] `json:"option_file,omitzero"`
 	FlagSet             und.Und[bool]                 `json:"flag_set,omitzero"`
+	Unknown             map[string]any                `json:",embed"`
 }
 
 // FromValue sets every field of p to the partial form of the field of v.
@@ -32,6 +33,7 @@ func (p *ProcParamPartial) FromValue(v ProcParam) {
 	p.MergeNestedStrategy = und.Defined(v.MergeNestedStrategy)
 	p.OptionFile = und.FromOption(v.OptionFile, true)
 	p.FlagSet = und.Defined(v.FlagSet)
+	p.Unknown = v.Unknown
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -44,6 +46,7 @@ func (p ProcParamPartial) ToValue() ProcParam {
 	v.MergeNestedStrategy = p.MergeNestedStrategy.Value()
 	v.OptionFile = p.OptionFile.Flatten()
 	v.FlagSet = p.FlagSet.Value()
+	v.Unknown = p.Unknown
 	return v
 }
 
@@ -63,6 +66,9 @@ func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
 	}
 	if !r.FlagSet.IsUndefined() {
 		p.FlagSet = r.FlagSet
+	}
+	if r.Unknown != nil {
+		p.Unknown = r.Unknown
 	}
 	return p
 }

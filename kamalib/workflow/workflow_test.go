@@ -32,6 +32,21 @@ type seedParam struct {
 
 var seedParamType = reflect.TypeFor[seedParam]()
 
+// captureParam captures its unknown keys and those of Sub.
+type captureParam struct {
+	Sub     captureSub     `json:"sub"`
+	Unknown map[string]any `json:",embed"`
+}
+
+type captureSub struct {
+	Unknown map[string]any `json:",embed"`
+}
+
+// UnknownKeys has a value receiver; Build asks the pointer to the param.
+func (p captureParam) UnknownKeys() [][]string {
+	return slices.Concat(UnknownKeys(p.Sub.Unknown, "sub"), UnknownKeys(p.Unknown))
+}
+
 type noop struct{}
 
 func (noop) Param() error                        { return nil }
@@ -55,6 +70,7 @@ type (
 	wrongInst struct{ noop }
 	// paramNoErrInst declares Param without the error result.
 	paramNoErrInst struct{ noop }
+	captureInst    struct{ noop }
 )
 
 func (seedInst) Param(p seedParam) error {
@@ -65,14 +81,15 @@ func (seedInst) Param(p seedParam) error {
 	return nil
 }
 
-func (seedInst) AsInput() *counter     { return &counter{} }
-func (doubleInst) In(*counter)         {}
-func (doubleInst) AsInput() *doubled   { return &doubled{} }
-func (showInst) In(*doubled)           {}
-func (bumpInst) Out(*counter)          {}
-func (sumInst) In(*counter, *doubled)  {}
-func (wrongInst) In(*doubled)          {}
-func (paramNoErrInst) Param(seedParam) {}
+func (seedInst) AsInput() *counter           { return &counter{} }
+func (doubleInst) In(*counter)               {}
+func (doubleInst) AsInput() *doubled         { return &doubled{} }
+func (showInst) In(*doubled)                 {}
+func (bumpInst) Out(*counter)                {}
+func (sumInst) In(*counter, *doubled)        {}
+func (wrongInst) In(*doubled)                {}
+func (paramNoErrInst) Param(seedParam)       {}
+func (captureInst) Param(captureParam) error { return nil }
 
 type fakeProc struct {
 	param   reflect.Type
@@ -119,6 +136,7 @@ func newProcs() procs {
 		"noAsInput":  {asInput: counterType, inst: showInst{}},
 		"runOnly":    {inst: runOnly{}},
 		"paramNoErr": {param: seedParamType, inst: paramNoErrInst{}},
+		"capture":    {param: reflect.TypeFor[captureParam](), inst: captureInst{}},
 	}
 }
 
@@ -358,7 +376,9 @@ func TestDryRunErrors(t *testing.T) {
 	}
 }
 
-func TestParamIgnoresUnknownFields(t *testing.T) {
+// TestParamDropsUnknownKeys checks that a param type without UnknownKeyer
+// decodes despite unknown keys and gives no warning.
+func TestParamDropsUnknownKeys(t *testing.T) {
 	g, err := build(t, newProcs(), map[string]Step{
 		"x": {Proc: "seed", Param: map[string]any{"value": 1, "extra": true}},
 	})
@@ -367,6 +387,37 @@ func TestParamIgnoresUnknownFields(t *testing.T) {
 	got, ok := reflect.TypeAssert[seedParam](g.Nodes()[0].Param)
 	assert.Assert(t, ok)
 	assert.Equal(t, got, seedParam{Value: 1})
+	assert.Assert(t, len(g.Warnings()) == 0, "%v", g.Warnings())
+}
+
+func TestUnknownKeyWarnings(t *testing.T) {
+	g, err := Spec{
+		Version: SpecVersion,
+		Steps: map[string]Step{
+			"b": {Proc: "seed", Unknown: map[string]any{"prams": 1}},
+			"a": {
+				Proc:  "capture",
+				Param: map[string]any{"z": 1, "sub": map[string]any{"y": 2}},
+			},
+		},
+		Unknown: map[string]any{"stpes": 1},
+	}.Build(context.Background(), newProcs().registry(t))
+	assert.NilError(t, err)
+
+	for _, w := range g.Warnings() {
+		assert.ErrorIs(t, w, ErrUnknownKey)
+	}
+
+	got := opiter.WrapSeq(slices.Values(g.Warnings())).
+		Map(error.Error).
+		CollectSlice()
+
+	assert.DeepEqual(t, got, []string{
+		"workflow: unknown key: stpes",
+		"workflow: unknown key: steps.b.prams",
+		"workflow: unknown key: steps.a.param.sub.y",
+		"workflow: unknown key: steps.a.param.z",
+	})
 }
 
 func TestParamMatchesKeysCaseSensitively(t *testing.T) {
@@ -475,6 +526,8 @@ steps:
     proc: show
     in: [dbl]
     after: src
+    ater: dbl
+stpes: {}
 `
 
 	var spec Spec
@@ -482,6 +535,8 @@ steps:
 
 	assert.DeepEqual(t, spec.Steps["dbl"].In, Names{"src"})
 	assert.DeepEqual(t, spec.Steps["show"].After, Names{"src"})
+	assert.DeepEqual(t, spec.Steps["show"].Unknown, map[string]any{"ater": "dbl"})
+	assert.DeepEqual(t, spec.Unknown, map[string]any{"stpes": map[string]any{}})
 
 	g, err := spec.Build(context.Background(), newProcs().registry(t))
 	assert.NilError(t, err)
@@ -491,11 +546,13 @@ steps:
 func TestDecodeJson(t *testing.T) {
 	src := `{"version":1,"steps":{
 		"src":{"proc":"seed","param":{"value":2}},
-		"dbl":{"proc":"double","in":"src"}
-	}}`
+		"dbl":{"proc":"double","in":"src","ot":"src"}
+	},"stpes":1}`
 
 	var spec Spec
 	assert.NilError(t, json.Unmarshal([]byte(src), &spec))
+	assert.DeepEqual(t, spec.Steps["dbl"].Unknown, map[string]any{"ot": "src"})
+	assert.DeepEqual(t, spec.Unknown, map[string]any{"stpes": float64(1)})
 
 	g, err := spec.Build(context.Background(), newProcs().registry(t))
 	assert.NilError(t, err)

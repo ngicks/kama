@@ -4,7 +4,7 @@
 //	merge_nested: "recursive"
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T11:47:18Z
+// generated: 2026-11-23T17:44:03Z
 
 package contextkey
 
@@ -17,6 +17,7 @@ type ProcParamPartial struct {
 	Dir         und.Und[string] `json:"dir,omitzero"`
 	Package     und.Und[string] `json:"package,omitzero"`
 	KeyTypeFunc und.Und[string] `json:"key_type_func,omitzero"`
+	Unknown     map[string]any  `json:",embed"`
 }
 
 // FromValue sets every field of p to the partial form of the field of v.
@@ -27,6 +28,7 @@ func (p *ProcParamPartial) FromValue(v ProcParam) {
 	p.Dir = und.Defined(v.Dir)
 	p.Package = und.Defined(v.Package)
 	p.KeyTypeFunc = und.Defined(v.KeyTypeFunc)
+	p.Unknown = v.Unknown
 }
 
 // ToValue returns the value p describes. An undefined or null field
@@ -38,6 +40,7 @@ func (p ProcParamPartial) ToValue() ProcParam {
 	v.Dir = p.Dir.Value()
 	v.Package = p.Package.Value()
 	v.KeyTypeFunc = p.KeyTypeFunc.Value()
+	v.Unknown = p.Unknown
 	return v
 }
 
@@ -54,6 +57,9 @@ func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
 	}
 	if !r.KeyTypeFunc.IsUndefined() {
 		p.KeyTypeFunc = r.KeyTypeFunc
+	}
+	if r.Unknown != nil {
+		p.Unknown = r.Unknown
 	}
 	return p
 }

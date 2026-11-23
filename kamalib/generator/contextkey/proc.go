@@ -34,6 +34,8 @@ type ProcParam struct {
 	// KeyTypeFunc names the function in Package that creates keys. See
 	// Options.KeyTypeFunc.
 	KeyTypeFunc string `json:"key_type_func"`
+	// Unknown captures the keys of a param that name no field.
+	Unknown map[string]any `json:",embed"`
 }
 
 // DefaultProcParam returns the values a ProcParam takes for the keys a spec
@@ -41,6 +43,9 @@ type ProcParam struct {
 func DefaultProcParam() ProcParamPartial {
 	return ProcParamPartial{Dir: und.Defined(".")}
 }
+
+// UnknownKeys implements workflow.UnknownKeyer.
+func (p *ProcParamPartial) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
 
 // Proc renders the Template its in decodes to and stages the files in its
 // out. A file of its out that would change in the generated: line of its

@@ -105,6 +105,8 @@ type PathInput struct {
 	Base string `json:"base"`
 	// Formats are tried in order; earlier entries take priority.
 	Formats []Format `json:"formats"`
+	// Unknown captures the keys of its spec entry that name no field.
+	Unknown map[string]any `json:",embed"`
 }
 
 // Candidates lists every file name Load probes, in order.

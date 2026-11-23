@@ -22,6 +22,11 @@ func TestProgress(t *testing.T) {
 	pc.OnProgress("load", "start")
 	pc.OnWarning("load", errors.New("skipped x"))
 	assert.Equal(t, out.String(), "load: start\nwarning: load: skipped x\n")
+
+	out.Reset()
+
+	pc.OnWarning("", errors.New("unknown key"))
+	assert.Equal(t, out.String(), "warning: unknown key\n")
 }
 
 func TestError(t *testing.T) {

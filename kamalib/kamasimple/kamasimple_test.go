@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 
+	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
@@ -16,8 +18,11 @@ import (
 
 // noteParam configures noteProc.
 type noteParam struct {
-	Text string `json:"text"`
+	Text    string         `json:"text"`
+	Unknown map[string]any `json:",embed"`
 }
+
+func (p *noteParam) UnknownKeys() [][]string { return workflow.UnknownKeys(p.Unknown) }
 
 // noteProc records the text of each of its steps and warns with it.
 type noteProc struct {
@@ -94,6 +99,48 @@ func TestRun(t *testing.T) {
 	}
 }
 
+// TestRunWarnsUnknownKeys checks that the unknown keys of the spec reach
+// OnWarning with an empty step before the steps report.
+func TestRunWarnsUnknownKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "spec.yaml")
+	assert.NilError(t, os.WriteFile(
+		path,
+		[]byte("version: 1\nstpes: {}\nsteps:\n"+
+			"  a: {proc: note, prams: {text: one}}\n"+
+			"  b: {proc: note, param: {text: two, txet: x}, after: a}\n"),
+		0o644,
+	))
+
+	var ran []string
+
+	reg := workflow.NewRegistry()
+	assert.NilError(t, reg.Register("note", func() workflow.Proc { return noteProc{ran: &ran} }))
+
+	var warned []string
+
+	err := Run(context.Background(), Options{
+		Spec:     path,
+		Registry: reg,
+		Progress: workflow.ProgressControl{
+			OnWarning: func(step string, w error) {
+				if step == "" {
+					assert.ErrorIs(t, w, workflow.ErrUnknownKey)
+				}
+
+				warned = append(warned, step+": "+w.Error())
+			},
+		},
+	})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, warned, []string{
+		": kamasimple: " + path + ": workflow: unknown key: stpes",
+		": kamasimple: " + path + ": workflow: unknown key: steps.a.prams",
+		": kamasimple: " + path + ": workflow: unknown key: steps.b.param.txet",
+		"a: ",
+		"b: two",
+	})
+}
+
 func TestRunErrors(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, src string) string {
@@ -142,6 +189,56 @@ steps:
 	assert.NilError(t, err)
 
 	// Build only dry-runs, so nothing is read or written.
-	_, err = spec.Build(context.Background(), workflow.DefaultRegistry)
+	g, err := spec.Build(context.Background(), workflow.DefaultRegistry)
 	assert.NilError(t, err)
+	assert.Assert(t, len(g.Warnings()) == 0, "%v", g.Warnings())
+}
+
+// TestDefaultRegistryUnknownParamKeys checks that the params of the procs
+// kamalib ships tell their unknown keys, those of nested tables included.
+func TestDefaultRegistryUnknownParamKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "spec.yaml")
+	assert.NilError(t, os.WriteFile(path, []byte(`version: 1
+steps:
+  root: {proc: overlayfs.open, param: {rot: x}}
+  load: {proc: packages.load, in: root, param: {patern: x}}
+  partial:
+    proc: partial.generate
+    in: load
+    out: root
+    param: {mrege: append, option_file: {base: x, bse: y}}
+  validate: {proc: validate.generate, in: load, out: root, param: {option_flie: x}}
+  template: {proc: file.load, in: root, param: {base: keys, fromats: [yaml]}}
+  keys:
+    proc: contextkey.generate
+    in: template
+    out: root
+    param: {package: keys, key_type_func: keyTypeFunc, dri: x}
+  final:
+    proc: overlayfs.copy_down
+    in: root
+    after: [partial, validate, keys]
+    param: {test: true}
+`), 0o644))
+
+	spec, err := LoadSpec(path)
+	assert.NilError(t, err)
+
+	g, err := spec.Build(context.Background(), workflow.DefaultRegistry)
+	assert.NilError(t, err)
+
+	got := opiter.WrapSeq(slices.Values(g.Warnings())).
+		Map(error.Error).
+		Collect(slices.Sorted)
+
+	assert.DeepEqual(t, got, []string{
+		"workflow: unknown key: steps.final.param.test",
+		"workflow: unknown key: steps.keys.param.dri",
+		"workflow: unknown key: steps.load.param.patern",
+		"workflow: unknown key: steps.partial.param.mrege",
+		"workflow: unknown key: steps.partial.param.option_file.bse",
+		"workflow: unknown key: steps.root.param.rot",
+		"workflow: unknown key: steps.template.param.fromats",
+		"workflow: unknown key: steps.validate.param.option_flie",
+	})
 }

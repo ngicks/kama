@@ -7,7 +7,14 @@
 //
 // Build decodes every step's param into the proc's ParamType with
 // encoding/json/v2. It does so for specs in every format. Param keys match the
-// JSON names of the fields case-sensitively. Unknown keys are ignored.
+// JSON names of the fields case-sensitively.
+//
+// An unknown key of a spec, of a step or of a param fails nothing. Spec and
+// Step capture their unknown keys, and a param type tells its own by
+// implementing UnknownKeyer. Graph.Warnings returns a warning wrapping
+// ErrUnknownKey for each of them, naming its key path from the top of the
+// spec, as in steps.generate.param.merge. A param type that does not
+// implement UnknownKeyer drops its unknown keys without a warning.
 //
 // Build forms the graph and checks it without running anything. It matches
 // every in and out list against the procs' declared types and then
@@ -32,6 +39,7 @@ import (
 	"maps"
 	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/ngicks/opiter"
 )
@@ -46,6 +54,8 @@ var (
 	ErrCycle              = errors.New("workflow: dependency cycle")
 	ErrParam              = errors.New("workflow: invalid param")
 	ErrInstantiate        = errors.New("workflow: instantiation failed")
+	// ErrUnknownKey is wrapped by the warnings of Graph.Warnings.
+	ErrUnknownKey = errors.New("workflow: unknown key")
 )
 
 var errorType = reflect.TypeFor[error]()
@@ -66,12 +76,39 @@ type Node struct {
 // Graph is a formed, checked graph in execution order.
 type Graph struct {
 	nodes []Node
+	// warnings are the unknown keys of the spec and of the params, which
+	// the spec no longer holds once the params are decoded.
+	warnings []error
 }
 
 // Nodes returns the nodes in execution order. The slice is shared with the
 // graph; callers must not modify it. It is clipped, so appending to it
 // allocates instead of writing into the graph.
 func (g *Graph) Nodes() []Node { return slices.Clip(g.nodes) }
+
+// Warnings returns what Build found in the spec without failing: a warning
+// wrapping ErrUnknownKey for each unknown key, those of the spec and its
+// steps first and then those of the params in execution order. Run does
+// not report them. The slice is shared and clipped as for Nodes.
+func (g *Graph) Warnings() []error { return slices.Clip(g.warnings) }
+
+// UnknownKeyer is implemented by param types, or their pointer types, that
+// capture the keys of a param they do not know, as a field
+// Unknown map[string]any `json:",embed"` does.
+type UnknownKeyer interface {
+	// UnknownKeys returns the key paths of the unknown keys, relative to the
+	// param. They include the unknown keys of nested tables.
+	UnknownKeys() [][]string
+}
+
+// UnknownKeys returns the keys of unknown, the unknown members a decoded
+// table captures, as key paths below prefix in key order.
+func UnknownKeys(unknown map[string]any, prefix ...string) [][]string {
+	return opiter.WrapSeq2(opiter.MapsSorted(unknown)).
+		OmitL().
+		Map(func(k string) []string { return append(slices.Clip(prefix), k) }).
+		CollectSlice()
+}
 
 // Build forms the graph s describes from the procs in reg and dry-runs every
 // step.
@@ -111,7 +148,11 @@ func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 		return nil, err
 	}
 
-	g := &Graph{}
+	g := &Graph{
+		warnings: opiter.WrapSeq(slices.Values(s.unknownKeys())).
+			Map(unknownKey).
+			CollectSlice(),
+	}
 
 	for _, name := range order {
 		st := s.Steps[name]
@@ -206,7 +247,8 @@ func matchRefs(name, list string, refs Names, want []reflect.Type, procs map[str
 
 // dryRun instantiates every step with dryRun set, checks its methods against
 // the proc's declared types and passes it its decoded param. It reports
-// every failing step.
+// every failing step, and adds the unknown keys of the params to the
+// warnings of g.
 func (g *Graph) dryRun(ctx context.Context, steps map[string]Step) error {
 	var errs []error
 
@@ -220,6 +262,12 @@ func (g *Graph) dryRun(ctx context.Context, steps map[string]Step) error {
 		}
 
 		n.Param = param
+
+		g.warnings = opiter.WrapSeq(slices.Values(paramUnknownKeys(param))).
+			Map(func(k []string) error {
+				return unknownKey(slices.Concat([]string{"steps", n.Name, "param"}, k))
+			}).
+			AppendSeq(g.warnings)
 
 		if err := checkInstance(ctx, n); err != nil {
 			errs = append(errs, fmt.Errorf("step %q: %w", n.Name, err))
@@ -339,9 +387,10 @@ func method(
 
 // decodeParam decodes raw, as produced by a JSON, YAML or TOML decoder, into
 // a value of type t with encoding/json/v2. Keys match the JSON names of the
-// fields case-sensitively. Unknown fields are
-// ignored, so a spec written for a newer or older version of a proc still
-// decodes. A string holding invalid UTF-8 is an error.
+// fields case-sensitively. An unknown key is no error, so a spec written for
+// a newer or older version of a proc still decodes; the param captures it
+// when t has a fallback for unknown members. A string holding invalid UTF-8
+// is an error. The returned value is addressable.
 func decodeParam(raw any, t reflect.Type) (reflect.Value, error) {
 	if t == nil {
 		if raw != nil {
@@ -367,6 +416,28 @@ func decodeParam(raw any, t reflect.Type) (reflect.Value, error) {
 	}
 
 	return v.Elem(), nil
+}
+
+// paramUnknownKeys returns the unknown keys param tells through
+// UnknownKeyer, sorted. param is the zero Value for a proc taking no param.
+func paramUnknownKeys(param reflect.Value) [][]string {
+	if !param.IsValid() {
+		return nil
+	}
+
+	u, ok := reflect.TypeAssert[UnknownKeyer](param.Addr())
+	if !ok {
+		return nil
+	}
+
+	keys := u.UnknownKeys()
+	slices.SortFunc(keys, slices.Compare)
+
+	return keys
+}
+
+func unknownKey(path []string) error {
+	return fmt.Errorf("%w: %s", ErrUnknownKey, strings.Join(path, "."))
 }
 
 // sortSteps orders steps so each comes after its in, out and after steps.

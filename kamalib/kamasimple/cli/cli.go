@@ -10,10 +10,15 @@ import (
 
 // Progress returns the ProgressControl writing to w what a run reports: a
 // line for each warning, and with verbose a line for each progress message
-// of a step too.
+// of a step too. A warning with an empty step is written without one.
 func Progress(w io.Writer, verbose bool) workflow.ProgressControl {
 	pc := workflow.ProgressControl{
 		OnWarning: func(step string, warning error) {
+			if step == "" {
+				fmt.Fprintf(w, "warning: %v\n", warning)
+				return
+			}
+
 			fmt.Fprintf(w, "warning: %s: %v\n", step, warning)
 		},
 	}
