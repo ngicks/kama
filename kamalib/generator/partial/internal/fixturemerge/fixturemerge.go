@@ -2,4 +2,4 @@
 // strategies, as spec.yaml describes.
 package fixturemerge
 
-//go:generate go run ../generate -spec spec.yaml
+//go:generate go run ../../../../cmd/kama-simple --spec spec.yaml

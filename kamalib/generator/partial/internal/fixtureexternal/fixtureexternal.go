@@ -4,4 +4,4 @@
 // generated files match those of the fixture package.
 package fixtureexternal
 
-//go:generate go run ../generate -spec spec.yaml
+//go:generate go run ../../../../cmd/kama-simple --spec spec.yaml

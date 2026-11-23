@@ -2,7 +2,7 @@
 // template, with the dir param left at its default.
 package inline
 
-//go:generate go run ../../generate -spec spec.yaml
+//go:generate go run ../../../../../cmd/kama-simple --spec spec.yaml
 
 type keyTy string
 
