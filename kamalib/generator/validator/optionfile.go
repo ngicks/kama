@@ -76,20 +76,19 @@ func (o *PackageOptions) UnmarshalKeyValue(
 
 	unknown := fmt.Errorf(
 		"%w: %s: unknown args %q on a free-floating comment; want file or package",
-		ErrDirective, src.Pos, spellArgs(kv),
+		ErrDirective, src.Pos, dircmnt.SpellArgs(kv),
 	)
 
-	if len(kv) == 0 {
+	words, ok := dircmnt.BareWords(kv)
+	if !ok || len(words) == 0 {
 		return unknown
 	}
 
-	for _, a := range kv {
-		switch {
-		case a.HasValue:
-			return unknown
-		case a.Key == fileWord:
+	for _, w := range words {
+		switch w {
+		case fileWord:
 			o.file = true
-		case a.Key == packageWord:
+		case packageWord:
 			o.AllTypes = true
 		default:
 			return unknown
@@ -145,12 +144,12 @@ func (o *TypeOptions) UnmarshalKeyValue(
 			}
 
 			o.Hook = &on
-			o.hookSrc = optionSource{src: src, arg: spellArgs([]dircmnt.KeyValue{a})}
+			o.hookSrc = optionSource{src: src, arg: a.String()}
 		default:
 			return fmt.Errorf(
 				"%w: %s: unknown arg %q on %s; want ignore or hook=on|off;"+
 					" validators apply to struct fields only",
-				ErrDirective, src.Pos, spellArgs([]dircmnt.KeyValue{a}), onTarget(src.Target),
+				ErrDirective, src.Pos, a.String(), onTarget(src.Target),
 			)
 		}
 	}
@@ -234,7 +233,7 @@ func (o *FieldOptions) UnmarshalKeyValue(
 		}
 
 		o.Hook = &on
-		o.hookSrc = optionSource{src: src, arg: spellArgs([]dircmnt.KeyValue{a})}
+		o.hookSrc = optionSource{src: src, arg: a.String()}
 	}
 
 	return nil
@@ -295,6 +294,6 @@ func hookValue(a dircmnt.KeyValue) (bool, error) {
 	}
 
 	return false, fmt.Errorf(
-		"arg %q of //kama:validate; want hook=on or hook=off", spellArgs([]dircmnt.KeyValue{a}),
+		"arg %q of //kama:validate; want hook=on or hook=off", a.String(),
 	)
 }

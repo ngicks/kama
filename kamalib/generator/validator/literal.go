@@ -34,7 +34,7 @@ func comparison(kv dircmnt.KeyValue) (op, operand string, err error) {
 
 	return "", "", fmt.Errorf(
 		"arg %q is no comparison; want one of %s followed by a value, as in >=1",
-		spellArgs([]dircmnt.KeyValue{kv}), strings.Join(comparisonOps, ", "),
+		kv.String(), strings.Join(comparisonOps, ", "),
 	)
 }
 

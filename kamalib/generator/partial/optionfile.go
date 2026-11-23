@@ -6,9 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
-
-	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
@@ -81,11 +78,11 @@ func (o *PackageOptions) UnmarshalKeyValue(
 		return unknownDirective(src, sub)
 	}
 
-	words, ok := bareWords(kv)
+	words, ok := dircmnt.BareWords(kv)
 	if !ok || len(words) == 0 {
 		return fmt.Errorf(
 			"%w: %s: unknown args %q on a free-floating comment; want file or package",
-			ErrDirective, src.Pos, spellArgs(kv),
+			ErrDirective, src.Pos, dircmnt.SpellArgs(kv),
 		)
 	}
 
@@ -98,7 +95,7 @@ func (o *PackageOptions) UnmarshalKeyValue(
 		default:
 			return fmt.Errorf(
 				"%w: %s: unknown args %q on a free-floating comment; want file or package",
-				ErrDirective, src.Pos, spellArgs(kv),
+				ErrDirective, src.Pos, dircmnt.SpellArgs(kv),
 			)
 		}
 	}
@@ -129,7 +126,7 @@ func (o *TypeOptions) UnmarshalKeyValue(
 
 	switch sub {
 	case "":
-		words, ok := bareWords(kv)
+		words, ok := dircmnt.BareWords(kv)
 
 		switch {
 		case ok && len(words) == 0:
@@ -139,7 +136,7 @@ func (o *TypeOptions) UnmarshalKeyValue(
 		default:
 			return fmt.Errorf(
 				"%w: %s: unknown args %q on %s; want none or ignore",
-				ErrDirective, src.Pos, spellArgs(kv), at,
+				ErrDirective, src.Pos, dircmnt.SpellArgs(kv), at,
 			)
 		}
 
@@ -148,7 +145,7 @@ func (o *TypeOptions) UnmarshalKeyValue(
 		if len(kv) > 0 {
 			return fmt.Errorf(
 				"%w: %s: unknown args %q of //kama:partial:fieldmask on %s; want none",
-				ErrDirective, src.Pos, spellArgs(kv), at,
+				ErrDirective, src.Pos, dircmnt.SpellArgs(kv), at,
 			)
 		}
 
@@ -210,11 +207,11 @@ func (o *FieldOptions) UnmarshalKeyValue(
 			field,
 		)
 	case "merge":
-		words, ok := bareWords(kv)
+		words, ok := dircmnt.BareWords(kv)
 		if !ok || len(words) != 1 {
 			return fmt.Errorf(
 				"%w: %s: args %q of //kama:partial:merge on field %s; want one strategy",
-				ErrDirective, src.Pos, spellArgs(kv), field,
+				ErrDirective, src.Pos, dircmnt.SpellArgs(kv), field,
 			)
 		}
 
@@ -231,7 +228,7 @@ func (o *FieldOptions) UnmarshalKeyValue(
 		o.Flag = &FlagOptions{Name: f.name, Short: f.short, Usage: f.usage}
 		o.flagSrc = optionSource{src: src, sub: "flag"}
 	case "fieldmask":
-		args, err := keyValueMap(kv)
+		args, err := dircmnt.KeyValueMap(kv)
 		if err == nil {
 			_, err = maskNameFromArgs(args)
 		}
@@ -409,53 +406,6 @@ func onTarget(t genopt.Target) string {
 	}
 
 	return "type " + t.PkgPath + "." + t.Type
-}
-
-// bareWords returns the keys of kv, or false when one of them has a value.
-func bareWords(kv []dircmnt.KeyValue) ([]string, bool) {
-	hasValue := opiter.WrapSeq(slices.Values(kv)).
-		Any(func(kv dircmnt.KeyValue) bool { return kv.HasValue })
-
-	if hasValue {
-		return nil, false
-	}
-
-	return opiter.WrapSeq(slices.Values(kv)).
-		Map(func(kv dircmnt.KeyValue) string { return kv.Key }).
-		CollectSlice(), true
-}
-
-// spellArgs spells kv as space-separated key or key=value pairs.
-func spellArgs(kv []dircmnt.KeyValue) string {
-	spell := func(kv dircmnt.KeyValue) string {
-		if kv.HasValue {
-			return kv.Key + "=" + kv.Value
-		}
-
-		return kv.Key
-	}
-
-	return strings.Join(
-		opiter.WrapSeq(slices.Values(kv)).
-			Map(spell).
-			CollectSlice(),
-		" ",
-	)
-}
-
-// keyValueMap returns kv keyed by name. A pair without "=" maps its name to
-// "". A name given twice is an error.
-func keyValueMap(kv []dircmnt.KeyValue) (map[string]string, error) {
-	out := make(map[string]string, len(kv))
-	for _, p := range kv {
-		if _, ok := out[p.Key]; ok {
-			return nil, fmt.Errorf("duplicate name %q", p.Key)
-		}
-
-		out[p.Key] = p.Value
-	}
-
-	return out, nil
 }
 
 // loadError marks err, an error of a Loader, with the errors of this

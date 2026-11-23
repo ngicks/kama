@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ngicks/opiter"
-
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
@@ -72,7 +70,7 @@ func subDirectiveError(src genopt.Source, sub string, kv []dircmnt.KeyValue) err
 	want := sub
 
 	if len(kv) > 0 {
-		arg := spellArgs(kv)
+		arg := dircmnt.SpellArgs(kv)
 		// regexp takes its whole argument as the pattern. The quotes of a
 		// quoted pattern therefore go. The other validators split their
 		// argument into tokens again. Their quoted literals keep their quotes
@@ -118,43 +116,6 @@ func onTarget(t genopt.Target) string {
 
 // fieldName names the field a directive is on.
 func fieldName(t genopt.Target) string { return t.PkgPath + "." + t.Type + "." + t.Field }
-
-// spellArgs spells kv as space-separated key or key=value pairs, in the
-// grammar dircmnt.ParseArgsKeyValue reads back. A comparison is spelled as
-// written; quoting it would turn it into a key.
-func spellArgs(kv []dircmnt.KeyValue) string {
-	spell := func(kv dircmnt.KeyValue) string {
-		switch {
-		case kv.HasValue:
-			return spellToken(kv.Key, kv.KeyQuoted) + "=" + spellToken(kv.Value, kv.ValueQuoted)
-		case isComparison(kv):
-			return kv.Key
-		}
-
-		return spellToken(kv.Key, kv.KeyQuoted)
-	}
-
-	return strings.Join(
-		opiter.WrapSeq(slices.Values(kv)).
-			Map(spell).
-			CollectSlice(),
-		" ",
-	)
-}
-
-// isComparison reports whether kv is a comparison, as in >=1.
-func isComparison(kv dircmnt.KeyValue) bool {
-	return !kv.HasValue && !kv.KeyQuoted && kv.Key != "" && strings.ContainsAny(kv.Key[:1], "<>=!")
-}
-
-// spellToken quotes s when it was quoted or a bare token cannot hold it.
-func spellToken(s string, quoted bool) string {
-	if quoted || s == "" || strings.ContainsAny(s, " \t\"`") {
-		return strconv.Quote(s)
-	}
-
-	return s
-}
 
 // loadError marks err, an error of a Loader, with the errors of this
 // package matching the errors of genopt it wraps.

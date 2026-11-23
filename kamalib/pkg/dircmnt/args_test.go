@@ -94,3 +94,95 @@ func TestParseArgsKeyValue(t *testing.T) {
 		})
 	}
 }
+
+func TestSpellArgs(t *testing.T) {
+	cases := []struct {
+		args, spelled string
+	}{
+		{"", ""},
+		{"append", "append"},
+		{`"append"`, `"append"`},
+		{`"a b"`, `"a b"`},
+		{"name=addr short=a", "name=addr short=a"},
+		{`usage="listen address"`, `usage="listen address"`},
+		{"usage=`a \"b\"`", `usage="a \"b\""`},
+		{`"a b"=1`, `"a b"=1`},
+		{"a=", "a="},
+		{`a=""`, `a=""`},
+		{"a=b=c", "a=b=c"},
+		{">=1 <=10 ==3", ">=1 <=10 ==3"},
+		{`!="a b"`, `!="a b"`},
+		{`"1" 1 a="1" a=1`, `"1" 1 a="1" a=1`},
+	}
+
+	for _, c := range cases {
+		t.Run(c.args, func(t *testing.T) {
+			kv, err := ParseArgsKeyValue(c.args)
+			assert.NilError(t, err)
+			assert.Equal(t, SpellArgs(kv), c.spelled)
+
+			back, err := ParseArgsKeyValue(SpellArgs(kv))
+			assert.NilError(t, err)
+			assert.DeepEqual(t, back, kv)
+		})
+	}
+}
+
+func TestBareWords(t *testing.T) {
+	cases := []struct {
+		args string
+		want []string
+		ok   bool
+	}{
+		{"", nil, true},
+		{"file package", []string{"file", "package"}, true},
+		{`"a b" >=1`, []string{"a b", ">=1"}, true},
+		{"file a=1", nil, false},
+		{"a=", nil, false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.args, func(t *testing.T) {
+			kv, err := ParseArgsKeyValue(c.args)
+			assert.NilError(t, err)
+
+			got, ok := BareWords(kv)
+			assert.Equal(t, ok, c.ok)
+			assert.DeepEqual(t, got, c.want)
+		})
+	}
+}
+
+func TestKeyValueMap(t *testing.T) {
+	cases := []struct {
+		args string
+		want map[string]string
+		err  string
+	}{
+		{"", map[string]string{}, ""},
+		{
+			`name=addr usage="a b" append`,
+			map[string]string{"name": "addr", "usage": "a b", "append": ""},
+			"",
+		},
+		{"a= b", map[string]string{"a": "", "b": ""}, ""},
+		{"a=1 a=2", nil, `duplicate name "a"`},
+		{"a a=1", nil, `duplicate name "a"`},
+	}
+
+	for _, c := range cases {
+		t.Run(c.args, func(t *testing.T) {
+			kv, err := ParseArgsKeyValue(c.args)
+			assert.NilError(t, err)
+
+			got, err := KeyValueMap(kv)
+			if c.err != "" {
+				assert.ErrorContains(t, err, c.err)
+				return
+			}
+
+			assert.NilError(t, err)
+			assert.DeepEqual(t, got, c.want)
+		})
+	}
+}

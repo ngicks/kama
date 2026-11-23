@@ -3,10 +3,13 @@ package dircmnt
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/ngicks/opiter"
 )
 
 // KeyValue is one arg of a directive comment, written key or key=value.
@@ -21,6 +24,21 @@ type KeyValue struct {
 	// quoted strings. They let a reader tell the string "1" from the
 	// number 1.
 	KeyQuoted, ValueQuoted bool
+}
+
+// String spells kv as [ParseArgsKeyValue] reads it back: key or key=value,
+// with a token quoted when it was written quoted or when a bare token
+// cannot hold it. A comparison is spelled as written; quoting it would turn
+// it into a key.
+func (kv KeyValue) String() string {
+	switch {
+	case kv.HasValue:
+		return spellToken(kv.Key, kv.KeyQuoted) + "=" + spellToken(kv.Value, kv.ValueQuoted)
+	case kv.isComparison():
+		return kv.Key
+	}
+
+	return spellToken(kv.Key, kv.KeyQuoted)
 }
 
 // ParseArgsKeyValue parses [Comment.Args] as space-separated key=value
@@ -103,6 +121,65 @@ func ParseArgsKeyValue(args string) ([]KeyValue, error) {
 		out = append(out, kv)
 	}
 }
+
+// SpellArgs spells kv as space-separated args, in the grammar
+// [ParseArgsKeyValue] reads back.
+func SpellArgs(kv []KeyValue) string {
+	return strings.Join(
+		opiter.WrapSeq(slices.Values(kv)).
+			Map(KeyValue.String).
+			CollectSlice(),
+		" ",
+	)
+}
+
+// BareWords returns the keys of kv, or false when one of them has a value.
+func BareWords(kv []KeyValue) ([]string, bool) {
+	hasValue := opiter.WrapSeq(slices.Values(kv)).
+		Any(func(kv KeyValue) bool { return kv.HasValue })
+
+	if hasValue {
+		return nil, false
+	}
+
+	return opiter.WrapSeq(slices.Values(kv)).
+		Map(func(kv KeyValue) string { return kv.Key }).
+		CollectSlice(), true
+}
+
+// KeyValueMap returns kv keyed by name. A pair without "=" maps its name to
+// "". A name given twice is an error.
+func KeyValueMap(kv []KeyValue) (map[string]string, error) {
+	out := make(map[string]string, len(kv))
+	for _, p := range kv {
+		if _, ok := out[p.Key]; ok {
+			return nil, fmt.Errorf("duplicate name %q", p.Key)
+		}
+
+		out[p.Key] = p.Value
+	}
+
+	return out, nil
+}
+
+// isComparison reports whether kv is a comparison, as in >=1.
+func (kv KeyValue) isComparison() bool {
+	return !kv.HasValue && !kv.KeyQuoted && kv.Key != "" &&
+		strings.ContainsAny(kv.Key[:1], comparisonOps)
+}
+
+// spellToken quotes s when it was quoted or a bare token cannot hold it. An
+// empty bare token stays bare, so that key= spells back as key=.
+func spellToken(s string, quoted bool) string {
+	if quoted || strings.ContainsFunc(s, isBareBreak) {
+		return strconv.Quote(s)
+	}
+
+	return s
+}
+
+// isBareBreak reports whether a bare token cannot hold r.
+func isBareBreak(r rune) bool { return unicode.IsSpace(r) || strings.ContainsRune(quotes, r) }
 
 const quotes = "\"`"
 

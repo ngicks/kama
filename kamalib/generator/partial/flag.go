@@ -47,7 +47,7 @@ type flagOption struct {
 
 // flagFromKeyValues decodes the args of //kama:partial:flag.
 func flagFromKeyValues(kv []dircmnt.KeyValue) (flagOption, error) {
-	args, err := keyValueMap(kv)
+	args, err := dircmnt.KeyValueMap(kv)
 	if err != nil {
 		return flagOption{}, err
 	}

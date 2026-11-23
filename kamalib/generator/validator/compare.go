@@ -234,7 +234,7 @@ func (Const) Check(t types.Type, arg string) error {
 		if kv.HasValue {
 			return argsError(fmt.Errorf(
 				"arg %q is a key=value pair; quote a value holding =",
-				spellArgs([]dircmnt.KeyValue{kv}),
+				kv.String(),
 			))
 		}
 	}
