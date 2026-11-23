@@ -2,68 +2,19 @@ package partial
 
 import (
 	"go/ast"
-	"go/token"
 	"go/types"
 	"slices"
 
 	"golang.org/x/tools/go/packages"
+
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 )
-
-// declDocs returns the doc comments of the declaration of obj, a type, a
-// function or a method declared in pkg: the doc of the declaration and,
-// for a type, the doc of its spec. It returns nil for an object pkg does
-// not declare at the top level.
-func declDocs(pkg *packages.Package, obj types.Object) []*ast.CommentGroup {
-	pos := obj.Pos()
-
-	for _, f := range pkg.Syntax {
-		if pos < f.FileStart || pos >= f.FileEnd {
-			continue
-		}
-
-		for _, decl := range f.Decls {
-			switch d := decl.(type) {
-			case *ast.FuncDecl:
-				if d.Name.Pos() == pos {
-					return []*ast.CommentGroup{d.Doc}
-				}
-			case *ast.GenDecl:
-				if d.Tok != token.TYPE {
-					continue
-				}
-
-				for _, spec := range d.Specs {
-					if ts := spec.(*ast.TypeSpec); ts.Name.Pos() == pos {
-						return []*ast.CommentGroup{d.Doc, ts.Doc}
-					}
-				}
-			}
-		}
-	}
-
-	return nil
-}
 
 // generated reports whether the declaration of obj, declared in a loaded
 // package, carries the marker of a registered generator. Such a
 // declaration is dropped and generated again.
 func (s *selection) generated(obj types.Object) bool {
-	if obj.Pkg() == nil {
-		return false
-	}
-
-	for _, pkg := range s.pkgs {
-		if pkg.Types != obj.Pkg() {
-			continue
-		}
-
-		return slices.ContainsFunc(declDocs(pkg, obj), func(doc *ast.CommentGroup) bool {
-			_, ok := s.opts.Registry.Generated(doc)
-			return ok
-		})
-	}
-
-	return false
+	return base.Generated(s.pkgs, s.opts.Registry, obj)
 }
 
 // implementor reports the implementor named type t refers to, through
@@ -86,8 +37,9 @@ func (s *selection) implementor(t types.Type) (*types.Named, bool) {
 		return nil, false
 	}
 
-	partial := named.Obj().Pkg().Scope().Lookup(partialName(named.Obj().Name()))
-	if partial == nil {
+	// A marked variable or constant of that name is no partial variant.
+	partial, ok := named.Obj().Pkg().Scope().Lookup(partialName(named.Obj().Name())).(*types.TypeName)
+	if !ok {
 		return nil, false
 	}
 
@@ -103,7 +55,7 @@ func (s *selection) implementor(t types.Type) (*types.Named, bool) {
 			return
 		}
 
-		found = slices.ContainsFunc(declDocs(pkg, partial), func(doc *ast.CommentGroup) bool {
+		found = slices.ContainsFunc(base.DeclDocs(pkg, partial), func(doc *ast.CommentGroup) bool {
 			name, ok := s.opts.Registry.Generated(doc)
 			return ok && name == GeneratorName
 		})

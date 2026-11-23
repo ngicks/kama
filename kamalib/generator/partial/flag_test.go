@@ -272,6 +272,24 @@ func TestFlagSetFileConflict(t *testing.T) {
 	assert.ErrorContains(t, err, FlagSetFile+" holds a declaration")
 }
 
+// TestFlagSetMarkedVar takes a package-level variable named like the flag
+// set as generated when it carries the marker, as any marked declaration.
+func TestFlagSetMarkedVar(t *testing.T) {
+	// The marked variable makes a.go look like a stale generated file, which
+	// only warns.
+	_, _, err := Generate(load(t, map[string]string{
+		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n\n" +
+			"// PartialFlagSet is stale.\n//\n//kama:generated kama-partial\nvar PartialFlagSet int\n",
+	}), Options{Registry: registry(t), Now: testNow})
+	assert.NilError(t, err)
+
+	_, err = generate(t, map[string]string{
+		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n\nvar PartialFlagSet int\n",
+	}, Options{})
+	assert.ErrorIs(t, err, ErrConflict)
+	assert.ErrorContains(t, err, "PartialFlagSet is already declared for the flag set")
+}
+
 // TestFlagSetOmitted leaves the flag set file out on request, and rejects
 // a flag option then, since its methods take the flag set.
 func TestFlagSetOmitted(t *testing.T) {
