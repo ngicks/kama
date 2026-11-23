@@ -5,6 +5,7 @@ import (
 	"go/types"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -28,8 +29,9 @@ type FormatHelper struct {
 	// Name is the name of the helper, a function of the generated package
 	// with the signature func(string) error.
 	Name string
-	// Decl returns the source of the helper, as Emitter.Declare takes it.
-	Decl func(s Spelling) (string, error)
+	// Decl returns the declaration of the helper, as Emitter.Declare takes
+	// it.
+	Decl func(imp Importer) Step
 }
 
 // DefaultFormats returns the built-in formats:
@@ -86,50 +88,49 @@ func (FormatOptions) Check(t types.Type) error {
 }
 
 // Emit calls the helper of the format.
-func (o FormatOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
+func (o FormatOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	e.Declare(o.Helper.Name, o.Helper.Decl)
 
-	return o.Helper.Name + "(" + convert(t, types.Typ[types.String], "string", v) + ")", nil
+	return lang.Expr("%s(%s)", o.Helper.Name, convert(t, types.Typ[types.String], "string", v)), nil
 }
 
-// timeFormatDecl returns the source of the helper name testing that a
+// timeFormatDecl returns the declaration of the helper name testing that a
 // string parses as the layout constant layout of package time.
-func timeFormatDecl(name, layout, desc string) func(s Spelling) (string, error) {
-	return func(s Spelling) (string, error) {
-		v, err := s.Import(ValidationPath)
-		if err != nil {
-			return "", err
-		}
+func timeFormatDecl(name, layout, desc string) func(imp Importer) Step {
+	return func(imp Importer) Step {
+		v, tm := imp.Import(ValidationPath), imp.Import("time")
 
-		tm, err := s.Import("time")
-		if err != nil {
-			return "", err
-		}
-
-		return fmt.Sprintf(`func %[3]s(got string) error {
-	if _, err := %[2]s.Parse(%[2]s.%[4]s, got); err != nil {
-		return %[1]s.New(%[1]s.ErrFormat, "want format %[5]s, got %%q", got)
-	}
-	return nil
-}`, v, tm, name, layout, desc), nil
+		return lang.Func(
+			lang.Expr("func %s(%s string) error", name, shadow("got")),
+			lang.If(
+				lang.Expr("_, %s := %s.Parse(%s.%s, %s); %s != nil",
+					shadow("err"), tm, tm, layout, ref("got"), ref("err")),
+				lang.Stmt("return %s.New(%s.ErrFormat, %s, %s)",
+					v, v, strconv.Quote("want format "+desc+", got %q"), ref("got")),
+				nil,
+			),
+			lang.Stmt("return nil"),
+		)
 	}
 }
 
-func urlFormatDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
+func urlFormatDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
 
-	url, err := s.Import("net/url")
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf(`func kamaValidateFormatUrl(got string) error {
-	if u, err := %[2]s.Parse(got); err != nil || u.Scheme == "" || u.Host == "" {
-		return %[1]s.New(%[1]s.ErrFormat, "want format url with a scheme and a host, got %%q", got)
-	}
-	return nil
-}`, v, url), nil
+	return lang.Func(
+		lang.Expr("func kamaValidateFormatUrl(%s string) error", shadow("got")),
+		lang.If(
+			lang.Expr(`%s, %s := %s.Parse(%s); %s != nil || %s.Scheme == "" || %s.Host == ""`,
+				shadow("u"), shadow("err"), imp.Import("net/url"), ref("got"),
+				ref("err"), ref("u"), ref("u")),
+			lang.Stmt(
+				`return %s.New(%s.ErrFormat, "want format url with a scheme and a host, got %%q", %s)`,
+				v,
+				v,
+				ref("got"),
+			),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
 }

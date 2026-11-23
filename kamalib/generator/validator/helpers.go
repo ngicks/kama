@@ -28,16 +28,16 @@ import (
 // No source holds the set: it tells what the generated code of the package
 // calls, which is known only once the code is written.
 type helperSet struct {
-	decls map[string]func(s rule.Spelling) (string, error)
+	decls map[string]func(imp rule.Importer) genStep
 }
 
 func newHelperSet() *helperSet {
-	return &helperSet{decls: map[string]func(rule.Spelling) (string, error){}}
+	return &helperSet{decls: map[string]func(rule.Importer) genStep{}}
 }
 
 // emitter spells packages and types for one generated file and records
-// the helpers the file calls. exprEmitter wraps it as the rule.Emitter of
-// one validator expression.
+// the helpers the file calls. It is the rule.Emitter of the validator
+// expressions of the file.
 //
 // uses and imports are facts about the output, which no source holds: the
 // helpers the file calls and the packages it asked for by path.
@@ -48,6 +48,8 @@ type emitter struct {
 	imports map[string]bool
 }
 
+var _ rule.Emitter = (*emitter)(nil)
+
 func newEmitter(scope *base.FileScope, helpers *helperSet) *emitter {
 	return &emitter{
 		scope:   scope,
@@ -57,37 +59,28 @@ func newEmitter(scope *base.FileScope, helpers *helperSet) *emitter {
 	}
 }
 
-// exprEmitter is the rule.Emitter of one validator expression: the emitter
-// of its file and the spelled name of the stop flag of the function the
-// expression lands in.
-//
-// The name is known only while that function renders, and a rule.Validator
-// cannot reach the render context to ask for it.
-type exprEmitter struct {
-	*emitter
-	stop string
-}
-
-var _ rule.Emitter = exprEmitter{}
-
-func (e exprEmitter) StopOnFirstError() string { return e.stop }
+func (e *emitter) StopOnFirstError() genExpr { return lang.Name("stopOnFirstError") }
 
 func (e *emitter) TypeString(t types.Type) (string, error) { return e.scope.TypeString(t) }
 
-// Import returns the identifier of the package at path. A package the file
-// cannot import yet, one the package of the file does not depend on, gets
-// its last path element; the caller renders the file again requiring it.
-func (e *emitter) Import(p string) (string, error) {
-	e.imports[p] = true
+// Import returns the identifier of the package at path, importing it when
+// the text renders. Text that is never rendered imports nothing. A package
+// the file cannot import yet, one the package of the file does not depend
+// on, gets its last path element; the caller renders the file again
+// requiring it.
+func (e *emitter) Import(p string) genExpr {
+	return func(genCtx) (string, error) {
+		e.imports[p] = true
 
-	if ident, ok := e.scope.Ident(p); ok {
-		return ident, nil
+		if ident, ok := e.scope.Ident(p); ok {
+			return ident, nil
+		}
+
+		return path.Base(p), nil
 	}
-
-	return path.Base(p), nil
 }
 
-func (e *emitter) Declare(name string, decl func(s rule.Spelling) (string, error)) {
+func (e *emitter) Declare(name string, decl func(imp rule.Importer) genStep) {
 	e.uses[name] = true
 
 	if _, ok := e.helpers.decls[name]; !ok {
@@ -141,13 +134,13 @@ func renderHelpersWith(
 	var src strings.Builder
 
 	for _, name := range hf.Names {
-		text, err := helpers.decls[name](e)
+		_, text, err := helpers.decls[name](e).Render(scope.FuncContext(nil), nil)
 		if err != nil {
 			return nil, nil, fmt.Errorf("validator: helper %s: %w", name, err)
 		}
 
-		src.WriteString(text)
-		src.WriteString("\n\n")
+		src.Write(text)
+		src.WriteString("\n")
 	}
 
 	decls, err := genhelper.ParseDecls([]byte(src.String()))

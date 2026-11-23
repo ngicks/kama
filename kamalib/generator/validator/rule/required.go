@@ -32,7 +32,7 @@ func (Required) Parse(arg string) (Rule, error) {
 
 // Check accepts the types the doc comment of Required lists.
 func (RequiredOptions) Check(t types.Type) error {
-	if _, _, ok := requiredCall(t, ""); !ok {
+	if _, _, ok := requiredCall(t, nil); !ok {
 		return fmt.Errorf(
 			"%s is not an option type, not nillable, has no method IsZero() bool declared"+
 				" on it or promoted without a pointer or an interface, and is not comparable",
@@ -44,10 +44,10 @@ func (RequiredOptions) Check(t types.Type) error {
 }
 
 // Emit calls the helper the test of t needs.
-func (RequiredOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
+func (RequiredOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	helper, call, ok := requiredCall(t, v)
 	if !ok {
-		return "", fmt.Errorf("required: unsupported type %s", t)
+		return nil, fmt.Errorf("required: unsupported type %s", t)
 	}
 
 	switch helper {
@@ -64,22 +64,23 @@ func (RequiredOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
 // it, or false when no test applies. The order matters: an option type is
 // comparable and has IsZero, and time.Time is comparable but tells its zero
 // value by IsZero.
-func requiredCall(t types.Type, v string) (helper, call string, ok bool) {
-	present := func(cond, got string) (string, string, bool) {
-		call := requiredHelperName + "(" + cond + ", " + strconv.Quote(got) + ")"
-		return requiredHelperName, call, true
+func requiredCall(t types.Type, v Gen) (helper string, call Gen, ok bool) {
+	present := func(cond Gen, got string) (string, Gen, bool) {
+		return requiredHelperName,
+			lang.Expr("%s(%s, %s)", requiredHelperName, cond, strconv.Quote(got)),
+			true
 	}
 
 	switch {
 	case typequery.IsNamed(t, typequery.OptPath, "Option"):
-		return present(v+".IsSome()", "none")
+		return present(lang.Expr("%s.IsSome()", v), "none")
 	case typequery.IsNamed(t, typequery.UndPath, "Und"),
 		typequery.IsNamed(t, typequery.ElasticPath, "Elastic"):
-		return present(v+".IsDefined()", "undefined or null")
+		return present(lang.Expr("%s.IsDefined()", v), "undefined or null")
 	}
 
-	comparable := func() (string, string, bool) {
-		return requiredComparableName, requiredComparableName + "(" + v + ")", true
+	comparable := func() (string, Gen, bool) {
+		return requiredComparableName, lang.Expr("%s(%s)", requiredComparableName, v), true
 	}
 
 	// The underlying type of a type parameter is its constraint interface,
@@ -89,22 +90,22 @@ func requiredCall(t types.Type, v string) (helper, call string, ok bool) {
 			return comparable()
 		}
 
-		return "", "", false
+		return "", nil, false
 	}
 
 	if nillable(t) {
-		return present(v+" != nil", "nil")
+		return present(lang.Expr("%s != nil", v), "nil")
 	}
 
 	if hasMethod(t, "IsZero", types.Typ[types.Bool]) {
-		return present("!"+v+".IsZero()", "the zero value")
+		return present(lang.Expr("!%s.IsZero()", v), "the zero value")
 	}
 
 	if types.Comparable(t) {
 		return comparable()
 	}
 
-	return "", "", false
+	return "", nil, false
 }
 
 const (
@@ -112,31 +113,35 @@ const (
 	requiredHelperName     = "kamaValidateRequired"
 )
 
-func requiredComparableDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
+func requiredComparableDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
 
-	return fmt.Sprintf(`func requiredComparable[T comparable](t T) error {
-	var zero T
-	if t == zero {
-		return %[1]s.New(%[1]s.ErrRequired, "want a non-zero value, got %%#v", t)
-	}
-	return nil
-}`, v), nil
+	return lang.Func(
+		lang.Expr("func %s[%s comparable](%s %s) error",
+			requiredComparableName, shadow("T"), shadow("t"), ref("T")),
+		lang.Stmt("var %s %s", shadow("zero"), ref("T")),
+		lang.If(
+			lang.Expr("%s == %s", ref("t"), ref("zero")),
+			lang.Stmt(`return %s.New(%s.ErrRequired, "want a non-zero value, got %%#v", %s)`,
+				v, v, ref("t")),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
 }
 
-func requiredHelperDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
+func requiredHelperDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
 
-	return fmt.Sprintf(`func kamaValidateRequired(ok bool, got string) error {
-	if !ok {
-		return %[1]s.New(%[1]s.ErrRequired, "want a value, got %%s", got)
-	}
-	return nil
-}`, v), nil
+	return lang.Func(
+		lang.Expr("func %s(%s bool, %s string) error",
+			requiredHelperName, shadow("ok"), shadow("got")),
+		lang.If(
+			lang.Expr("!%s", ref("ok")),
+			lang.Stmt(`return %s.New(%s.ErrRequired, "want a value, got %%s", %s)`,
+				v, v, ref("got")),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
 }

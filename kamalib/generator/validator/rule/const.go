@@ -101,7 +101,7 @@ func (o ConstOptions) Check(t types.Type) error {
 }
 
 // Emit calls kamaValidateConst with the values.
-func (o ConstOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
+func (o ConstOptions) Emit(e Emitter, _ types.Type, v Gen) (Gen, error) {
 	e.Declare(constName, constDecl)
 	e.Declare(spellName, spellDecl)
 
@@ -109,36 +109,40 @@ func (o ConstOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
 		Map(ConstValue.Literal).
 		CollectSlice()
 
-	return constName + "(" + v + ", " + strings.Join(values, ", ") + ")", nil
+	return lang.Expr("%s(%s, %s)", constName, v, strings.Join(values, ", ")), nil
 }
 
 const constName = "kamaValidateConst"
 
-func constDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
+func constDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
 
-	sl, err := s.Import("slices")
-	if err != nil {
-		return "", err
-	}
-
-	str, err := s.Import("strings")
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf(`func kamaValidateConst[T comparable](got T, want ...T) error {
-	if !%[2]s.Contains(want, got) {
-		spelled := make([]string, len(want))
-		for i, w := range want {
-			spelled[i] = kamaValidateSpell(w)
-		}
-		return %[1]s.New(%[1]s.ErrConst, "want one of %%s, got %%s",
-			%[3]s.Join(spelled, ", "), kamaValidateSpell(got))
-	}
-	return nil
-}`, v, sl, str), nil
+	return lang.Func(
+		lang.Expr("func %s[%s comparable](%s %s, %s ...%s) error",
+			constName, shadow("T"), shadow("got"), ref("T"), shadow("want"), ref("T")),
+		lang.If(
+			lang.Expr("!%s.Contains(%s, %s)", imp.Import("slices"), ref("want"), ref("got")),
+			lang.Steps(
+				lang.Stmt("%s := make([]string, len(%s))", shadow("spelled"), ref("want")),
+				// For renders its clause in the scope of the loop, which the
+				// range variables are declared in.
+				lang.For(nil,
+					lang.Expr("%s, %s := range %s", shadow("i"), shadow("w"), ref("want")),
+					nil,
+					lang.Stmt("%s[%s] = %s(%s)", ref("spelled"), ref("i"), spellName, ref("w")),
+				),
+				lang.Stmt(
+					"return %s.New(%s.ErrConst, \"want one of %%s, got %%s\",\n%s.Join(%s, \", \"), %s(%s))",
+					v,
+					v,
+					imp.Import("strings"),
+					ref("spelled"),
+					spellName,
+					ref("got"),
+				),
+			),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
 }

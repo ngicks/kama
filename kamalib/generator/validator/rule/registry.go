@@ -33,7 +33,7 @@ type Validator interface {
 var ErrArgs = errors.New("validator: invalid args")
 
 // ValidationPath is the import path of the package of the errors generated
-// code returns. A rule imports it through Spelling.Import to build them.
+// code returns. A rule imports it through Importer.Import to build them.
 const ValidationPath = "github.com/ngicks/kama/kamalib/pkg/validation"
 
 // Rule is a validator with its arg decoded.
@@ -48,40 +48,42 @@ type Rule interface {
 	Check(t types.Type) error
 	// Emit returns the expression of type error that validates the value
 	// expression v of type t. It may ask the Emitter for helpers and
-	// imports. Emit is called only after Check accepted t.
+	// imports. Emit is called only after Check accepted t, while the
+	// expression renders.
 	//
 	// The expression may refer to the bool parameter stopOnFirstError of
-	// the function it lands in by the name e.StopOnFirstError returns. An
-	// expression that can find several errors should return only the first
-	// one when that parameter is true.
-	Emit(e Emitter, t types.Type, v string) (string, error)
+	// the function it lands in through e.StopOnFirstError. An expression
+	// that can find several errors should return only the first one when
+	// that parameter is true.
+	Emit(e Emitter, t types.Type, v Gen) (Gen, error)
 }
 
-// Spelling spells types and packages in the file generated code lands in.
-type Spelling interface {
-	// TypeString spells t, importing the packages it names.
-	TypeString(t types.Type) (string, error)
-	// Import returns the identifier the file refers to the package at path
-	// by, importing it.
-	Import(path string) (string, error)
+// Importer spells packages by path in the file generated code lands in.
+type Importer interface {
+	// Import returns the text of the identifier the file refers to the
+	// package at path by. The file imports the package once the text
+	// renders.
+	Import(path string) Gen
 }
 
 // Emitter is what a Validator may use while emitting.
 type Emitter interface {
-	Spelling
+	Importer
 	// Declare declares the package-level declaration named name in the
-	// shared helper file of the package. decl returns its source: exactly
-	// one function, variable or constant declaration of name, without doc
-	// comment, spelled through the Spelling of the helper file. Its locals
-	// must not be named like a package it imports. The first decl given for
-	// a name wins; later ones are not called. A package-level declaration of
-	// that name the generator did not write is an error.
-	Declare(name string, decl func(s Spelling) (string, error))
-	// StopOnFirstError returns the name by which the function the
-	// expression lands in spells its parameter stopOnFirstError. The name
-	// differs from stopOnFirstError when the package or a type parameter of
-	// the target declares that name.
-	StopOnFirstError() string
+	// shared helper file of the package. decl returns the step rendering
+	// it: exactly one function, variable or constant declaration of name,
+	// without doc comment, importing packages through imp, the Importer of
+	// the helper file. The step renders in a context of its own, whose
+	// Package spells types for the helper file. Its locals must not be
+	// named like a package it imports. The first decl given for a name
+	// wins; later ones are not called. A package-level declaration of that
+	// name the generator did not write is an error.
+	Declare(name string, decl func(imp Importer) Step)
+	// StopOnFirstError returns the text of the name by which the function
+	// the expression lands in spells its parameter stopOnFirstError. The
+	// name differs from stopOnFirstError when the package or a type
+	// parameter of the target declares that name.
+	StopOnFirstError() Gen
 }
 
 // Registry holds validators by name.

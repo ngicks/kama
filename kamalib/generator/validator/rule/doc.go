@@ -10,10 +10,18 @@
 // emits an expression of type error. Emit may declare helper functions
 // through the Emitter. The Emitter puts them in the helpers file of the
 // package. The expression may refer to the bool parameter stopOnFirstError
-// of the function it lands in. Emitter.StopOnFirstError returns the name
-// the function spells it by. Clone a registry before changing it.
-// Registering a validator under the name of a built-in replaces both its
-// arg and its code.
+// of the function it lands in. Emitter.StopOnFirstError spells the name the
+// function knows it by. Clone a registry before changing it. Registering a
+// validator under the name of a built-in replaces both its arg and its
+// code.
+//
+// A rule writes code with the steps of package genhelper, rendered with
+// Context. A Gen renders an expression, and a Step renders the declaration
+// of a helper. Each formats source text with the arguments of
+// genhelper.Expr. A genhelper.Shadow argument declares a parameter or a
+// local under exactly its name, and a genhelper.Ref argument spells it.
+// Importer.Import spells a package by path and imports it into the file
+// the text lands in.
 //
 // # Writing a validator
 //
@@ -48,19 +56,22 @@
 //		return nil
 //	}
 //
-//	func (o multipleOptions) Emit(
-//		e rule.Emitter, _ types.Type, v string,
-//	) (string, error) {
-//		e.Declare("kamaValidateMultiple", func(s rule.Spelling) (string, error) {
-//			errs, err := s.Import("errors")
-//			if err != nil {
-//				return "", err
-//			}
-//			return "func kamaValidateMultiple(got, n int64) error {\n" +
-//				"\tif got%n != 0 {\n\t\treturn " + errs + ".New(\"want a multiple\")\n\t}\n" +
-//				"\treturn nil\n}", nil
+//	var lang genhelper.Lang[rule.Context]
+//
+//	func (o multipleOptions) Emit(e rule.Emitter, _ types.Type, v rule.Gen) (rule.Gen, error) {
+//		e.Declare("kamaValidateMultiple", func(imp rule.Importer) rule.Step {
+//			return lang.Func(
+//				lang.Expr("func kamaValidateMultiple(%s, %s int64) error",
+//					genhelper.Shadow("got"), genhelper.Shadow("n")),
+//				lang.If(
+//					lang.Expr("%s%%%s != 0", genhelper.Ref("got"), genhelper.Ref("n")),
+//					lang.Stmt(`return %s.New("want a multiple")`, imp.Import("errors")),
+//					nil,
+//				),
+//				lang.Stmt("return nil"),
+//			)
 //		})
-//		return "kamaValidateMultiple(int64(" + v + "), " + strconv.FormatInt(o.N, 10) + ")", nil
+//		return lang.Expr("kamaValidateMultiple(int64(%s), %d)", v, o.N), nil
 //	}
 //
 //	reg := rule.DefaultRegistry().Clone()

@@ -10,12 +10,12 @@ func isStringType(t types.Type) bool {
 
 // convert returns the conversion of the value v of t to the predeclared
 // type to, spelled spelled, or v when t is to already.
-func convert(t, to types.Type, spelled, v string) string {
+func convert(t, to types.Type, spelled string, v Gen) Gen {
 	if types.Identical(t, to) {
 		return v
 	}
 
-	return spelled + "(" + v + ")"
+	return lang.Expr("%s(%s)", spelled, v)
 }
 
 // nillable reports whether the values of t can be nil: t is a pointer,

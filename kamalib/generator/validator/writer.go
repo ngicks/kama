@@ -151,7 +151,7 @@ func (w *writer) collect(steps []genStep) []genStep {
 	out = append(out, steps...)
 
 	return append(out, lang.Stmt(
-		"return %s.Join(%s...)", w.ident(rule.ValidationPath), lang.Name("errs"),
+		"return %s.Join(%s...)", w.Import(rule.ValidationPath), lang.Name("errs"),
 	))
 }
 
@@ -232,7 +232,7 @@ func (w *writer) fieldWrap(st *types.Struct, i int, outer wrapFunc) wrapFunc {
 
 	return func(err genExpr) genExpr {
 		return outer(lang.Expr(
-			"%s.Field(%s, %s)", w.ident(rule.ValidationPath), err, strconv.Quote(name),
+			"%s.Field(%s, %s)", w.Import(rule.ValidationPath), err, strconv.Quote(name),
 		))
 	}
 }
@@ -245,12 +245,6 @@ func (w *writer) accessible(v *types.Var) bool { return accessible(v, w.scope.Pk
 // struct of another package, as in type T other.S, cannot be spelled.
 func accessible(v *types.Var, pkg *types.Package) bool {
 	return v.Name() != "_" && (v.Exported() || v.Pkg() == pkg)
-}
-
-// ident returns the identifier of the package at path, importing it when
-// the text renders. Text that is never rendered imports nothing.
-func (w *writer) ident(path string) genExpr {
-	return func(genCtx) (string, error) { return w.Import(path) }
 }
 
 // validator returns the step running the validator vo on the field v whose
@@ -306,18 +300,15 @@ func (w *writer) rule(
 func (w *writer) apply(r rule.Rule, t types.Type, x genExpr, wrap wrapFunc) (genStep, error) {
 	checkErr := r.Check(t)
 	if checkErr == nil {
+		// Emit runs as the expression renders, so that only rendered code
+		// declares helpers.
 		return w.check(wrap(func(c genCtx) (string, error) {
-			xs, err := x(c)
+			e, err := r.Emit(w.emitter, t, x)
 			if err != nil {
 				return "", err
 			}
 
-			stop, err := lang.Name("stopOnFirstError")(c)
-			if err != nil {
-				return "", err
-			}
-
-			return r.Emit(exprEmitter{emitter: w.emitter, stop: stop}, t, xs)
+			return e(c)
 		})), nil
 	}
 

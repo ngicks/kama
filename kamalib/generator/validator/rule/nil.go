@@ -32,23 +32,23 @@ func (NilOptions) Check(t types.Type) error {
 }
 
 // Emit calls kamaValidateNil.
-func (NilOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
+func (NilOptions) Emit(e Emitter, _ types.Type, v Gen) (Gen, error) {
 	e.Declare(nilHelperName, nilHelperDecl)
-	return nilHelperName + "(" + v + " == nil)", nil
+	return lang.Expr("%s(%s == nil)", nilHelperName, v), nil
 }
 
 const nilHelperName = "kamaValidateNil"
 
-func nilHelperDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
+func nilHelperDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
 
-	return fmt.Sprintf(`func kamaValidateNil(ok bool) error {
-	if !ok {
-		return %[1]s.New(%[1]s.ErrNil, "want nil, got a non-nil value")
-	}
-	return nil
-}`, v), nil
+	return lang.Func(
+		lang.Expr("func %s(%s bool) error", nilHelperName, shadow("ok")),
+		lang.If(
+			lang.Expr("!%s", ref("ok")),
+			lang.Stmt(`return %s.New(%s.ErrNil, "want nil, got a non-nil value")`, v, v),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
 }

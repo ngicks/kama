@@ -65,7 +65,7 @@ func (o CmpOptions) Check(t types.Type) error {
 
 // Emit calls kamaValidateCmp, or kamaValidateEqual for a bool, once per
 // comparison.
-func (o CmpOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
+func (o CmpOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	helper := cmpName
 	if typequery.BasicInfo(t)&types.IsBoolean != 0 {
 		helper = equalName
@@ -77,9 +77,9 @@ func (o CmpOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
 		e.Declare(spellName, spellDecl)
 	}
 
-	return joinCalls(e, o.Comparisons, func(c Comparison) string {
-		return helper + "(" + v + ", " + strconv.Quote(c.Op) + ", " + c.Operand + ")"
-	})
+	return joinCalls(e, o.Comparisons, func(c Comparison) Gen {
+		return lang.Expr("%s(%s, %s, %s)", helper, v, strconv.Quote(c.Op), c.Operand)
+	}), nil
 }
 
 const (
@@ -87,37 +87,46 @@ const (
 	equalName = "kamaValidateEqual"
 )
 
-func cmpDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
-
-	c, err := s.Import("cmp")
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf(`func kamaValidateCmp[T %[2]s.Ordered](got T, op string, want T) error {
-	if !kamaValidateCompare(got, op, want) {
-		return %[1]s.New(%[1]s.ErrCompare, "want %%s %%s, got %%s",
-			op, kamaValidateSpell(want), kamaValidateSpell(got))
-	}
-	return nil
-}`, v, c), nil
+func cmpDecl(imp Importer) Step {
+	return lang.Func(
+		lang.Expr("func %s[%s %s.Ordered](%s %s, %s string, %s %s) error",
+			cmpName, shadow("T"), imp.Import("cmp"),
+			shadow("got"), ref("T"), shadow("op"), shadow("want"), ref("T")),
+		lang.If(
+			lang.Expr("!%s(%s, %s, %s)", compareName, ref("got"), ref("op"), ref("want")),
+			compareError(imp),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
 }
 
-func equalDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
+func equalDecl(imp Importer) Step {
+	return lang.Func(
+		lang.Expr(
+			"func %s[%s comparable](%s %s, %s string, %s %s) error",
+			equalName,
+			shadow("T"),
+			shadow("got"),
+			ref("T"),
+			shadow("op"),
+			shadow("want"),
+			ref("T"),
+		),
+		lang.If(
+			lang.Expr(`(%s == %s) != (%s == "==")`, ref("got"), ref("want"), ref("op")),
+			compareError(imp),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
+}
 
-	return fmt.Sprintf(`func kamaValidateEqual[T comparable](got T, op string, want T) error {
-	if (got == want) != (op == "==") {
-		return %[1]s.New(%[1]s.ErrCompare, "want %%s %%s, got %%s",
-			op, kamaValidateSpell(want), kamaValidateSpell(got))
-	}
-	return nil
-}`, v), nil
+// compareError is the statement of kamaValidateCmp and kamaValidateEqual
+// returning the failure of the comparison.
+func compareError(imp Importer) Step {
+	v := imp.Import(ValidationPath)
+
+	return lang.Stmt("return %s.New(%s.ErrCompare, \"want %%s %%s, got %%s\",\n%s, %s(%s), %s(%s))",
+		v, v, ref("op"), spellName, ref("want"), spellName, ref("got"))
 }

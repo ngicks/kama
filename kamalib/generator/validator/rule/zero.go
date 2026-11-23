@@ -30,7 +30,7 @@ func (Zero) Parse(arg string) (Rule, error) {
 
 // Check accepts the types the doc comment of Zero lists.
 func (ZeroOptions) Check(t types.Type) error {
-	if _, _, ok := zeroCall(t, ""); !ok {
+	if _, _, ok := zeroCall(t, nil); !ok {
 		return fmt.Errorf(
 			"%s is not nillable, has no method IsZero() bool declared on it or promoted"+
 				" without a pointer or an interface, and is not comparable", t,
@@ -41,10 +41,10 @@ func (ZeroOptions) Check(t types.Type) error {
 }
 
 // Emit calls the helper the test of t needs.
-func (ZeroOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
+func (ZeroOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	helper, call, ok := zeroCall(t, v)
 	if !ok {
-		return "", fmt.Errorf("zero: unsupported type %s", t)
+		return nil, fmt.Errorf("zero: unsupported type %s", t)
 	}
 
 	switch helper {
@@ -61,13 +61,15 @@ func (ZeroOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
 // call of it, or false when no test applies. It tests in the order of
 // requiredCall, without the option types, which tell their zero value by
 // IsZero.
-func zeroCall(t types.Type, v string) (helper, call string, ok bool) {
-	test := func(cond, got string) (string, string, bool) {
-		return zeroHelperName, zeroHelperName + "(" + cond + ", " + strconv.Quote(got) + ")", true
+func zeroCall(t types.Type, v Gen) (helper string, call Gen, ok bool) {
+	test := func(cond Gen, got string) (string, Gen, bool) {
+		return zeroHelperName,
+			lang.Expr("%s(%s, %s)", zeroHelperName, cond, strconv.Quote(got)),
+			true
 	}
 
-	comparable := func() (string, string, bool) {
-		return zeroComparableName, zeroComparableName + "(" + v + ")", true
+	comparable := func() (string, Gen, bool) {
+		return zeroComparableName, lang.Expr("%s(%s)", zeroComparableName, v), true
 	}
 
 	if _, isParam := types.Unalias(t).(*types.TypeParam); isParam {
@@ -75,22 +77,22 @@ func zeroCall(t types.Type, v string) (helper, call string, ok bool) {
 			return comparable()
 		}
 
-		return "", "", false
+		return "", nil, false
 	}
 
 	if nillable(t) {
-		return test(v+" == nil", "a non-nil value")
+		return test(lang.Expr("%s == nil", v), "a non-nil value")
 	}
 
 	if hasMethod(t, "IsZero", types.Typ[types.Bool]) {
-		return test(v+".IsZero()", "a non-zero value")
+		return test(lang.Expr("%s.IsZero()", v), "a non-zero value")
 	}
 
 	if types.Comparable(t) {
 		return comparable()
 	}
 
-	return "", "", false
+	return "", nil, false
 }
 
 const (
@@ -98,31 +100,34 @@ const (
 	zeroHelperName     = "kamaValidateZero"
 )
 
-func zeroComparableDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
+func zeroComparableDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
 
-	return fmt.Sprintf(`func kamaValidateZeroComparable[T comparable](t T) error {
-	var zero T
-	if t != zero {
-		return %[1]s.New(%[1]s.ErrZero, "want the zero value, got %%#v", t)
-	}
-	return nil
-}`, v), nil
+	return lang.Func(
+		lang.Expr("func %s[%s comparable](%s %s) error",
+			zeroComparableName, shadow("T"), shadow("t"), ref("T")),
+		lang.Stmt("var %s %s", shadow("zero"), ref("T")),
+		lang.If(
+			lang.Expr("%s != %s", ref("t"), ref("zero")),
+			lang.Stmt(`return %s.New(%s.ErrZero, "want the zero value, got %%#v", %s)`,
+				v, v, ref("t")),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
 }
 
-func zeroHelperDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
+func zeroHelperDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
 
-	return fmt.Sprintf(`func kamaValidateZero(ok bool, got string) error {
-	if !ok {
-		return %[1]s.New(%[1]s.ErrZero, "want the zero value, got %%s", got)
-	}
-	return nil
-}`, v), nil
+	return lang.Func(
+		lang.Expr("func %s(%s bool, %s string) error", zeroHelperName, shadow("ok"), shadow("got")),
+		lang.If(
+			lang.Expr("!%s", ref("ok")),
+			lang.Stmt(`return %s.New(%s.ErrZero, "want the zero value, got %%s", %s)`,
+				v, v, ref("got")),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
 }

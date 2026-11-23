@@ -9,11 +9,13 @@ import (
 	"go/token"
 	"go/types"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
 // comparisonOps are the operators of a comparison arg, two-character ones
@@ -144,18 +146,18 @@ func isLiteral(x ast.Expr) bool {
 // joinCalls returns call of each comparison of cs. It passes several
 // calls to kamaValidateAll with the stop flag of e. kamaValidateAll returns
 // the first error when the flag is true and all of them joined otherwise.
-func joinCalls(e Emitter, cs []Comparison, call func(c Comparison) string) (string, error) {
+func joinCalls(e Emitter, cs []Comparison, call func(c Comparison) Gen) Gen {
 	calls := opiter.WrapSeq(slices.Values(cs)).
 		Map(call).
 		CollectSlice()
 
 	if len(calls) == 1 {
-		return calls[0], nil
+		return calls[0]
 	}
 
 	e.Declare(allName, allDecl)
 
-	return allName + "(" + e.StopOnFirstError() + ", " + strings.Join(calls, ", ") + ")", nil
+	return lang.Expr("%s(%s, %s)", allName, e.StopOnFirstError(), lang.Join(", ", calls...))
 }
 
 const (
@@ -167,66 +169,54 @@ const (
 	spellName = "kamaValidateSpell"
 )
 
-func compareDecl(s Spelling) (string, error) {
-	c, err := s.Import("cmp")
-	if err != nil {
-		return "", err
-	}
+func compareDecl(imp Importer) Step {
+	cases := opiter.WrapSeq(slices.Values([]string{">", ">=", "==", "!=", "<=", "<"})).
+		Map(func(op string) genhelper.Case[Context] {
+			return lang.Case(
+				lang.Expr("%s", strconv.Quote(op)),
+				lang.Stmt("return %s %s %s", ref("got"), op, ref("want")),
+			)
+		}).
+		CollectSlice()
 
-	return fmt.Sprintf(`func kamaValidateCompare[T %s.Ordered](got T, op string, want T) bool {
-	switch op {
-	case ">":
-		return got > want
-	case ">=":
-		return got >= want
-	case "==":
-		return got == want
-	case "!=":
-		return got != want
-	case "<=":
-		return got <= want
-	case "<":
-		return got < want
-	}
-	return false
-}`, c), nil
+	return lang.Func(
+		lang.Expr("func %s[%s %s.Ordered](%s %s, %s string, %s %s) bool",
+			compareName, shadow("T"), imp.Import("cmp"),
+			shadow("got"), ref("T"), shadow("op"), shadow("want"), ref("T")),
+		lang.Switch(lang.Name("op"), cases...),
+		lang.Stmt("return false"),
+	)
 }
 
-func allDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf(`func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
-	if !stopOnFirstError {
-		return %[1]s.Join(errs...)
-	}
-	for _, err := range errs {
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}`, v), nil
+func allDecl(imp Importer) Step {
+	return lang.Func(
+		lang.Expr("func %s(%s bool, %s ...error) error",
+			allName, shadow("stopOnFirstError"), shadow("errs")),
+		lang.If(
+			lang.Expr("!%s", ref("stopOnFirstError")),
+			lang.Stmt("return %s.Join(%s...)", imp.Import(ValidationPath), ref("errs")),
+			nil,
+		),
+		// For renders its clause in the scope of the loop, which the range
+		// variable is declared in.
+		lang.For(nil, lang.Expr("_, %s := range %s", shadow("err"), ref("errs")), nil,
+			lang.If(lang.Expr("%s != nil", ref("err")), lang.Stmt("return %s", ref("err")), nil),
+		),
+		lang.Stmt("return nil"),
+	)
 }
 
-func spellDecl(s Spelling) (string, error) {
-	pkgs := map[string]string{}
+func spellDecl(imp Importer) Step {
+	rf := imp.Import("reflect")
 
-	for _, p := range []string{"fmt", "reflect", "strconv"} {
-		ident, err := s.Import(p)
-		if err != nil {
-			return "", err
-		}
-
-		pkgs[p] = ident
-	}
-
-	return fmt.Sprintf(`func kamaValidateSpell(v any) string {
-	if rv := %[2]s.ValueOf(v); rv.Kind() == %[2]s.String {
-		return %[3]s.Quote(rv.String())
-	}
-	return %[1]s.Sprint(v)
-}`, pkgs["fmt"], pkgs["reflect"], pkgs["strconv"]), nil
+	return lang.Func(
+		lang.Expr("func %s(%s any) string", spellName, shadow("v")),
+		lang.If(
+			lang.Expr("%s := %s.ValueOf(%s); %s.Kind() == %s.String",
+				shadow("rv"), rf, ref("v"), ref("rv"), rf),
+			lang.Stmt("return %s.Quote(%s.String())", imp.Import("strconv"), ref("rv")),
+			nil,
+		),
+		lang.Stmt("return %s.Sprint(%s)", imp.Import("fmt"), ref("v")),
+	)
 }

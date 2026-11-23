@@ -216,22 +216,26 @@ func (positive) Check(t types.Type) error {
 
 // Emit declares a package-level variable besides the helper function, as a
 // validator compiling a pattern once does.
-func (positive) Emit(e rule.Emitter, _ types.Type, v string) (string, error) {
-	e.Declare("kamaValidateNotPositive", func(s rule.Spelling) (string, error) {
-		errorsPkg, err := s.Import("errors")
-		if err != nil {
-			return "", err
-		}
-
-		return "var kamaValidateNotPositive = " + errorsPkg + `.New("not positive")`, nil
+func (positive) Emit(e rule.Emitter, _ types.Type, v rule.Gen) (rule.Gen, error) {
+	e.Declare("kamaValidateNotPositive", func(imp rule.Importer) rule.Step {
+		return lang.Stmt(
+			`var kamaValidateNotPositive = %s.New("not positive")`,
+			imp.Import("errors"),
+		)
 	})
-	e.Declare("kamaValidatePositive", func(rule.Spelling) (string, error) {
-		return "func kamaValidatePositive(n int64) error {\n" +
-			"\tif n <= 0 {\n\t\treturn kamaValidateNotPositive\n\t}\n" +
-			"\treturn nil\n}", nil
+	e.Declare("kamaValidatePositive", func(rule.Importer) rule.Step {
+		return lang.Func(
+			lang.Expr("func kamaValidatePositive(%s int64) error", decl("n")),
+			lang.If(
+				lang.Expr("%s <= 0", lang.Name("n")),
+				lang.Stmt("return kamaValidateNotPositive"),
+				nil,
+			),
+			lang.Stmt("return nil"),
+		)
 	})
 
-	return "kamaValidatePositive(int64(" + v + "))", nil
+	return lang.Expr("kamaValidatePositive(int64(%s))", v), nil
 }
 
 // TestRegistry adds a validator, which applies to the value a pointer or an

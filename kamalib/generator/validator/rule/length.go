@@ -73,13 +73,13 @@ func (LengthOptions) Check(t types.Type) error {
 }
 
 // Emit calls kamaValidateLength once per comparison.
-func (o LengthOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
+func (o LengthOptions) Emit(e Emitter, _ types.Type, v Gen) (Gen, error) {
 	e.Declare(compareName, compareDecl)
 	e.Declare(lengthName, lengthDecl)
 
-	return joinCalls(e, o.Comparisons, func(c Comparison) string {
-		return lengthName + "(len(" + v + "), " + strconv.Quote(c.Op) + ", " + c.Operand + ")"
-	})
+	return joinCalls(e, o.Comparisons, func(c Comparison) Gen {
+		return lang.Expr("%s(len(%s), %s, %s)", lengthName, v, strconv.Quote(c.Op), c.Operand)
+	}), nil
 }
 
 // hasLength reports whether len applies to a value of t.
@@ -102,16 +102,18 @@ func hasLength(t types.Type) bool {
 
 const lengthName = "kamaValidateLength"
 
-func lengthDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
+func lengthDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
 
-	return fmt.Sprintf(`func kamaValidateLength(got int, op string, want int) error {
-	if !kamaValidateCompare(got, op, want) {
-		return %[1]s.New(%[1]s.ErrLength, "want length %%s %%d, got %%d", op, want, got)
-	}
-	return nil
-}`, v), nil
+	return lang.Func(
+		lang.Expr("func %s(%s int, %s string, %s int) error",
+			lengthName, shadow("got"), shadow("op"), shadow("want")),
+		lang.If(
+			lang.Expr("!%s(%s, %s, %s)", compareName, ref("got"), ref("op"), ref("want")),
+			lang.Stmt(`return %s.New(%s.ErrLength, "want length %%s %%d, got %%d", %s, %s, %s)`,
+				v, v, ref("op"), ref("want"), ref("got")),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
 }

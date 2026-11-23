@@ -46,23 +46,23 @@ func (NullOptions) Check(t types.Type) error {
 }
 
 // Emit calls kamaValidateNull with the result of IsNull.
-func (NullOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
+func (NullOptions) Emit(e Emitter, _ types.Type, v Gen) (Gen, error) {
 	e.Declare(nullHelperName, nullHelperDecl)
-	return nullHelperName + "(" + v + ".IsNull())", nil
+	return lang.Expr("%s(%s.IsNull())", nullHelperName, v), nil
 }
 
 const nullHelperName = "kamaValidateNull"
 
-func nullHelperDecl(s Spelling) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
-	}
+func nullHelperDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
 
-	return fmt.Sprintf(`func kamaValidateNull(ok bool) error {
-	if !ok {
-		return %[1]s.New(%[1]s.ErrNull, "want null, got a non-null value")
-	}
-	return nil
-}`, v), nil
+	return lang.Func(
+		lang.Expr("func %s(%s bool) error", nullHelperName, shadow("ok")),
+		lang.If(
+			lang.Expr("!%s", ref("ok")),
+			lang.Stmt(`return %s.New(%s.ErrNull, "want null, got a non-null value")`, v, v),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
 }

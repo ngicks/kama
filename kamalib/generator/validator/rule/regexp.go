@@ -52,32 +52,24 @@ func (RegexpOptions) Check(t types.Type) error {
 
 // Emit calls the helper matching strings or bytes with the variable
 // holding the compiled pattern.
-func (o RegexpOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
+func (o RegexpOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	re := regexpVarName(o.Pattern)
-	e.Declare(re, func(s Spelling) (string, error) {
-		pkg, err := s.Import("regexp")
-		if err != nil {
-			return "", err
-		}
-
-		return "var " + re + " = " + pkg + ".MustCompile(" + strconv.Quote(o.Pattern) + ")", nil
+	e.Declare(re, func(imp Importer) Step {
+		return lang.Stmt("var %s = %s.MustCompile(%s)",
+			re, imp.Import("regexp"), strconv.Quote(o.Pattern))
 	})
 
 	if isStringType(t) {
 		e.Declare(regexpStringName, regexpStringDecl)
 
-		return regexpStringName + "(" + re + ", " + convert(
-				t,
-				types.Typ[types.String],
-				"string",
-				v,
-			) + ")",
-			nil
+		return lang.Expr("%s(%s, %s)",
+			regexpStringName, re, convert(t, types.Typ[types.String], "string", v),
+		), nil
 	}
 
 	e.Declare(regexpBytesName, regexpBytesDecl)
 
-	return regexpBytesName + "(" + re + ", " + convert(t, bytesType, "[]byte", v) + ")", nil
+	return lang.Expr("%s(%s, %s)", regexpBytesName, re, convert(t, bytesType, "[]byte", v)), nil
 }
 
 // regexpVarName names the variable holding pattern compiled after the
@@ -101,36 +93,32 @@ const (
 	regexpBytesName  = "kamaValidateRegexpBytes"
 )
 
-func regexpStringDecl(s Spelling) (string, error) {
-	return regexpDecl(s, `func kamaValidateRegexpString(re *%[2]s.Regexp, got string) error {
-	if !re.MatchString(got) {
-		return %[1]s.New(%[1]s.ErrPattern, "want a match of %%q, got %%q", re.String(), got)
-	}
-	return nil
-}`)
-}
+var (
+	regexpStringDecl = regexpDecl(regexpStringName, "string", "MatchString")
+	regexpBytesDecl  = regexpDecl(regexpBytesName, "[]byte", "Match")
+)
 
-func regexpBytesDecl(s Spelling) (string, error) {
-	return regexpDecl(s, `func kamaValidateRegexpBytes(re *%[2]s.Regexp, got []byte) error {
-	if !re.Match(got) {
-		return %[1]s.New(%[1]s.ErrPattern, "want a match of %%q, got %%q", re.String(), got)
-	}
-	return nil
-}`)
-}
+// regexpDecl returns the declaration of the helper name, which matches its
+// argument of type typ with the method match of *regexp.Regexp.
+func regexpDecl(name, typ, match string) func(imp Importer) Step {
+	return func(imp Importer) Step {
+		v := imp.Import(ValidationPath)
 
-// regexpDecl formats src with the identifiers of package validation and of
-// package regexp.
-func regexpDecl(s Spelling, src string) (string, error) {
-	v, err := s.Import(ValidationPath)
-	if err != nil {
-		return "", err
+		return lang.Func(
+			lang.Expr("func %s(%s *%s.Regexp, %s %s) error",
+				name, shadow("re"), imp.Import("regexp"), shadow("got"), typ),
+			lang.If(
+				lang.Expr("!%s.%s(%s)", ref("re"), match, ref("got")),
+				lang.Stmt(
+					`return %s.New(%s.ErrPattern, "want a match of %%q, got %%q", %s.String(), %s)`,
+					v,
+					v,
+					ref("re"),
+					ref("got"),
+				),
+				nil,
+			),
+			lang.Stmt("return nil"),
+		)
 	}
-
-	re, err := s.Import("regexp")
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf(src, v, re), nil
 }

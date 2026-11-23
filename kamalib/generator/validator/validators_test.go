@@ -413,18 +413,20 @@ func (lengthOne) Check(t types.Type) error {
 	return fmt.Errorf("%s has no length", t)
 }
 
-func (lengthOne) Emit(e rule.Emitter, _ types.Type, v string) (string, error) {
-	e.Declare("kamaValidateLengthOne", func(s rule.Spelling) (string, error) {
-		errorsPkg, err := s.Import("errors")
-		if err != nil {
-			return "", err
-		}
-
-		return "func kamaValidateLengthOne(n int) error {\n\tif n != 1 {\n" +
-			"\t\treturn " + errorsPkg + ".New(\"want length 1\")\n\t}\n\treturn nil\n}", nil
+func (lengthOne) Emit(e rule.Emitter, _ types.Type, v rule.Gen) (rule.Gen, error) {
+	e.Declare("kamaValidateLengthOne", func(imp rule.Importer) rule.Step {
+		return lang.Func(
+			lang.Expr("func kamaValidateLengthOne(%s int) error", decl("n")),
+			lang.If(
+				lang.Expr("%s != 1", lang.Name("n")),
+				lang.Stmt(`return %s.New("want length 1")`, imp.Import("errors")),
+				nil,
+			),
+			lang.Stmt("return nil"),
+		)
 	})
 
-	return "kamaValidateLengthOne(len(" + v + "))", nil
+	return lang.Expr("kamaValidateLengthOne(len(%s))", v), nil
 }
 
 // TestReplaceBuiltin registers a validator under the name of a built-in,
@@ -457,21 +459,20 @@ func TestFormatExtra(t *testing.T) {
 	formats := rule.DefaultFormats()
 	formats["lower"] = rule.FormatHelper{
 		Name: "kamaValidateFormatLower",
-		Decl: func(s rule.Spelling) (string, error) {
-			strs, err := s.Import("strings")
-			if err != nil {
-				return "", err
-			}
+		Decl: func(imp rule.Importer) rule.Step {
+			v := imp.Import(rule.ValidationPath)
 
-			v, err := s.Import(rule.ValidationPath)
-			if err != nil {
-				return "", err
-			}
-
-			return fmt.Sprintf("func kamaValidateFormatLower(got string) error {\n"+
-				"\tif %[1]s.ToLower(got) != got {\n"+
-				"\t\treturn %[2]s.New(%[2]s.ErrFormat, \"want format lower, got %%q\", got)\n"+
-				"\t}\n\treturn nil\n}", strs, v), nil
+			return lang.Func(
+				lang.Expr("func kamaValidateFormatLower(%s string) error", decl("got")),
+				lang.If(
+					lang.Expr("%s.ToLower(%s) != %s",
+						imp.Import("strings"), lang.Name("got"), lang.Name("got")),
+					lang.Stmt(`return %s.New(%s.ErrFormat, "want format lower, got %%q", %s)`,
+						v, v, lang.Name("got")),
+					nil,
+				),
+				lang.Stmt("return nil"),
+			)
 		},
 	}
 

@@ -224,7 +224,7 @@ func (w *writer) elements(
 
 	inner := func(err genExpr) genExpr {
 		return wrap(lang.Expr(
-			"%s.%s(%s, %s)", w.ident(rule.ValidationPath), segment, err, lang.Name(idx),
+			"%s.%s(%s, %s)", w.Import(rule.ValidationPath), segment, err, lang.Name(idx),
 		))
 	}
 
@@ -237,7 +237,7 @@ func (w *writer) elements(
 		return lang.ForRange(idx, "e", x, s), nil
 	}
 
-	keys := lang.Expr("%s.Sorted(%s.Keys(%s))", w.ident("slices"), w.ident("maps"), x)
+	keys := lang.Expr("%s.Sorted(%s.Keys(%s))", w.Import("slices"), w.Import("maps"), x)
 	// x renders before e is declared in the loop, so that an x spelling an
 	// outer e refers to that one.
 	value := lang.Stmt("%[2]s := %[1]s[%[3]s]", x, decl("e"), lang.Name(idx))
