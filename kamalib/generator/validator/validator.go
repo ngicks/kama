@@ -56,7 +56,7 @@ var (
 	// ErrOptionFile reports an option file that cannot be loaded or does
 	// not decode. It wraps the error of genopt too.
 	ErrOptionFile = errors.New("validator: invalid option file")
-	// ErrArgs marks an error of Validator.Check that the argument causes
+	// ErrArgs marks an error of Validator.Parse, which the argument causes
 	// for any type. A validator wraps it as fmt.Errorf("%w: ...", ErrArgs) does.
 	// The generator reports such an error at once. It does not apply the
 	// validator again to the value a pointer or an option holds. That

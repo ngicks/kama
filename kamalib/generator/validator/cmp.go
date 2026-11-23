@@ -18,26 +18,6 @@ type Cmp struct{}
 // Name returns "cmp".
 func (Cmp) Name() string { return "cmp" }
 
-// Check parses arg and checks t with the options.
-func (r Cmp) Check(t types.Type, arg string) error {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return err
-	}
-
-	return o.Check(t)
-}
-
-// Emit parses arg and emits with the options.
-func (r Cmp) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return "", err
-	}
-
-	return o.Emit(e, t, v)
-}
-
 // CmpOptions are the options of //kama:validate cmp="<op><value> ...".
 type CmpOptions struct {
 	// Comparisons holds one comparison per token of the arg, in order.
@@ -46,10 +26,10 @@ type CmpOptions struct {
 
 // Parse decodes arg into comparisons. Check tells whether their operands
 // are values of the type.
-func (Cmp) Parse(arg string) (CmpOptions, error) {
+func (Cmp) Parse(arg string) (Rule, error) {
 	cs, err := parseComparisons(arg)
 	if err != nil {
-		return CmpOptions{}, err
+		return nil, err
 	}
 
 	return CmpOptions{Comparisons: cs}, nil

@@ -269,7 +269,7 @@ func (w *writer) validator(
 		)
 	}
 
-	s, err := w.apply(val, v.Type(), x, vo, wrap)
+	s, err := w.rule(val, vo.Args, v.Type(), x, wrap)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"%w: %s: %s on field %s: %w",
@@ -280,18 +280,30 @@ func (w *writer) validator(
 	return s, nil
 }
 
-// apply returns the step running val on the value x of type t. When val
-// cannot apply to t and t holds one value, as a pointer or an opt.Option
-// does, it applies val to that value when there is one. The error tells
-// why val applies to neither.
-func (w *writer) apply(
+// rule parses arg with val and applies the rule to the value x of type t.
+func (w *writer) rule(
 	val Validator,
+	arg string,
 	t types.Type,
 	x genExpr,
-	vo ValidatorOptions,
 	wrap wrapFunc,
 ) (genStep, error) {
-	checkErr := val.Check(t, vo.Args)
+	r, err := val.Parse(arg)
+	// An error of the args alone would repeat for the value t holds, so
+	// apply never sees it.
+	if err != nil {
+		return nil, err
+	}
+
+	return w.apply(r, t, x, wrap)
+}
+
+// apply returns the step running rule on the value x of type t. When rule
+// cannot apply to t and t holds one value, as a pointer or an opt.Option
+// does, it applies rule to that value when there is one. The error tells
+// why rule applies to neither.
+func (w *writer) apply(rule Rule, t types.Type, x genExpr, wrap wrapFunc) (genStep, error) {
+	checkErr := rule.Check(t)
 	if checkErr == nil {
 		return w.check(wrap(func(c genCtx) (string, error) {
 			xs, err := x(c)
@@ -304,17 +316,16 @@ func (w *writer) apply(
 				return "", err
 			}
 
-			return val.Emit(exprEmitter{emitter: w.emitter, stop: stop}, t, xs, vo.Args)
+			return rule.Emit(exprEmitter{emitter: w.emitter, stop: stop}, t, xs)
 		})), nil
 	}
 
 	held, guard, value, ok := heldValue(t, x)
-	// An error of the args alone would repeat for the held value.
-	if !ok || errors.Is(checkErr, ErrArgs) {
+	if !ok {
 		return nil, checkErr
 	}
 
-	s, err := w.apply(val, held, value, vo, wrap)
+	s, err := w.apply(rule, held, value, wrap)
 	if err != nil {
 		return nil, fmt.Errorf("%w; for the value it holds: %w", checkErr, err)
 	}

@@ -24,26 +24,6 @@ type Const struct{}
 // Name returns "const".
 func (Const) Name() string { return "const" }
 
-// Check parses arg and checks t with the options.
-func (r Const) Check(t types.Type, arg string) error {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return err
-	}
-
-	return o.Check(t)
-}
-
-// Emit parses arg and emits with the options.
-func (r Const) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return "", err
-	}
-
-	return o.Emit(e, t, v)
-}
-
 // ConstOptions are the options of //kama:validate const="<v1> <v2> ...".
 type ConstOptions struct {
 	// Values holds one value per token of the arg, in order.
@@ -70,21 +50,21 @@ func (v ConstValue) Literal() string {
 
 // Parse decodes arg into one or more values. Check tells whether they are
 // values of the type.
-func (Const) Parse(arg string) (ConstOptions, error) {
+func (Const) Parse(arg string) (Rule, error) {
 	args, err := argTokens(arg)
 	if err != nil {
-		return ConstOptions{}, err
+		return nil, err
 	}
 
 	if len(args) == 0 {
-		return ConstOptions{}, argsError(errors.New("want one or more values"))
+		return nil, argsError(errors.New("want one or more values"))
 	}
 
 	values := make([]ConstValue, 0, len(args))
 
 	for _, kv := range args {
 		if kv.HasValue {
-			return ConstOptions{}, argsError(fmt.Errorf(
+			return nil, argsError(fmt.Errorf(
 				"arg %q is a key=value pair; quote a value holding =",
 				kv.String(),
 			))

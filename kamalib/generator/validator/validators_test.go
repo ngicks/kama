@@ -288,7 +288,7 @@ func TestConstParse(t *testing.T) {
 		{Text: "1"},
 		{Text: "dark blue", Quoted: true},
 	}})
-	assert.Equal(t, o.Values[1].Literal(), `"dark blue"`)
+	assert.Equal(t, o.(ConstOptions).Values[1].Literal(), `"dark blue"`)
 
 	for arg, msg := range map[string]string{
 		"":    "want one or more values",
@@ -306,8 +306,8 @@ func TestFormatParse(t *testing.T) {
 
 	o, err := f.Parse("date")
 	assert.NilError(t, err)
-	assert.Equal(t, o.Name, "date")
-	assert.Equal(t, o.Helper.Name, "kamaValidateFormatDate")
+	assert.Equal(t, o.(FormatOptions).Name, "date")
+	assert.Equal(t, o.(FormatOptions).Helper.Name, "kamaValidateFormatDate")
 
 	for arg, msg := range map[string]string{
 		"":     "want one format name; known: date, date-time, url",
@@ -523,11 +523,15 @@ type lengthOne struct{}
 
 func (lengthOne) Name() string { return "length" }
 
-func (lengthOne) Check(t types.Type, arg string) error {
+func (lengthOne) Parse(arg string) (Rule, error) {
 	if arg != "" {
-		return fmt.Errorf("unexpected arg %q; want none", arg)
+		return nil, fmt.Errorf("%w: unexpected arg %q; want none", ErrArgs, arg)
 	}
 
+	return lengthOne{}, nil
+}
+
+func (lengthOne) Check(t types.Type) error {
 	if !hasLength(t) {
 		return fmt.Errorf("%s has no length", t)
 	}
@@ -535,7 +539,7 @@ func (lengthOne) Check(t types.Type, arg string) error {
 	return nil
 }
 
-func (lengthOne) Emit(e Emitter, _ types.Type, v string, _ string) (string, error) {
+func (lengthOne) Emit(e Emitter, _ types.Type, v string) (string, error) {
 	e.Declare("kamaValidateLengthOne", func(s Spelling) (string, error) {
 		errorsPkg, err := s.Import("errors")
 		if err != nil {

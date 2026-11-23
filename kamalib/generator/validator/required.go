@@ -22,31 +22,11 @@ type Required struct{}
 // Name returns "required".
 func (Required) Name() string { return "required" }
 
-// Check parses arg and checks t with the options.
-func (r Required) Check(t types.Type, arg string) error {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return err
-	}
-
-	return o.Check(t)
-}
-
-// Emit parses arg and emits with the options.
-func (r Required) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return "", err
-	}
-
-	return o.Emit(e, t, v)
-}
-
 // RequiredOptions are the options of //kama:validate required. Required takes no arg.
 type RequiredOptions struct{}
 
 // Parse accepts only the empty arg.
-func (Required) Parse(arg string) (RequiredOptions, error) {
+func (Required) Parse(arg string) (Rule, error) {
 	return RequiredOptions{}, noArg(arg)
 }
 

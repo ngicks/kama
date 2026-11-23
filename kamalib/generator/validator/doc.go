@@ -403,54 +403,36 @@
 // Validators are entries of a Registry, and Options.Registry selects it.
 // DefaultRegistry returns a new registry holding the built-in validators.
 // The built-in validators use the same API a caller does. A Validator
-// names itself, checks a type and an arg, and emits an expression of type
-// error. Emit may declare helper functions through the Emitter. The
-// Emitter puts them in the helpers file of the package. The expression may
-// refer to the bool parameter stopOnFirstError of the function it lands
-// in. Emitter.StopOnFirstError returns the name the function spells it by.
-// Clone a registry before changing it. Registering a validator under the
-// name of a built-in replaces both its arg and its code. A validator named
-// hook, ignore, file or package makes Generate fail with an error wrapping
-// ErrConflict.
+// names itself and parses an arg into a Rule. A Rule checks a type and
+// emits an expression of type error. Emit may declare helper functions
+// through the Emitter. The Emitter puts them in the helpers file of the
+// package. The expression may refer to the bool parameter stopOnFirstError
+// of the function it lands in. Emitter.StopOnFirstError returns the name
+// the function spells it by. Clone a registry before changing it.
+// Registering a validator under the name of a built-in replaces both its
+// arg and its code. A validator named hook, ignore, file or package makes
+// Generate fail with an error wrapping ErrConflict.
 //
 // A validator has three parts, and each built-in one lays them out in its
-// own file in this order. First, the Validator type names itself, and its
-// Check and Emit parse arg and hand the result to the options. Second, an
-// options struct holds the decoded arg, and Parse decodes arg into it.
-// Parse reports the arg errors that hold for any type. Those errors wrap
-// ErrArgs.
-// Third, the options struct checks a type with Check and emits the
-// expression with Emit. The options live only for one call of Check or
-// Emit. A field names the validator below as //kama:validate multiple=3:
+// own file in this order. First, the Validator type names itself. Second,
+// an options struct holds the decoded arg, and Parse of the Validator
+// decodes arg into it. Parse reports the arg errors that hold for any
+// type. Those errors wrap ErrArgs. Third, the options struct is the Rule:
+// it checks a type with Check and emits the expression with Emit. The
+// generator parses arg again for every field the validator applies to,
+// and the options live only for that field. A field names the validator
+// below as //kama:validate multiple=3:
 //
 //	type multiple struct{}
 //
 //	func (multiple) Name() string { return "multiple" }
 //
-//	func (r multiple) Check(t types.Type, arg string) error {
-//		o, err := r.Parse(arg)
-//		if err != nil {
-//			return err
-//		}
-//		return o.Check(t)
-//	}
-//
-//	func (r multiple) Emit(
-//		e validator.Emitter, t types.Type, v string, arg string,
-//	) (string, error) {
-//		o, err := r.Parse(arg)
-//		if err != nil {
-//			return "", err
-//		}
-//		return o.Emit(e, t, v)
-//	}
-//
 //	type multipleOptions struct{ N int64 }
 //
-//	func (multiple) Parse(arg string) (multipleOptions, error) {
+//	func (multiple) Parse(arg string) (validator.Rule, error) {
 //		n, err := strconv.ParseInt(arg, 10, 64)
 //		if err != nil || n <= 0 {
-//			return multipleOptions{}, fmt.Errorf("%w: want a positive integer", validator.ErrArgs)
+//			return nil, fmt.Errorf("%w: want a positive integer", validator.ErrArgs)
 //		}
 //		return multipleOptions{N: n}, nil
 //	}

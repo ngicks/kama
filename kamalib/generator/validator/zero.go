@@ -20,31 +20,11 @@ type Zero struct{}
 // Name returns "zero".
 func (Zero) Name() string { return "zero" }
 
-// Check parses arg and checks t with the options.
-func (r Zero) Check(t types.Type, arg string) error {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return err
-	}
-
-	return o.Check(t)
-}
-
-// Emit parses arg and emits with the options.
-func (r Zero) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return "", err
-	}
-
-	return o.Emit(e, t, v)
-}
-
 // ZeroOptions are the options of //kama:validate zero. Zero takes no arg.
 type ZeroOptions struct{}
 
 // Parse accepts only the empty arg.
-func (Zero) Parse(arg string) (ZeroOptions, error) {
+func (Zero) Parse(arg string) (Rule, error) {
 	return ZeroOptions{}, noArg(arg)
 }
 

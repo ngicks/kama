@@ -22,26 +22,6 @@ type Regexp struct{}
 // Name returns "regexp".
 func (Regexp) Name() string { return "regexp" }
 
-// Check parses arg and checks t with the options.
-func (r Regexp) Check(t types.Type, arg string) error {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return err
-	}
-
-	return o.Check(t)
-}
-
-// Emit parses arg and emits with the options.
-func (r Regexp) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return "", err
-	}
-
-	return o.Emit(e, t, v)
-}
-
 // RegexpOptions are the options of //kama:validate regexp=<pattern>.
 type RegexpOptions struct {
 	// Pattern is the whole arg.
@@ -49,13 +29,13 @@ type RegexpOptions struct {
 }
 
 // Parse decodes arg into a pattern that compiles.
-func (Regexp) Parse(arg string) (RegexpOptions, error) {
+func (Regexp) Parse(arg string) (Rule, error) {
 	if arg == "" {
-		return RegexpOptions{}, argsError(errors.New("want a pattern, as in regexp=\"^[a-z]+$\""))
+		return nil, argsError(errors.New("want a pattern, as in regexp=\"^[a-z]+$\""))
 	}
 
 	if _, err := regexp.Compile(arg); err != nil {
-		return RegexpOptions{}, argsError(fmt.Errorf("pattern %q does not compile: %w", arg, err))
+		return nil, argsError(fmt.Errorf("pattern %q does not compile: %w", arg, err))
 	}
 
 	return RegexpOptions{Pattern: arg}, nil

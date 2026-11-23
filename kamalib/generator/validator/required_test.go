@@ -212,7 +212,9 @@ type positive struct{}
 
 func (positive) Name() string { return "positive" }
 
-func (positive) Check(t types.Type, _ string) error {
+func (positive) Parse(string) (Rule, error) { return positive{}, nil }
+
+func (positive) Check(t types.Type) error {
 	if b, ok := t.Underlying().(*types.Basic); ok && b.Info()&types.IsInteger != 0 {
 		return nil
 	}
@@ -222,7 +224,7 @@ func (positive) Check(t types.Type, _ string) error {
 
 // Emit declares a package-level variable besides the helper function, as a
 // validator compiling a pattern once does.
-func (positive) Emit(e Emitter, _ types.Type, v string, _ string) (string, error) {
+func (positive) Emit(e Emitter, _ types.Type, v string) (string, error) {
 	e.Declare("kamaValidateNotPositive", func(s Spelling) (string, error) {
 		errorsPkg, err := s.Import("errors")
 		if err != nil {

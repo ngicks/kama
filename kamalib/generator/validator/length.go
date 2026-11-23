@@ -22,26 +22,6 @@ type Length struct{}
 // Name returns "length".
 func (Length) Name() string { return "length" }
 
-// Check parses arg and checks t with the options.
-func (r Length) Check(t types.Type, arg string) error {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return err
-	}
-
-	return o.Check(t)
-}
-
-// Emit parses arg and emits with the options.
-func (r Length) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return "", err
-	}
-
-	return o.Emit(e, t, v)
-}
-
 // LengthOptions are the options of //kama:validate length="<op><n> ...".
 type LengthOptions struct {
 	// Comparisons holds one comparison per token of the arg, in order.
@@ -49,10 +29,10 @@ type LengthOptions struct {
 }
 
 // Parse decodes arg into comparisons with non-negative integers.
-func (Length) Parse(arg string) (LengthOptions, error) {
+func (Length) Parse(arg string) (Rule, error) {
 	cs, err := parseComparisons(arg)
 	if err != nil {
-		return LengthOptions{}, err
+		return nil, err
 	}
 
 	for _, c := range cs {
@@ -60,11 +40,11 @@ func (Length) Parse(arg string) (LengthOptions, error) {
 
 		val, err := literalValue(types.Typ[types.Int], n)
 		if err != nil {
-			return LengthOptions{}, argsError(err)
+			return nil, argsError(err)
 		}
 
 		if constant.Sign(val) < 0 {
-			return LengthOptions{}, argsError(fmt.Errorf("length %s is negative", n))
+			return nil, argsError(fmt.Errorf("length %s is negative", n))
 		}
 
 		// int accepts 1.0 and 'a' as well, which are no lengths as written.
@@ -76,7 +56,7 @@ func (Length) Parse(arg string) (LengthOptions, error) {
 		}
 
 		if lit, ok := x.(*ast.BasicLit); !ok || lit.Kind != token.INT {
-			return LengthOptions{}, argsError(fmt.Errorf("length %s is not an integer literal", n))
+			return nil, argsError(fmt.Errorf("length %s is not an integer literal", n))
 		}
 	}
 

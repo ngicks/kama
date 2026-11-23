@@ -18,31 +18,11 @@ type Null struct{}
 // Name returns "null".
 func (Null) Name() string { return "null" }
 
-// Check parses arg and checks t with the options.
-func (r Null) Check(t types.Type, arg string) error {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return err
-	}
-
-	return o.Check(t)
-}
-
-// Emit parses arg and emits with the options.
-func (r Null) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
-	o, err := r.Parse(arg)
-	if err != nil {
-		return "", err
-	}
-
-	return o.Emit(e, t, v)
-}
-
 // NullOptions are the options of //kama:validate null. Null takes no arg.
 type NullOptions struct{}
 
 // Parse accepts only the empty arg.
-func (Null) Parse(arg string) (NullOptions, error) {
+func (Null) Parse(arg string) (Rule, error) {
 	return NullOptions{}, noArg(arg)
 }
 

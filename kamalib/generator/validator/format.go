@@ -52,26 +52,6 @@ func DefaultFormats() map[string]FormatHelper {
 // Name returns "format".
 func (Format) Name() string { return "format" }
 
-// Check parses arg and checks t with the options.
-func (f Format) Check(t types.Type, arg string) error {
-	o, err := f.Parse(arg)
-	if err != nil {
-		return err
-	}
-
-	return o.Check(t)
-}
-
-// Emit parses arg and emits with the options.
-func (f Format) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
-	o, err := f.Parse(arg)
-	if err != nil {
-		return "", err
-	}
-
-	return o.Emit(e, t, v)
-}
-
 // FormatOptions are the options of //kama:validate format=<name>.
 type FormatOptions struct {
 	// Name is the whole arg, the name of the format.
@@ -81,16 +61,16 @@ type FormatOptions struct {
 }
 
 // Parse decodes arg into the name of one of f.Formats and its helper.
-func (f Format) Parse(arg string) (FormatOptions, error) {
+func (f Format) Parse(arg string) (Rule, error) {
 	known := strings.Join(slices.Sorted(maps.Keys(f.Formats)), ", ")
 
 	if arg == "" {
-		return FormatOptions{}, argsError(fmt.Errorf("want one format name; known: %s", known))
+		return nil, argsError(fmt.Errorf("want one format name; known: %s", known))
 	}
 
 	h, ok := f.Formats[arg]
 	if !ok {
-		return FormatOptions{}, argsError(fmt.Errorf("unknown format %q; known: %s", arg, known))
+		return nil, argsError(fmt.Errorf("unknown format %q; known: %s", arg, known))
 	}
 
 	return FormatOptions{Name: arg, Helper: h}, nil

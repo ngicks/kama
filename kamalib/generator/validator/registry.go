@@ -11,34 +11,41 @@ import (
 )
 
 // Validator is one kind of field validator //kama:validate can name.
-//
-// The generator applies a validator to the type of the field first. When
-// Check rejects it and the field is a pointer, an opt.Option or an
-// und.Und, the generator applies it to the value held, under a guard that
-// skips the validator when no value is held.
-//
-// arg is the argument of the validator: the value of the arg name=value of
-// //kama:validate, unquoted, or the args of its option file entry. It is
-// empty when the directive names the validator alone. A validator parses
-// arg itself. Validators taking several tokens split arg with
-// dircmnt.ParseArgsKeyValue.
 type Validator interface {
 	// Name is the word naming the validator in the args of //kama:validate.
 	// It must not be hook, ignore, file or package.
 	Name() string
-	// Check reports why the validator cannot apply to a value of type t with
-	// arg. It returns nil when it can. An error arg causes whatever t is
-	// should wrap ErrArgs.
-	Check(t types.Type, arg string) error
+	// Parse decodes arg into the rule to apply.
+	//
+	// arg is the argument of the validator: the value of the arg name=value
+	// of //kama:validate, unquoted, or the args of its option file entry. It
+	// is empty when the directive names the validator alone. Validators
+	// taking several tokens split arg with dircmnt.ParseArgsKeyValue.
+	//
+	// An error reports an arg that is wrong whatever the type is. It should
+	// wrap ErrArgs.
+	Parse(arg string) (Rule, error)
+}
+
+// Rule is a validator with its arg decoded.
+//
+// The generator applies a rule to the type of the field first. When Check
+// rejects it and the field is a pointer, an opt.Option or an und.Und, the
+// generator applies it to the value held, under a guard that skips the
+// rule when no value is held.
+type Rule interface {
+	// Check reports why the rule cannot apply to a value of type t. It
+	// returns nil when it can.
+	Check(t types.Type) error
 	// Emit returns the expression of type error that validates the value
 	// expression v of type t. It may ask the Emitter for helpers and
-	// imports. Emit is called only after Check accepted t and arg.
+	// imports. Emit is called only after Check accepted t.
 	//
 	// The expression may refer to the bool parameter stopOnFirstError of
 	// the function it lands in by the name e.StopOnFirstError returns. An
 	// expression that can find several errors should return only the first
 	// one when that parameter is true.
-	Emit(e Emitter, t types.Type, v string, arg string) (string, error)
+	Emit(e Emitter, t types.Type, v string) (string, error)
 }
 
 // Spelling spells types and packages in the file generated code lands in.
