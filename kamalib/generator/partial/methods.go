@@ -13,6 +13,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // methodNames are the methods every partial type gets.
@@ -145,7 +146,7 @@ func (w *methodWriter) function(doc, signature genExpr, body ...genStep) error {
 // value src, whose type matches as m.
 func (w *methodWriter) from(m match, dst, src genExpr) genStep {
 	assign := func(rhs genExpr) genStep { return lang.Stmt("%s = %s", dst, rhs) }
-	und := func(genCtx) (string, error) { return w.p.ident(undPath) }
+	und := func(genCtx) (string, error) { return w.p.ident(typequery.UndPath) }
 	call := func(op helperOp) genStep {
 		return assign(w.p.call(&helper{op: op, typ: m.source, route: m.route, named: m.named}, src))
 	}

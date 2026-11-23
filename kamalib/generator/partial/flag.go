@@ -22,6 +22,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // FlagSetFile is the name of the file declaring the flag set interface
@@ -269,7 +270,7 @@ func (p *mapper) flag(n *typegraph.Node, v *types.Var, m match) (*flagField, err
 // underlying int64 would make it an int64 flag. A TextUnmarshaler is
 // checked before them too, as its text form is what users type.
 func (f *flagField) setKind(t types.Type) (types.Type, bool) {
-	if isNamed(t, "time", "Duration") {
+	if typequery.IsNamed(t, "time", "Duration") {
 		f.kind = flagDuration
 		return t, true
 	}
@@ -337,7 +338,7 @@ func (w *methodWriter) flagMethods(st *types.Struct) error {
 
 	w.p.refs[flagSetName] = true
 
-	und, uerr := w.p.ident(undPath)
+	und, uerr := w.p.ident(typequery.UndPath)
 	if uerr != nil {
 		return uerr
 	}

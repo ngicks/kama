@@ -19,6 +19,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 const (
@@ -74,10 +75,6 @@ type mergeOption struct {
 	src      optionSource
 }
 
-func (s *selection) filename(n *typegraph.Node) string {
-	return n.Detail.Pkg.Fset.Position(n.Detail.File.FileStart).Filename
-}
-
 // target reports the target named type t refers to, through aliases.
 func (s *selection) target(t types.Type) (*types.Named, bool) {
 	named, ok := types.Unalias(t).(*types.Named)
@@ -116,9 +113,7 @@ func (s *selection) node(named *types.Named) *typegraph.Node {
 
 // sorted returns the targets ordered by package path and type name.
 func (s *selection) sorted() []*typegraph.Node {
-	return slices.SortedFunc(maps.Values(s.targets), func(a, b *typegraph.Node) int {
-		return a.Id.Compare(b.Id)
-	})
+	return typegraph.SortedNodes(maps.Values(s.targets))
 }
 
 // marks are the options of the source packages, from the directives and
@@ -281,17 +276,6 @@ func (m *marks) fieldMarks(k fieldKey, o FieldOptions) []error {
 	return errs
 }
 
-// partialKind reports whether the generator gives n a partial variant:
-// a struct, slice or map underlying type.
-func partialKind(n *typegraph.Node) bool {
-	switch n.Detail.Type.Underlying().(type) {
-	case *types.Struct, *types.Slice, *types.Map:
-		return true
-	}
-
-	return false
-}
-
 // followed reports whether r reaches its child through a struct field, a
 // slice or array element, a map value or a pointer. Map keys, channels and
 // type arguments never hold a partial value, so they do not make their
@@ -336,7 +320,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 
 		n, ok := g.Get(id)
 		if !ok {
-			if obj := lookupType(pkgs, id); obj != nil && sel.generated(obj) {
+			if obj := typegraph.LookupType(pkgs, id); obj != nil && sel.generated(obj) {
 				continue
 			}
 
@@ -347,7 +331,7 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 			continue
 		}
 
-		if !partialKind(n) {
+		if !typequery.IsStructSliceOrMap(n.Detail.Type) {
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s has underlying type %s; want a struct, slice or map",
 				ErrUnsupported, pos, name, n.Detail.Type.Underlying(),
@@ -364,11 +348,11 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	}
 
 	for id, n := range g.All() {
-		if m.isIgnored(id) || !partialKind(n) {
+		if m.isIgnored(id) || !typequery.IsStructSliceOrMap(n.Detail.Type) {
 			continue
 		}
 
-		if m.pkgs[id.PackagePath] || m.files[sel.filename(n)] {
+		if m.pkgs[id.PackagePath] || m.files[n.Filename()] {
 			sel.targets[id] = n
 		}
 	}
@@ -379,7 +363,8 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 		queue = queue[1:]
 
 		for id, e := range n.Children {
-			if sel.targets[id] != nil || m.isIgnored(id) || !partialKind(e.Child) ||
+			if sel.targets[id] != nil || m.isIgnored(id) ||
+				!typequery.IsStructSliceOrMap(e.Child.Detail.Type) ||
 				!slices.ContainsFunc(e.Routes, followed) {
 				continue
 			}
@@ -460,18 +445,6 @@ func (s *selection) checkFlagTargets() error {
 	}
 
 	return errors.Join(errs...)
-}
-
-func lookupType(pkgs []*packages.Package, id typegraph.QualifiedType) types.Object {
-	pkg := opiter.WrapSeq(slices.Values(pkgs)).
-		Filter(func(pkg *packages.Package) bool { return pkg.PkgPath == id.PackagePath }).
-		First()
-
-	if pkg.IsNone() {
-		return nil
-	}
-
-	return pkg.Value().Types.Scope().Lookup(id.TypeName)
 }
 
 // checkNames reports names the generated declarations would collide with:
@@ -728,13 +701,5 @@ func deref(t types.Type) types.Type {
 // targetsIn returns the targets the source file at filename declares, in
 // the order of their declarations.
 func (s *selection) targetsIn(filename string) []*typegraph.Node {
-	byPosition := func(seq iter.Seq[*typegraph.Node]) []*typegraph.Node {
-		return slices.SortedFunc(seq, func(a, b *typegraph.Node) int {
-			return cmp.Compare(a.Detail.Ts.Pos(), b.Detail.Ts.Pos())
-		})
-	}
-
-	return opiter.WrapSeq(maps.Values(s.targets)).
-		Filter(func(n *typegraph.Node) bool { return s.filename(n) == filename }).
-		Collect(byPosition)
+	return typegraph.NodesIn(maps.Values(s.targets), filename)
 }

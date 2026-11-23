@@ -9,6 +9,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // call returns the call of h with args, recording h in the helpers of the
@@ -189,7 +190,7 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 	switch h.op {
 	case opFromEmbedded, opToEmbedded, opAllUndefined:
 	default:
-		if t.und, err = p.ident(undPath); err != nil {
+		if t.und, err = p.ident(typequery.UndPath); err != nil {
 			return helperFunc{}, err
 		}
 

@@ -298,7 +298,7 @@ type A struct {
 	hdr, err := fileHeader(opts, n.Id.PackagePath, testNow())
 	assert.NilError(t, err)
 
-	f := &partialFile{src: sel.filename(n)}
+	f := &partialFile{src: n.Filename()}
 	for range 2 {
 		_, _, err := renderFileWith(
 			sel, hdr, n.Detail.Pkg, f, supportPaths, newHelperSet(),

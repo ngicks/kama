@@ -3,7 +3,6 @@ package validator
 import (
 	"cmp"
 	"errors"
-	"go/types"
 	"maps"
 	"slices"
 	"time"
@@ -35,12 +34,6 @@ const generatorPath = "github.com/ngicks/kama/kamalib/generator/validator"
 // validationPath is the import path of the package of the errors generated
 // code returns.
 const validationPath = "github.com/ngicks/kama/kamalib/pkg/validation"
-
-const (
-	optPath     = "github.com/ngicks/option/opt"
-	undPath     = "github.com/ngicks/option/und"
-	elasticPath = "github.com/ngicks/option/elastic"
-)
 
 func init() { base.MustRegister(GeneratorName) }
 
@@ -150,7 +143,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	pkgOf := map[string]*packages.Package{}
 
 	for n := range sel.targets() {
-		name := sel.filename(n)
+		name := n.Filename()
 		if !slices.Contains(byPkg[n.Id.PackagePath], name) {
 			byPkg[n.Id.PackagePath] = append(byPkg[n.Id.PackagePath], name)
 		}
@@ -192,22 +185,4 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	stale := base.StaleCheck{Registry: opts.Markers, Generator: GeneratorName}
 
 	return files, slices.Concat(opts.Loaded.Warnings, stale.Files(srcPkgs, files)), nil
-}
-
-// isNamed reports whether t refers to the type name of the package at
-// pkgPath, through aliases.
-func isNamed(t types.Type, pkgPath, name string) bool {
-	named, ok := types.Unalias(t).(*types.Named)
-	if !ok {
-		return false
-	}
-
-	obj := named.Obj()
-
-	return obj.Pkg() != nil && obj.Pkg().Path() == pkgPath && obj.Name() == name
-}
-
-// typeArg returns the first type argument of the instantiated type t.
-func typeArg(t types.Type) types.Type {
-	return types.Unalias(t).(*types.Named).TypeArgs().At(0)
 }

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // nested returns the step validating the values the value x of type t
@@ -99,14 +100,14 @@ func (w *writer) nestedNamed(
 	depth int,
 ) (genStep, error) {
 	switch {
-	case isNamed(named, optPath, "Option"):
-		return w.guarded(typeArg(named), lang.Expr("%s.IsSome()", x), x, wrap, depth)
-	case isNamed(named, undPath, "Und"):
-		return w.guarded(typeArg(named), lang.Expr("%s.IsDefined()", x), x, wrap, depth)
-	case isNamed(named, elasticPath, "Elastic"):
+	case typequery.IsNamed(named, typequery.OptPath, "Option"):
+		return w.guarded(typequery.TypeArg(named), lang.Expr("%s.IsSome()", x), x, wrap, depth)
+	case typequery.IsNamed(named, typequery.UndPath, "Und"):
+		return w.guarded(typequery.TypeArg(named), lang.Expr("%s.IsDefined()", x), x, wrap, depth)
+	case typequery.IsNamed(named, typequery.ElasticPath, "Elastic"):
 		// Options holds an opt.Option per element, none for a null one.
 		option := func(e genExpr, wrap wrapFunc, depth int) (genStep, error) {
-			return w.guarded(typeArg(named), lang.Expr("%s.IsSome()", e), e, wrap, depth)
+			return w.guarded(typequery.TypeArg(named), lang.Expr("%s.IsSome()", e), e, wrap, depth)
 		}
 
 		return w.elements(option, lang.Expr("%s.Options()", x), wrap, depth, nil)

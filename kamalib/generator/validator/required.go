@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"go/types"
 	"strconv"
+
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // Required is the validator //kama:validate required: the value is not the
@@ -65,9 +67,10 @@ func requiredCall(t types.Type, v string) (helper, call string, ok bool) {
 	}
 
 	switch {
-	case isNamed(t, optPath, "Option"):
+	case typequery.IsNamed(t, typequery.OptPath, "Option"):
 		return present(v+".IsSome()", "none")
-	case isNamed(t, undPath, "Und"), isNamed(t, elasticPath, "Elastic"):
+	case typequery.IsNamed(t, typequery.UndPath, "Und"),
+		typequery.IsNamed(t, typequery.ElasticPath, "Elastic"):
 		return present(v+".IsDefined()", "undefined or null")
 	}
 

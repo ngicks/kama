@@ -215,7 +215,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	// The source files declaring targets, sorted.
 	filenames := slices.Compact(
 		opiter.WrapSeq(maps.Values(sel.targets)).
-			Map(sel.filename).
+			Map((*typegraph.Node).Filename).
 			Collect(slices.Sorted),
 	)
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // typeOptions is the option tree entry of a type.
@@ -79,7 +80,7 @@ func (s *selection) marked(n *typegraph.Node) bool {
 	allTypes := opiter.WrapSeq(maps.Values(po.Files)).
 		Any(func(p PackageOptions) bool { return p.AllTypes })
 
-	return po.Package.AllTypes || allTypes || po.Files[s.filename(n)].file
+	return po.Package.AllTypes || allTypes || po.Files[n.Filename()].file
 }
 
 // hookOn reports whether Validate of n calls the hook of the field v: as
@@ -123,7 +124,7 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 
 		n, ok := g.Get(id)
 		if !ok {
-			if obj := s.lookupType(id); obj == nil || !s.generated(obj) {
+			if obj := typegraph.LookupType(s.pkgs, id); obj == nil || !s.generated(obj) {
 				errs = append(errs, fmt.Errorf(
 					"%w: %s: %s is an alias; mark the type it denotes",
 					ErrUnsupported,
@@ -136,7 +137,7 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 		}
 
 		switch {
-		case !validatorKind(n):
+		case !typequery.IsStructSliceOrMap(n.Detail.Type):
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s has underlying type %s; want a struct, slice or map",
 				ErrUnsupported, mark.origin(), id, n.Detail.Type.Underlying(),
@@ -229,14 +230,4 @@ func (s *selection) allTypeOptions() iter.Seq2[typegraph.QualifiedType, typeOpti
 			}
 		}
 	}
-}
-
-func (s *selection) lookupType(id typegraph.QualifiedType) types.Object {
-	for _, pkg := range s.pkgs {
-		if pkg.PkgPath == id.PackagePath {
-			return pkg.Types.Scope().Lookup(id.TypeName)
-		}
-	}
-
-	return nil
 }

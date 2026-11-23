@@ -4,6 +4,7 @@ import (
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // leafKind tells what a matched type holds behind its pointers.
@@ -95,13 +96,13 @@ func (s *selection) matchType(t types.Type, ref bool, pkgPath string) match {
 
 	if len(route) == 0 {
 		switch {
-		case isNamed(t, optPath, "Option"):
-			m.kind, m.leaf = leafOption, typeArg(t)
+		case typequery.IsNamed(t, typequery.OptPath, "Option"):
+			m.kind, m.leaf = leafOption, typequery.TypeArg(t)
 			return m
-		case isNamed(t, undPath, "Und"):
-			m.kind, m.leaf = leafUnd, typeArg(t)
+		case typequery.IsNamed(t, typequery.UndPath, "Und"):
+			m.kind, m.leaf = leafUnd, typequery.TypeArg(t)
 			return m
-		case isNamed(t, elasticPath, "Elastic"):
+		case typequery.IsNamed(t, typequery.ElasticPath, "Elastic"):
 			m.kind = leafElastic
 			return m
 		}
@@ -113,11 +114,6 @@ func (s *selection) matchType(t types.Type, ref bool, pkgPath string) match {
 	}
 
 	return m
-}
-
-// typeArg returns the first type argument of the instantiated type t.
-func typeArg(t types.Type) types.Type {
-	return types.Unalias(t).(*types.Named).TypeArgs().At(0)
 }
 
 // pointer reports whether the source is a pointer.

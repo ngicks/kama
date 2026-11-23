@@ -11,6 +11,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // fixedNames are the identifiers the signature and the body of every
@@ -325,10 +326,16 @@ func heldValue(t types.Type, x genExpr) (types.Type, genExpr, genExpr, bool) {
 	}
 
 	switch {
-	case isNamed(t, optPath, "Option"):
-		return typeArg(t), lang.Expr("%s.IsSome()", x), lang.Expr("%s.Value()", x), true
-	case isNamed(t, undPath, "Und"):
-		return typeArg(t), lang.Expr("%s.IsDefined()", x), lang.Expr("%s.Value()", x), true
+	case typequery.IsNamed(t, typequery.OptPath, "Option"):
+		return typequery.TypeArg(t),
+			lang.Expr("%s.IsSome()", x),
+			lang.Expr("%s.Value()", x),
+			true
+	case typequery.IsNamed(t, typequery.UndPath, "Und"):
+		return typequery.TypeArg(t),
+			lang.Expr("%s.IsDefined()", x),
+			lang.Expr("%s.Value()", x),
+			true
 	}
 
 	return nil, nil, nil, false

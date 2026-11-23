@@ -16,13 +16,8 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 	"github.com/ngicks/opiter"
-)
-
-const (
-	optPath     = "github.com/ngicks/option/opt"
-	undPath     = "github.com/ngicks/option/und"
-	elasticPath = "github.com/ngicks/option/elastic"
 )
 
 // mapper builds the partial declarations of a file. Its FileScope spells
@@ -353,7 +348,7 @@ func (p *mapper) partialExpr(m match) (dst.Expr, error) {
 
 	switch m.kind {
 	case leafUnd:
-		p.support[undPath] = true
+		p.support[typequery.UndPath] = true
 		return p.TypeExpr(m.source)
 	case leafElastic:
 		return p.TypeExpr(m.source)
@@ -379,12 +374,14 @@ func (p *mapper) partialExpr(m match) (dst.Expr, error) {
 }
 
 func (p *mapper) und(inner dst.Expr) (dst.Expr, error) {
-	sel := p.Imports.DstExpr(importdecl.QualifiedType{PackagePath: undPath, TypeName: "Und"})
+	sel := p.Imports.DstExpr(
+		importdecl.QualifiedType{PackagePath: typequery.UndPath, TypeName: "Und"},
+	)
 	if sel == nil {
-		return nil, fmt.Errorf("partial: unknown package %q", undPath)
+		return nil, fmt.Errorf("partial: unknown package %q", typequery.UndPath)
 	}
 
-	p.support[undPath] = true
+	p.support[typequery.UndPath] = true
 
 	return &dst.IndexExpr{X: sel, Index: inner}, nil
 }
@@ -422,17 +419,6 @@ func (p *mapper) partial(named *types.Named) (dst.Expr, error) {
 	default:
 		return &dst.IndexListExpr{X: x, Indices: args}, nil
 	}
-}
-
-func isNamed(t types.Type, pkgPath, name string) bool {
-	named, ok := types.Unalias(t).(*types.Named)
-	if !ok {
-		return false
-	}
-
-	obj := named.Obj()
-
-	return obj.Pkg() != nil && obj.Pkg().Path() == pkgPath && obj.Name() == name
 }
 
 // partialTag returns the tag of a partial field derived from the tag of a

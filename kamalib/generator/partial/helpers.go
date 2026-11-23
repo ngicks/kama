@@ -18,6 +18,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 const (
@@ -31,7 +32,7 @@ const (
 // than through a type it prints. A package that does not import one of
 // them, directly or not, is unknown to the import Parser, so they are
 // required explicitly.
-var supportPaths = []string{fmtPath, mapsPath, slicesPath, stringsPath, undPath}
+var supportPaths = []string{fmtPath, mapsPath, slicesPath, stringsPath, typequery.UndPath}
 
 // helperOp is what a helper does. With the type of the helper it decides
 // the signature.
@@ -213,7 +214,7 @@ type synthetic struct {
 
 func newSynthetic() *synthetic {
 	return &synthetic{
-		undOrigin: syntheticOrigin(types.NewPackage(undPath, "und"), "Und", 1),
+		undOrigin: syntheticOrigin(types.NewPackage(typequery.UndPath, "und"), "Und", 1),
 		partials:  map[*types.TypeName]*types.Named{},
 		targets:   map[*types.TypeName]*types.TypeName{},
 	}

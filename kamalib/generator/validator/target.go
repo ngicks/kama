@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -16,6 +15,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 const (
@@ -130,18 +130,8 @@ func (s *selection) matches(n *typegraph.Node) bool {
 // struct, slice or map type that is not ignored and has no Validate of
 // its own.
 func (s *selection) generates(n *typegraph.Node) bool {
-	return validatorKind(n) && !s.ignored(n.Id) && !s.implementor(n.Detail.Type)
-}
-
-// validatorKind reports whether the generator can give n a Validate: a
-// struct, slice or map underlying type.
-func validatorKind(n *typegraph.Node) bool {
-	switch n.Detail.Type.Underlying().(type) {
-	case *types.Struct, *types.Slice, *types.Map:
-		return true
-	}
-
-	return false
+	return typequery.IsStructSliceOrMap(n.Detail.Type) && !s.ignored(n.Id) &&
+		!s.implementor(n.Detail.Type)
 }
 
 // reaches reports whether a value of type t holds a value of a named type
@@ -184,7 +174,7 @@ func (s *selection) reachesLeaf(t types.Type, pred func(leaf types.Type) bool) b
 		case *types.Named:
 			switch {
 			case isOptionType(u):
-				return walk(typeArg(u))
+				return walk(typequery.TypeArg(u))
 			case pred(u):
 				return true
 			case !s.throughForeign(u):
@@ -255,8 +245,9 @@ func onPath(path []*types.Named, named *types.Named) bool {
 
 // isOptionType reports whether t is opt.Option, und.Und or elastic.Elastic.
 func isOptionType(t types.Type) bool {
-	return isNamed(t, optPath, "Option") || isNamed(t, undPath, "Und") ||
-		isNamed(t, elasticPath, "Elastic")
+	return typequery.IsNamed(t, typequery.OptPath, "Option") ||
+		typequery.IsNamed(t, typequery.UndPath, "Und") ||
+		typequery.IsNamed(t, typequery.ElasticPath, "Elastic")
 }
 
 // holdsForeignImplementor reports whether n holds an implementor of a
@@ -272,29 +263,15 @@ func (s *selection) loaded(pkg *types.Package) bool {
 	return slices.ContainsFunc(s.pkgs, func(p *packages.Package) bool { return p.Types == pkg })
 }
 
-func (s *selection) filename(n *typegraph.Node) string {
-	return n.Detail.Pkg.Fset.Position(n.Detail.File.FileStart).Filename
-}
-
 // targetsIn returns the targets the source file at filename declares, in
 // the order of their declarations.
 func (s *selection) targetsIn(filename string) []*typegraph.Node {
-	byPosition := func(seq iter.Seq[*typegraph.Node]) []*typegraph.Node {
-		return slices.SortedFunc(seq, func(a, b *typegraph.Node) int {
-			return cmp.Compare(a.Detail.Ts.Pos(), b.Detail.Ts.Pos())
-		})
-	}
-
-	return opiter.WrapSeq(s.targets()).
-		Filter(func(n *typegraph.Node) bool { return s.filename(n) == filename }).
-		Collect(byPosition)
+	return typegraph.NodesIn(s.targets(), filename)
 }
 
 // sorted returns the targets ordered by package path and type name.
 func (s *selection) sorted() []*typegraph.Node {
-	return slices.SortedFunc(s.targets(), func(a, b *typegraph.Node) int {
-		return a.Id.Compare(b.Id)
-	})
+	return typegraph.SortedNodes(s.targets())
 }
 
 // checkConflicts reports names the generated method would collide with: a

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // fieldMaskLocals are the identifiers the field mask methods declare
@@ -303,7 +304,7 @@ func (w *methodWriter) maskBranch(v *types.Var, m match, fmtIdent genExpr) (genS
 		return nil, err
 	}
 
-	und := w.pkgIdent(undPath)
+	und := w.pkgIdent(typequery.UndPath)
 	sub := lang.Name(subRole(v.Name()))
 	src := fieldOf("v", v.Name())
 	dst := fieldOf("x", partialField(v, m))
