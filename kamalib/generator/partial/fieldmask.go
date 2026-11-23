@@ -20,7 +20,6 @@ var fieldMaskMethodNames = []string{"FieldMask", "FromValueWithMask"}
 // maskName is the field mask name of a field.
 type maskName struct {
 	name string
-	src  optionSource
 }
 
 // maskNameFromArgs validates the args of //kama:partial:fieldmask on a
@@ -46,21 +45,17 @@ func maskNameFromArgs(kv map[string]string) (maskName, error) {
 	return o, nil
 }
 
-// fieldMasked reports whether the target id has field masks enabled.
-func (s *selection) fieldMasked(id typegraph.QualifiedType) bool {
-	_, ok := s.masked[id]
-	return ok
-}
-
 // checkFieldMaskTargets reports //kama:partial:fieldmask on types without
 // struct partial variants and on fields of types without field masks, of
 // blank fields and of embedded partial values.
 func (s *selection) checkFieldMaskTargets() error {
 	var errs []error
 
-	ids := slices.SortedFunc(maps.Keys(s.masked), typegraph.QualifiedType.Compare)
-	for _, id := range ids {
-		src := s.masked[id]
+	for id, to := range s.allTypeOptions() {
+		src, ok := maskMark(to)
+		if !ok {
+			continue
+		}
 
 		n := s.targets[id]
 		switch {
@@ -82,8 +77,12 @@ func (s *selection) checkFieldMaskTargets() error {
 		}
 	}
 
-	for _, k := range slices.SortedFunc(maps.Keys(s.maskNames), fieldKey.compare) {
-		src := s.maskNames[k].src
+	for k, o := range s.allFieldOptions() {
+		if o.FieldMask == nil {
+			continue
+		}
+
+		src := o.maskSrc
 		id := typegraph.NewQualifiedType(k.pkgPath, k.typeName)
 		bad := func(format string, args ...any) {
 			errs = append(errs, fmt.Errorf(
@@ -142,7 +141,7 @@ func (s *selection) embeddedPartial(n *typegraph.Node, v *types.Var) *typegraph.
 // maskSegment returns the path segment of the field v of the target n: its
 // name, or the name its field mask option gives.
 func (s *selection) maskSegment(n *typegraph.Node, v *types.Var) string {
-	if o, ok := s.maskNames[fieldKeyOf(n.Id, v.Name())]; ok {
+	if o, ok := s.maskNameOf(fieldKeyOf(n.Id, v.Name())); ok {
 		return o.name
 	}
 

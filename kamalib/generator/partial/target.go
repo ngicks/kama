@@ -1,7 +1,6 @@
 package partial
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -17,7 +16,6 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -27,24 +25,19 @@ const (
 	directive = "partial"
 )
 
-// selection is the set of types to generate partial variants of, with
-// the options of the run.
+// selection is the run: the loaded packages, the options, which were
+// decoded once from directive comments and option files, and the targets.
+// Every other fact is read again from the types and from the options where
+// it is needed.
 //
-// targets is derived: it is the marked types and every type reachable
-// from them. It is kept as the one decision of the run that everything
-// else asks about. The other maps hold options, decoded once from
-// directive comments and option files.
+// targets is derived from the type graph and kept because mapping asks
+// whether a type is a target once per field, and the cycle checks once per
+// step of their walks. Building the graph again at each question took
+// Generate from 170 ms to 6.6 s on a package of 25 struct types with 9
+// fields each.
 type selection struct {
 	opts    Options
 	targets map[typegraph.QualifiedType]*typegraph.Node
-	// merges are the merge strategies keyed by field.
-	merges map[fieldKey]mergeOption
-	// flags are the flag options keyed by field.
-	flags map[fieldKey]flagOption
-	// masked are the types with field masks enabled, and maskNames the
-	// field mask names keyed by field.
-	masked    map[typegraph.QualifiedType]optionSource
-	maskNames map[fieldKey]maskName
 	// pkgs are the loaded packages the run generates into.
 	pkgs []*packages.Package
 }
@@ -58,22 +51,7 @@ func fieldKeyOf(id typegraph.QualifiedType, field string) fieldKey {
 	return fieldKey{pkgPath: id.PackagePath, typeName: id.TypeName, field: field}
 }
 
-// compare orders k and other by package path, type name and field name.
-func (k fieldKey) compare(other fieldKey) int {
-	return cmp.Or(
-		cmp.Compare(k.pkgPath, other.pkgPath),
-		cmp.Compare(k.typeName, other.typeName),
-		cmp.Compare(k.field, other.field),
-	)
-}
-
 func (k fieldKey) String() string { return k.pkgPath + "." + k.typeName + "." + k.field }
-
-// mergeOption is the merge strategy of a field.
-type mergeOption struct {
-	strategy string
-	src      optionSource
-}
 
 // target reports the target named type t refers to, through aliases.
 func (s *selection) target(t types.Type) (*types.Named, bool) {
@@ -82,9 +60,18 @@ func (s *selection) target(t types.Type) (*types.Named, bool) {
 		return nil, false
 	}
 	// Obj of an instantiated type is the TypeName of its origin.
-	_, ok = s.targets[typegraph.QualifiedTypeFromObject(named.Obj())]
+	return named, s.isTargetId(typegraph.QualifiedTypeFromObject(named.Obj()))
+}
 
-	return named, ok
+// isTargetId reports whether the type id has a partial variant.
+func (s *selection) isTargetId(id typegraph.QualifiedType) bool {
+	_, ok := s.targets[id]
+	return ok
+}
+
+// ofTarget reports whether the field k is a field of a target.
+func (s *selection) ofTarget(k fieldKey) bool {
+	return s.isTargetId(typegraph.NewQualifiedType(k.pkgPath, k.typeName))
 }
 
 // partialOf reports the target or the implementor t refers to when a
@@ -116,164 +103,10 @@ func (s *selection) sorted() []*typegraph.Node {
 	return typegraph.SortedNodes(maps.Values(s.targets))
 }
 
-// marks are the options of the source packages, from the directives and
-// the option files.
-type marks struct {
-	merges    map[fieldKey]mergeOption
-	flags     map[fieldKey]flagOption
-	masked    map[typegraph.QualifiedType]optionSource
-	maskNames map[fieldKey]maskName
-	// explicit are the marked types ordered by package path and type name.
-	explicit []markedType
-	ignored  map[typegraph.QualifiedType]optionSource
-	// files are the file names as packages reports them.
-	files map[string]bool
-	pkgs  map[string]bool
-}
-
-// markedType is a type marked by //kama:partial or by its option file
-// entry.
-type markedType struct {
-	id  typegraph.QualifiedType
-	src optionSource
-}
-
-func (m *marks) isIgnored(id typegraph.QualifiedType) bool {
-	_, ok := m.ignored[id]
-	return ok
-}
-
-// collectMarks collects the options of o and checks their values.
-func collectMarks(o genopt.Option[PackageOptions, TypeOptions, FieldOptions]) (marks, error) {
-	m := marks{
-		merges:    map[fieldKey]mergeOption{},
-		flags:     map[fieldKey]flagOption{},
-		masked:    map[typegraph.QualifiedType]optionSource{},
-		maskNames: map[fieldKey]maskName{},
-		ignored:   map[typegraph.QualifiedType]optionSource{},
-		files:     map[string]bool{},
-		pkgs:      map[string]bool{},
-	}
-
-	var errs []error
-
-	for _, pkgPath := range slices.Sorted(maps.Keys(o.Packages)) {
-		po := o.Packages[pkgPath]
-		if po.Package.AllTypes {
-			m.pkgs[pkgPath] = true
-		}
-
-		for file, p := range po.Files {
-			if p.AllTypes {
-				m.pkgs[pkgPath] = true
-			}
-
-			if p.file {
-				m.files[file] = true
-			}
-		}
-
-		for _, typeName := range slices.Sorted(maps.Keys(po.Types)) {
-			to := po.Types[typeName]
-			id := typegraph.NewQualifiedType(pkgPath, typeName)
-
-			if err := m.typeMarks(id, to.Group, to.Type); err != nil {
-				errs = append(errs, err)
-			}
-
-			fields, _ := to.Fields.Unpack()
-			for _, fieldName := range slices.Sorted(maps.Keys(fields)) {
-				errs = append(errs, m.fieldMarks(fieldKeyOf(id, fieldName), fields[fieldName])...)
-			}
-		}
-	}
-
-	return m, errors.Join(errs...)
-}
-
-// typeMarks records the options of the type id, those of its type group
-// and its own.
-func (m *marks) typeMarks(id typegraph.QualifiedType, group, typ TypeOptions) error {
-	var (
-		mark, ignore        optionSource
-		isMarked, isIgnored bool
-	)
-
-	for _, o := range []TypeOptions{group, typ} {
-		if o.marked && !isMarked {
-			mark, isMarked = o.markSrc, true
-		}
-
-		if o.Ignore && !isIgnored {
-			ignore, isIgnored = o.markSrc, true
-		}
-
-		if _, ok := m.masked[id]; o.FieldMask && !ok {
-			m.masked[id] = o.maskSrc
-		}
-	}
-
-	if isMarked && isIgnored {
-		return fmt.Errorf(
-			"%w: %s: %s is both marked and ignored (%s)",
-			ErrDirective, mark.origin(), id.String(), ignore.origin(),
-		)
-	}
-
-	if isMarked {
-		m.explicit = append(m.explicit, markedType{id: id, src: mark})
-	}
-
-	if isIgnored {
-		m.ignored[id] = ignore
-	}
-
-	return nil
-}
-
-// fieldMarks records the options of the field k.
-func (m *marks) fieldMarks(k fieldKey, o FieldOptions) []error {
-	var errs []error
-
-	if o.Merge != "" {
-		switch o.Merge {
-		case string(MergeOverwrite), string(MergeAppend), string(MergeNestedRecursive):
-			m.merges[k] = mergeOption{strategy: o.Merge, src: o.mergeSrc}
-		default:
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s: unknown strategy %q on field %s; want overwrite, append or recursive",
-				ErrDirective, o.mergeSrc.origin(), o.mergeSrc.spelling(), o.Merge, k,
-			))
-		}
-	}
-
-	if o.Flag != nil {
-		f, err := flagFromOptions(*o.Flag)
-		if err != nil {
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s on field %s: %w",
-				ErrDirective, o.flagSrc.origin(), o.flagSrc.spelling(), k, err,
-			))
-		} else {
-			f.src = o.flagSrc
-			m.flags[k] = f
-		}
-	}
-
-	if o.FieldMask != nil {
-		mn, err := maskNameFromArgs(map[string]string{"name": o.FieldMask.Name})
-		if err != nil {
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s on field %s: %w",
-				ErrDirective, o.maskSrc.origin(), o.maskSrc.spelling(), k, err,
-			))
-		} else {
-			mn.src = o.maskSrc
-			m.maskNames[k] = mn
-		}
-	}
-
-	return errs
+// targetsIn returns the targets the source file at filename declares, in
+// the order of their declarations.
+func (s *selection) targetsIn(filename string) []*typegraph.Node {
+	return typegraph.NodesIn(maps.Values(s.targets), filename)
 }
 
 // followed reports whether r reaches its child through a struct field, a
@@ -295,84 +128,20 @@ func followed(r *typegraph.EdgeRoute) bool {
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	sel := &selection{opts: opts, pkgs: pkgs}
 
-	g, err := typegraph.New(pkgs, nil, func(_ *ast.TypeSpec, obj types.Object) (bool, error) {
-		return !sel.generated(obj), nil
-	})
+	g, err := sel.graph()
 	if err != nil {
 		return nil, fmt.Errorf("partial: %w", err)
 	}
 
-	m, err := collectMarks(opts.Loaded.Option)
-	if err != nil {
+	if err := sel.checkOptions(); err != nil {
 		return nil, err
 	}
 
-	sel.targets = map[typegraph.QualifiedType]*typegraph.Node{}
-	sel.merges, sel.flags = m.merges, m.flags
-	sel.masked, sel.maskNames = m.masked, m.maskNames
-
-	var errs []error
-
-	for _, r := range m.explicit {
-		id := r.id
-		name := id.String()
-		pos := r.src.origin()
-
-		n, ok := g.Get(id)
-		if !ok {
-			if obj := typegraph.LookupType(pkgs, id); obj != nil && sel.generated(obj) {
-				continue
-			}
-
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s is an alias; mark the type it denotes", ErrUnsupported, pos, name,
-			))
-
-			continue
-		}
-
-		if !typequery.IsStructSliceOrMap(n.Detail.Type) {
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s has underlying type %s; want a struct, slice or map",
-				ErrUnsupported, pos, name, n.Detail.Type.Underlying(),
-			))
-
-			continue
-		}
-
-		sel.targets[id] = n
+	if err := sel.checkMarks(g); err != nil {
+		return nil, err
 	}
 
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
-	}
-
-	for id, n := range g.All() {
-		if m.isIgnored(id) || !typequery.IsStructSliceOrMap(n.Detail.Type) {
-			continue
-		}
-
-		if m.pkgs[id.PackagePath] || m.files[n.Filename()] {
-			sel.targets[id] = n
-		}
-	}
-
-	queue := slices.Collect(maps.Values(sel.targets))
-	for len(queue) > 0 {
-		n := queue[0]
-		queue = queue[1:]
-
-		for id, e := range n.Children {
-			if sel.targets[id] != nil || m.isIgnored(id) ||
-				!typequery.IsStructSliceOrMap(e.Child.Detail.Type) ||
-				!slices.ContainsFunc(e.Routes, followed) {
-				continue
-			}
-
-			sel.targets[id] = e.Child
-			queue = append(queue, e.Child)
-		}
-	}
+	sel.targets = sel.targetsOf(g)
 
 	if err := sel.checkMerges(); err != nil {
 		return nil, err
@@ -402,26 +171,87 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	return sel, nil
 }
 
+// graph builds the type graph of the packages of the run, leaving out the
+// types of generated files.
+func (s *selection) graph() (*typegraph.Graph, error) {
+	return typegraph.New(s.pkgs, nil, func(_ *ast.TypeSpec, obj types.Object) (bool, error) {
+		return !s.generated(obj), nil
+	})
+}
+
+// targetsOf returns the targets of the type graph g keyed by id: the
+// marked struct, slice and map types and the types they reach where
+// followed tells, ignored types left out.
+func (s *selection) targetsOf(g *typegraph.Graph) map[typegraph.QualifiedType]*typegraph.Node {
+	targets := map[typegraph.QualifiedType]*typegraph.Node{}
+
+	for id, n := range g.All() {
+		if typequery.IsStructSliceOrMap(n.Detail.Type) && s.marked(n) {
+			targets[id] = n
+		}
+	}
+
+	queue := slices.Collect(maps.Values(targets))
+	for len(queue) > 0 {
+		n := queue[0]
+		queue = queue[1:]
+
+		for id, e := range n.Children {
+			if targets[id] != nil || s.ignored(id) ||
+				!typequery.IsStructSliceOrMap(e.Child.Detail.Type) ||
+				!slices.ContainsFunc(e.Routes, followed) {
+				continue
+			}
+
+			targets[id] = e.Child
+			queue = append(queue, e.Child)
+		}
+	}
+
+	return targets
+}
+
+// checkMarks reports types marked explicitly that cannot have partial
+// variants: aliases and types of other kinds than struct, slice and map.
+func (s *selection) checkMarks(g *typegraph.Graph) error {
+	var errs []error
+
+	for id, to := range s.allTypeOptions() {
+		mark, ok := explicitMark(to)
+		if !ok {
+			continue
+		}
+
+		n, ok := g.Get(id)
+		if !ok {
+			if obj := typegraph.LookupType(s.pkgs, id); obj == nil || !s.generated(obj) {
+				errs = append(errs, fmt.Errorf(
+					"%w: %s: %s is an alias; mark the type it denotes",
+					ErrUnsupported, mark.origin(), id.String(),
+				))
+			}
+
+			continue
+		}
+
+		if !typequery.IsStructSliceOrMap(n.Detail.Type) {
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: %s has underlying type %s; want a struct, slice or map",
+				ErrUnsupported, mark.origin(), id.String(), n.Detail.Type.Underlying(),
+			))
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
 // checkMerges reports //kama:partial:merge on fields of types without
 // partial variants, where it would have no effect.
 func (s *selection) checkMerges() error {
-	hasNoTarget := func(k fieldKey) bool {
-		return s.targets[typegraph.NewQualifiedType(k.pkgPath, k.typeName)] == nil
-	}
-	mergeErr := func(k fieldKey) error {
-		src := s.merges[k].src
-
-		return fmt.Errorf(
-			"%w: %s: %s on field %s; %s has no partial variant",
-			ErrDirective, src.origin(), src.spelling(), k, k.typeName,
-		)
-	}
-
 	return errors.Join(
-		opiter.WrapSeq2(opiter.MapsSortedFunc(s.merges, fieldKey.compare)).
-			OmitL().
-			Filter(hasNoTarget).
-			Map(mergeErr).
+		opiter.WrapSeq2(s.allFieldOptions()).
+			Filter(func(k fieldKey, o FieldOptions) bool { return o.Merge != "" && !s.ofTarget(k) }).
+			Assemble(func(k fieldKey, o FieldOptions) error { return noPartialError(k, o.mergeSrc) }).
 			CollectSlice()...,
 	)
 }
@@ -429,22 +259,21 @@ func (s *selection) checkMerges() error {
 // checkFlagTargets reports //kama:partial:flag on fields of types without
 // partial variants.
 func (s *selection) checkFlagTargets() error {
-	var errs []error
+	return errors.Join(
+		opiter.WrapSeq2(s.allFieldOptions()).
+			Filter(func(k fieldKey, o FieldOptions) bool { return o.Flag != nil && !s.ofTarget(k) }).
+			Assemble(func(k fieldKey, o FieldOptions) error { return noPartialError(k, o.flagSrc) }).
+			CollectSlice()...,
+	)
+}
 
-	for _, k := range slices.SortedFunc(maps.Keys(s.flags), fieldKey.compare) {
-		id := typegraph.NewQualifiedType(k.pkgPath, k.typeName)
-		if s.targets[id] != nil {
-			continue
-		}
-
-		src := s.flags[k].src
-		errs = append(errs, fmt.Errorf(
-			"%w: %s: %s on field %s; %s has no partial variant",
-			ErrDirective, src.origin(), src.spelling(), k, k.typeName,
-		))
-	}
-
-	return errors.Join(errs...)
+// noPartialError reports the field option at src on the field k of a type
+// without a partial variant.
+func noPartialError(k fieldKey, src optionSource) error {
+	return fmt.Errorf(
+		"%w: %s: %s on field %s; %s has no partial variant",
+		ErrDirective, src.origin(), src.spelling(), k, k.typeName,
+	)
 }
 
 // checkNames reports names the generated declarations would collide with:
@@ -696,10 +525,4 @@ func deref(t types.Type) types.Type {
 	}
 
 	return t
-}
-
-// targetsIn returns the targets the source file at filename declares, in
-// the order of their declarations.
-func (s *selection) targetsIn(filename string) []*typegraph.Node {
-	return typegraph.NodesIn(maps.Values(s.targets), filename)
 }

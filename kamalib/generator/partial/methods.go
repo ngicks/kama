@@ -42,12 +42,11 @@ func (s *selection) partialMethodNames(n *typegraph.Node) []string {
 
 // flagged reports whether a field of the target id holds a flag option.
 func (s *selection) flagged(id typegraph.QualifiedType) bool {
-	ofTarget := func(k fieldKey) bool {
-		return k.pkgPath == id.PackagePath && k.typeName == id.TypeName
-	}
+	to, _ := s.typeOption(id)
+	fields, _ := to.Fields.Unpack()
 
-	return opiter.WrapSeq(maps.Keys(s.flags)).
-		ContainsFunc(ofTarget)
+	return opiter.WrapSeq(maps.Values(fields)).
+		Any(func(o FieldOptions) bool { return o.Flag != nil })
 }
 
 // methodWriter writes the methods of one partial type as source text.

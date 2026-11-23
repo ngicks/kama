@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
-	"iter"
 	"maps"
 	"slices"
 	"strconv"
@@ -205,8 +204,8 @@ var textUnmarshaler = types.NewInterfaceType([]*types.Func{
 // flag returns the flag of the field v of n, matched as m, as its
 // directive describes it, or nil when the field has no directive.
 func (p *mapper) flag(n *typegraph.Node, v *types.Var, m match) (*flagField, error) {
-	o := p.sel.flags[fieldKeyOf(n.Id, v.Name())]
-	if o.name == "" {
+	o, ok := p.sel.flagOf(fieldKeyOf(n.Id, v.Name()))
+	if !ok {
 		return nil, nil
 	}
 
@@ -548,22 +547,18 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 // at pkgPath. The run writes no flag set file, which the methods of such a
 // target need.
 func (s *selection) checkNoFlags(pkgPath string) error {
-	sorted := func(seq iter.Seq[fieldKey]) []fieldKey {
-		return slices.SortedFunc(seq, fieldKey.compare)
-	}
+	first := opiter.WrapSeq2(s.allFieldOptions()).
+		Filter(func(k fieldKey, o FieldOptions) bool { return k.pkgPath == pkgPath && o.Flag != nil }).
+		First()
 
-	keys := opiter.WrapSeq(maps.Keys(s.flags)).
-		Filter(func(k fieldKey) bool { return k.pkgPath == pkgPath }).
-		Collect(sorted)
-
-	if len(keys) == 0 {
+	if first.IsNone() {
 		return nil
 	}
 
-	src := s.flags[keys[0]].src
+	k, src := first.Value().K, first.Value().V.flagSrc
 
 	return fmt.Errorf(
 		"%w: %s: %s on field %s needs the flag set file, which flag_set turns off",
-		ErrOption, src.origin(), src.spelling(), keys[0],
+		ErrOption, src.origin(), src.spelling(), k,
 	)
 }

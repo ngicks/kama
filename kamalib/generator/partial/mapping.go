@@ -271,7 +271,7 @@ func (p *mapper) strategy(m match, k fieldKey) (string, error) {
 	var (
 		def     string
 		allowed []string
-		o       = p.sel.merges[k]
+		o       = p.sel.fieldOption(k)
 	)
 
 	switch {
@@ -295,19 +295,19 @@ func (p *mapper) strategy(m match, k fieldKey) (string, error) {
 		def, allowed = string(MergeOverwrite), []string{string(MergeOverwrite)}
 	}
 
-	if o.strategy == "" {
+	if o.Merge == "" {
 		return def, nil
 	}
 
-	if !slices.Contains(allowed, o.strategy) {
+	if !slices.Contains(allowed, o.Merge) {
 		return "", fmt.Errorf(
 			"%w: %s: %s %s on field %s; want %s",
-			ErrDirective, o.src.origin(), o.src.spelling(), o.strategy, k,
+			ErrDirective, o.mergeSrc.origin(), o.mergeSrc.spelling(), o.Merge, k,
 			strings.Join(allowed, " or "),
 		)
 	}
 
-	return o.strategy, nil
+	return o.Merge, nil
 }
 
 func isStruct(named *types.Named) bool {
