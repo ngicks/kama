@@ -174,6 +174,15 @@ func TestImplementorFieldMask(t *testing.T) {
 	})
 	assert.ErrorIs(t, genErr, ErrUnsupported)
 	assert.ErrorContains(t, genErr, "declared outside the packages of the run")
+
+	// The fields of A are those of sub.T, declared outside the run.
+	_, genErr, _ = generateDependent(t, map[string]string{
+		"a.go": "package x\n\nimport \"" + modulePath(t) + "/sub\"\n\n" +
+			"//kama:partial\n//kama:partial:fieldmask\ntype A sub.T\n",
+		"sub/sub.go": sub + "\ntype T struct {\n\tS\n\tN int\n}\n",
+	})
+	assert.ErrorIs(t, genErr, ErrUnsupported)
+	assert.ErrorContains(t, genErr, "sub.go:8:2): embedded")
 }
 
 // TestImplementorEmbeddedPointer builds the helpers of an embedded pointer
@@ -190,6 +199,42 @@ func TestImplementorEmbeddedPointer(t *testing.T) {
 	helpers := out[HelpersFile]
 	helperIn(t, helpers)("AllUndefined", "every field of p, a sub.SPartial, is undefined")
 	helperIn(t, helpers)("ToEmbedded", "converts sub.SPartial into *sub.S,")
+}
+
+// TestImplementorHoldingLoadedType builds the helpers of an embedded
+// pointer to an implementor that embeds a type of a loaded package. The
+// run reaches that type only through the implementor and leaves it out, so
+// the partial variant of the implementor holds it whole, as the package of
+// the implementor generated it without that type.
+func TestImplementorHoldingLoadedType(t *testing.T) {
+	ctx := context.Background()
+	f, all := gentest.Stage(t, map[string]string{
+		"a.go": "package x\n\nimport \"" + modulePath(t) + "/sub\"\n\n" +
+			"//kama:partial\ntype A struct {\n\t*sub.S\n\tN int\n}\n",
+		"other/other.go": "package other\n\ntype O struct{ N int }\n",
+		"sub/sub.go": "package sub\n\nimport \"" + modulePath(t) + "/other\"\n\n" +
+			"//kama:partial\ntype S struct {\n\tother.O\n\tX int\n}\n",
+	})
+	top := "./" + gentest.InlineDir(t)
+
+	generateInto(t, f, gopackages.Options{Patterns: []string{top + "/sub"}})
+
+	pkgs, err := gopackages.Load(
+		ctx,
+		f,
+		gopackages.Options{Patterns: []string{top, top + "/other"}},
+	)
+	assert.NilError(t, err)
+
+	out, _, err := Generate(pkgs, Options{Registry: registry(t), Now: gentest.Now})
+	assert.NilError(t, err)
+
+	gentest.Write(t, f, out)
+	assert.NilError(t, gentest.Build(f, all))
+
+	helperIn(t, gentest.ByBase(out)[HelpersFile])(
+		"AllUndefined", "every field of p, a sub.SPartial, is undefined",
+	)
 }
 
 // TestImplementorFieldMaskPromoted rejects an embedded implementor with

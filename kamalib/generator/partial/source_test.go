@@ -17,6 +17,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/dstreplace"
+	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
 // partialDecl returns the declaration of the type name in src, a generated
@@ -290,7 +291,7 @@ type A struct {
 	sel, err := selectTargets(base.SourcePackages(pkgs), opts)
 	assert.NilError(t, err)
 
-	n := opiter.WrapSeq(maps.Values(sel.targets)).
+	n := opiter.WrapSeq(maps.Values(sel.targets())).
 		First().
 		Value()
 
@@ -302,7 +303,7 @@ type A struct {
 	f := &partialFile{src: n.Filename()}
 	for range 2 {
 		_, _, err := renderFileWith(
-			sel, hdr, n.Detail.Pkg, f, supportPaths, newHelperSet(),
+			sel, hdr, n.Detail.Pkg, f, []*typegraph.Node{n}, supportPaths, newHelperSet(),
 		)
 		assert.NilError(t, err)
 	}

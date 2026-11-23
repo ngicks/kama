@@ -210,9 +210,11 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		return nil, nil, err
 	}
 
+	targets := slices.Collect(maps.Values(sel.targets()))
+
 	// The source files declaring targets, sorted.
 	filenames := slices.Compact(
-		opiter.WrapSeq(maps.Values(sel.targets)).
+		opiter.WrapSeq(slices.Values(targets)).
 			Map((*typegraph.Node).Filename).
 			Collect(slices.Sorted),
 	)
@@ -226,7 +228,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	byPkg := map[string]*pkgFiles{}
 
 	for _, filename := range filenames {
-		pkg := sel.targetsIn(filename)[0].Detail.Pkg
+		pkg := typegraph.NodesIn(slices.Values(targets), filename)[0].Detail.Pkg
 
 		pf := byPkg[pkg.PkgPath]
 		if pf == nil {
@@ -251,7 +253,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 			return nil, nil, err
 		}
 
-		out, err := renderPackage(sel, hdr, pf.pkg, pf.dir, pf.files)
+		out, err := renderPackage(sel, hdr, pf.pkg, pf.dir, pf.files, targets)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -311,17 +313,21 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 // the helpers each file calls and the packages of supportPaths it spells,
 // with every one of them required. The second pass prints each file
 // requiring only those it spells: a required import is added whether the
-// file uses it or not.
+// file uses it or not. targets are the targets of the run.
 func renderPackage(
 	sel *selection,
 	hdr dst.Decorations,
 	pkg *packages.Package,
 	dir string,
 	files []*partialFile,
+	targets []*typegraph.Node,
 ) ([]File, error) {
 	helpers := newHelperSet()
+
 	for _, f := range files {
-		_, p, err := renderFileWith(sel, hdr, pkg, f, supportPaths, helpers)
+		nodes := typegraph.NodesIn(slices.Values(targets), f.src)
+
+		_, p, err := renderFileWith(sel, hdr, pkg, f, nodes, supportPaths, helpers)
 		if err != nil {
 			return nil, err
 		}
@@ -346,8 +352,10 @@ func renderPackage(
 
 	out := make([]File, 0, len(files)+1)
 	for _, f := range files {
+		nodes := typegraph.NodesIn(slices.Values(targets), f.src)
+
 		content, _, err := renderFileWith(
-			sel, hdr, pkg, f, slices.Sorted(maps.Keys(f.support)), helpers,
+			sel, hdr, pkg, f, nodes, slices.Sorted(maps.Keys(f.support)), helpers,
 		)
 		if err != nil {
 			return nil, err
@@ -358,7 +366,7 @@ func renderPackage(
 	// A helpers file declares its helpers sorted by name, that is by op and
 	// then by the hashes of their signatures.
 	callers := opiter.WrapSeq(slices.Values(files)).
-		Map(func(f *partialFile) base.Caller { return f.caller(sel) }).
+		Map(func(f *partialFile) base.Caller { return f.caller(targets) }).
 		CollectSlice()
 
 	for _, hf := range base.HostShared(naming, helperKind, filepath.Join(dir, HelpersFile), callers) {
@@ -472,17 +480,17 @@ func fileHeader(opts Options, pkgPath string, now time.Time) (dst.Decorations, e
 	return base.Header(generatorPath, params, now)
 }
 
-// renderFileWith prints the partial declarations of f, with the packages
-// of require imported.
+// renderFileWith prints the partial declarations of f, those of the
+// targets nodes it declares, with the packages of require imported.
 func renderFileWith(
 	sel *selection,
 	hdr dst.Decorations,
 	pkg *packages.Package,
 	f *partialFile,
+	nodes []*typegraph.Node,
 	require []string,
 	helpers *helperSet,
 ) ([]byte, *mapper, error) {
-	nodes := sel.targetsIn(f.src)
 	// The identifiers the generated declarations declare themselves are
 	// reserved: the type parameters and the locals, which an import of the
 	// same name would shadow or be shadowed by. A local renamed off its

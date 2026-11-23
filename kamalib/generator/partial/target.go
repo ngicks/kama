@@ -25,19 +25,12 @@ const (
 	directive = "partial"
 )
 
-// selection is the run: the loaded packages, the options, which were
-// decoded once from directive comments and option files, and the targets.
-// Every other fact is read again from the types and from the options where
-// it is needed.
-//
-// targets is derived from the type graph and kept because mapping asks
-// whether a type is a target once per field, and the cycle checks once per
-// step of their walks. Building the graph again at each question took
-// Generate from 170 ms to 6.6 s on a package of 25 struct types with 9
-// fields each.
+// selection is the run: the loaded packages and the options, which were
+// decoded once from directive comments and option files. Every fact, the
+// set of targets included, is read again from the types and from the
+// options where it is needed.
 type selection struct {
-	opts    Options
-	targets map[typegraph.QualifiedType]*typegraph.Node
+	opts Options
 	// pkgs are the loaded packages the run generates into.
 	pkgs []*packages.Package
 }
@@ -54,24 +47,38 @@ func fieldKeyOf(id typegraph.QualifiedType, field string) fieldKey {
 func (k fieldKey) String() string { return k.pkgPath + "." + k.typeName + "." + k.field }
 
 // target reports the target named type t refers to, through aliases.
+//
+// Callers ask only about types a target reaches where followed tells. The
+// targets hold every such type generates reports true for, so generates
+// alone tells a target there without building the type graph.
 func (s *selection) target(t types.Type) (*types.Named, bool) {
 	named, ok := types.Unalias(t).(*types.Named)
-	if !ok {
-		return nil, false
-	}
+	return named, ok && s.generates(named)
+}
+
+// generates reports whether named gets a partial variant once a target
+// reaches it where followed tells, or once it is marked: a struct, slice or
+// map type declared at the top level of a loaded package outside the files
+// a generator wrote, and not ignored.
+func (s *selection) generates(named *types.Named) bool {
 	// Obj of an instantiated type is the TypeName of its origin.
-	return named, s.isTargetId(typegraph.QualifiedTypeFromObject(named.Obj()))
+	obj := named.Obj()
+
+	pkg := s.loaded(obj)
+	if pkg == nil || pkg.Types.Scope().Lookup(obj.Name()) != obj {
+		return false
+	}
+
+	return typequery.IsStructSliceOrMap(named) && !s.generated(obj) &&
+		!s.ignored(typegraph.QualifiedTypeFromObject(obj))
 }
 
-// isTargetId reports whether the type id has a partial variant.
-func (s *selection) isTargetId(id typegraph.QualifiedType) bool {
-	_, ok := s.targets[id]
-	return ok
-}
-
-// ofTarget reports whether the field k is a field of a target.
-func (s *selection) ofTarget(k fieldKey) bool {
-	return s.isTargetId(typegraph.NewQualifiedType(k.pkgPath, k.typeName))
+// loaded returns the loaded package declaring obj, or nil.
+func (s *selection) loaded(obj types.Object) *packages.Package {
+	return opiter.WrapSeq(slices.Values(s.pkgs)).
+		Filter(func(pkg *packages.Package) bool { return pkg.Types == obj.Pkg() }).
+		First().
+		UnwrapOrDefault()
 }
 
 // partialOf reports the target or the implementor t refers to when a
@@ -92,21 +99,17 @@ func (s *selection) partialOf(t types.Type, pkgPath string) (*types.Named, bool)
 	return named, named.Obj().Exported() || named.Obj().Pkg().Path() == pkgPath
 }
 
-// node returns the node of the target named, or nil for an implementor,
-// which the graph of the run does not hold.
-func (s *selection) node(named *types.Named) *typegraph.Node {
-	return s.targets[typegraph.QualifiedTypeFromObject(named.Obj())]
-}
+// targets returns the targets keyed by id, read off a type graph built
+// again from the packages.
+func (s *selection) targets() map[typegraph.QualifiedType]*typegraph.Node {
+	g, err := s.graph()
+	if err != nil {
+		// selectTargets built the same graph from the same packages and
+		// stopped the run on its error.
+		panic(fmt.Errorf("partial: %w", err))
+	}
 
-// sorted returns the targets ordered by package path and type name.
-func (s *selection) sorted() []*typegraph.Node {
-	return typegraph.SortedNodes(maps.Values(s.targets))
-}
-
-// targetsIn returns the targets the source file at filename declares, in
-// the order of their declarations.
-func (s *selection) targetsIn(filename string) []*typegraph.Node {
-	return typegraph.NodesIn(maps.Values(s.targets), filename)
+	return s.targetsOf(g)
 }
 
 // followed reports whether r reaches its child through a struct field, a
@@ -141,30 +144,31 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 		return nil, err
 	}
 
-	sel.targets = sel.targetsOf(g)
+	targets := sel.targetsOf(g)
+	sorted := typegraph.SortedNodes(maps.Values(targets))
 
-	if err := sel.checkMerges(); err != nil {
+	if err := sel.checkMerges(targets); err != nil {
 		return nil, err
 	}
 
-	if err := sel.checkFlagTargets(); err != nil {
+	if err := sel.checkFlagTargets(targets); err != nil {
 		return nil, err
 	}
 
-	if err := sel.checkFieldMaskTargets(); err != nil {
+	if err := sel.checkFieldMaskTargets(targets); err != nil {
 		return nil, err
 	}
 
-	if err := sel.checkNames(); err != nil {
+	if err := sel.checkNames(sorted); err != nil {
 		return nil, err
 	}
 
-	if err := sel.checkEmbeddedCycles(); err != nil {
+	if err := sel.checkEmbeddedCycles(sorted); err != nil {
 		return nil, err
 	}
 	// Segments flatten embedded partial values, which terminates only once
 	// checkEmbeddedCycles has ruled out cycles through embedded fields.
-	if err := sel.checkFieldMaskSegments(); err != nil {
+	if err := sel.checkFieldMaskSegments(sorted); err != nil {
 		return nil, err
 	}
 
@@ -180,13 +184,13 @@ func (s *selection) graph() (*typegraph.Graph, error) {
 }
 
 // targetsOf returns the targets of the type graph g keyed by id: the
-// marked struct, slice and map types and the types they reach where
-// followed tells, ignored types left out.
+// marked types generates reports true for and the types they reach where
+// followed tells that generates reports true for.
 func (s *selection) targetsOf(g *typegraph.Graph) map[typegraph.QualifiedType]*typegraph.Node {
 	targets := map[typegraph.QualifiedType]*typegraph.Node{}
 
 	for id, n := range g.All() {
-		if typequery.IsStructSliceOrMap(n.Detail.Type) && s.marked(n) {
+		if s.generates(n.Detail.Type) && s.marked(n) {
 			targets[id] = n
 		}
 	}
@@ -197,8 +201,7 @@ func (s *selection) targetsOf(g *typegraph.Graph) map[typegraph.QualifiedType]*t
 		queue = queue[1:]
 
 		for id, e := range n.Children {
-			if targets[id] != nil || s.ignored(id) ||
-				!typequery.IsStructSliceOrMap(e.Child.Detail.Type) ||
+			if targets[id] != nil || !s.generates(e.Child.Detail.Type) ||
 				!slices.ContainsFunc(e.Routes, followed) {
 				continue
 			}
@@ -246,25 +249,36 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 }
 
 // checkMerges reports //kama:partial:merge on fields of types without
-// partial variants, where it would have no effect.
-func (s *selection) checkMerges() error {
+// partial variants, where it would have no effect. targets are the targets
+// keyed by id.
+func (s *selection) checkMerges(targets map[typegraph.QualifiedType]*typegraph.Node) error {
 	return errors.Join(
 		opiter.WrapSeq2(s.allFieldOptions()).
-			Filter(func(k fieldKey, o FieldOptions) bool { return o.Merge != "" && !s.ofTarget(k) }).
+			Filter(
+				func(k fieldKey, o FieldOptions) bool { return o.Merge != "" && !ofTarget(targets, k) },
+			).
 			Assemble(func(k fieldKey, o FieldOptions) error { return noPartialError(k, o.mergeSrc) }).
 			CollectSlice()...,
 	)
 }
 
 // checkFlagTargets reports //kama:partial:flag on fields of types without
-// partial variants.
-func (s *selection) checkFlagTargets() error {
+// partial variants. targets are the targets keyed by id.
+func (s *selection) checkFlagTargets(targets map[typegraph.QualifiedType]*typegraph.Node) error {
 	return errors.Join(
 		opiter.WrapSeq2(s.allFieldOptions()).
-			Filter(func(k fieldKey, o FieldOptions) bool { return o.Flag != nil && !s.ofTarget(k) }).
+			Filter(
+				func(k fieldKey, o FieldOptions) bool { return o.Flag != nil && !ofTarget(targets, k) },
+			).
 			Assemble(func(k fieldKey, o FieldOptions) error { return noPartialError(k, o.flagSrc) }).
 			CollectSlice()...,
 	)
+}
+
+// ofTarget reports whether the field k is a field of one of targets.
+func ofTarget(targets map[typegraph.QualifiedType]*typegraph.Node, k fieldKey) bool {
+	_, ok := targets[typegraph.NewQualifiedType(k.pkgPath, k.typeName)]
+	return ok
 }
 
 // noPartialError reports the field option at src on the field k of a type
@@ -282,8 +296,8 @@ func noPartialError(k fieldKey, src optionSource) error {
 // file or helpers file holding a declaration the generator did not write. A field of a
 // partial type named like one of its methods is reported while mapping the
 // fields, and a helper named like another declaration once the helpers are
-// known.
-func (s *selection) checkNames() error {
+// known. sorted are the targets ordered by id.
+func (s *selection) checkNames(sorted []*typegraph.Node) error {
 	var errs []error
 
 	conflict := func(fset *token.FileSet, pos token.Pos, format string, args ...any) {
@@ -295,7 +309,7 @@ func (s *selection) checkNames() error {
 
 	targetPkgs := map[string]*packages.Package{}
 
-	for _, n := range s.sorted() {
+	for _, n := range sorted {
 		pkg := n.Detail.Pkg
 		targetPkgs[pkg.PkgPath] = pkg
 		name := partialName(n.Id.TypeName)
@@ -390,36 +404,34 @@ func (s *selection) ownDecl(base string, decl ast.Decl) bool {
 // cycle closes it and the answer does not depend on the order types are
 // visited in. An embedded pointer closes no cycle: its partial variant
 // stays embedded by value.
-func (s *selection) closesCycle(n *typegraph.Node, v *types.Var) bool {
+func (s *selection) closesCycle(n *types.Named, v *types.Var) bool {
 	elem := deref(v.Type())
 	if elem == v.Type() || v.Embedded() {
 		return false
 	}
 
-	named, ok := s.partialOf(elem, n.Id.PackagePath)
+	// An implementor lies outside the run and closes no cycle.
+	child, ok := s.valueChild(n, elem)
 	if !ok {
 		return false
 	}
-	// An implementor lies outside the run and closes no cycle.
-	child := s.node(named)
-	if child == nil {
-		return false
-	}
 
+	id := typegraph.QualifiedTypeFromObject(n.Obj())
 	seen := map[typegraph.QualifiedType]bool{}
 
-	var reaches func(from *typegraph.Node) bool
+	var reaches func(from *types.Named) bool
 
-	reaches = func(from *typegraph.Node) bool {
-		if from.Id == n.Id {
+	reaches = func(from *types.Named) bool {
+		fromId := typegraph.QualifiedTypeFromObject(from.Obj())
+		if fromId == id {
 			return true
 		}
 
-		if seen[from.Id] {
+		if seen[fromId] {
 			return false
 		}
 
-		seen[from.Id] = true
+		seen[fromId] = true
 
 		for _, next := range s.valueChildren(from) {
 			if reaches(next) {
@@ -436,8 +448,9 @@ func (s *selection) closesCycle(n *typegraph.Node, v *types.Var) bool {
 // checkEmbeddedCycles reports a cycle of partial variants held by value
 // that no pointer field closes. Such a cycle goes through embedded
 // pointers, whose partial variants stay embedded by value, and would make
-// the partial variants recursive types.
-func (s *selection) checkEmbeddedCycles() error {
+// the partial variants recursive types. sorted are the targets ordered by
+// id.
+func (s *selection) checkEmbeddedCycles(sorted []*typegraph.Node) error {
 	const (
 		visiting = iota + 1
 		done
@@ -447,29 +460,34 @@ func (s *selection) checkEmbeddedCycles() error {
 
 	var path []typegraph.QualifiedType
 
-	var visit func(n *typegraph.Node) error
+	var visit func(n *types.Named) error
 
-	visit = func(n *typegraph.Node) error {
-		switch state[n.Id] {
+	visit = func(n *types.Named) error {
+		id := typegraph.QualifiedTypeFromObject(n.Obj())
+
+		switch state[id] {
 		case visiting:
-			i := slices.Index(path, n.Id)
+			i := slices.Index(path, id)
 
-			names := opiter.WrapSeq(slices.Values(append(path[i:], n.Id))).
+			names := opiter.WrapSeq(slices.Values(append(path[i:], id))).
 				Map(func(id typegraph.QualifiedType) string { return id.TypeName }).
 				CollectSlice()
 
 			return fmt.Errorf(
 				"%w: %s (%s): partial variants would be recursive through embedded fields: %s",
-				ErrUnsupported, n.Id.String(),
-				n.Detail.Pkg.Fset.Position(n.Detail.Ts.Pos()), strings.Join(names, " -> "),
+				ErrUnsupported,
+				id.String(),
+				s.position(n, n.Obj().Pos()),
+				strings.Join(names, " -> "),
 			)
 		case done:
 			return nil
 		}
 
-		state[n.Id] = visiting
+		state[id] = visiting
 
-		path = append(path, n.Id)
+		path = append(path, id)
+
 		for v, child := range s.valueChildren(n) {
 			if s.closesCycle(n, v) {
 				continue
@@ -481,13 +499,13 @@ func (s *selection) checkEmbeddedCycles() error {
 		}
 
 		path = path[:len(path)-1]
-		state[n.Id] = done
+		state[id] = done
 
 		return nil
 	}
 
-	for _, n := range s.sorted() {
-		if err := visit(n); err != nil {
+	for _, n := range sorted {
+		if err := visit(n.Detail.Type); err != nil {
 			return err
 		}
 	}
@@ -497,25 +515,43 @@ func (s *selection) checkEmbeddedCycles() error {
 
 // valueChildren yields the fields of the struct target n whose partial
 // values the partial variant of n holds without indirection, each with the
-// target it holds: fields of a target type or of a pointer to one.
-func (s *selection) valueChildren(n *typegraph.Node) iter.Seq2[*types.Var, *typegraph.Node] {
-	return func(yield func(*types.Var, *typegraph.Node) bool) {
-		st, ok := n.Detail.Type.Underlying().(*types.Struct)
+// origin of the target it holds: fields of a target type or of a pointer
+// to one.
+func (s *selection) valueChildren(n *types.Named) iter.Seq2[*types.Var, *types.Named] {
+	return func(yield func(*types.Var, *types.Named) bool) {
+		st, ok := n.Origin().Underlying().(*types.Struct)
 		if !ok {
 			return
 		}
 
 		for v := range st.Fields() {
-			named, ok := s.partialOf(deref(v.Type()), n.Id.PackagePath)
-			if !ok {
-				continue
-			}
-			// An implementor lies outside the run and closes no cycle.
-			if child := s.node(named); child != nil && !yield(v, child) {
+			if child, ok := s.valueChild(n, deref(v.Type())); ok && !yield(v, child) {
 				return
 			}
 		}
 	}
+}
+
+// valueChild returns the origin of the target t refers to when the
+// partial variant of the struct target n can hold its partial variant. An
+// implementor lies outside the run and is no such target.
+func (s *selection) valueChild(n *types.Named, t types.Type) (*types.Named, bool) {
+	named, ok := s.partialOf(t, n.Obj().Pkg().Path())
+	if !ok {
+		return nil, false
+	}
+
+	if _, ok := s.target(named); !ok {
+		return nil, false
+	}
+
+	return named.Origin(), true
+}
+
+// position returns pos in the file set of the package of the target n. pos
+// may lie in a package outside the run, as the fields of type A sub.S do.
+func (s *selection) position(n *types.Named, pos token.Pos) token.Position {
+	return s.loaded(n.Obj()).Fset.Position(pos)
 }
 
 // deref strips one pointer from t, through aliases.

@@ -9,6 +9,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
@@ -344,13 +345,32 @@ func (p *mapper) embeddedFunc(h *helper, f helperFunc, t helperTypes) helperFunc
 func (p *mapper) allUndefinedFunc(h *helper, f helperFunc, t helperTypes) (helperFunc, error) {
 	var tests []genExpr
 
+	// target tells a target only for a type a target reaches. The fields of
+	// an implementor reach a type of the run through no target, so the
+	// targets themselves tell there whether that type is one.
+	partialOf := p.sel.partialOf
+	if _, ok := p.sel.target(h.named); !ok {
+		targets := p.sel.targets()
+		partialOf = func(t types.Type, pkgPath string) (*types.Named, bool) {
+			named, ok := p.sel.partialOf(t, pkgPath)
+			if !ok {
+				return nil, false
+			}
+
+			_, isImplementor := p.sel.implementor(named)
+			_, isTarget := targets[typegraph.QualifiedTypeFromObject(named.Obj())]
+
+			return named, isImplementor || isTarget
+		}
+	}
+
 	st := h.named.Underlying().(*types.Struct)
 	for fv := range st.Fields() {
 		if fv.Name() == "_" {
 			continue
 		}
 
-		named, ok := p.sel.partialOf(deref(fv.Type()), p.Pkg.PkgPath)
+		named, ok := partialOf(deref(fv.Type()), p.Pkg.PkgPath)
 		if ok && fv.Embedded() && isStruct(named) {
 			tests = append(tests, p.call(
 				&helper{op: opAllUndefined, typ: named, named: named},

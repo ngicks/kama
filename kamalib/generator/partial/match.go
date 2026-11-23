@@ -60,8 +60,8 @@ type match struct {
 //
 // An embedded struct target, or pointer to one, stays embedded. Any other
 // embedded type matches as a field named after it does.
-func (s *selection) matchField(n *typegraph.Node, v *types.Var) match {
-	pkgPath := n.Id.PackagePath
+func (s *selection) matchField(n *types.Named, v *types.Var) match {
+	pkgPath := n.Obj().Pkg().Path()
 
 	if v.Name() == "_" {
 		return match{source: v.Type(), leaf: v.Type(), blank: true}
@@ -70,10 +70,11 @@ func (s *selection) matchField(n *typegraph.Node, v *types.Var) match {
 	named, ok := s.partialOf(deref(v.Type()), pkgPath)
 	if ok && v.Embedded() && isStruct(named) {
 		leaf, route := typegraph.PointerRoute(v.Type())
+		_, target := s.target(named)
 
 		return match{
 			source: v.Type(), route: route, leaf: leaf,
-			kind: leafPartial, named: named, implementor: s.node(named) == nil, embedded: true,
+			kind: leafPartial, named: named, implementor: !target, embedded: true,
 		}
 	}
 
@@ -109,7 +110,8 @@ func (s *selection) matchType(t types.Type, ref bool, pkgPath string) match {
 	}
 
 	if named, ok := s.partialOf(leaf, pkgPath); ok {
-		m.kind, m.named, m.implementor = leafPartial, named, s.node(named) == nil
+		_, target := s.target(named)
+		m.kind, m.named, m.implementor = leafPartial, named, !target
 		m.ref = ref && len(route) == 1
 	}
 

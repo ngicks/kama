@@ -30,7 +30,7 @@ func (s *selection) holdsMasked(m match) bool {
 		return declaresFieldMask(m.named)
 	}
 
-	return s.fieldMasked(s.node(m.named).Id)
+	return s.fieldMasked(typegraph.QualifiedTypeFromObject(m.named.Obj()))
 }
 
 // fieldMaskMethods writes FieldMask and FromValueWithMask when the target
@@ -96,7 +96,7 @@ func (w *methodWriter) fieldMaskBody(st *types.Struct) genSteps {
 			continue
 		}
 
-		seg := w.p.sel.maskSegment(w.n, v)
+		seg := w.p.sel.maskSegment(w.n.Id, v)
 		field := fieldOf("p", partialField(v, m))
 		own := appendPath(lang.Expr("%s", strconv.Quote(seg)))
 
@@ -169,7 +169,7 @@ func (w *methodWriter) fromValueWithMaskBody(st *types.Struct) (genSteps, error)
 
 		name := v.Name()
 		sub, whole := subRole(name), wholeRole(name)
-		seg := lang.Expr("%s", strconv.Quote(w.p.sel.maskSegment(w.n, v)))
+		seg := lang.Expr("%s", strconv.Quote(w.p.sel.maskSegment(w.n.Id, v)))
 		from := w.from(m, fieldOf("x", partialField(v, m)), fieldOf("v", name))
 
 		switch {
@@ -179,8 +179,8 @@ func (w *methodWriter) fromValueWithMaskBody(st *types.Struct) (genSteps, error)
 			// The segments of an embedded partial value are those of its
 			// fields, which route to it.
 			err := w.p.sel.walkMaskSegments(
-				w.p.sel.node(m.named),
-				func(_ *typegraph.Node, _ *types.Var, seg string) error {
+				m.named.Origin(),
+				func(_ *types.Named, _ *types.Var, seg string) error {
 					heads = append(heads, lang.Expr("%s", strconv.Quote(seg)))
 					return nil
 				},
@@ -313,7 +313,7 @@ func (w *methodWriter) maskBranch(v *types.Var, m match, fmtIdent genExpr) (genS
 		return checkErr(
 			lang.Expr("%s.FromValueWithMask(%s, %s)", lang.Name("y"), in, sub),
 			lang.Expr("%s.Errorf(%s, %s, %s)", fmtIdent, strconv.Quote("%s.%w"),
-				strconv.Quote(w.p.sel.maskSegment(w.n, v)), lang.Name("err")),
+				strconv.Quote(w.p.sel.maskSegment(w.n.Id, v)), lang.Name("err")),
 		)
 	}
 	if !m.pointer() {

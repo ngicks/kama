@@ -729,7 +729,9 @@ type partialFile struct {
 // path returns the path of the partial file.
 func (f *partialFile) path() string { return naming.SourceFile(f.src) }
 
-// caller returns f as a caller of the helpers of its package.
-func (f *partialFile) caller(sel *selection) base.Caller {
-	return base.Caller{Src: f.src, File: sel.targetsIn(f.src)[0].Detail.File, Uses: f.used}
+// caller returns f as a caller of the helpers of its package. targets are
+// the targets of the run.
+func (f *partialFile) caller(targets []*typegraph.Node) base.Caller {
+	file := typegraph.NodesIn(slices.Values(targets), f.src)[0].Detail.File
+	return base.Caller{Src: f.src, File: file, Uses: f.used}
 }

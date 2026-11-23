@@ -115,7 +115,7 @@ func (p *mapper) constraintString(tp *types.TypeParam) (string, error) {
 
 // matchField matches the field v of the struct target n.
 func (p *mapper) matchField(n *typegraph.Node, v *types.Var) match {
-	return p.sel.matchField(n, v)
+	return p.sel.matchField(n.Detail.Type, v)
 }
 
 // matchValue matches t, the type of a slice element or a map value, for
