@@ -141,6 +141,34 @@ func TestOptionFileErrors(t *testing.T) {
 	}
 }
 
+// TestOptionFileUnknownKeys warns of each unknown key of an option file
+// entry and applies the rest of the entry.
+func TestOptionFileUnknownKeys(t *testing.T) {
+	out, warnings, err := generateWithWarnings(t, map[string]string{
+		"a.go": "package x\n\ntype A struct{ N int }\n",
+		"kama_validate.yaml": "version: 1\nzz: 1\ntypes:\n  A:\n    hook: false\n    yy: 1\n" +
+			"    fields:\n      N:\n        xx: 1\n        validators:\n" +
+			"          - name: required\n            ww: 1\n",
+	}, nil)
+	assert.NilError(t, err)
+	assertContains(t, out["a.kama_validate.go"],
+		check(`validation.Field(requiredComparable(v.N), "N")`),
+	)
+
+	msgs := make([]string, len(warnings))
+	for i, w := range warnings {
+		assert.ErrorIs(t, w, genopt.ErrUnknownKey)
+		msgs[i] = w.Error()[strings.LastIndex(w.Error(), ": ")+2:]
+	}
+
+	assert.DeepEqual(t, msgs, []string{
+		"zz",
+		"types.A.yy",
+		"types.A.fields.N.validators.0.ww",
+		"types.A.fields.N.xx",
+	})
+}
+
 // TestSubDirective rejects //kama:validate:<sub> and shows the arg of
 // //kama:validate standing for it.
 func TestSubDirective(t *testing.T) {

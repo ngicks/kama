@@ -35,20 +35,22 @@ type fileDecoder[P, T, F any] struct {
 	name    string
 	kind    SourceKind
 	errs    []error
+	// warnings wrap ErrUnknownKey.
+	warnings []error
 }
 
 // decodeCentral decodes doc, a central option file, for the packages of
-// byPath.
+// byPath, and returns its warnings.
 func (l Loader[P, T, F]) decodeCentral(
 	doc fileloader.Document,
 	byPath map[string]*packages.Package,
-) (map[string]filePackage[P, T, F], error) {
+) (map[string]filePackage[P, T, F], []error, error) {
 	d := &fileDecoder[P, T, F]{version: l.Version, name: doc.Name, kind: SourceFile}
 	out := map[string]filePackage[P, T, F]{}
 
 	top, ok := d.document(doc.Data)
 	if !ok {
-		return nil, errors.Join(d.errs...)
+		return nil, nil, errors.Join(d.errs...)
 	}
 
 	d.unknownKeys(top, nil, "version", "packages")
@@ -75,26 +77,27 @@ func (l Loader[P, T, F]) decodeCentral(
 		}
 	}
 
-	return out, errors.Join(d.errs...)
+	return out, d.warnings, errors.Join(d.errs...)
 }
 
-// decodePackageFile decodes doc, the package option file of pkg.
+// decodePackageFile decodes doc, the package option file of pkg, and
+// returns its warnings.
 func (l Loader[P, T, F]) decodePackageFile(
 	doc fileloader.Document,
 	pkg *packages.Package,
-) (filePackage[P, T, F], error) {
+) (filePackage[P, T, F], []error, error) {
 	d := &fileDecoder[P, T, F]{version: l.Version, name: doc.Name, kind: SourcePackageFile}
 
 	top, ok := d.document(doc.Data)
 	if !ok {
-		return filePackage[P, T, F]{}, errors.Join(d.errs...)
+		return filePackage[P, T, F]{}, nil, errors.Join(d.errs...)
 	}
 
 	delete(top, "version")
 
 	fp, _ := d.packageEntry(top, nil, pkg)
 
-	return fp, errors.Join(d.errs...)
+	return fp, d.warnings, errors.Join(d.errs...)
 }
 
 // document returns the top-level table of data after checking its version.
@@ -146,10 +149,15 @@ func (d *fileDecoder[P, T, F]) packageEntry(
 			KeyPath: path,
 			Target:  Target{Kind: TargetPackage, PkgPath: pkg.PkgPath},
 		},
-		hasPackage: len(rest) > 0,
-		types:      map[string]TypeOption[T, F]{},
+		types: map[string]TypeOption[T, F]{},
 	}
-	d.leaf(&fp.p, rest, fp.src)
+
+	// An entry holding unknown keys only sets no option, so it must not
+	// override the package entry of a file that comes later.
+	unknownTop := opiter.WrapSeq(slices.Values(d.leaf(&fp.p, rest, fp.src))).
+		Filter(func(k []string) bool { return len(k) == 1 }).
+		CollectSlice()
+	fp.hasPackage = len(rest) > len(unknownTop)
 
 	typesPath := appendPath(path, "types")
 
@@ -239,8 +247,9 @@ func (d *fileDecoder[P, T, F]) source(path []string, target Target) Source {
 }
 
 // leaf decodes rest into v, a pointer to a leaf, through JSON, and tells v
-// its source.
-func (d *fileDecoder[P, T, F]) leaf(v any, rest map[string]any, src Source) {
+// its source. It warns of the keys v does not know and returns their paths
+// relative to the entry.
+func (d *fileDecoder[P, T, F]) leaf(v any, rest map[string]any, src Source) [][]string {
 	if rest == nil {
 		rest = map[string]any{}
 	}
@@ -248,17 +257,31 @@ func (d *fileDecoder[P, T, F]) leaf(v any, rest map[string]any, src Source) {
 	b, err := json.Marshal(rest)
 	if err != nil {
 		d.fail(src.KeyPath, "%w", err)
-		return
+		return nil
 	}
 
-	if err := json.Unmarshal(b, v, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(b, v); err != nil {
 		d.leafError(src.KeyPath, err)
-		return
+		return nil
 	}
 
 	if s, ok := v.(SourceSetter); ok {
 		s.SetSource(src)
 	}
+
+	u, ok := v.(UnknownKeyer)
+	if !ok {
+		return nil
+	}
+
+	keys := u.UnknownKeys()
+	slices.SortFunc(keys, slices.Compare)
+
+	for _, k := range keys {
+		d.warn(appendPath(src.KeyPath, k...))
+	}
+
+	return keys
 }
 
 // leafError reports err, an error decoding the entry at path, at the key
@@ -273,8 +296,6 @@ func (d *fileDecoder[P, T, F]) leafError(path []string, err error) {
 	full := slices.AppendSeq(slices.Clip(path), serr.JSONPointer.Tokens())
 
 	switch {
-	case errors.Is(serr.Err, json.ErrUnknownName):
-		d.fail(full, "unknown key")
 	case serr.Err != nil:
 		d.fail(full, "%w", serr.Err)
 	default:
@@ -304,15 +325,24 @@ func kindName(k jsontext.Kind) string {
 }
 
 func (d *fileDecoder[P, T, F]) fail(path []string, format string, args ...any) {
-	at := d.name
-	if len(path) > 0 {
-		at += ": " + keyPath(path)
-	}
-
 	d.errs = append(d.errs, fmt.Errorf(
 		"%w: %s: "+format,
-		append([]any{ErrOptionFile, at}, args...)...,
+		append([]any{ErrOptionFile, d.at(path)}, args...)...,
 	))
+}
+
+// warn reports the unknown key at path.
+func (d *fileDecoder[P, T, F]) warn(path []string) {
+	d.warnings = append(d.warnings, fmt.Errorf("%w: %s", ErrUnknownKey, d.at(path)))
+}
+
+// at locates path in the file.
+func (d *fileDecoder[P, T, F]) at(path []string) string {
+	if len(path) == 0 {
+		return d.name
+	}
+
+	return d.name + ": " + keyPath(path)
 }
 
 // table returns v as a table. A missing or null value is an empty table, so

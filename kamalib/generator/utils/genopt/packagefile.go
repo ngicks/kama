@@ -50,7 +50,9 @@ func (l Loader[P, T, F]) fromFiles(fsys fs.FS, root string, ws []walked) (*Loade
 		for _, doc := range docs {
 			loaded.Files = append(loaded.Files, doc.Name)
 
-			layer, err := l.decodeCentral(doc, byPath)
+			layer, warnings, err := l.decodeCentral(doc, byPath)
+			loaded.Warnings = append(loaded.Warnings, warnings...)
+
 			if err != nil {
 				errs = append(errs, err)
 				continue
@@ -77,7 +79,9 @@ func (l Loader[P, T, F]) fromFiles(fsys fs.FS, root string, ws []walked) (*Loade
 
 		loaded.PackageFiles[w.pkg.PkgPath] = doc.Name
 
-		fp, err := l.decodePackageFile(doc, w.pkg)
+		fp, warnings, err := l.decodePackageFile(doc, w.pkg)
+		loaded.Warnings = append(loaded.Warnings, warnings...)
+
 		if err != nil {
 			errs = append(errs, err)
 			continue

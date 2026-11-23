@@ -37,9 +37,15 @@ func NewLoader(
 type PackageOptions struct {
 	// AllTypes stands for //kama:partial package.
 	AllTypes bool `json:"all_types"`
+	// Unknown captures the keys of an option file entry that name no option.
+	Unknown map[string]any `json:",embed"`
 	// file stands for //kama:partial file, which option files lack.
 	file bool
 }
+
+// UnknownKeys returns the keys of the option file entry that name no
+// option.
+func (o *PackageOptions) UnknownKeys() [][]string { return genopt.UnknownKeys(o.Unknown) }
 
 // UnmarshalKeyValue decodes a directive in a free-floating comment.
 func (o *PackageOptions) UnmarshalKeyValue(
@@ -93,6 +99,8 @@ type TypeOptions struct {
 	Ignore bool `json:"ignore"`
 	// FieldMask stands for //kama:partial:fieldmask on the type.
 	FieldMask bool `json:"fieldmask"`
+	// Unknown captures the keys of an option file entry that name no option.
+	Unknown map[string]any `json:",embed"`
 	// marked stands for //kama:partial, or for an option file entry of the
 	// type without ignore.
 	marked bool
@@ -161,6 +169,10 @@ func (o *TypeOptions) SetSource(src genopt.Source) {
 	}
 }
 
+// UnknownKeys returns the keys of the option file entry that name no
+// option.
+func (o *TypeOptions) UnknownKeys() [][]string { return genopt.UnknownKeys(o.Unknown) }
+
 // FieldOptions are the options of a struct field.
 type FieldOptions struct {
 	// Merge stands for //kama:partial:merge. Empty sets no strategy.
@@ -170,6 +182,8 @@ type FieldOptions struct {
 	// FieldMask stands for //kama:partial:fieldmask on the field, or for
 	// none when nil.
 	FieldMask *FieldMaskOptions `json:"fieldmask"`
+	// Unknown captures the keys of an option file entry that name no option.
+	Unknown map[string]any `json:",embed"`
 	// mergeSrc, flagSrc and maskSrc locate Merge, Flag and FieldMask.
 	mergeSrc, flagSrc, maskSrc optionSource
 }
@@ -287,9 +301,26 @@ func (o *FieldOptions) SetSource(src genopt.Source) {
 	}
 }
 
+// UnknownKeys returns the keys of the option file entry that name no
+// option, those of flag and fieldmask included.
+func (o *FieldOptions) UnknownKeys() [][]string {
+	keys := genopt.UnknownKeys(o.Unknown)
+	if o.Flag != nil {
+		keys = append(keys, genopt.UnknownKeys(o.Flag.Unknown, "flag")...)
+	}
+
+	if o.FieldMask != nil {
+		keys = append(keys, genopt.UnknownKeys(o.FieldMask.Unknown, "fieldmask")...)
+	}
+
+	return keys
+}
+
 // FieldMaskOptions are the args of //kama:partial:fieldmask on a field.
 type FieldMaskOptions struct {
 	Name string `json:"name"`
+	// Unknown captures the keys of an option file entry that name no arg.
+	Unknown map[string]any `json:",embed"`
 }
 
 // FlagOptions are the args of //kama:partial:flag. An empty Short sets no
@@ -298,6 +329,8 @@ type FlagOptions struct {
 	Name  string `json:"name"`
 	Short string `json:"short"`
 	Usage string `json:"usage"`
+	// Unknown captures the keys of an option file entry that name no arg.
+	Unknown map[string]any `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes a flag entry of an option file. The directive
@@ -305,9 +338,10 @@ type FlagOptions struct {
 // none, so an empty short is rejected here.
 func (o *FlagOptions) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var v struct {
-		Name  string  `json:"name"`
-		Short *string `json:"short"`
-		Usage string  `json:"usage"`
+		Name    string         `json:"name"`
+		Short   *string        `json:"short"`
+		Usage   string         `json:"usage"`
+		Unknown map[string]any `json:",embed"`
 	}
 	if err := json.UnmarshalDecode(dec, &v); err != nil {
 		return err
@@ -317,7 +351,7 @@ func (o *FlagOptions) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		return errors.New("empty shorthand; omit short or give one character")
 	}
 
-	*o = FlagOptions{Name: v.Name, Usage: v.Usage}
+	*o = FlagOptions{Name: v.Name, Usage: v.Usage, Unknown: v.Unknown}
 	if v.Short != nil {
 		o.Short = *v.Short
 	}

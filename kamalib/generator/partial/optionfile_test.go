@@ -258,16 +258,6 @@ func TestOptionFileDecodeErrors(t *testing.T) {
 			contains: []string{".all_types: cannot decode a string into bool"},
 		},
 		{
-			name:     "unknown package key",
-			doc:      "    file: true\n",
-			contains: []string{".file: unknown key"},
-		},
-		{
-			name:     "unknown type key",
-			doc:      "    types:\n      S:\n        merge: append\n",
-			contains: []string{".types.S.merge: unknown key"},
-		},
-		{
 			name:     "ignore not a boolean",
 			doc:      "    types:\n      S:\n        ignore: 1\n",
 			contains: []string{".types.S.ignore: cannot decode a number into bool"},
@@ -284,12 +274,6 @@ func TestOptionFileDecodeErrors(t *testing.T) {
 			contains: []string{".types.S.fields.F.merge: cannot decode an array into string"},
 		},
 		{
-			name: "unknown flag key",
-			doc: "    types:\n      S:\n        fields:\n          F:\n            flag:\n" +
-				"              name: f\n              prefix: x\n",
-			contains: []string{".types.S.fields.F.flag.prefix: unknown key"},
-		},
-		{
 			name: "flag not a table",
 			doc:  "    types:\n      S:\n        fields:\n          F:\n            flag: f\n",
 			contains: []string{
@@ -301,12 +285,6 @@ func TestOptionFileDecodeErrors(t *testing.T) {
 			doc: "    types:\n      S:\n        fields:\n          F:\n            flag:\n" +
 				"              name: f\n              short: \"\"\n",
 			contains: []string{".types.S.fields.F.flag: empty shorthand"},
-		},
-		{
-			name: "unknown fieldmask key",
-			doc: "    types:\n      S:\n        fields:\n          F:\n            fieldmask:\n" +
-				"              name: f\n              json: true\n",
-			contains: []string{".types.S.fields.F.fieldmask.json: unknown key"},
 		},
 		{
 			name: "fieldmask not a table",
@@ -329,6 +307,61 @@ func TestOptionFileDecodeErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOptionFileUnknownKeys(t *testing.T) {
+	const src = "package x\n\ntype S struct{ F int }\n"
+
+	_, loaded, err := loadOptions(t, map[string]string{"x.go": src}, optionDocs{central: `
+version: 1
+packages:
+  $pkg:
+    all_types: true
+    file: true
+    types:
+      S:
+        fieldmask: true
+        merge: append
+        fields:
+          F:
+            merge: append
+            zz: 1
+            flag:
+              name: f
+              prefix: x
+            fieldmask:
+              name: m
+              json: true
+`})
+	assert.NilError(t, err)
+
+	at := "opts.yaml: packages." + strconv.Quote(modulePath(t))
+	warnings := make([]string, len(loaded.Warnings))
+
+	for i, w := range loaded.Warnings {
+		assert.ErrorIs(t, w, genopt.ErrUnknownKey)
+		warnings[i] = w.Error()
+	}
+
+	assert.DeepEqual(t, warnings, []string{
+		"genopt: unknown key: " + at + ".file",
+		"genopt: unknown key: " + at + ".types.S.merge",
+		"genopt: unknown key: " + at + ".types.S.fields.F.fieldmask.json",
+		"genopt: unknown key: " + at + ".types.S.fields.F.flag.prefix",
+		"genopt: unknown key: " + at + ".types.S.fields.F.zz",
+	})
+	assert.DeepEqual(t, optionViews(loaded.Option, modulePath(t)), map[string]any{
+		"all_types": true,
+		"S":         typeView{FieldMask: true},
+		"S.F": fieldView{
+			Merge: "append",
+			Flag:  &FlagOptions{Name: "f", Unknown: map[string]any{"prefix": "x"}},
+			FieldMask: &FieldMaskOptions{
+				Name:    "m",
+				Unknown: map[string]any{"json": true},
+			},
+		},
+	})
 }
 
 func TestOptionFileParity(t *testing.T) {

@@ -45,9 +45,15 @@ const (
 type PackageOptions struct {
 	// AllTypes stands for //kama:validate package.
 	AllTypes bool `json:"all_types"`
+	// Unknown captures the keys of an option file entry that name no option.
+	Unknown map[string]any `json:",embed"`
 	// file stands for //kama:validate file, which option files lack.
 	file bool
 }
+
+// UnknownKeys returns the keys of the option file entry that name no
+// option.
+func (o *PackageOptions) UnknownKeys() [][]string { return genopt.UnknownKeys(o.Unknown) }
 
 // UnmarshalKeyValue decodes a directive in a free-floating comment.
 func (o *PackageOptions) UnmarshalKeyValue(
@@ -90,6 +96,8 @@ type TypeOptions struct {
 	// Hook stands for //kama:validate hook=on (true) or hook=off (false). Nil
 	// leaves the default.
 	Hook *bool `json:"hook"`
+	// Unknown captures the keys of an option file entry that name no option.
+	Unknown map[string]any `json:",embed"`
 	// marked stands for //kama:validate without ignore, or for an option
 	// file entry of the type without ignore.
 	marked bool
@@ -160,6 +168,10 @@ func (o *TypeOptions) SetSource(src genopt.Source) {
 	}
 }
 
+// UnknownKeys returns the keys of the option file entry that name no
+// option.
+func (o *TypeOptions) UnknownKeys() [][]string { return genopt.UnknownKeys(o.Unknown) }
+
 // FieldOptions are the options of a struct field.
 type FieldOptions struct {
 	// Hook stands for //kama:validate hook=on (true) or hook=off (false). Nil
@@ -168,7 +180,9 @@ type FieldOptions struct {
 	// Validators stand for the validators //kama:validate names on the
 	// field, in the order written.
 	Validators []ValidatorOptions `json:"validators"`
-	hookSrc    optionSource
+	// Unknown captures the keys of an option file entry that name no option.
+	Unknown map[string]any `json:",embed"`
+	hookSrc optionSource
 }
 
 // UnmarshalKeyValue decodes a directive on a field. Each arg names a
@@ -237,6 +251,17 @@ func (o *FieldOptions) SetSource(src genopt.Source) {
 	}
 }
 
+// UnknownKeys returns the keys of the option file entry that name no
+// option, those of each validator included.
+func (o *FieldOptions) UnknownKeys() [][]string {
+	keys := genopt.UnknownKeys(o.Unknown)
+	for i, v := range o.Validators {
+		keys = append(keys, genopt.UnknownKeys(v.Unknown, "validators", strconv.Itoa(i))...)
+	}
+
+	return keys
+}
+
 // ValidatorOptions are one validator of a field: the arg Name=Args of
 // //kama:validate, or Name alone when Args is empty.
 type ValidatorOptions struct {
@@ -244,7 +269,10 @@ type ValidatorOptions struct {
 	// Args is the one argument of the validator, unparsed. Empty stands for
 	// none.
 	Args string `json:"args"`
-	src  optionSource
+	// Unknown captures the keys of an option file entry that name no
+	// option.
+	Unknown map[string]any `json:",embed"`
+	src     optionSource
 }
 
 // UnmarshalJSONFrom decodes a validator entry of an option file and rejects

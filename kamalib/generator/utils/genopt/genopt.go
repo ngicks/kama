@@ -56,9 +56,12 @@
 // A package option file holds version and one entry of packages at its top
 // level. The loader peels version, packages, types and fields, and decodes
 // the remaining keys of each table into its leaf through encoding/json/v2,
-// whatever the format of the file, with unknown members rejected. A leaf
-// uses json struct tags or a JSON unmarshaler of its own. A leaf whose
-// pointer implements SourceSetter learns the source of its entry.
+// whatever the format of the file. A leaf uses json struct tags or a JSON
+// unmarshaler of its own. A leaf whose pointer implements SourceSetter
+// learns the source of its entry. A leaf whose pointer implements
+// UnknownKeyer tells the keys of its entry it does not know, and each of
+// them is a warning wrapping ErrUnknownKey that names the file and the full
+// key path.
 //
 // The tool-wide directive //tool:option-file <generator>=<path> in a
 // free-floating comment names the package option file of a generator. The
@@ -254,6 +257,24 @@ type SourceSetter interface {
 	SetSource(src Source)
 }
 
+// UnknownKeyer is implemented by the pointer types of leaf option types
+// that capture the keys of an option file entry they do not know, as a
+// field Unknown map[string]any `json:",embed"` does.
+type UnknownKeyer interface {
+	// UnknownKeys returns the key paths of the unknown keys, relative to the
+	// entry. They include the unknown keys of nested tables.
+	UnknownKeys() [][]string
+}
+
+// UnknownKeys returns the keys of unknown, the unknown members a decoded
+// table captures, as key paths below prefix in key order.
+func UnknownKeys(unknown map[string]any, prefix ...string) [][]string {
+	return opiter.WrapSeq2(opiter.MapsSorted(unknown)).
+		OmitL().
+		Map(func(k string) []string { return appendPath(prefix, k) }).
+		CollectSlice()
+}
+
 // SourceKind tells the kind of a Source.
 type SourceKind int
 
@@ -407,6 +428,9 @@ var (
 	// ErrOverridden reports options dropped for those of a source that
 	// comes first. It is a warning.
 	ErrOverridden = errors.New("genopt: options overridden")
+	// ErrUnknownKey reports a key of an option file entry that its leaf does
+	// not know. It is a warning.
+	ErrUnknownKey = errors.New("genopt: unknown key")
 )
 
 // uniquePackages returns pkgs sorted by path with each path once. A test

@@ -66,8 +66,11 @@ func typedPackage(t *testing.T, pkgPath, dir string, files map[string]string) *p
 
 // leaf is the leaf of the tests. It records what the loader hands it.
 type leaf struct {
-	Value string `json:"value,omitzero"`
-	List  []int  `json:"list,omitzero"`
+	Value string   `json:"value,omitzero"`
+	List  []int    `json:"list,omitzero"`
+	Sub   *subLeaf `json:"sub,omitzero"`
+	// Unknown captures the keys of an option file entry the leaf lacks.
+	Unknown map[string]any `json:",embed"`
 	// directives are the args of each directive, spelled key or key=value
 	// and joined by spaces, keyed by directive name.
 	directives map[string]string
@@ -76,6 +79,12 @@ type leaf struct {
 	at []string
 	// from is the source SetSource gives.
 	from string
+}
+
+// subLeaf is a table nested in a leaf.
+type subLeaf struct {
+	Value   string         `json:"value,omitzero"`
+	Unknown map[string]any `json:",embed"`
 }
 
 var errLeaf = errors.New("leaf refused")
@@ -105,6 +114,15 @@ func (l *leaf) UnmarshalKeyValue(src Source, directive string, kv []dircmnt.KeyV
 
 func (l *leaf) SetSource(src Source) { l.from = relSource(src) }
 
+func (l *leaf) UnknownKeys() [][]string {
+	keys := UnknownKeys(l.Unknown)
+	if l.Sub != nil {
+		keys = append(keys, UnknownKeys(l.Sub.Unknown, "sub")...)
+	}
+
+	return keys
+}
+
 func spellKeyValue(kv dircmnt.KeyValue) string {
 	if kv.HasValue {
 		return kv.Key + "=" + kv.Value
@@ -122,6 +140,10 @@ func (l leaf) String() string {
 
 	if l.List != nil {
 		parts = append(parts, fmt.Sprintf("list=%v", l.List))
+	}
+
+	if l.Sub != nil {
+		parts = append(parts, "sub="+l.Sub.Value)
 	}
 
 	for _, name := range slices.Sorted(maps.Keys(l.directives)) {

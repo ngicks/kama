@@ -178,11 +178,6 @@ func TestLoadFilesErrors(t *testing.T) {
 			contains: []string{`opts.yaml: packages."m/none": package m/none is not loaded`},
 		},
 		{
-			name:     "unknown package key",
-			doc:      "version: 1\npackages:\n  m/a:\n    file: true\n",
-			contains: []string{pkg + ".file: unknown key"},
-		},
-		{
 			name: "package value of the wrong type",
 			doc:  "version: 1\npackages:\n  m/a:\n    value:\n      - 1\n",
 			contains: []string{
@@ -205,13 +200,6 @@ func TestLoadFilesErrors(t *testing.T) {
 			contains: []string{pkg + ".types.Z: type Z is not declared in m/a"},
 		},
 		{
-			name: "unknown type key",
-			doc:  "version: 1\npackages:\n  m/a:\n    types:\n      S:\n        merge: append\n",
-			contains: []string{
-				pkg + ".types.S.merge: unknown key",
-			},
-		},
-		{
 			name: "type value of the wrong type",
 			doc: "version: 1\npackages:\n  m/a:\n    types:\n      S:\n        list:\n" +
 				"          - a\n",
@@ -228,12 +216,6 @@ func TestLoadFilesErrors(t *testing.T) {
 			doc: "version: 1\npackages:\n  m/a:\n    types:\n      I:\n        fields:\n" +
 				"          Z:\n",
 			contains: []string{pkg + ".types.I.fields: m/a.I is not a struct type"},
-		},
-		{
-			name: "unknown field key",
-			doc: "version: 1\npackages:\n  m/a:\n    types:\n      S:\n        fields:\n" +
-				"          F:\n            name: f\n",
-			contains: []string{pkg + ".types.S.fields.F.name: unknown key"},
 		},
 		{
 			name:     "non-string key",
@@ -257,6 +239,93 @@ func TestLoadFilesErrors(t *testing.T) {
 			for _, s := range c.contains {
 				assert.ErrorContains(t, err, s)
 			}
+		})
+	}
+}
+
+func TestLoadFilesUnknownKeys(t *testing.T) {
+	fsys := fstest.MapFS{
+		"opts.yaml": {Data: []byte(`
+version: 1
+packages:
+  m/a:
+    value: pkg
+    zz: 1
+    types:
+      S:
+        value: s
+        sub:
+          value: sv
+          zz: 1
+          yy:
+            deep: 1
+        fields:
+          F:
+            value: f
+            x.y: 1
+`)},
+		"opts.json": {Data: []byte(`{
+  "version": 1,
+  "packages": {
+    "m/a": {
+      "value": "pkg",
+      "zz": 1,
+      "types": {
+        "S": {
+          "value": "s",
+          "sub": {"value": "sv", "zz": 1, "yy": {"deep": 1}},
+          "fields": {"F": {"value": "f", "x.y": 1}}
+        }
+      }
+    }
+  }
+}`)},
+		"opts.toml": {Data: []byte(`
+version = 1
+
+[packages."m/a"]
+value = "pkg"
+zz = 1
+
+[packages."m/a".types.S]
+value = "s"
+
+[packages."m/a".types.S.sub]
+value = "sv"
+zz = 1
+yy = { deep = 1 }
+
+[packages."m/a".types.S.fields.F]
+value = "f"
+"x.y" = 1
+`)},
+	}
+
+	for _, ext := range []string{"yaml", "json", "toml"} {
+		t.Run(ext, func(t *testing.T) {
+			name := "opts." + ext
+			at := name + `: packages."m/a"`
+
+			loaded, err := fileLoader(name).LoadFiles(fsys, testRoot, filesPackage(t))
+			assert.NilError(t, err)
+
+			warnings := make([]string, len(loaded.Warnings))
+			for i, w := range loaded.Warnings {
+				assert.ErrorIs(t, w, ErrUnknownKey)
+				warnings[i] = w.Error()
+			}
+
+			assert.DeepEqual(t, warnings, []string{
+				"genopt: unknown key: " + at + ".zz",
+				"genopt: unknown key: " + at + ".types.S.sub.yy",
+				"genopt: unknown key: " + at + ".types.S.sub.zz",
+				"genopt: unknown key: " + at + `.types.S.fields.F."x.y"`,
+			})
+
+			flat := flatten(loaded.Option)
+			assert.Equal(t, flat["m/a package"], "value=pkg; from "+at)
+			assert.Equal(t, flat["m/a.S type"], "value=s; sub=sv; from "+at+".types.S")
+			assert.Equal(t, flat["m/a.S.F"], "value=f; from "+at+".types.S.fields.F")
 		})
 	}
 }
@@ -383,6 +452,32 @@ types:
 		`genopt: options overridden: type m/a.T: c2.yaml: packages."m/a".types.T overrides ` +
 			testRoot + "/a/x.go:11:1",
 	})
+}
+
+// TestLoadOptionUnknownPackageEntry checks that a package entry holding
+// unknown keys only leaves the package entry of a file that comes later in
+// place.
+func TestLoadOptionUnknownPackageEntry(t *testing.T) {
+	fsys := fstest.MapFS{
+		"c.yaml":        {Data: []byte("version: 1\npackages:\n  m/a:\n    value: c\n")},
+		"a/kama_x.yaml": {Data: []byte("version: 1\nzz: 1\n")},
+	}
+
+	l := fileLoader("c.yaml")
+	l.PackageFile = fileloader.PathInput{
+		Base: "kama_x", Formats: []fileloader.Format{fileloader.FormatYaml},
+	}
+
+	loaded, err := l.LoadOption(fsys, testRoot, filesPackage(t))
+	assert.NilError(t, err)
+	assert.Equal(t, len(loaded.Warnings), 1, "%v", loaded.Warnings)
+	assert.ErrorIs(t, loaded.Warnings[0], ErrUnknownKey)
+	assert.Error(t, loaded.Warnings[0], "genopt: unknown key: a/kama_x.yaml: zz")
+	assert.Equal(
+		t,
+		flatten(loaded.Option)["m/a package"],
+		`value=c; from c.yaml: packages."m/a"`,
+	)
 }
 
 // TestLoadOptionPackageEntry checks that a package entry without keys of

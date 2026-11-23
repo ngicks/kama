@@ -74,20 +74,9 @@ func TestPackageOptionFileDecodeErrors(t *testing.T) {
 			contains: []string{": version: unsupported version 2"},
 		},
 		{
-			name:     "packages level",
-			doc:      "version: 1\npackages:\n",
-			contains: []string{": packages: unknown key"},
-		},
-		{
 			name:     "all_types not a boolean",
 			doc:      "version: 1\nall_types: 1\n",
 			contains: []string{": all_types: cannot decode a number into bool"},
-		},
-		{
-			name: "unknown field key",
-			doc: "version: 1\ntypes:\n  S:\n    fields:\n      F:\n" +
-				"        flag:\n          name: f\n          prefix: x\n",
-			contains: []string{": types.S.fields.F.flag.prefix: unknown key"},
 		},
 	}
 	for _, c := range cases {
@@ -418,12 +407,27 @@ func TestProcPackageOptionFile(t *testing.T) {
 	err = run("d")
 	assert.ErrorIs(t, err, ErrOptionFile)
 	assert.ErrorContains(t, err, dir+"/d/kama_partial.yaml: types.Z: type Z is not declared")
+}
 
-	write("d/kama_partial.yaml", "version: 1\npackages:\n")
+// TestProcUnknownKeyWarning checks that Proc reports an unknown key of a
+// package option file as a warning and applies the rest of the file.
+func TestProcUnknownKeyWarning(t *testing.T) {
+	e := newProcEnv(t, map[string]string{
+		"x.go": "package x\n\ntype A struct{ B int }\n",
+		"kama_partial.yaml": "version: 1\npackages:\ntypes:\n  A:\n    fields:\n" +
+			"      B:\n        flag:\n          name: b\n          prefix: x\n",
+	})
 
-	err = run("d")
-	assert.ErrorIs(t, err, ErrOptionFile)
-	assert.ErrorContains(t, err, dir+"/d/kama_partial.yaml: packages: unknown key")
+	r := e.run(testNow())
+	assert.Equal(t, len(r.warnings), 2, "%v", r.warnings)
+
+	for _, w := range r.warnings {
+		assert.ErrorIs(t, w, genopt.ErrUnknownKey)
+	}
+
+	assert.ErrorContains(t, r.warnings[0], e.dir+"/kama_partial.yaml: packages")
+	assert.ErrorContains(t, r.warnings[1], e.dir+"/kama_partial.yaml: types.A.fields.B.flag.prefix")
+	assert.Assert(t, strings.Contains(e.read("x.kama_partial.go"), "RegisterFlags"))
 }
 
 // TestProcOverrideWarning checks that Proc reports the warnings of the

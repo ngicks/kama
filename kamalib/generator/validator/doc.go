@@ -505,8 +505,9 @@
 // Listing a type marks it unless ignore is true. Its hooks are then on by
 // default. args is the arg a directive gives after name=, unquoted. An
 // empty or absent args stands for no arg. A validator listed twice on one
-// field is an error. The file has no
-// equivalent of //kama:validate file. version is required and is 1. The
+// field is an error. The file has no equivalent of //kama:validate file.
+// version is required and is 1. An unknown key of an entry is a warning
+// wrapping genopt.ErrUnknownKey that names the file and the key path. The
 // entry of a type replaces every directive on the type and its fields, and
 // Generate returns a warning wrapping genopt.ErrOverridden for a type whose
 // directives are replaced. The free-floating directives stay in effect
