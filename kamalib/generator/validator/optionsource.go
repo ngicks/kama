@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
+	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
 
@@ -41,7 +42,7 @@ func subDirectiveError(src genopt.Source, sub string, kv []dircmnt.KeyValue) err
 		// quoted pattern therefore go. The other validators split their
 		// argument into tokens again. Their quoted literals keep their quotes
 		// to stay apart from bare ones.
-		if sub == (Regexp{}).Name() && len(kv) == 1 && !kv[0].HasValue {
+		if sub == (rule.Regexp{}).Name() && len(kv) == 1 && !kv[0].HasValue {
 			arg = kv[0].Key
 		}
 

@@ -5,6 +5,7 @@ import (
 	"go/types"
 	"strconv"
 
+	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -223,7 +224,7 @@ func (w *writer) elements(
 
 	inner := func(err genExpr) genExpr {
 		return wrap(lang.Expr(
-			"%s.%s(%s, %s)", w.ident(validationPath), segment, err, lang.Name(idx),
+			"%s.%s(%s, %s)", w.ident(rule.ValidationPath), segment, err, lang.Name(idx),
 		))
 	}
 
@@ -232,7 +233,7 @@ func (w *writer) elements(
 		return nil, err
 	}
 
-	if key == nil || basicInfo(key)&(types.IsInteger|types.IsString) == 0 {
+	if key == nil || typequery.BasicInfo(key)&(types.IsInteger|types.IsString) == 0 {
 		return lang.ForRange(idx, "e", x, s), nil
 	}
 

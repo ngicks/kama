@@ -1,4 +1,4 @@
-package validator
+package rule
 
 import (
 	"fmt"
@@ -16,9 +16,9 @@ import (
 // a format by registering a Format holding it in place of the built-in
 // one:
 //
-//	formats := validator.DefaultFormats()
-//	formats["uuid"] = validator.FormatHelper{Name: "kamaValidateFormatUuid", Decl: uuidDecl}
-//	registry.Register(validator.Format{Formats: formats})
+//	formats := rule.DefaultFormats()
+//	formats["uuid"] = rule.FormatHelper{Name: "kamaValidateFormatUuid", Decl: uuidDecl}
+//	registry.Register(rule.Format{Formats: formats})
 type Format struct {
 	Formats map[string]FormatHelper
 }
@@ -96,7 +96,7 @@ func (o FormatOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
 // string parses as the layout constant layout of package time.
 func timeFormatDecl(name, layout, desc string) func(s Spelling) (string, error) {
 	return func(s Spelling) (string, error) {
-		v, err := s.Import(validationPath)
+		v, err := s.Import(ValidationPath)
 		if err != nil {
 			return "", err
 		}
@@ -116,7 +116,7 @@ func timeFormatDecl(name, layout, desc string) func(s Spelling) (string, error) 
 }
 
 func urlFormatDecl(s Spelling) (string, error) {
-	v, err := s.Import(validationPath)
+	v, err := s.Import(ValidationPath)
 	if err != nil {
 		return "", err
 	}

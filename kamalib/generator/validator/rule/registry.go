@@ -1,13 +1,11 @@
-package validator
+package rule
 
 import (
+	"errors"
 	"fmt"
 	"go/types"
 	"maps"
 	"slices"
-	"strings"
-
-	"github.com/ngicks/opiter"
 )
 
 // Validator is one kind of field validator //kama:validate can name.
@@ -26,6 +24,17 @@ type Validator interface {
 	// wrap ErrArgs.
 	Parse(arg string) (Rule, error)
 }
+
+// ErrArgs marks an error of Validator.Parse, which the argument causes
+// for any type. A validator wraps it as fmt.Errorf("%w: ...", ErrArgs) does.
+// The generator reports such an error at once. It does not apply the
+// validator again to the value a pointer or an option holds. That
+// attempt would fail the same way.
+var ErrArgs = errors.New("validator: invalid args")
+
+// ValidationPath is the import path of the package of the errors generated
+// code returns. A rule imports it through Spelling.Import to build them.
+const ValidationPath = "github.com/ngicks/kama/kamalib/pkg/validation"
 
 // Rule is a validator with its arg decoded.
 //
@@ -119,25 +128,6 @@ func (r *Registry) Lookup(name string) (Validator, bool) {
 
 // Names returns the names of the validators, sorted.
 func (r *Registry) Names() []string { return slices.Sorted(maps.Keys(r.validators)) }
-
-// reservedNames reports the validators of r named by a word of
-// //kama:validate that names no validator.
-func (r *Registry) reservedNames() error {
-	reserved := opiter.WrapSeq(slices.Values(r.Names())).
-		Filter(func(name string) bool {
-			return slices.Contains([]string{hookWord, ignoreWord, fileWord, packageWord}, name)
-		}).
-		CollectSlice()
-
-	if len(reserved) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf(
-		"%w: validators registered as %s; hook, ignore, file and package name no validator",
-		ErrConflict, strings.Join(reserved, ", "),
-	)
-}
 
 // Clone returns a registry holding the validators of r, which changes to
 // either do not affect.

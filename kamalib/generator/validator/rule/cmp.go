@@ -1,9 +1,11 @@
-package validator
+package rule
 
 import (
 	"fmt"
 	"go/types"
 	"strconv"
+
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // Cmp is the validator //kama:validate cmp="<op><value> ...": the value
@@ -38,7 +40,7 @@ func (Cmp) Parse(arg string) (Rule, error) {
 // Check accepts comparisons with literals of t, on the types the doc
 // comment of Cmp lists.
 func (o CmpOptions) Check(t types.Type) error {
-	info := basicInfo(t)
+	info := typequery.BasicInfo(t)
 
 	switch {
 	case info&types.IsOrdered != 0:
@@ -65,7 +67,7 @@ func (o CmpOptions) Check(t types.Type) error {
 // comparison.
 func (o CmpOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
 	helper := cmpName
-	if basicInfo(t)&types.IsBoolean != 0 {
+	if typequery.BasicInfo(t)&types.IsBoolean != 0 {
 		helper = equalName
 		e.Declare(equalName, equalDecl)
 		e.Declare(spellName, spellDecl)
@@ -86,7 +88,7 @@ const (
 )
 
 func cmpDecl(s Spelling) (string, error) {
-	v, err := s.Import(validationPath)
+	v, err := s.Import(ValidationPath)
 	if err != nil {
 		return "", err
 	}
@@ -106,7 +108,7 @@ func cmpDecl(s Spelling) (string, error) {
 }
 
 func equalDecl(s Spelling) (string, error) {
-	v, err := s.Import(validationPath)
+	v, err := s.Import(ValidationPath)
 	if err != nil {
 		return "", err
 	}

@@ -17,6 +17,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
@@ -27,16 +28,16 @@ import (
 // No source holds the set: it tells what the generated code of the package
 // calls, which is known only once the code is written.
 type helperSet struct {
-	decls map[string]func(s Spelling) (string, error)
+	decls map[string]func(s rule.Spelling) (string, error)
 }
 
 func newHelperSet() *helperSet {
-	return &helperSet{decls: map[string]func(Spelling) (string, error){}}
+	return &helperSet{decls: map[string]func(rule.Spelling) (string, error){}}
 }
 
 // emitter spells packages and types for one generated file and records
-// the helpers the file calls. exprEmitter wraps it as the Emitter of one
-// validator expression.
+// the helpers the file calls. exprEmitter wraps it as the rule.Emitter of
+// one validator expression.
 //
 // uses and imports are facts about the output, which no source holds: the
 // helpers the file calls and the packages it asked for by path.
@@ -56,18 +57,18 @@ func newEmitter(scope *base.FileScope, helpers *helperSet) *emitter {
 	}
 }
 
-// exprEmitter is the Emitter of one validator expression: the emitter of
-// its file and the spelled name of the stop flag of the function the
+// exprEmitter is the rule.Emitter of one validator expression: the emitter
+// of its file and the spelled name of the stop flag of the function the
 // expression lands in.
 //
-// The name is known only while that function renders, and a Validator
+// The name is known only while that function renders, and a rule.Validator
 // cannot reach the render context to ask for it.
 type exprEmitter struct {
 	*emitter
 	stop string
 }
 
-var _ Emitter = exprEmitter{}
+var _ rule.Emitter = exprEmitter{}
 
 func (e exprEmitter) StopOnFirstError() string { return e.stop }
 
@@ -86,7 +87,7 @@ func (e *emitter) Import(p string) (string, error) {
 	return path.Base(p), nil
 }
 
-func (e *emitter) Declare(name string, decl func(s Spelling) (string, error)) {
+func (e *emitter) Declare(name string, decl func(s rule.Spelling) (string, error)) {
 	e.uses[name] = true
 
 	if _, ok := e.helpers.decls[name]; !ok {

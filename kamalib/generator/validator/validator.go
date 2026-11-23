@@ -3,13 +3,17 @@ package validator
 import (
 	"cmp"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"time"
 
+	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
 
@@ -30,10 +34,6 @@ const helperKind = "helper"
 // generatorPath is the import path of the generator, named by the first
 // line of the header of every generated file.
 const generatorPath = "github.com/ngicks/kama/kamalib/generator/validator"
-
-// validationPath is the import path of the package of the errors generated
-// code returns.
-const validationPath = "github.com/ngicks/kama/kamalib/pkg/validation"
 
 func init() { base.MustRegister(GeneratorName) }
 
@@ -56,12 +56,6 @@ var (
 	// ErrOptionFile reports an option file that cannot be loaded or does
 	// not decode. It wraps the error of genopt too.
 	ErrOptionFile = errors.New("validator: invalid option file")
-	// ErrArgs marks an error of Validator.Parse, which the argument causes
-	// for any type. A validator wraps it as fmt.Errorf("%w: ...", ErrArgs) does.
-	// The generator reports such an error at once. It does not apply the
-	// validator again to the value a pointer or an option holds. That
-	// attempt would fail the same way.
-	ErrArgs = errors.New("validator: invalid args")
 	// ErrStale reports a file of a loaded package that carries the marker of
 	// the generator but that the run did not produce. It is a warning.
 	ErrStale = base.ErrStale
@@ -70,8 +64,8 @@ var (
 // Options configures Generate.
 type Options struct {
 	// Registry holds the validators directives name. It is
-	// DefaultRegistry() when nil.
-	Registry *Registry
+	// rule.DefaultRegistry() when nil.
+	Registry *rule.Registry
 	// Markers tells the declarations emitted by generators. It is
 	// genmark.DefaultRegistry when nil.
 	Markers *genmark.Registry
@@ -88,7 +82,7 @@ type Options struct {
 // WithDefaults returns o with empty fields set to their defaults.
 func (o Options) WithDefaults() Options {
 	if o.Registry == nil {
-		o.Registry = DefaultRegistry()
+		o.Registry = rule.DefaultRegistry()
 	}
 
 	if o.Markers == nil {
@@ -119,7 +113,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	opts = opts.WithDefaults()
 	now := opts.Now()
 
-	if err := opts.Registry.reservedNames(); err != nil {
+	if err := reservedNames(opts.Registry); err != nil {
 		return nil, nil, err
 	}
 
@@ -185,4 +179,23 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	stale := base.StaleCheck{Registry: opts.Markers, Generator: GeneratorName}
 
 	return files, slices.Concat(opts.Loaded.Warnings, stale.Files(srcPkgs, files)), nil
+}
+
+// reservedNames reports the validators of reg named by a word of
+// //kama:validate that names no validator.
+func reservedNames(reg *rule.Registry) error {
+	reserved := opiter.WrapSeq(slices.Values(reg.Names())).
+		Filter(func(name string) bool {
+			return slices.Contains([]string{hookWord, ignoreWord, fileWord, packageWord}, name)
+		}).
+		CollectSlice()
+
+	if len(reserved) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf(
+		"%w: validators registered as %s; hook, ignore, file and package name no validator",
+		ErrConflict, strings.Join(reserved, ", "),
+	)
 }

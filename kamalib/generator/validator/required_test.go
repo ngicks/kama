@@ -11,6 +11,8 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
+
+	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 )
 
 func TestRequired(t *testing.T) {
@@ -84,16 +86,6 @@ type Comparable struct{ X, Y int }
 		"func kamaValidateRequired(ok bool, got string) error {",
 		"//kama:generated kama-validate",
 	)
-}
-
-func TestRequiredParse(t *testing.T) {
-	o, err := Required{}.Parse("")
-	assert.NilError(t, err)
-	assert.Equal(t, o, RequiredOptions{})
-
-	_, err = Required{}.Parse("yes")
-	assert.ErrorIs(t, err, ErrArgs)
-	assert.ErrorContains(t, err, `unexpected arg "yes"; want none`)
 }
 
 func TestRequiredErrors(t *testing.T) {
@@ -212,7 +204,7 @@ type positive struct{}
 
 func (positive) Name() string { return "positive" }
 
-func (positive) Parse(string) (Rule, error) { return positive{}, nil }
+func (positive) Parse(string) (rule.Rule, error) { return positive{}, nil }
 
 func (positive) Check(t types.Type) error {
 	if b, ok := t.Underlying().(*types.Basic); ok && b.Info()&types.IsInteger != 0 {
@@ -224,8 +216,8 @@ func (positive) Check(t types.Type) error {
 
 // Emit declares a package-level variable besides the helper function, as a
 // validator compiling a pattern once does.
-func (positive) Emit(e Emitter, _ types.Type, v string) (string, error) {
-	e.Declare("kamaValidateNotPositive", func(s Spelling) (string, error) {
+func (positive) Emit(e rule.Emitter, _ types.Type, v string) (string, error) {
+	e.Declare("kamaValidateNotPositive", func(s rule.Spelling) (string, error) {
 		errorsPkg, err := s.Import("errors")
 		if err != nil {
 			return "", err
@@ -233,7 +225,7 @@ func (positive) Emit(e Emitter, _ types.Type, v string) (string, error) {
 
 		return "var kamaValidateNotPositive = " + errorsPkg + `.New("not positive")`, nil
 	})
-	e.Declare("kamaValidatePositive", func(Spelling) (string, error) {
+	e.Declare("kamaValidatePositive", func(rule.Spelling) (string, error) {
 		return "func kamaValidatePositive(n int64) error {\n" +
 			"\tif n <= 0 {\n\t\treturn kamaValidateNotPositive\n\t}\n" +
 			"\treturn nil\n}", nil
@@ -245,10 +237,10 @@ func (positive) Emit(e Emitter, _ types.Type, v string) (string, error) {
 // TestRegistry adds a validator, which applies to the value a pointer or an
 // option holds when it cannot apply to the field itself.
 func TestRegistry(t *testing.T) {
-	reg := DefaultRegistry().Clone()
+	reg := rule.DefaultRegistry().Clone()
 	reg.Register(positive{})
 	assert.Assert(t, slices.Contains(reg.Names(), "positive"))
-	assert.Assert(t, !slices.Contains(DefaultRegistry().Names(), "positive"))
+	assert.Assert(t, !slices.Contains(rule.DefaultRegistry().Names(), "positive"))
 
 	files := map[string]string{
 		"a.go": `package x
@@ -329,7 +321,7 @@ func (r renamed) Name() string { return r.name }
 func TestReservedNames(t *testing.T) {
 	for _, name := range []string{"hook", "ignore", "file", "package"} {
 		t.Run(name, func(t *testing.T) {
-			reg := DefaultRegistry().Clone()
+			reg := rule.DefaultRegistry().Clone()
 			reg.Register(renamed{name: name})
 
 			_, err := generate(t, map[string]string{

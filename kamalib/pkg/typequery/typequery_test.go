@@ -73,6 +73,37 @@ func TestTypeArg(t *testing.T) {
 	assert.Equal(t, types.Typ[types.String], TypeArg(newAlias(und)))
 }
 
+func TestBasicInfo(t *testing.T) {
+	pkg := types.NewPackage("example.com/local", "local")
+	named := types.NewNamed(
+		types.NewTypeName(token.NoPos, pkg, "S", nil),
+		types.Typ[types.String],
+		nil,
+	)
+	param := types.NewTypeParam(
+		types.NewTypeName(token.NoPos, pkg, "T", nil),
+		types.NewInterfaceType(nil, []types.Type{types.Typ[types.Int]}),
+	)
+
+	type testCase struct {
+		name string
+		t    types.Type
+		want types.BasicInfo
+	}
+
+	for _, tc := range []testCase{
+		{"basic", types.Typ[types.Int], types.IsInteger},
+		{"named", named, types.IsString},
+		{"alias", newAlias(types.Typ[types.Bool]), types.IsBoolean},
+		{"slice", types.NewSlice(types.Typ[types.Int]), 0},
+		{"type parameter", param, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, BasicInfo(tc.t))
+		})
+	}
+}
+
 func TestIsStructSliceOrMap(t *testing.T) {
 	pkg := types.NewPackage("example.com/local", "local")
 	named := func(name string, underlying types.Type) types.Type {

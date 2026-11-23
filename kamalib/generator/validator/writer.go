@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
@@ -150,7 +151,7 @@ func (w *writer) collect(steps []genStep) []genStep {
 	out = append(out, steps...)
 
 	return append(out, lang.Stmt(
-		"return %s.Join(%s...)", w.ident(validationPath), lang.Name("errs"),
+		"return %s.Join(%s...)", w.ident(rule.ValidationPath), lang.Name("errs"),
 	))
 }
 
@@ -231,7 +232,7 @@ func (w *writer) fieldWrap(st *types.Struct, i int, outer wrapFunc) wrapFunc {
 
 	return func(err genExpr) genExpr {
 		return outer(lang.Expr(
-			"%s.Field(%s, %s)", w.ident(validationPath), err, strconv.Quote(name),
+			"%s.Field(%s, %s)", w.ident(rule.ValidationPath), err, strconv.Quote(name),
 		))
 	}
 }
@@ -282,7 +283,7 @@ func (w *writer) validator(
 
 // rule parses arg with val and applies the rule to the value x of type t.
 func (w *writer) rule(
-	val Validator,
+	val rule.Validator,
 	arg string,
 	t types.Type,
 	x genExpr,
@@ -298,12 +299,12 @@ func (w *writer) rule(
 	return w.apply(r, t, x, wrap)
 }
 
-// apply returns the step running rule on the value x of type t. When rule
+// apply returns the step running r on the value x of type t. When r
 // cannot apply to t and t holds one value, as a pointer or an opt.Option
-// does, it applies rule to that value when there is one. The error tells
-// why rule applies to neither.
-func (w *writer) apply(rule Rule, t types.Type, x genExpr, wrap wrapFunc) (genStep, error) {
-	checkErr := rule.Check(t)
+// does, it applies r to that value when there is one. The error tells
+// why r applies to neither.
+func (w *writer) apply(r rule.Rule, t types.Type, x genExpr, wrap wrapFunc) (genStep, error) {
+	checkErr := r.Check(t)
 	if checkErr == nil {
 		return w.check(wrap(func(c genCtx) (string, error) {
 			xs, err := x(c)
@@ -316,7 +317,7 @@ func (w *writer) apply(rule Rule, t types.Type, x genExpr, wrap wrapFunc) (genSt
 				return "", err
 			}
 
-			return rule.Emit(exprEmitter{emitter: w.emitter, stop: stop}, t, xs)
+			return r.Emit(exprEmitter{emitter: w.emitter, stop: stop}, t, xs)
 		})), nil
 	}
 
@@ -325,7 +326,7 @@ func (w *writer) apply(rule Rule, t types.Type, x genExpr, wrap wrapFunc) (genSt
 		return nil, checkErr
 	}
 
-	s, err := w.apply(rule, held, value, wrap)
+	s, err := w.apply(r, held, value, wrap)
 	if err != nil {
 		return nil, fmt.Errorf("%w; for the value it holds: %w", checkErr, err)
 	}

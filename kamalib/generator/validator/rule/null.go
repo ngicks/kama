@@ -1,4 +1,4 @@
-package validator
+package rule
 
 import (
 	"fmt"
@@ -54,7 +54,7 @@ func (NullOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
 const nullHelperName = "kamaValidateNull"
 
 func nullHelperDecl(s Spelling) (string, error) {
-	v, err := s.Import(validationPath)
+	v, err := s.Import(ValidationPath)
 	if err != nil {
 		return "", err
 	}

@@ -3,7 +3,8 @@
 //
 // [IsNamed] tells a named type by its package path and name, through
 // aliases. [TypeArg] returns the first type argument of an instantiated
-// type. [IsStructSliceOrMap] tells the underlying types the generators
+// type. [BasicInfo] returns the info of a basic underlying type.
+// [IsStructSliceOrMap] tells the underlying types the generators
 // write declarations for. [OptPath], [UndPath] and [ElasticPath] are the
 // import paths of the option types the generators recognize.
 package typequery

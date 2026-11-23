@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 )
 
 // TestBuiltinValidators applies every built-in validator to the types it
@@ -140,12 +142,12 @@ type A[T comparable] struct {
 		"if v.NullPtr != nil {",
 		`kamaValidateNull((*v.NullPtr).IsNull())`,
 		`kamaValidateNull(v.NullElastic.IsNull())`,
-		`kamaValidateRegexpString(`+regexpVarName("^a+$")+`, v.ReString)`,
-		`kamaValidateRegexpString(`+regexpVarName("^a+$")+`, string(v.ReStr))`,
-		`kamaValidateRegexpBytes(`+regexpVarName("^a+$")+`, v.ReBytes)`,
-		`kamaValidateRegexpBytes(`+regexpVarName("^b+$")+`, []byte(v.ReNamedBytes))`,
+		`kamaValidateRegexpString(kamaValidateRegexp_376d544f32, v.ReString)`,
+		`kamaValidateRegexpString(kamaValidateRegexp_376d544f32, string(v.ReStr))`,
+		`kamaValidateRegexpBytes(kamaValidateRegexp_376d544f32, v.ReBytes)`,
+		`kamaValidateRegexpBytes(kamaValidateRegexp_ad7b89858f, []byte(v.ReNamedBytes))`,
 		"if v.RePtr != nil {",
-		`kamaValidateRegexpString(`+regexpVarName(`^a="b c"$`)+`, (*v.RePtr))`,
+		`kamaValidateRegexpString(kamaValidateRegexp_0ed6109140, (*v.RePtr))`,
 		`kamaValidateAll(stopOnFirstError, kamaValidateLength(len(v.LenString), ">=", 1), `+
 			`kamaValidateLength(len(v.LenString), "<=", 10))`,
 		`kamaValidateLength(len(v.LenArray), "==", 3)`,
@@ -177,146 +179,13 @@ type A[T comparable] struct {
 
 	helpers := out[HelpersFile]
 	// One pattern compiles into one variable, however many fields use it.
-	assert.Equal(t, strings.Count(helpers, "var "+regexpVarName("^a+$")+" = "), 1, helpers)
+	assert.Equal(t, strings.Count(helpers, "var kamaValidateRegexp_376d544f32 = "), 1, helpers)
 	assertContains(t, helpers,
 		"var kamaValidateRegexp_", `regexp.MustCompile("^a=\"b c\"$")`,
 		"func kamaValidateCompare[T cmp.Ordered](got T, op string, want T) bool {",
 		"func kamaValidateSpell(v any) string {",
 		"func kamaValidateAll(stopOnFirstError bool, errs ...error) error {",
 	)
-}
-
-// TestRegexpVarName names the variable of a pattern after the first 5
-// bytes of its SHA-256 in hex.
-func TestRegexpVarName(t *testing.T) {
-	// The SHA-256 of the empty string starts with e3 b0 c4 42 98.
-	assert.Equal(t, regexpVarName(""), "kamaValidateRegexp_e3b0c44298")
-	assert.Assert(t, regexpVarName("a") != regexpVarName("b"))
-}
-
-func TestZeroParse(t *testing.T) {
-	o, err := Zero{}.Parse("")
-	assert.NilError(t, err)
-	assert.Equal(t, o, ZeroOptions{})
-
-	_, err = Zero{}.Parse("yes")
-	assert.ErrorIs(t, err, ErrArgs)
-	assert.ErrorContains(t, err, `unexpected arg "yes"; want none`)
-}
-
-func TestNilParse(t *testing.T) {
-	o, err := Nil{}.Parse("")
-	assert.NilError(t, err)
-	assert.Equal(t, o, NilOptions{})
-
-	_, err = Nil{}.Parse("x")
-	assert.ErrorIs(t, err, ErrArgs)
-	assert.ErrorContains(t, err, `unexpected arg "x"; want none`)
-}
-
-func TestNullParse(t *testing.T) {
-	o, err := Null{}.Parse("")
-	assert.NilError(t, err)
-	assert.Equal(t, o, NullOptions{})
-
-	_, err = Null{}.Parse("x")
-	assert.ErrorIs(t, err, ErrArgs)
-	assert.ErrorContains(t, err, `unexpected arg "x"; want none`)
-}
-
-func TestRegexpParse(t *testing.T) {
-	o, err := Regexp{}.Parse(`^a="b c"$`)
-	assert.NilError(t, err)
-	assert.Equal(t, o, RegexpOptions{Pattern: `^a="b c"$`})
-
-	for arg, msg := range map[string]string{
-		"":   "want a pattern",
-		"a(": `pattern "a(" does not compile`,
-	} {
-		_, err := Regexp{}.Parse(arg)
-		assert.ErrorIs(t, err, ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
-	}
-}
-
-func TestLengthParse(t *testing.T) {
-	o, err := Length{}.Parse(">=1 <=+10")
-	assert.NilError(t, err)
-	assert.DeepEqual(t, o, LengthOptions{Comparisons: []Comparison{
-		{Op: ">=", Operand: "1"},
-		{Op: "<=", Operand: "+10"},
-	}})
-
-	for arg, msg := range map[string]string{
-		"":        "want one or more comparisons",
-		"=1":      `arg "=1" is no comparison`,
-		">=a =1":  `arg "=1" is no comparison`,
-		">=-1":    "length -1 is negative",
-		">=1.0":   "length 1.0 is not an integer literal",
-		`"1`:      "unterminated quoted string",
-		">=\"a\"": "is no value of int",
-	} {
-		_, err := Length{}.Parse(arg)
-		assert.ErrorIs(t, err, ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
-	}
-}
-
-func TestCmpParse(t *testing.T) {
-	o, err := Cmp{}.Parse(`>=1 !="a"`)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, o, CmpOptions{Comparisons: []Comparison{
-		{Op: ">=", Operand: "1"},
-		{Op: "!=", Operand: `"a"`},
-	}})
-
-	for arg, msg := range map[string]string{
-		"":    "want one or more comparisons",
-		">=":  `arg ">=" is no comparison`,
-		"a=1": `arg "a=1" is no comparison`,
-	} {
-		_, err := Cmp{}.Parse(arg)
-		assert.ErrorIs(t, err, ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
-	}
-}
-
-func TestConstParse(t *testing.T) {
-	o, err := Const{}.Parse(`1 "dark blue"`)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, o, ConstOptions{Values: []ConstValue{
-		{Text: "1"},
-		{Text: "dark blue", Quoted: true},
-	}})
-	assert.Equal(t, o.(ConstOptions).Values[1].Literal(), `"dark blue"`)
-
-	for arg, msg := range map[string]string{
-		"":    "want one or more values",
-		"a=1": `arg "a=1" is a key=value pair`,
-		`"a`:  "unterminated quoted string",
-	} {
-		_, err := Const{}.Parse(arg)
-		assert.ErrorIs(t, err, ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
-	}
-}
-
-func TestFormatParse(t *testing.T) {
-	f := Format{Formats: DefaultFormats()}
-
-	o, err := f.Parse("date")
-	assert.NilError(t, err)
-	assert.Equal(t, o.(FormatOptions).Name, "date")
-	assert.Equal(t, o.(FormatOptions).Helper.Name, "kamaValidateFormatDate")
-
-	for arg, msg := range map[string]string{
-		"":     "want one format name; known: date, date-time, url",
-		"uuid": `unknown format "uuid"; known: date, date-time, url`,
-	} {
-		_, err := f.Parse(arg)
-		assert.ErrorIs(t, err, ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
-	}
 }
 
 func TestBuiltinValidatorErrors(t *testing.T) {
@@ -512,7 +381,7 @@ func TestArgsErrorOnHeldValue(t *testing.T) {
 			"\t//kama:validate length=\">=1.5\"\n\tP *string\n}\n",
 	}, Options{})
 	assert.ErrorIs(t, err, ErrUnsupported)
-	assert.ErrorIs(t, err, ErrArgs)
+	assert.ErrorIs(t, err, rule.ErrArgs)
 	assert.Equal(t, strings.Count(err.Error(), "1.5 is no value of int"), 1, err.Error())
 	assert.Assert(t, !strings.Contains(err.Error(), "for the value it holds"), err.Error())
 }
@@ -523,24 +392,29 @@ type lengthOne struct{}
 
 func (lengthOne) Name() string { return "length" }
 
-func (lengthOne) Parse(arg string) (Rule, error) {
+func (lengthOne) Parse(arg string) (rule.Rule, error) {
 	if arg != "" {
-		return nil, fmt.Errorf("%w: unexpected arg %q; want none", ErrArgs, arg)
+		return nil, fmt.Errorf("%w: unexpected arg %q; want none", rule.ErrArgs, arg)
 	}
 
 	return lengthOne{}, nil
 }
 
 func (lengthOne) Check(t types.Type) error {
-	if !hasLength(t) {
-		return fmt.Errorf("%s has no length", t)
+	switch u := t.Underlying().(type) {
+	case *types.Basic:
+		if u.Info()&types.IsString != 0 {
+			return nil
+		}
+	case *types.Slice, *types.Array, *types.Map, *types.Chan:
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("%s has no length", t)
 }
 
-func (lengthOne) Emit(e Emitter, _ types.Type, v string) (string, error) {
-	e.Declare("kamaValidateLengthOne", func(s Spelling) (string, error) {
+func (lengthOne) Emit(e rule.Emitter, _ types.Type, v string) (string, error) {
+	e.Declare("kamaValidateLengthOne", func(s rule.Spelling) (string, error) {
 		errorsPkg, err := s.Import("errors")
 		if err != nil {
 			return "", err
@@ -556,7 +430,7 @@ func (lengthOne) Emit(e Emitter, _ types.Type, v string) (string, error) {
 // TestReplaceBuiltin registers a validator under the name of a built-in,
 // which replaces both its args and its code.
 func TestReplaceBuiltin(t *testing.T) {
-	reg := DefaultRegistry().Clone()
+	reg := rule.DefaultRegistry().Clone()
 	reg.Register(lengthOne{})
 
 	files := map[string]string{
@@ -580,16 +454,16 @@ func TestReplaceBuiltin(t *testing.T) {
 // TestFormatExtra registers a format validator with a format besides the
 // built-in ones.
 func TestFormatExtra(t *testing.T) {
-	formats := DefaultFormats()
-	formats["lower"] = FormatHelper{
+	formats := rule.DefaultFormats()
+	formats["lower"] = rule.FormatHelper{
 		Name: "kamaValidateFormatLower",
-		Decl: func(s Spelling) (string, error) {
+		Decl: func(s rule.Spelling) (string, error) {
 			strs, err := s.Import("strings")
 			if err != nil {
 				return "", err
 			}
 
-			v, err := s.Import(validationPath)
+			v, err := s.Import(rule.ValidationPath)
 			if err != nil {
 				return "", err
 			}
@@ -601,8 +475,8 @@ func TestFormatExtra(t *testing.T) {
 		},
 	}
 
-	reg := DefaultRegistry().Clone()
-	reg.Register(Format{Formats: formats})
+	reg := rule.DefaultRegistry().Clone()
+	reg.Register(rule.Format{Formats: formats})
 
 	files := map[string]string{
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +

@@ -1,4 +1,4 @@
-package validator
+package rule
 
 import (
 	"fmt"
@@ -103,7 +103,7 @@ func hasLength(t types.Type) bool {
 const lengthName = "kamaValidateLength"
 
 func lengthDecl(s Spelling) (string, error) {
-	v, err := s.Import(validationPath)
+	v, err := s.Import(ValidationPath)
 	if err != nil {
 		return "", err
 	}

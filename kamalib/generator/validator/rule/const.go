@@ -1,4 +1,4 @@
-package validator
+package rule
 
 import (
 	"errors"
@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/ngicks/opiter"
+
+	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // Const is the validator //kama:validate const="<v1> <v2> ...": the value
@@ -78,7 +80,7 @@ func (Const) Parse(arg string) (Rule, error) {
 
 // Check accepts values of t, on the types the doc comment of Const lists.
 func (o ConstOptions) Check(t types.Type) error {
-	info := basicInfo(t)
+	info := typequery.BasicInfo(t)
 	if info&(types.IsBoolean|types.IsNumeric|types.IsString) == 0 {
 		return fmt.Errorf("%s is not a bool, numeric or string type", t)
 	}
@@ -113,7 +115,7 @@ func (o ConstOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
 const constName = "kamaValidateConst"
 
 func constDecl(s Spelling) (string, error) {
-	v, err := s.Import(validationPath)
+	v, err := s.Import(ValidationPath)
 	if err != nil {
 		return "", err
 	}

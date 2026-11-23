@@ -28,6 +28,16 @@ func TypeArg(t types.Type) types.Type {
 	return types.Unalias(t).(*types.Named).TypeArgs().At(0)
 }
 
+// BasicInfo returns the info of the underlying type of t when it is a
+// basic type, else 0. A type parameter has none.
+func BasicInfo(t types.Type) types.BasicInfo {
+	if b, ok := t.Underlying().(*types.Basic); ok {
+		return b.Info()
+	}
+
+	return 0
+}
+
 // IsStructSliceOrMap reports whether the underlying type of t is a struct,
 // a slice or a map.
 func IsStructSliceOrMap(t types.Type) bool {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
+	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
@@ -46,14 +47,14 @@ func DefaultProcParam() ProcParamPartial {
 // the number of files written and unchanged.
 //
 // Registry holds the validators the directives name. It is
-// DefaultRegistry() when nil. NewProcWith returns constructors of a Proc
+// rule.DefaultRegistry() when nil. NewProcWith returns constructors of a Proc
 // with a registry for a workflow.Registry.
 //
 //	Param(ProcParamPartial) error
 //	In(*gopackages.Packages)
 //	Out(*overlayfs.Fs)
 type Proc struct {
-	Registry *Registry
+	Registry *rule.Registry
 }
 
 // NewProc returns a new Proc with the default registry. It is the
@@ -64,8 +65,8 @@ func NewProc() workflow.Proc { return Proc{} }
 // of reg, for workflow.Registry.Register. It keeps a clone of reg, so later
 // changes to reg do not reach the Procs. The Procs only read the clone, so
 // the graphs built with them share nothing they change. A nil reg means
-// DefaultRegistry().
-func NewProcWith(reg *Registry) func() workflow.Proc {
+// rule.DefaultRegistry().
+func NewProcWith(reg *rule.Registry) func() workflow.Proc {
 	if reg != nil {
 		reg = reg.Clone()
 	}
@@ -92,7 +93,7 @@ func (p Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
 func (Proc) CleanUp(context.Context) error { return nil }
 
 type instance struct {
-	registry   *Registry
+	registry   *rule.Registry
 	optionFile *fileloader.PathInput
 	pkgs       *gopackages.Packages
 	fs         *overlayfs.Fs

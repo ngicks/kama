@@ -1,4 +1,4 @@
-package validator
+package rule
 
 import "go/types"
 
@@ -16,16 +16,6 @@ func convert(t, to types.Type, spelled, v string) string {
 	}
 
 	return spelled + "(" + v + ")"
-}
-
-// basicInfo returns the info of the underlying type of t when it is a
-// basic type, else 0. A type parameter has none.
-func basicInfo(t types.Type) types.BasicInfo {
-	if b, ok := t.Underlying().(*types.Basic); ok {
-		return b.Info()
-	}
-
-	return 0
 }
 
 // nillable reports whether the values of t can be nil: t is a pointer,

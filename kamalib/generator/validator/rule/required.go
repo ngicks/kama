@@ -1,4 +1,4 @@
-package validator
+package rule
 
 import (
 	"fmt"
@@ -113,7 +113,7 @@ const (
 )
 
 func requiredComparableDecl(s Spelling) (string, error) {
-	v, err := s.Import(validationPath)
+	v, err := s.Import(ValidationPath)
 	if err != nil {
 		return "", err
 	}
@@ -128,7 +128,7 @@ func requiredComparableDecl(s Spelling) (string, error) {
 }
 
 func requiredHelperDecl(s Spelling) (string, error) {
-	v, err := s.Import(validationPath)
+	v, err := s.Import(ValidationPath)
 	if err != nil {
 		return "", err
 	}

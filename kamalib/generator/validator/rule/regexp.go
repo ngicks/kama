@@ -1,4 +1,4 @@
-package validator
+package rule
 
 import (
 	"crypto/sha256"
@@ -122,7 +122,7 @@ func regexpBytesDecl(s Spelling) (string, error) {
 // regexpDecl formats src with the identifiers of package validation and of
 // package regexp.
 func regexpDecl(s Spelling, src string) (string, error) {
-	v, err := s.Import(validationPath)
+	v, err := s.Import(ValidationPath)
 	if err != nil {
 		return "", err
 	}

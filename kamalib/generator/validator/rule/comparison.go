@@ -1,4 +1,4 @@
-package validator
+package rule
 
 import (
 	"errors"
@@ -193,7 +193,7 @@ func compareDecl(s Spelling) (string, error) {
 }
 
 func allDecl(s Spelling) (string, error) {
-	v, err := s.Import(validationPath)
+	v, err := s.Import(ValidationPath)
 	if err != nil {
 		return "", err
 	}
