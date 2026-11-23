@@ -1,5 +1,8 @@
-lockfile_version: '1'
-apm_version: 0.36.1
+lockfile_version: '4'
+apm_version: 0.37.0
+manifest_targets:
+- claude
+- codex
 dependencies:
 - repo_url: ngicks/agents-package
   name: go
@@ -9,7 +12,7 @@ dependencies:
   virtual_path: bundle/go
   is_virtual: true
   package_type: apm_package
-  content_hash: sha256:269574e3360eed0f8824dfc73a6421808a7e617a461815083ba9df65c5def367
+  content_hash: sha256:9b9d1f49c482d98e0728fdb7ef5990f6d78a437502a7e62f8034011f9622a615
   carried_licenses:
   - path: LICENSE
     source: LICENSE
@@ -144,7 +147,7 @@ dependencies:
     .opencode/agents/ng-reviewer-tests.md: sha256:1bf1141531d8828f029370a74a8394b65df3bb580c68a3ea4ff5911479d63dd0
     .opencode/agents/ng-reviewer.md: sha256:bc508eaeca1dca36271dc8a6f2d5e07f503f47b6abbc8dabe28e85092d4c7aee
     .opencode/agents/ng-test-runner.md: sha256:2b6b1188560b9749dd3910fd4fe3479398ceac59ee5d993f71a2a070167e250c
-  content_hash: sha256:44bdb6435553fe18fe2bde40ddd3b9997af0dec8590eea44db877b2249fd40ea
+  content_hash: sha256:255bd2e3fcb2a4a4323be71c6cc70de4d360b360b382cd08a83370d701f0eff6
   declared_license: MIT
   carried_licenses:
   - path: .apm/skills/ng-command-invoker/LICENSE
@@ -177,7 +180,8 @@ dependencies:
   is_virtual: true
   depth: 2
   resolved_by: ngicks/agents-package
-  content_hash: sha256:195e16e7601a8e15e8092087e3ea07348c459b81f50eec31914d3187751d8899
+  package_type: apm_package
+  content_hash: sha256:082fdbe50e92fb0aa7cb1f950a0b0eb26a9454f315e0da0bdfbc938a344c455d
   target_subset:
   - codex
 - repo_url: ngicks/agents-package
@@ -189,7 +193,8 @@ dependencies:
   is_virtual: true
   depth: 2
   resolved_by: ngicks/agents-package
-  content_hash: sha256:a0a4aaebbdc52604ce92ca7ade2397324d02a6fe37f61acf55988f0c7be22678
+  package_type: apm_package
+  content_hash: sha256:bacc53a19b4d58fdab419f2545e717252400a8748ca56f8e9dcae5727af805c7
   target_subset:
   - codex
 - repo_url: ngicks/agents-package
@@ -214,7 +219,7 @@ dependencies:
     .agents/skills/go-check-outdated-patterns/SKILL.md: sha256:feb7e9f5ec55b6088a8f0d7491c258a721722c6703e6bb383440d90df1f5efd1
     .claude/skills/go-check-outdated-patterns/LICENSE: sha256:43b748a7ffd6f89808c4d672d8139926a67586756134d9b0d0aee2e9f8d97ca3
     .claude/skills/go-check-outdated-patterns/SKILL.md: sha256:feb7e9f5ec55b6088a8f0d7491c258a721722c6703e6bb383440d90df1f5efd1
-  content_hash: sha256:e13a829dfa78141dcd80a6ac5cf432260eb1fc0b276f3098003b92d759485184
+  content_hash: sha256:2e9a3ffad7ed433b71a950d03e30ce9f44a65bd75fb657aa64fac5242f3e5773
   carried_licenses:
   - path: LICENSE
     source: LICENSE
@@ -317,7 +322,7 @@ dependencies:
     .claude/skills/go-edit-cobra/reference/user-dirs.md: sha256:5859a550e0c517d4863e662120681ef363047545a137eb17e229a014209e8ef4
     .claude/skills/go-edit-cobra/reference/versioning.md: sha256:4133c288ba645b35dc0c3e3c097cdce46a82915ff0de1c2d5ce81d5f7d8aa6ca
     .claude/skills/go-edit-cobra/reference/workflows.md: sha256:287dc464f1beb202683dfea571db851a0d0a61bcded6e0b7ba112775ce9e8643
-  content_hash: sha256:bed0844c7283a86ccca8ce7534b18d4c2b8ac8d09e2b9ed5d483a132d9de6470
+  content_hash: sha256:b8e1785d36c7382fab4f6b52b9382529eb7032532612f949ecc25ba7b4b3440d
   carried_licenses:
   - path: LICENSE
     source: LICENSE
@@ -344,7 +349,7 @@ dependencies:
     .agents/skills/go-review-checklist/SKILL.md: sha256:f24bfd70bd3c268a41cb40eae2430e606c3bacf80248eef88425d8a33f24e90f
     .claude/skills/go-review-checklist/LICENSE: sha256:43b748a7ffd6f89808c4d672d8139926a67586756134d9b0d0aee2e9f8d97ca3
     .claude/skills/go-review-checklist/SKILL.md: sha256:f24bfd70bd3c268a41cb40eae2430e606c3bacf80248eef88425d8a33f24e90f
-  content_hash: sha256:4ccecce571ac43bcae04d94f211c2cd733d52748bbb6d1f3f156bab9b3c53d8b
+  content_hash: sha256:1a3266ddeb182fd84adbe4efc9eb76781a7cd1c2fd9102402a21dec9c98542e4
   carried_licenses:
   - path: LICENSE
     source: LICENSE
@@ -458,6 +463,15 @@ deployments:
   - .
   active_owner: .
   content_hash: sha256:2ae99edd236d39fd5adf5080a6259d88e337e9c149bce7ea1f331d0daad18fbc
+- kind: project-relative
+  target: claude
+  value: .claude/rules/kama.go.json-unknown-fields.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:445fdec3644cbdaf0ba256913330c992140272c18fbac2a88202a08068664711
 - kind: project-relative
   target: claude
   value: .claude/skills/go-check-outdated-patterns
@@ -1469,6 +1483,8 @@ deployments:
 local_deployed_files:
 - .claude/rules/kama.go.generator-single-source.md
 - .claude/rules/kama.go.iterator-chain.md
+- .claude/rules/kama.go.json-unknown-fields.md
 local_deployed_file_hashes:
   .claude/rules/kama.go.generator-single-source.md: sha256:ee61cda6f01bd5190f54431d38e5dee7bad9ff8a457159d6a6ecd4e7ebdb7bbd
   .claude/rules/kama.go.iterator-chain.md: sha256:2ae99edd236d39fd5adf5080a6259d88e337e9c149bce7ea1f331d0daad18fbc
+  .claude/rules/kama.go.json-unknown-fields.md: sha256:445fdec3644cbdaf0ba256913330c992140272c18fbac2a88202a08068664711
