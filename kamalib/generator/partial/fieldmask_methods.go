@@ -92,7 +92,7 @@ func (w *methodWriter) fieldMaskBody(st *types.Struct) genSteps {
 
 	for v := range st.Fields() {
 		m := w.p.matchField(w.n, v)
-		if m.blank {
+		if m.blank || m.fallback {
 			continue
 		}
 
@@ -163,7 +163,7 @@ func (w *methodWriter) fromValueWithMaskBody(st *types.Struct) (genSteps, error)
 
 	for v := range st.Fields() {
 		m := w.p.matchField(w.n, v)
-		if m.blank {
+		if m.blank || m.fallback {
 			continue
 		}
 

@@ -389,6 +389,11 @@ func (p *mapper) allUndefinedFunc(h *helper, f helperFunc, t helperTypes) (helpe
 			)
 		}
 
+		if isFallback(h.named, fv) {
+			tests = append(tests, lang.Expr("%s.%s == nil", lang.Name("p"), fv.Name()))
+			continue
+		}
+
 		tests = append(tests, lang.Expr("%s.%s.IsUndefined()", lang.Name("p"), fv.Name()))
 	}
 

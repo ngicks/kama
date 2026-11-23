@@ -123,6 +123,15 @@ func (s *selection) checkFieldMaskTargets(
 			bad("the paths of the fields of an embedded partial value are those of " +
 				"the parent, so the field has no path segment of its own")
 		}
+
+		fallback := opiter.WrapSeq(st.Fields()).
+			ContainsFunc(
+				func(v *types.Var) bool { return v.Name() == k.field && isFallback(n.Detail.Type, v) },
+			)
+
+		if fallback {
+			bad("a field catching unknown members has no path")
+		}
 	}
 
 	return errors.Join(errs...)
@@ -168,7 +177,7 @@ func (s *selection) walkMaskSegments(
 	st := n.Underlying().(*types.Struct)
 
 	for v := range st.Fields() {
-		if v.Name() == "_" {
+		if v.Name() == "_" || isFallback(n, v) {
 			continue
 		}
 

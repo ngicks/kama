@@ -334,6 +334,13 @@ func TestTargetErrors(t *testing.T) {
 			contains: []string{"x.go:7:2", "want overwrite"},
 		},
 		{
+			name: "append on an unknown member fallback",
+			src: "package x\n\n//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:merge append\n\tB map[string]any `json:\",embed\"`\n}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:5:2", "A.B", "want overwrite"},
+		},
+		{
 			name: "merge on a type without partial variant",
 			src: "package x\n\n//kama:partial\ntype A struct{}\n\n" +
 				"type B struct {\n\t//kama:partial:merge append\n\tC []int\n}\n",
@@ -662,6 +669,37 @@ type Om map[int]opt.Option[M]
 	assert.Assert(t, strings.Contains(src, "type SPartial []und.Und[MPartial]"), src)
 	assert.Assert(t, strings.Contains(src, "type OmPartial map[int]und.Und[M]"), src)
 	assert.Assert(t, strings.Contains(src, "type GPartial[K comparable, V any] struct"), src)
+}
+
+// TestMappingFallback checks that an unknown member fallback keeps its type
+// and its tag, and that a json tag with embed on any other field does not
+// make a fallback.
+func TestMappingFallback(t *testing.T) {
+	files := generated(t, map[string]string{
+		"a.go": "package x\n\n//kama:partial\ntype A struct {\n" +
+			"\tUnknown map[string]any `json:\",embed\" yaml:\"-\"`\n" +
+			"\tNamed   Extra          `json:\",embed\"`\n" +
+			"\tPlain   map[string]any `json:\"plain\"`\n" +
+			"}\n\ntype Extra map[string]string\n",
+	})
+
+	assert.DeepEqual(t, fieldTypes(t, files["a.kama_partial.go"], "APartial"), map[string][2]string{
+		"Unknown": {"map[string]any", "`json:\",embed\" yaml:\"-\"`"},
+		"Named":   {"Extra", "`json:\",embed\"`"},
+		"Plain":   {"und.Und[map[string]any]", "`json:\"plain,omitzero\"`"},
+	})
+
+	fs := funcs(t, files["a.kama_partial.go"])
+	assert.Assert(t, strings.Contains(fs["APartial.FromValue"], "p.Unknown = v.Unknown"))
+	assert.Assert(t, strings.Contains(fs["APartial.ToValue"], "v.Unknown = p.Unknown"))
+	assert.Assert(
+		t,
+		strings.Contains(
+			fs["APartial.Merge"],
+			"if r.Unknown != nil {\n\t\tp.Unknown = r.Unknown\n\t}",
+		),
+		fs["APartial.Merge"],
+	)
 }
 
 func TestImports(t *testing.T) {

@@ -166,6 +166,13 @@ func TestFlagErrors(t *testing.T) {
 			contains: []string{"x.go:5:2", "A._", "a blank field cannot be set"},
 		},
 		{
+			name: "unknown member fallback",
+			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n" +
+				"\tB map[string]any `json:\",embed\"`\n}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:5:2", "A.B", "a field catching unknown members cannot be set"},
+		},
+		{
 			name: "field named like a flag method",
 			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n\tB int\n" +
 				"\tRegisterFlags int\n}\n",

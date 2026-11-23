@@ -99,6 +99,13 @@ func TestFieldMaskErrors(t *testing.T) {
 			contains: []string{"x.go:6:2", "a blank field has no path"},
 		},
 		{
+			name: "unknown member fallback",
+			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
+				"\t//kama:partial:fieldmask name=b\n\tB map[string]any `json:\",embed\"`\n}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:6:2", "a field catching unknown members has no path"},
+		},
+		{
 			name: "name on an embedded partial",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
 				"\t//kama:partial:fieldmask name=b\n\tB\n}\n\n" +

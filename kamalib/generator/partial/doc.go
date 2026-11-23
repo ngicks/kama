@@ -209,6 +209,11 @@
 // as in type A sub.S, is an error when that struct has an unexported
 // field, which the methods could not spell.
 //
+// An unknown member fallback of encoding/json/v2, a field of map type that
+// is not embedded and whose json tag has the embed option, keeps its type
+// and its tag. encoding/json/v2 rejects und.Und and any other option on
+// such a field. A fallback has no undefined state: nil captured nothing.
+//
 // A target with an underlying []T or map[K]V maps to []T' or map[K]V',
 // where T' and V' map T and V as a struct field type.
 //
@@ -245,7 +250,8 @@
 // gets json:",omitzero". A yaml tag present on the source field gets
 // omitempty and loses omitzero, which go.yaml.in/yaml/v4 rejects. A toml
 // tag present on the source field gets omitzero and loses omitempty. A
-// tag of "-" is kept as is, and other keys are copied unchanged.
+// tag of "-" is kept as is, and other keys are copied unchanged. The tag
+// of an unknown member fallback is copied unchanged.
 //
 // # Methods
 //
@@ -267,6 +273,7 @@
 //	*M <-> und.Und[*MPartial]        nil <-> null; both sides allocate
 //	opt.Option[T] <-> und.Und[T]     none <-> null
 //	und.Und, elastic.Elastic         copied
+//	unknown member fallback          copied
 //	embedded M <-> MPartial          through the methods of MPartial
 //	embedded *M <-> MPartial         nil <-> every field undefined
 //
@@ -308,6 +315,9 @@
 // returns v unchanged, except that a non-nil embedded *M whose fields all
 // give undefined still converts back to nil, as described above.
 //
+// An unknown member fallback of r replaces that of p when it is not nil.
+// Its strategy is always overwrite, so an append default leaves it whole.
+//
 // Options.Merge, overwrite or append, is the strategy of fields whose
 // value is a slice or a map, as for []T, *[]T and opt.Option[map[K]V].
 // Options.MergeNested, recursive or overwrite, is the strategy of fields
@@ -315,7 +325,8 @@
 // overwrite. //kama:partial:merge <strategy> on a source field sets its
 // strategy: overwrite or append for slices and maps, recursive or
 // overwrite for partial values, any of the three for slice and map
-// partial values, and overwrite for other fields. Any other strategy, args
+// partial values, and overwrite for unknown member fallbacks and other
+// fields. Any other strategy, args
 // holding more than one strategy, the directive on a type or a file, and
 // the directive on a field of a type without partial variant are errors.
 //
@@ -348,7 +359,8 @@
 //
 // AllUndefined tests the fields of MPartial with IsUndefined, and the
 // fields of a partial value embedded in it with its own AllUndefined. It
-// skips blank fields, which hold no partial value. It cannot read an
+// tests an unknown member fallback against nil and skips blank fields,
+// which hold no partial value. It cannot read an
 // unexported field of a partial type of another package, so embedding a
 // target of another package that has unexported fields, where
 // AllUndefined is needed, is an error wrapping ErrUnsupported.
@@ -454,8 +466,8 @@
 // optional and is a single ASCII character. usage is optional. An unknown
 // key, a key given twice, the directive on a type or a file,
 // the directive on a field of a type without partial variant, the
-// directive on a blank field, and two fields of one partial type with one
-// flag name or shorthand are errors.
+// directive on a blank field or on an unknown member fallback, and two
+// fields of one partial type with one flag name or shorthand are errors.
 //
 // A partial type with at least one flagged field gets these methods:
 //
@@ -540,13 +552,14 @@
 //   - args on a type
 //   - the directive on a type without a struct partial variant, or on a
 //     free-floating comment
-//   - name on a field of a type without field masks, on a blank field or
-//     on an embedded partial value
+//   - name on a field of a type without field masks, on a blank field, on
+//     an unknown member fallback or on an embedded partial value
 //   - two fields of one type with one segment
 //   - an embedding type and an embedded partial value of which only one
 //     has field masks
 //
-// A path addresses every field of the partial struct as a whole. Some
+// A path addresses every field of the partial struct as a whole, except an
+// unknown member fallback, which has no path. Some
 // fields hold a partial value of a struct target with field masks, as M,
 // *M and a pointer closing a cycle do. Paths below the segment of such a
 // field address the fields of that value, as in Field.Child. A path

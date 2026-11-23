@@ -1,0 +1,9 @@
+# The options of this package, standing for the directives of the fixture
+# package.
+version: 1
+types:
+  Fallback:
+  Embedding:
+  PointerEmbedding:
+  Masked:
+    fieldmask: true

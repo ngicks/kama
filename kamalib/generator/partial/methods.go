@@ -123,7 +123,7 @@ func (w *methodWriter) from(m match, dst, src genExpr) genStep {
 		return assign(lang.Expr("%s.FromPointer(%s).CollapseToNull()", und, src))
 	case m.kind == leafOption:
 		return assign(lang.Expr("%s.FromOption(%s, true)", und, src))
-	case m.kind == leafUnd, m.kind == leafElastic:
+	case m.kind == leafUnd, m.kind == leafElastic, m.fallback:
 		return assign(src)
 	}
 
@@ -169,7 +169,7 @@ func (w *methodWriter) to(m match, dst, src genExpr) genStep {
 		}, nil)
 	case m.kind == leafOption:
 		return assign(lang.Expr("%s.Flatten()", src))
-	case m.kind == leafUnd, m.kind == leafElastic:
+	case m.kind == leafUnd, m.kind == leafElastic, m.fallback:
 		return assign(src)
 	}
 
@@ -192,6 +192,9 @@ func (w *methodWriter) merge(v *types.Var, m match, l, r genExpr) genStep {
 	assign := func(rhs genExpr) genStep { return lang.Stmt("%s = %s", l, rhs) }
 
 	switch {
+	case m.fallback:
+		// A fallback has no undefined state of its own: nil captured nothing.
+		return lang.If(lang.Expr("%s != nil", r), lang.Stmt("%s = %s", l, r), nil)
 	case m.embedded && strategy == string(MergeNestedRecursive):
 		return assign(lang.Expr("%s.Merge(%s)", l, r))
 	case m.embedded:

@@ -146,6 +146,13 @@ packages:
         fieldmask: true
       MaskHolder:
         fieldmask: true
+  github.com/ngicks/kama/kamalib/generator/partial/internal/fixtureexternal/fallback:
+    types:
+      Fallback:
+      Embedding:
+      PointerEmbedding:
+      Masked:
+        fieldmask: true
   github.com/ngicks/kama/kamalib/generator/partial/internal/fixtureexternal/pkgmark:
     all_types: true
     types:

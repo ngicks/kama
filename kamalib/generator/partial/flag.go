@@ -222,6 +222,8 @@ func (p *mapper) flag(n *typegraph.Node, v *types.Var, m match) (*flagField, err
 	switch {
 	case m.blank:
 		return nil, bad("a blank field cannot be set")
+	case m.fallback:
+		return nil, bad("a field catching unknown members cannot be set")
 	case m.kind == leafPartial:
 		return nil, bad("the field holds a partial value; " +
 			"flags apply to fields of the partial type itself, not to nested partial values")

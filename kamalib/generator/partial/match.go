@@ -2,7 +2,9 @@ package partial
 
 import (
 	"go/types"
+	"reflect"
 
+	"github.com/ngicks/kama/kamalib/pkg/structtag"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -53,6 +55,9 @@ type match struct {
 	// blank tells a blank field, which the partial struct copies and the
 	// methods do not touch.
 	blank bool
+	// fallback tells a field catching the unknown members of a JSON object,
+	// which the partial struct copies and the methods copy whole.
+	fallback bool
 }
 
 // matchField matches the field v of the struct target n, for a declaration
@@ -67,6 +72,10 @@ func (s *selection) matchField(n *types.Named, v *types.Var) match {
 		return match{source: v.Type(), leaf: v.Type(), blank: true}
 	}
 
+	if isFallback(n, v) {
+		return match{source: v.Type(), leaf: v.Type(), fallback: true}
+	}
+
 	named, ok := s.partialOf(deref(v.Type()), pkgPath)
 	if ok && v.Embedded() && isStruct(named) {
 		leaf, route := typegraph.PointerRoute(v.Type())
@@ -79,6 +88,43 @@ func (s *selection) matchField(n *types.Named, v *types.Var) match {
 	}
 
 	return s.matchType(v.Type(), s.closesCycle(n, v), pkgPath)
+}
+
+// isFallback reports whether the field v of the struct target n is an
+// unknown member fallback of encoding/json/v2: a field of map type, not
+// embedded, whose json tag has the embed option. encoding/json/v2 rejects
+// any other option on it, and an und.Und around it, so the partial struct
+// keeps its type and tag.
+func isFallback(n *types.Named, v *types.Var) bool {
+	if v.Embedded() {
+		return false
+	}
+
+	if _, ok := v.Type().Underlying().(*types.Map); !ok {
+		return false
+	}
+
+	st, ok := n.Underlying().(*types.Struct)
+	if !ok {
+		return false
+	}
+
+	for i := range st.NumFields() {
+		if st.Field(i).Name() != v.Name() {
+			continue
+		}
+
+		tags, err := structtag.Parse(reflect.StructTag(st.Tag(i)))
+		if err != nil {
+			return false
+		}
+
+		_, _, err = tags.Get("json", "embed")
+
+		return err == nil
+	}
+
+	return false
 }
 
 // matchValue matches t, the type of a slice element or a map value, for a

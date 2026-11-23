@@ -240,12 +240,14 @@ func (p *mapper) field(
 
 	f := &dst.Field{Type: expr}
 
-	if !m.embedded {
+	if !m.embedded && !m.fallback {
 		tag, err = partialTag(tag, v.Exported())
 		if err != nil {
 			return nil, err
 		}
+	}
 
+	if !m.embedded {
 		f.Names = []*dst.Ident{dst.NewIdent(v.Name())}
 	}
 
@@ -263,7 +265,8 @@ func (p *mapper) field(
 // strategy returns the merge strategy of the field k matched as m, set by
 // its directive or defaulted by the options.
 //
-// A value held whole and an elastic.Elastic accept overwrite only. A slice
+// A value held whole, an unknown member fallback and an elastic.Elastic
+// accept overwrite only. A slice
 // or a map accepts overwrite and append. A partial value accepts recursive
 // and overwrite, and append too when it is the partial variant of a slice
 // or a map. An embedded partial value accepts recursive and overwrite.
@@ -275,6 +278,8 @@ func (p *mapper) strategy(m match, k fieldKey) (string, error) {
 	)
 
 	switch {
+	case m.fallback:
+		def, allowed = string(MergeOverwrite), []string{string(MergeOverwrite)}
 	case m.embedded:
 		def = string(p.sel.opts.MergeNested)
 		allowed = []string{string(MergeNestedRecursive), string(MergeNestedOverwrite)}
@@ -333,11 +338,16 @@ func withTag(f *dst.Field, tag string) *dst.Field {
 //	und.Und[T]     und.Und[T]
 //	elastic.Elastic[T] elastic.Elastic[T]
 //	embedded M, *M MPartial
+//	fallback map   as written
 //
 // Any other type, a slice, map or array included, maps as a whole as T
 // does. So does a target whose partial variant cannot be spelled in the
 // package of the mapper.
 func (p *mapper) partialExpr(m match) (dst.Expr, error) {
+	if m.fallback {
+		return p.TypeExpr(m.source)
+	}
+
 	if m.embedded {
 		return p.partial(m.named)
 	}
