@@ -206,14 +206,11 @@ func (c *collector) add(target Target, comments []*ast.Comment) {
 		}, true
 	}
 
-	c.out = slices.AppendSeq(
-		c.out,
-		opiter.WrapSeq(slices.Values(comments)).
-			Disassemble(toLine).
-			Filter(func(_ line, ok bool) bool { return ok }).
-			OmitL().
-			Iter(),
-	)
+	c.out = opiter.WrapSeq(slices.Values(comments)).
+		Disassemble(toLine).
+		Filter(func(_ line, ok bool) bool { return ok }).
+		OmitL().
+		AppendSeq(c.out)
 }
 
 // fieldComments selects the same comments as dircmnt.AstField, which

@@ -396,12 +396,9 @@ func renderHelpers(
 	for _, name := range hf.Names {
 		h := helpers.byName[name]
 
-		reserve = slices.AppendSeq(
-			reserve,
-			opiter.WrapSeq(slices.Values(h.typeParams())).
-				Map(typeParamName).
-				Iter(),
-		)
+		reserve = opiter.WrapSeq(slices.Values(h.typeParams())).
+			Map(typeParamName).
+			AppendSeq(reserve)
 
 		maps.Copy(require, h.spelled)
 	}
@@ -504,12 +501,9 @@ func renderFileWith(
 
 		tparams := n.Detail.Type.TypeParams()
 
-		reserve = slices.AppendSeq(
-			reserve,
-			opiter.WrapSeq(tparams.TypeParams()).
-				Map(typeParamName).
-				Iter(),
-		)
+		reserve = opiter.WrapSeq(tparams.TypeParams()).
+			Map(typeParamName).
+			AppendSeq(reserve)
 
 		reserve = append(
 			reserve,

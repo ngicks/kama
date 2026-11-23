@@ -31,7 +31,7 @@ func pkgPathOf(p *packages.Package) string { return p.PkgPath }
 // BuildConstraint returns the //go:build line of f.
 func BuildConstraint(f *ast.File) (string, bool) {
 	return opiter.WrapSeq(slices.Values(f.Comments)).
-		LimitUntil(func(cg *ast.CommentGroup) bool { return cg.Pos() < f.Package }).
+		TakeWhile(false, func(cg *ast.CommentGroup) bool { return cg.Pos() < f.Package }).
 		FlatMap(func(cg *ast.CommentGroup) iter.Seq[*ast.Comment] { return slices.Values(cg.List) }).
 		Filter(func(c *ast.Comment) bool { return constraint.IsGoBuild(c.Text) }).
 		First().

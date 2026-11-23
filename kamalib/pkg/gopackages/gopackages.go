@@ -96,8 +96,7 @@ func packageErrorBlock(path string, errs []packages.Error) string {
 		opiter.WrapSeq(opiter.Once(path+":")).
 			Concat(
 				opiter.WrapSeq(slices.Values(errs)).
-					Map(packages.Error.Error).
-					Iter(),
+					Map(packages.Error.Error),
 			).
 			CollectSlice(),
 		"\n\t",

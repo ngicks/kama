@@ -470,8 +470,7 @@ func (g *MatchedGraph) All() iter.Seq2[QualifiedType, *MatchedNode] {
 	return opiter.WrapSeq2(maps.All(g.matched)).
 		Concat(
 			opiter.WrapSeq2(maps.All(g.dependant)).
-				Filter(notMatched).
-				Iter2(),
+				Filter(notMatched),
 		).
 		Iter2()
 }

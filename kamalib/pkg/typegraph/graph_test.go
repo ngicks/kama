@@ -90,12 +90,9 @@ func keysSorted[V any](m map[QualifiedType]V) []QualifiedType {
 	// Tests compare the keys of an empty map with an empty, non-nil slice.
 	keys := make([]QualifiedType, 0, len(m))
 
-	return slices.AppendSeq(
-		keys,
-		opiter.WrapSeq2(opiter.MapsSortedFunc(m, QualifiedType.Compare)).
-			OmitL().
-			Iter(),
-	)
+	return opiter.WrapSeq2(opiter.MapsSortedFunc(m, QualifiedType.Compare)).
+		OmitL().
+		AppendSeq(keys)
 }
 
 func collectKeysSorted[V any](seq iter.Seq2[QualifiedType, V]) []QualifiedType {

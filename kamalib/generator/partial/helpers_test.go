@@ -40,13 +40,10 @@ func helperIn(t *testing.T, srcs ...string) func(op, doc string) string {
 		f, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments)
 		assert.NilError(t, err)
 
-		decls = slices.AppendSeq(
-			decls,
-			opiter.WrapSeq(slices.Values(f.Decls)).
-				Filter(isHelperFunc).
-				Map(toDecl).
-				Iter(),
-		)
+		decls = opiter.WrapSeq(slices.Values(f.Decls)).
+			Filter(isHelperFunc).
+			Map(toDecl).
+			AppendSeq(decls)
 	}
 
 	return func(op, doc string) string {

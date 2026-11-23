@@ -624,5 +624,5 @@ func TestImports(t *testing.T) {
 
 	empty, err := p.ParseAst(nil)
 	assert.NilError(t, err)
-	assert.Equal(t, len(slices.Collect(empty.Imports())), 2)
+	assert.Equal(t, opiter.Count(empty.Imports()), 2)
 }

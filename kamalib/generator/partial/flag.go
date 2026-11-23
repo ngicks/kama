@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"go/types"
 	"maps"
-	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -514,13 +513,10 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 		lang.Stmt("type %s interface {", flagSetName),
 	}
 
-	body = slices.AppendSeq(
-		body,
-		opiter.WrapSeq2(opiter.MapsSorted(sigs)).
-			OmitF().
-			Map(func(sig string) genStep { return lang.Stmt("%s", replacer.Replace(sig)) }).
-			Iter(),
-	)
+	body = opiter.WrapSeq2(opiter.MapsSorted(sigs)).
+		OmitF().
+		Map(func(sig string) genStep { return lang.Stmt("%s", replacer.Replace(sig)) }).
+		AppendSeq(body)
 
 	body = append(body, lang.Stmt("}"))
 	gpkg := &genhelper.Package{Imports: m, Path: pkg.PkgPath}
