@@ -52,12 +52,52 @@ func DefaultFormats() map[string]FormatHelper {
 // Name returns "format".
 func (Format) Name() string { return "format" }
 
-// Check accepts the name of one of f.Formats, on string types.
-func (f Format) Check(t types.Type, name string) error {
-	if _, err := f.helper(name); err != nil {
-		return argsError(err)
+// Check parses arg and checks t with the options.
+func (f Format) Check(t types.Type, arg string) error {
+	o, err := f.Parse(arg)
+	if err != nil {
+		return err
 	}
 
+	return o.Check(t)
+}
+
+// Emit parses arg and emits with the options.
+func (f Format) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
+	o, err := f.Parse(arg)
+	if err != nil {
+		return "", err
+	}
+
+	return o.Emit(e, t, v)
+}
+
+// FormatOptions are the options of //kama:validate format=<name>.
+type FormatOptions struct {
+	// Name is the whole arg, the name of the format.
+	Name string
+	// Helper is the helper f.Formats holds under Name.
+	Helper FormatHelper
+}
+
+// Parse decodes arg into the name of one of f.Formats and its helper.
+func (f Format) Parse(arg string) (FormatOptions, error) {
+	known := strings.Join(slices.Sorted(maps.Keys(f.Formats)), ", ")
+
+	if arg == "" {
+		return FormatOptions{}, argsError(fmt.Errorf("want one format name; known: %s", known))
+	}
+
+	h, ok := f.Formats[arg]
+	if !ok {
+		return FormatOptions{}, argsError(fmt.Errorf("unknown format %q; known: %s", arg, known))
+	}
+
+	return FormatOptions{Name: arg, Helper: h}, nil
+}
+
+// Check accepts string types.
+func (FormatOptions) Check(t types.Type) error {
 	if !isStringType(t) {
 		return fmt.Errorf("%s is not a string type", t)
 	}
@@ -66,31 +106,10 @@ func (f Format) Check(t types.Type, name string) error {
 }
 
 // Emit calls the helper of the format.
-func (f Format) Emit(e Emitter, t types.Type, v string, name string) (string, error) {
-	h, err := f.helper(name)
-	if err != nil {
-		return "", err
-	}
+func (o FormatOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
+	e.Declare(o.Helper.Name, o.Helper.Decl)
 
-	e.Declare(h.Name, h.Decl)
-
-	return h.Name + "(" + convert(t, types.Typ[types.String], "string", v) + ")", nil
-}
-
-// helper returns the helper of the format name.
-func (f Format) helper(name string) (FormatHelper, error) {
-	known := strings.Join(slices.Sorted(maps.Keys(f.Formats)), ", ")
-
-	if name == "" {
-		return FormatHelper{}, fmt.Errorf("want one format name; known: %s", known)
-	}
-
-	h, ok := f.Formats[name]
-	if !ok {
-		return FormatHelper{}, fmt.Errorf("unknown format %q; known: %s", name, known)
-	}
-
-	return h, nil
+	return o.Helper.Name + "(" + convert(t, types.Typ[types.String], "string", v) + ")", nil
 }
 
 // timeFormatDecl returns the source of the helper name testing that a

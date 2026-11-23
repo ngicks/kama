@@ -20,12 +20,36 @@ type Zero struct{}
 // Name returns "zero".
 func (Zero) Name() string { return "zero" }
 
-// Check accepts the types the doc comment of Zero lists, without args.
-func (Zero) Check(t types.Type, arg string) error {
-	if err := noArg(arg); err != nil {
+// Check parses arg and checks t with the options.
+func (r Zero) Check(t types.Type, arg string) error {
+	o, err := r.Parse(arg)
+	if err != nil {
 		return err
 	}
 
+	return o.Check(t)
+}
+
+// Emit parses arg and emits with the options.
+func (r Zero) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
+	o, err := r.Parse(arg)
+	if err != nil {
+		return "", err
+	}
+
+	return o.Emit(e, t, v)
+}
+
+// ZeroOptions are the options of //kama:validate zero. Zero takes no arg.
+type ZeroOptions struct{}
+
+// Parse accepts only the empty arg.
+func (Zero) Parse(arg string) (ZeroOptions, error) {
+	return ZeroOptions{}, noArg(arg)
+}
+
+// Check accepts the types the doc comment of Zero lists.
+func (ZeroOptions) Check(t types.Type) error {
 	if _, _, ok := zeroCall(t, ""); !ok {
 		return fmt.Errorf(
 			"%s is not nillable, has no method IsZero() bool declared on it or promoted"+
@@ -37,7 +61,7 @@ func (Zero) Check(t types.Type, arg string) error {
 }
 
 // Emit calls the helper the test of t needs.
-func (Zero) Emit(e Emitter, t types.Type, v string, _ string) (string, error) {
+func (ZeroOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
 	helper, call, ok := zeroCall(t, v)
 	if !ok {
 		return "", fmt.Errorf("zero: unsupported type %s", t)

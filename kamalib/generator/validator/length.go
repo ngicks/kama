@@ -22,28 +22,49 @@ type Length struct{}
 // Name returns "length".
 func (Length) Name() string { return "length" }
 
-// Check accepts comparisons with non-negative integers, on the types the
-// doc comment of Length lists.
-func (Length) Check(t types.Type, arg string) error {
-	args, err := argTokens(arg)
+// Check parses arg and checks t with the options.
+func (r Length) Check(t types.Type, arg string) error {
+	o, err := r.Parse(arg)
 	if err != nil {
 		return err
 	}
 
-	if err := comparisons(args); err != nil {
-		return argsError(err)
+	return o.Check(t)
+}
+
+// Emit parses arg and emits with the options.
+func (r Length) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
+	o, err := r.Parse(arg)
+	if err != nil {
+		return "", err
 	}
 
-	for _, kv := range args {
-		_, n, _ := comparison(kv)
+	return o.Emit(e, t, v)
+}
+
+// LengthOptions are the options of //kama:validate length="<op><n> ...".
+type LengthOptions struct {
+	// Comparisons holds one comparison per token of the arg, in order.
+	Comparisons []Comparison
+}
+
+// Parse decodes arg into comparisons with non-negative integers.
+func (Length) Parse(arg string) (LengthOptions, error) {
+	cs, err := parseComparisons(arg)
+	if err != nil {
+		return LengthOptions{}, err
+	}
+
+	for _, c := range cs {
+		n := c.Operand
 
 		val, err := literalValue(types.Typ[types.Int], n)
 		if err != nil {
-			return argsError(err)
+			return LengthOptions{}, argsError(err)
 		}
 
 		if constant.Sign(val) < 0 {
-			return argsError(fmt.Errorf("length %s is negative", n))
+			return LengthOptions{}, argsError(fmt.Errorf("length %s is negative", n))
 		}
 
 		// int accepts 1.0 and 'a' as well, which are no lengths as written.
@@ -55,10 +76,15 @@ func (Length) Check(t types.Type, arg string) error {
 		}
 
 		if lit, ok := x.(*ast.BasicLit); !ok || lit.Kind != token.INT {
-			return argsError(fmt.Errorf("length %s is not an integer literal", n))
+			return LengthOptions{}, argsError(fmt.Errorf("length %s is not an integer literal", n))
 		}
 	}
 
+	return LengthOptions{Comparisons: cs}, nil
+}
+
+// Check accepts the types the doc comment of Length lists.
+func (LengthOptions) Check(t types.Type) error {
 	if !hasLength(t) {
 		return fmt.Errorf("%s is not a string, slice, array, map or channel type", t)
 	}
@@ -67,17 +93,12 @@ func (Length) Check(t types.Type, arg string) error {
 }
 
 // Emit calls kamaValidateLength once per comparison.
-func (Length) Emit(e Emitter, _ types.Type, v string, arg string) (string, error) {
-	args, err := argTokens(arg)
-	if err != nil {
-		return "", err
-	}
-
+func (o LengthOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
 	e.Declare(compareName, compareDecl)
 	e.Declare(lengthName, lengthDecl)
 
-	return joinCalls(e, args, func(op, n string) string {
-		return lengthName + "(len(" + v + "), " + strconv.Quote(op) + ", " + n + ")"
+	return joinCalls(e, o.Comparisons, func(c Comparison) string {
+		return lengthName + "(len(" + v + "), " + strconv.Quote(c.Op) + ", " + c.Operand + ")"
 	})
 }
 

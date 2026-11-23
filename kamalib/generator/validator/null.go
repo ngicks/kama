@@ -18,13 +18,36 @@ type Null struct{}
 // Name returns "null".
 func (Null) Name() string { return "null" }
 
-// Check accepts types with a method IsNull() bool that are not nillable,
-// without an argument.
-func (Null) Check(t types.Type, arg string) error {
-	if err := noArg(arg); err != nil {
+// Check parses arg and checks t with the options.
+func (r Null) Check(t types.Type, arg string) error {
+	o, err := r.Parse(arg)
+	if err != nil {
 		return err
 	}
 
+	return o.Check(t)
+}
+
+// Emit parses arg and emits with the options.
+func (r Null) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
+	o, err := r.Parse(arg)
+	if err != nil {
+		return "", err
+	}
+
+	return o.Emit(e, t, v)
+}
+
+// NullOptions are the options of //kama:validate null. Null takes no arg.
+type NullOptions struct{}
+
+// Parse accepts only the empty arg.
+func (Null) Parse(arg string) (NullOptions, error) {
+	return NullOptions{}, noArg(arg)
+}
+
+// Check accepts types with a method IsNull() bool that are not nillable.
+func (NullOptions) Check(t types.Type) error {
 	_, isParam := types.Unalias(t).(*types.TypeParam)
 
 	switch {
@@ -43,7 +66,7 @@ func (Null) Check(t types.Type, arg string) error {
 }
 
 // Emit calls kamaValidateNull with the result of IsNull.
-func (Null) Emit(e Emitter, _ types.Type, v string, _ string) (string, error) {
+func (NullOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
 	e.Declare(nullHelperName, nullHelperDecl)
 	return nullHelperName + "(" + v + ".IsNull())", nil
 }

@@ -14,12 +14,36 @@ type Nil struct{}
 // Name returns "nil".
 func (Nil) Name() string { return "nil" }
 
-// Check accepts nillable types, without an argument.
-func (Nil) Check(t types.Type, arg string) error {
-	if err := noArg(arg); err != nil {
+// Check parses arg and checks t with the options.
+func (r Nil) Check(t types.Type, arg string) error {
+	o, err := r.Parse(arg)
+	if err != nil {
 		return err
 	}
 
+	return o.Check(t)
+}
+
+// Emit parses arg and emits with the options.
+func (r Nil) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
+	o, err := r.Parse(arg)
+	if err != nil {
+		return "", err
+	}
+
+	return o.Emit(e, t, v)
+}
+
+// NilOptions are the options of //kama:validate nil. Nil takes no arg.
+type NilOptions struct{}
+
+// Parse accepts only the empty arg.
+func (Nil) Parse(arg string) (NilOptions, error) {
+	return NilOptions{}, noArg(arg)
+}
+
+// Check accepts nillable types.
+func (NilOptions) Check(t types.Type) error {
 	if !nillable(t) {
 		return fmt.Errorf("%s is not nillable", t)
 	}
@@ -28,7 +52,7 @@ func (Nil) Check(t types.Type, arg string) error {
 }
 
 // Emit calls kamaValidateNil.
-func (Nil) Emit(e Emitter, _ types.Type, v string, _ string) (string, error) {
+func (NilOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
 	e.Declare(nilHelperName, nilHelperDecl)
 	return nilHelperName + "(" + v + " == nil)", nil
 }

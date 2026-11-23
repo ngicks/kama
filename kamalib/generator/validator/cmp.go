@@ -18,35 +18,62 @@ type Cmp struct{}
 // Name returns "cmp".
 func (Cmp) Name() string { return "cmp" }
 
-// Check accepts comparisons with literals of t, on the types the doc
-// comment of Cmp lists.
-func (Cmp) Check(t types.Type, arg string) error {
-	args, err := argTokens(arg)
+// Check parses arg and checks t with the options.
+func (r Cmp) Check(t types.Type, arg string) error {
+	o, err := r.Parse(arg)
 	if err != nil {
 		return err
 	}
 
-	if err := comparisons(args); err != nil {
-		return argsError(err)
+	return o.Check(t)
+}
+
+// Emit parses arg and emits with the options.
+func (r Cmp) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
+	o, err := r.Parse(arg)
+	if err != nil {
+		return "", err
 	}
 
+	return o.Emit(e, t, v)
+}
+
+// CmpOptions are the options of //kama:validate cmp="<op><value> ...".
+type CmpOptions struct {
+	// Comparisons holds one comparison per token of the arg, in order.
+	Comparisons []Comparison
+}
+
+// Parse decodes arg into comparisons. Check tells whether their operands
+// are values of the type.
+func (Cmp) Parse(arg string) (CmpOptions, error) {
+	cs, err := parseComparisons(arg)
+	if err != nil {
+		return CmpOptions{}, err
+	}
+
+	return CmpOptions{Comparisons: cs}, nil
+}
+
+// Check accepts comparisons with literals of t, on the types the doc
+// comment of Cmp lists.
+func (o CmpOptions) Check(t types.Type) error {
 	info := basicInfo(t)
 
 	switch {
 	case info&types.IsOrdered != 0:
 	case info&types.IsBoolean != 0:
-		for _, kv := range args {
-			if op, _, _ := comparison(kv); op != "==" && op != "!=" {
-				return fmt.Errorf("%s is a bool type, which takes == and != only; got %s", t, op)
+		for _, c := range o.Comparisons {
+			if c.Op != "==" && c.Op != "!=" {
+				return fmt.Errorf("%s is a bool type, which takes == and != only; got %s", t, c.Op)
 			}
 		}
 	default:
 		return fmt.Errorf("%s is not an integer, float, string or bool type", t)
 	}
 
-	for _, kv := range args {
-		_, lit, _ := comparison(kv)
-		if _, err := literalValue(t, lit); err != nil {
+	for _, c := range o.Comparisons {
+		if _, err := literalValue(t, c.Operand); err != nil {
 			return err
 		}
 	}
@@ -56,12 +83,7 @@ func (Cmp) Check(t types.Type, arg string) error {
 
 // Emit calls kamaValidateCmp, or kamaValidateEqual for a bool, once per
 // comparison.
-func (Cmp) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
-	args, err := argTokens(arg)
-	if err != nil {
-		return "", err
-	}
-
+func (o CmpOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
 	helper := cmpName
 	if basicInfo(t)&types.IsBoolean != 0 {
 		helper = equalName
@@ -73,8 +95,8 @@ func (Cmp) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
 		e.Declare(spellName, spellDecl)
 	}
 
-	return joinCalls(e, args, func(op, lit string) string {
-		return helper + "(" + v + ", " + strconv.Quote(op) + ", " + lit + ")"
+	return joinCalls(e, o.Comparisons, func(c Comparison) string {
+		return helper + "(" + v + ", " + strconv.Quote(c.Op) + ", " + c.Operand + ")"
 	})
 }
 

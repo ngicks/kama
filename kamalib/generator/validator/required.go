@@ -22,12 +22,36 @@ type Required struct{}
 // Name returns "required".
 func (Required) Name() string { return "required" }
 
-// Check accepts the types the doc comment of Required lists, without args.
-func (Required) Check(t types.Type, arg string) error {
-	if err := noArg(arg); err != nil {
+// Check parses arg and checks t with the options.
+func (r Required) Check(t types.Type, arg string) error {
+	o, err := r.Parse(arg)
+	if err != nil {
 		return err
 	}
 
+	return o.Check(t)
+}
+
+// Emit parses arg and emits with the options.
+func (r Required) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
+	o, err := r.Parse(arg)
+	if err != nil {
+		return "", err
+	}
+
+	return o.Emit(e, t, v)
+}
+
+// RequiredOptions are the options of //kama:validate required. Required takes no arg.
+type RequiredOptions struct{}
+
+// Parse accepts only the empty arg.
+func (Required) Parse(arg string) (RequiredOptions, error) {
+	return RequiredOptions{}, noArg(arg)
+}
+
+// Check accepts the types the doc comment of Required lists.
+func (RequiredOptions) Check(t types.Type) error {
 	if _, _, ok := requiredCall(t, ""); !ok {
 		return fmt.Errorf(
 			"%s is not an option type, not nillable, has no method IsZero() bool declared"+
@@ -40,7 +64,7 @@ func (Required) Check(t types.Type, arg string) error {
 }
 
 // Emit calls the helper the test of t needs.
-func (Required) Emit(e Emitter, t types.Type, v string, _ string) (string, error) {
+func (RequiredOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
 	helper, call, ok := requiredCall(t, v)
 	if !ok {
 		return "", fmt.Errorf("required: unsupported type %s", t)

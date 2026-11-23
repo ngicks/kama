@@ -20,21 +20,56 @@ import (
 // first so that >= is not read as > followed by =.
 var comparisonOps = []string{">=", "<=", "==", "!=", ">", "<"}
 
+// Comparison is one comparison of the arg of length or cmp, written
+// <Op><Operand> as in >=1.
+type Comparison struct {
+	// Op is one of >, >=, ==, !=, <= and <.
+	Op string
+	// Operand is the value compared with, as written.
+	Operand string
+}
+
+// parseComparisons decodes arg, one or more comparisons separated by
+// spaces.
+func parseComparisons(arg string) ([]Comparison, error) {
+	args, err := argTokens(arg)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(args) == 0 {
+		return nil, argsError(errors.New("want one or more comparisons, as in >=1 <=10"))
+	}
+
+	cs := make([]Comparison, 0, len(args))
+
+	for _, kv := range args {
+		c, err := comparison(kv)
+		if err != nil {
+			return nil, argsError(err)
+		}
+
+		cs = append(cs, c)
+	}
+
+	return cs, nil
+}
+
 // comparison splits kv, an arg written <op><operand> as in >=1, into its
 // operator and operand.
-func comparison(kv dircmnt.KeyValue) (op, operand string, err error) {
+func comparison(kv dircmnt.KeyValue) (Comparison, error) {
 	if !kv.HasValue {
 		for _, op := range comparisonOps {
 			operand, ok := strings.CutPrefix(kv.Key, op)
 			// An operand starting like an operator, as in >= read as > and =,
 			// is a misspelled operator.
 			if ok && operand != "" && !strings.ContainsAny(operand[:1], "<>=!") {
-				return op, operand, nil
+				return Comparison{Op: op, Operand: operand}, nil
 			}
 		}
 	}
 
-	return "", "", fmt.Errorf(
+	return Comparison{}, fmt.Errorf(
 		"arg %q is no comparison; want one of %s followed by a value, as in >=1",
 		kv.String(), strings.Join(comparisonOps, ", "),
 	)
@@ -49,21 +84,6 @@ func argTokens(arg string) ([]dircmnt.KeyValue, error) {
 	}
 
 	return args, nil
-}
-
-// comparisons reports why args are not one or more comparisons.
-func comparisons(args []dircmnt.KeyValue) error {
-	if len(args) == 0 {
-		return errors.New("want one or more comparisons, as in >=1 <=10")
-	}
-
-	for _, kv := range args {
-		if _, _, err := comparison(kv); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // literalValue returns the value of lit, a Go literal, as a value of t,
@@ -121,22 +141,12 @@ func isLiteral(x ast.Expr) bool {
 	return false
 }
 
-// joinCalls returns call of the comparison of each arg. It passes several
+// joinCalls returns call of each comparison of cs. It passes several
 // calls to kamaValidateAll with the stop flag of e. kamaValidateAll returns
 // the first error when the flag is true and all of them joined otherwise.
-func joinCalls(
-	e Emitter,
-	args []dircmnt.KeyValue,
-	call func(op, operand string) string,
-) (string, error) {
-	// Check accepted args, so every arg is a comparison.
-	toCall := func(kv dircmnt.KeyValue) string {
-		op, operand, _ := comparison(kv)
-		return call(op, operand)
-	}
-
-	calls := opiter.WrapSeq(slices.Values(args)).
-		Map(toCall).
+func joinCalls(e Emitter, cs []Comparison, call func(c Comparison) string) (string, error) {
+	calls := opiter.WrapSeq(slices.Values(cs)).
+		Map(call).
 		CollectSlice()
 
 	if len(calls) == 1 {

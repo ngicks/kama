@@ -22,17 +22,47 @@ type Regexp struct{}
 // Name returns "regexp".
 func (Regexp) Name() string { return "regexp" }
 
-// Check accepts a pattern that compiles, on the types the doc comment of
-// Regexp lists.
-func (Regexp) Check(t types.Type, pattern string) error {
-	if pattern == "" {
-		return argsError(errors.New("want a pattern, as in regexp=\"^[a-z]+$\""))
+// Check parses arg and checks t with the options.
+func (r Regexp) Check(t types.Type, arg string) error {
+	o, err := r.Parse(arg)
+	if err != nil {
+		return err
 	}
 
-	if _, err := regexp.Compile(pattern); err != nil {
-		return argsError(fmt.Errorf("pattern %q does not compile: %w", pattern, err))
+	return o.Check(t)
+}
+
+// Emit parses arg and emits with the options.
+func (r Regexp) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
+	o, err := r.Parse(arg)
+	if err != nil {
+		return "", err
 	}
 
+	return o.Emit(e, t, v)
+}
+
+// RegexpOptions are the options of //kama:validate regexp=<pattern>.
+type RegexpOptions struct {
+	// Pattern is the whole arg.
+	Pattern string
+}
+
+// Parse decodes arg into a pattern that compiles.
+func (Regexp) Parse(arg string) (RegexpOptions, error) {
+	if arg == "" {
+		return RegexpOptions{}, argsError(errors.New("want a pattern, as in regexp=\"^[a-z]+$\""))
+	}
+
+	if _, err := regexp.Compile(arg); err != nil {
+		return RegexpOptions{}, argsError(fmt.Errorf("pattern %q does not compile: %w", arg, err))
+	}
+
+	return RegexpOptions{Pattern: arg}, nil
+}
+
+// Check accepts the types the doc comment of Regexp lists.
+func (RegexpOptions) Check(t types.Type) error {
 	if !isStringType(t) && !isBytesType(t) {
 		return fmt.Errorf("%s is neither a string nor a []byte type", t)
 	}
@@ -42,15 +72,15 @@ func (Regexp) Check(t types.Type, pattern string) error {
 
 // Emit calls the helper matching strings or bytes with the variable
 // holding the compiled pattern.
-func (Regexp) Emit(e Emitter, t types.Type, v string, pattern string) (string, error) {
-	re := regexpVarName(pattern)
+func (o RegexpOptions) Emit(e Emitter, t types.Type, v string) (string, error) {
+	re := regexpVarName(o.Pattern)
 	e.Declare(re, func(s Spelling) (string, error) {
 		pkg, err := s.Import("regexp")
 		if err != nil {
 			return "", err
 		}
 
-		return "var " + re + " = " + pkg + ".MustCompile(" + strconv.Quote(pattern) + ")", nil
+		return "var " + re + " = " + pkg + ".MustCompile(" + strconv.Quote(o.Pattern) + ")", nil
 	})
 
 	if isStringType(t) {

@@ -86,6 +86,16 @@ type Comparable struct{ X, Y int }
 	)
 }
 
+func TestRequiredParse(t *testing.T) {
+	o, err := Required{}.Parse("")
+	assert.NilError(t, err)
+	assert.Equal(t, o, RequiredOptions{})
+
+	_, err = Required{}.Parse("yes")
+	assert.ErrorIs(t, err, ErrArgs)
+	assert.ErrorContains(t, err, `unexpected arg "yes"; want none`)
+}
+
 func TestRequiredErrors(t *testing.T) {
 	cases := []struct {
 		name string

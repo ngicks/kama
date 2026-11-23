@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	"github.com/ngicks/opiter"
-
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
 
 // Const is the validator //kama:validate const="<v1> <v2> ...": the value
@@ -26,40 +24,93 @@ type Const struct{}
 // Name returns "const".
 func (Const) Name() string { return "const" }
 
-// Check accepts one or more values of t, on the types the doc comment of
-// Const lists.
-func (Const) Check(t types.Type, arg string) error {
-	args, err := argTokens(arg)
+// Check parses arg and checks t with the options.
+func (r Const) Check(t types.Type, arg string) error {
+	o, err := r.Parse(arg)
 	if err != nil {
 		return err
 	}
 
-	if len(args) == 0 {
-		return argsError(errors.New("want one or more values"))
+	return o.Check(t)
+}
+
+// Emit parses arg and emits with the options.
+func (r Const) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
+	o, err := r.Parse(arg)
+	if err != nil {
+		return "", err
 	}
+
+	return o.Emit(e, t, v)
+}
+
+// ConstOptions are the options of //kama:validate const="<v1> <v2> ...".
+type ConstOptions struct {
+	// Values holds one value per token of the arg, in order.
+	Values []ConstValue
+}
+
+// ConstValue is one token of the arg of const.
+type ConstValue struct {
+	// Text is the token without the quotes it was written with.
+	Text string
+	// Quoted reports whether the token was written quoted.
+	Quoted bool
+}
+
+// Literal returns the Go literal v spells: Text quoted again when it was
+// written quoted.
+func (v ConstValue) Literal() string {
+	if v.Quoted {
+		return strconv.Quote(v.Text)
+	}
+
+	return v.Text
+}
+
+// Parse decodes arg into one or more values. Check tells whether they are
+// values of the type.
+func (Const) Parse(arg string) (ConstOptions, error) {
+	args, err := argTokens(arg)
+	if err != nil {
+		return ConstOptions{}, err
+	}
+
+	if len(args) == 0 {
+		return ConstOptions{}, argsError(errors.New("want one or more values"))
+	}
+
+	values := make([]ConstValue, 0, len(args))
 
 	for _, kv := range args {
 		if kv.HasValue {
-			return argsError(fmt.Errorf(
+			return ConstOptions{}, argsError(fmt.Errorf(
 				"arg %q is a key=value pair; quote a value holding =",
 				kv.String(),
 			))
 		}
+
+		values = append(values, ConstValue{Text: kv.Key, Quoted: kv.KeyQuoted})
 	}
 
+	return ConstOptions{Values: values}, nil
+}
+
+// Check accepts values of t, on the types the doc comment of Const lists.
+func (o ConstOptions) Check(t types.Type) error {
 	info := basicInfo(t)
 	if info&(types.IsBoolean|types.IsNumeric|types.IsString) == 0 {
 		return fmt.Errorf("%s is not a bool, numeric or string type", t)
 	}
 
-	for _, kv := range args {
-		if info&types.IsString != 0 && !kv.KeyQuoted {
+	for _, c := range o.Values {
+		if info&types.IsString != 0 && !c.Quoted {
 			return fmt.Errorf(
-				"%s is no value of %s; want a quoted string, as in %q", kv.Key, t, kv.Key,
+				"%s is no value of %s; want a quoted string, as in %q", c.Text, t, c.Text,
 			)
 		}
 
-		if _, err := literalValue(t, constLiteral(kv)); err != nil {
+		if _, err := literalValue(t, c.Literal()); err != nil {
 			return err
 		}
 	}
@@ -68,30 +119,15 @@ func (Const) Check(t types.Type, arg string) error {
 }
 
 // Emit calls kamaValidateConst with the values.
-func (Const) Emit(e Emitter, _ types.Type, v string, arg string) (string, error) {
-	args, err := argTokens(arg)
-	if err != nil {
-		return "", err
-	}
-
+func (o ConstOptions) Emit(e Emitter, _ types.Type, v string) (string, error) {
 	e.Declare(constName, constDecl)
 	e.Declare(spellName, spellDecl)
 
-	values := opiter.WrapSeq(slices.Values(args)).
-		Map(constLiteral).
+	values := opiter.WrapSeq(slices.Values(o.Values)).
+		Map(ConstValue.Literal).
 		CollectSlice()
 
 	return constName + "(" + v + ", " + strings.Join(values, ", ") + ")", nil
-}
-
-// constLiteral returns the Go literal kv spells: kv.Key quoted again when
-// it was written quoted.
-func constLiteral(kv dircmnt.KeyValue) string {
-	if kv.KeyQuoted {
-		return strconv.Quote(kv.Key)
-	}
-
-	return kv.Key
 }
 
 const constName = "kamaValidateConst"

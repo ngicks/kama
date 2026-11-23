@@ -411,39 +411,74 @@
 // Clone a registry before changing it. Registering a validator under the
 // name of a built-in replaces both its arg and its code. A validator named
 // hook, ignore, file or package makes Generate fail with an error wrapping
-// ErrConflict. A field names the validator below as //kama:validate even:
+// ErrConflict.
 //
-//	type even struct{}
+// A validator has three parts, and each built-in one lays them out in its
+// own file in this order. First, the Validator type names itself, and its
+// Check and Emit parse arg and hand the result to the options. Second, an
+// options struct holds the decoded arg, and Parse decodes arg into it.
+// Parse reports the arg errors that hold for any type. Those errors wrap
+// ErrArgs.
+// Third, the options struct checks a type with Check and emits the
+// expression with Emit. The options live only for one call of Check or
+// Emit. A field names the validator below as //kama:validate multiple=3:
 //
-//	func (even) Name() string { return "even" }
+//	type multiple struct{}
 //
-//	func (even) Check(t types.Type, arg string) error {
-//		if arg != "" {
-//			return fmt.Errorf("%w: want no arg", validator.ErrArgs)
+//	func (multiple) Name() string { return "multiple" }
+//
+//	func (r multiple) Check(t types.Type, arg string) error {
+//		o, err := r.Parse(arg)
+//		if err != nil {
+//			return err
 //		}
+//		return o.Check(t)
+//	}
+//
+//	func (r multiple) Emit(
+//		e validator.Emitter, t types.Type, v string, arg string,
+//	) (string, error) {
+//		o, err := r.Parse(arg)
+//		if err != nil {
+//			return "", err
+//		}
+//		return o.Emit(e, t, v)
+//	}
+//
+//	type multipleOptions struct{ N int64 }
+//
+//	func (multiple) Parse(arg string) (multipleOptions, error) {
+//		n, err := strconv.ParseInt(arg, 10, 64)
+//		if err != nil || n <= 0 {
+//			return multipleOptions{}, fmt.Errorf("%w: want a positive integer", validator.ErrArgs)
+//		}
+//		return multipleOptions{N: n}, nil
+//	}
+//
+//	func (multipleOptions) Check(t types.Type) error {
 //		if b, ok := t.Underlying().(*types.Basic); !ok || b.Info()&types.IsInteger == 0 {
 //			return fmt.Errorf("%s is not an integer type", t)
 //		}
 //		return nil
 //	}
 //
-//	func (even) Emit(
-//		e validator.Emitter, _ types.Type, v string, _ string,
+//	func (o multipleOptions) Emit(
+//		e validator.Emitter, _ types.Type, v string,
 //	) (string, error) {
-//		e.Declare("kamaValidateEven", func(s validator.Spelling) (string, error) {
+//		e.Declare("kamaValidateMultiple", func(s validator.Spelling) (string, error) {
 //			errs, err := s.Import("errors")
 //			if err != nil {
 //				return "", err
 //			}
-//			return "func kamaValidateEven(n int64) error {\n" +
-//				"\tif n%2 != 0 {\n\t\treturn " + errs + ".New(\"want even\")\n\t}\n" +
+//			return "func kamaValidateMultiple(got, n int64) error {\n" +
+//				"\tif got%n != 0 {\n\t\treturn " + errs + ".New(\"want a multiple\")\n\t}\n" +
 //				"\treturn nil\n}", nil
 //		})
-//		return "kamaValidateEven(int64(" + v + "))", nil
+//		return "kamaValidateMultiple(int64(" + v + "), " + strconv.FormatInt(o.N, 10) + ")", nil
 //	}
 //
 //	reg := validator.DefaultRegistry().Clone()
-//	reg.Register(even{})
+//	reg.Register(multiple{})
 //	files, warnings, err := validator.Generate(pkgs, validator.Options{Registry: reg})
 //
 // Format holds its formats in a map. A caller adds a format by registering
@@ -475,7 +510,7 @@
 // constructor in workflow.DefaultRegistry under a kind of its own. The
 // spec then names that kind:
 //
-//	workflow.Register("validate.generate_even", validator.NewProcWith(reg))
+//	workflow.Register("validate.generate_multiple", validator.NewProcWith(reg))
 //
 // # Option file
 //
