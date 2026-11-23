@@ -484,28 +484,11 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 // fileHeader returns the comment lines every generated file of the package
 // at pkgPath starts with.
 func fileHeader(opts Options, pkgPath string, now time.Time) (dst.Decorations, error) {
-	var optionFile, packageOptionFile any
+	params := opts.Loaded.HeaderParams(pkgPath)
+	params["merge"] = string(opts.Merge)
+	params["merge_nested"] = string(opts.MergeNested)
 
-	if l := opts.Loaded; l != nil {
-		switch len(l.Files) {
-		case 0:
-		case 1:
-			optionFile = l.Files[0]
-		default:
-			optionFile = l.Files
-		}
-
-		if name, ok := l.PackageFiles[pkgPath]; ok {
-			packageOptionFile = name
-		}
-	}
-
-	return base.Header(generatorPath, map[string]any{
-		"merge":               string(opts.Merge),
-		"merge_nested":        string(opts.MergeNested),
-		"option_file":         optionFile,
-		"package_option_file": packageOptionFile,
-	}, now)
+	return base.Header(generatorPath, params, now)
 }
 
 // renderFileWith prints the partial declarations of f, with the packages

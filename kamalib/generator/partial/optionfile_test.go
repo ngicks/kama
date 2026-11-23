@@ -643,10 +643,14 @@ func TestOptionFileOverrides(t *testing.T) {
 
 func TestProcOptionFile(t *testing.T) {
 	i := &instance{}
-	assert.ErrorIs(t, i.Param(paramWithOptionFile(fileloader.PathInput{})), ErrOption)
+	assert.Error(
+		t,
+		i.Param(paramWithOptionFile(fileloader.PathInput{})),
+		"option_file: base is required",
+	)
 	assert.ErrorIs(t, i.Param(paramWithOptionFile(fileloader.PathInput{
 		Base: "partial", Formats: []fileloader.Format{"ini"},
-	})), ErrOption)
+	})), fileloader.ErrUnknownFormat)
 	assert.NilError(t, i.Param(paramWithOptionFile(fileloader.PathInput{Base: "partial"})))
 	assert.DeepEqual(t, i.optionFile, &fileloader.PathInput{
 		Base: "partial",

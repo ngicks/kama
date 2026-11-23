@@ -27,26 +27,10 @@ type LoadedOptions = genopt.Loaded[PackageOptions, TypeOptions, FieldOptions]
 func NewLoader(
 	optionFile fileloader.Input,
 ) genopt.Loader[PackageOptions, TypeOptions, FieldOptions] {
-	return genopt.Loader[PackageOptions, TypeOptions, FieldOptions]{
-		ToolName:  toolName,
-		Generator: directive,
-		Version:   OptionFileVersion,
-		File:      optionFile,
-		PackageFile: fileloader.PathInput{
-			Base: packageOptionFileBase,
-			Formats: []fileloader.Format{
-				fileloader.FormatYaml,
-				fileloader.FormatJson,
-				fileloader.FormatToml,
-			},
-		},
-	}
+	return genopt.NewLoader[PackageOptions, TypeOptions, FieldOptions](
+		toolName, directive, OptionFileVersion, optionFile,
+	)
 }
-
-// packageOptionFileBase is the name of the package option file, without
-// extension, read from a package directory without //kama:option-file
-// partial=<path>.
-const packageOptionFileBase = "kama_partial"
 
 // PackageOptions are the options of a package, from the package entry of an
 // option file or from the free-floating directives of a file.
@@ -122,7 +106,7 @@ func (o *TypeOptions) UnmarshalKeyValue(
 	sub string,
 	kv []dircmnt.KeyValue,
 ) error {
-	at := onTarget(src.Target)
+	at := src.Target.Describe()
 
 	switch sub {
 	case "":
@@ -196,7 +180,7 @@ func (o *FieldOptions) UnmarshalKeyValue(
 	sub string,
 	kv []dircmnt.KeyValue,
 ) error {
-	field := src.Target.PkgPath + "." + src.Target.Type + "." + src.Target.Field
+	field := src.Target.FieldName()
 
 	switch sub {
 	case "":
@@ -354,43 +338,11 @@ type optionSource struct {
 
 // origin locates o: the position of a directive, or the option file and
 // the key path of its entry.
-func (o optionSource) origin() string {
-	if o.src.Kind == genopt.SourceDirective {
-		return o.src.Pos.String()
-	}
-
-	src := o.src
-
-	keys := o.keys
-	if keys == nil && o.sub != "" {
-		keys = []string{o.sub}
-	}
-
-	src.KeyPath = append(slices.Clip(src.KeyPath), keys...)
-
-	return src.String()
-}
+func (o optionSource) origin() string { return o.src.Origin(o.sub, o.keys) }
 
 // spelling names the option o sets as its source spells it.
 func (o optionSource) spelling() string {
-	if o.src.Kind == genopt.SourceDirective {
-		if o.sub == "" {
-			return "//" + toolName + ":" + directive
-		}
-
-		return "//" + toolName + ":" + directive + ":" + o.sub
-	}
-
-	name := "type entry"
-	if o.sub != "" {
-		name = o.sub + " option"
-	}
-
-	if o.src.Kind == genopt.SourcePackageFile {
-		return "package option file " + name
-	}
-
-	return "option file " + name
+	return o.src.Spelling(toolName, directive, ":", o.sub)
 }
 
 func unknownDirective(src genopt.Source, sub string) error {
@@ -399,25 +351,6 @@ func unknownDirective(src genopt.Source, sub string) error {
 	)
 }
 
-// onTarget names the type or type group a directive is on.
-func onTarget(t genopt.Target) string {
-	if t.Kind == genopt.TargetTypeGroup {
-		return "a type group"
-	}
-
-	return "type " + t.PkgPath + "." + t.Type
-}
-
 // loadError marks err, an error of a Loader, with the errors of this
 // package matching the errors of genopt it wraps.
-func loadError(err error) error {
-	if errors.Is(err, genopt.ErrOptionFile) || errors.Is(err, genopt.ErrPackageFile) {
-		err = fmt.Errorf("%w: %w", ErrOptionFile, err)
-	}
-
-	if errors.Is(err, genopt.ErrDirective) {
-		err = fmt.Errorf("%w: %w", ErrDirective, err)
-	}
-
-	return err
-}
+func loadError(err error) error { return genopt.WrapLoadError(err, ErrOptionFile, ErrDirective) }

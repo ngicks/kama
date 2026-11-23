@@ -97,7 +97,7 @@ func (l *leaf) UnmarshalKeyValue(src Source, directive string, kv []dircmnt.KeyV
 	)
 	l.at = append(l.at, fmt.Sprintf(
 		"%s:%d:%d %s",
-		filepath.Base(src.Pos.Filename), src.Pos.Line, src.Pos.Column, describe(src.Target),
+		filepath.Base(src.Pos.Filename), src.Pos.Line, src.Pos.Column, src.Target.Describe(),
 	))
 
 	return nil

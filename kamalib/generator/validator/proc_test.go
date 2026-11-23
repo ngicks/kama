@@ -63,13 +63,12 @@ func TestProcParamOptionFile(t *testing.T) {
 	assert.Assert(t, i.optionFile == nil)
 
 	err := i.Param(param(fileloader.PathInput{}))
-	assert.ErrorIs(t, err, ErrOptionFile)
-	assert.ErrorContains(t, err, "option_file: base is required")
+	assert.Error(t, err, "option_file: base is required")
 
 	err = i.Param(
 		param(fileloader.PathInput{Base: "validate", Formats: []fileloader.Format{"ini"}}),
 	)
-	assert.ErrorIs(t, err, ErrOptionFile)
+	assert.ErrorIs(t, err, fileloader.ErrUnknownFormat)
 
 	assert.NilError(t, i.Param(param(fileloader.PathInput{Base: "validate"})))
 	assert.DeepEqual(t, i.optionFile, &fileloader.PathInput{

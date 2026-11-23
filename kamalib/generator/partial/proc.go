@@ -9,6 +9,7 @@ import (
 	"github.com/ngicks/option/und"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
@@ -107,21 +108,9 @@ func (i *instance) Param(partial ProcParamPartial) error {
 	i.opts = opts.WithDefaults()
 
 	if p.OptionFile.IsSome() {
-		in := p.OptionFile.Value()
-		if in.Base == "" {
-			return fmt.Errorf("%w: option_file: base is required", ErrOption)
-		}
-
-		if len(in.Formats) == 0 {
-			in.Formats = []fileloader.Format{
-				fileloader.FormatYaml,
-				fileloader.FormatJson,
-				fileloader.FormatToml,
-			}
-		}
-		// Candidates reports unknown formats before Run opens any file.
-		if _, err := in.Candidates(); err != nil {
-			return fmt.Errorf("%w: option_file: %w", ErrOption, err)
+		in, err := genopt.OptionFileParam(p.OptionFile.Value())
+		if err != nil {
+			return err
 		}
 
 		i.optionFile = &in
@@ -147,22 +136,11 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 // package option files, and returns the files with paths relative to the
 // root of the out of i.
 func (i *instance) generate() ([]File, []error, error) {
-	var optionFile fileloader.Input
-	if i.optionFile != nil {
-		optionFile = *i.optionFile
-	}
-
-	loaded, err := NewLoader(optionFile).LoadOption(
-		i.fs.FS(), i.fs.Root(), base.SourcePackages(i.pkgs.Pkgs),
+	loaded, err := NewLoader(nil).LoadOptionNamed(
+		i.fs.FS(), i.fs.Root(), base.SourcePackages(i.pkgs.Pkgs), i.optionFile,
 	)
 	if err != nil {
 		return nil, nil, loadError(err)
-	}
-
-	if i.optionFile != nil && len(loaded.Files) == 0 {
-		return nil, nil, fmt.Errorf(
-			"%w: %w: %q", ErrOptionFile, fileloader.ErrNotFound, i.optionFile.Base,
-		)
 	}
 
 	opts := i.opts

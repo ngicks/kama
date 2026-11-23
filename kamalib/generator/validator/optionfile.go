@@ -26,25 +26,10 @@ type LoadedOptions = genopt.Loaded[PackageOptions, TypeOptions, FieldOptions]
 func NewLoader(
 	optionFile fileloader.Input,
 ) genopt.Loader[PackageOptions, TypeOptions, FieldOptions] {
-	return genopt.Loader[PackageOptions, TypeOptions, FieldOptions]{
-		ToolName:  toolName,
-		Generator: directive,
-		Version:   OptionFileVersion,
-		File:      optionFile,
-		PackageFile: fileloader.PathInput{
-			Base: packageOptionFileBase,
-			Formats: []fileloader.Format{
-				fileloader.FormatYaml,
-				fileloader.FormatJson,
-				fileloader.FormatToml,
-			},
-		},
-	}
+	return genopt.NewLoader[PackageOptions, TypeOptions, FieldOptions](
+		toolName, directive, OptionFileVersion, optionFile,
+	)
 }
-
-// packageOptionFileBase is the name of the package option file, without
-// extension.
-const packageOptionFileBase = "kama_validate"
 
 // The words of //kama:validate that name no validator. Generate rejects a
 // registry holding a validator named by one of them.
@@ -132,14 +117,14 @@ func (o *TypeOptions) UnmarshalKeyValue(
 		case a.Key == hookWord:
 			if o.Hook != nil {
 				return fmt.Errorf(
-					"%w: %s: hook given twice on %s", ErrDirective, src.Pos, onTarget(src.Target),
+					"%w: %s: hook given twice on %s", ErrDirective, src.Pos, src.Target.Describe(),
 				)
 			}
 
 			on, err := hookValue(a)
 			if err != nil {
 				return fmt.Errorf(
-					"%w: %s: %w on %s", ErrDirective, src.Pos, err, onTarget(src.Target),
+					"%w: %s: %w on %s", ErrDirective, src.Pos, err, src.Target.Describe(),
 				)
 			}
 
@@ -149,7 +134,7 @@ func (o *TypeOptions) UnmarshalKeyValue(
 			return fmt.Errorf(
 				"%w: %s: unknown arg %q on %s; want ignore or hook=on|off;"+
 					" validators apply to struct fields only",
-				ErrDirective, src.Pos, a.String(), onTarget(src.Target),
+				ErrDirective, src.Pos, a.String(), src.Target.Describe(),
 			)
 		}
 	}
@@ -201,7 +186,7 @@ func (o *FieldOptions) UnmarshalKeyValue(
 		return fmt.Errorf(
 			"%w: %s: //kama:validate on field %s names no validator;"+
 				" mark the type in its doc comment instead",
-			ErrDirective, src.Pos, fieldName(src.Target),
+			ErrDirective, src.Pos, src.Target.FieldName(),
 		)
 	}
 
@@ -221,14 +206,14 @@ func (o *FieldOptions) UnmarshalKeyValue(
 				"%w: %s: hook given twice on field %s",
 				ErrDirective,
 				src.Pos,
-				fieldName(src.Target),
+				src.Target.FieldName(),
 			)
 		}
 
 		on, err := hookValue(a)
 		if err != nil {
 			return fmt.Errorf(
-				"%w: %s: %w on field %s", ErrDirective, src.Pos, err, fieldName(src.Target),
+				"%w: %s: %w on field %s", ErrDirective, src.Pos, err, src.Target.FieldName(),
 			)
 		}
 

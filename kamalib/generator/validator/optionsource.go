@@ -1,9 +1,7 @@
 package validator
 
 import (
-	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -25,43 +23,11 @@ type optionSource struct {
 
 // origin locates o: the position of a directive, or the option file and
 // the key path of its entry.
-func (o optionSource) origin() string {
-	if o.src.Kind == genopt.SourceDirective {
-		return o.src.Pos.String()
-	}
-
-	src := o.src
-
-	keys := o.keys
-	if keys == nil && o.arg != "" {
-		keys = []string{o.arg}
-	}
-
-	src.KeyPath = append(slices.Clip(src.KeyPath), keys...)
-
-	return src.String()
-}
+func (o optionSource) origin() string { return o.src.Origin(o.arg, o.keys) }
 
 // spelling names the option o sets as its source spells it.
 func (o optionSource) spelling() string {
-	if o.src.Kind == genopt.SourceDirective {
-		if o.arg == "" {
-			return "//" + toolName + ":" + directive
-		}
-
-		return "//" + toolName + ":" + directive + " " + o.arg
-	}
-
-	name := "type entry"
-	if o.arg != "" {
-		name = o.arg + " option"
-	}
-
-	if o.src.Kind == genopt.SourcePackageFile {
-		return "package option file " + name
-	}
-
-	return "option file " + name
+	return o.src.Spelling(toolName, directive, " ", o.arg)
 }
 
 // subDirectiveError reports //kama:validate:<sub>, and shows the arg of
@@ -105,28 +71,6 @@ func quoteValue(s string) string {
 	return strconv.Quote(s)
 }
 
-// onTarget names the type or type group a directive is on.
-func onTarget(t genopt.Target) string {
-	if t.Kind == genopt.TargetTypeGroup {
-		return "a type group"
-	}
-
-	return "type " + t.PkgPath + "." + t.Type
-}
-
-// fieldName names the field a directive is on.
-func fieldName(t genopt.Target) string { return t.PkgPath + "." + t.Type + "." + t.Field }
-
 // loadError marks err, an error of a Loader, with the errors of this
 // package matching the errors of genopt it wraps.
-func loadError(err error) error {
-	if errors.Is(err, genopt.ErrOptionFile) || errors.Is(err, genopt.ErrPackageFile) {
-		err = fmt.Errorf("%w: %w", ErrOptionFile, err)
-	}
-
-	if errors.Is(err, genopt.ErrDirective) {
-		err = fmt.Errorf("%w: %w", ErrDirective, err)
-	}
-
-	return err
-}
+func loadError(err error) error { return genopt.WrapLoadError(err, ErrOptionFile, ErrDirective) }

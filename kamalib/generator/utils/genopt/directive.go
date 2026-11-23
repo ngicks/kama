@@ -207,7 +207,7 @@ func (l Loader[P, T, F]) unmarshal(v any, src Source, names []nameLines) []error
 		if !ok {
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s on %s; %T takes no directives",
-				ErrDirective, first.pos, spelled, describe(src.Target), v,
+				ErrDirective, first.pos, spelled, src.Target.Describe(), v,
 			))
 
 			continue
@@ -228,24 +228,6 @@ func (l Loader[P, T, F]) unmarshal(v any, src Source, names []nameLines) []error
 	}
 
 	return errs
-}
-
-// describe names a target in error messages.
-func describe(t Target) string {
-	switch t.Kind {
-	case TargetFreeFloating:
-		return "a free-floating comment"
-	case TargetTypeGroup:
-		return "a type group"
-	case TargetType:
-		return "type " + t.PkgPath + "." + t.Type
-	case TargetField:
-		return "field " + t.PkgPath + "." + t.Type + "." + t.Field
-	case TargetPackage:
-		return "package " + t.PkgPath
-	}
-
-	return "an unknown target"
 }
 
 // typeSpecOf returns the top-level type spec of pkg named name and the file

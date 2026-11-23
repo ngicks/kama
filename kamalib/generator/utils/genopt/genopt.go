@@ -294,6 +294,48 @@ func (s Source) String() string {
 	return s.Name + ": " + keyPath(s.KeyPath)
 }
 
+// Origin locates an option of s: the position of a directive, or the
+// option file and the key path of its entry followed by keys. name is the
+// key when keys is nil, and no key follows when name is empty too.
+func (s Source) Origin(name string, keys []string) string {
+	if s.Kind == SourceDirective {
+		return s.Pos.String()
+	}
+
+	if keys == nil && name != "" {
+		keys = []string{name}
+	}
+
+	s.KeyPath = append(slices.Clip(s.KeyPath), keys...)
+
+	return s.String()
+}
+
+// Spelling names an option of s as its source spells it. For a directive,
+// name follows //tool:generator after sep; an empty name leaves the
+// directive bare. For an option file, name is the key of the option within
+// the entry of s; an empty name stands for the type entry.
+func (s Source) Spelling(tool, generator, sep, name string) string {
+	if s.Kind == SourceDirective {
+		if name == "" {
+			return "//" + tool + ":" + generator
+		}
+
+		return "//" + tool + ":" + generator + sep + name
+	}
+
+	what := "type entry"
+	if name != "" {
+		what = name + " option"
+	}
+
+	if s.Kind == SourcePackageFile {
+		return "package option file " + what
+	}
+
+	return "option file " + what
+}
+
 // TargetKind tells the kind of a Target.
 type TargetKind int
 
@@ -326,6 +368,27 @@ type Target struct {
 	// option file entries.
 	Node ast.Node
 }
+
+// Describe names t in error messages.
+func (t Target) Describe() string {
+	switch t.Kind {
+	case TargetFreeFloating:
+		return "a free-floating comment"
+	case TargetTypeGroup:
+		return "a type group"
+	case TargetType:
+		return "type " + t.PkgPath + "." + t.Type
+	case TargetField:
+		return "field " + t.FieldName()
+	case TargetPackage:
+		return "package " + t.PkgPath
+	}
+
+	return "an unknown target"
+}
+
+// FieldName spells the field of t qualified by its package and type.
+func (t Target) FieldName() string { return t.PkgPath + "." + t.Type + "." + t.Field }
 
 // IgnoreFreeFloating is a Loader.Filter that skips the directives of
 // free-floating comments.

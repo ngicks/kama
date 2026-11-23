@@ -192,26 +192,7 @@ func renderFileWith(
 // fileHeader returns the comment lines every generated file of the package
 // at pkgPath starts with.
 func fileHeader(opts Options, pkgPath string, now time.Time) (dst.Decorations, error) {
-	var optionFile, packageOptionFile any
-
-	if l := opts.Loaded; l != nil {
-		switch len(l.Files) {
-		case 0:
-		case 1:
-			optionFile = l.Files[0]
-		default:
-			optionFile = l.Files
-		}
-
-		if name, ok := l.PackageFiles[pkgPath]; ok {
-			packageOptionFile = name
-		}
-	}
-
-	return base.Header(generatorPath, map[string]any{
-		"option_file":         optionFile,
-		"package_option_file": packageOptionFile,
-	}, now)
+	return base.Header(generatorPath, opts.Loaded.HeaderParams(pkgPath), now)
 }
 
 // methodTypeParams returns the names the method spells the type parameters
