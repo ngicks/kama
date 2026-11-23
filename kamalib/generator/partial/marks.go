@@ -16,18 +16,9 @@ import (
 // typeOptions is the option tree entry of a type.
 type typeOptions = genopt.TypeOption[TypeOptions, FieldOptions]
 
-// typeOption returns the options of the type id.
-func (s *selection) typeOption(id typegraph.QualifiedType) (typeOptions, bool) {
-	to, ok := s.opts.Loaded.Option.Packages[id.PackagePath].Types[id.TypeName]
-	return to, ok
-}
-
 // fieldOption returns the options of the field k.
 func (s *selection) fieldOption(k fieldKey) FieldOptions {
-	to, _ := s.typeOption(typegraph.NewQualifiedType(k.pkgPath, k.typeName))
-	fields, _ := to.Fields.Unpack()
-
-	return fields[k.field]
+	return s.opts.Loaded.Option.Field(typegraph.NewQualifiedType(k.pkgPath, k.typeName), k.field)
 }
 
 // explicitMark returns the source of //kama:partial on the type group of to
@@ -67,7 +58,7 @@ func maskMark(to typeOptions) (optionSource, bool) {
 }
 
 func (s *selection) ignored(id typegraph.QualifiedType) bool {
-	to, _ := s.typeOption(id)
+	to, _ := s.opts.Loaded.Option.Type(id)
 	_, ok := ignoreMark(to)
 
 	return ok
@@ -81,7 +72,7 @@ func (s *selection) marked(n *typegraph.Node) bool {
 		return false
 	}
 
-	to, _ := s.typeOption(n.Id)
+	to, _ := s.opts.Loaded.Option.Type(n.Id)
 	if _, ok := explicitMark(to); ok {
 		return true
 	}
@@ -95,7 +86,7 @@ func (s *selection) marked(n *typegraph.Node) bool {
 
 // fieldMasked reports whether the target id has field masks enabled.
 func (s *selection) fieldMasked(id typegraph.QualifiedType) bool {
-	to, _ := s.typeOption(id)
+	to, _ := s.opts.Loaded.Option.Type(id)
 	_, ok := maskMark(to)
 
 	return ok
@@ -137,7 +128,7 @@ func (s *selection) maskNameOf(k fieldKey) (maskName, bool) {
 func (s *selection) checkOptions() error {
 	var errs []error
 
-	for id, to := range s.allTypeOptions() {
+	for id, to := range s.opts.Loaded.Option.Types() {
 		mark, isMarked := explicitMark(to)
 		if ignore, isIgnored := ignoreMark(to); isMarked && isIgnored {
 			errs = append(errs, fmt.Errorf(
@@ -189,26 +180,11 @@ func fieldOptionErrors(k fieldKey, o FieldOptions) []error {
 	return errs
 }
 
-// allTypeOptions yields the type options of the run ordered by package path
-// and type name.
-func (s *selection) allTypeOptions() iter.Seq2[typegraph.QualifiedType, typeOptions] {
-	return func(yield func(typegraph.QualifiedType, typeOptions) bool) {
-		pkgs := s.opts.Loaded.Option.Packages
-		for _, pkgPath := range slices.Sorted(maps.Keys(pkgs)) {
-			for name, to := range opiter.MapsSorted(pkgs[pkgPath].Types) {
-				if !yield(typegraph.NewQualifiedType(pkgPath, name), to) {
-					return
-				}
-			}
-		}
-	}
-}
-
 // allFieldOptions yields the field options of the run ordered by package
 // path, type name and field name.
 func (s *selection) allFieldOptions() iter.Seq2[fieldKey, FieldOptions] {
 	return func(yield func(fieldKey, FieldOptions) bool) {
-		for id, to := range s.allTypeOptions() {
+		for id, to := range s.opts.Loaded.Option.Types() {
 			fields, _ := to.Fields.Unpack()
 			for name, o := range opiter.MapsSorted(fields) {
 				if !yield(fieldKeyOf(id, name), o) {

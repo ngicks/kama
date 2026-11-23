@@ -3,7 +3,6 @@ package validator
 import (
 	"errors"
 	"fmt"
-	"go/ast"
 	"go/token"
 	"go/types"
 	"iter"
@@ -14,6 +13,7 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -36,7 +36,7 @@ type selection struct {
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	sel := &selection{opts: opts, pkgs: pkgs}
 
-	g, err := sel.graph()
+	g, err := base.TypeGraph(pkgs, opts.Markers)
 	if err != nil {
 		return nil, fmt.Errorf("validator: %w", err)
 	}
@@ -60,18 +60,10 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	return sel, nil
 }
 
-// graph builds the type graph of the packages of the run, leaving out the
-// types of generated files.
-func (s *selection) graph() (*typegraph.Graph, error) {
-	return typegraph.New(s.pkgs, nil, func(_ *ast.TypeSpec, obj types.Object) (bool, error) {
-		return !s.generated(obj), nil
-	})
-}
-
 // trim returns the marked types and the types holding them, trimmed from a
 // type graph built again from the packages.
 func (s *selection) trim() *typegraph.MatchedGraph {
-	g, err := s.graph()
+	g, err := base.TypeGraph(s.pkgs, s.opts.Markers)
 	if err != nil {
 		// selectTargets built the same graph from the same packages and
 		// stopped the run on its error.

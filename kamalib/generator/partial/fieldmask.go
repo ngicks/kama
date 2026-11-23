@@ -54,7 +54,7 @@ func (s *selection) checkFieldMaskTargets(
 ) error {
 	var errs []error
 
-	for id, to := range s.allTypeOptions() {
+	for id, to := range s.opts.Loaded.Option.Types() {
 		src, ok := maskMark(to)
 		if !ok {
 			continue

@@ -4,33 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
-	"iter"
 	"maps"
 	"slices"
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
-	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // typeOptions is the option tree entry of a type.
 type typeOptions = genopt.TypeOption[TypeOptions, FieldOptions]
-
-// typeOption returns the options of the type id.
-func (s *selection) typeOption(id typegraph.QualifiedType) (typeOptions, bool) {
-	to, ok := s.opts.Loaded.Option.Packages[id.PackagePath].Types[id.TypeName]
-	return to, ok
-}
-
-// fieldOption returns the options of the field named field of the type id.
-func (s *selection) fieldOption(id typegraph.QualifiedType, field string) FieldOptions {
-	to, _ := s.typeOption(id)
-	fields, _ := to.Fields.Unpack()
-
-	return fields[field]
-}
 
 // explicitMark returns the source of //kama:validate on the type of to or
 // its type group, or of its option file entry.
@@ -57,7 +42,7 @@ func ignoreMark(to typeOptions) (optionSource, bool) {
 }
 
 func (s *selection) ignored(id typegraph.QualifiedType) bool {
-	to, _ := s.typeOption(id)
+	to, _ := s.opts.Loaded.Option.Type(id)
 	_, ok := ignoreMark(to)
 
 	return ok
@@ -71,7 +56,7 @@ func (s *selection) marked(n *typegraph.Node) bool {
 		return false
 	}
 
-	to, _ := s.typeOption(n.Id)
+	to, _ := s.opts.Loaded.Option.Type(n.Id)
 	if _, ok := explicitMark(to); ok {
 		return true
 	}
@@ -86,11 +71,11 @@ func (s *selection) marked(n *typegraph.Node) bool {
 // hookOn reports whether Validate of n calls the hook of the field v: as
 // the field says, else as the type says, else when n is marked.
 func (s *selection) hookOn(n *typegraph.Node, v *types.Var) bool {
-	if on := s.fieldOption(n.Id, v.Name()).Hook; on != nil {
+	if on := s.opts.Loaded.Option.Field(n.Id, v.Name()).Hook; on != nil {
 		return *on
 	}
 
-	to, _ := s.typeOption(n.Id)
+	to, _ := s.opts.Loaded.Option.Type(n.Id)
 	for _, o := range []TypeOptions{to.Type, to.Group} {
 		if o.Hook != nil {
 			return *o.Hook
@@ -106,7 +91,7 @@ func (s *selection) hookOn(n *typegraph.Node, v *types.Var) bool {
 func (s *selection) checkMarks(g *typegraph.Graph) error {
 	var errs []error
 
-	for id, to := range s.allTypeOptions() {
+	for id, to := range s.opts.Loaded.Option.Types() {
 		mark, isMarked := explicitMark(to)
 		ignore, isIgnored := ignoreMark(to)
 
@@ -122,27 +107,13 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 			continue
 		}
 
-		n, ok := g.Get(id)
-		if !ok {
-			if obj := typegraph.LookupType(s.pkgs, id); obj == nil || !s.generated(obj) {
-				errs = append(errs, fmt.Errorf(
-					"%w: %s: %s is an alias; mark the type it denotes",
-					ErrUnsupported,
-					mark.origin(),
-					id,
-				))
-			}
-
+		err := base.MarkedTypeError(s.pkgs, s.opts.Markers, g, id, mark.origin(), ErrUnsupported)
+		if err != nil {
+			errs = append(errs, err)
 			continue
 		}
 
-		switch {
-		case !typequery.IsStructSliceOrMap(n.Detail.Type):
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s has underlying type %s; want a struct, slice or map",
-				ErrUnsupported, mark.origin(), id, n.Detail.Type.Underlying(),
-			))
-		case s.implementor(n.Detail.Type):
+		if n, ok := g.Get(id); ok && s.implementor(n.Detail.Type) {
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s declares Validate itself; remove the mark",
 				ErrConflict, mark.origin(), id,
@@ -159,7 +130,7 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 func (s *selection) checkFieldOptions() error {
 	var errs []error
 
-	for id, to := range s.allTypeOptions() {
+	for id, to := range s.opts.Loaded.Option.Types() {
 		isTarget := s.isTargetId(id)
 
 		for _, o := range []TypeOptions{to.Type, to.Group} {
@@ -215,19 +186,4 @@ func (s *selection) fieldOptionErrors(
 	}
 
 	return errs
-}
-
-// allTypeOptions yields the type options of the run ordered by package path
-// and type name.
-func (s *selection) allTypeOptions() iter.Seq2[typegraph.QualifiedType, typeOptions] {
-	return func(yield func(typegraph.QualifiedType, typeOptions) bool) {
-		pkgs := s.opts.Loaded.Option.Packages
-		for _, pkgPath := range slices.Sorted(maps.Keys(pkgs)) {
-			for name, to := range opiter.MapsSorted(pkgs[pkgPath].Types) {
-				if !yield(typegraph.NewQualifiedType(pkgPath, name), to) {
-					return
-				}
-			}
-		}
-	}
 }

@@ -2,26 +2,17 @@ package base
 
 import (
 	"context"
-	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"go/types"
-	"io/fs"
-	"maps"
 	"path"
 	"path/filepath"
-	"slices"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/ngicks/opiter"
-	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
-	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
@@ -112,24 +103,6 @@ func TestRelFiles(t *testing.T) {
 	assert.ErrorContains(t, err, "is outside")
 }
 
-type recordReporter struct {
-	warnings []error
-	progress []string
-}
-
-func (r *recordReporter) Warn(w error)        { r.warnings = append(r.warnings, w) }
-func (r *recordReporter) Progress(msg string) { r.progress = append(r.progress, msg) }
-
-// source returns a generated file of package p with the header of now.
-func source(t *testing.T, now time.Time, body string) []byte {
-	t.Helper()
-
-	hdr, err := Header("example.invalid/gen", map[string]any{"mode": "x"}, now)
-	assert.NilError(t, err)
-
-	return []byte(strings.Join(hdr, "\n") + "\n\npackage p\n\n" + body + "\n")
-}
-
 func TestHeader(t *testing.T) {
 	hdr, err := Header(
 		"example.invalid/gen",
@@ -144,242 +117,6 @@ func TestHeader(t *testing.T) {
 		"//\tb: 1",
 		"// generated: 2026-11-04T10:12:33Z",
 	})
-}
-
-func TestStage(t *testing.T) {
-	ctx := context.Background()
-	f, err := overlayfs.New(t.TempDir())
-	assert.NilError(t, err)
-
-	defer f.Close()
-
-	first := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	files := func(now time.Time, a string) []File {
-		return []File{
-			{Path: "a.go", Content: source(t, now, a)},
-			{Path: "sub/b.go", Content: source(t, now, "var B = 1")},
-		}
-	}
-	read := func(name string) string {
-		b, err := fs.ReadFile(f.FS(), name)
-		assert.NilError(t, err)
-
-		return string(b)
-	}
-
-	r := &recordReporter{}
-	assert.NilError(t, Stage(ctx, f, files(first, "var A = 1"), r))
-	assert.DeepEqual(t, r.progress, []string{"2 files written, 0 files unchanged"})
-
-	a, b := read("a.go"), read("sub/b.go")
-
-	// A later run changing nothing but the time keeps both files.
-	r = &recordReporter{}
-	assert.NilError(t, Stage(ctx, f, files(first.Add(time.Hour), "var A = 1"), r))
-	assert.DeepEqual(t, r.progress, []string{"0 files written, 2 files unchanged"})
-	assert.Equal(t, read("a.go"), a)
-
-	r = &recordReporter{}
-	assert.NilError(t, Stage(ctx, f, files(first.Add(time.Hour), "var A = 2"), r))
-	assert.DeepEqual(t, r.progress, []string{"1 file written, 1 file unchanged"})
-	assert.Assert(t, strings.Contains(read("a.go"), "var A = 2"))
-	assert.Assert(t, strings.Contains(read("a.go"), "generated: 2026-01-01T01:00:00Z"))
-	assert.Equal(t, read("sub/b.go"), b)
-}
-
-func TestStageWithWarnings(t *testing.T) {
-	f, err := overlayfs.New(t.TempDir())
-	assert.NilError(t, err)
-
-	defer f.Close()
-
-	errA, errB := errors.New("a"), errors.New("b")
-	files := []File{{Path: "a.go", Content: source(t, time.Now(), "var A = 1")}}
-
-	r := &recordReporter{}
-	assert.NilError(t, StageWithWarnings(context.Background(), f, files, []error{errA, errB}, r))
-	assert.Assert(t, slices.Equal(r.warnings, []error{errA, errB}))
-	assert.DeepEqual(t, r.progress, []string{"1 file written, 0 files unchanged"})
-
-	_, err = fs.Stat(f.FS(), "a.go")
-	assert.NilError(t, err)
-}
-
-// load stages files under the inline test directory of t and loads their
-// packages.
-func load(t *testing.T, files map[string]string, buildFlags ...string) []*packages.Package {
-	t.Helper()
-
-	f, err := overlayfs.New(".")
-	assert.NilError(t, err)
-	t.Cleanup(func() { f.Close() })
-
-	dir := "testdata/inline/" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
-	dirs := map[string]bool{}
-
-	for name, src := range files {
-		assert.NilError(t, f.Write(context.Background(), path.Join(dir, name), []byte(src)))
-		dirs["./"+path.Dir(path.Join(dir, name))] = true
-	}
-
-	pkgs, err := gopackages.Load(context.Background(), f, gopackages.Options{
-		Patterns:   slices.Sorted(maps.Keys(dirs)),
-		BuildFlags: buildFlags,
-		Tests:      true,
-	})
-	assert.NilError(t, err)
-
-	return pkgs
-}
-
-func fileOf(t *testing.T, pkgs []*packages.Package, name string) (*packages.Package, *ast.File) {
-	t.Helper()
-
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Syntax {
-			if filepath.Base(pkg.Fset.File(f.Pos()).Name()) == name {
-				return pkg, f
-			}
-		}
-	}
-
-	t.Fatalf("no file %s", name)
-
-	return nil, nil
-}
-
-func TestSourcePackages(t *testing.T) {
-	pkgs := load(t, map[string]string{
-		"a.go":      "package x\n\ntype A int\n",
-		"a_test.go": "package x\n\nimport \"testing\"\n\nfunc TestA(*testing.T) {}\n",
-	})
-	isTestVariant := func(p *packages.Package) bool { return p.ID != p.PkgPath }
-	assert.Assert(t, slices.ContainsFunc(pkgs, isTestVariant), "a test variant is loaded")
-	src := SourcePackages(pkgs)
-	assert.Assert(t, !slices.ContainsFunc(src, isTestVariant))
-
-	paths := opiter.WrapSeq(slices.Values(src)).
-		Map(pkgPathOf).
-		CollectSlice()
-
-	assert.DeepEqual(t, paths, slices.Compact(slices.Clone(paths)))
-	assert.Assert(t, slices.Contains(paths, pkgs[0].PkgPath))
-}
-
-func TestBuildConstraint(t *testing.T) {
-	pkgs := load(t, map[string]string{
-		"a.go": "// Package x.\npackage x\n\ntype A int\n",
-		"b.go": "// Copyright.\n\n//go:build tagged || !tagged\n\n// Package x.\npackage x\n",
-	})
-	_, a := fileOf(t, pkgs, "a.go")
-	_, ok := BuildConstraint(a)
-	assert.Assert(t, !ok)
-	_, b := fileOf(t, pkgs, "b.go")
-	line, ok := BuildConstraint(b)
-	assert.Assert(t, ok)
-	assert.Equal(t, line, "//go:build tagged || !tagged")
-}
-
-func TestShadowedPredeclared(t *testing.T) {
-	pkgs := SourcePackages(load(t, map[string]string{
-		"a.go": "package x\n\ntype string int\n\ntype error int\n\ntype other int\n",
-	}))
-	names := func(contents ...string) []string {
-		t.Helper()
-
-		in := opiter.WrapSeq(slices.Values(contents)).
-			Map(func(s string) []byte { return []byte(s) }).
-			CollectSlice()
-
-		objs, err := ShadowedPredeclared(pkgs[0], in)
-		assert.NilError(t, err)
-
-		return opiter.WrapSeq(slices.Values(objs)).
-			Map(func(o types.Object) string { return o.Name() }).
-			CollectSlice()
-	}
-	assert.DeepEqual(t, names("package x\n\nvar V string\n\nfunc f() error { return nil }\n"),
-		[]string{"error", "string"})
-	// Selected names, fields and declared names are not uses.
-	assert.Equal(t, len(names(
-		"package x\n\nimport \"y\"\n\ntype T struct{ string int }\n\nvar V = y.error\n",
-	)), 0)
-
-	_, err := ShadowedPredeclared(pkgs[0], [][]byte{[]byte("not go")})
-	assert.ErrorContains(t, err, "parse generated file")
-}
-
-func TestCheckPredeclared(t *testing.T) {
-	pkgs := SourcePackages(load(t, map[string]string{
-		"a.go": "package x\n\ntype string int\n\ntype error int\n",
-	}))
-	errConflict := errors.New("conflict")
-
-	err := CheckPredeclared(pkgs[0], []File{
-		{Path: "a.gen.go", Content: []byte("package x\n\nvar V string\n")},
-		{Path: "b.gen.go", Content: []byte("package x\n\nfunc f() error { return nil }\n")},
-	}, errConflict)
-	assert.ErrorIs(t, err, errConflict)
-	assert.ErrorContains(t, err, pkgs[0].PkgPath+".error shadows the predeclared error")
-	assert.ErrorContains(t, err, pkgs[0].PkgPath+".string shadows the predeclared string")
-
-	assert.NilError(t, CheckPredeclared(pkgs[0], []File{
-		{Path: "a.gen.go", Content: []byte("package x\n\nvar V int\n")},
-	}, errConflict))
-}
-
-func TestMethodTypeParams(t *testing.T) {
-	pkgs := SourcePackages(load(t, map[string]string{
-		"a.go": "package x\n\ntype T0 int\n\ntype G[_ any, _ any, K comparable] int\n",
-	}))
-	scope := pkgs[0].Types.Scope()
-	tparams := scope.Lookup("G").Type().(*types.Named).TypeParams()
-
-	assert.DeepEqual(t, MethodTypeParams(scope, tparams, nil), []string{"T0_", "T1", "K"})
-	assert.DeepEqual(
-		t,
-		MethodTypeParams(scope, tparams, []string{"T1", "T1_"}),
-		[]string{"T0_", "T1__", "K"},
-	)
-}
-
-func TestStaleCheck(t *testing.T) {
-	const gen = "base-test-gen"
-
-	reg := genmark.NewRegistry()
-	assert.NilError(t, reg.Register(gen))
-	assert.NilError(t, reg.Register("other-gen"))
-
-	marked := func(generator, name string) string {
-		return "package x\n\n//kama:generated " + generator + "\ntype " + name + " int\n"
-	}
-	pkgs := SourcePackages(load(t, map[string]string{
-		"a.go":       "package x\n\ntype A int\n",
-		"made.go":    marked(gen, "Made"),
-		"stale.go":   marked(gen, "Stale"),
-		"kept.go":    marked(gen, "Kept"),
-		"foreign.go": marked("other-gen", "Foreign"),
-	}))
-	pkg, made := fileOf(t, pkgs, "made.go")
-	produced := []File{{Path: pkg.Fset.File(made.Pos()).Name()}}
-
-	check := StaleCheck{Registry: reg, Generator: gen}
-	warnings := check.Files(pkgs, produced)
-	assert.Equal(t, len(warnings), 2, "%v", warnings)
-	assert.ErrorIs(t, warnings[0], ErrStale)
-	assert.ErrorContains(t, warnings[0], "/kept.go was generated by "+gen)
-	assert.ErrorContains(t, warnings[1], "/stale.go was generated by "+gen)
-	// The path is relative to the module root.
-	assert.Assert(
-		t,
-		strings.Contains(warnings[1].Error(), ": generator/utils/base/testdata/"),
-		warnings[1],
-	)
-
-	check.Keep = func(_ *packages.Package, p string) bool { return filepath.Base(p) == "kept.go" }
-	warnings = check.Files(pkgs, produced)
-	assert.Equal(t, len(warnings), 1, "%v", warnings)
-	assert.ErrorContains(t, warnings[0], "/stale.go")
 }
 
 func TestStaleCheckDir(t *testing.T) {

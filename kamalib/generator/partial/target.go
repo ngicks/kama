@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -102,7 +103,7 @@ func (s *selection) partialOf(t types.Type, pkgPath string) (*types.Named, bool)
 // targets returns the targets keyed by id, read off a type graph built
 // again from the packages.
 func (s *selection) targets() map[typegraph.QualifiedType]*typegraph.Node {
-	g, err := s.graph()
+	g, err := base.TypeGraph(s.pkgs, s.opts.Registry)
 	if err != nil {
 		// selectTargets built the same graph from the same packages and
 		// stopped the run on its error.
@@ -131,7 +132,7 @@ func followed(r *typegraph.EdgeRoute) bool {
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	sel := &selection{opts: opts, pkgs: pkgs}
 
-	g, err := sel.graph()
+	g, err := base.TypeGraph(pkgs, opts.Registry)
 	if err != nil {
 		return nil, fmt.Errorf("partial: %w", err)
 	}
@@ -175,14 +176,6 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	return sel, nil
 }
 
-// graph builds the type graph of the packages of the run, leaving out the
-// types of generated files.
-func (s *selection) graph() (*typegraph.Graph, error) {
-	return typegraph.New(s.pkgs, nil, func(_ *ast.TypeSpec, obj types.Object) (bool, error) {
-		return !s.generated(obj), nil
-	})
-}
-
 // targetsOf returns the targets of the type graph g keyed by id: the
 // marked types generates reports true for and the types they reach where
 // followed tells that generates reports true for.
@@ -219,32 +212,15 @@ func (s *selection) targetsOf(g *typegraph.Graph) map[typegraph.QualifiedType]*t
 func (s *selection) checkMarks(g *typegraph.Graph) error {
 	var errs []error
 
-	for id, to := range s.allTypeOptions() {
-		mark, ok := explicitMark(to)
-		if !ok {
-			continue
-		}
-
-		n, ok := g.Get(id)
-		if !ok {
-			if obj := typegraph.LookupType(s.pkgs, id); obj == nil || !s.generated(obj) {
-				errs = append(errs, fmt.Errorf(
-					"%w: %s: %s is an alias; mark the type it denotes",
-					ErrUnsupported, mark.origin(), id.String(),
-				))
-			}
-
-			continue
-		}
-
-		if !typequery.IsStructSliceOrMap(n.Detail.Type) {
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s has underlying type %s; want a struct, slice or map",
-				ErrUnsupported, mark.origin(), id.String(), n.Detail.Type.Underlying(),
+	for id, to := range s.opts.Loaded.Option.Types() {
+		if mark, ok := explicitMark(to); ok {
+			errs = append(errs, base.MarkedTypeError(
+				s.pkgs, s.opts.Registry, g, id, mark.origin(), ErrUnsupported,
 			))
 		}
 	}
 
+	// errors.Join drops the nil errors of types the generator can mark.
 	return errors.Join(errs...)
 }
 

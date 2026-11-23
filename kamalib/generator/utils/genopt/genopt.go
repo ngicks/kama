@@ -98,6 +98,7 @@ import (
 	"go/ast"
 	"go/token"
 	"io/fs"
+	"iter"
 	"maps"
 	"slices"
 
@@ -108,6 +109,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
 // Loader loads the options of one generator.
@@ -217,6 +219,34 @@ func (l Loader[P, T, F]) LoadFiles(
 type Option[P, T, F any] struct {
 	// Packages are keyed by package import path.
 	Packages map[string]PackageOption[P, T, F]
+}
+
+// Type returns the options of the type id.
+func (o Option[P, T, F]) Type(id typegraph.QualifiedType) (TypeOption[T, F], bool) {
+	to, ok := o.Packages[id.PackagePath].Types[id.TypeName]
+	return to, ok
+}
+
+// Field returns the options of the field named field of the type id.
+func (o Option[P, T, F]) Field(id typegraph.QualifiedType, field string) F {
+	to, _ := o.Type(id)
+	fields, _ := to.Fields.Unpack()
+
+	return fields[field]
+}
+
+// Types yields the options of every type ordered by package path and type
+// name.
+func (o Option[P, T, F]) Types() iter.Seq2[typegraph.QualifiedType, TypeOption[T, F]] {
+	return func(yield func(typegraph.QualifiedType, TypeOption[T, F]) bool) {
+		for pkgPath, po := range opiter.MapsSorted(o.Packages) {
+			for name, to := range opiter.MapsSorted(po.Types) {
+				if !yield(typegraph.NewQualifiedType(pkgPath, name), to) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // PackageOption holds the options of a package.

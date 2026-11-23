@@ -185,15 +185,10 @@ var helperLocals = []string{
 func checkHelperNames(sel *selection, pkg *packages.Package, names []string) error {
 	var errs []error
 
-	for _, name := range names {
-		obj := pkg.Types.Scope().Lookup(name)
-		if obj == nil || sel.generated(obj) {
-			continue
-		}
-
+	for _, obj := range base.UnownedDecls(pkg, sel.opts.Markers, names) {
 		errs = append(errs, fmt.Errorf(
 			"%w: %s: %s.%s is already declared for a helper of the generated Validate methods",
-			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, name,
+			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(),
 		))
 	}
 

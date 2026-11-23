@@ -449,22 +449,19 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 		maps.Copy(names, f.used)
 	}
 
-	declaredErr := func(helper string) error {
-		obj := pkg.Types.Scope().Lookup(helper)
-		if obj == nil || sel.generated(obj) {
-			return nil
-		}
-
+	declaredErr := func(obj types.Object) error {
 		return fmt.Errorf(
 			"%w: %s: %s.%s is already declared for a helper of the generated methods",
-			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, helper,
+			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(),
 		)
 	}
 
-	// errors.Join drops the nil errors of helpers declared by nothing else.
 	return errors.Join(
-		opiter.WrapSeq2(opiter.MapsSorted(names)).
-			OmitL().
+		opiter.WrapSeq(
+			slices.Values(
+				base.UnownedDecls(pkg, sel.opts.Registry, slices.Sorted(maps.Keys(names))),
+			),
+		).
 			Map(declaredErr).
 			CollectSlice()...,
 	)

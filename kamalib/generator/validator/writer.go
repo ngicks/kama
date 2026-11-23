@@ -171,7 +171,7 @@ func (w *writer) field(st *types.Struct, i int) ([]genStep, []error) {
 		errs  []error
 	)
 
-	for _, vo := range w.sel.fieldOption(w.n.Id, v.Name()).Validators {
+	for _, vo := range w.sel.opts.Loaded.Option.Field(w.n.Id, v.Name()).Validators {
 		s, err := w.validator(v, vo, x, wrap)
 		if err != nil {
 			errs = append(errs, err)
