@@ -154,7 +154,7 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 
 // checkFieldOptions reports hook and validator options on types that get
 // no Validate, where they would have no effect, and validators given twice
-// to one field by an option file.
+// to one field.
 func (s *selection) checkFieldOptions() error {
 	var errs []error
 

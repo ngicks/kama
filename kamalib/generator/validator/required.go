@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"go/types"
 	"strconv"
-
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
 
-// Required is the validator //kama:validate:required: the value is not the
+// Required is the validator //kama:validate required: the value is not the
 // zero value.
 //
 // An opt.Option must be some, an und.Und or an elastic.Elastic must be
@@ -23,9 +21,9 @@ type Required struct{}
 func (Required) Name() string { return "required" }
 
 // Check accepts the types the doc comment of Required lists, without args.
-func (Required) Check(t types.Type, args []dircmnt.KeyValue) error {
-	if len(args) > 0 {
-		return argsError(fmt.Errorf("unknown args %q; want none", spellArgs(args)))
+func (Required) Check(t types.Type, arg string) error {
+	if err := noArg(arg); err != nil {
+		return err
 	}
 
 	if _, _, ok := requiredCall(t, ""); !ok {
@@ -40,7 +38,7 @@ func (Required) Check(t types.Type, args []dircmnt.KeyValue) error {
 }
 
 // Emit calls the helper the test of t needs.
-func (Required) Emit(e Emitter, t types.Type, v string, _ []dircmnt.KeyValue) (string, error) {
+func (Required) Emit(e Emitter, t types.Type, v string, _ string) (string, error) {
 	helper, call, ok := requiredCall(t, v)
 	if !ok {
 		return "", fmt.Errorf("required: unsupported type %s", t)

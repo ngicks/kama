@@ -22,7 +22,7 @@ import (
 )
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type A struct {
 	Inner Inner
 	P     *Inner
@@ -42,7 +42,7 @@ type A struct {
 type Plain struct{ X int }
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type Inner struct{ X int }
 `,
 	}, "a.kama_validate.go", "A")
@@ -80,9 +80,9 @@ type Inner struct{ X int }
 
 func TestStopOnFirstError(t *testing.T) {
 	fn := validateOf(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate:hook off\n" +
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\n" +
 			"type A struct{ I Inner }\n\n" +
-			"//kama:validate\n//kama:validate:hook off\ntype Inner struct{ X int }\n",
+			"//kama:validate\n//kama:validate hook=off\ntype Inner struct{ X int }\n",
 	}, "a.kama_validate.go", "A")
 
 	// Returning the first error and collecting every error both appear.
@@ -96,7 +96,7 @@ func TestStopOnFirstError(t *testing.T) {
 
 func TestEmptyBody(t *testing.T) {
 	out := generateAndBuild(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate:hook off\n" +
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\n" +
 			"type A struct{ N int }\n\n//kama:validate\ntype L []int\n",
 	})
 	src := out["a.kama_validate.go"]
@@ -120,7 +120,7 @@ type M map[string]*Inner
 type LL [][]Inner
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type Inner struct{ X int }
 `,
 	}
@@ -146,7 +146,7 @@ type Inner struct{ X int }
 
 func TestPathSegments(t *testing.T) {
 	fn := validateOf(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
 			"\tNamed   Inner `json:\"named,omitempty\"`\n" +
 			"\tSkipped Inner `json:\"-\"`\n" +
 			"\tOpts    Inner `json:\",omitempty\"`\n" +
@@ -156,10 +156,10 @@ func TestPathSegments(t *testing.T) {
 			"\tTagged `json:\"tagged\"`\n" +
 			"\tList\n" +
 			"}\n\n" +
-			"//kama:validate\n//kama:validate:hook off\ntype Inner struct{ X int }\n\n" +
-			"//kama:validate\n//kama:validate:hook off\ntype Embedded struct{ X int }\n\n" +
-			"//kama:validate\n//kama:validate:hook off\ntype PtrEmbedded struct{ X int }\n\n" +
-			"//kama:validate\n//kama:validate:hook off\ntype Tagged struct{ X int }\n\n" +
+			"//kama:validate\n//kama:validate hook=off\ntype Inner struct{ X int }\n\n" +
+			"//kama:validate\n//kama:validate hook=off\ntype Embedded struct{ X int }\n\n" +
+			"//kama:validate\n//kama:validate hook=off\ntype PtrEmbedded struct{ X int }\n\n" +
+			"//kama:validate\n//kama:validate hook=off\ntype Tagged struct{ X int }\n\n" +
 			"//kama:validate\ntype List []Inner\n",
 	}, "a.kama_validate.go", "A")
 
@@ -182,10 +182,10 @@ func TestPathSegments(t *testing.T) {
 func TestForeignUnexportedFields(t *testing.T) {
 	fn := validateOf(t, map[string]string{
 		"a.go": "package x\n\nimport \"" + modulePath(t) + "/sub\"\n\n" +
-			"//kama:validate\n//kama:validate:hook off\ntype A sub.S\n",
-		"sub/sub.go": "package sub\n\n//kama:validate\n//kama:validate:hook off\n" +
+			"//kama:validate\n//kama:validate hook=off\ntype A sub.S\n",
+		"sub/sub.go": "package sub\n\n//kama:validate\n//kama:validate hook=off\n" +
 			"type S struct {\n\tPublic  Inner\n\tprivate Inner\n}\n\n" +
-			"//kama:validate\n//kama:validate:hook off\ntype Inner struct{ X int }\n",
+			"//kama:validate\n//kama:validate hook=off\ntype Inner struct{ X int }\n",
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn, "v.Public.Validate")
@@ -199,7 +199,7 @@ func TestAnonymousStruct(t *testing.T) {
 		"a.go": "package x\n\ntype A struct {\n" +
 			"\tS struct {\n\t\tI Inner `json:\"i\"`\n\t\tN int\n\t} `json:\"s\"`\n" +
 			"\tL []struct{ I *Inner }\n}\n\n" +
-			"//kama:validate\n//kama:validate:hook off\ntype Inner struct{ X int }\n",
+			"//kama:validate\n//kama:validate hook=off\ntype Inner struct{ X int }\n",
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,
@@ -223,7 +223,7 @@ type MyInt int
 type Key struct{ A, B int }
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type A[K comparable] struct {
 	ByString map[string]Inner
 	ByMyInt  map[MyInt]Inner
@@ -235,7 +235,7 @@ type A[K comparable] struct {
 }
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type Inner struct{ X int }
 `,
 	}, "a.kama_validate.go", "A")
@@ -261,7 +261,7 @@ func TestElasticElements(t *testing.T) {
 import "github.com/ngicks/option/elastic"
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type A struct {
 	S []elastic.Elastic[Inner]
 	M map[string]elastic.Elastic[Inner]
@@ -270,7 +270,7 @@ type A struct {
 }
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type Inner struct{ X int }
 `,
 	}, "a.kama_validate.go", "A")

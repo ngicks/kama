@@ -15,7 +15,7 @@ func TestImplementorShape(t *testing.T) {
 		"a.go": `package x
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type A struct {
 	Good    Good
 	NoArg   NoArg
@@ -57,7 +57,7 @@ type Iface interface{ Validate(bool) error }
 
 func TestImplementorPointerReceiver(t *testing.T) {
 	_, err := generate(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate:hook off\n" +
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\n" +
 			"type A struct{ P []P }\n\ntype P struct{}\n\n" +
 			"func (*P) Validate(bool) error { return nil }\n",
 	}, Options{})
@@ -92,9 +92,9 @@ func generateDependent(t *testing.T, files map[string]string) map[string]string 
 const implementorSub = `package sub
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type S struct {
-	//kama:validate:required
+	//kama:validate required
 	X int
 }
 
@@ -102,7 +102,7 @@ type S struct {
 type L []S
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type G[T any] struct{ V T }
 
 type Plain struct{ Y int }
@@ -133,9 +133,9 @@ type A struct {
 type List []sub.S
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type R struct {
-	//kama:validate:required
+	//kama:validate required
 	N string
 }
 `,

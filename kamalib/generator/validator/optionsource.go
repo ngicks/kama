@@ -16,11 +16,12 @@ import (
 // optionSource locates one option for error messages.
 type optionSource struct {
 	src genopt.Source
-	// sub is the name of the directive after //kama:validate:, or empty for
-	// //kama:validate itself.
-	sub string
+	// arg is the arg of //kama:validate that sets the option: a validator
+	// name, hook=on or hook=off from a directive, hook from an option file,
+	// or empty for the mark of a type.
+	arg string
 	// keys are the keys below the entry of src that the option is spelled
-	// with in an option file. sub is the key when keys is nil.
+	// with in an option file. arg is the key when keys is nil.
 	keys []string
 }
 
@@ -34,8 +35,8 @@ func (o optionSource) origin() string {
 	src := o.src
 
 	keys := o.keys
-	if keys == nil && o.sub != "" {
-		keys = []string{o.sub}
+	if keys == nil && o.arg != "" {
+		keys = []string{o.arg}
 	}
 
 	src.KeyPath = append(slices.Clip(src.KeyPath), keys...)
@@ -46,16 +47,16 @@ func (o optionSource) origin() string {
 // spelling names the option o sets as its source spells it.
 func (o optionSource) spelling() string {
 	if o.src.Kind == genopt.SourceDirective {
-		if o.sub == "" {
+		if o.arg == "" {
 			return "//" + toolName + ":" + directive
 		}
 
-		return "//" + toolName + ":" + directive + ":" + o.sub
+		return "//" + toolName + ":" + directive + " " + o.arg
 	}
 
 	name := "type entry"
-	if o.sub != "" {
-		name = o.sub + " option"
+	if o.arg != "" {
+		name = o.arg + " option"
 	}
 
 	if o.src.Kind == genopt.SourcePackageFile {
@@ -63,6 +64,47 @@ func (o optionSource) spelling() string {
 	}
 
 	return "option file " + name
+}
+
+// subDirectiveError reports //kama:validate:<sub>, and shows the arg of
+// //kama:validate that stands for it.
+func subDirectiveError(src genopt.Source, sub string, kv []dircmnt.KeyValue) error {
+	want := sub
+
+	if len(kv) > 0 {
+		arg := spellArgs(kv)
+		// regexp takes its whole argument as the pattern. The quotes of a
+		// quoted pattern therefore go. The other validators split their
+		// argument into tokens again. Their quoted literals keep their quotes
+		// to stay apart from bare ones.
+		if sub == (Regexp{}).Name() && len(kv) == 1 && !kv[0].HasValue {
+			arg = kv[0].Key
+		}
+
+		want += "=" + quoteValue(arg)
+	}
+
+	return fmt.Errorf(
+		"%w: %s: //%s:%s:%s; validators and hook are args of //%s:%s, as in //%s:%s %s",
+		ErrDirective, src.Pos, toolName, directive, sub,
+		toolName, directive, toolName, directive, want,
+	)
+}
+
+// quoteValue spells s as the value of an arg: bare when it is a plain word,
+// else as a Go string literal, raw when s holds double quotes.
+func quoteValue(s string) string {
+	plain := s != "" && strings.Trim(s, "abcdefghijklmnopqrstuvwxyz"+
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-") == ""
+
+	switch {
+	case plain:
+		return s
+	case strings.Contains(s, `"`) && !strings.Contains(s, "`"):
+		return "`" + s + "`"
+	}
+
+	return strconv.Quote(s)
 }
 
 // onTarget names the type or type group a directive is on.
@@ -77,26 +119,16 @@ func onTarget(t genopt.Target) string {
 // fieldName names the field a directive is on.
 func fieldName(t genopt.Target) string { return t.PkgPath + "." + t.Type + "." + t.Field }
 
-// bareWords returns the keys of kv, or false when one of them has a value.
-func bareWords(kv []dircmnt.KeyValue) ([]string, bool) {
-	hasValue := opiter.WrapSeq(slices.Values(kv)).
-		Any(func(kv dircmnt.KeyValue) bool { return kv.HasValue })
-
-	if hasValue {
-		return nil, false
-	}
-
-	return opiter.WrapSeq(slices.Values(kv)).
-		Map(func(kv dircmnt.KeyValue) string { return kv.Key }).
-		CollectSlice(), true
-}
-
 // spellArgs spells kv as space-separated key or key=value pairs, in the
-// grammar dircmnt.ParseArgsKeyValue reads back.
+// grammar dircmnt.ParseArgsKeyValue reads back. A comparison is spelled as
+// written; quoting it would turn it into a key.
 func spellArgs(kv []dircmnt.KeyValue) string {
 	spell := func(kv dircmnt.KeyValue) string {
-		if kv.HasValue {
+		switch {
+		case kv.HasValue:
 			return spellToken(kv.Key, kv.KeyQuoted) + "=" + spellToken(kv.Value, kv.ValueQuoted)
+		case isComparison(kv):
+			return kv.Key
 		}
 
 		return spellToken(kv.Key, kv.KeyQuoted)
@@ -108,6 +140,11 @@ func spellArgs(kv []dircmnt.KeyValue) string {
 			CollectSlice(),
 		" ",
 	)
+}
+
+// isComparison reports whether kv is a comparison, as in >=1.
+func isComparison(kv dircmnt.KeyValue) bool {
+	return !kv.HasValue && !kv.KeyQuoted && kv.Key != "" && strings.ContainsAny(kv.Key[:1], "<>=!")
 }
 
 // spellToken quotes s when it was quoted or a bare token cannot hold it.

@@ -46,7 +46,7 @@ func TestSelection(t *testing.T) {
 		{
 			// A marked parent does not make its field types targets.
 			name: "marked parent",
-			src: "//kama:validate\n//kama:validate:hook off\ntype P struct{ C C }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype P struct{ C C }\n\n" +
 				"type C struct{ X int }\n",
 			want: []string{"P.Validate"},
 		},
@@ -55,7 +55,7 @@ func TestSelection(t *testing.T) {
 			name: "marked child",
 			src: "type P struct{ C *C }\n\ntype PP struct{ P []P }\n\n" +
 				"type M map[string]C\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			want: []string{"C.Validate", "M.Validate", "P.Validate", "PP.Validate"},
 		},
 		{
@@ -64,7 +64,7 @@ func TestSelection(t *testing.T) {
 			name: "not followed",
 			src: "type K map[C]int\n\ntype Ch struct{ C chan C }\n\n" +
 				"type F struct{ F func(C) }\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			want: []string{"C.Validate"},
 		},
 		{
@@ -74,27 +74,27 @@ func TestSelection(t *testing.T) {
 			name: "named array and pointer",
 			src: "type N [2]int\n\ntype Cy [2]Cp\n\ntype Cp *Cy\n\n" +
 				"type H [2]C\n\nfunc (H) Validate(bool) error { return nil }\n\n" +
-				"//kama:validate\n//kama:validate:hook off\n" +
+				"//kama:validate\n//kama:validate hook=off\n" +
 				"type A struct {\n\tN  N\n\tCy Cy\n\tH  H\n}\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			want: []string{"A.Validate", "C.Validate"},
 		},
 		{
 			name: "ignored dependant",
 			src: "//kama:validate ignore\ntype P struct{ C C }\n\ntype PP struct{ P P }\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			want: []string{"C.Validate"},
 		},
 		{
 			// A file mark skips types of other kinds and ignored types.
 			name: "file mark",
-			src: "//kama:validate file\n\n//kama:validate:hook off\ntype A struct{ N int }\n\n" +
+			src: "//kama:validate file\n\n//kama:validate hook=off\ntype A struct{ N int }\n\n" +
 				"type L []int\n\ntype ID int\n\n//kama:validate ignore\ntype I struct{}\n",
 			want: []string{"A.Validate", "L.Validate"},
 		},
 		{
 			name: "package mark",
-			src: "//kama:validate package\n\n//kama:validate:hook off\ntype A struct{ N int }\n\n" +
+			src: "//kama:validate package\n\n//kama:validate hook=off\ntype A struct{ N int }\n\n" +
 				"type M map[string]int\n\ntype F func()\n",
 			want: []string{"A.Validate", "M.Validate"},
 		},
@@ -110,13 +110,13 @@ func TestSelection(t *testing.T) {
 			// A Validate promoted from an embedded target is no implementor.
 			name: "promoted",
 			src: "type Outer struct{ Inner }\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype Inner struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype Inner struct{ X int }\n",
 			want: []string{"Inner.Validate", "Outer.Validate"},
 		},
 		{
 			// A type group mark marks every type of the group.
 			name: "type group",
-			src: "//kama:validate\n//kama:validate:hook off\ntype (\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype (\n" +
 				"\tA struct{ N int }\n\tB struct{ N int }\n)\n",
 			want: []string{"A.Validate", "B.Validate"},
 		},
@@ -176,28 +176,35 @@ func TestSelectionErrors(t *testing.T) {
 		},
 		{
 			name: "validator on a type without Validate",
-			src:  "type A struct {\n\t//kama:validate:required\n\tN int\n}\n",
+			src:  "type A struct {\n\t//kama:validate required\n\tN int\n}\n",
 			is:   ErrDirective,
-			msgs: []string{"a.go:4:2", "//kama:validate:required on field", "A.N", "mark the type"},
+			msgs: []string{"a.go:4:2", "//kama:validate required on field", "A.N", "mark the type"},
 		},
 		{
 			name: "hook on a type without Validate",
-			src:  "//kama:validate:hook on\ntype A struct{ N int }\n",
+			src:  "//kama:validate ignore hook=on\ntype A struct{ N int }\n",
 			is:   ErrDirective,
-			msgs: []string{"//kama:validate:hook on", "gets no Validate"},
+			msgs: []string{"//kama:validate hook=on on", "gets no Validate"},
+		},
+		{
+			// hook=on alone marks the type, so its hooks are called.
+			name: "hook on marks the type",
+			src:  "//kama:validate hook=on\ntype A struct{ N int }\n",
+			is:   ErrHook,
+			msgs: []string{"A has no hook validateN"},
 		},
 		{
 			name: "field hook on a type without Validate",
-			src:  "type A struct {\n\t//kama:validate:hook on\n\tN int\n}\n",
+			src:  "type A struct {\n\t//kama:validate hook=on\n\tN int\n}\n",
 			is:   ErrDirective,
-			msgs: []string{"//kama:validate:hook on field", "A.N"},
+			msgs: []string{"//kama:validate hook=on on field", "A.N"},
 		},
 		{
 			// A dependant with a Validate of another shape would get a second
 			// one.
 			name: "Validate of another shape",
 			src: "type P struct{ C C }\n\nfunc (P) Validate() error { return nil }\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is: ErrConflict,
 			msgs: []string{
 				"P declares Validate on its value receiver with signature func() error;" +
@@ -207,28 +214,28 @@ func TestSelectionErrors(t *testing.T) {
 		{
 			name: "Validate on the pointer receiver",
 			src: "type P struct{ C C }\n\nfunc (*P) Validate(bool) error { return nil }\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrConflict,
 			msgs: []string{"P declares Validate on its pointer receiver"},
 		},
 		{
 			name: "field named Validate",
-			src:  "//kama:validate\n//kama:validate:hook off\ntype A struct{ Validate int }\n",
+			src:  "//kama:validate\n//kama:validate hook=off\ntype A struct{ Validate int }\n",
 			is:   ErrConflict,
 			msgs: []string{"field Validate of"},
 		},
 		{
 			name: "type parameter named like a predeclared identifier",
-			src:  "//kama:validate\n//kama:validate:hook off\ntype A[error any] struct{ V error }\n",
+			src:  "//kama:validate\n//kama:validate hook=off\ntype A[error any] struct{ V error }\n",
 			is:   ErrConflict,
 			msgs: []string{"type parameter error"},
 		},
 		{
 			name: "type parameter named like a helper",
-			src: "//kama:validate\n//kama:validate:hook off\n" +
+			src: "//kama:validate\n//kama:validate hook=off\n" +
 				"type A[requiredComparable comparable, kamaValidateAll any] struct {\n" +
-				"\t//kama:validate:required\n\tX requiredComparable\n" +
-				"\t//kama:validate:cmp >=1 <=3\n\tN int\n}\n",
+				"\t//kama:validate required\n\tX requiredComparable\n" +
+				"\t//kama:validate cmp=\">=1 <=3\"\n\tN int\n}\n",
 			is: ErrConflict,
 			msgs: []string{
 				"type parameter requiredComparable of", "shadows the helper requiredComparable",
@@ -237,9 +244,9 @@ func TestSelectionErrors(t *testing.T) {
 		},
 		{
 			name: "named array field",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ P Pair }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ P Pair }\n\n" +
 				"type Pair [2]C\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is: ErrUnsupported,
 			msgs: []string{
 				"a.go:5:16", "field P of", "holds", "Pair, a named array type",
@@ -249,9 +256,9 @@ func TestSelectionErrors(t *testing.T) {
 		},
 		{
 			name: "named pointer field",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ P []PI }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ P []PI }\n\n" +
 				"type PI *C\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field P of", "PI, a named pointer type"},
 		},
@@ -259,23 +266,23 @@ func TestSelectionErrors(t *testing.T) {
 			// The holder would be a dependant through the named array.
 			name: "named array in a dependant",
 			src: "type Holder struct{ P Pair }\n\ntype Pair [2]C\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field P of", "Holder holds", "Pair, a named array type"},
 		},
 		{
 			name: "named pointer in a slice type",
 			src: "type L []PP\n\ntype PP *Pair\n\ntype Pair [2]C\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"type ", "L holds", "PP, a named pointer type"},
 		},
 		{
 			name: "named array as a type argument",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ B Box[Pair] }\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype Box[T any] struct{ V T }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ B Box[Pair] }\n\n" +
+				"//kama:validate\n//kama:validate hook=off\ntype Box[T any] struct{ V T }\n\n" +
 				"type Pair [2]C\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is: ErrUnsupported,
 			msgs: []string{
 				"field B:", "Pair is a named array type holding values to validate",
@@ -284,7 +291,7 @@ func TestSelectionErrors(t *testing.T) {
 		},
 		{
 			name: "generic named pointer of a type parameter",
-			src: "//kama:validate\n//kama:validate:hook off\ntype G[T any] struct{ P PT[T] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype G[T any] struct{ P PT[T] }\n\n" +
 				"type PT[T any] *T\n",
 			is: ErrUnsupported,
 			msgs: []string{
@@ -294,50 +301,50 @@ func TestSelectionErrors(t *testing.T) {
 		},
 		{
 			name: "generic named array of a type parameter",
-			src: "//kama:validate\n//kama:validate:hook off\ntype G[T any] struct{ A []AT[T] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype G[T any] struct{ A []AT[T] }\n\n" +
 				"type AT[T any] [2]T\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field A of", "AT[T], a named array type"},
 		},
 		{
 			name: "generic named pointer holding a type parameter",
-			src: "//kama:validate\n//kama:validate:hook off\ntype G[T any] struct{ P PP[T] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype G[T any] struct{ P PP[T] }\n\n" +
 				"type PP[T any] *PT[T]\n\ntype PT[T any] *[]T\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field P of", "PP[T], a named pointer type"},
 		},
 		{
 			name: "generic named pointer of a type parameter as a type argument",
-			src: "//kama:validate\n//kama:validate:hook off\n" +
+			src: "//kama:validate\n//kama:validate hook=off\n" +
 				"type G[T any] struct{ B Box[PT[T]] }\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype Box[T any] struct{ V T }\n\n" +
+				"//kama:validate\n//kama:validate hook=off\ntype Box[T any] struct{ V T }\n\n" +
 				"type PT[T any] *T\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field B:", "PT[T] is a named pointer type holding values to validate"},
 		},
 		{
 			name: "generic named pointer of a target",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ P PT[C] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ P PT[C] }\n\n" +
 				"type PT[T any] *T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field P of", "C], a named pointer type"},
 		},
 		{
 			// PT[int] holds nothing to validate. PT[C] after it does.
 			name: "second instance of a generic named pointer",
-			src: "//kama:validate\n//kama:validate:hook off\n" +
+			src: "//kama:validate\n//kama:validate hook=off\n" +
 				"type A struct{ S struct{ I PT[int]; C PT[C] } }\n\n" +
 				"type PT[T any] *T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field S of", "C], a named pointer type"},
 		},
 		{
 			name: "nested instances of a generic named pointer",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ P PT[PT[C]] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ P PT[PT[C]] }\n\n" +
 				"type PT[T any] *T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field P of", "C]], a named pointer type"},
 		},
@@ -346,7 +353,7 @@ func TestSelectionErrors(t *testing.T) {
 			name: "cycle of named pointers",
 			src: "type H struct {\n\tX PA\n\tY PB\n}\n\n" +
 				"type PA *struct {\n\tB PB\n\tC C\n}\n\ntype PB *PA\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is: ErrUnsupported,
 			msgs: []string{
 				"field X of",
@@ -357,9 +364,9 @@ func TestSelectionErrors(t *testing.T) {
 		},
 		{
 			name: "unmarked generic slice of a target",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ L LS[C] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ L LS[C] }\n\n" +
 				"type LS[T any] []T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is: ErrUnsupported,
 			msgs: []string{
 				"a.go:5:16",
@@ -370,31 +377,31 @@ func TestSelectionErrors(t *testing.T) {
 		},
 		{
 			name: "unmarked generic map of a target",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ M MS[string, C] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ M MS[string, C] }\n\n" +
 				"type MS[K comparable, V any] map[K]V\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field M of", "MS[string, ", "MS with //kama:validate"},
 		},
 		{
 			name: "pointer to an unmarked generic slice of a target",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ P *LS[C] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ P *LS[C] }\n\n" +
 				"type LS[T any] []T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field P of", "LS with //kama:validate"},
 		},
 		{
 			name: "unmarked generic slice of an unmarked generic slice of a target",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ L LS[LS[C]] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ L LS[LS[C]] }\n\n" +
 				"type LS[T any] []T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field L of", "C]], which holds values to validate"},
 		},
 		{
 			name: "unmarked generic types of a type parameter",
-			src: "//kama:validate\n//kama:validate:hook off\n" +
+			src: "//kama:validate\n//kama:validate hook=off\n" +
 				"type Box[T any] struct {\n\tL LS[T]\n\tW W[T]\n}\n\n" +
 				"type LS[T any] []T\n\ntype W[T any] struct{ X T }\n",
 			is: ErrUnsupported,
@@ -407,23 +414,23 @@ func TestSelectionErrors(t *testing.T) {
 			// The holder would be a dependant if LS had a Validate.
 			name: "unmarked generic slice in a dependant",
 			src: "type H struct{ L LS[C] }\n\ntype LS[T any] []T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field L of", "H holds", "LS with //kama:validate"},
 		},
 		{
 			name: "unmarked generic slice in a slice type",
 			src: "type L []LS[C]\n\ntype LS[T any] []T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"type ", "L holds", "LS with //kama:validate"},
 		},
 		{
 			name: "unmarked generic slice as a type argument",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ B Box[LS[C]] }\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype Box[T any] struct{ V T }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ B Box[LS[C]] }\n\n" +
+				"//kama:validate\n//kama:validate hook=off\ntype Box[T any] struct{ V T }\n\n" +
 				"type LS[T any] []T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			is: ErrUnsupported,
 			msgs: []string{
 				"field B:", "C] holds values to validate through its type arguments",
@@ -432,7 +439,7 @@ func TestSelectionErrors(t *testing.T) {
 		},
 		{
 			name: "unmarked generic struct of an implementor",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ W W[H] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ W W[H] }\n\n" +
 				"type W[T any] struct{ X T }\n\ntype H struct{}\n\n" +
 				"func (H) Validate(bool) error { return nil }\n",
 			is:   ErrUnsupported,
@@ -445,26 +452,45 @@ func TestSelectionErrors(t *testing.T) {
 			is: ErrConflict,
 			msgs: []string{
 				"a.go:6:2", "fields name and Name of", "share the hook validateName",
-				"//kama:validate:hook off",
+				"//kama:validate hook=off",
 			},
 		},
 		{
 			name: "directive on a field",
 			src:  "//kama:validate\ntype A struct {\n\t//kama:validate\n\tN int\n}\n",
 			is:   ErrDirective,
-			msgs: []string{"mark the type instead"},
+			msgs: []string{"names no validator", "mark the type in its doc comment instead"},
 		},
 		{
 			name: "validator on a type",
-			src:  "//kama:validate:required\ntype A struct{ N int }\n",
+			src:  "//kama:validate required\ntype A struct{ N int }\n",
 			is:   ErrDirective,
-			msgs: []string{"validators apply to struct fields only"},
+			msgs: []string{`unknown arg "required"`, "validators apply to struct fields only"},
+		},
+		{
+			name: "validator given twice",
+			src: "//kama:validate hook=off\ntype A struct {\n\t//kama:validate required\n" +
+				"\t//kama:validate cmp=\">0\" required\n\tN int\n}\n",
+			is:   ErrDirective,
+			msgs: []string{"a.go:5:2", "validator required given twice on field"},
+		},
+		{
+			name: "hook given twice on a type",
+			src:  "//kama:validate hook=off\n//kama:validate hook=on\ntype A struct{ N int }\n",
+			is:   ErrDirective,
+			msgs: []string{"a.go:3:1", "hook given twice on type"},
+		},
+		{
+			name: "hook given twice on a field",
+			src:  "//kama:validate\ntype A struct {\n\t//kama:validate hook=off hook=off\n\tN int\n}\n",
+			is:   ErrDirective,
+			msgs: []string{"hook given twice on field", "A.N"},
 		},
 		{
 			name: "bad hook args",
-			src:  "//kama:validate\n//kama:validate:hook maybe\ntype A struct{ N int }\n",
+			src:  "//kama:validate\n//kama:validate hook=maybe\ntype A struct{ N int }\n",
 			is:   ErrDirective,
-			msgs: []string{"want on or off"},
+			msgs: []string{`arg "hook=maybe" of //kama:validate; want hook=on or hook=off`},
 		},
 		{
 			name: "bad free-floating args",
@@ -497,18 +523,18 @@ func TestSelectionAccepted(t *testing.T) {
 	}{
 		{
 			name: "named array of a non-validatable type",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ Id Id }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ Id Id }\n\n" +
 				"type Id [16]byte\n",
 			want: []string{"A.Validate"},
 		},
 		{
 			name: "named pointer to a non-validatable type",
-			src:  "//kama:validate\n//kama:validate:hook off\ntype A struct{ P PI }\n\ntype PI *int\n",
+			src:  "//kama:validate\n//kama:validate hook=off\ntype A struct{ P PI }\n\ntype PI *int\n",
 			want: []string{"A.Validate"},
 		},
 		{
 			name: "generic named pointer of a non-validatable type",
-			src: "//kama:validate\n//kama:validate:hook off\n" +
+			src: "//kama:validate\n//kama:validate hook=off\n" +
 				"type G[T any] struct {\n\tP PT[int]\n\tV T\n}\n\ntype PT[T any] *T\n",
 			want: []string{"G.Validate"},
 		},
@@ -516,12 +542,12 @@ func TestSelectionAccepted(t *testing.T) {
 			// A type parameter makes no dependant, so H validates nothing.
 			name: "generic named pointer of a type parameter in a non-target",
 			src: "type H[T any] struct{ P PT[T] }\n\ntype PT[T any] *T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			want: []string{"C.Validate"},
 		},
 		{
 			name: "unmarked generic types of non-validatable types",
-			src: "//kama:validate\n//kama:validate:hook off\n" +
+			src: "//kama:validate\n//kama:validate hook=off\n" +
 				"type A struct {\n\tL LS[int]\n\tM MS[string, int]\n\tW W[*int]\n}\n\n" +
 				"type LS[T any] []T\n\ntype MS[K comparable, V any] map[K]V\n\n" +
 				"type W[T any] struct{ X T }\n",
@@ -530,29 +556,29 @@ func TestSelectionAccepted(t *testing.T) {
 		{
 			// An ignored type is left unchecked on purpose.
 			name: "ignored generic slice of a target",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct{ L LS[C] }\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct{ L LS[C] }\n\n" +
 				"//kama:validate ignore\ntype LS[T any] []T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			want: []string{"A.Validate", "C.Validate"},
 		},
 		{
 			// A type parameter makes no dependant, so H validates nothing.
 			name: "unmarked generic slice of a type parameter in a non-target",
 			src: "type H[T any] struct{ L LS[T] }\n\ntype LS[T any] []T\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			want: []string{"C.Validate"},
 		},
 		{
 			name: "fields sharing a hook name with one hook off",
 			src: "//kama:validate\ntype A struct {\n\tname string\n" +
-				"\t//kama:validate:hook off\n\tName string\n}\n\n" +
+				"\t//kama:validate hook=off\n\tName string\n}\n\n" +
 				"func (A) validateName(bool) error { return nil }\n",
 			want: []string{"A.Validate"},
 		},
 		{
 			name: "fields sharing a hook name in a dependant",
 			src: "type D struct {\n\tname string\n\tName string\n\tC    C\n}\n\n" +
-				"//kama:validate\n//kama:validate:hook off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			want: []string{"C.Validate", "D.Validate"},
 		},
 	}
@@ -599,7 +625,7 @@ type ThroughDependant struct{ U opt.Option[U] }
 type K map[opt.Option[T]]int
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type T struct{ X int }
 `,
 	})
@@ -632,19 +658,19 @@ func TestSelectionMarkedGeneric(t *testing.T) {
 		"a.go": `package x
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type LS[T any] []T
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type MS[K comparable, V any] map[K]V
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type W[T any] struct{ X T }
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type A struct {
 	L LS[C]
 	M MS[string, C]
@@ -652,14 +678,14 @@ type A struct {
 }
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type Box[T any] struct {
 	L LS[T]
 	W W[T]
 }
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type C struct{ X int }
 `,
 	})
@@ -720,7 +746,7 @@ func TestSelectionForeignNamedArrayAndPointer(t *testing.T) {
 import "` + modulePath(t) + `/y"
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type S struct {
 	P  y.PI
 	A  y.AI
@@ -735,9 +761,9 @@ type S struct {
 type D struct{ A y.AI }
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type Inner struct {
-	//kama:validate:required
+	//kama:validate required
 	X string
 }
 `,
@@ -800,7 +826,7 @@ func TestSelectionForeignNamedErrors(t *testing.T) {
 			_, err := generateLoading(t, map[string]string{
 				"y/y.go": foreignSrc,
 				"x/x.go": "package x\n\nimport \"" + modulePath(t) + "/y\"\n\n" +
-					"//kama:validate\n//kama:validate:hook off\ntype S struct{ " + tc.field + " }\n",
+					"//kama:validate\n//kama:validate hook=off\ntype S struct{ " + tc.field + " }\n",
 			}, tc.dirs...)
 			assert.ErrorIs(t, err, ErrUnsupported)
 
@@ -837,8 +863,8 @@ func chainSrc(pkg string, n int) string {
 func TestSelectionDeepChain(t *testing.T) {
 	const depth = 22
 
-	target := "//kama:validate\n//kama:validate:hook off\ntype S struct {\n" +
-		"\tF A00\n\t//kama:validate:required\n\tN string\n}\n"
+	target := "//kama:validate\n//kama:validate hook=off\ntype S struct {\n" +
+		"\tF A00\n\t//kama:validate required\n\tN string\n}\n"
 
 	cases := map[string]map[string]string{
 		"run": {"x/x.go": chainSrc("x", depth) + "\n" + target},

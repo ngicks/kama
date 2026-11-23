@@ -12,7 +12,7 @@ packages:
             validators:
               - name: required
               - name: regexp
-                args: '"^[A-Z]{3}-[0-9]+$"'
+                args: '^[A-Z]{3}-[0-9]+$'
           Lines:
             validators:
               - name: length

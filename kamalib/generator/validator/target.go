@@ -384,7 +384,7 @@ func (s *selection) hookConflicts(n *typegraph.Node) []error {
 
 		errs = append(errs, fmt.Errorf(
 			"%w: %s: fields %s and %s of %s share the hook %s;"+
-				" rename one or turn its hook off with //kama:validate:hook off",
+				" rename one or turn its hook off with //kama:validate hook=off",
 			ErrConflict, n.Detail.Pkg.Fset.Position(v.Pos()), prev.Name(), v.Name(), n.Id, name,
 		))
 	}

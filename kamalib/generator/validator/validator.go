@@ -57,13 +57,14 @@ var (
 	// has the wrong signature.
 	ErrHook = errors.New("validator: invalid hook")
 	// ErrConflict reports a name the generated declarations would collide
-	// with or shadow.
+	// with or shadow, and a validator registered under a word of
+	// //kama:validate that names no validator.
 	ErrConflict = errors.New("validator: name conflict")
 	// ErrOptionFile reports an option file that cannot be loaded or does
 	// not decode. It wraps the error of genopt too.
 	ErrOptionFile = errors.New("validator: invalid option file")
-	// ErrArgs marks an error of Validator.Check that the args cause for
-	// any type. A validator wraps it as fmt.Errorf("%w: ...", ErrArgs) does.
+	// ErrArgs marks an error of Validator.Check that the argument causes
+	// for any type. A validator wraps it as fmt.Errorf("%w: ...", ErrArgs) does.
 	// The generator reports such an error at once. It does not apply the
 	// validator again to the value a pointer or an option holds. That
 	// attempt would fail the same way.
@@ -124,6 +125,10 @@ type File = base.File
 func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	opts = opts.WithDefaults()
 	now := opts.Now()
+
+	if err := opts.Registry.reservedNames(); err != nil {
+		return nil, nil, err
+	}
 
 	srcPkgs := base.SourcePackages(pkgs)
 

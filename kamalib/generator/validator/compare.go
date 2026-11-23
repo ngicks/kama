@@ -17,8 +17,8 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
 
-// Length is the validator //kama:validate:length <op><n> ...: len of the
-// value satisfies every comparison, as in >=1 <=10 or ==3. The operators
+// Length is the validator //kama:validate length="<op><n> ...": len of
+// the value satisfies every comparison, as in >=1 <=10 or ==3. The operators
 // are >, >=, ==, !=, <= and <, and n is a non-negative integer literal.
 // n may carry a unary plus.
 //
@@ -31,7 +31,12 @@ func (Length) Name() string { return "length" }
 
 // Check accepts comparisons with non-negative integers, on the types the
 // doc comment of Length lists.
-func (Length) Check(t types.Type, args []dircmnt.KeyValue) error {
+func (Length) Check(t types.Type, arg string) error {
+	args, err := argTokens(arg)
+	if err != nil {
+		return err
+	}
+
 	if err := comparisons(args); err != nil {
 		return argsError(err)
 	}
@@ -69,7 +74,12 @@ func (Length) Check(t types.Type, args []dircmnt.KeyValue) error {
 }
 
 // Emit calls kamaValidateLength once per comparison.
-func (Length) Emit(e Emitter, _ types.Type, v string, args []dircmnt.KeyValue) (string, error) {
+func (Length) Emit(e Emitter, _ types.Type, v string, arg string) (string, error) {
+	args, err := argTokens(arg)
+	if err != nil {
+		return "", err
+	}
+
 	e.Declare(compareName, compareDecl)
 	e.Declare(lengthName, lengthDecl)
 
@@ -96,7 +106,7 @@ func hasLength(t types.Type) bool {
 	return false
 }
 
-// Cmp is the validator //kama:validate:cmp <op><value> ...: the value
+// Cmp is the validator //kama:validate cmp="<op><value> ...": the value
 // satisfies every comparison, as in >=1 <100 or =="a". The operators are
 // >, >=, ==, !=, <= and <, and value is a Go literal of the type of the
 // value: a number, a quoted string, true or false.
@@ -110,7 +120,12 @@ func (Cmp) Name() string { return "cmp" }
 
 // Check accepts comparisons with literals of t, on the types the doc
 // comment of Cmp lists.
-func (Cmp) Check(t types.Type, args []dircmnt.KeyValue) error {
+func (Cmp) Check(t types.Type, arg string) error {
+	args, err := argTokens(arg)
+	if err != nil {
+		return err
+	}
+
 	if err := comparisons(args); err != nil {
 		return argsError(err)
 	}
@@ -141,7 +156,12 @@ func (Cmp) Check(t types.Type, args []dircmnt.KeyValue) error {
 
 // Emit calls kamaValidateCmp, or kamaValidateEqual for a bool, once per
 // comparison.
-func (Cmp) Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue) (string, error) {
+func (Cmp) Emit(e Emitter, t types.Type, v string, arg string) (string, error) {
+	args, err := argTokens(arg)
+	if err != nil {
+		return "", err
+	}
+
 	helper := cmpName
 	if basicInfo(t)&types.IsBoolean != 0 {
 		helper = equalName
@@ -185,14 +205,14 @@ func joinCalls(
 	return allName + "(" + e.StopOnFirstError() + ", " + strings.Join(calls, ", ") + ")", nil
 }
 
-// Const is the validator //kama:validate:const <v1> <v2> ...: the value
-// equals one of the listed values, as in const 1 2 3 or
-// const "red" "dark blue".
+// Const is the validator //kama:validate const="<v1> <v2> ...": the value
+// equals one of the listed values, as in const="1 2 3" or
+// const=`"red" "dark blue"`.
 //
 // It applies to types of a bool, numeric or string underlying type. Each
-// arg is a Go literal of the type. A string type takes quoted strings
-// only, and any other type takes bare literals only, so that const "1"
-// and const 1 do not mean the same.
+// token of the argument is a Go literal of the type. A string type takes
+// quoted strings only, and any other type takes bare literals only, so
+// that const=`"1"` and const=1 do not mean the same.
 type Const struct{}
 
 // Name returns "const".
@@ -200,7 +220,12 @@ func (Const) Name() string { return "const" }
 
 // Check accepts one or more values of t, on the types the doc comment of
 // Const lists.
-func (Const) Check(t types.Type, args []dircmnt.KeyValue) error {
+func (Const) Check(t types.Type, arg string) error {
+	args, err := argTokens(arg)
+	if err != nil {
+		return err
+	}
+
 	if len(args) == 0 {
 		return argsError(errors.New("want one or more values"))
 	}
@@ -245,7 +270,12 @@ func constLiteral(kv dircmnt.KeyValue) string {
 }
 
 // Emit calls kamaValidateConst with the values.
-func (Const) Emit(e Emitter, _ types.Type, v string, args []dircmnt.KeyValue) (string, error) {
+func (Const) Emit(e Emitter, _ types.Type, v string, arg string) (string, error) {
+	args, err := argTokens(arg)
+	if err != nil {
+		return "", err
+	}
+
 	e.Declare(constName, constDecl)
 	e.Declare(spellName, spellDecl)
 

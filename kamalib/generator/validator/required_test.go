@@ -10,7 +10,6 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 )
 
@@ -27,35 +26,35 @@ import (
 )
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type A[T comparable] struct {
-	//kama:validate:required
+	//kama:validate required
 	S string
-	//kama:validate:required
+	//kama:validate required
 	N int
-	//kama:validate:required
+	//kama:validate required
 	C Comparable
-	//kama:validate:required
+	//kama:validate required
 	P *int
-	//kama:validate:required
+	//kama:validate required
 	L []int
-	//kama:validate:required
+	//kama:validate required
 	M map[string]int
-	//kama:validate:required
+	//kama:validate required
 	Ch chan int
-	//kama:validate:required
+	//kama:validate required
 	F func()
-	//kama:validate:required
+	//kama:validate required
 	I any
-	//kama:validate:required
+	//kama:validate required
 	Time time.Time
-	//kama:validate:required
+	//kama:validate required
 	O opt.Option[[]int]
-	//kama:validate:required
+	//kama:validate required
 	U und.Und[int]
-	//kama:validate:required
+	//kama:validate required
 	E elastic.Elastic[int]
-	//kama:validate:required
+	//kama:validate required
 	T T
 }
 
@@ -96,18 +95,18 @@ func TestRequiredErrors(t *testing.T) {
 	}{
 		{
 			name: "not comparable",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
-				"\t//kama:validate:required\n\tS struct{ L []int }\n}\n",
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+				"\t//kama:validate required\n\tS struct{ L []int }\n}\n",
 			is: ErrUnsupported,
 			msgs: []string{
-				"a.go:6:2", "//kama:validate:required on field S",
+				"a.go:6:2", "//kama:validate required on field S",
 				"struct{L []int} is not an option type, not nillable",
 			},
 		},
 		{
 			name: "IsZero promoted through a pointer",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
-				"\t//kama:validate:required\n\tS struct{ *Z; L []int }\n}\n\n" +
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+				"\t//kama:validate required\n\tS struct{ *Z; L []int }\n}\n\n" +
 				"type Z struct{}\n\nfunc (Z) IsZero() bool { return true }\n",
 			is: ErrUnsupported,
 			msgs: []string{
@@ -117,32 +116,32 @@ func TestRequiredErrors(t *testing.T) {
 		},
 		{
 			name: "type parameter not comparable",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A[T any] struct {\n" +
-				"\t//kama:validate:required\n\tV T\n}\n",
+			src: "//kama:validate\n//kama:validate hook=off\ntype A[T any] struct {\n" +
+				"\t//kama:validate required\n\tV T\n}\n",
 			is:   ErrUnsupported,
 			msgs: []string{"on field V", "T is not an option type"},
 		},
 		{
 			name: "args",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
-				"\t//kama:validate:required yes\n\tN int\n}\n",
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+				"\t//kama:validate required=yes\n\tN int\n}\n",
 			is:   ErrUnsupported,
-			msgs: []string{`unknown args "yes"; want none`},
+			msgs: []string{`unexpected arg "yes"; want none`},
 		},
 		{
 			name: "unknown validator",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
-				"\t//kama:validate:requird\n\tN int\n}\n",
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+				"\t//kama:validate requird\n\tN int\n}\n",
 			is: ErrDirective,
 			msgs: []string{
-				"unknown validator //kama:validate:requird on field N;" +
+				"unknown validator //kama:validate requird on field N;" +
 					" known: cmp, const, format, length, nil, null, regexp, required, zero",
 			},
 		},
 		{
 			name: "helper name taken",
-			src: "//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
-				"\t//kama:validate:required\n\tN int\n}\n\nfunc requiredComparable() {}\n",
+			src: "//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+				"\t//kama:validate required\n\tN int\n}\n\nfunc requiredComparable() {}\n",
 			is:   ErrConflict,
 			msgs: []string{"requiredComparable is already declared for a helper"},
 		},
@@ -164,8 +163,8 @@ func TestRequiredErrors(t *testing.T) {
 // write in a helpers file, which the next run would overwrite.
 func TestHelperFileForeignDecl(t *testing.T) {
 	_, err := generate(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
-			"\t//kama:validate:required\n\tN int\n}\n",
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+			"\t//kama:validate required\n\tN int\n}\n",
 		HelpersFile: "package x\n\nvar mine = 1\n",
 	}, Options{})
 	assert.ErrorIs(t, err, ErrConflict)
@@ -176,8 +175,8 @@ func TestHelperFileForeignDecl(t *testing.T) {
 // Validate methods call no helper.
 func TestHelpersOnlyWhenUsed(t *testing.T) {
 	out := generateAndBuild(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate:hook off\ntype A struct{ I I }\n\n" +
-			"//kama:validate\n//kama:validate:hook off\ntype I struct{ N int }\n",
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct{ I I }\n\n" +
+			"//kama:validate\n//kama:validate hook=off\ntype I struct{ N int }\n",
 	})
 	_, ok := out[HelpersFile]
 	assert.Assert(t, !ok)
@@ -187,10 +186,10 @@ func TestHelpersOnlyWhenUsed(t *testing.T) {
 // calls in a helpers file of the same constraint.
 func TestHelpersOfConstrainedFiles(t *testing.T) {
 	out := generateAndBuild(t, map[string]string{
-		"a_linux.go": "package x\n\n//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
-			"\t//kama:validate:required\n\tN int\n}\n",
-		"b.go": "package x\n\n//kama:validate\n//kama:validate:hook off\ntype B struct {\n" +
-			"\t//kama:validate:required\n\tP *int\n}\n",
+		"a_linux.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+			"\t//kama:validate required\n\tN int\n}\n",
+		"b.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype B struct {\n" +
+			"\t//kama:validate required\n\tP *int\n}\n",
 	})
 
 	assertContains(t, out["zz_gen.helper.a.kama_validate_linux.go"], "func requiredComparable[")
@@ -203,7 +202,7 @@ type positive struct{}
 
 func (positive) Name() string { return "positive" }
 
-func (positive) Check(t types.Type, _ []dircmnt.KeyValue) error {
+func (positive) Check(t types.Type, _ string) error {
 	if b, ok := t.Underlying().(*types.Basic); ok && b.Info()&types.IsInteger != 0 {
 		return nil
 	}
@@ -213,7 +212,7 @@ func (positive) Check(t types.Type, _ []dircmnt.KeyValue) error {
 
 // Emit declares a package-level variable besides the helper function, as a
 // validator compiling a pattern once does.
-func (positive) Emit(e Emitter, _ types.Type, v string, _ []dircmnt.KeyValue) (string, error) {
+func (positive) Emit(e Emitter, _ types.Type, v string, _ string) (string, error) {
 	e.Declare("kamaValidateNotPositive", func(s Spelling) (string, error) {
 		errorsPkg, err := s.Import("errors")
 		if err != nil {
@@ -248,16 +247,16 @@ import (
 )
 
 //kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type A struct {
-	//kama:validate:positive
+	//kama:validate positive
 	N int
-	//kama:validate:required
-	//kama:validate:positive
+	//kama:validate required
+	//kama:validate positive
 	P *int
-	//kama:validate:positive
+	//kama:validate positive
 	O opt.Option[int]
-	//kama:validate:positive
+	//kama:validate positive
 	U und.Und[*int]
 }
 `,
@@ -296,11 +295,36 @@ type A struct {
 	assert.NilError(t, err)
 
 	_, err = generate(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate:hook off\ntype A struct {\n" +
-			"\t//kama:validate:positive\n\tS *string\n}\n",
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+			"\t//kama:validate positive\n\tS *string\n}\n",
 	}, Options{Registry: reg})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	// The error names the type of the field.
 	assert.ErrorContains(t, err, "*string is not an integer")
 	assert.Assert(t, !errors.Is(err, ErrDirective))
+}
+
+// renamed is positive registered under another name.
+type renamed struct {
+	positive
+	name string
+}
+
+func (r renamed) Name() string { return r.name }
+
+// TestReservedNames rejects a registry holding a validator named by a word
+// of //kama:validate that names no validator.
+func TestReservedNames(t *testing.T) {
+	for _, name := range []string{"hook", "ignore", "file", "package"} {
+		t.Run(name, func(t *testing.T) {
+			reg := DefaultRegistry().Clone()
+			reg.Register(renamed{name: name})
+
+			_, err := generate(t, map[string]string{
+				"a.go": "package x\n\n//kama:validate hook=off\ntype A struct{ N int }\n",
+			}, Options{Registry: reg})
+			assert.ErrorIs(t, err, ErrConflict)
+			assert.ErrorContains(t, err, "validators registered as "+name+";")
+		})
+	}
 }

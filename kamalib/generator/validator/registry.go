@@ -1,35 +1,44 @@
 package validator
 
 import (
+	"fmt"
 	"go/types"
 	"maps"
 	"slices"
+	"strings"
 
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/opiter"
 )
 
-// Validator is one kind of field validator a directive can name.
+// Validator is one kind of field validator //kama:validate can name.
 //
 // The generator applies a validator to the type of the field first. When
 // Check rejects it and the field is a pointer, an opt.Option or an
 // und.Und, the generator applies it to the value held, under a guard that
 // skips the validator when no value is held.
+//
+// arg is the argument of the validator: the value of the arg name=value of
+// //kama:validate, unquoted, or the args of its option file entry. It is
+// empty when the directive names the validator alone. A validator parses
+// arg itself. Validators taking several tokens split arg with
+// dircmnt.ParseArgsKeyValue.
 type Validator interface {
-	// Name is the directive name: //kama:validate:<Name>.
+	// Name is the word naming the validator in the args of //kama:validate.
+	// It must not be hook, ignore, file or package.
 	Name() string
 	// Check reports why the validator cannot apply to a value of type t with
-	// these args. It returns nil when it can. An error the args cause
-	// whatever t is should wrap ErrArgs.
-	Check(t types.Type, args []dircmnt.KeyValue) error
+	// arg. It returns nil when it can. An error arg causes whatever t is
+	// should wrap ErrArgs.
+	Check(t types.Type, arg string) error
 	// Emit returns the expression of type error that validates the value
 	// expression v of type t. It may ask the Emitter for helpers and
-	// imports. Emit is called only after Check accepted t and args.
+	// imports. Emit is called only after Check accepted t and arg.
 	//
 	// The expression may refer to the bool parameter stopOnFirstError of
 	// the function it lands in by the name e.StopOnFirstError returns. An
 	// expression that can find several errors should return only the first
 	// one when that parameter is true.
-	Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue) (string, error)
+	Emit(e Emitter, t types.Type, v string, arg string) (string, error)
 }
 
 // Spelling spells types and packages in the file generated code lands in.
@@ -104,6 +113,25 @@ func (r *Registry) Lookup(name string) (Validator, bool) {
 // Names returns the names of the validators, sorted.
 func (r *Registry) Names() []string { return slices.Sorted(maps.Keys(r.validators)) }
 
+// reservedNames reports the validators of r named by a word of
+// //kama:validate that names no validator.
+func (r *Registry) reservedNames() error {
+	reserved := opiter.WrapSeq(slices.Values(r.Names())).
+		Filter(func(name string) bool {
+			return slices.Contains([]string{hookWord, ignoreWord, fileWord, packageWord}, name)
+		}).
+		CollectSlice()
+
+	if len(reserved) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf(
+		"%w: validators registered as %s; hook, ignore, file and package name no validator",
+		ErrConflict, strings.Join(reserved, ", "),
+	)
+}
+
 // Clone returns a registry holding the validators of r, which changes to
 // either do not affect.
 func (r *Registry) Clone() *Registry {
@@ -119,3 +147,12 @@ type argsErr struct{ error }
 func (e argsErr) Unwrap() error { return e.error }
 
 func (argsErr) Is(target error) bool { return target == ErrArgs }
+
+// noArg reports an argument given to a validator that takes none.
+func noArg(arg string) error {
+	if arg == "" {
+		return nil
+	}
+
+	return argsError(fmt.Errorf("unexpected arg %q; want none", arg))
+}

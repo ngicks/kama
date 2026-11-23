@@ -6,11 +6,9 @@ import (
 	"maps"
 	"slices"
 	"strings"
-
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
 
-// Format is the validator //kama:validate:format <name>: the value is a
+// Format is the validator //kama:validate format=<name>: the value is a
 // string of the named format.
 //
 // It applies to types of a string underlying type. Formats holds the
@@ -55,8 +53,8 @@ func DefaultFormats() map[string]FormatHelper {
 func (Format) Name() string { return "format" }
 
 // Check accepts the name of one of f.Formats, on string types.
-func (f Format) Check(t types.Type, args []dircmnt.KeyValue) error {
-	if _, err := f.helper(args); err != nil {
+func (f Format) Check(t types.Type, name string) error {
+	if _, err := f.helper(name); err != nil {
 		return argsError(err)
 	}
 
@@ -68,8 +66,8 @@ func (f Format) Check(t types.Type, args []dircmnt.KeyValue) error {
 }
 
 // Emit calls the helper of the format.
-func (f Format) Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue) (string, error) {
-	h, err := f.helper(args)
+func (f Format) Emit(e Emitter, t types.Type, v string, name string) (string, error) {
+	h, err := f.helper(name)
 	if err != nil {
 		return "", err
 	}
@@ -79,17 +77,17 @@ func (f Format) Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue)
 	return h.Name + "(" + convert(t, types.Typ[types.String], "string", v) + ")", nil
 }
 
-// helper returns the helper of the format args name.
-func (f Format) helper(args []dircmnt.KeyValue) (FormatHelper, error) {
+// helper returns the helper of the format name.
+func (f Format) helper(name string) (FormatHelper, error) {
 	known := strings.Join(slices.Sorted(maps.Keys(f.Formats)), ", ")
 
-	if len(args) != 1 || args[0].HasValue {
+	if name == "" {
 		return FormatHelper{}, fmt.Errorf("want one format name; known: %s", known)
 	}
 
-	h, ok := f.Formats[args[0].Key]
+	h, ok := f.Formats[name]
 	if !ok {
-		return FormatHelper{}, fmt.Errorf("unknown format %q; known: %s", args[0].Key, known)
+		return FormatHelper{}, fmt.Errorf("unknown format %q; known: %s", name, known)
 	}
 
 	return h, nil

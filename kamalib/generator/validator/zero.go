@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"go/types"
 	"strconv"
-
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
 
-// Zero is the validator //kama:validate:zero: the value is the zero value.
+// Zero is the validator //kama:validate zero: the value is the zero value.
 //
 // It applies to the types Required applies to. A pointer, slice, map,
 // channel, function or interface must be nil. A type with a method
@@ -23,9 +21,9 @@ type Zero struct{}
 func (Zero) Name() string { return "zero" }
 
 // Check accepts the types the doc comment of Zero lists, without args.
-func (Zero) Check(t types.Type, args []dircmnt.KeyValue) error {
-	if len(args) > 0 {
-		return argsError(fmt.Errorf("unknown args %q; want none", spellArgs(args)))
+func (Zero) Check(t types.Type, arg string) error {
+	if err := noArg(arg); err != nil {
+		return err
 	}
 
 	if _, _, ok := zeroCall(t, ""); !ok {
@@ -39,7 +37,7 @@ func (Zero) Check(t types.Type, args []dircmnt.KeyValue) error {
 }
 
 // Emit calls the helper the test of t needs.
-func (Zero) Emit(e Emitter, t types.Type, v string, _ []dircmnt.KeyValue) (string, error) {
+func (Zero) Emit(e Emitter, t types.Type, v string, _ string) (string, error) {
 	helper, call, ok := zeroCall(t, v)
 	if !ok {
 		return "", fmt.Errorf("zero: unsupported type %s", t)

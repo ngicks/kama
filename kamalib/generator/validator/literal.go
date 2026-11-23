@@ -38,6 +38,17 @@ func comparison(kv dircmnt.KeyValue) (op, operand string, err error) {
 	)
 }
 
+// argTokens splits arg, the argument of a validator taking several
+// tokens, as dircmnt.ParseArgsKeyValue does.
+func argTokens(arg string) ([]dircmnt.KeyValue, error) {
+	args, err := dircmnt.ParseArgsKeyValue(arg)
+	if err != nil {
+		return nil, argsError(err)
+	}
+
+	return args, nil
+}
+
 // comparisons reports why args are not one or more comparisons.
 func comparisons(args []dircmnt.KeyValue) error {
 	if len(args) == 0 {

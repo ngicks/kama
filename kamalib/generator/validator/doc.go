@@ -4,9 +4,9 @@
 //
 //	func (v T) Validate(stopOnFirstError bool) error
 //
-// Validate runs the validators that //kama:validate:<name> directives put
-// on the fields of T, validates the values the fields hold through their
-// own Validate, and calls a hook method per field. It returns errors of
+// Validate runs the validators that //kama:validate directives name on the
+// fields of T, validates the values the fields hold through their own
+// Validate, and calls a hook method per field. It returns errors of
 // package github.com/ngicks/kama/kamalib/pkg/validation, located by the
 // json names of the fields. Proc runs Generate as the workflow step kind
 // validate.generate.
@@ -32,12 +32,56 @@
 // spells, or like a helper the generated code of its package calls,
 // shadows it. Each is an error wrapping ErrConflict.
 //
+// # Directive
+//
+// One directive, //kama:validate, carries every option. Its args follow the
+// grammar of dircmnt.ParseArgsKeyValue: space-separated words written key
+// or key=value. A value is a bare word or a quoted or raw Go string literal:
+//
+//	//kama:validate hook=off
+//	type User struct {
+//		//kama:validate required
+//		Name string
+//		//kama:validate required length=">=1 <=10"
+//		Tags []string
+//		//kama:validate regexp="^[a-z-]+$" hook=on
+//		Slug string
+//		//kama:validate format=date
+//		Born string
+//		//kama:validate cmp=">=0 <100" const="1 2 3"
+//		N int
+//		//kama:validate const=`"red" "dark blue"`
+//		Color string
+//	}
+//
+// The place of the directive gives its args their meaning:
+//
+//   - In the doc comment of a type, the directive marks the type. The arg
+//     ignore exempts the type instead. The arg hook=on or hook=off sets the
+//     default hook of the fields of the type. Targets and Hooks describe
+//     them.
+//   - On a struct field, each arg names a validator, and the arg hook=on or
+//     hook=off switches the hook of the field. Validators and Hooks
+//     describe them.
+//   - In a free-floating comment, the arg file or package marks the types
+//     of the file or of the package. Targets describes them.
+//
+// Several //kama:validate lines on one type or one field count as one
+// directive. Their args are joined in source order. hook given twice on one
+// type or field is an error wrapping ErrDirective. The words hook, ignore,
+// file and package name no validator.
+//
+// A sub-directive //kama:validate:<name> is an error wrapping ErrDirective.
+// The error shows the args of //kama:validate standing for it. For
+// //kama:validate:length >=1 it shows //kama:validate length=">=1".
+//
 // # Targets
 //
 // The generator takes targets from the loaded packages only, by directives
 // or by the option file entries standing for them:
 //
-//   - //kama:validate in the doc comment of a type marks it. In the doc
+//   - //kama:validate in the doc comment of a type marks it, with or
+//     without hook=on or hook=off. In the doc
 //     comment of a type declaration with several specs, as in
 //     type ( A struct{}; B struct{} ), it marks every type of the
 //     declaration, and so do the other directives of types.
@@ -148,9 +192,9 @@
 // of another package, as in type T other.S. Generated code cannot spell
 // them. For each other field it runs, in this order:
 //
-//  1. The validators of the directives on the field, in the order the
-//     directive names first appear. Several lines of one directive on one
-//     field count as one line: their args are joined in source order.
+//  1. The validators the directive on the field names, in the order
+//     written. Several directive lines on one field count as one line:
+//     their args are joined in source order.
 //  2. The nested validation of the values the field holds. Validate walks
 //     through pointers, slices, arrays, map values, the fields of struct
 //     type literals and the option types to each value of a target, of an
@@ -212,40 +256,56 @@
 // package marks and option file entries count as marks. The hooks of a
 // dependant are off by default. A field whose hook is on and missing, or
 // has another signature, is a generation error wrapping ErrHook. The error
-// names the type, the field, the expected signature and the directive
-// turning the hook off. These fuses override the default:
+// names the type, the field, the expected signature and the arg turning
+// the hook off. These args of //kama:validate override the default:
 //
-//   - //kama:validate:hook off in the doc comment of a type turns the hooks
-//     of all its fields off, and //kama:validate:hook on turns them on.
-//   - //kama:validate:hook off on a field turns its hook off, and
-//     //kama:validate:hook on turns it on.
+//   - hook=off in the doc comment of a type turns the hooks of all its
+//     fields off, and hook=on turns them on.
+//   - hook=off on a field turns its hook off, and hook=on turns it on.
 //
-// A field fuse wins over a type fuse, and a type fuse wins over the
-// default. A dependant opts in with //kama:validate:hook on, and a field
-// opts back in under a type-level off. A hook fuse on a type or a field of
-// a type that gets no Validate is an error wrapping ErrDirective.
+// A field arg wins over a type arg, and a type arg wins over the default.
+// A field opts back in under a type-level hook=off.
+//
+// Every //kama:validate in the doc comment of a type marks the type unless
+// it holds ignore. A dependant therefore opts in to its hooks with
+// //kama:validate hook=on, and that directive marks it. A dependant is a
+// target already, so the mark changes nothing else for it. The type stays a
+// target when it no longer holds anything to validate. hook on a type or on a field of
+// a type that gets no Validate, as in //kama:validate ignore hook=on, is an
+// error wrapping ErrDirective.
 //
 // # Validators
 //
-// A directive //kama:validate:<name> <args> on a struct field of a target
-// runs the validator registered under name. dircmnt.ParseArgsKeyValue
-// parses the args as space-separated bare or quoted tokens. A bare token
-// starting with <, >, = or ! is one comparison, as in >=1 or =="a b".
-// Several validators on one field must all pass. An unknown name is an
-// error wrapping ErrDirective. A validator on a field of a type that gets
-// no Validate is an error wrapping ErrDirective. //kama:validate on a field
-// and //kama:validate:<name> on a type or a free-floating comment are
-// errors wrapping ErrDirective too. The hook fuses are the only
-// //kama:validate:<name> directives a type takes. A validator applied to a
-// type it cannot handle, or with args it does not accept, is an error
-// wrapping ErrUnsupported that names the field, the directive and the type.
+// An arg of //kama:validate on a struct field of a target names a
+// validator of the registry: name alone, or name=<arg>. The validators run
+// in the order written. arg is one string. The directive grammar unquotes
+// it, and the validator receives it unchanged. Each validator parses its
+// own arg. length, cmp and const split it into tokens with
+// dircmnt.ParseArgsKeyValue. A bare token starting with <, >, = or ! is one
+// comparison, as in >=1 or =="a b". regexp takes the whole arg as its
+// pattern. An empty arg, as in name="", counts as no arg.
+//
+// Several validators on one field must all pass. A name the registry does
+// not hold is an error wrapping ErrDirective. The error names the field
+// and lists the known validators. These are errors wrapping ErrDirective
+// too:
+//
+//   - the same validator named twice on one field.
+//   - a validator on a field of a type that gets no Validate.
+//   - //kama:validate without args on a field.
+//   - a validator name in the doc comment of a type or in a free-floating
+//     comment.
+//
+// A validator applied to a type it cannot handle, or with an arg it does
+// not accept, is an error wrapping ErrUnsupported. The error names the
+// field, the validator and the type.
 //
 // The generator applies a validator to the type of the field first. When
 // the validator rejects that type and the field is a pointer, an
 // opt.Option or an und.Und, it applies the validator to the value held,
 // under a guard that skips the validator when no value is held. The
 // generator reports an error wrapping ErrArgs without that second attempt.
-// Such an error comes from the args alone. required, zero and nil
+// Such an error comes from the arg alone. required, zero and nil
 // therefore look at a pointer itself, and every other validator applies to
 // the pointee of a non-nil pointer. elastic.Elastic holds no single value
 // and takes required, zero and null only.
@@ -254,17 +314,17 @@
 // the sentinels listed here. Callers test the kind of a failure with
 // errors.Is:
 //
-//	required            validation.ErrRequired
-//	zero                validation.ErrZero
-//	nil                 validation.ErrNil
-//	null                validation.ErrNull
-//	regexp "<pattern>"  validation.ErrPattern
-//	length <op><n> ...  validation.ErrLength
-//	cmp <op><v> ...     validation.ErrCompare
-//	const <v> ...       validation.ErrConst
-//	format <name>       validation.ErrFormat
+//	required              validation.ErrRequired
+//	zero                  validation.ErrZero
+//	nil                   validation.ErrNil
+//	null                  validation.ErrNull
+//	regexp=<pattern>      validation.ErrPattern
+//	length="<op><n> ..."  validation.ErrLength
+//	cmp="<op><v> ..."     validation.ErrCompare
+//	const="<v> ..."       validation.ErrConst
+//	format=<name>         validation.ErrFormat
 //
-// required takes no args. The value is not the zero value: an opt.Option
+// required takes no arg. The value is not the zero value: an opt.Option
 // is some, an und.Und or an elastic.Elastic is defined, a pointer, slice,
 // map, channel, function or interface is not nil, a type with a method
 // IsZero() bool is not zero by it, and any other comparable type, a
@@ -274,45 +334,48 @@
 // an embedded pointer, as in struct{ *time.Time }, would panic on the zero
 // value. Such a type is compared with its zero value instead.
 //
-// zero takes no args and applies to the types required applies to. The
+// zero takes no arg and applies to the types required applies to. The
 // value is the zero value: a nillable value is nil, a type with IsZero,
 // the option types among them, is zero by it, and any other comparable
 // value equals its zero value. IsZero counts as for required.
 //
-// nil takes no args. The value of a pointer, slice, map, channel, function
+// nil takes no arg. The value of a pointer, slice, map, channel, function
 // or interface type is nil.
 //
-// null takes no args. The value is null by its method IsNull() bool, as an
+// null takes no arg. The value is null by its method IsNull() bool, as an
 // und.Und or an elastic.Elastic tells. The method must be declared or
 // promoted as for IsZero of required. null rejects type parameters and
 // nillable types: pointer, slice, map, channel, function and interface
 // types. Their nil value cannot call IsNull. A pointer therefore gets the
 // validator on its pointee, and a nil pointer passes.
 //
-// regexp takes one pattern, quoted when it holds =, spaces or quotes. The
-// value of a string or []byte underlying type matches the RE2 pattern. The
+// regexp takes its whole arg as the pattern, as in regexp="^[a-z]+$". A
+// quoted or raw string lets the pattern hold spaces, = and quotes, as in
+// regexp=`^a="b c"$`. The value of a string or []byte underlying type
+// matches the RE2 pattern. The
 // generator compiles the pattern to reject a bad one, and the generated
 // code compiles it once into a package-level variable.
 //
 // length takes one or more comparisons <op><n> with the operators >, >=,
-// ==, !=, <= and <, and a non-negative integer literal n, as in >=1 <=10.
+// ==, !=, <= and <, and a non-negative integer literal n, as in
+// length=">=1 <=10".
 // n may carry a unary plus. len of the value satisfies every comparison.
 // It applies to string, slice, array, map and channel underlying types.
 // The length of a string is its number of bytes.
 //
 // cmp takes one or more comparisons <op><v>, where v is a Go literal of the
 // type of the value: a number, a quoted string, true or false, as in
-// >=0 <100 or >"b". The value satisfies every comparison. It applies to
+// cmp=">=0 <100" or cmp=`>"b"`. The value satisfies every comparison. It applies to
 // integer, float and string underlying types, and with == and != only to
 // bool underlying types. A literal the type cannot represent is an error.
 //
 // const takes one or more Go literals of the type of the value, as in
-// const 1 2 3 or const "red" "dark blue". The value equals one of them. It
-// applies to bool, numeric and string underlying types. A string type takes
-// quoted literals only and any other type bare literals only. const "1"
-// and const 1 therefore never mean the same.
+// const="1 2 3" or const=`"red" "dark blue"`. The value equals one of them.
+// It applies to bool, numeric and string underlying types. A string type
+// takes quoted literals only and any other type bare literals only.
+// const=`"1"` and const=1 therefore never mean the same.
 //
-// format takes one format name. The value of a string underlying type is
+// format takes one format name, as in format=date. The value of a string underlying type is
 // of that format. DefaultFormats holds the built-in formats: date parses
 // with time.DateOnly, date-time parses with time.RFC3339, and url parses
 // with net/url and has a scheme and a host.
@@ -340,21 +403,23 @@
 // Validators are entries of a Registry, and Options.Registry selects it.
 // DefaultRegistry returns a new registry holding the built-in validators.
 // The built-in validators use the same API a caller does. A Validator
-// names its directive, checks a type and args, and emits an expression of
-// type error. Emit may declare helper functions through the Emitter. The
+// names itself, checks a type and an arg, and emits an expression of type
+// error. Emit may declare helper functions through the Emitter. The
 // Emitter puts them in the helpers file of the package. The expression may
 // refer to the bool parameter stopOnFirstError of the function it lands
 // in. Emitter.StopOnFirstError returns the name the function spells it by.
 // Clone a registry before changing it. Registering a validator under the
-// name of a built-in replaces both its args and its code:
+// name of a built-in replaces both its arg and its code. A validator named
+// hook, ignore, file or package makes Generate fail with an error wrapping
+// ErrConflict. A field names the validator below as //kama:validate even:
 //
 //	type even struct{}
 //
 //	func (even) Name() string { return "even" }
 //
-//	func (even) Check(t types.Type, args []dircmnt.KeyValue) error {
-//		if len(args) > 0 {
-//			return fmt.Errorf("%w: want no args", validator.ErrArgs)
+//	func (even) Check(t types.Type, arg string) error {
+//		if arg != "" {
+//			return fmt.Errorf("%w: want no arg", validator.ErrArgs)
 //		}
 //		if b, ok := t.Underlying().(*types.Basic); !ok || b.Info()&types.IsInteger == 0 {
 //			return fmt.Errorf("%s is not an integer type", t)
@@ -363,7 +428,7 @@
 //	}
 //
 //	func (even) Emit(
-//		e validator.Emitter, _ types.Type, v string, _ []dircmnt.KeyValue,
+//		e validator.Emitter, _ types.Type, v string, _ string,
 //	) (string, error) {
 //		e.Declare("kamaValidateEven", func(s validator.Spelling) (string, error) {
 //			errs, err := s.Import("errors")
@@ -425,21 +490,22 @@
 //	    all_types: true             # //kama:validate package
 //	    types:
 //	      Order:                    # //kama:validate on Order
-//	        hook: false             # //kama:validate:hook off on Order
+//	        hook: false             # hook=off on Order
 //	        fields:
 //	          Id:
 //	            validators:
-//	              - name: required  # //kama:validate:required
-//	              - name: regexp    # //kama:validate:regexp "^[A-Z]+$"
-//	                args: '"^[A-Z]+$"'
+//	              - name: required  # required on Id
+//	              - name: regexp    # regexp="^[A-Z]+$" on Id
+//	                args: '^[A-Z]+$'
 //	          Note:
-//	            hook: true          # //kama:validate:hook on
+//	            hook: true          # hook=on on Note
 //	      Draft:
 //	        ignore: true            # //kama:validate ignore on Draft
 //
 // Listing a type marks it unless ignore is true. Its hooks are then on by
-// default. args take the grammar of the args of a directive, and a
-// validator listed twice on one field is an error. The file has no
+// default. args is the arg a directive gives after name=, unquoted. An
+// empty or absent args stands for no arg. A validator listed twice on one
+// field is an error. The file has no
 // equivalent of //kama:validate file. version is required and is 1. The
 // entry of a type replaces every directive on the type and its fields, and
 // Generate returns a warning wrapping genopt.ErrOverridden for a type whose

@@ -3,11 +3,9 @@ package validator
 import (
 	"fmt"
 	"go/types"
-
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
 
-// Nil is the validator //kama:validate:nil: the value is nil.
+// Nil is the validator //kama:validate nil: the value is nil.
 //
 // It applies to pointer, slice, map, channel, function and interface
 // types.
@@ -16,10 +14,10 @@ type Nil struct{}
 // Name returns "nil".
 func (Nil) Name() string { return "nil" }
 
-// Check accepts nillable types, without args.
-func (Nil) Check(t types.Type, args []dircmnt.KeyValue) error {
-	if len(args) > 0 {
-		return argsError(fmt.Errorf("unknown args %q; want none", spellArgs(args)))
+// Check accepts nillable types, without an argument.
+func (Nil) Check(t types.Type, arg string) error {
+	if err := noArg(arg); err != nil {
+		return err
 	}
 
 	if !nillable(t) {
@@ -30,12 +28,12 @@ func (Nil) Check(t types.Type, args []dircmnt.KeyValue) error {
 }
 
 // Emit calls kamaValidateNil.
-func (Nil) Emit(e Emitter, _ types.Type, v string, _ []dircmnt.KeyValue) (string, error) {
+func (Nil) Emit(e Emitter, _ types.Type, v string, _ string) (string, error) {
 	e.Declare(nilHelperName, nilHelperDecl)
 	return nilHelperName + "(" + v + " == nil)", nil
 }
 
-// Null is the validator //kama:validate:null: the value is null by its
+// Null is the validator //kama:validate null: the value is null by its
 // method IsNull() bool, as an und.Und or an elastic.Elastic tells.
 //
 // It applies to types with that method other than type parameters and
@@ -49,10 +47,10 @@ type Null struct{}
 func (Null) Name() string { return "null" }
 
 // Check accepts types with a method IsNull() bool that are not nillable,
-// without args.
-func (Null) Check(t types.Type, args []dircmnt.KeyValue) error {
-	if len(args) > 0 {
-		return argsError(fmt.Errorf("unknown args %q; want none", spellArgs(args)))
+// without an argument.
+func (Null) Check(t types.Type, arg string) error {
+	if err := noArg(arg); err != nil {
+		return err
 	}
 
 	_, isParam := types.Unalias(t).(*types.TypeParam)
@@ -73,7 +71,7 @@ func (Null) Check(t types.Type, args []dircmnt.KeyValue) error {
 }
 
 // Emit calls kamaValidateNull with the result of IsNull.
-func (Null) Emit(e Emitter, _ types.Type, v string, _ []dircmnt.KeyValue) (string, error) {
+func (Null) Emit(e Emitter, _ types.Type, v string, _ string) (string, error) {
 	e.Declare(nullHelperName, nullHelperDecl)
 	return nullHelperName + "(" + v + ".IsNull())", nil
 }

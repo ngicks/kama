@@ -285,7 +285,7 @@ func (w *writer) apply(
 	vo ValidatorOptions,
 	wrap wrapFunc,
 ) (genStep, error) {
-	checkErr := val.Check(t, vo.kv)
+	checkErr := val.Check(t, vo.Args)
 	if checkErr == nil {
 		return w.check(wrap(func(c genCtx) (string, error) {
 			xs, err := x(c)
@@ -298,7 +298,7 @@ func (w *writer) apply(
 				return "", err
 			}
 
-			return val.Emit(exprEmitter{emitter: w.emitter, stop: stop}, t, xs, vo.kv)
+			return val.Emit(exprEmitter{emitter: w.emitter, stop: stop}, t, xs, vo.Args)
 		})), nil
 	}
 

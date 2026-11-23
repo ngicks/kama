@@ -8,15 +8,14 @@ import (
 
 // Shapes holds values to validate in every shape the generator walks.
 //
-//kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type Shapes[_ any] struct {
 	E  elastic.Elastic[Tag] `json:"e"`
 	A  [2]Tag               `json:"a"`
 	N  []map[string][]*Tag  `json:"n"`
 	BP Box[*Tag]            `json:"bp"`
 	Embedded
-	//kama:validate:required
+	//kama:validate required
 	At time.Time `json:"at"`
 	S  struct {
 		T Tag `json:"t"`
@@ -25,17 +24,15 @@ type Shapes[_ any] struct {
 
 // Elastics holds elastic.Elastic values as elements of containers.
 //
-//kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type Elastics struct {
 	S []elastic.Elastic[Tag]          `json:"s"`
 	M map[string]elastic.Elastic[Tag] `json:"m"`
 	A [2]elastic.Elastic[Tag]         `json:"a"`
 }
 
-//kama:validate
-//kama:validate:hook off
+//kama:validate hook=off
 type Embedded struct {
-	//kama:validate:required
+	//kama:validate required
 	Code string `json:"code"`
 }

@@ -8,12 +8,11 @@ import (
 	"go/types"
 	"regexp"
 	"strconv"
-
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
 
-// Regexp is the validator //kama:validate:regexp "<pattern>": the value
-// matches the RE2 pattern, as package regexp reads it.
+// Regexp is the validator //kama:validate regexp=<pattern>: the value
+// matches the RE2 pattern, as package regexp reads it. The whole argument
+// is the pattern, so a quoted pattern may hold spaces, = and quotes.
 //
 // It applies to types of a string underlying type and to types of the
 // underlying type []byte. The pattern is compiled once, into a
@@ -23,12 +22,11 @@ type Regexp struct{}
 // Name returns "regexp".
 func (Regexp) Name() string { return "regexp" }
 
-// Check accepts one pattern that compiles, on the types the doc comment of
+// Check accepts a pattern that compiles, on the types the doc comment of
 // Regexp lists.
-func (Regexp) Check(t types.Type, args []dircmnt.KeyValue) error {
-	pattern, err := regexpPattern(args)
-	if err != nil {
-		return argsError(err)
+func (Regexp) Check(t types.Type, pattern string) error {
+	if pattern == "" {
+		return argsError(errors.New("want a pattern, as in regexp=\"^[a-z]+$\""))
 	}
 
 	if _, err := regexp.Compile(pattern); err != nil {
@@ -44,12 +42,7 @@ func (Regexp) Check(t types.Type, args []dircmnt.KeyValue) error {
 
 // Emit calls the helper matching strings or bytes with the variable
 // holding the compiled pattern.
-func (Regexp) Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue) (string, error) {
-	pattern, err := regexpPattern(args)
-	if err != nil {
-		return "", err
-	}
-
+func (Regexp) Emit(e Emitter, t types.Type, v string, pattern string) (string, error) {
 	re := regexpVarName(pattern)
 	e.Declare(re, func(s Spelling) (string, error) {
 		pkg, err := s.Import("regexp")
@@ -75,17 +68,6 @@ func (Regexp) Emit(e Emitter, t types.Type, v string, args []dircmnt.KeyValue) (
 	e.Declare(regexpBytesName, regexpBytesDecl)
 
 	return regexpBytesName + "(" + re + ", " + convert(t, bytesType, "[]byte", v) + ")", nil
-}
-
-// regexpPattern returns the pattern args hold.
-func regexpPattern(args []dircmnt.KeyValue) (string, error) {
-	if len(args) != 1 || args[0].HasValue {
-		return "", errors.New(
-			"want one pattern, as in \"^[a-z]+$\"; quote a pattern holding =, spaces or quotes",
-		)
-	}
-
-	return args[0].Key, nil
 }
 
 // regexpVarName names the variable holding pattern compiled after the
