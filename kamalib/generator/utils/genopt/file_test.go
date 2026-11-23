@@ -163,11 +163,6 @@ func TestLoadFilesErrors(t *testing.T) {
 			contains: []string{"opts.yaml: version: 1.5 is not an integer"},
 		},
 		{
-			name:     "unknown top key",
-			doc:      "version: 1\nfiles:\n",
-			contains: []string{"opts.yaml: files: unknown key; want version, packages"},
-		},
-		{
 			name:     "packages not a table",
 			doc:      "version: 1\npackages:\n  - a\n",
 			contains: []string{"opts.yaml: packages: [a] is not a table"},
@@ -247,6 +242,7 @@ func TestLoadFilesUnknownKeys(t *testing.T) {
 	fsys := fstest.MapFS{
 		"opts.yaml": {Data: []byte(`
 version: 1
+files: 1
 packages:
   m/a:
     value: pkg
@@ -266,6 +262,7 @@ packages:
 `)},
 		"opts.json": {Data: []byte(`{
   "version": 1,
+  "files": 1,
   "packages": {
     "m/a": {
       "value": "pkg",
@@ -282,6 +279,7 @@ packages:
 }`)},
 		"opts.toml": {Data: []byte(`
 version = 1
+files = 1
 
 [packages."m/a"]
 value = "pkg"
@@ -316,6 +314,7 @@ value = "f"
 			}
 
 			assert.DeepEqual(t, warnings, []string{
+				"genopt: unknown key: " + name + ": files",
 				"genopt: unknown key: " + at + ".zz",
 				"genopt: unknown key: " + at + ".types.S.sub.yy",
 				"genopt: unknown key: " + at + ".types.S.sub.zz",

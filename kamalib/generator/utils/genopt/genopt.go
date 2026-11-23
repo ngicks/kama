@@ -54,11 +54,12 @@
 //	            <keys of F>
 //
 // A package option file holds version and one entry of packages at its top
-// level. The loader peels version, packages, types and fields, and decodes
-// the remaining keys of each table into its leaf through encoding/json/v2,
-// whatever the format of the file. A leaf uses json struct tags or a JSON
-// unmarshaler of its own. A leaf whose pointer implements SourceSetter
-// learns the source of its entry. A leaf whose pointer implements
+// level. A key of a central option file other than version and packages is
+// a warning wrapping ErrUnknownKey. The loader peels version, packages,
+// types and fields, and decodes the remaining keys of each table into its
+// leaf through encoding/json/v2, whatever the format of the file. A leaf
+// uses json struct tags or a JSON unmarshaler of its own. A leaf whose
+// pointer implements SourceSetter learns the source of its entry. A leaf whose pointer implements
 // UnknownKeyer tells the keys of its entry it does not know, and each of
 // them is a warning wrapping ErrUnknownKey that names the file and the full
 // key path.
@@ -428,8 +429,8 @@ var (
 	// ErrOverridden reports options dropped for those of a source that
 	// comes first. It is a warning.
 	ErrOverridden = errors.New("genopt: options overridden")
-	// ErrUnknownKey reports a key of an option file entry that its leaf does
-	// not know. It is a warning.
+	// ErrUnknownKey reports a key of an option file that the loader or the
+	// leaf of its entry does not know. It is a warning.
 	ErrUnknownKey = errors.New("genopt: unknown key")
 )
 

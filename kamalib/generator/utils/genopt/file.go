@@ -360,14 +360,14 @@ func (d *fileDecoder[P, T, F]) table(v any, path []string) (map[string]any, bool
 	return nil, false
 }
 
-// unknownKeys reports the keys of t other than known.
+// unknownKeys warns of the keys of t other than known.
 func (d *fileDecoder[P, T, F]) unknownKeys(t map[string]any, path []string, known ...string) {
 	unknown := opiter.WrapSeq(maps.Keys(t)).
 		Filter(func(k string) bool { return !slices.Contains(known, k) }).
 		Collect(slices.Sorted)
 
 	for _, k := range unknown {
-		d.fail(appendPath(path, k), "unknown key; want %s", strings.Join(known, ", "))
+		d.warn(appendPath(path, k))
 	}
 }
 
