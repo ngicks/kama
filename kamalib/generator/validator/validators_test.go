@@ -3,6 +3,7 @@ package validator
 import (
 	"fmt"
 	"go/types"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
 // TestBuiltinValidators applies every built-in validator to the types it
@@ -452,6 +454,92 @@ func TestReplaceBuiltin(t *testing.T) {
 	// The default registry keeps the built-in, which wants comparisons.
 	_, err = generate(t, files, Options{})
 	assert.ErrorContains(t, err, "want one or more comparisons")
+}
+
+// multiple is the validator of the package doc of rule, written as the doc
+// writes it. The doc example declares its own lang, of the same type as the
+// lang of this package.
+type multiple struct{}
+
+func (multiple) Name() string { return "multiple" }
+
+type multipleOptions struct{ N int64 }
+
+func (multiple) Parse(arg string) (rule.Rule, error) {
+	n, err := strconv.ParseInt(arg, 10, 64)
+	if err != nil || n <= 0 {
+		return nil, fmt.Errorf("%w: want a positive integer", rule.ErrArgs)
+	}
+
+	return multipleOptions{N: n}, nil
+}
+
+func (multipleOptions) Check(t types.Type) error {
+	if b, ok := t.Underlying().(*types.Basic); !ok || b.Info()&types.IsInteger == 0 {
+		return fmt.Errorf("%s is not an integer type", t)
+	}
+
+	return nil
+}
+
+func (o multipleOptions) Emit(e rule.Emitter, _ types.Type, v rule.Gen) (rule.Gen, error) {
+	e.Declare("kamaValidateMultiple", func(imp rule.Importer) rule.Step {
+		return lang.Func(
+			lang.Expr("func kamaValidateMultiple(%s, %s int64) error",
+				genhelper.Shadow("got"), genhelper.Shadow("n")),
+			lang.If(
+				lang.Expr("%s%%%s != 0", genhelper.Ref("got"), genhelper.Ref("n")),
+				lang.Stmt(`return %s.New("want a multiple")`, imp.Import("errors")),
+				nil,
+			),
+			lang.Stmt("return nil"),
+		)
+	})
+
+	return lang.Expr("kamaValidateMultiple(int64(%s), %d)", v, o.N), nil
+}
+
+// TestDocExample generates and builds code with the validator the package
+// doc of rule writes.
+func TestDocExample(t *testing.T) {
+	reg := rule.DefaultRegistry().Clone()
+	reg.Register(multiple{})
+
+	files := map[string]string{
+		"a.go": "package x\n\ntype Count uint8\n\n" +
+			"//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+			"\t//kama:validate multiple=3\n\tN int\n" +
+			"\t//kama:validate multiple=4\n\tC Count\n" +
+			"\t//kama:validate multiple=5\n\tP *int64\n}\n",
+	}
+
+	f, opts := stage(t, files)
+	out, err := generateInto(t, f, opts, Options{Registry: reg})
+	assert.NilError(t, err)
+	assert.NilError(t, gentest.Build(f, opts))
+
+	assertContains(t, out["a.kama_validate.go"],
+		check(`validation.Field(kamaValidateMultiple(int64(v.N), 3), "N")`),
+		check(`validation.Field(kamaValidateMultiple(int64(v.C), 4), "C")`),
+		check(`validation.Field(kamaValidateMultiple(int64((*v.P)), 5), "P")`),
+	)
+	assertContains(t, out[HelpersFile],
+		"func kamaValidateMultiple(got, n int64) error {",
+		"if got%n != 0 {",
+	)
+
+	_, err = generate(t, map[string]string{
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+			"\t//kama:validate multiple=0\n\tN int\n}\n",
+	}, Options{Registry: reg})
+	assert.ErrorIs(t, err, rule.ErrArgs)
+
+	_, err = generate(t, map[string]string{
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+			"\t//kama:validate multiple=3\n\tS string\n}\n",
+	}, Options{Registry: reg})
+	assert.ErrorIs(t, err, ErrUnsupported)
+	assert.ErrorContains(t, err, "string is not an integer type")
 }
 
 // TestFormatExtra registers a format validator with a format besides the

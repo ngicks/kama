@@ -46,6 +46,7 @@
 //		if err != nil || n <= 0 {
 //			return nil, fmt.Errorf("%w: want a positive integer", rule.ErrArgs)
 //		}
+//
 //		return multipleOptions{N: n}, nil
 //	}
 //
@@ -53,6 +54,7 @@
 //		if b, ok := t.Underlying().(*types.Basic); !ok || b.Info()&types.IsInteger == 0 {
 //			return fmt.Errorf("%s is not an integer type", t)
 //		}
+//
 //		return nil
 //	}
 //
@@ -71,6 +73,7 @@
 //				lang.Stmt("return nil"),
 //			)
 //		})
+//
 //		return lang.Expr("kamaValidateMultiple(int64(%s), %d)", v, o.N), nil
 //	}
 //
