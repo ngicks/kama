@@ -59,10 +59,11 @@
 // types and fields, and decodes the remaining keys of each table into its
 // leaf through encoding/json/v2, whatever the format of the file. A leaf
 // uses json struct tags or a JSON unmarshaler of its own. A leaf whose
-// pointer implements SourceSetter learns the source of its entry. A leaf whose pointer implements
-// UnknownKeyer tells the keys of its entry it does not know, and each of
-// them is a warning wrapping ErrUnknownKey that names the file and the full
-// key path.
+// pointer implements SourceSetter learns the source of its entry. A leaf
+// whose pointer implements UnknownKeyer tells the keys of its entry it does
+// not know, and each of them is a warning wrapping ErrUnknownKey that names
+// the file and the full key path. A leaf whose pointer does not implement
+// UnknownKeyer drops the keys it does not know without a warning.
 //
 // The tool-wide directive //tool:option-file <generator>=<path> in a
 // free-floating comment names the package option file of a generator. The
@@ -260,7 +261,8 @@ type SourceSetter interface {
 
 // UnknownKeyer is implemented by the pointer types of leaf option types
 // that capture the keys of an option file entry they do not know, as a
-// field Unknown map[string]any `json:",embed"` does.
+// field Unknown map[string]any `json:",embed"` does. The loader warns of
+// no unknown key of a leaf whose pointer does not implement it.
 type UnknownKeyer interface {
 	// UnknownKeys returns the key paths of the unknown keys, relative to the
 	// entry. They include the unknown keys of nested tables.

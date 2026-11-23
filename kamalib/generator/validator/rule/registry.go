@@ -66,7 +66,7 @@ type Importer interface {
 	Import(path string) Gen
 }
 
-// Emitter is what a Validator may use while emitting.
+// Emitter is what a Rule may use while emitting.
 type Emitter interface {
 	Importer
 	// Declare declares the package-level declaration named name in the

@@ -172,10 +172,10 @@ func renderHelpersWith(
 	return content, e, nil
 }
 
-// helperLocals are the identifiers the built-in helpers declare, which an
-// import of the same name would shadow.
+// helperLocals mirror the locals the helper declarations of package rule
+// declare through Shadow, which an import of the same name would shadow.
 var helperLocals = []string{
-	"T", "t", "v", "zero", "ok", "got", "want", "op", "re", "s", "u", "err", "rv", "spelled",
+	"T", "t", "v", "zero", "ok", "got", "want", "op", "re", "u", "err", "rv", "spelled",
 	"i", "w", "stopOnFirstError", "errs",
 }
 

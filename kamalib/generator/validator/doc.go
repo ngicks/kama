@@ -303,10 +303,11 @@
 // The generator applies a validator to the type of the field first. When
 // the validator rejects that type and the field is a pointer, an
 // opt.Option or an und.Und, it applies the validator to the value held,
-// under a guard that skips the validator when no value is held. The
-// generator reports an error wrapping rule.ErrArgs without that second
-// attempt. Such an error comes from the arg alone. required, zero and nil
-// therefore look at a pointer itself, and every other validator applies to
+// under a guard that skips the validator when no value is held. Only an
+// error of Rule.Check leads to that second attempt. The generator reports
+// every error of Validator.Parse at once. Such an error comes from the arg
+// alone and wraps rule.ErrArgs. required, zero and nil therefore look at a
+// pointer itself, and every other validator applies to
 // the pointee of a non-nil pointer. elastic.Elastic holds no single value
 // and takes required, zero and null only.
 //
