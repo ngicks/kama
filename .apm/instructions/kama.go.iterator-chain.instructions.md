@@ -9,7 +9,7 @@ Go code in this repository transforms sequences with `github.com/ngicks/opiter` 
 
 #### When to use a chain
 
-- Write a chain for a filter, a map, a filter followed by a map, any / every / contains, find / first, unique, reduce / sum, flatten, and iteration over a map in key order.
+- Write a chain for a filter, a map, a filter followed by a map, any / every / contains, find / first, unique, count, reduce / sum, flatten, and iteration over a map in key order.
 - Keep a plain `for` loop for these cases:
   - The body returns an error that carries per-item context.
   - The body builds a set (`m[k] = true`) or mutates captured state.
@@ -26,7 +26,10 @@ Go code in this repository transforms sequences with `github.com/ngicks/opiter` 
 - Put every method on its own line. This holds for short chains and for chains with one method.
 - End a chain with `.CollectSlice()` to get a slice.
 - End a chain with `.Collect(collector)` to hand it to a collecting function, as in `.Collect(slices.Sorted)` or `.Collect(maps.Collect)`.
-- End a chain with `.Iter()` or `.Iter2()` only when the consumer takes more than the sequence, such as `slices.AppendSeq` or the `Concat` method.
+- End a chain with `.AppendSeq(s)` to append to the slice `s`. Do not call `slices.AppendSeq` on a chain.
+- End a chain with `.Count()` to count its values. Do not take `len` of a collected slice.
+- Pass a chain to the `Concat` method directly. Do not end it with `.Iter()` there.
+- End a chain with `.Iter()` or `.Iter2()` only when the consumer takes a plain `iter.Seq` or `iter.Seq2`, such as `slices.SortedFunc`, `maps.Insert` or a function parameter.
 - Write one chain for one transformation. Do not split a chain over intermediate variables that are used once.
   - Keep an intermediate variable when two or more statements read it.
 - Use the `FlatMap` method to flatten. The mapper returns an iterator, as in `FlatMap(func(d ast.Decl) iter.Seq[ast.Spec] { return slices.Values(specsOf(d)) })`.
@@ -36,6 +39,10 @@ out := opiter.WrapSeq2(opiter.MapsSorted(byPath)).
 	OmitF().
 	Map(func(h *Host) Host { return *h }).
 	CollectSlice()
+
+reserve = opiter.WrapSeq(slices.Values(tparams)).
+	Map(typeParamName).
+	AppendSeq(reserve)
 ```
 
 - gofmt indents the method lines one tab deeper than the first line. Keep that indentation.
@@ -56,6 +63,8 @@ names, err := opiter.TryCollect(
 		Disassemble(render),
 )
 ```
+
+- Call the function form of a step on a plain `iter.Seq` that no chain transforms, as in `opiter.Count(m.Imports())`. Do not wrap it into a chain of one method.
 
 #### Predicates, mappers and reducers
 

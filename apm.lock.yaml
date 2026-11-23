@@ -462,7 +462,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:2ae99edd236d39fd5adf5080a6259d88e337e9c149bce7ea1f331d0daad18fbc
+  content_hash: sha256:bee45bd9b54df5846a42c07cbc7b9d8f4cc31e5247dbdb27233dd501db67304a
 - kind: project-relative
   target: claude
   value: .claude/rules/kama.go.json-unknown-fields.md
@@ -1486,5 +1486,5 @@ local_deployed_files:
 - .claude/rules/kama.go.json-unknown-fields.md
 local_deployed_file_hashes:
   .claude/rules/kama.go.generator-single-source.md: sha256:ee61cda6f01bd5190f54431d38e5dee7bad9ff8a457159d6a6ecd4e7ebdb7bbd
-  .claude/rules/kama.go.iterator-chain.md: sha256:2ae99edd236d39fd5adf5080a6259d88e337e9c149bce7ea1f331d0daad18fbc
+  .claude/rules/kama.go.iterator-chain.md: sha256:bee45bd9b54df5846a42c07cbc7b9d8f4cc31e5247dbdb27233dd501db67304a
   .claude/rules/kama.go.json-unknown-fields.md: sha256:445fdec3644cbdaf0ba256913330c992140272c18fbac2a88202a08068664711
