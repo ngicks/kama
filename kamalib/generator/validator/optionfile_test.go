@@ -9,6 +9,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 )
@@ -53,13 +54,13 @@ func generateWithWarnings(
 		return nil, nil, err
 	}
 
-	return byBase(out), warnings, nil
+	return gentest.ByBase(out), warnings, nil
 }
 
 // optionFileOf finds the option file validate.yaml in the directory of t.
 func optionFileOf(t *testing.T) fileloader.Input {
 	return fileloader.PathInput{
-		Base:    inlineDir(t) + "/validate",
+		Base:    gentest.InlineDir(t) + "/validate",
 		Formats: []fileloader.Format{fileloader.FormatYaml},
 	}
 }

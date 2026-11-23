@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"gotest.tools/v3/assert"
 )
 
@@ -125,7 +126,7 @@ type Inner struct{ X int }
 `,
 	}
 	src := generateAndBuild(t, files)["a.kama_validate.go"]
-	fs := funcs(t, src)
+	fs := gentest.Funcs(t, src)
 
 	assertContains(t, fs["L.Validate"],
 		"for i, e := range v {",

@@ -8,6 +8,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 )
 
@@ -122,7 +123,7 @@ type A[T comparable] struct {
 }
 `,
 	})
-	fn := funcs(t, out["a.kama_validate.go"])["A.Validate"]
+	fn := gentest.Funcs(t, out["a.kama_validate.go"])["A.Validate"]
 
 	assertContains(t, fn,
 		`kamaValidateZeroComparable(v.Zero)`,
@@ -443,7 +444,7 @@ func TestReplaceBuiltin(t *testing.T) {
 	f, opts := stage(t, files)
 	out, err := generateInto(t, f, opts, Options{Registry: reg})
 	assert.NilError(t, err)
-	assert.NilError(t, build(f, opts))
+	assert.NilError(t, gentest.Build(f, opts))
 
 	assertContains(t, out["a.kama_validate.go"], `kamaValidateLengthOne(len(v.S))`)
 	assertNotContains(t, out[HelpersFile], "kamaValidateCompare")
@@ -488,7 +489,7 @@ func TestFormatExtra(t *testing.T) {
 	f, opts := stage(t, files)
 	out, err := generateInto(t, f, opts, Options{Registry: reg})
 	assert.NilError(t, err)
-	assert.NilError(t, build(f, opts))
+	assert.NilError(t, gentest.Build(f, opts))
 
 	assertContains(t, out["a.kama_validate.go"],
 		`kamaValidateFormatLower(v.S)`, `kamaValidateFormatDate(v.D)`)

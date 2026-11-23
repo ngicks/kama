@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 
 	"github.com/ngicks/opiter"
 
@@ -274,8 +275,8 @@ type A struct {
 }
 `,
 	}
-	pkgs := load(t, files)
-	opts := Options{Registry: registry(t), Now: testNow}
+	pkgs := gentest.Load(t, files)
+	opts := Options{Registry: registry(t), Now: gentest.Now}
 	first, _, err := Generate(pkgs, opts)
 	assert.NilError(t, err)
 	second, _, err := Generate(pkgs, opts)
@@ -295,7 +296,7 @@ type A struct {
 
 	assert.Assert(t, n != nil)
 
-	hdr, err := fileHeader(opts, n.Id.PackagePath, testNow())
+	hdr, err := fileHeader(opts, n.Id.PackagePath, gentest.Now())
 	assert.NilError(t, err)
 
 	f := &partialFile{src: n.Filename()}

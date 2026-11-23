@@ -14,55 +14,21 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
 
-// funcs returns the source of each function declared in src keyed by name,
-// methods keyed by receiver type and name as in T.M.
+// funcs is gentest.Funcs failing on a function without a generated marker.
 func funcs(t *testing.T, src string) map[string]string {
 	t.Helper()
 
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "x.go", src, parser.ParseComments)
-	assert.NilError(t, err)
-
-	out := map[string]string{}
-
-	for _, d := range f.Decls {
-		fd, ok := d.(*ast.FuncDecl)
-		if !ok {
-			continue
-		}
-
-		name := fd.Name.Name
-		if fd.Recv != nil {
-			recv := fd.Recv.List[0].Type
-			if s, ok := recv.(*ast.StarExpr); ok {
-				recv = s.X
-			}
-
-			for {
-				switch x := recv.(type) {
-				case *ast.IndexExpr:
-					recv = x.X
-					continue
-				case *ast.IndexListExpr:
-					recv = x.X
-					continue
-				}
-
-				break
-			}
-
-			name = recv.(*ast.Ident).Name + "." + name
-		}
-
-		out[name] = src[fset.Position(fd.Pos()).Offset:fset.Position(fd.End()).Offset]
+	_, decls := gentest.FuncDecls(t, src)
+	for name, fd := range decls {
 		_, marked := genmark.DefaultRegistry.Generated(fd.Doc)
 		assert.Assert(t, marked, "%s has no marker", name)
 	}
 
-	return out
+	return gentest.Funcs(t, src)
 }
 
 func TestCycleMapping(t *testing.T) {

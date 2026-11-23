@@ -14,6 +14,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	procgopackages "github.com/ngicks/kama/kamalib/proc/gopackages"
@@ -41,7 +42,7 @@ types:
 `})
 	assert.NilError(t, err)
 	assert.DeepEqual(t, loaded.PackageFiles, map[string]string{
-		modulePath(t): inlineDir(t) + "/kama_partial.yaml",
+		modulePath(t): gentest.InlineDir(t) + "/kama_partial.yaml",
 	})
 	assert.DeepEqual(t, optionViews(loaded.Option, modulePath(t)), map[string]any{
 		"all_types": true,
@@ -89,7 +90,7 @@ func TestPackageOptionFileDecodeErrors(t *testing.T) {
 			assert.ErrorIs(t, err, ErrOptionFile)
 
 			for _, s := range c.contains {
-				assert.ErrorContains(t, err, inlineDir(t)+"/kama_partial.yaml"+s)
+				assert.ErrorContains(t, err, gentest.InlineDir(t)+"/kama_partial.yaml"+s)
 			}
 		})
 	}
@@ -135,7 +136,7 @@ types:
 
 	for name, src := range byFile {
 		assert.Assert(t, strings.Contains(
-			src, "//\tpackage_option_file: \""+inlineDir(t)+"/kama_partial.yaml\"\n",
+			src, "//\tpackage_option_file: \""+gentest.InlineDir(t)+"/kama_partial.yaml\"\n",
 		))
 		byFile[name] = withoutRunParams(src)
 	}
@@ -273,7 +274,7 @@ func TestPackageOptionFileOverrides(t *testing.T) {
 					w,
 					"type "+modulePath(
 						t,
-					)+".A: "+inlineDir(
+					)+".A: "+gentest.InlineDir(
 						t,
 					)+"/kama_partial.yaml: types.A overrides ",
 				)
@@ -310,7 +311,11 @@ func TestPackageOptionFilePackageEntry(t *testing.T) {
 	assert.ErrorContains(
 		t,
 		warnings[0],
-		"package "+modulePath(t)+": "+inlineDir(t)+"/kama_partial.yaml overrides opts.yaml: ",
+		"package "+modulePath(
+			t,
+		)+": "+gentest.InlineDir(
+			t,
+		)+"/kama_partial.yaml overrides opts.yaml: ",
 	)
 
 	files, warnings, err = generateWithOptions(t, map[string]string{"x.go": src}, optionDocs{
@@ -361,7 +366,7 @@ func TestProcPackageOptionFile(t *testing.T) {
 		i.In(&procgopackages.Packages{Pkgs: load(pkgs...)})
 		i.Out(f)
 
-		return i.Run(ctx, nopReporter{})
+		return i.Run(ctx, gentest.NopReporter{})
 	}
 	staged := func() map[string]string {
 		t.Helper()
@@ -418,15 +423,15 @@ func TestProcUnknownKeyWarning(t *testing.T) {
 			"      B:\n        flag:\n          name: b\n          prefix: x\n",
 	})
 
-	r := e.run(testNow())
-	assert.Equal(t, len(r.warnings), 2, "%v", r.warnings)
+	r := e.run(gentest.Now())
+	assert.Equal(t, len(r.Warnings), 2, "%v", r.Warnings)
 
-	for _, w := range r.warnings {
+	for _, w := range r.Warnings {
 		assert.ErrorIs(t, w, genopt.ErrUnknownKey)
 	}
 
-	assert.ErrorContains(t, r.warnings[0], e.dir+"/kama_partial.yaml: packages")
-	assert.ErrorContains(t, r.warnings[1], e.dir+"/kama_partial.yaml: types.A.fields.B.flag.prefix")
+	assert.ErrorContains(t, r.Warnings[0], e.dir+"/kama_partial.yaml: packages")
+	assert.ErrorContains(t, r.Warnings[1], e.dir+"/kama_partial.yaml: types.A.fields.B.flag.prefix")
 	assert.Assert(t, strings.Contains(e.read("x.kama_partial.go"), "RegisterFlags"))
 }
 
@@ -438,8 +443,8 @@ func TestProcOverrideWarning(t *testing.T) {
 		"kama_partial.yaml": "version: 1\ntypes:\n  A:\n",
 	})
 
-	r := e.run(testNow())
-	assert.Equal(t, len(r.warnings), 1, "%v", r.warnings)
-	assert.ErrorIs(t, r.warnings[0], genopt.ErrOverridden)
-	assert.ErrorContains(t, r.warnings[0], e.dir+"/kama_partial.yaml: types.A overrides ")
+	r := e.run(gentest.Now())
+	assert.Equal(t, len(r.Warnings), 1, "%v", r.Warnings)
+	assert.ErrorIs(t, r.Warnings[0], genopt.ErrOverridden)
+	assert.ErrorContains(t, r.Warnings[0], e.dir+"/kama_partial.yaml: types.A overrides ")
 }

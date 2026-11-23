@@ -2,23 +2,19 @@ package validator
 
 import (
 	"context"
-	"go/ast"
 	"go/format"
-	"go/parser"
-	"go/token"
 	"maps"
 	"path"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
@@ -35,56 +31,22 @@ func (gofmtOnly) Format(_ context.Context, _ string, src []byte) ([]byte, error)
 	return format.Source(src)
 }
 
-// newOverlay returns an overlay over root staging Go files as they are
-// written, formatted by gofmtOnly.
-func newOverlay(t *testing.T, root string) *overlayfs.Fs {
-	t.Helper()
-
-	f, err := overlayfs.New(root, overlayfs.WithFormatter(gofmtOnly{}))
-	assert.NilError(t, err)
-	t.Cleanup(func() { f.Close() })
-
-	return f
-}
-
-// stage writes files, keyed by slash-separated path relative to a
-// directory of its own under testdata, into an overlay only, and returns
-// the overlay and the options loading their packages.
+// stage is gentest.Stage staging Go files as they are written, formatted by
+// gofmtOnly.
 func stage(t *testing.T, files map[string]string) (*overlayfs.Fs, gopackages.Options) {
 	t.Helper()
-
-	f := newOverlay(t, ".")
-
-	dir := inlineDir(t)
-	dirs := map[string]bool{}
-
-	for name, src := range files {
-		assert.NilError(t, f.Write(context.Background(), path.Join(dir, name), []byte(src)))
-		dirs["./"+path.Dir(path.Join(dir, name))] = true
-	}
-
-	return f, gopackages.Options{Patterns: slices.Sorted(maps.Keys(dirs))}
+	return gentest.Stage(t, files, overlayfs.WithFormatter(gofmtOnly{}))
 }
 
-// load type-checks files as packages of this module.
+// load is gentest.Load staging files as stage does.
 func load(t *testing.T, files map[string]string) []*packages.Package {
 	t.Helper()
-
-	f, opts := stage(t, files)
-	pkgs, err := gopackages.Load(context.Background(), f, opts)
-	assert.NilError(t, err)
-
-	return pkgs
-}
-
-// inlineDir is the directory under testdata stage writes the files of t to.
-func inlineDir(t *testing.T) string {
-	return "testdata/inline/" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
+	return gentest.Load(t, files, overlayfs.WithFormatter(gofmtOnly{}))
 }
 
 // modulePath returns the import path of the inline test directory of t.
 func modulePath(t *testing.T) string {
-	return "github.com/ngicks/kama/kamalib/generator/validator/" + inlineDir(t)
+	return "github.com/ngicks/kama/kamalib/generator/validator/" + gentest.InlineDir(t)
 }
 
 // markers returns a marker registry of this generator only.
@@ -97,11 +59,8 @@ func markers(t *testing.T) *genmark.Registry {
 	return r
 }
 
-// testNow is the time the header of the generated files records.
-func testNow() time.Time { return time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC) }
-
 // testOptions returns opts with the markers of this generator only and
-// testNow.
+// gentest.Now.
 func testOptions(t *testing.T, opts Options) Options {
 	t.Helper()
 
@@ -110,7 +69,7 @@ func testOptions(t *testing.T, opts Options) Options {
 	}
 
 	if opts.Now == nil {
-		opts.Now = testNow
+		opts.Now = gentest.Now
 	}
 
 	return opts
@@ -126,15 +85,6 @@ func generate(t *testing.T, files map[string]string, opts Options) ([]File, erro
 	return out, err
 }
 
-func byBase(files []File) map[string]string {
-	m := map[string]string{}
-	for _, f := range files {
-		m[filepath.Base(f.Path)] = string(f.Content)
-	}
-
-	return m
-}
-
 // generateInto generates from the packages opts loads from f, stages the
 // output next to them and returns it keyed by base name.
 func generateInto(
@@ -145,8 +95,7 @@ func generateInto(
 ) (map[string]string, error) {
 	t.Helper()
 
-	ctx := context.Background()
-	pkgs, err := gopackages.Load(ctx, f, opts)
+	pkgs, err := gopackages.Load(context.Background(), f, opts)
 	assert.NilError(t, err)
 
 	out, warnings, err := Generate(pkgs, testOptions(t, genOpts))
@@ -156,13 +105,9 @@ func generateInto(
 
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
 
-	for _, o := range out {
-		rel, err := filepath.Rel(f.Root(), o.Path)
-		assert.NilError(t, err)
-		assert.NilError(t, f.Write(ctx, filepath.ToSlash(rel), o.Content))
-	}
+	gentest.Write(t, f, out)
 
-	return byBase(out), nil
+	return gentest.ByBase(out), nil
 }
 
 // generateAndBuild generates from files, stages the output next to them and
@@ -176,7 +121,7 @@ func generateAndBuild(t *testing.T, files map[string]string) map[string]string {
 	out, err := generateInto(t, f, opts, Options{})
 	assert.NilError(t, err)
 
-	assert.NilError(t, build(f, opts))
+	assert.NilError(t, gentest.Build(f, opts))
 
 	return out
 }
@@ -194,7 +139,7 @@ func generateLoading(
 
 	f, opts := stage(t, files)
 	opts.Patterns = opiter.WrapSeq(slices.Values(dirs)).
-		Map(func(d string) string { return "./" + path.Join(inlineDir(t), d) }).
+		Map(func(d string) string { return "./" + path.Join(gentest.InlineDir(t), d) }).
 		CollectSlice()
 
 	out, err := generateInto(t, f, opts, Options{})
@@ -202,62 +147,9 @@ func generateLoading(
 		return nil, err
 	}
 
-	assert.NilError(t, build(f, opts))
+	assert.NilError(t, gentest.Build(f, opts))
 
 	return out, nil
-}
-
-// build type-checks the packages opts loads from f. go/types reports an
-// unused import and an unused variable as errors, which fail the load as
-// long as the overlay stages the files as written.
-func build(f *overlayfs.Fs, opts gopackages.Options) error {
-	_, err := gopackages.Load(context.Background(), f, opts)
-	return err
-}
-
-// funcs returns the source of each function declared in src keyed by name,
-// methods keyed by receiver type and name as in T.M.
-func funcs(t *testing.T, src string) map[string]string {
-	t.Helper()
-
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "x.go", src, parser.ParseComments)
-	assert.NilError(t, err)
-
-	out := map[string]string{}
-
-	for _, d := range f.Decls {
-		fd, ok := d.(*ast.FuncDecl)
-		if !ok {
-			continue
-		}
-
-		name := fd.Name.Name
-		if fd.Recv != nil {
-			recv := fd.Recv.List[0].Type
-			for {
-				switch x := recv.(type) {
-				case *ast.StarExpr:
-					recv = x.X
-					continue
-				case *ast.IndexExpr:
-					recv = x.X
-					continue
-				case *ast.IndexListExpr:
-					recv = x.X
-					continue
-				}
-
-				break
-			}
-
-			name = recv.(*ast.Ident).Name + "." + name
-		}
-
-		out[name] = src[fset.Position(fd.Pos()).Offset:fset.Position(fd.End()).Offset]
-	}
-
-	return out
 }
 
 // validateOf returns the source of the method Validate of typeName in the
@@ -269,7 +161,7 @@ func validateOf(t *testing.T, files map[string]string, file, typeName string) st
 	src, ok := out[file]
 	assert.Assert(t, ok, "no %s in %v", file, slices.Sorted(maps.Keys(out)))
 
-	fn, ok := funcs(t, src)[typeName+".Validate"]
+	fn, ok := gentest.Funcs(t, src)[typeName+".Validate"]
 	assert.Assert(t, ok, "no %s.Validate in\n%s", typeName, src)
 
 	return fn
@@ -298,8 +190,8 @@ func assertNotContains(t *testing.T, src string, subs ...string) {
 	}
 }
 
-// TestBuildStrict proves that build fails on the mistakes the type check of
-// go/packages misses under a goimports-like formatter.
+// TestBuildStrict proves that gentest.Build fails on the mistakes the type
+// check of go/packages misses under a goimports-like formatter.
 func TestBuildStrict(t *testing.T) {
 	cases := map[string]struct{ src, msg string }{
 		"unused import":   {"package x\n\nimport \"strings\"\n", `"strings" imported and not used`},
@@ -310,7 +202,7 @@ func TestBuildStrict(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			f, opts := stage(t, map[string]string{"a.go": tc.src})
-			assert.ErrorContains(t, build(f, opts), tc.msg)
+			assert.ErrorContains(t, gentest.Build(f, opts), tc.msg)
 		})
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 )
 
@@ -24,34 +25,24 @@ func generateDependent(
 	t.Helper()
 
 	ctx := context.Background()
-	f, all := stage(t, files)
-	top := "./" + inlineDir(t)
+	f, all := gentest.Stage(t, files)
+	top := "./" + gentest.InlineDir(t)
 
 	generateInto(t, f, gopackages.Options{Patterns: []string{top + "/sub"}})
 
 	pkgs, err := gopackages.Load(ctx, f, gopackages.Options{Patterns: []string{top}})
 	assert.NilError(t, err)
 
-	produced, warnings, genErr := Generate(pkgs, Options{Registry: registry(t), Now: testNow})
+	produced, warnings, genErr := Generate(pkgs, Options{Registry: registry(t), Now: gentest.Now})
 	if genErr != nil {
 		return nil, genErr, nil
 	}
 
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
 
-	out = map[string]string{}
+	gentest.Write(t, f, produced)
 
-	for _, o := range produced {
-		rel, err := filepath.Rel(f.Root(), o.Path)
-		assert.NilError(t, err)
-		assert.NilError(t, f.Write(ctx, filepath.ToSlash(rel), o.Content))
-
-		out[filepath.Base(o.Path)] = string(o.Content)
-	}
-
-	_, buildErr = gopackages.Load(ctx, f, all)
-
-	return out, nil, buildErr
+	return gentest.ByBase(produced), nil, gentest.Build(f, all)
 }
 
 // implementorSub declares targets generated before the dependent package
@@ -135,7 +126,10 @@ func TestImplementorOfTheRun(t *testing.T) {
 			"//kama:generated kama-partial\ntype IPartial struct{}\n",
 	}
 
-	out, _, err := Generate(load(t, files), Options{Registry: registry(t), Now: testNow})
+	out, _, err := Generate(
+		gentest.Load(t, files),
+		Options{Registry: registry(t), Now: gentest.Now},
+	)
 	assert.NilError(t, err)
 
 	for _, o := range out {

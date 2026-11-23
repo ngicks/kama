@@ -13,6 +13,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -132,7 +133,7 @@ var staleSources = map[string]string{
 }
 
 func TestStale(t *testing.T) {
-	_, warnings, err := Generate(load(t, staleSources), Options{Registry: registry(t)})
+	_, warnings, err := Generate(gentest.Load(t, staleSources), Options{Registry: registry(t)})
 	assert.NilError(t, err)
 	assert.Equal(t, len(warnings), 1, "%v", warnings)
 	assert.ErrorIs(t, warnings[0], ErrStale)
@@ -147,7 +148,7 @@ func TestStale(t *testing.T) {
 func TestStaleNone(t *testing.T) {
 	reg := registry(t)
 	assert.NilError(t, reg.Register("other"))
-	_, warnings, err := Generate(load(t, map[string]string{
+	_, warnings, err := Generate(gentest.Load(t, map[string]string{
 		"a.go": staleSources["a.go"],
 		// A file marked by another generator is not this generator's.
 		"c.go": "package x\n\n//kama:generated other\ntype C struct{}\n",
@@ -159,7 +160,7 @@ func TestStaleNone(t *testing.T) {
 // TestStaleHelpersFile reports the helpers file of a package whose partial
 // files call no helper.
 func TestStaleHelpersFile(t *testing.T) {
-	_, warnings, err := Generate(load(t, map[string]string{
+	_, warnings, err := Generate(gentest.Load(t, map[string]string{
 		"a.go": staleSources["a.go"],
 		HelpersFile: "package x\n\n//kama:generated kama-partial\n" +
 			"func kamaPartialFromValue() {}\n",
@@ -197,7 +198,10 @@ func TestStaleKeepsFlagSetOfPackageWithoutOutput(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			c.files["b.kama_partial.go"] = staleSources["b.kama_partial.go"]
 			c.files[FlagSetFile] = support[FlagSetFile]
-			files, warnings, err := Generate(load(t, c.files), Options{Registry: registry(t)})
+			files, warnings, err := Generate(
+				gentest.Load(t, c.files),
+				Options{Registry: registry(t)},
+			)
 			assert.NilError(t, err)
 			assert.Equal(t, len(files), 0)
 			assert.Equal(t, len(warnings), 1, "%v", warnings)
@@ -244,7 +248,7 @@ func (e *procEnv) read(name string) string {
 }
 
 // run loads the packages, staged files included, and runs Proc with now.
-func (e *procEnv) run(now time.Time) *recordReporter {
+func (e *procEnv) run(now time.Time) *gentest.RecordReporter {
 	e.t.Helper()
 
 	ctx := context.Background()
@@ -258,27 +262,19 @@ func (e *procEnv) run(now time.Time) *recordReporter {
 	i.In(&procgopackages.Packages{Pkgs: pkgs})
 	i.Out(e.f)
 
-	r := &recordReporter{}
+	r := &gentest.RecordReporter{}
 	assert.NilError(e.t, i.Run(ctx, r))
 
 	return r
 }
 
-type recordReporter struct {
-	warnings []error
-	progress []string
-}
-
-func (r *recordReporter) Warn(w error)        { r.warnings = append(r.warnings, w) }
-func (r *recordReporter) Progress(msg string) { r.progress = append(r.progress, msg) }
-
 func TestProcStale(t *testing.T) {
 	e := newProcEnv(t, staleSources)
 	r := e.run(time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC))
-	assert.Equal(t, len(r.warnings), 1, "%v", r.warnings)
-	assert.Assert(t, errors.Is(r.warnings[0], ErrStale))
-	assert.ErrorContains(t, r.warnings[0], "b.kama_partial.go")
-	assert.DeepEqual(t, r.progress, []string{"2 files written, 0 files unchanged"})
+	assert.Equal(t, len(r.Warnings), 1, "%v", r.Warnings)
+	assert.Assert(t, errors.Is(r.Warnings[0], ErrStale))
+	assert.ErrorContains(t, r.Warnings[0], "b.kama_partial.go")
+	assert.DeepEqual(t, r.Messages, []string{"2 files written, 0 files unchanged"})
 	// The stale file is left in place.
 	assert.Equal(t, e.read("b.kama_partial.go"), staleSources["b.kama_partial.go"])
 }
@@ -292,7 +288,7 @@ func TestProcKeepsUnchanged(t *testing.T) {
 
 	e := newProcEnv(t, map[string]string{"a.go": staleSources["a.go"]})
 	r := e.run(time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC))
-	assert.DeepEqual(t, r.progress, []string{"2 files written, 0 files unchanged"})
+	assert.DeepEqual(t, r.Messages, []string{"2 files written, 0 files unchanged"})
 
 	names := []string{"a.kama_partial.go", FlagSetFile}
 
@@ -303,8 +299,8 @@ func TestProcKeepsUnchanged(t *testing.T) {
 	}
 
 	r = e.run(time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC))
-	assert.Equal(t, len(r.warnings), 0, "%v", r.warnings)
-	assert.DeepEqual(t, r.progress, []string{"0 files written, 2 files unchanged"})
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+	assert.DeepEqual(t, r.Messages, []string{"0 files written, 2 files unchanged"})
 
 	for _, name := range names {
 		assert.Equal(t, e.read(name), before[name], name)
@@ -312,7 +308,7 @@ func TestProcKeepsUnchanged(t *testing.T) {
 
 	e.write("a.go", "package x\n\n//kama:partial\ntype A struct{ X, Y int }\n")
 	r = e.run(time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
-	assert.DeepEqual(t, r.progress, []string{"1 file written, 1 file unchanged"})
+	assert.DeepEqual(t, r.Messages, []string{"1 file written, 1 file unchanged"})
 
 	got := map[string]string{}
 	for _, name := range names {
@@ -354,7 +350,7 @@ func TestProcKeepsUnchangedNonIdempotentFormatter(t *testing.T) {
 	}
 
 	r := e.run(time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC))
-	assert.DeepEqual(t, r.progress, []string{"2 files written, 0 files unchanged"})
+	assert.DeepEqual(t, r.Messages, []string{"2 files written, 0 files unchanged"})
 
 	before := map[string]string{}
 	for _, name := range names {
@@ -363,7 +359,7 @@ func TestProcKeepsUnchangedNonIdempotentFormatter(t *testing.T) {
 	}
 
 	r = e.run(time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC))
-	assert.DeepEqual(t, r.progress, []string{"0 files written, 2 files unchanged"})
+	assert.DeepEqual(t, r.Messages, []string{"0 files written, 2 files unchanged"})
 
 	for _, name := range names {
 		assert.Equal(t, e.read(name), before[name], name)
@@ -371,7 +367,7 @@ func TestProcKeepsUnchangedNonIdempotentFormatter(t *testing.T) {
 
 	e.write("a.go", "package x\n\n//kama:partial\ntype A struct{ X, Y int }\n")
 	r = e.run(time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC))
-	assert.DeepEqual(t, r.progress, []string{"1 file written, 1 file unchanged"})
+	assert.DeepEqual(t, r.Messages, []string{"1 file written, 1 file unchanged"})
 
 	got := e.read("a.kama_partial.go")
 	singlePrefix("a.kama_partial.go", got)

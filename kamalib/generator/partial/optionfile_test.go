@@ -17,6 +17,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -34,8 +35,8 @@ type optionDocs struct {
 	pkg string
 }
 
-// loadOptions loads files as load does, and the options of their packages
-// from the directives and from docs.
+// loadOptions loads files as gentest.Load does, and the options of their
+// packages from the directives and from docs.
 func loadOptions(
 	t *testing.T,
 	files map[string]string,
@@ -43,7 +44,7 @@ func loadOptions(
 ) ([]*packages.Package, *LoadedOptions, error) {
 	t.Helper()
 
-	pkgs := load(t, files)
+	pkgs := gentest.Load(t, files)
 	expand := func(doc string) *fstest.MapFile {
 		return &fstest.MapFile{
 			Data: []byte(strings.ReplaceAll(doc, "$pkg", strconv.Quote(modulePath(t)))),
@@ -68,7 +69,7 @@ func loadOptions(
 	}
 
 	if docs.pkg != "" {
-		fsys[inlineDir(t)+"/kama_partial.yaml"] = expand(docs.pkg)
+		fsys[gentest.InlineDir(t)+"/kama_partial.yaml"] = expand(docs.pkg)
 	}
 
 	root, err := filepath.Abs(".")
@@ -80,7 +81,8 @@ func loadOptions(
 }
 
 // generateWithOptions runs Generate on files with the options of their
-// directives and of docs, a registry of this generator only and testNow.
+// directives and of docs, a registry of this generator only and
+// gentest.Now.
 func generateWithOptions(t *testing.T, files map[string]string, docs optionDocs) (
 	[]File, []error, error,
 ) {
@@ -91,7 +93,7 @@ func generateWithOptions(t *testing.T, files map[string]string, docs optionDocs)
 		return nil, nil, err
 	}
 
-	return Generate(pkgs, Options{Registry: registry(t), Now: testNow, Loaded: loaded})
+	return Generate(pkgs, Options{Registry: registry(t), Now: gentest.Now, Loaded: loaded})
 }
 
 // generatedWithOptions returns the files generateWithOptions gives keyed by
@@ -107,12 +109,7 @@ func generatedWithOptions(
 	assert.NilError(t, err)
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
 
-	m := map[string]string{}
-	for _, f := range out {
-		m[filepath.Base(f.Path)] = string(f.Content)
-	}
-
-	return m
+	return gentest.ByBase(out)
 }
 
 // typeView and fieldView are the exported parts of TypeOptions and
@@ -659,7 +656,7 @@ func TestOptionFileOverrides(t *testing.T) {
 				"type "+modulePath(t)+".A: opts.yaml: packages."+strconv.Quote(modulePath(t))+
 					".types.A overrides ",
 			)
-			assert.ErrorContains(t, warnings[0], inlineDir(t)+"/"+c.at)
+			assert.ErrorContains(t, warnings[0], gentest.InlineDir(t)+"/"+c.at)
 
 			var partials []string
 
@@ -709,7 +706,7 @@ func TestProcOptionFile(t *testing.T) {
 		i.In(&procgopackages.Packages{Pkgs: pkgs})
 		i.Out(f)
 
-		return i.Run(ctx, nopReporter{})
+		return i.Run(ctx, gentest.NopReporter{})
 	}
 	err = run(dir + "/missing")
 	assert.ErrorIs(t, err, ErrOptionFile)

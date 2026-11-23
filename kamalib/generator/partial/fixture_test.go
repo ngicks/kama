@@ -16,23 +16,19 @@ import (
 	"github.com/ngicks/opiter"
 	"github.com/ngicks/option/und"
 
-	"go.yaml.in/yaml/v4"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	pkggopackages "github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
 	_ "github.com/ngicks/kama/kamalib/proc/overlayfs"
-	"github.com/ngicks/kama/kamalib/workflow"
 )
 
 // fixtures are the fixture directories with the params their spec.yaml
 // gives the generate step.
-var fixtures = []struct {
-	dir   string
-	param ProcParamPartial
-}{
+var fixtures = []fixture{
 	{dir: "internal/fixture"},
 	{
 		dir: "internal/fixturemerge",
@@ -48,20 +44,18 @@ var fixtures = []struct {
 	{dir: "internal/fixturepackage"},
 }
 
+type fixture struct {
+	dir   string
+	param ProcParamPartial
+}
+
 func TestFixtureSpecBuild(t *testing.T) {
-	for _, fx := range fixtures {
-		t.Run(fx.dir, func(t *testing.T) {
-			b, err := os.ReadFile(filepath.Join(fx.dir, "spec.yaml"))
-			assert.NilError(t, err)
-
-			var spec workflow.Spec
-			assert.NilError(t, yaml.Unmarshal(b, &spec))
-
-			// Build only dry-runs, so the fixture directory is not touched.
-			_, err = spec.Build(context.Background(), workflow.DefaultRegistry)
-			assert.NilError(t, err)
-		})
-	}
+	gentest.BuildSpecs(
+		t,
+		opiter.WrapSeq(slices.Values(fixtures)).
+			Map(func(fx fixture) string { return fx.dir }).
+			CollectSlice()...,
+	)
 }
 
 // TestFixtureUpToDate regenerates each fixture, whose generated files are
@@ -91,9 +85,9 @@ func TestFixtureUpToDate(t *testing.T) {
 			files, _, err := i.generate()
 			assert.NilError(t, err)
 
-			r := &recordReporter{}
+			r := &gentest.RecordReporter{}
 			assert.NilError(t, i.Run(ctx, r))
-			assert.Equal(t, len(r.warnings), 0, "%v", r.warnings)
+			assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
 
 			produced := opiter.WrapSeq(slices.Values(files)).
 				Map(
@@ -246,9 +240,3 @@ func splitHelpers(t *testing.T, src string) (string, []string) {
 
 	return blank.ReplaceAllString(rest.String(), "\n\n"), helpers
 }
-
-// nopReporter drops what an instance reports.
-type nopReporter struct{}
-
-func (nopReporter) Warn(error)      {}
-func (nopReporter) Progress(string) {}

@@ -7,6 +7,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 )
 
@@ -73,7 +74,7 @@ func generateDependent(t *testing.T, files map[string]string) map[string]string 
 	t.Helper()
 
 	f, all := stage(t, files)
-	top := "./" + inlineDir(t)
+	top := "./" + gentest.InlineDir(t)
 
 	_, err := generateInto(t, f, gopackages.Options{Patterns: []string{top + "/sub"}}, Options{})
 	assert.NilError(t, err)
@@ -150,7 +151,7 @@ type R struct {
 		assert.Equal(t, withoutGenerated(alone[file]), withoutGenerated(together[file]), file)
 	}
 
-	fs := funcs(t, alone["a.kama_validate.go"])
+	fs := gentest.Funcs(t, alone["a.kama_validate.go"])
 	assertContains(t, fs["A.Validate"],
 		check(`v.S.Validate(stopOnFirstError)`),
 		"v.G.Validate(stopOnFirstError, nil)",

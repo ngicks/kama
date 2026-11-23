@@ -1,7 +1,6 @@
 package partial
 
 import (
-	"context"
 	"errors"
 	"go/ast"
 	"go/parser"
@@ -9,58 +8,21 @@ import (
 	"go/types"
 	"iter"
 	"maps"
-	"path"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ngicks/opiter"
 	"github.com/ngicks/option/und"
 
-	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
-	"github.com/ngicks/kama/kamalib/pkg/gopackages"
-	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
-
-// load type-checks files, keyed by slash-separated path relative to a
-// directory of its own under testdata, as packages of this module. The files
-// live in the overlay only.
-func load(t *testing.T, files map[string]string) []*packages.Package {
-	t.Helper()
-
-	ctx := context.Background()
-	f, err := overlayfs.New(".")
-	assert.NilError(t, err)
-	t.Cleanup(func() { f.Close() })
-
-	dir := inlineDir(t)
-	dirs := map[string]bool{}
-
-	for name, src := range files {
-		assert.NilError(t, f.Write(ctx, path.Join(dir, name), []byte(src)))
-		dirs["./"+path.Dir(path.Join(dir, name))] = true
-	}
-
-	pkgs, err := gopackages.Load(ctx, f, gopackages.Options{
-		Patterns: slices.Sorted(maps.Keys(dirs)),
-	})
-	assert.NilError(t, err)
-
-	return pkgs
-}
-
-// inlineDir is the directory under testdata load writes the files of t to.
-func inlineDir(t *testing.T) string {
-	return "testdata/inline/" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
-}
 
 // registry returns a registry of this generator only.
 func registry(t *testing.T) *genmark.Registry {
@@ -71,9 +33,6 @@ func registry(t *testing.T) *genmark.Registry {
 
 	return r
 }
-
-// testNow is the time the header of the files generate gives records.
-func testNow() time.Time { return time.Date(2026, 11, 4, 10, 12, 33, 0, time.UTC) }
 
 // header is the first line of every generated file.
 var header = genhelper.GeneratedComment(generatorPath)
@@ -104,7 +63,7 @@ func withoutRunParams(src string) string {
 }
 
 // generate runs Generate on files with opts, a registry of this generator
-// only and testNow, and fails on a warning.
+// only and gentest.Now, and fails on a warning.
 func generate(t *testing.T, files map[string]string, opts Options) ([]File, error) {
 	t.Helper()
 
@@ -113,10 +72,10 @@ func generate(t *testing.T, files map[string]string, opts Options) ([]File, erro
 	}
 
 	if opts.Now == nil {
-		opts.Now = testNow
+		opts.Now = gentest.Now
 	}
 
-	out, warnings, err := Generate(load(t, files), opts)
+	out, warnings, err := Generate(gentest.Load(t, files), opts)
 	assert.Assert(t, len(warnings) == 0, "%v", warnings)
 
 	return out, err
@@ -129,12 +88,7 @@ func generatedWith(t *testing.T, files map[string]string, opts Options) map[stri
 	out, err := generate(t, files, opts)
 	assert.NilError(t, err)
 
-	m := map[string]string{}
-	for _, f := range out {
-		m[filepath.Base(f.Path)] = string(f.Content)
-	}
-
-	return m
+	return gentest.ByBase(out)
 }
 
 // generated returns the generated files keyed by base name.

@@ -12,6 +12,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 )
 
@@ -27,7 +28,7 @@ func validated(t *testing.T, files map[string]string) []string {
 			continue
 		}
 
-		for fn := range maps.Keys(funcs(t, src)) {
+		for fn := range maps.Keys(gentest.Funcs(t, src)) {
 			names = append(names, fn)
 		}
 	}
@@ -588,7 +589,7 @@ func TestSelectionAccepted(t *testing.T) {
 			out := generateAndBuild(t, map[string]string{"a.go": "package x\n\n" + tc.src})
 			assert.DeepEqual(
 				t,
-				slices.Sorted(maps.Keys(funcs(t, out["a.kama_validate.go"]))),
+				slices.Sorted(maps.Keys(gentest.Funcs(t, out["a.kama_validate.go"]))),
 				tc.want,
 			)
 		})
@@ -689,7 +690,7 @@ type Box[T any] struct {
 type C struct{ X int }
 `,
 	})
-	fs := funcs(t, out["a.kama_validate.go"])
+	fs := gentest.Funcs(t, out["a.kama_validate.go"])
 
 	assertContains(t, fs["A.Validate"],
 		"v.L.Validate(stopOnFirstError, func(v C, stopOnFirstError bool) error {",
@@ -770,7 +771,7 @@ type Inner struct {
 	}, "x")
 	assert.NilError(t, err)
 
-	fs := funcs(t, out["x.kama_validate.go"])
+	fs := gentest.Funcs(t, out["x.kama_validate.go"])
 
 	assert.DeepEqual(t, slices.Sorted(maps.Keys(fs)),
 		[]string{"D.Validate", "Inner.Validate", "S.Validate"})
@@ -882,7 +883,7 @@ func TestSelectionDeepChain(t *testing.T) {
 			}
 
 			f, opts := stage(t, files)
-			opts.Patterns = []string{"./" + path.Join(inlineDir(t), "x")}
+			opts.Patterns = []string{"./" + path.Join(gentest.InlineDir(t), "x")}
 
 			pkgs, err := gopackages.Load(context.Background(), f, opts)
 			assert.NilError(t, err)
@@ -893,7 +894,7 @@ func TestSelectionDeepChain(t *testing.T) {
 
 			assert.NilError(t, err)
 			assert.Assert(t, elapsed < 30*time.Second, "Generate took %s", elapsed)
-			assertContains(t, byBase(out)["x.kama_validate.go"], "func (v S) Validate(")
+			assertContains(t, gentest.ByBase(out)["x.kama_validate.go"], "func (v S) Validate(")
 		})
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs/goformat"
 )
@@ -28,7 +29,7 @@ func TestStagesThenCopiesDown(t *testing.T) {
 
 	open := inst.(*openInstance)
 	assert.NilError(t, open.Param(OpenParam{Root: root}))
-	assert.NilError(t, open.Run(ctx, nopReporter{}))
+	assert.NilError(t, open.Run(ctx, gentest.NopReporter{}))
 
 	f := open.AsInput()
 
@@ -60,7 +61,7 @@ func TestStagesThenCopiesDown(t *testing.T) {
 	assert.NilError(t, err)
 	assert.NilError(t, down.(*copyDownInstance).Param(CopyDownParam{}))
 	down.(*copyDownInstance).In(f)
-	assert.NilError(t, down.Run(ctx, nopReporter{}))
+	assert.NilError(t, down.Run(ctx, gentest.NopReporter{}))
 
 	onDisk, err := os.ReadFile(filepath.Join(root, "sub", "new.go"))
 	assert.NilError(t, err)
@@ -99,7 +100,7 @@ func TestOpenSharesFs(t *testing.T) {
 		i := inst.(*openInstance)
 		assert.NilError(t, i.Param(OpenParam{Root: root}))
 
-		if err := i.Run(ctx, nopReporter{}); err != nil {
+		if err := i.Run(ctx, gentest.NopReporter{}); err != nil {
 			return nil, err
 		}
 
@@ -140,7 +141,7 @@ func TestOpenFormatter(t *testing.T) {
 		i := inst.(*openInstance)
 		assert.NilError(t, i.Param(OpenParam{Root: root, Formatter: formatter}))
 
-		if err := i.Run(ctx, nopReporter{}); err != nil {
+		if err := i.Run(ctx, gentest.NopReporter{}); err != nil {
 			return nil, err
 		}
 
@@ -184,12 +185,6 @@ func TestOpenFormatterParam(t *testing.T) {
 	assert.ErrorIs(t, real.(*openInstance).Param(missing), exec.ErrNotFound)
 }
 
-// nopReporter drops what an instance reports.
-type nopReporter struct{}
-
-func (nopReporter) Warn(error)      {}
-func (nopReporter) Progress(string) {}
-
 func TestCopyDownSkipsCheckWithoutGoFiles(t *testing.T) {
 	ctx := context.Background()
 	// The root is not a Go module, so a package load in it fails.
@@ -206,7 +201,7 @@ func TestCopyDownSkipsCheckWithoutGoFiles(t *testing.T) {
 	assert.NilError(t, err)
 	assert.NilError(t, down.(*copyDownInstance).Param(CopyDownParam{}))
 	down.(*copyDownInstance).In(f)
-	assert.NilError(t, down.Run(ctx, nopReporter{}))
+	assert.NilError(t, down.Run(ctx, gentest.NopReporter{}))
 
 	onDisk, err := os.ReadFile(filepath.Join(root, "notes.txt"))
 	assert.NilError(t, err)

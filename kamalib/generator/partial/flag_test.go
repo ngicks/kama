@@ -10,6 +10,7 @@ import (
 	"github.com/ngicks/option/und"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 )
 
@@ -277,10 +278,10 @@ func TestFlagSetFileConflict(t *testing.T) {
 func TestFlagSetMarkedVar(t *testing.T) {
 	// The marked variable makes a.go look like a stale generated file, which
 	// only warns.
-	_, _, err := Generate(load(t, map[string]string{
+	_, _, err := Generate(gentest.Load(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n\n" +
 			"// PartialFlagSet is stale.\n//\n//kama:generated kama-partial\nvar PartialFlagSet int\n",
-	}), Options{Registry: registry(t), Now: testNow})
+	}), Options{Registry: registry(t), Now: gentest.Now})
 	assert.NilError(t, err)
 
 	_, err = generate(t, map[string]string{

@@ -7,6 +7,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 )
 
@@ -89,7 +90,7 @@ func TestStale(t *testing.T) {
 	ctx := context.Background()
 	assert.NilError(
 		t,
-		f.Write(ctx, inlineDir(t)+"/b.go", []byte("package x\n\ntype B struct{ N int }\n")),
+		f.Write(ctx, gentest.InlineDir(t)+"/b.go", []byte("package x\n\ntype B struct{ N int }\n")),
 	)
 
 	pkgs, err := gopackages.Load(ctx, f, opts)

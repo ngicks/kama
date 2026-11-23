@@ -3,72 +3,44 @@ package partial
 import (
 	"context"
 	"io/fs"
-	"maps"
 	"path"
-	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
-
-// stage writes files under the inline test directory of t and returns the
-// overlay and the options loading their packages.
-func stage(t *testing.T, files map[string]string) (*overlayfs.Fs, gopackages.Options) {
-	t.Helper()
-
-	f, err := overlayfs.New(".")
-	assert.NilError(t, err)
-	t.Cleanup(func() { f.Close() })
-
-	dir := "testdata/inline/" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
-	dirs := map[string]bool{}
-
-	for name, src := range files {
-		assert.NilError(t, f.Write(context.Background(), path.Join(dir, name), []byte(src)))
-		dirs["./"+path.Dir(path.Join(dir, name))] = true
-	}
-
-	return f, gopackages.Options{Patterns: slices.Sorted(maps.Keys(dirs))}
-}
 
 // generateInto generates from the packages opts loads from f and stages
 // the output next to them.
 func generateInto(t *testing.T, f *overlayfs.Fs, opts gopackages.Options) {
 	t.Helper()
 
-	ctx := context.Background()
-	pkgs, err := gopackages.Load(ctx, f, opts)
+	pkgs, err := gopackages.Load(context.Background(), f, opts)
 	assert.NilError(t, err)
 	out, warnings, err := Generate(pkgs, Options{Registry: registry(t)})
 	assert.NilError(t, err)
 	// A partial file of a build variant not loaded is not stale.
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
 
-	for _, o := range out {
-		rel, err := filepath.Rel(f.Root(), o.Path)
-		assert.NilError(t, err)
-		assert.NilError(t, f.Write(ctx, filepath.ToSlash(rel), o.Content))
-	}
+	gentest.Write(t, f, out)
 }
 
-// generateAndBuild generates from files as load does, stages the output
-// next to them and loads the packages again with buildFlags, returning the
-// error of that second load, which reports any package error.
+// generateAndBuild generates from files as gentest.Load does, stages the
+// output next to them and loads the packages again with buildFlags,
+// returning the error of that second load, which reports any package error.
 func generateAndBuild(t *testing.T, files map[string]string, buildFlags ...string) error {
 	t.Helper()
 
-	f, opts := stage(t, files)
+	f, opts := gentest.Stage(t, files)
 	generateInto(t, f, opts)
 	opts.BuildFlags = buildFlags
-	_, err := gopackages.Load(context.Background(), f, opts)
 
-	return err
+	return gentest.Build(f, opts)
 }
 
 // TestHelpersAcrossBuildVariants generates with a constrained file loaded,
@@ -76,7 +48,7 @@ func generateAndBuild(t *testing.T, files map[string]string, buildFlags ...strin
 // the package comes out the same, and the partial file of the constrained
 // file from the first run keeps finding the helpers it calls.
 func TestHelpersAcrossBuildVariants(t *testing.T) {
-	f, opts := stage(t, map[string]string{
+	f, opts := gentest.Stage(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ N *N }\n\ntype N struct{ I int }\n",
 		"b_tagged.go": "//go:build tagged\n\npackage x\n\n//kama:partial\ntype B struct {\n" +
 			"\t//kama:partial:merge append\n\tS []int\n\tN *N\n}\n",
@@ -158,8 +130,7 @@ func TestForeignUnexportedFields(t *testing.T) {
 func modulePath(t *testing.T) string {
 	t.Helper()
 
-	return "github.com/ngicks/kama/kamalib/generator/partial/testdata/inline/" +
-		strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
+	return "github.com/ngicks/kama/kamalib/generator/partial/" + gentest.InlineDir(t)
 }
 
 func TestBlankTypeParams(t *testing.T) {
@@ -360,22 +331,15 @@ type EmbP[T any] struct{ F T }
 		{MergeNested: MergeNestedOverwrite},
 	} {
 		t.Run(string(opts.Merge)+"/"+string(opts.MergeNested), func(t *testing.T) {
-			f, load := stage(t, files)
-			ctx := t.Context()
-			pkgs, err := gopackages.Load(ctx, f, load)
+			f, load := gentest.Stage(t, files)
+			pkgs, err := gopackages.Load(t.Context(), f, load)
 			assert.NilError(t, err)
 			opts.Registry = registry(t)
 			out, _, err := Generate(pkgs, opts)
 			assert.NilError(t, err)
 
-			for _, o := range out {
-				rel, err := filepath.Rel(f.Root(), o.Path)
-				assert.NilError(t, err)
-				assert.NilError(t, f.Write(ctx, filepath.ToSlash(rel), o.Content))
-			}
-
-			_, err = gopackages.Load(ctx, f, load)
-			assert.NilError(t, err)
+			gentest.Write(t, f, out)
+			assert.NilError(t, gentest.Build(f, load))
 		})
 	}
 }

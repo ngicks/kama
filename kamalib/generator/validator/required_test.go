@@ -10,6 +10,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
@@ -63,7 +64,7 @@ type A[T comparable] struct {
 type Comparable struct{ X, Y int }
 `,
 	})
-	fn := funcs(t, out["a.kama_validate.go"])["A.Validate"]
+	fn := gentest.Funcs(t, out["a.kama_validate.go"])["A.Validate"]
 
 	assertContains(t, fn,
 		`requiredComparable(v.S)`,
@@ -274,7 +275,7 @@ type A struct {
 	out, err := generateInto(t, f, opts, Options{Registry: reg})
 	assert.NilError(t, err)
 
-	fn := funcs(t, out["a.kama_validate.go"])["A.Validate"]
+	fn := gentest.Funcs(t, out["a.kama_validate.go"])["A.Validate"]
 	assertContains(t, fn,
 		check(`validation.Field(kamaValidatePositive(int64(v.N)), "N")`),
 		check(`validation.Field(kamaValidateRequired(v.P != nil, "nil"), "P")`),

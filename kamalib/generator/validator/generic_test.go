@@ -3,6 +3,8 @@ package validator
 import (
 	"strings"
 	"testing"
+
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 )
 
 const genericSrc = `package x
@@ -40,11 +42,11 @@ type Pair[_ any, U comparable] struct{ U U }
 `
 
 // genericFuncs returns the functions generated from genericSrc keyed as
-// funcs keys them.
+// gentest.Funcs keys them.
 func genericFuncs(t *testing.T) map[string]string {
 	t.Helper()
 
-	return funcs(
+	return gentest.Funcs(
 		t,
 		generateAndBuild(t, map[string]string{"a.go": genericSrc})["a.kama_validate.go"],
 	)

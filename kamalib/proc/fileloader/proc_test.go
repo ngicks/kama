@@ -8,6 +8,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
@@ -43,7 +44,7 @@ func TestProcRun(t *testing.T) {
 		),
 	)
 	i.In(f)
-	assert.NilError(t, i.Run(ctx, nopReporter{}))
+	assert.NilError(t, i.Run(ctx, gentest.NopReporter{}))
 
 	doc := i.AsInput()
 	assert.Equal(t, doc.Path, "codegen/meta.yaml")
@@ -60,9 +61,3 @@ func TestProcParamErrors(t *testing.T) {
 		fileloader.ErrUnknownFormat,
 	)
 }
-
-// nopReporter drops what an instance reports.
-type nopReporter struct{}
-
-func (nopReporter) Warn(error)      {}
-func (nopReporter) Progress(string) {}
