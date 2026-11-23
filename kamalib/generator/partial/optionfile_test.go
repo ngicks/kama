@@ -671,6 +671,32 @@ func TestOptionFileOverrides(t *testing.T) {
 	}
 }
 
+// TestOptionFileMisspeltIgnore checks that a type entry holding unknown
+// keys only, as a misspelt ignore, leaves the ignore directive of the type
+// in effect.
+func TestOptionFileMisspeltIgnore(t *testing.T) {
+	files, warnings, err := generateWithOptions(t, map[string]string{
+		"x.go": "package x\n\n//kama:partial ignore\ntype A struct{ B int }\n\n" +
+			"//kama:partial\ntype C struct{ D int }\n",
+	}, optionDocs{
+		central: "version: 1\npackages:\n  $pkg:\n    types:\n      A:\n        ignroe: true\n",
+	})
+	assert.NilError(t, err)
+	assert.Equal(t, len(warnings), 1, "%v", warnings)
+	assert.ErrorIs(t, warnings[0], genopt.ErrUnknownKey)
+	assert.ErrorContains(t, warnings[0], ".types.A.ignroe")
+
+	var partials []string
+
+	for _, f := range files {
+		if strings.HasSuffix(f.Path, "x.kama_partial.go") {
+			partials = partialTypes(t, string(f.Content))
+		}
+	}
+
+	assert.DeepEqual(t, partials, []string{"CPartial"})
+}
+
 func TestProcOptionFile(t *testing.T) {
 	i := &instance{}
 	assert.Error(

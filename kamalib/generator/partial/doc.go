@@ -95,7 +95,9 @@
 // a field its struct type does not declare and fields of a type that is
 // not a struct type are errors naming the file and the key path. An
 // unknown key is a warning wrapping genopt.ErrUnknownKey that names the
-// file and the key path. Keys are case-sensitive. A JSON file is decoded
+// file and the key path. An entry holding unknown keys only does not list
+// its type or field, so a misspelt ignore leaves the directives in effect.
+// Keys are case-sensitive. A JSON file is decoded
 // with encoding/json/v2. A duplicate key, invalid UTF-8 and data after the
 // top-level value make it fail to load.
 //

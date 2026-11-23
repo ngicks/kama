@@ -306,10 +306,10 @@
 // under a guard that skips the validator when no value is held. Only an
 // error of Rule.Check leads to that second attempt. The generator reports
 // every error of Validator.Parse at once. Such an error comes from the arg
-// alone and wraps rule.ErrArgs. required, zero and nil therefore look at a
-// pointer itself, and every other validator applies to
-// the pointee of a non-nil pointer. elastic.Elastic holds no single value
-// and takes required, zero and null only.
+// alone and should wrap rule.ErrArgs. required, zero and nil therefore look
+// at a pointer itself, and every other validator applies to the pointee of
+// a non-nil pointer. elastic.Elastic holds no single value and takes
+// required, zero and null only.
 //
 // Package rule documents the built-in validators and the errors they report.
 //
@@ -391,7 +391,9 @@
 // empty or absent args stands for no arg. A validator listed twice on one
 // field is an error. The file has no equivalent of //kama:validate file.
 // version is required and is 1. An unknown key is a warning wrapping
-// genopt.ErrUnknownKey that names the file and the key path. The entry of a
+// genopt.ErrUnknownKey that names the file and the key path. An entry
+// holding unknown keys only does not list its type or field, so a
+// misspelt ignore leaves the directives in effect. The entry of a
 // type replaces every directive on the type and its fields, and Generate
 // returns a warning wrapping genopt.ErrOverridden for a type whose
 // directives are replaced. The free-floating directives stay in effect

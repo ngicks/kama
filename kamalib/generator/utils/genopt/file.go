@@ -152,12 +152,7 @@ func (d *fileDecoder[P, T, F]) packageEntry(
 		types: map[string]TypeOption[T, F]{},
 	}
 
-	// An entry holding unknown keys only sets no option, so it must not
-	// override the package entry of a file that comes later.
-	unknownTop := opiter.WrapSeq(slices.Values(d.leaf(&fp.p, rest, fp.src))).
-		Filter(func(k []string) bool { return len(k) == 1 }).
-		CollectSlice()
-	fp.hasPackage = len(rest) > len(unknownTop)
+	fp.hasPackage = holdsKnownKey(rest, d.leaf(&fp.p, rest, fp.src))
 
 	typesPath := appendPath(path, "types")
 
@@ -196,7 +191,11 @@ func (d *fileDecoder[P, T, F]) typeEntry(
 		Type:    name,
 	}
 	to := TypeOption[T, F]{Source: d.source(path, target)}
-	d.leaf(&to.Type, without(t, "fields"), to.Source)
+
+	unknown := d.leaf(&to.Type, without(t, "fields"), to.Source)
+	if len(t) > 0 && !holdsKnownKey(t, unknown) {
+		return TypeOption[T, F]{}, false
+	}
 
 	fieldsPath := appendPath(path, "fields")
 	fieldsValue, hasFields := t["fields"]
@@ -235,7 +234,11 @@ func (d *fileDecoder[P, T, F]) typeEntry(
 
 		var f F
 
-		d.leaf(&f, ft, d.source(fieldPath, fieldTarget))
+		unknown := d.leaf(&f, ft, d.source(fieldPath, fieldTarget))
+		if len(ft) > 0 && !holdsKnownKey(ft, unknown) {
+			continue
+		}
+
 		fields[fieldName] = f
 	}
 
@@ -420,6 +423,19 @@ func (d *fileDecoder[P, T, F]) normalize(v any, path []string) (any, bool) {
 	}
 
 	return v, true
+}
+
+// holdsKnownKey reports whether t, an entry, holds a key other than the
+// unknown keys at its top level. unknown are the key paths leaf returns for
+// t. An entry holding unknown keys only sets no option, so it must not
+// override the options of a source that comes later: a misspelt ignore
+// would otherwise turn a type the directives skip into a generated one.
+func holdsKnownKey(t map[string]any, unknown [][]string) bool {
+	top := opiter.WrapSeq(slices.Values(unknown)).
+		Filter(func(k []string) bool { return len(k) == 1 }).
+		CollectSlice()
+
+	return len(t) > len(top)
 }
 
 // without returns t without the keys peeled.

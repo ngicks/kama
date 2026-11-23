@@ -63,7 +63,9 @@
 // whose pointer implements UnknownKeyer tells the keys of its entry it does
 // not know, and each of them is a warning wrapping ErrUnknownKey that names
 // the file and the full key path. A leaf whose pointer does not implement
-// UnknownKeyer drops the keys it does not know without a warning.
+// UnknownKeyer drops the keys it does not know without a warning. An entry
+// holding unknown keys only sets nothing beyond its warnings. An empty type
+// entry still lists its type.
 //
 // The tool-wide directive //tool:option-file <generator>=<path> in a
 // free-floating comment names the package option file of a generator. The

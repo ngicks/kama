@@ -479,6 +479,64 @@ func TestLoadOptionUnknownPackageEntry(t *testing.T) {
 	)
 }
 
+// TestLoadOptionUnknownTypeEntry checks that a type or field entry holding
+// unknown keys only is dropped with a warning, so it leaves the entry of a
+// file that comes later in place, while an empty type entry still marks
+// its type.
+func TestLoadOptionUnknownTypeEntry(t *testing.T) {
+	fsys := fstest.MapFS{
+		"c.yaml": {Data: []byte(`
+version: 1
+packages:
+  m/a:
+    types:
+      S:
+        value: c
+        fields:
+          F:
+            zz: 1
+          G:
+            value: g
+      I:
+        value: c
+`)},
+		"a/kama_x.yaml": {Data: []byte(`
+version: 1
+types:
+  S:
+    zz: 1
+  I: {}
+`)},
+	}
+
+	l := fileLoader("c.yaml")
+	l.PackageFile = fileloader.PathInput{
+		Base: "kama_x", Formats: []fileloader.Format{fileloader.FormatYaml},
+	}
+
+	loaded, err := l.LoadOption(fsys, testRoot, filesPackage(t))
+	assert.NilError(t, err)
+
+	warnings := make([]string, len(loaded.Warnings))
+	for i, w := range loaded.Warnings {
+		warnings[i] = w.Error()
+	}
+
+	assert.DeepEqual(t, warnings, []string{
+		`genopt: unknown key: c.yaml: packages."m/a".types.S.fields.F.zz`,
+		"genopt: unknown key: a/kama_x.yaml: types.S.zz",
+		`genopt: options overridden: type m/a.I: a/kama_x.yaml: types.I overrides ` +
+			`c.yaml: packages."m/a".types.I`,
+	})
+	assert.DeepEqual(t, flatten(loaded.Option), map[string]string{
+		"m/a.S":      `c.yaml: packages."m/a".types.S fields=true`,
+		"m/a.S type": `value=c; from c.yaml: packages."m/a".types.S`,
+		"m/a.S.G":    `value=g; from c.yaml: packages."m/a".types.S.fields.G`,
+		"m/a.I":      "a/kama_x.yaml: types.I fields=false",
+		"m/a.I type": "from a/kama_x.yaml: types.I",
+	})
+}
+
 // TestLoadOptionPackageEntry checks that a package entry without keys of
 // the leaf leaves the package entry of a file that comes later in place.
 func TestLoadOptionPackageEntry(t *testing.T) {
