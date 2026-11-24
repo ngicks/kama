@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -49,15 +50,6 @@ func TestUnmarshalLocatesErrors(t *testing.T) {
 			"validation failed at .a[1].b.x: required: inner",
 		},
 		{
-			"type mismatch",
-			`{"a":{"7":"x"}}`,
-			new(struct {
-				A map[string]int64 `json:"a"`
-			}),
-			"/a/7",
-			"validation failed at .a[7]: json: cannot unmarshal JSON string into Go int64",
-		},
-		{
 			"digits with a leading zero are a name",
 			`{"07":null}`,
 			new(map[string]string),
@@ -75,6 +67,28 @@ func TestUnmarshalLocatesErrors(t *testing.T) {
 			assert.Equal(t, err.Error(), tc.text)
 		})
 	}
+}
+
+// TestUnmarshalLocatesSemanticErrors avoids the message text of json: it words a semantic
+// error with "cannot" or "unable to", chosen once per process.
+func TestUnmarshalLocatesSemanticErrors(t *testing.T) {
+	var v struct {
+		A map[string]int64 `json:"a"`
+	}
+
+	err := Unmarshal(jsontext.Value(`{"a":{"7":"x"}}`), &v)
+
+	e, ok := errors.AsType[*validation.Error](err)
+	assert.Assert(t, ok, "%T: %v", err, err)
+	assert.Equal(t, e.Pointer(), "/a/7")
+	assert.Assert(t, strings.HasPrefix(err.Error(), "validation failed at .a[7]: "), err.Error())
+
+	se, ok := errors.AsType[*json.SemanticError](err)
+	assert.Assert(t, ok, "%T: %v", err, err)
+	assert.Equal(t, se.JSONPointer, jsontext.Pointer(""))
+	assert.Equal(t, se.ByteOffset, int64(0))
+	assert.Equal(t, se.JSONKind, jsontext.Kind('"'))
+	assert.Equal(t, se.GoType, reflect.TypeFor[int64]())
 }
 
 func TestUnmarshalRejectsNull(t *testing.T) {
