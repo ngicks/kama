@@ -21,12 +21,19 @@ local golangci_lint_steps = (go_golangci_lint.steps) {
   }
 }
 
+// Vendored test data keeps its upstream bytes.
+local markdown_mermaid_lint_steps = (markdown_mermaid_lint.steps) {
+  ["mermaid-lint"] {
+    exclude = List("**/testdata/**")
+  }
+}
+
 hooks {
   ["pre-commit"] {
     steps {
       ...golangci_lint_steps
       ...go_vet_ngcheckers.steps
-      ...markdown_mermaid_lint.steps
+      ...markdown_mermaid_lint_steps
     }
   }
 }
