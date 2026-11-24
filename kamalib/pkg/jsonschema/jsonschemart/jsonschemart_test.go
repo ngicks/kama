@@ -132,6 +132,9 @@ func TestUnmarshalIntegerNumber(t *testing.T) {
 		{"-12.000", -12},
 		{"9007199254740993.0", 9007199254740993},
 		{"9223372036854775807.0", 9223372036854775807},
+		{"0e99999999999999999999", 0},
+		{"-0.000E-99999999999999999999", 0},
+		{"100e-2", 1},
 	}
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {
@@ -141,7 +144,10 @@ func TestUnmarshalIntegerNumber(t *testing.T) {
 		})
 	}
 
-	for _, in := range []string{"1.5", "1e-1", "0.5e0", "1e400", "9223372036854775808"} {
+	for _, in := range []string{
+		"1.5", "1e-1", "0.5e0", "1e400", "9223372036854775808",
+		"1e99999999999999999999", "1e-99999999999999999999",
+	} {
 		t.Run(in, func(t *testing.T) {
 			var v int64
 			assert.ErrorIs(t, Unmarshal(jsontext.Value(in), &v), ErrType)
@@ -290,6 +296,55 @@ func TestEnum(t *testing.T) {
 	assert.Equal(t, err.Error(), "validation failed: enum: want one of [a b], got c")
 }
 
+func TestNumberEnum(t *testing.T) {
+	cases := []struct {
+		in      string
+		allowed []string
+	}{
+		{"1", []string{"1"}},
+		{"1.0", []string{"1"}},
+		{"10e-1", []string{"1"}},
+		{"-0", []string{"0"}},
+		{"0e99999999999999999999", []string{"0.0"}},
+		{"1.5", []string{"2", "15e-1"}},
+		{"18446744073709551616", []string{"1.8446744073709551616e19"}},
+		{"1e99999999999999999999", []string{"10e99999999999999999998"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			assert.NilError(t, NumberEnum(jsontext.Value(tc.in), tc.allowed...))
+		})
+	}
+
+	rejected := []struct {
+		in      string
+		allowed []string
+	}{
+		{"18446744073709551617", []string{"18446744073709551616"}},
+		{"-1", []string{"1"}},
+		{"1e99999999999999999999", []string{"1e99999999999999999998"}},
+		{"1e-99999999999999999999", []string{"0"}},
+		{`"1"`, []string{"1"}},
+		{"null", []string{"1"}},
+	}
+	for _, tc := range rejected {
+		t.Run("rejects "+tc.in, func(t *testing.T) {
+			assert.ErrorIs(t, NumberEnum(jsontext.Value(tc.in), tc.allowed...), ErrEnum)
+		})
+	}
+
+	err := NumberEnum(jsontext.Value(`3`), "1", "2.0")
+	assert.Equal(t, err.Error(), "validation failed: enum: want one of [1 2.0], got 3")
+}
+
+func TestMember(t *testing.T) {
+	obj := jsontext.Value(`{"a":1.50,"b":null}`)
+	assert.Equal(t, string(Member(obj, "a")), `1.50`)
+	assert.Equal(t, string(Member(obj, "b")), `null`)
+	assert.Assert(t, Member(obj, "c") == nil)
+	assert.Assert(t, Member(jsontext.Value(`[]`), "a") == nil)
+}
+
 func TestRejectUnknown(t *testing.T) {
 	assert.NilError(t, RejectUnknown(nil))
 
@@ -317,7 +372,7 @@ func TestSelection(t *testing.T) {
 		{"only members", OnlyMembers(obj, "kind", "n", "m"), true},
 		{"extra member", OnlyMembers(obj, "kind"), false},
 		{"member equals", MemberEquals(obj, "kind", `"cat"`), true},
-		{"member equals canonically", MemberEquals(obj, "kind", `"cat"`), true},
+		{"member equals canonically", MemberEquals(obj, "kind", `"\u0063at"`), true},
 		{"number equals canonically", MemberEquals(obj, "n", `1.0`), true},
 		{"member differs", MemberEquals(obj, "kind", `"dog"`), false},
 		{"member missing", MemberEquals(obj, "x", `"cat"`), false},

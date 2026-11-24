@@ -3,6 +3,7 @@ package jsonschema
 import (
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
+	"errors"
 	"slices"
 	"testing"
 
@@ -107,6 +108,37 @@ func TestSchemaRejectsInvalidShapes(t *testing.T) {
 		t.Run(in, func(t *testing.T) {
 			var s Schema
 			assert.Assert(t, jsonv2.Unmarshal([]byte(in), &s) != nil)
+		})
+	}
+}
+
+// TestSchemaRejectsNullSchema checks that null is no schema wherever a keyword takes one. The
+// error locates the null.
+func TestSchemaRejectsNullSchema(t *testing.T) {
+	cases := []struct {
+		in string
+		at jsontext.Pointer
+	}{
+		{`{"items":null}`, "/items"},
+		{`{"additionalProperties":null}`, "/additionalProperties"},
+		{`{"not":null}`, "/not"},
+		{`{"oneOf":[null]}`, "/oneOf/0"},
+		{`{"allOf":[{},null]}`, "/allOf/1"},
+		{`{"anyOf":[true,null]}`, "/anyOf/1"},
+		{`{"properties":{"a":null}}`, "/properties/a"},
+		{`{"$defs":{"a":null}}`, "/$defs/a"},
+		{`{"properties":{"a":{"items":null}}}`, "/properties/a/items"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			var s Schema
+
+			err := jsonv2.Unmarshal([]byte(tc.in), &s)
+
+			se, ok := errors.AsType[*jsonv2.SemanticError](err)
+			assert.Assert(t, ok, "%T: %v", err, err)
+			assert.Equal(t, se.JSONPointer, tc.at)
+			assert.Error(t, se.Err, "jsonschema: a schema must be an object or a boolean, got null")
 		})
 	}
 }

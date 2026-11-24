@@ -3,6 +3,7 @@ package jsonschema
 import (
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -16,7 +17,8 @@ import (
 // ignored on encoding.
 //
 // A nil jsontext.Value, a nil slice, a nil map and a none Option mark an absent keyword. A
-// keyword written as null, [] or {} decodes into a non-nil value and encodes back.
+// keyword written as null, [] or {} decodes into a non-nil value and encodes back. null is no
+// schema, so decoding rejects it where a keyword takes one.
 type Schema struct {
 	Bool opt.Option[bool] `json:"-"`
 
@@ -121,7 +123,11 @@ func (s *Schema) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		return nil
 	case jsontext.KindBeginObject:
 		var o schemaObject
-		if err := jsonv2.UnmarshalDecode(dec, &o); err != nil {
+		if err := jsonv2.UnmarshalDecode(
+			dec,
+			&o,
+			jsonv2.WithUnmarshalers(rejectNullSchema),
+		); err != nil {
 			return err
 		}
 
@@ -133,8 +139,26 @@ func (s *Schema) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			return err
 		}
 
-		return fmt.Errorf("jsonschema: a schema must be an object or a boolean, got %v", k)
+		return notSchema(k)
 	}
+}
+
+// rejectNullSchema reports null where a keyword takes a schema. json would decode it into a nil
+// *Schema without calling UnmarshalJSONFrom, which reads as an absent keyword or a nil member.
+var rejectNullSchema = jsonv2.UnmarshalFromFunc(func(dec *jsontext.Decoder, _ **Schema) error {
+	if k := dec.PeekKind(); k == jsontext.KindNull {
+		if err := dec.SkipValue(); err != nil {
+			return err
+		}
+
+		return notSchema(k)
+	}
+
+	return errors.ErrUnsupported
+})
+
+func notSchema(k jsontext.Kind) error {
+	return fmt.Errorf("jsonschema: a schema must be an object or a boolean, got %v", k)
 }
 
 // Types is the value of the type keyword.

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
+	"math/big"
 	"reflect"
 	"slices"
 	"strconv"
@@ -174,6 +175,32 @@ func Enum[T comparable](v T, allowed ...T) error {
 	}
 
 	return validation.New(ErrEnum, "want one of %v, got %v", allowed, v)
+}
+
+// NumberEnum reports an error unless raw is a JSON number equal to one of allowed, the texts of
+// JSON numbers. It compares the values the texts write exactly, so 1.0 equals 1 and 2^64+1 does
+// not equal 2^64, which float64 cannot tell apart.
+func NumberEnum(raw jsontext.Value, allowed ...string) error {
+	if raw.Kind() == '0' {
+		v := parseDecimal(string(raw))
+
+		equal := slices.ContainsFunc(
+			allowed,
+			func(a string) bool { return v.equal(parseDecimal(a)) },
+		)
+		if equal {
+			return nil
+		}
+	}
+
+	return validation.New(ErrEnum, "want one of %v, got %s", allowed, raw)
+}
+
+// Member returns the value of the member name of the object raw, or nil when raw is no object
+// or lacks the member.
+func Member(raw jsontext.Value, name string) jsontext.Value {
+	v, _ := member(raw, name)
+	return v
 }
 
 // RejectUnknown reports an error for every member of unknown, in name order.
@@ -368,42 +395,69 @@ var integerNumber = json.UnmarshalFromFunc(func(dec *jsontext.Decoder, v *int64)
 // optional sign. ok is false when num has a non-zero fraction or has more than 20 digits before
 // its decimal point, which no int64 holds.
 func integerText(num string) (string, bool) {
-	mantissa, expText, hasExp := strings.Cut(strings.ToLower(num), "e")
-
-	exp := 0
-
-	if hasExp {
-		var err error
-		if exp, err = strconv.Atoi(expText); err != nil {
-			return "", false
-		}
-	}
-
-	sign := ""
-	if rest, ok := strings.CutPrefix(mantissa, "-"); ok {
-		sign, mantissa = "-", rest
-	}
-
-	whole, frac, _ := strings.Cut(mantissa, ".")
-	digits := strings.TrimLeft(whole+frac, "0")
-	// point is the number of digits before the decimal point once leading zeros are gone.
-	point := len(whole) + exp - (len(whole+frac) - len(digits))
+	d := parseDecimal(num)
 
 	switch {
-	case digits == "":
+	case d.digits == "":
 		return "0", true
-	case point < len(digits):
-		if point < 0 || strings.Trim(digits[point:], "0") != "" {
-			return "", false
-		}
-
-		return sign + digits[:point], true
+	// The digits end in no zero, so a point before the last digit leaves a fraction.
+	case d.point.Cmp(big.NewInt(int64(len(d.digits)))) < 0:
+		return "", false
 	// 19 digits hold every int64, so a longer integer needs no zeros written out.
-	case point > 20:
+	case d.point.Cmp(big.NewInt(20)) > 0:
 		return "", false
 	}
 
-	return sign + digits + strings.Repeat("0", point-len(digits)), true
+	sign := ""
+	if d.neg {
+		sign = "-"
+	}
+
+	return sign + d.digits + strings.Repeat("0", int(d.point.Int64())-len(d.digits)), true
+}
+
+// decimal is a JSON number as the value 0.digits * 10^point.
+//
+// The exponent of the source text can have any number of digits, so point is a big.Int and the
+// value is never expanded into its digits.
+type decimal struct {
+	neg bool
+	// digits has no leading and no trailing zero. It is empty for zero.
+	digits string
+	point  *big.Int
+}
+
+// parseDecimal parses num, the text of a JSON number. Zero has neg false whatever its sign.
+func parseDecimal(num string) decimal {
+	mantissa, expText, _ := strings.Cut(strings.ToLower(num), "e")
+
+	neg := false
+	if rest, ok := strings.CutPrefix(mantissa, "-"); ok {
+		neg, mantissa = true, rest
+	}
+
+	whole, frac, _ := strings.Cut(mantissa, ".")
+	all := whole + frac
+	digits := strings.TrimLeft(all, "0")
+
+	if digits == "" {
+		return decimal{point: new(big.Int)}
+	}
+
+	point, ok := new(big.Int).SetString(strings.TrimPrefix(expText, "+"), 10)
+	if !ok {
+		point = new(big.Int)
+	}
+
+	// Leading zeros of the whole part move the point left; those of the fraction are already
+	// after it.
+	point.Add(point, big.NewInt(int64(len(whole)-(len(all)-len(digits)))))
+
+	return decimal{neg: neg, digits: strings.TrimRight(digits, "0"), point: point}
+}
+
+func (d decimal) equal(o decimal) bool {
+	return d.neg == o.neg && d.digits == o.digits && d.point.Cmp(o.point) == 0
 }
 
 // locate cannot tell an array index from an object member named by digits, so it takes a
