@@ -15,6 +15,7 @@ steps:
       # have specs of their own.
       patterns: &packages
         - ./generator/contextkey
+        - ./generator/jsonschema
         - ./generator/partial
         - ./generator/validator
   generate:

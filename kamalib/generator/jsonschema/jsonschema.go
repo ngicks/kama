@@ -42,8 +42,11 @@ type Options struct {
 	// of the root schema.
 	TypeName string
 	// Schema is the path of the schema file. The header of the generated
-	// file records it as it is, and the file lands in its directory.
+	// file records it as it is.
 	Schema string
+	// Dir is the directory the generated file lands in. Empty means the
+	// directory of Schema.
+	Dir string
 	// Now gives the time the header of the generated file records. It is
 	// time.Now when nil.
 	Now func() time.Time
@@ -58,8 +61,8 @@ func (o Options) WithDefaults() Options {
 	return o
 }
 
-// File is a generated file. Its Path is <Package>.kama_jsonschema.go in the
-// directory of Options.Schema.
+// File is a generated file. Its Path is <Package>.kama_jsonschema.go in
+// Options.Dir.
 type File = base.File
 
 // Generate returns the Go declarations of doc, one file holding a type for
@@ -72,8 +75,8 @@ type File = base.File
 func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 	opts = opts.WithDefaults()
 
-	if !token.IsIdentifier(opts.Package) || opts.Package == "_" {
-		return nil, nil, fmt.Errorf("%w: package name %q", ErrOptions, opts.Package)
+	if err := checkPackage(opts.Package); err != nil {
+		return nil, nil, err
 	}
 
 	if err := check(doc, opts); err != nil {
@@ -85,7 +88,21 @@ func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 		return nil, nil, err
 	}
 
-	path := naming.SourceFile(filepath.Join(filepath.Dir(opts.Schema), opts.Package+".go"))
+	dir := opts.Dir
+	if dir == "" {
+		dir = filepath.Dir(opts.Schema)
+	}
+
+	path := naming.SourceFile(filepath.Join(dir, opts.Package+".go"))
 
 	return []File{{Path: path, Content: content}}, nil, nil
+}
+
+// checkPackage reports pkg when it is no package name.
+func checkPackage(pkg string) error {
+	if !token.IsIdentifier(pkg) || pkg == "_" {
+		return fmt.Errorf("%w: package name %q", ErrOptions, pkg)
+	}
+
+	return nil
 }

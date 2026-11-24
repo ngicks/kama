@@ -183,7 +183,8 @@ steps:
     in: template
     out: root
     param: {package: keys, key_type_func: keyTypeFunc}
-  final: {proc: overlayfs.copy_down, in: root, after: [partial, validate, keys]}
+  types: {proc: jsonschema.generate, out: root, param: {schema: types/schema.json}}
+  final: {proc: overlayfs.copy_down, in: root, after: [partial, validate, keys, types]}
 `), 0o644))
 
 	spec, err := LoadSpec(path)
@@ -215,10 +216,14 @@ steps:
     in: template
     out: root
     param: {package: keys, key_type_func: keyTypeFunc, dri: x}
+  types:
+    proc: jsonschema.generate
+    out: root
+    param: {schema: types/schema.json, tpye_name: x}
   final:
     proc: overlayfs.copy_down
     in: root
-    after: [partial, validate, keys]
+    after: [partial, validate, keys, types]
     param: {test: true}
 `), 0o644))
 
@@ -240,6 +245,7 @@ steps:
 		"workflow: unknown key: steps.partial.param.option_file.bse",
 		"workflow: unknown key: steps.root.param.rot",
 		"workflow: unknown key: steps.template.param.fromats",
+		"workflow: unknown key: steps.types.param.tpye_name",
 		"workflow: unknown key: steps.validate.param.option_flie",
 	})
 }
