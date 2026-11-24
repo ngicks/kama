@@ -1,54 +1,16 @@
 package genhelper
 
 import (
-	"bytes"
 	"go/scanner"
 	"go/token"
-	"slices"
 	"strings"
 
 	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
+	"github.com/ngicks/kama/kamalib/pkg/importdecl/dstimport"
 )
-
-// PrintDstFile prints the file of the package pkgName holding decls. The
-// file starts with the comment lines of header, then buildLine unless it is
-// empty. imports adds its missing import declarations to the file. A nil
-// imports adds none.
-//
-// PrintDstFile returns the error of [decorator.Fprint] as it is.
-func PrintDstFile(
-	pkgName string,
-	header []string,
-	buildLine string,
-	decls []dst.Decl,
-	imports *importdecl.Map,
-) ([]byte, error) {
-	f := &dst.File{Name: dst.NewIdent(pkgName), Decls: decls}
-
-	// A lone "\n" decoration would make dst panic on restoring the file.
-	if len(header) > 0 {
-		f.Decs.Start = append(slices.Clone(header), "\n")
-	}
-
-	if buildLine != "" {
-		f.Decs.Start = append(f.Decs.Start, buildLine, "\n")
-	}
-
-	if imports != nil {
-		imports.AddMissingDst(f)
-	}
-
-	var buf bytes.Buffer
-	if err := decorator.Fprint(&buf, f); err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
-}
 
 // ParseDecls parses src into declarations, each after an empty line.
 //
@@ -250,7 +212,7 @@ func AppendDecls(f *dst.File, pkg *Package, decls []byte) error {
 
 	f.Decls = append(f.Decls, parsed...)
 	if pkg != nil && pkg.Imports != nil {
-		pkg.Imports.AddMissingDst(f)
+		dstimport.AddMissing(pkg.Imports, f)
 	}
 
 	return nil

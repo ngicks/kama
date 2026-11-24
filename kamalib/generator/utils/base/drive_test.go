@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
@@ -404,30 +405,25 @@ func TestProcWithoutIn(t *testing.T) {
 }
 
 // TestCoreImportsNoDst keeps the framework core free of dst, which it must
-// not make a dependency of every generator. A helper using dst lives in a
-// package of its own.
+// not make a dependency of every generator: no package the core imports,
+// directly or not, is one of dst. A helper using dst lives in a package of
+// its own.
 func TestCoreImportsNoDst(t *testing.T) {
-	names, err := fs.Glob(os.DirFS("."), "*.go")
+	pkgs, err := packages.Load(
+		&packages.Config{Mode: packages.NeedName | packages.NeedImports | packages.NeedDeps},
+		".",
+	)
 	assert.NilError(t, err)
+	assert.Equal(t, len(pkgs), 1)
 
-	for _, name := range names {
-		if strings.HasSuffix(name, "_test.go") {
-			continue
+	var dsts []string
+
+	packages.Visit(pkgs, nil, func(p *packages.Package) {
+		if strings.HasPrefix(p.PkgPath, "github.com/dave/dst") {
+			dsts = append(dsts, p.PkgPath)
 		}
+	})
 
-		f, err := parser.ParseFile(token.NewFileSet(), name, nil, parser.ImportsOnly)
-		assert.NilError(t, err)
-
-		for _, imp := range f.Imports {
-			path, err := strconv.Unquote(imp.Path.Value)
-			assert.NilError(t, err)
-			assert.Assert(
-				t,
-				!strings.HasPrefix(path, "github.com/dave/dst"),
-				"%s imports %s",
-				name,
-				path,
-			)
-		}
-	}
+	assert.Assert(t, len(pkgs[0].Imports) > 0)
+	assert.DeepEqual(t, dsts, []string(nil))
 }

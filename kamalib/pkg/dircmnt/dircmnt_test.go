@@ -4,11 +4,8 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"strconv"
 	"testing"
 
-	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 	"gotest.tools/v3/assert"
 )
 
@@ -20,16 +17,6 @@ func parse(t *testing.T, src string) (*token.FileSet, *ast.File) {
 	assert.NilError(t, err)
 
 	return fset, f
-}
-
-func decorate(t *testing.T, src string) *dst.File {
-	t.Helper()
-
-	fset, f := parse(t, src)
-	df, err := decorator.NewDecorator(fset).DecorateFile(f)
-	assert.NilError(t, err)
-
-	return df
 }
 
 func TestParse(t *testing.T) {
@@ -107,55 +94,6 @@ kama:ignore
 	assert.Assert(t, Ast(nil) == nil)
 }
 
-func TestDst(t *testing.T) {
-	df := decorate(t, `package x
-
-//kama:ignore
-type A struct{}
-
-// aaaa
-//kama:ignore
-//go:noinline
-// bbbb
-func (a A) M() {}
-
-/* block */
-//kama:generated
-type B struct{}
-
-// not a directive
-type C struct{}
-
-//kama:ignore
-
-// foo
-//kama:generated
-type D struct{}
-
-//kama:ignore
-
-type E struct{}
-`)
-
-	want := [][]Comment{
-		{{"kama", "ignore", ""}},
-		{{"kama", "ignore", ""}, {"go", "noinline", ""}},
-		{{"kama", "generated", ""}},
-		nil,
-		// Comments before an empty line are not attached to the node.
-		{{"kama", "generated", ""}},
-		nil,
-	}
-
-	assert.Equal(t, len(df.Decls), len(want))
-
-	for i, decl := range df.Decls {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			assert.DeepEqual(t, Dst(*decl.Decorations()), want[i])
-		})
-	}
-}
-
 const fieldSrc = "package x\n" +
 	"type A struct {\n" +
 	"\t//kama:skipped\n" +
@@ -178,7 +116,7 @@ func TestAstField(t *testing.T) {
 
 	want := map[string][]Comment{
 		// go/ast attaches no doc comment to a field whose line starts with a
-		// block comment, unlike dst.
+		// block comment.
 		"A": {{"kama", "a2", ""}},
 		// Only the first trailing comment counts, and here it is a block.
 		"B": {{"kama", "b1", ""}},
@@ -189,22 +127,5 @@ func TestAstField(t *testing.T) {
 	for _, fl := range fields {
 		name := fl.Names[0].Name
 		assert.DeepEqual(t, AstField(fl), want[name])
-	}
-}
-
-func TestDstField(t *testing.T) {
-	df := decorate(t, fieldSrc)
-	fields := df.Decls[0].(*dst.GenDecl).Specs[0].(*dst.TypeSpec).Type.(*dst.StructType).Fields.List
-
-	want := map[string][]Comment{
-		"A": {{"kama", "a1", ""}, {"kama", "a2", ""}},
-		"B": {{"kama", "b1", ""}},
-		"C": {{"kama", "c1", ""}, {"kama", "c2", ""}},
-		"D": {{"kama", "d1", ""}},
-	}
-
-	for _, fl := range fields {
-		name := fl.Names[0].Name
-		assert.DeepEqual(t, DstField(fl.Decs), want[name])
 	}
 }

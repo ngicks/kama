@@ -1,5 +1,4 @@
-// Package dircmnt extracts directive comments from go/ast and dst
-// decorations.
+// Package dircmnt extracts directive comments from go/ast comments.
 //
 // A directive comment is a line comment //toolname:directive args, as in
 // //go:generate go run ./gen. The toolname: part and the args are optional,
@@ -17,7 +16,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/dave/dst"
 	"github.com/ngicks/opiter"
 )
 
@@ -83,23 +81,6 @@ func AstField(f *ast.Field) []Comment {
 	)
 }
 
-// Dst returns the directive comments decorating the start of a node, after
-// the last empty line.
-func Dst(decs dst.NodeDecs) []Comment {
-	return collect(slices.Values(afterLastEmptyLine(decs.Start)))
-}
-
-// DstField returns the directive comments of a field, from the comments
-// decorating its start after the last empty line, followed by the first
-// comment decorating its end.
-func DstField(decs dst.FieldDecorations) []Comment {
-	return collect(
-		opiter.WrapSeq(slices.Values(afterLastEmptyLine(decs.Start))).
-			Concat(slices.Values(decs.End[:min(len(decs.End), 1)])).
-			Iter(),
-	)
-}
-
 func astTexts(cg *ast.CommentGroup) iter.Seq[string] {
 	if cg == nil {
 		return opiter.Empty[string]()
@@ -108,27 +89,6 @@ func astTexts(cg *ast.CommentGroup) iter.Seq[string] {
 	return opiter.WrapSeq(slices.Values(cg.List)).
 		Map(func(c *ast.Comment) string { return c.Text }).
 		Iter()
-}
-
-// afterLastEmptyLine drops the decorations up to and including the last
-// empty line, which separates comments not attached to the node.
-func afterLastEmptyLine(lines []string) []string {
-	for i, s := range slices.Backward(lines) {
-		// dst only records a strictly empty "\n"; a line holding only spaces
-		// is not reported as empty.
-		if s != "\n" {
-			continue
-		}
-		// dst records a line break after a block comment as "\n" too, so a
-		// "\n" right after one is not an empty line.
-		if i > 0 && strings.HasPrefix(lines[i-1], "/*") {
-			continue
-		}
-
-		return lines[i+1:]
-	}
-
-	return lines
 }
 
 func collect(texts iter.Seq[string]) []Comment {

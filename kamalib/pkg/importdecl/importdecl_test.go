@@ -10,8 +10,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
@@ -113,7 +111,6 @@ func TestIdent(t *testing.T) {
 		_, ok := m.Ident("example.invalid/unknown")
 		assert.Assert(t, !ok)
 		assert.Assert(t, m.AstExpr(QualifiedType{"example.invalid/unknown", "T"}) == nil)
-		assert.Assert(t, m.DstExpr(QualifiedType{"example.invalid/unknown", "T"}) == nil)
 	})
 
 	t.Run("NewParser knows only the package and its imports", func(t *testing.T) {
@@ -199,9 +196,9 @@ func TestParseErrors(t *testing.T) {
 	assert.ErrorIs(t, err, ErrUnknownImport)
 
 	// A named import needs no package information.
-	m, err := p.ParseDst([]*dst.ImportSpec{{
-		Name: dst.NewIdent("u"),
-		Path: &dst.BasicLit{Kind: token.STRING, Value: `"example.invalid/unknown"`},
+	m, err := p.ParseAst([]*ast.ImportSpec{{
+		Name: ast.NewIdent("u"),
+		Path: &ast.BasicLit{Kind: token.STRING, Value: `"example.invalid/unknown"`},
 	}})
 	assert.NilError(t, err)
 
@@ -262,10 +259,6 @@ func TestExpr(t *testing.T) {
 	a := m.AstExpr(QualifiedType{pkg22Path, "Pkg22"})
 	assert.Equal(t, a.X.(*ast.Ident).Name, "pkg22222")
 	assert.Equal(t, a.Sel.Name, "Pkg22")
-
-	d := m.DstExpr(QualifiedType{pkg22Path, "Pkg22"})
-	assert.Equal(t, d.X.(*dst.Ident).Name, "pkg22222")
-	assert.Equal(t, d.Sel.Name, "Pkg22")
 }
 
 func TestQualifier(t *testing.T) {
@@ -345,33 +338,6 @@ func TestAddMissingAst(t *testing.T) {
 			var buf bytes.Buffer
 			assert.NilError(t, format.Node(&buf, pkg.Fset, f))
 			assert.Equal(t, buf.String(), formatSource(t, want))
-		})
-	}
-}
-
-func TestAddMissingDst(t *testing.T) {
-	pkgs, all := load(t)
-
-	for name, want := range map[string]string{"pkg1": wantPkg1, "pkg4": wantPkg4} {
-		t.Run(name, func(t *testing.T) {
-			pkg := pkgs[name]
-			df, err := decorator.NewDecorator(pkg.Fset).DecorateFile(pkg.Syntax[0])
-			assert.NilError(t, err)
-
-			p := NewParserFromPackages(all)
-			requireExtra(t, p)
-			m, err := p.ParseDst(df.Imports)
-			assert.NilError(t, err)
-
-			_, _ = m.Ident(pkg22Path)
-
-			m.AddMissingDst(df)
-			m.AddMissingDst(df)
-			assert.Equal(t, len(df.Imports), len(pkg.Syntax[0].Imports)+3)
-
-			var buf bytes.Buffer
-			assert.NilError(t, decorator.Fprint(&buf, df))
-			assert.Equal(t, formatSource(t, buf.String()), formatSource(t, want))
 		})
 	}
 }

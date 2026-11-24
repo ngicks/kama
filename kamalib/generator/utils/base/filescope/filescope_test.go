@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ngicks/kama/kamalib/pkg/importdecl/dstimport"
+
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"gotest.tools/v3/assert"
@@ -56,7 +58,7 @@ func TestFileScope(t *testing.T) {
 		t.Helper()
 
 		f := &dst.File{Name: dst.NewIdent("x")}
-		s.Imports.AddMissingDst(f)
+		dstimport.AddMissing(s.Imports, f)
 
 		var buf bytes.Buffer
 		assert.NilError(t, decorator.Fprint(&buf, f))

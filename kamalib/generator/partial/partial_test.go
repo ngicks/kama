@@ -24,7 +24,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/genheader"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
@@ -40,7 +40,7 @@ func registry(t *testing.T) *genmark.Registry {
 }
 
 // header is the first line of every generated file.
-var header = genhelper.GeneratedComment(GeneratorId.String())
+var header = genheader.GeneratedComment(GeneratorId.String())
 
 // testHeader is the header of the files generate gives with default options.
 var testHeader = header + `
@@ -53,7 +53,7 @@ var testHeader = header + `
 
 var (
 	optionFileParam = regexp.MustCompile(`(?m)^(//\t(?:package_)?option_file: ).*$`)
-	generatedLine   = regexp.MustCompile(`(?m)^` + genhelper.GeneratedTimePrefix + `.*\n`)
+	generatedLine   = regexp.MustCompile(`(?m)^` + genheader.GeneratedTimePrefix + `.*\n`)
 )
 
 // withoutRunParams returns src, a generated file, without the generated:

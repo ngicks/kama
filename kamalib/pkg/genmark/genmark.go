@@ -17,7 +17,6 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/dave/dst"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/opiter"
 )
@@ -73,12 +72,6 @@ func (r *Registry) Register(name string) error {
 // Text following the name in a marker is ignored.
 func (r *Registry) Generated(cg *ast.CommentGroup) (name string, ok bool) {
 	return r.find(dircmnt.Ast(cg))
-}
-
-// GeneratedDst reports the registered generator whose marker appears in the
-// comments decorating the start of a node, after the last empty line.
-func (r *Registry) GeneratedDst(decs dst.NodeDecs) (name string, ok bool) {
-	return r.find(dircmnt.Dst(decs))
 }
 
 func (r *Registry) find(comments []dircmnt.Comment) (string, bool) {

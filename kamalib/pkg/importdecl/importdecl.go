@@ -28,7 +28,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/dave/dst"
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/packages"
@@ -228,24 +227,6 @@ func astSpecNamePath(s *ast.ImportSpec) (name, pathLit string) {
 	return name, s.Path.Value
 }
 
-// ParseDst parses the import specs of a file, as dst.File.Imports holds
-// them.
-func (p *Parser) ParseDst(specs []*dst.ImportSpec) (*Map, error) {
-	return p.parse(
-		opiter.WrapSeq(slices.Values(specs)).
-			Disassemble(dstSpecNamePath).
-			Iter2(),
-	)
-}
-
-func dstSpecNamePath(s *dst.ImportSpec) (name, pathLit string) {
-	if s.Name != nil {
-		name = s.Name.Name
-	}
-
-	return name, s.Path.Value
-}
-
 func (p *Parser) parse(specs iter.Seq2[string, string]) (*Map, error) {
 	m := &Map{
 		known:   p.known,
@@ -288,11 +269,6 @@ func (p *Parser) parse(specs iter.Seq2[string, string]) (*Map, error) {
 	}
 
 	return m, nil
-}
-
-func asGenDecl(d dst.Decl) *dst.GenDecl {
-	g, _ := d.(*dst.GenDecl)
-	return g
 }
 
 // Map maps package paths to the identifiers a file accesses them through.
@@ -399,17 +375,6 @@ func (m *Map) AstExpr(ty QualifiedType) *ast.SelectorExpr {
 	return &ast.SelectorExpr{X: ast.NewIdent(ident), Sel: ast.NewIdent(ty.TypeName)}
 }
 
-// DstExpr returns the expression referring to ty, or nil if its package is
-// unknown.
-func (m *Map) DstExpr(ty QualifiedType) *dst.SelectorExpr {
-	ident, ok := m.Ident(ty.PackagePath)
-	if !ok {
-		return nil
-	}
-
-	return &dst.SelectorExpr{X: dst.NewIdent(ident), Sel: dst.NewIdent(ty.TypeName)}
-}
-
 // Qualifier returns a types.Qualifier that qualifies members of every
 // package other than currentPkgPath with their identifiers.
 func (m *Map) Qualifier(currentPkgPath string) types.Qualifier {
@@ -445,59 +410,5 @@ func (m *Map) Imports() iter.Seq[Import] {
 func (m *Map) AddMissingAst(fset *token.FileSet, f *ast.File) {
 	for imp := range m.Missing() {
 		astutil.AddNamedImport(fset, f, imp.Name, imp.Package.Path)
-	}
-}
-
-// AddMissingDst adds the missing imports to the first import declaration
-// of f, creating one if f has none, and to f.Imports. Imports f already has
-// are skipped, so calling it again is safe.
-func (m *Map) AddMissingDst(f *dst.File) {
-	type spec struct{ name, path string }
-
-	has := map[spec]bool{}
-
-	for _, s := range f.Imports {
-		var name string
-		if s.Name != nil {
-			name = s.Name.Name
-		}
-
-		pkgPath, err := strconv.Unquote(s.Path.Value)
-		if err != nil {
-			continue
-		}
-
-		has[spec{name, pkgPath}] = true
-	}
-
-	decl := opiter.WrapSeq(slices.Values(f.Decls)).
-		Map(asGenDecl).
-		Filter(func(g *dst.GenDecl) bool { return g != nil && g.Tok == token.IMPORT }).
-		First().
-		UnwrapOrDefault()
-
-	for imp := range m.Missing() {
-		if has[spec{imp.Name, imp.Package.Path}] {
-			continue
-		}
-
-		if decl == nil {
-			decl = &dst.GenDecl{Tok: token.IMPORT}
-			f.Decls = slices.Insert(f.Decls, 0, dst.Decl(decl))
-		}
-
-		s := &dst.ImportSpec{
-			Path: &dst.BasicLit{Kind: token.STRING, Value: strconv.Quote(imp.Package.Path)},
-		}
-		if imp.Name != "" {
-			s.Name = dst.NewIdent(imp.Name)
-		}
-
-		decl.Specs = append(decl.Specs, s)
-		f.Imports = append(f.Imports, s)
-	}
-
-	if decl != nil && len(decl.Specs) > 1 {
-		decl.Lparen = true
 	}
 }

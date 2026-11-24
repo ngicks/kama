@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/genheader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
@@ -82,7 +82,7 @@ func stageFile(ctx context.Context, fsys *overlayfs.Fs, f File) (bool, error) {
 			return false, fmt.Errorf("base: format %q: %w", f.Path, err)
 		}
 
-		if genhelper.SameExceptGenerated(existing, formatted) {
+		if genheader.SameExceptGenerated(existing, formatted) {
 			return false, nil
 		}
 	}

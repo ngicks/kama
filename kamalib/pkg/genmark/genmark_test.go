@@ -8,8 +8,6 @@ import (
 	"go/token"
 	"testing"
 
-	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"golang.org/x/sync/errgroup"
 	"gotest.tools/v3/assert"
@@ -113,37 +111,6 @@ func TestGeneratedOfAnotherTool(t *testing.T) {
 	name, ok := b.Generated(doc)
 	assert.Assert(t, ok)
 	assert.Equal(t, name, "gen")
-}
-
-func TestGeneratedDst(t *testing.T) {
-	r := newRegistry(t, "tool-partial")
-
-	src := `package x
-
-//tool:generated tool-partial
-type Foo int
-
-//tool:generated tool-partial
-
-type Bar int
-
-//tool:generated unknown
-type Baz int
-`
-	fset, f := parse(t, src)
-	df, err := decorator.NewDecorator(fset).DecorateFile(f)
-	assert.NilError(t, err)
-
-	want := []bool{true, false, false}
-
-	for i, decl := range df.Decls {
-		name, ok := r.GeneratedDst(decl.(*dst.GenDecl).Decs.NodeDecs)
-		assert.Equal(t, ok, want[i], "decl %d", i)
-
-		if ok {
-			assert.Equal(t, name, "tool-partial")
-		}
-	}
 }
 
 func TestRegistryConcurrent(t *testing.T) {

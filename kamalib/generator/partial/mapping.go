@@ -14,6 +14,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
+	"github.com/ngicks/kama/kamalib/pkg/importdecl/dstimport"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
@@ -384,7 +385,7 @@ func (p *mapper) partialExpr(m match) (dst.Expr, error) {
 }
 
 func (p *mapper) und(inner dst.Expr) (dst.Expr, error) {
-	sel := p.Imports.DstExpr(
+	sel := dstimport.Expr(p.Imports,
 		importdecl.QualifiedType{PackagePath: typequery.UndPath, TypeName: "Und"},
 	)
 	if sel == nil {

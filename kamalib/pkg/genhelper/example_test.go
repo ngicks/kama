@@ -10,6 +10,7 @@ import (
 
 	"github.com/dave/dst/decorator"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
+	"github.com/ngicks/kama/kamalib/pkg/importdecl/dstimport"
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
@@ -302,7 +303,7 @@ func ExampleScope_LinkImports() {
 		types.NewPackage(valPath, "val"),
 	})
 
-	imports, err := importdecl.NewParser(pkg).ParseDst(nil)
+	imports, err := importdecl.NewParser(pkg).ParseAst(nil)
 	if err != nil {
 		panic(err)
 	}
@@ -349,7 +350,7 @@ func ExamplePackage() {
 		panic(err)
 	}
 
-	imports, err := importdecl.NewParser(pkg).ParseDst(f.Imports)
+	imports, err := dstimport.Parse(importdecl.NewParser(pkg), f.Imports)
 	if err != nil {
 		panic(err)
 	}

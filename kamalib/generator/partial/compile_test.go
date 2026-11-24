@@ -10,7 +10,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/genheader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
@@ -84,7 +84,7 @@ func TestHelpersAcrossBuildVariants(t *testing.T) {
 
 	opts.BuildFlags = nil
 	generateInto(t, f, opts)
-	assert.Assert(t, genhelper.SameExceptGenerated([]byte(read(HelpersFile)), []byte(shared)))
+	assert.Assert(t, genheader.SameExceptGenerated([]byte(read(HelpersFile)), []byte(shared)))
 
 	opts.BuildFlags = tagged
 	_, err := gopackages.Load(context.Background(), f, opts)

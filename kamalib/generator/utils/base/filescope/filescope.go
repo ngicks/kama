@@ -24,8 +24,8 @@ import (
 // file.
 //
 // The imports start empty. Spelling a package or a type records the
-// package as used. [importdecl.Map.AddMissingDst] of Imports writes the
-// import declarations of the packages used.
+// package as used. A [base.Composed] holding Imports declares the packages
+// used.
 type Scope struct {
 	// Pkg is the package the file belongs to.
 	Pkg *packages.Package
@@ -68,7 +68,7 @@ func New(pkg *packages.Package, reserve, require []string) (*Scope, error) {
 // Fresh returns a scope of another file of the same package with the same
 // reserved identifiers and required packages, and with no package used.
 func (s *Scope) Fresh() (*Scope, error) {
-	m, err := s.parser.ParseDst(nil)
+	m, err := s.parser.ParseAst(nil)
 	if err != nil {
 		return nil, err
 	}

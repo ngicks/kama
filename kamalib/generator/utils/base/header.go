@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/genheader"
 )
 
 // Header returns the comment lines a generated file starts with: the
@@ -14,7 +14,7 @@ import (
 // time now in UTC to the second. The first line follows the convention of
 // go help generate.
 func Header(generator string, params map[string]any, now time.Time) ([]string, error) {
-	comment, err := genhelper.GeneratorParams{
+	comment, err := genheader.GeneratorParams{
 		Name:      generator,
 		Params:    params,
 		Generated: now,

@@ -35,7 +35,7 @@ func newPackage(t *testing.T, fset *token.FileSet) (*genhelper.Package, *types.P
 	opt := types.NewPackage(optPath, "opt")
 	dest := types.NewPackage(destPath, "dest")
 	dest.SetImports([]*types.Package{opt})
-	imports, err := importdecl.NewParser(dest).ParseDst(nil)
+	imports, err := importdecl.NewParser(dest).ParseAst(nil)
 	assert.NilError(t, err)
 
 	return &genhelper.Package{Imports: imports, Path: destPath, Fset: fset}, opt
