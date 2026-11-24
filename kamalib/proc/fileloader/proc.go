@@ -4,7 +4,6 @@ package fileloader
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -29,7 +28,7 @@ type ProcParam struct {
 	// Base is the file path without extension, relative to the project root.
 	Base string `json:"base"`
 	// Formats are tried in order; earlier entries take priority. Empty means
-	// yaml, json, toml.
+	// toml, yaml, json.
 	Formats []fileloader.Format `json:"formats"`
 	// Unknown captures the keys of a param that name no field.
 	Unknown map[string]any `json:",embed"`
@@ -72,21 +71,8 @@ type instance struct {
 }
 
 func (i *instance) Param(p ProcParam) error {
-	if p.Base == "" {
-		return errors.New("fileloader: base is required")
-	}
-
-	in := fileloader.PathInput(p)
-	if len(in.Formats) == 0 {
-		in.Formats = []fileloader.Format{
-			fileloader.FormatYaml,
-			fileloader.FormatJson,
-			fileloader.FormatToml,
-		}
-	}
-
-	// Candidates reports unknown formats without touching the filesystem.
-	if _, err := in.Candidates(); err != nil {
+	in, err := fileloader.PathInput(p).Normalize()
+	if err != nil {
 		return fmt.Errorf("fileloader: %w", err)
 	}
 

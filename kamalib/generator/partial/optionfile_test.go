@@ -711,7 +711,7 @@ func TestProcOptionFile(t *testing.T) {
 	assert.DeepEqual(t, i.optionFile, &fileloader.PathInput{
 		Base: "partial",
 		Formats: []fileloader.Format{
-			fileloader.FormatYaml, fileloader.FormatJson, fileloader.FormatToml,
+			fileloader.FormatToml, fileloader.FormatYaml, fileloader.FormatJson,
 		},
 	})
 

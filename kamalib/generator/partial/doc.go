@@ -142,8 +142,8 @@
 // or in several files, uses the last one in file name and position order,
 // and Proc reports a warning for each other one.
 //
-// A package without the directive gets kama_partial.yaml, .yml, .json or
-// .toml in its directory, the first one present in that order, and no
+// A package without the directive gets kama_partial.toml, .yaml, .yml or
+// .json in its directory, the first one present in that order, and no
 // package option file when none is present.
 //
 // The options of a package option file meet those of the directives and of

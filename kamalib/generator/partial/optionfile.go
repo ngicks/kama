@@ -23,7 +23,7 @@ type LoadedOptions = genopt.Loaded[PackageOptions, TypeOptions, FieldOptions]
 // NewLoader returns the loader of the options of the generator. optionFile
 // finds the central option files relative to the root; none are read when
 // it is nil. A package without //kama:option-file partial=<path> reads
-// kama_partial.yaml, .yml, .json or .toml in its directory, the first one
+// kama_partial.toml, .yaml, .yml or .json in its directory, the first one
 // present in that order.
 func NewLoader(
 	optionFile fileloader.Input,

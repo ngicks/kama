@@ -42,6 +42,58 @@ func TestLoadPriority(t *testing.T) {
 	}
 }
 
+func TestNormalize(t *testing.T) {
+	in, err := PathInput{Base: "opts"}.Normalize()
+	assert.NilError(t, err)
+	assert.DeepEqual(t, in, PathInput{
+		Base:    "opts",
+		Formats: []Format{FormatToml, FormatYaml, FormatJson},
+	})
+
+	in, err = PathInput{Base: "opts", Formats: []Format{FormatJson, FormatToml}}.Normalize()
+	assert.NilError(t, err)
+	assert.DeepEqual(t, in.Formats, []Format{FormatJson, FormatToml})
+
+	_, err = PathInput{}.Normalize()
+	assert.Error(t, err, "base is required")
+
+	_, err = PathInput{Base: "opts", Formats: []Format{"ini"}}.Normalize()
+	assert.ErrorIs(t, err, ErrUnknownFormat)
+}
+
+func TestNormalizeDefaultPriority(t *testing.T) {
+	fsys := fstest.MapFS{
+		"x.json": {Data: []byte(`{"name":"json"}`)},
+		"x.yaml": {Data: []byte("name: yaml\n")},
+		"x.yml":  {Data: []byte("name: yml\n")},
+		"x.toml": {Data: []byte("name = \"toml\"\n")},
+	}
+
+	in, err := PathInput{Base: "x"}.Normalize()
+	assert.NilError(t, err)
+
+	candidates, err := in.Candidates()
+	assert.NilError(t, err)
+	assert.DeepEqual(t, candidates, []string{"x.toml", "x.yaml", "x.yml", "x.json"})
+
+	found, err := in.Find(fsys)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, found, []string{"x.toml"})
+
+	var d doc
+
+	name, err := Load(fsys, in, &d)
+	assert.NilError(t, err)
+	assert.Equal(t, name, "x.toml")
+	assert.Equal(t, d.Name, "toml")
+}
+
+func TestDefaultFormatsFresh(t *testing.T) {
+	DefaultFormats()[0] = "ini"
+
+	assert.DeepEqual(t, DefaultFormats(), []Format{FormatToml, FormatYaml, FormatJson})
+}
+
 func TestLoadErrors(t *testing.T) {
 	fsys := fstest.MapFS{}
 

@@ -2,7 +2,8 @@
 //
 // An Input finds the files to load. PathInput names one base path and the
 // formats it accepts, in priority order, and finds the first format whose
-// file is present. JSON files are decoded with encoding/json/v2.
+// file is present. Normalize gives a PathInput without formats the default
+// order toml, yaml, json. JSON files are decoded with encoding/json/v2.
 package fileloader
 
 import (
@@ -34,6 +35,10 @@ var (
 	ErrUnknownFormat = errors.New("fileloader: unknown format")
 	ErrNotFound      = errors.New("fileloader: no file found")
 )
+
+// DefaultFormats returns the formats a PathInput without formats accepts
+// after Normalize, in priority order: toml, yaml, json.
+func DefaultFormats() []Format { return []Format{FormatToml, FormatYaml, FormatJson} }
 
 // Extensions returns the file extensions a format is read from, including the
 // dot, in the order they are probed.
@@ -113,6 +118,27 @@ type PathInput struct {
 // UnknownKeys returns the key paths of the keys its spec entry holds that
 // name no field.
 func (p PathInput) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
+
+// Normalize returns p with DefaultFormats when it names no format. An empty
+// Base is an error, and an unknown format an error wrapping
+// ErrUnknownFormat.
+func (p PathInput) Normalize() (PathInput, error) {
+	// The errors carry no package prefix: the caller names the param p came
+	// from.
+	if p.Base == "" {
+		return PathInput{}, errors.New("base is required")
+	}
+
+	if len(p.Formats) == 0 {
+		p.Formats = DefaultFormats()
+	}
+
+	if _, err := p.Candidates(); err != nil {
+		return PathInput{}, err
+	}
+
+	return p, nil
+}
 
 // Candidates lists every file name Load probes, in order.
 func (p PathInput) Candidates() ([]string, error) {

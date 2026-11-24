@@ -13,7 +13,7 @@ import (
 // NewLoader returns the loader of the generator of tool. optionFile finds the
 // central option files relative to the root; none are read when it is nil.
 // A package without //tool:option-file generator=<path> reads
-// tool_generator.yaml, .yml, .json or .toml in its directory, the first one
+// tool_generator.toml, .yaml, .yml or .json in its directory, the first one
 // present in that order.
 func NewLoader[P, T, F any](
 	tool, generator string,
@@ -27,7 +27,7 @@ func NewLoader[P, T, F any](
 		File:      optionFile,
 		PackageFile: fileloader.PathInput{
 			Base:    tool + "_" + generator,
-			Formats: defaultFormats(),
+			Formats: fileloader.DefaultFormats(),
 		},
 	}
 }
@@ -89,24 +89,6 @@ func (l *Loaded[P, T, F]) HeaderParams(pkgPath string) map[string]any {
 	}
 }
 
-// OptionFileParam checks in, the option_file param of a workflow step, and
-// returns it with the formats yaml, json and toml when it names none.
-func OptionFileParam(in fileloader.PathInput) (fileloader.PathInput, error) {
-	if in.Base == "" {
-		return fileloader.PathInput{}, errors.New("option_file: base is required")
-	}
-
-	if len(in.Formats) == 0 {
-		in.Formats = defaultFormats()
-	}
-	// Candidates reports unknown formats before a run opens any file.
-	if _, err := in.Candidates(); err != nil {
-		return fileloader.PathInput{}, fmt.Errorf("option_file: %w", err)
-	}
-
-	return in, nil
-}
-
 // WrapLoadError marks err, an error of a Loader, with the errors of a
 // generator: optionFile for ErrOptionFile and ErrPackageFile, and directive
 // for ErrDirective.
@@ -120,8 +102,4 @@ func WrapLoadError(err, optionFile, directive error) error {
 	}
 
 	return err
-}
-
-func defaultFormats() []fileloader.Format {
-	return []fileloader.Format{fileloader.FormatYaml, fileloader.FormatJson, fileloader.FormatToml}
 }

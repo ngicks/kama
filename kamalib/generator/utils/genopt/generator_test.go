@@ -6,6 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
@@ -22,10 +23,27 @@ func TestNewLoader(t *testing.T) {
 		PackageFile: fileloader.PathInput{
 			Base: "kama_x",
 			Formats: []fileloader.Format{
-				fileloader.FormatYaml, fileloader.FormatJson, fileloader.FormatToml,
+				fileloader.FormatToml, fileloader.FormatYaml, fileloader.FormatJson,
 			},
 		},
 	})
+}
+
+func TestNewLoaderPackageFilePriority(t *testing.T) {
+	l := NewLoader[leaf, leaf, leaf]("kama", "x", 1, nil)
+
+	loaded, err := l.LoadFiles(fstest.MapFS{
+		"a/kama_x.toml": {Data: []byte("version = 1\nvalue = \"toml\"\n")},
+		"a/kama_x.yaml": packageDoc("yaml"),
+		"a/kama_x.json": {Data: []byte(`{"version":1,"value":"json"}`)},
+	}, testRoot, []*packages.Package{
+		typedPackage(t, "m/a", "a", map[string]string{"x.go": "package a\n"}),
+	})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, packageValues(loaded), map[string][2]string{
+		"m/a": {"a/kama_x.toml", "toml"},
+	})
+	assert.Equal(t, len(loaded.Warnings), 0)
 }
 
 func TestLoadOptionNamed(t *testing.T) {
@@ -93,32 +111,6 @@ func TestLoadedHeaderParams(t *testing.T) {
 			assert.DeepEqual(t, tc.loaded.HeaderParams("m/a"), tc.want)
 		})
 	}
-}
-
-func TestOptionFileParam(t *testing.T) {
-	in, err := OptionFileParam(fileloader.PathInput{Base: "opts"})
-	assert.NilError(t, err)
-	assert.DeepEqual(t, in, fileloader.PathInput{
-		Base: "opts",
-		Formats: []fileloader.Format{
-			fileloader.FormatYaml, fileloader.FormatJson, fileloader.FormatToml,
-		},
-	})
-
-	in, err = OptionFileParam(fileloader.PathInput{
-		Base: "opts", Formats: []fileloader.Format{fileloader.FormatToml},
-	})
-	assert.NilError(t, err)
-	assert.DeepEqual(t, in.Formats, []fileloader.Format{fileloader.FormatToml})
-
-	_, err = OptionFileParam(fileloader.PathInput{})
-	assert.Error(t, err, "option_file: base is required")
-
-	_, err = OptionFileParam(fileloader.PathInput{
-		Base: "opts", Formats: []fileloader.Format{"ini"},
-	})
-	assert.ErrorIs(t, err, fileloader.ErrUnknownFormat)
-	assert.ErrorContains(t, err, "option_file: ")
 }
 
 func TestWrapLoadError(t *testing.T) {

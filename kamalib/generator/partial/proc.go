@@ -10,7 +10,6 @@ import (
 	"github.com/ngicks/option/und"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
-	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
@@ -32,7 +31,7 @@ type ProcParam struct {
 	MergeNestedStrategy string `json:"merge_nested"`
 	// OptionFile names the option file, its base path relative to the root
 	// of the out of Proc and its formats, under the lowercase keys base and
-	// formats. Empty formats mean yaml, json, toml. None means no option
+	// formats. Empty formats mean toml, yaml, json. None means no option
 	// file. A named file that is not present is an error.
 	OptionFile opt.Option[fileloader.PathInput] `json:"option_file"`
 	// FlagSet tells whether Proc writes the flag set file of the packages it
@@ -68,7 +67,7 @@ func (p *ProcParamPartial) UnknownKeys() [][]string {
 // its out. The option file and the package option files are read from its
 // out, so a file staged by an earlier step is read too. A package option
 // file is the file //kama:option-file partial=<path> names, or else
-// kama_partial.yaml, .yml, .json or .toml in the package directory when
+// kama_partial.toml, .yaml, .yml or .json in the package directory when
 // present. A file of its out that would change in the
 // generated: line of its header only is not staged. Proc reports the
 // warnings of Generate and the number of files written and unchanged.
@@ -121,9 +120,9 @@ func (i *instance) Param(partial ProcParamPartial) error {
 	i.opts = opts.WithDefaults()
 
 	if p.OptionFile.IsSome() {
-		in, err := genopt.OptionFileParam(p.OptionFile.Value())
+		in, err := p.OptionFile.Value().Normalize()
 		if err != nil {
-			return err
+			return fmt.Errorf("option_file: %w", err)
 		}
 
 		i.optionFile = &in

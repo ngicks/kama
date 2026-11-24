@@ -405,8 +405,8 @@
 //
 //	//kama:option-file validate=../options/pb.yaml
 //
-// A package without that directive gets kama_validate.yaml, .yml, .json or
-// .toml in its directory, the first one present in that order. The entry of
+// A package without that directive gets kama_validate.toml, .yaml, .yml or
+// .json in its directory, the first one present in that order. The entry of
 // a type in the package option file replaces its entry in the option file
 // and its directives, with a warning for each.
 //
