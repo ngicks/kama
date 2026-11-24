@@ -8,8 +8,8 @@
 // and on the fields of T, validates the values the fields hold through
 // their own Validate, and calls a hook method per field. It returns errors of
 // package github.com/ngicks/kama/kamalib/pkg/validation, located by the
-// json names of the fields. Proc runs Generate as the workflow step kind
-// validate.generate.
+// json names of the fields. The proc of NewProc runs Generate as the
+// workflow step kind validate.generate.
 //
 // A generic target gets one more parameter per type parameter, in order:
 //
@@ -381,12 +381,12 @@
 // with an error wrapping ErrConflict. Package rule documents the registry
 // and how to write a validator.
 //
-// Proc generates with Proc.Registry. The kind validate.generate of
-// workflow.DefaultRegistry uses rule.DefaultRegistry(). NewProcWith returns
-// the constructor of a Proc with another registry. A program runs a workflow
-// spec with that registry through a workflow.Registry of its own. The
-// program registers the constructor under validate.generate in it. It
-// registers the other procs the spec names in it too:
+// The kind validate.generate of workflow.DefaultRegistry generates with
+// rule.DefaultRegistry(). NewProcWith returns the constructor of a proc with
+// another registry. A program runs a workflow spec with that registry
+// through a workflow.Registry of its own. The program registers the
+// constructor under validate.generate in it. It registers the other procs
+// the spec names in it too:
 //
 //	procs := workflow.NewRegistry()
 //	for kind, newProc := range map[string]func() workflow.Proc{
@@ -412,7 +412,7 @@
 //
 // An option file gives the options of the directives for types that cannot
 // carry them, such as generated code. ProcParam.OptionFile names the file
-// Proc reads, and Options.Loaded holds the loaded options. The Loader of
+// the proc reads, and Options.Loaded holds the loaded options. The Loader of
 // NewLoader loads them. The file is JSON, YAML or TOML:
 //
 //	version: 1
@@ -483,12 +483,12 @@
 //
 // Every generated file starts with a header naming the generator, the
 // option_file and package_option_file it read, and the time of the run.
-// Proc keeps a file that differs from the existing one in the generated:
+// The proc keeps a file that differs from the existing one in the generated:
 // line only. A run without changes therefore leaves every file as it was.
 //
 // A file of the loaded packages is stale when it holds a declaration with
 // the marker of the generator and the run does not produce it. Generate
-// returns a warning wrapping ErrStale for a stale file, and Proc reports
+// returns a warning wrapping ErrStale for a stale file, and the proc reports
 // it. The file is left in place; delete it if it is no longer needed.
 //
 // # Test files

@@ -1,26 +1,23 @@
 package partial
 
 import (
-	"context"
-	"fmt"
-	"reflect"
 	"slices"
 
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
+	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
-	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
-	"github.com/ngicks/kama/kamalib/proc/gopackages"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register("partial.generate", NewProc) }
+func init() { workflow.Register(GeneratorId.ProcKind(), NewProc) }
 
-// ProcParam configures Proc. See Options for the modes. A spec decodes into
-// ProcParamPartial, which Proc merges onto DefaultProcParam.
+// ProcParam configures the proc of NewProc. See Options for the modes. A
+// spec decodes into ProcParamPartial, which the proc merges onto
+// DefaultProcParam.
 //
 //kama:partial
 type ProcParam struct {
@@ -30,14 +27,14 @@ type ProcParam struct {
 	// MergeNestedStrategy is "recursive" or "overwrite".
 	MergeNestedStrategy string `json:"merge_nested"`
 	// OptionFile names the option file, its base path relative to the root
-	// of the out of Proc and its formats, under the lowercase keys base and
-	// formats. Empty formats mean toml, yaml, json. None means no option
-	// file. A named file that is not present is an error.
+	// of the out of the proc and its formats, under the lowercase keys base
+	// and formats. Empty formats mean toml, yaml, json. None means no
+	// option file. A named file that is not present is an error.
 	OptionFile opt.Option[fileloader.PathInput] `json:"option_file"`
-	// FlagSet tells whether Proc writes the flag set file of the packages it
-	// generates into. A package needs the file when one of its targets has
-	// a flag option, in any build variant. Turning it off with such a target
-	// loaded is an error.
+	// FlagSet tells whether the proc writes the flag set file of the
+	// packages it generates into. A package needs the file when one of its
+	// targets has a flag option, in any build variant. Turning it off with
+	// such a target loaded is an error.
 	FlagSet bool `json:"flag_set"`
 	// Unknown captures the keys of a param that name no field.
 	Unknown map[string]any `json:",embed"`
@@ -62,111 +59,43 @@ func (p *ProcParamPartial) UnknownKeys() [][]string {
 	)
 }
 
-// Proc generates the partial types of the packages its in loaded and
-// stages the files in its out. The packages must lie under the root of
-// its out. The option file and the package option files are read from its
-// out, so a file staged by an earlier step is read too. A package option
-// file is the file //kama:option-file partial=<path> names, or else
+// NewProc returns the proc generating the partial types of the packages
+// its in loaded, as base.SourceProc describes. A package option file is
+// the file //kama:option-file partial=<path> names, or else
 // kama_partial.toml, .yaml, .yml or .json in the package directory when
-// present. A file of its out that would change in the
-// generated: line of its header only is not staged. Proc reports the
-// warnings of Generate and the number of files written and unchanged.
-//
-//	Param(ProcParamPartial) error
-//	In(*gopackages.Packages)
-//	Out(*overlayfs.Fs)
-type Proc struct{}
+// present.
+func NewProc() workflow.Proc { return proc }
 
-// NewProc returns a new Proc.
-func NewProc() workflow.Proc { return Proc{} }
-
-func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParamPartial]() }
-
-func (Proc) InTypes() []reflect.Type {
-	return []reflect.Type{reflect.TypeFor[*gopackages.Packages]()}
+var proc = base.SourceProc[ProcParamPartial, ProcParam, Options, *LoadedOptions]{
+	Id:        GeneratorId,
+	Default:   DefaultProcParam,
+	Options:   procOptions,
+	Loader:    NewLoader(nil),
+	LoadError: loadError,
+	Generate:  generateLoaded,
 }
 
-func (Proc) OutTypes() []reflect.Type {
-	return []reflect.Type{reflect.TypeFor[*overlayfs.Fs]()}
-}
-
-func (Proc) AsInputType() reflect.Type { return nil }
-
-func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
-	return &instance{}, nil
-}
-
-func (Proc) CleanUp(context.Context) error { return nil }
-
-type instance struct {
-	opts       Options
-	optionFile *fileloader.PathInput
-	pkgs       *gopackages.Packages
-	fs         *overlayfs.Fs
-}
-
-func (i *instance) Param(partial ProcParamPartial) error {
-	p := DefaultProcParam().Merge(partial).ToValue()
-
+// procOptions returns the options of p and the option file it names.
+func procOptions(p ProcParam) (Options, opt.Option[fileloader.PathInput], error) {
 	opts := Options{
 		Merge:       MergeMode(p.MergeStrategy),
 		MergeNested: MergeNestedMode(p.MergeNestedStrategy),
 		OmitFlagSet: !p.FlagSet,
 	}
 	if err := opts.Validate(); err != nil {
-		return err
+		return Options{}, opt.None[fileloader.PathInput](), err
 	}
 
-	i.opts = opts.WithDefaults()
-
-	if p.OptionFile.IsSome() {
-		in, err := p.OptionFile.Value().Normalize()
-		if err != nil {
-			return fmt.Errorf("option_file: %w", err)
-		}
-
-		i.optionFile = &in
-	}
-
-	return nil
+	return opts.WithDefaults(), p.OptionFile, nil
 }
 
-func (i *instance) In(pkgs *gopackages.Packages) { i.pkgs = pkgs }
-
-func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
-
-func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
-	files, warnings, err := i.generate()
-	if err != nil {
-		return err
-	}
-
-	return base.StageWithWarnings(ctx, i.fs, files, warnings, r)
-}
-
-// generate runs Generate with the options of i, its option file and the
-// package option files, and returns the files with paths relative to the
-// root of the out of i.
-func (i *instance) generate() ([]File, []error, error) {
-	loaded, err := NewLoader(nil).LoadOptionNamed(
-		i.fs.FS(), i.fs.Root(), base.SourcePackages(i.pkgs.Pkgs), i.optionFile,
-	)
-	if err != nil {
-		return nil, nil, loadError(err)
-	}
-
-	opts := i.opts
+// generateLoaded runs Generate with loaded as the loaded options.
+func generateLoaded(
+	pkgs []*packages.Package,
+	opts Options,
+	loaded *LoadedOptions,
+) ([]File, []error, error) {
 	opts.Loaded = loaded
 
-	files, warnings, err := Generate(i.pkgs.Pkgs, opts)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	files, err = base.RelFiles(i.fs.Root(), files)
-	if err != nil {
-		return nil, nil, fmt.Errorf("partial: %w", err)
-	}
-
-	return files, warnings, nil
+	return Generate(pkgs, opts)
 }

@@ -318,20 +318,19 @@ func TestFlagSetOmitted(t *testing.T) {
 // TestProcParamDefaults merges the param of a spec onto DefaultProcParam: a
 // key left out takes its default, and a key that is set wins, false too.
 func TestProcParamDefaults(t *testing.T) {
-	i := &instance{}
-	assert.NilError(t, i.Param(ProcParamPartial{}))
-	assert.Equal(t, i.opts.Merge, MergeOverwrite)
-	assert.Equal(t, i.opts.MergeNested, MergeNestedRecursive)
-	assert.Assert(t, !i.opts.OmitFlagSet)
-	assert.Assert(t, i.optionFile == nil)
+	opts := paramOptions(t, ProcParamPartial{})
+	assert.Equal(t, opts.Merge, MergeOverwrite)
+	assert.Equal(t, opts.MergeNested, MergeNestedRecursive)
+	assert.Assert(t, !opts.OmitFlagSet)
+	assert.Assert(t, DefaultProcParam().ToValue().OptionFile.IsNone())
 
-	assert.NilError(t, i.Param(ProcParamPartial{
+	opts = paramOptions(t, ProcParamPartial{
 		MergeStrategy: und.Defined("append"),
 		FlagSet:       und.Defined(false),
-	}))
-	assert.Equal(t, i.opts.Merge, MergeAppend)
-	assert.Equal(t, i.opts.MergeNested, MergeNestedRecursive)
-	assert.Assert(t, i.opts.OmitFlagSet)
+	})
+	assert.Equal(t, opts.Merge, MergeAppend)
+	assert.Equal(t, opts.MergeNested, MergeNestedRecursive)
+	assert.Assert(t, opts.OmitFlagSet)
 }
 
 // TestProcParamFlagSetFromSpec decodes the param of a spec as the workflow
@@ -345,8 +344,6 @@ func TestProcParamFlagSetFromSpec(t *testing.T) {
 		var p ProcParamPartial
 		assert.NilError(t, json.Unmarshal([]byte(param), &p), param)
 
-		i := &instance{}
-		assert.NilError(t, i.Param(p), param)
-		assert.Equal(t, i.opts.OmitFlagSet, omit, param)
+		assert.Equal(t, paramOptions(t, p).OmitFlagSet, omit, param)
 	}
 }

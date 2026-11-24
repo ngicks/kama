@@ -21,6 +21,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
+	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
@@ -134,7 +135,7 @@ func TestOptions(t *testing.T) {
 	r := genmark.NewRegistry(base.ToolName)
 	assert.Equal(t, Options{Registry: r}.WithDefaults().Registry, r)
 
-	i := &instance{}
+	i := newInstance(t, proc)
 	assert.ErrorContains(
 		t,
 		i.Param(ProcParamPartial{MergeStrategy: und.Defined("replace")}),
@@ -146,9 +147,11 @@ func TestOptions(t *testing.T) {
 		"merge_nested",
 	)
 	assert.NilError(t, i.Param(ProcParamPartial{MergeStrategy: und.Defined("append")}))
-	assert.Equal(t, i.opts.Merge, MergeAppend)
-	assert.Equal(t, i.opts.MergeNested, MergeNestedRecursive)
-	assert.Equal(t, i.opts.Registry, base.DefaultRegistry)
+
+	opts := paramOptions(t, ProcParamPartial{MergeStrategy: und.Defined("append")})
+	assert.Equal(t, opts.Merge, MergeAppend)
+	assert.Equal(t, opts.MergeNested, MergeNestedRecursive)
+	assert.Equal(t, opts.Registry, base.DefaultRegistry)
 }
 
 func TestTargetErrors(t *testing.T) {
@@ -802,4 +805,5 @@ func TestSharedFileNames(t *testing.T) {
 	assert.Equal(t, HelpersFile, naming.SharedFile(helperKind))
 	assert.Equal(t, FlagSetFile, naming.SharedFile("flagset"))
 	assert.Equal(t, FileSuffix, naming.Suffix())
+	assert.Equal(t, NewLoader(nil).PackageFile.(fileloader.PathInput).Base, naming.Name)
 }

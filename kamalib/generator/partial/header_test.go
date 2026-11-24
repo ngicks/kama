@@ -11,9 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
+	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -247,7 +249,8 @@ func (e *procEnv) read(name string) string {
 	return string(b)
 }
 
-// run loads the packages, staged files included, and runs Proc with now.
+// run loads the packages, staged files included, and runs the proc with
+// now.
 func (e *procEnv) run(now time.Time) *gentest.RecordReporter {
 	e.t.Helper()
 
@@ -255,10 +258,17 @@ func (e *procEnv) run(now time.Time) *gentest.RecordReporter {
 	pkgs, err := gopackages.Load(ctx, e.f, gopackages.Options{Patterns: []string{"./" + e.dir}})
 	assert.NilError(e.t, err)
 
-	i := &instance{}
+	p := proc
+	p.Options = func(v ProcParam) (Options, opt.Option[fileloader.PathInput], error) {
+		opts, optionFile, err := procOptions(v)
+		opts.Registry = registry(e.t)
+		opts.Now = func() time.Time { return now }
+
+		return opts, optionFile, err
+	}
+
+	i := newInstance(e.t, p)
 	assert.NilError(e.t, i.Param(ProcParamPartial{}))
-	i.opts.Registry = registry(e.t)
-	i.opts.Now = func() time.Time { return now }
 	i.In(&procgopackages.Packages{Pkgs: pkgs})
 	i.Out(e.f)
 

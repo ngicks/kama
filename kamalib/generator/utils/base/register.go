@@ -36,6 +36,10 @@ func (id Id) Directive() string { return "//" + id.Namespace + ":" + id.Name }
 // kama_partial for kama:partial.
 func (id Id) Naming() Naming { return Naming{Name: id.Namespace + "_" + id.Name} }
 
+// ProcKind returns the kind a workflow registry knows the SourceProc of
+// the generator by, as in partial.generate.
+func (id Id) ProcKind() string { return id.Name + ".generate" }
+
 // MustRegister registers id in DefaultRegistry. It panics on error, since
 // it is meant for init functions, where a duplicate or invalid Id is a
 // programming error.

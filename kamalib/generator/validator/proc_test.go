@@ -16,6 +16,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	procpackages "github.com/ngicks/kama/kamalib/proc/gopackages"
 	procoverlayfs "github.com/ngicks/kama/kamalib/proc/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -60,9 +61,8 @@ func TestProcParamOptionFile(t *testing.T) {
 		return p
 	}
 
-	i := &instance{}
+	i := newInstance(t, NewProc())
 	assert.NilError(t, i.Param(ProcParamPartial{}))
-	assert.Assert(t, i.optionFile == nil)
 
 	err := i.Param(param(fileloader.PathInput{}))
 	assert.Error(t, err, "option_file: base is required")
@@ -73,12 +73,34 @@ func TestProcParamOptionFile(t *testing.T) {
 	assert.ErrorIs(t, err, fileloader.ErrUnknownFormat)
 
 	assert.NilError(t, i.Param(param(fileloader.PathInput{Base: "validate"})))
-	assert.DeepEqual(t, i.optionFile, &fileloader.PathInput{
-		Base: "validate",
-		Formats: []fileloader.Format{
-			fileloader.FormatToml, fileloader.FormatYaml, fileloader.FormatJson,
-		},
-	})
+}
+
+// procInstance is an instance of the proc of NewProc.
+type procInstance interface {
+	Param(p ProcParamPartial) error
+	In(pkgs *procpackages.Packages)
+	Out(f *overlayfs.Fs)
+	Run(ctx context.Context, r workflow.Reporter) error
+	Generate() ([]File, []error, error)
+}
+
+func newInstance(t *testing.T, p workflow.Proc) procInstance {
+	t.Helper()
+
+	inst, err := p.Instantiate(context.Background(), false)
+	assert.NilError(t, err)
+
+	i, ok := inst.(procInstance)
+	assert.Assert(t, ok, "%T", inst)
+
+	return i
+}
+
+// TestFileNames pins the exported file name and the package option file to
+// the naming of the generator.
+func TestFileNames(t *testing.T) {
+	assert.Equal(t, HelpersFile, naming.SharedFile(helperKind))
+	assert.Equal(t, NewLoader(nil).PackageFile.(fileloader.PathInput).Base, naming.Name)
 }
 
 // procProject writes files into a new module example.invalid/x that

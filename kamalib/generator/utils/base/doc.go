@@ -5,6 +5,7 @@
 // several generated files share, the scope a generated file spells
 // packages and types through, and helpers over loaded packages.
 //
-// A generator exposes a function that returns Files, and wraps it in a
+// A generator exposes a function that returns Files. A generator reading
+// loaded packages runs it in a SourceProc. Another generator wraps it in a
 // workflow proc of its own, which reports the warnings and calls Stage.
 package base

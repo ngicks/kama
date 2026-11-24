@@ -698,7 +698,7 @@ func TestOptionFileMisspeltIgnore(t *testing.T) {
 }
 
 func TestProcOptionFile(t *testing.T) {
-	i := &instance{}
+	i := newInstance(t, proc)
 	assert.Error(
 		t,
 		i.Param(paramWithOptionFile(fileloader.PathInput{})),
@@ -708,12 +708,6 @@ func TestProcOptionFile(t *testing.T) {
 		Base: "partial", Formats: []fileloader.Format{"ini"},
 	})), fileloader.ErrUnknownFormat)
 	assert.NilError(t, i.Param(paramWithOptionFile(fileloader.PathInput{Base: "partial"})))
-	assert.DeepEqual(t, i.optionFile, &fileloader.PathInput{
-		Base: "partial",
-		Formats: []fileloader.Format{
-			fileloader.FormatToml, fileloader.FormatYaml, fileloader.FormatJson,
-		},
-	})
 
 	ctx := context.Background()
 	f, err := overlayfs.New(".")
@@ -727,7 +721,7 @@ func TestProcOptionFile(t *testing.T) {
 	assert.NilError(t, err)
 
 	run := func(optionFile string) error {
-		i := &instance{}
+		i := newInstance(t, proc)
 		assert.NilError(t, i.Param(paramWithOptionFile(fileloader.PathInput{Base: optionFile})))
 		i.In(&procgopackages.Packages{Pkgs: pkgs})
 		i.Out(f)

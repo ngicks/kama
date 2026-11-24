@@ -2,8 +2,8 @@
 //
 // The partial variant XPartial of a type X has the type parameters of X,
 // and its fields can each be undefined, null or defined, so that a value
-// can describe a change to some fields of an X. Proc runs Generate as the
-// workflow step kind partial.generate.
+// can describe a change to some fields of an X. The proc of NewProc runs
+// Generate as the workflow step kind partial.generate.
 //
 // # Targets
 //
@@ -106,7 +106,7 @@
 //
 // An option file gives the options of the directives for types that cannot
 // carry them, such as generated code. ProcParam.OptionFile names the file
-// Proc reads. Options.Loaded holds the options of the directives and the
+// the proc reads. Options.Loaded holds the options of the directives and the
 // option files. The Loader of NewLoader loads them. A package may also
 // have an option file of its own, described under Package option
 // file. The file is JSON, YAML or TOML:
@@ -162,7 +162,7 @@
 // A package option file gives the options of a single package. Its
 // document has no packages level: version, all_types and types sit at the
 // top, with the meaning and vocabulary of one entry of packages of the
-// option file. Proc reads the package option file of every loaded package:
+// option file. The proc reads the package option file of every loaded package:
 //
 //	version: 1
 //	all_types: true
@@ -179,13 +179,13 @@
 // arg is <generator>=<path>. partial reads the arg keyed partial and
 // leaves the others to their generators. The path is
 // slash-separated and relative to the package directory. It may hold "..",
-// but an absolute path or a path leaving the root of the out of Proc is an
+// but an absolute path or a path leaving the root of the out of the proc is an
 // error. The extension gives the format: .yaml, .yml, .json or .toml. A
 // named file that does not exist is an error. Several packages may name one
 // file; its options apply to each of them. The directive follows the rule
 // of joined lines. A package naming partial more than once, in one comment
 // or in several files, uses the last one in file name and position order,
-// and Proc reports a warning for each other one.
+// and the proc reports a warning for each other one.
 //
 // A package without the directive gets kama_partial.toml, .yaml, .yml or
 // .json in its directory, the first one present in that order, and no
@@ -557,11 +557,11 @@
 // signatures of basic and time types, so *pflag.FlagSet of
 // github.com/spf13/pflag implements it and the generated code imports no
 // flag package. The file has no build constraint and is generated on every
-// run, and Proc keeps it as it was when only its generated: line would
+// run, and the proc keeps it as it was when only its generated: line would
 // change; a declaration in it the generator did not mark is an error,
 // and so is PartialFlagSet declared elsewhere in the package.
 //
-// Options.OmitFlagSet, the key flag_set: false of the param of Proc,
+// Options.OmitFlagSet, the key flag_set: false of the param of the proc,
 // leaves the file out. A run generating into packages without any flag
 // option does not need it. A flag option on a target of the run is an
 // error then, wrapping ErrOption. A flag set file an earlier run wrote is
@@ -705,14 +705,14 @@
 // genhelper.GeneratorParams prints the header. params lists merge,
 // merge_nested, option_file and package_option_file sorted by key, with
 // the defaults applied, each value as JSON. option_file is the name of the
-// option file read, relative to the root of the out of Proc, and null
+// option file read, relative to the root of the out of the proc, and null
 // without an option file. It is the list of names when Options.Loaded
 // holds several. package_option_file is the name of the package option
 // file of the package the file belongs to, and null when the package has
 // none.
 // generated is the time Options.Now returns, in UTC to the second.
 //
-// Proc keeps a file that already exists, on disk or staged by an earlier
+// The proc keeps a file that already exists, on disk or staged by an earlier
 // step, when the file it would write differs from it in the generated:
 // line only, so that a run without changes leaves every file byte for byte
 // as it was. Generate itself always returns the time of the run; a caller
@@ -723,7 +723,7 @@
 // the marker of the generator and the run does not produce it. A partial
 // file becomes stale when its source file no longer declares targets.
 // Generate returns a warning wrapping ErrStale for a stale file, naming its
-// path relative to the module root, and Proc reports the warning. The file
+// path relative to the module root, and the proc reports the warning. The file
 // is left in place; delete it if it is no longer needed. If it refers to a
 // type that no longer exists, or declares a helper the run declares in
 // another file, loading the packages fails until the file is removed.
