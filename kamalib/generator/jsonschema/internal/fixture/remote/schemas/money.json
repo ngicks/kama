@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "amount": {"type": "integer", "minimum": 0},
+    "currency": {"$ref": "#/$defs/Currency"}
+  },
+  "required": ["amount", "currency"],
+  "$defs": {
+    "Currency": {"type": "string", "pattern": "^[A-Z]{3}$"}
+  }
+}

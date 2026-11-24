@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/url"
@@ -46,12 +47,30 @@ type ProcParam struct {
 	// must be an exported Go identifier. Empty takes the title of the root
 	// schema.
 	TypeName string `json:"type_name"`
+	// Remotes map the URIs of other documents a reference may name to the
+	// files of the out of Proc holding them. The generator never fetches a
+	// document from the network.
+	Remotes []Remote `json:"remotes"`
 	// Validate makes the generated decoders call the Validate methods the
 	// validator generator writes. A spec running Proc with it chains
 	// packages.load and validate.generate after Proc. False leaves the calls
 	// out, and decoding then checks no validation keyword.
 	Validate bool `json:"validate"`
 	// Unknown captures the keys of a param that name no field.
+	Unknown map[string]any `json:",embed"`
+}
+
+// Remote maps a URI to a file of the out of Proc. With File, the URI
+// names that file. With Dir, the URI is a prefix: a URI starting with it
+// names the file of Dir at the rest of the URI, as
+// http://example.com/schemas/ with schemas names
+// schemas/pet.json for http://example.com/schemas/pet.json. The paths are
+// slash-separated and relative to the root of the out.
+type Remote struct {
+	Uri  string `json:"uri"`
+	Dir  string `json:"dir"`
+	File string `json:"file"`
+	// Unknown captures the keys of a remote that name no field.
 	Unknown map[string]any `json:",embed"`
 }
 
@@ -62,7 +81,15 @@ func DefaultProcParam() ProcParamPartial {
 }
 
 // UnknownKeys implements workflow.UnknownKeyer.
-func (p *ProcParamPartial) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
+func (p *ProcParamPartial) UnknownKeys() [][]string {
+	paths := unknownkey.Paths(p.Unknown)
+
+	for i, r := range p.Remotes.Value() {
+		paths = append(paths, unknownkey.Paths(r.Unknown, "remotes", strconv.Itoa(i))...)
+	}
+
+	return paths
+}
 
 // Proc generates the Go types of the schema file its param names and
 // stages the file in its out. The schema file is read from its out, so a
@@ -99,8 +126,9 @@ func (Proc) CleanUp(context.Context) error { return nil }
 type instance struct {
 	// opts has Schema and Dir set. Its Package is empty when the base name
 	// of the root of fs gives it, which is not known before Out.
-	opts Options
-	fs   *overlayfs.Fs
+	opts    Options
+	remotes []Remote
+	fs      *overlayfs.Fs
 }
 
 func (i *instance) Param(partial ProcParamPartial) error {
@@ -142,6 +170,11 @@ func (i *instance) Param(partial ProcParamPartial) error {
 		return err
 	}
 
+	if err := checkRemotes(p.Remotes); err != nil {
+		return err
+	}
+
+	i.remotes = p.Remotes
 	i.opts = Options{
 		Package:  pkg,
 		TypeName: p.TypeName,
@@ -191,6 +224,8 @@ func (i *instance) generate() ([]File, []error, error) {
 	}
 
 	opts := i.opts
+	opts.Load = remoteLoader(i.fs.FS(), i.remotes)
+
 	if opts.Package == "" {
 		opts.Package = filepath.Base(i.fs.Root())
 		if err := checkPackage(opts.Package); err != nil {
@@ -208,6 +243,70 @@ func (i *instance) generate() ([]File, []error, error) {
 		CollectSlice()
 
 	return slashed, warnings, nil
+}
+
+// checkRemotes reports a remote without a URI, or naming not exactly one of
+// a file and a directory, or naming an invalid path.
+func checkRemotes(remotes []Remote) error {
+	for i, r := range remotes {
+		target := r.Dir + r.File
+
+		switch {
+		case r.Uri == "":
+			return fmt.Errorf("%w: remote %d has no uri", ErrOptions, i)
+		case (r.Dir == "") == (r.File == ""):
+			return fmt.Errorf("%w: remote %q needs either dir or file", ErrOptions, r.Uri)
+		case !fs.ValidPath(target):
+			return fmt.Errorf("%w: remote %q: invalid path %q", ErrOptions, r.Uri, target)
+		}
+	}
+
+	return nil
+}
+
+// remoteLoader returns a function loading the document of a URI from the
+// file of fsys the remotes map it to. A remote with File takes its URI
+// alone, and one with Dir every URI it prefixes. The longest URI of the
+// remotes covering a URI wins.
+func remoteLoader(fsys fs.FS, remotes []Remote) func(string) (*jsonschema.Schema, error) {
+	return func(uri string) (*jsonschema.Schema, error) {
+		var (
+			file  string
+			match int
+		)
+
+		for _, r := range remotes {
+			rest, ok := strings.CutPrefix(uri, r.Uri)
+			if !ok || len(r.Uri) <= match || r.File != "" && rest != "" {
+				continue
+			}
+
+			file, match = r.File, len(r.Uri)
+			if r.Dir != "" {
+				file = path.Join(r.Dir, rest)
+			}
+		}
+
+		if file == "" {
+			return nil, errors.New("no remote covers the URI")
+		}
+
+		if !fs.ValidPath(file) {
+			return nil, fmt.Errorf("invalid path %q", file)
+		}
+
+		b, err := fs.ReadFile(fsys, file)
+		if err != nil {
+			return nil, err
+		}
+
+		var doc jsonschema.Schema
+		if err := jsonv2.Unmarshal(b, &doc); err != nil {
+			return nil, fmt.Errorf("%s: %w", file, err)
+		}
+
+		return &doc, nil
+	}
 }
 
 // splitSchema splits a schema param at its first # into the path of the

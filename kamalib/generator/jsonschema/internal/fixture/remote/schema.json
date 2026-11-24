@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Invoice",
+  "description": "Invoice refers to the schemas of two other documents.",
+  "type": "object",
+  "properties": {
+    "total": {"$ref": "https://example.com/schemas/money.json"},
+    "currency": {"$ref": "https://example.com/schemas/money.json#/$defs/Currency"},
+    "payer": {"$ref": "https://example.com/schemas/party.json"}
+  },
+  "required": ["total"]
+}

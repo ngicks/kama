@@ -4,7 +4,7 @@
 //	merge_nested: "recursive"
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:03:02Z
+// generated: 2026-11-24T16:06:40Z
 
 package jsonschema
 
@@ -14,12 +14,13 @@ import "github.com/ngicks/option/und"
 //
 //kama:generated kama:partial
 type ProcParamPartial struct {
-	Schema   und.Und[string] `json:"schema,omitzero"`
-	Dir      und.Und[string] `json:"dir,omitzero"`
-	Package  und.Und[string] `json:"package,omitzero"`
-	TypeName und.Und[string] `json:"type_name,omitzero"`
-	Validate und.Und[bool]   `json:"validate,omitzero"`
-	Unknown  map[string]any  `json:",embed"`
+	Schema   und.Und[string]   `json:"schema,omitzero"`
+	Dir      und.Und[string]   `json:"dir,omitzero"`
+	Package  und.Und[string]   `json:"package,omitzero"`
+	TypeName und.Und[string]   `json:"type_name,omitzero"`
+	Remotes  und.Und[[]Remote] `json:"remotes,omitzero"`
+	Validate und.Und[bool]     `json:"validate,omitzero"`
+	Unknown  map[string]any    `json:",embed"`
 }
 
 // FromValue sets every field of p to the partial form of the field of v.
@@ -31,6 +32,7 @@ func (p *ProcParamPartial) FromValue(v ProcParam) {
 	p.Dir = und.Defined(v.Dir)
 	p.Package = und.Defined(v.Package)
 	p.TypeName = und.Defined(v.TypeName)
+	p.Remotes = und.WrapSlice(v.Remotes).CollapseToNull()
 	p.Validate = und.Defined(v.Validate)
 	p.Unknown = v.Unknown
 }
@@ -45,6 +47,7 @@ func (p ProcParamPartial) ToValue() ProcParam {
 	v.Dir = p.Dir.Value()
 	v.Package = p.Package.Value()
 	v.TypeName = p.TypeName.Value()
+	v.Remotes = p.Remotes.Value()
 	v.Validate = p.Validate.Value()
 	v.Unknown = p.Unknown
 	return v
@@ -67,6 +70,9 @@ func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
 	if !r.TypeName.IsUndefined() {
 		p.TypeName = r.TypeName
 	}
+	if !r.Remotes.IsUndefined() {
+		p.Remotes = r.Remotes
+	}
 	if !r.Validate.IsUndefined() {
 		p.Validate = r.Validate
 	}
@@ -82,6 +88,70 @@ func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
 //kama:generated kama:partial
 func (p ProcParamPartial) ApplyTo(v ProcParam) ProcParam {
 	var base ProcParamPartial
+	base.FromValue(v)
+	return base.Merge(p).ToValue()
+}
+
+// RemotePartial is the partial variant of Remote.
+//
+//kama:generated kama:partial
+type RemotePartial struct {
+	Uri     und.Und[string] `json:"uri,omitzero"`
+	Dir     und.Und[string] `json:"dir,omitzero"`
+	File    und.Und[string] `json:"file,omitzero"`
+	Unknown map[string]any  `json:",embed"`
+}
+
+// FromValue sets every field of p to the partial form of the field of v.
+// A nil pointer, slice or map and a none option become null.
+//
+//kama:generated kama:partial
+func (p *RemotePartial) FromValue(v Remote) {
+	p.Uri = und.Defined(v.Uri)
+	p.Dir = und.Defined(v.Dir)
+	p.File = und.Defined(v.File)
+	p.Unknown = v.Unknown
+}
+
+// ToValue returns the value p describes. An undefined or null field
+// gives the zero value of the field.
+//
+//kama:generated kama:partial
+func (p RemotePartial) ToValue() Remote {
+	var v Remote
+	v.Uri = p.Uri.Value()
+	v.Dir = p.Dir.Value()
+	v.File = p.File.Value()
+	v.Unknown = p.Unknown
+	return v
+}
+
+// Merge returns p with the fields of r merged onto it. An undefined
+// field of r keeps the field of p. Merge writes to neither p nor r.
+//
+//kama:generated kama:partial
+func (p RemotePartial) Merge(r RemotePartial) RemotePartial {
+	if !r.Uri.IsUndefined() {
+		p.Uri = r.Uri
+	}
+	if !r.Dir.IsUndefined() {
+		p.Dir = r.Dir
+	}
+	if !r.File.IsUndefined() {
+		p.File = r.File
+	}
+	if r.Unknown != nil {
+		p.Unknown = r.Unknown
+	}
+	return p
+}
+
+// ApplyTo returns v with the change p describes applied. It is
+// FromValue of v merged with p, converted back with ToValue.
+//
+//kama:generated kama:partial
+func (p RemotePartial) ApplyTo(v Remote) Remote {
+	var base RemotePartial
 	base.FromValue(v)
 	return base.Merge(p).ToValue()
 }

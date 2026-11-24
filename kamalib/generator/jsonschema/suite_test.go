@@ -77,6 +77,31 @@ func TestSuiteNeverPanics(t *testing.T) {
 	assert.Assert(t, groups > 400, "found %d groups", groups)
 }
 
+// suiteRemotes map the URIs the suite refers to, those of its remotes
+// directory and of the meta-schemas of draft 2020-12, to their files
+// relative to the root of this module.
+func suiteRemotes() []Remote {
+	meta := "https://json-schema.org/draft/2020-12/"
+	dir := "pkg/jsonschema/testdata/metaschema/draft2020-12/"
+
+	remotes := []Remote{
+		{Uri: "http://localhost:1234/", Dir: "pkg/jsonschema/testdata/suite/remotes"},
+		{Uri: meta + "schema", File: dir + "schema.json"},
+	}
+
+	for _, v := range []string{
+		"core", "applicator", "unevaluated", "validation", "meta-data", "format-annotation",
+		"content",
+	} {
+		remotes = append(
+			remotes,
+			Remote{Uri: meta + "meta/" + v, File: dir + "meta/" + v + ".json"},
+		)
+	}
+
+	return remotes
+}
+
 // generateSuite runs Generate over raw and checks its output. A panic
 // comes back as an error wrapping neither sentinel.
 func generateSuite(raw jsontext.Value) (err error) {
@@ -95,6 +120,7 @@ func generateSuite(raw jsontext.Value) (err error) {
 		Package:  "suite",
 		TypeName: "Root",
 		Schema:   "schema.json",
+		Load:     remoteLoader(os.DirFS(filepath.FromSlash("../..")), suiteRemotes()),
 		Now:      gentest.Now,
 	})
 	if err != nil {

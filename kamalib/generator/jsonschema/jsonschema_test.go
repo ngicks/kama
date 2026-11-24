@@ -540,3 +540,101 @@ func TestGenerateRootName(t *testing.T) {
 		assert.ErrorIs(t, err, ErrOptions, name)
 	}
 }
+
+// mapLoader returns a Load serving the documents of docs by URI.
+func mapLoader(t *testing.T, docs map[string]string) func(string) (*jsonschema.Schema, error) {
+	t.Helper()
+
+	return func(uri string) (*jsonschema.Schema, error) {
+		src, ok := docs[uri]
+		if !ok {
+			return nil, errors.New("no such document")
+		}
+
+		var doc jsonschema.Schema
+		assert.NilError(t, jsonv2.Unmarshal([]byte(src), &doc))
+
+		return &doc, nil
+	}
+}
+
+func TestGenerateDocuments(t *testing.T) {
+	cases := []struct {
+		name   string
+		schema string
+		docs   map[string]string
+		want   []string
+		err    string
+	}{
+		{
+			name: "definitions of a document take its name",
+			schema: `{"type":"object","properties":{"a":{"$ref":"http://x.test/pet.json"},
+				"b":{"$ref":"#/$defs/Name"}},"$defs":{"Name":{"type":"string","minLength":1}}}`,
+			docs: map[string]string{
+				"http://x.test/pet.json": `{"type":"object","properties":{"name":{"$ref":"#/$defs/Name"}},
+					"$defs":{"Name":{"type":"string","maxLength":3}}}`,
+			},
+			want: []string{
+				"type Pet struct",
+				"Name opt.Option[PetName]",
+				"type PetName string",
+				"type Name string",
+			},
+		},
+		{
+			name:   "documents referring to each other",
+			schema: `{"type":"object","properties":{"a":{"$ref":"http://x.test/a.json"}}}`,
+			docs: map[string]string{
+				"http://x.test/a.json": `{"type":"object","properties":{"b":{"$ref":"b.json"}}}`,
+				"http://x.test/b.json": `{"type":"object","properties":{"a":{"$ref":"a.json"}}}`,
+			},
+			want: []string{"type A struct", "type B struct", "A *A"},
+		},
+		{
+			name: "two documents of one base name",
+			schema: `{"type":"object","properties":{"a":{"$ref":"http://x.test/a/pet.json"},
+				"b":{"$ref":"http://x.test/b/pet.json"}}}`,
+			docs: map[string]string{
+				"http://x.test/a/pet.json": `{"type":"object"}`,
+				"http://x.test/b/pet.json": `{"type":"object"}`,
+			},
+			err: "#/$defs/http:~1~1x.test~1a~1pet.json and #/$defs/http:~1~1x.test~1b~1pet.json " +
+				"both give the Go name Pet",
+		},
+		{
+			name:   "no such document",
+			schema: `{"type":"object","properties":{"a":{"$ref":"http://x.test/a.json#/$defs/x"}}}`,
+			err: `#/properties/a/$ref: reference "http://x.test/a.json#/$defs/x": ` +
+				"no such document",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var doc jsonschema.Schema
+			assert.NilError(t, jsonv2.Unmarshal([]byte(tc.schema), &doc))
+
+			files, _, err := Generate(&doc, Options{
+				Package: "p", TypeName: "Root", Load: mapLoader(t, tc.docs),
+			})
+			if tc.err != "" {
+				assert.ErrorContains(t, err, tc.err)
+				return
+			}
+
+			assert.NilError(t, err)
+
+			content := regexp.MustCompile(`[ \t]+`).ReplaceAllString(string(files[0].Content), " ")
+			for _, want := range tc.want {
+				assert.Assert(t, strings.Contains(content, want), "%s: %s", want, files[0].Content)
+			}
+		})
+	}
+
+	var doc jsonschema.Schema
+	assert.NilError(t, jsonv2.Unmarshal([]byte(`{"$ref":"http://x.test/a.json"}`), &doc))
+
+	_, _, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
+	assert.ErrorIs(t, err, ErrUnsupported)
+	assert.ErrorContains(t, err, `reference "http://x.test/a.json" names another document`)
+}

@@ -57,6 +57,11 @@ type Options struct {
 	// Dir is the directory the generated file lands in. Empty means the
 	// directory of the file of Schema.
 	Dir string
+	// Load returns the document whose retrieval URI is uri, for a reference
+	// naming a schema outside the document Generate is given. Generate
+	// embeds the documents it loads, as described under References in the
+	// package documentation. A nil Load makes such a reference an error.
+	Load func(uri string) (*jsonschema.Schema, error)
 	// Validate makes the decoders call Validate of the types the validator
 	// generator gives one, as described under Validation in the package
 	// documentation.
@@ -95,6 +100,11 @@ func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 	}
 
 	if err := checkTypeName(opts.TypeName); err != nil {
+		return nil, nil, err
+	}
+
+	doc, err := bundle(doc, opts)
+	if err != nil {
 		return nil, nil, err
 	}
 

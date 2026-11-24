@@ -166,6 +166,97 @@ steps:
 	assert.DeepEqual(t, got, []string{"workflow: unknown key: steps.types.param.tpye_name"})
 }
 
+func TestProcParamRemotes(t *testing.T) {
+	for _, tc := range []struct {
+		remote Remote
+		err    string
+	}{
+		{Remote{Dir: "a"}, "remote 0 has no uri"},
+		{Remote{Uri: "http://x.test/"}, `remote "http://x.test/" needs either dir or file`},
+		{Remote{Uri: "http://x.test/", Dir: "a", File: "b"}, "needs either dir or file"},
+		{Remote{Uri: "http://x.test/", Dir: "../a"}, `invalid path "../a"`},
+	} {
+		param := procParam("a.json", "", "p", "")
+		param.Remotes = und.Defined([]Remote{tc.remote})
+
+		err := (&instance{}).Param(param)
+		assert.ErrorIs(t, err, ErrOptions)
+		assert.ErrorContains(t, err, tc.err)
+	}
+}
+
+// TestProcParamRemotesUnknownKeys checks that a key a remote does not know
+// is a warning naming its place in the param.
+func TestProcParamRemotesUnknownKeys(t *testing.T) {
+	var spec workflow.Spec
+	assert.NilError(t, yaml.Unmarshal([]byte(`
+version: 1
+steps:
+  root: {proc: overlayfs.open}
+  types:
+    proc: jsonschema.generate
+    out: root
+    param: {schema: a.json, remotes: [{uri: "http://x.test/", dir: a, flie: b}]}
+`), &spec))
+
+	g, err := spec.Build(context.Background(), workflow.DefaultRegistry)
+	assert.NilError(t, err)
+
+	got := opiter.WrapSeq(slices.Values(g.Warnings())).
+		Map(error.Error).
+		CollectSlice()
+
+	assert.DeepEqual(t, got, []string{"workflow: unknown key: steps.types.param.remotes.0.flie"})
+}
+
+// TestProcRunRemotes generates a schema referring to two other documents,
+// one a remote with dir maps and one a remote with file maps.
+func TestProcRunRemotes(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"api/schema.json": `{"title": "pet", "type": "object", "properties": {
+			"tag": {"$ref": "http://x.test/schemas/tag.json"},
+			"owner": {"$ref": "http://y.test/owner#/$defs/name"}}}`,
+		"remote/schemas/tag.json": `{"type": "string", "maxLength": 3}`,
+		"owner.json":              `{"$defs": {"name": {"type": "string"}}}`,
+	})
+
+	param := procParam("api/schema.json", "", "", "")
+	param.Remotes = und.Defined([]Remote{
+		{Uri: "http://x.test/", Dir: "remote"},
+		{Uri: "http://y.test/owner", File: "owner.json"},
+	})
+
+	r := runProc(t, f, param, gentest.Now())
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+
+	got, err := fs.ReadFile(f.FS(), "api/api.kama_jsonschema.go")
+	assert.NilError(t, err)
+
+	for _, want := range []string{"type Tag string", "opt.Option[Tag]", "Owner opt.Option[string]"} {
+		assert.Assert(t, strings.Contains(string(got), want), "%s: %s", want, got)
+	}
+}
+
+// TestProcRunRemoteMissing checks that a reference no remote covers fails
+// naming the reference and the place holding it.
+func TestProcRunRemoteMissing(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"api/schema.json": `{"title": "pet", "properties": {"a": {"$ref": "http://z.test/a.json"}}}`,
+	})
+
+	param := procParam("api/schema.json", "", "", "")
+	param.Remotes = und.Defined([]Remote{{Uri: "http://x.test/", Dir: "remote"}})
+
+	i := &instance{}
+	assert.NilError(t, i.Param(param))
+	i.Out(f)
+
+	err := i.Run(context.Background(), &gentest.RecordReporter{})
+	assert.ErrorIs(t, err, ErrUnsupported)
+	assert.ErrorContains(t, err,
+		`#/properties/a/$ref: reference "http://z.test/a.json": no remote covers the URI`)
+}
+
 const procSchema = `{
   "title": "pet",
   "type": "object",

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/ngicks/opiter"
+	"github.com/ngicks/option/und"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
@@ -29,7 +30,13 @@ var fixtures = []string{
 	"object", "nullable", "recursive", "oneof", "anyof", "allof",
 	"prefilter", "nullablecycle", "multikind", "nullableenum", "nullableroot", "productcycle",
 	"oneofoverlap", "nestedunion", "validation", "rootscalar", "rawroot", "subschema",
-	"typedkeywords", "resources",
+	"typedkeywords", "resources", "remote",
+}
+
+// fixtureRemotes are the remotes param of the fixtures whose spec.yaml
+// gives one.
+var fixtureRemotes = map[string][]Remote{
+	"remote": {{Uri: "https://example.com/schemas/", Dir: "schemas"}},
 }
 
 func TestFixtureSpecBuild(t *testing.T) {
@@ -66,7 +73,13 @@ func TestFixtureUpToDate(t *testing.T) {
 			defer f.Close()
 
 			i := &instance{}
-			assert.NilError(t, i.Param(procParam("schema.json", "", "", "")))
+
+			param := procParam("schema.json", "", "", "")
+			if remotes, ok := fixtureRemotes[name]; ok {
+				param.Remotes = und.Defined(remotes)
+			}
+
+			assert.NilError(t, i.Param(param))
 			i.Out(f)
 
 			r := &gentest.RecordReporter{}

@@ -336,7 +336,7 @@ func refTarget(doc *jsonschema.Schema, ptr string) (string, error) {
 
 	found, err := jsonschema.ResolveRef(doc, "", ptr, ref)
 	if errors.Is(err, jsonschema.ErrNonLocalRef) {
-		return "", unsupported(kw, "reference %q leaves the document", ref)
+		found, err = embeddedTarget(doc, ptr, ref)
 	}
 
 	if err != nil {
@@ -353,6 +353,31 @@ func refTarget(doc *jsonschema.Schema, ptr string) (string, error) {
 	}
 
 	return target, nil
+}
+
+// embeddedTarget returns the pointer of the schema ref, written in the
+// schema at ptr, names in a document bundle embedded under the retrieval
+// URI ref names. The URI names no resource when the $id of that document
+// differs from its retrieval URI, so the fragment of ref is located in the
+// resource of the embedded root.
+func embeddedTarget(doc *jsonschema.Schema, ptr, ref string) (string, error) {
+	target, err := jsonschema.RefUri(doc, "", ptr, ref)
+	if err != nil {
+		return "", err
+	}
+
+	uri, frag, _ := strings.Cut(target, "#")
+
+	if _, ok := doc.Defs.Get(uri); !ok {
+		return "", jsonschema.ErrNonLocalRef
+	}
+
+	base, err := jsonschema.BaseUri(doc, "", child("", "$defs", uri))
+	if err != nil {
+		return "", err
+	}
+
+	return jsonschema.Locate(doc, "", base+"#"+frag)
 }
 
 // yielded reports whether schemas yields ptr, a pointer spelled as child

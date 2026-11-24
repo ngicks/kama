@@ -82,6 +82,7 @@ var suiteGenerated = map[string]int{
 	"properties.json":              6,
 	"propertyNames.json":           6,
 	"ref.json":                     35,
+	"refRemote.json":               15,
 	"required.json":                5,
 	"type.json":                    11,
 	"unevaluatedItems.json":        28,
@@ -95,7 +96,6 @@ var suiteUnsupported = map[string]int{
 	"defs.json":                  1,
 	"dynamicRef.json":            20,
 	"ref.json":                   1,
-	"refRemote.json":             15,
 	"unevaluatedItems.json":      1,
 	"unevaluatedProperties.json": 1,
 	"vocabulary.json":            2,
@@ -106,7 +106,6 @@ var suiteUnsupported = map[string]int{
 var suiteUnsupportedReasons = []string{
 	"unsupported schema: keyword $dynamicRef is not supported",
 	"unsupported schema: meta-schema %q is not that of draft 2020-12",
-	"unsupported schema: reference %q leaves the document",
 }
 
 // suiteEnv names the environment variable that enables TestSuiteBehavior.
@@ -372,6 +371,10 @@ func runSuiteSpec(t *testing.T, file string, accepted []int) {
 		"root": {Proc: "overlayfs.open", Param: map[string]any{"root": module}},
 	}
 
+	remotes := opiter.WrapSeq(slices.Values(suiteRemotes())).
+		Map(func(r Remote) any { return map[string]any{"uri": r.Uri, "dir": r.Dir, "file": r.File} }).
+		CollectSlice()
+
 	var names workflow.Names
 
 	for _, gi := range accepted {
@@ -385,6 +388,7 @@ func runSuiteSpec(t *testing.T, file string, accepted []int) {
 				"schema":    fmt.Sprintf("%s#/%d/schema", schema, gi),
 				"dir":       path.Join(out, name),
 				"type_name": "Root",
+				"remotes":   remotes,
 			},
 		}
 	}

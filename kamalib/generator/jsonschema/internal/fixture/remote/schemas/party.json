@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/party.json",
+  "type": "object",
+  "properties": {
+    "name": {"type": "string"},
+    "balance": {"$ref": "money.json"},
+    "partner": {"$ref": "party.json"}
+  },
+  "required": ["name"]
+}

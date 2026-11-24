@@ -30,6 +30,10 @@
 //	           used as written; the title of the root schema when left
 //	           out
 //	validate   whether the decoders call Validate; true when left out
+//	remotes    a list mapping the URIs of other documents to files of
+//	           the out, as References describes; each entry has uri and
+//	           either file, the file of that URI, or dir, the directory
+//	           a URI starting with uri continues into
 //
 // The schema file holds JSON. A schema param with a fragment, such as
 // tests/minimum.json#/0/schema, takes the value the RFC 6901 pointer of the
@@ -237,6 +241,32 @@
 // up in the resource holding the reference. A schema of an embedded
 // resource is named as any other schema, by its place in the document.
 //
+// A reference whose URI names no resource of the document names another
+// document. Generate calls Options.Load with the URI without its fragment,
+// and Proc loads the file its remotes param maps the URI to: the remote
+// with file whose uri is the URI, or the remote with dir whose uri is the
+// longest prefix of the URI, the rest of the URI taken as a path under dir.
+// The generator never fetches a document from the network. A URI no remote
+// covers is an error naming the reference and its JSON pointer:
+//
+//	remotes:
+//	  - uri: https://example.com/schemas/
+//	    dir: schemas
+//
+// Generate embeds each document it loads under $defs of the root, keyed by
+// its retrieval URI, and loads the documents the embedded one refers to in
+// turn, each once, so references across documents may form cycles. The
+// embedded root keeps its $id, which resolves against the retrieval URI,
+// and takes the retrieval URI as $id when it has none. A key of $defs of
+// the root that is an absolute URI is taken for such a document. The types
+// of the schemas of every document land in the one generated file. The
+// root of a document takes the base name of the path of its retrieval URI
+// without its extension, so https://example.com/schemas/money.json gives
+// Money, and a schema under $defs inside a document takes that name
+// followed by its own, as MoneyCurrency. Two documents giving one name is
+// an error wrapping ErrConflict naming both. The JSON pointers in comments,
+// warnings and errors run from the root through the key of the document.
+//
 // # Unions
 //
 // A oneOf or an anyOf, and a type naming two or more kinds other than null
@@ -437,7 +467,7 @@
 //
 //   - $dynamicRef, and a $schema other than the meta-schema of draft
 //     2020-12, whose vocabularies the generator cannot read;
-//   - a $ref naming no schema of the document, a chain of references back
+//   - a $ref naming no schema of the documents, a chain of references back
 //     to itself, and a $ref in the validators of raw JSON text
 //     reaching a union or a schema declaring no type again on a cycle;
 //   - a pattern of patternProperties RE2 does not compile;
