@@ -160,6 +160,19 @@ func NewParser(pkg *types.Package) *Parser {
 	return p
 }
 
+// NewFile returns the Map of a new file of the package name at path,
+// importing nothing yet, with imports required as Require adds them. A
+// generator writing a file of a package it did not load, such as one it
+// generates from a document, spells the imports of the file through it.
+func NewFile(path, name string, imports ...Import) (*Map, error) {
+	p := NewParser(types.NewPackage(path, name))
+	if err := p.Require(imports...); err != nil {
+		return nil, err
+	}
+
+	return p.ParseAst(nil)
+}
+
 // NewParserFromPackages returns a Parser that knows pkgs and every package
 // they import, directly or not. pkgs must be loaded with type information.
 func NewParserFromPackages(pkgs []*packages.Package) *Parser {

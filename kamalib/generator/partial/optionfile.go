@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
@@ -28,8 +29,8 @@ type LoadedOptions = genopt.Loaded[PackageOptions, TypeOptions, FieldOptions]
 func NewLoader(
 	optionFile fileloader.Input,
 ) genopt.Loader[PackageOptions, TypeOptions, FieldOptions] {
-	return genopt.NewLoader[PackageOptions, TypeOptions, FieldOptions](
-		GeneratorId().Namespace, GeneratorId().Name, OptionFileVersion, optionFile,
+	return base.NewOptionLoader[PackageOptions, TypeOptions, FieldOptions](
+		GeneratorId(), OptionFileVersion, optionFile,
 	)
 }
 

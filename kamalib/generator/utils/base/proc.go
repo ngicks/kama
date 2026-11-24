@@ -17,12 +17,13 @@ import (
 // staging into the out. The out is read too, so a file staged by an
 // earlier step is seen.
 //
-// Pp is the partial variant of the param P that a step decodes into. X is
-// the type of the in of a step, and None for a step without one. I is the
-// input of the generator. Its instances have the methods below, with In()
-// for X None:
+// Partial is the partial variant of the param Param that a step decodes
+// into, such as the type partial generates or a [ParamOf]. X is the type
+// of the in of a step, and None for a step without one. I is the input of
+// the generator. Its instances have the methods below, with In() for X
+// None:
 //
-//	Param(Pp) error
+//	Param(Partial) error
 //	In(X)
 //	Out(*overlayfs.Fs)
 //	Files(context.Context, workflow.Reporter) ([]File, error)
@@ -30,17 +31,17 @@ import (
 // Files returns the files Run would stage, as [Prepare] returns them, and
 // stages nothing.
 //
-// Default and Input are required: Instantiate returns an error when one
-// is nil.
-type Proc[Pp ParamPartial[Pp, P], P, X, I any] struct {
+// Input is required: Instantiate returns an error when it is nil.
+type Proc[Partial ParamPartial[Partial, Param], Param, X, I any] struct {
 	Generator Generator[I]
-	// Default returns the values P takes for the keys a step leaves out.
-	Default func() Pp
+	// Default returns the values Param takes for the keys a step leaves out.
+	// Nil means the zero Partial, which is the default of a ParamOf.
+	Default func() Partial
 	// Check reports a param the proc cannot run with. Param calls it, in a
 	// dry run too, so it must not touch files. Nil accepts every param.
-	Check func(param P) error
+	Check func(param Param) error
 	// Input returns the input of a run and the scope of its stale check.
-	Input func(ctx context.Context, param P, in X, out *overlayfs.Fs) (I, Scope, error)
+	Input func(ctx context.Context, param Param, in X, out *overlayfs.Fs) (I, Scope, error)
 	// Now returns the time of a run. Nil means time.Now.
 	Now func() time.Time
 	// Registry tells the generators that generated marks name. Nil means
@@ -51,16 +52,19 @@ type Proc[Pp ParamPartial[Pp, P], P, X, I any] struct {
 // None is the in of a Proc whose step takes no in.
 type None struct{}
 
-// ParamPartial is the partial variant Pp of a param P, as partial
-// generates it.
-type ParamPartial[Pp, P any] interface {
-	Merge(r Pp) Pp
-	ToValue() P
+// ParamPartial is the partial variant Partial of a param Param, as partial
+// generates it. A proc calls the methods on Partial values, so they have
+// value receivers. Merge returns the receiver with the keys r sets taken
+// from r: r wins. ToValue returns the param the partial variant
+// describes.
+type ParamPartial[Partial, Param any] interface {
+	Merge(r Partial) Partial
+	ToValue() Param
 }
 
-func (Proc[Pp, P, X, I]) ParamType() reflect.Type { return reflect.TypeFor[Pp]() }
+func (Proc[Partial, Param, X, I]) ParamType() reflect.Type { return reflect.TypeFor[Partial]() }
 
-func (Proc[Pp, P, X, I]) InTypes() []reflect.Type {
+func (Proc[Partial, Param, X, I]) InTypes() []reflect.Type {
 	if takesNoIn[X]() {
 		return nil
 	}
@@ -68,58 +72,61 @@ func (Proc[Pp, P, X, I]) InTypes() []reflect.Type {
 	return []reflect.Type{reflect.TypeFor[X]()}
 }
 
-func (Proc[Pp, P, X, I]) OutTypes() []reflect.Type {
+func (Proc[Partial, Param, X, I]) OutTypes() []reflect.Type {
 	return []reflect.Type{reflect.TypeFor[*overlayfs.Fs]()}
 }
 
-func (Proc[Pp, P, X, I]) AsInputType() reflect.Type { return nil }
+func (Proc[Partial, Param, X, I]) AsInputType() reflect.Type { return nil }
 
-func (p Proc[Pp, P, X, I]) Instantiate(context.Context, bool) (workflow.Instance, error) {
+func (p Proc[Partial, Param, X, I]) Instantiate(context.Context, bool) (workflow.Instance, error) {
 	switch {
 	case p.Generator.Generate == nil:
 		return nil, fmt.Errorf("base: proc of %s: Generator.Generate is nil", p.Generator.Id)
-	case p.Default == nil:
-		return nil, fmt.Errorf("base: proc of %s: Default is nil", p.Generator.Id)
 	case p.Input == nil:
 		return nil, fmt.Errorf("base: proc of %s: Input is nil", p.Generator.Id)
 	}
 
-	r := &procRun[Pp, P, X, I]{proc: p}
+	r := &procRun[Partial, Param, X, I]{proc: p}
 
 	// workflow calls In with exactly the ins InTypes declares, so a step
 	// without an in needs an instance whose In takes nothing.
 	if takesNoIn[X]() {
-		return noInInstance[Pp, P, X, I]{r}, nil
+		return noInInstance[Partial, Param, X, I]{r}, nil
 	}
 
-	return inInstance[Pp, P, X, I]{r}, nil
+	return inInstance[Partial, Param, X, I]{r}, nil
 }
 
-func (Proc[Pp, P, X, I]) CleanUp(context.Context) error { return nil }
+func (Proc[Partial, Param, X, I]) CleanUp(context.Context) error { return nil }
 
 func takesNoIn[X any]() bool { return reflect.TypeFor[X]() == reflect.TypeFor[None]() }
 
-type procRun[Pp ParamPartial[Pp, P], P, X, I any] struct {
-	proc  Proc[Pp, P, X, I]
-	param P
+type procRun[Partial ParamPartial[Partial, Param], Param, X, I any] struct {
+	proc  Proc[Partial, Param, X, I]
+	param Param
 	in    X
 	out   *overlayfs.Fs
 }
 
-type inInstance[Pp ParamPartial[Pp, P], P, X, I any] struct {
-	*procRun[Pp, P, X, I]
+type inInstance[Partial ParamPartial[Partial, Param], Param, X, I any] struct {
+	*procRun[Partial, Param, X, I]
 }
 
-func (i inInstance[Pp, P, X, I]) In(in X) { i.in = in }
+func (i inInstance[Partial, Param, X, I]) In(in X) { i.in = in }
 
-type noInInstance[Pp ParamPartial[Pp, P], P, X, I any] struct {
-	*procRun[Pp, P, X, I]
+type noInInstance[Partial ParamPartial[Partial, Param], Param, X, I any] struct {
+	*procRun[Partial, Param, X, I]
 }
 
-func (noInInstance[Pp, P, X, I]) In() {}
+func (noInInstance[Partial, Param, X, I]) In() {}
 
-func (r *procRun[Pp, P, X, I]) Param(partial Pp) error {
-	p := r.proc.Default().Merge(partial).ToValue()
+func (r *procRun[Partial, Param, X, I]) Param(partial Partial) error {
+	var def Partial
+	if r.proc.Default != nil {
+		def = r.proc.Default()
+	}
+
+	p := def.Merge(partial).ToValue()
 
 	if r.proc.Check != nil {
 		if err := r.proc.Check(p); err != nil {
@@ -132,9 +139,9 @@ func (r *procRun[Pp, P, X, I]) Param(partial Pp) error {
 	return nil
 }
 
-func (r *procRun[Pp, P, X, I]) Out(f *overlayfs.Fs) { r.out = f }
+func (r *procRun[Partial, Param, X, I]) Out(f *overlayfs.Fs) { r.out = f }
 
-func (r *procRun[Pp, P, X, I]) Run(ctx context.Context, rep workflow.Reporter) error {
+func (r *procRun[Partial, Param, X, I]) Run(ctx context.Context, rep workflow.Reporter) error {
 	in, scope, err := r.proc.Input(ctx, r.param, r.in, r.out)
 	if err != nil {
 		return err
@@ -143,7 +150,10 @@ func (r *procRun[Pp, P, X, I]) Run(ctx context.Context, rep workflow.Reporter) e
 	return Drive(ctx, r.proc.Generator, r.env(rep), in, scope, r.out)
 }
 
-func (r *procRun[Pp, P, X, I]) Files(ctx context.Context, rep workflow.Reporter) ([]File, error) {
+func (r *procRun[Partial, Param, X, I]) Files(
+	ctx context.Context,
+	rep workflow.Reporter,
+) ([]File, error) {
 	in, scope, err := r.proc.Input(ctx, r.param, r.in, r.out)
 	if err != nil {
 		return nil, err
@@ -157,7 +167,7 @@ func (r *procRun[Pp, P, X, I]) Files(ctx context.Context, rep workflow.Reporter)
 	return plan.Files, nil
 }
 
-func (r *procRun[Pp, P, X, I]) env(rep workflow.Reporter) Env {
+func (r *procRun[Partial, Param, X, I]) env(rep workflow.Reporter) Env {
 	now, reg := time.Now, defaultRegistry
 	if r.proc.Now != nil {
 		now = r.proc.Now

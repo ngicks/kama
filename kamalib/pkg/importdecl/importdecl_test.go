@@ -592,3 +592,25 @@ func TestImports(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, opiter.Count(empty.Imports()), 2)
 }
+
+func TestNewFile(t *testing.T) {
+	m, err := NewFile("example.com/p", "p",
+		Import{Package: Package{Path: "fmt", Name: "fmt"}},
+		Import{Name: "h", Package: Package{Path: "example.com/helper", Name: "helper"}},
+	)
+	assert.NilError(t, err)
+
+	ident, ok := m.Ident("fmt")
+	assert.Assert(t, ok)
+	assert.Equal(t, ident, "fmt")
+
+	ident, ok = m.Ident("example.com/helper")
+	assert.Assert(t, ok)
+	assert.Equal(t, ident, "h")
+
+	_, ok = m.Ident("example.com/unknown")
+	assert.Assert(t, !ok)
+
+	_, err = NewFile("example.com/p", "p", Import{Name: "_", Package: Package{Path: "embed"}})
+	assert.Assert(t, err != nil)
+}

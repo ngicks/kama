@@ -728,7 +728,8 @@
 // exists, or declares a helper the run declares in another file, loading
 // the packages fails until the file is removed. Files of build variants
 // other than the one loaded are not in the loaded packages and are never
-// reported.
+// reported. Two steps loading overlapping packages report the files of
+// each other as stale, so each package belongs to one step.
 //
 // The run cannot tell whether a package it produces no files for still
 // declares targets in files of build variants other than the one loaded,

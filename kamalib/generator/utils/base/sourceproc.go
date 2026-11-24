@@ -86,11 +86,12 @@ func (in Input[O, P, T, F]) Scope() Scope {
 // Partial is the partial variant of the param Param that a spec decodes
 // into. O, P, T and F are those of the [Input] of the generator.
 //
-// Default, Options and Loader are required: Instantiate returns an error
-// when one is nil.
+// Options and Loader are required: Instantiate returns an error when one
+// is nil.
 type SourceProc[Partial ParamPartial[Partial, Param], Param, O, P, T, F any] struct {
 	Generator Generator[Input[O, P, T, F]]
 	// Default returns the values Param takes for the keys a spec leaves out.
+	// Nil means the zero Partial, which is the default of a ParamOf.
 	Default func() Partial
 	// Options returns the options of a param and the option file it names.
 	// An error rejects the param.
@@ -104,6 +105,19 @@ type SourceProc[Partial ParamPartial[Partial, Param], Param, O, P, T, F any] str
 	// Registry tells the generators that generated marks name. Nil means
 	// DefaultRegistry().
 	Registry *genmark.Registry
+}
+
+// NewOptionLoader returns the genopt.Loader of the options of the
+// generator id: the directives //<namespace>:<name> and the key <name> of
+// the option files, as genopt.NewLoader takes them for the tool and the
+// generator. version is the version of the option files, and optionFile
+// finds the central option file, none when it is nil.
+func NewOptionLoader[P, T, F any](
+	id Id,
+	version int,
+	optionFile fileloader.Input,
+) genopt.Loader[P, T, F] {
+	return genopt.NewLoader[P, T, F](id.Namespace, id.Name, version, optionFile)
 }
 
 // OptionLoader loads the options of a generator. genopt.Loader implements

@@ -3,6 +3,9 @@ package cli
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -34,4 +37,33 @@ func TestError(t *testing.T) {
 
 	Error(&out, "kama-simple", errors.New("boom"))
 	assert.Equal(t, out.String(), "kama-simple: boom\n")
+}
+
+func TestRun(t *testing.T) {
+	dir := t.TempDir()
+	assert.NilError(t, os.WriteFile(
+		filepath.Join(dir, "kama.yaml"),
+		[]byte("version: 1\nsteps:\n  root:\n    proc: overlayfs.open\n    typo: 1\n"),
+		0o644,
+	))
+	t.Chdir(t.TempDir())
+
+	var out bytes.Buffer
+
+	assert.NilError(t, Run(t.Context(), "acme-kama", []string{"-C", dir, "-v"}, &out))
+	assert.Assert(
+		t,
+		strings.Contains(out.String(), "warning: kamasimple: kama.yaml: "),
+		out.String(),
+	)
+
+	out.Reset()
+	assert.NilError(t, Run(t.Context(), "acme-kama", []string{"-h"}, &out))
+	assert.Assert(t, strings.Contains(out.String(), "Usage of acme-kama"), out.String())
+
+	assert.ErrorContains(
+		t,
+		Run(t.Context(), "acme-kama", []string{"-spec", "none.yaml"}, &out),
+		"none.yaml",
+	)
 }

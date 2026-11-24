@@ -495,8 +495,6 @@ func TestProcRequiredFields(t *testing.T) {
 	noOptions.Options = nil
 	noLoader := fakeProc(&loaded, nil)
 	noLoader.Loader = nil
-	noDefault := fakeProc(&loaded, nil)
-	noDefault.Default = nil
 
 	for _, c := range []struct {
 		proc workflow.Proc
@@ -504,7 +502,6 @@ func TestProcRequiredFields(t *testing.T) {
 	}{
 		{noOptions, "base: proc of acme:fake: Options is nil"},
 		{noLoader, "base: proc of acme:fake: Loader is nil"},
-		{noDefault, "base: proc of acme:fake: Default is nil"},
 		{
 			base.Proc[noInParamPartial, noInParam, base.None, string]{
 				Generator: base.Generator[string]{Id: driveId},

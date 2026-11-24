@@ -87,7 +87,9 @@
 // run does not produce is stale. The proc reports a warning wrapping ErrStale
 // of package github.com/ngicks/kama/kamalib/generator/utils/base for it
 // and leaves it in place. Every file the generator marks in one directory
-// must therefore come from one run.
+// must therefore come from one step. Two steps writing one package into
+// one directory write the same file, named after the package, and the
+// later one replaces the file of the earlier one.
 //
 // A member of a schema that names no keyword of draft 2020-12, such as a
 // typo or a keyword of an older draft, gives a warning wrapping

@@ -1,156 +1,237 @@
 // Package base is the framework of kama generators. A generator tells what
 // to generate; the framework runs it, assembles the Go files, marks the
-// generated declarations, finds stale files and stages the result.
+// generated declarations, checks the result, finds stale files and stages
+// the files all at once or not at all. A third party writes its own
+// generators on it with the public API of this package.
 //
 // # Contract
 //
 // A generator is a [Generator]: an [Id] and a Generate function taking a
-// context, an [Env] and an input of the generator's own type. A generator
-// generating from loaded packages takes an [Input]: the packages, the
-// options of their directives overlaid with those of the option files, the
-// options of the step and the root of the output. The Id is
+// context, an [Env] and an input of the generator's own type. The Id is
 // the namespace and the name of the generator, such as kama:partial. It
-// names the directive of the generator, its option file key, its
-// generated mark //kama:generated kama:partial and its generated files. A
-// third party takes a namespace of its own; the directive kama:generated
-// of the mark is the framework's for every generator.
+// names the directive of the generator (//kama:partial), its option file
+// key (partial), its generated mark (//kama:generated kama:partial), its
+// generated files (x.kama_partial.go) and its proc kind (partial.generate;
+// acme.greet.generate for a namespace other than kama). A third party
+// takes a namespace of its own. The directive kama:generated of the mark is
+// the framework's for every generator. [Id.Validate] tells the Ids that
+// can name a generator.
 //
-// Generate yields [Output] values: a [Whole] is a file the generator
-// finished, staged as it is, such as a file edited in place or a file in
-// another language; a [Composed] is a Go file the framework assembles from
-// [Part] values, each a [Decl] or a [Text]. Generate keeps yielding after
-// an error, so that one run reports every problem. It reports warnings and
-// progress through Env.Reporter and reads existing files from Env.Out.
-// Paths are slash-separated and relative to the root of the output.
+// A generator generating from a document takes an input of its own. A
+// generator generating from loaded packages takes an [Input]: the
+// packages, the options of their directives overlaid with those of the
+// option files, the options of the step and the root of the output.
 //
-// A generator with no declarations, or one editing files in place, yields
-// Whole files only. Nothing assumes a file per package or per source file.
+// Generate yields [Output] values. A [Whole] is a file the generator
+// finished, such as a file edited in place or a file in another language.
+// A [Composed] is a Go file the framework assembles from [Part] values,
+// each a [Decl] or a [Text]. Paths are slash-separated and relative to the
+// root of the output. Generate keeps yielding after an error, so that one
+// run reports every problem. It reports warnings and progress through
+// Env.Reporter and reads existing files from Env.Out. Nothing assumes a
+// file per package or per source file: a generator with no declarations,
+// or one editing files in place, yields Whole files only.
 //
 // # What the framework does
 //
-// [Drive] takes every output and every error of a run. If there is any
-// error, it stages nothing and returns all of them. Otherwise it assembles
-// each Composed: the header naming the Id, the Params of the file and the
-// time of the run, the build constraint, the package clause, the import
-// declaration of Imports, standard library first, and the parts with an
-// empty line between each two. It prepends the generated mark to each
-// Decl without parsing it. It warns, wrapping [ErrStale], about each file
-// of the [Scope] of the run that carries the mark of the generator and
-// that the run did not yield, and stages the files with [Stage]. A file
-// that would change in the generated: line of its header only is kept.
+// [Drive] runs a generator and stages its files; [Prepare] does all of it
+// but the staging. A run goes through these stages:
 //
-// [Proc] wraps a generator in a workflow proc: it merges the param of a
-// step onto its defaults, builds the input of the generator and its stale
-// check scope from the param, the in and the out of the step, and drives
-// the generator into the out. [SourceProc] is the proc of a generator
-// taking an [Input]. It loads the options of the packages its in loaded,
-// reports the warnings of loading them, and checks the files of those
-// packages for stale ones, as [Input.Scope] tells.
+//  1. Drain: Prepare takes every output and every error the generator
+//     yields, and recovers a panic of the generator as an error.
+//  2. Check: an output has a valid path naming a file, no path is yielded
+//     twice, a Composed is named *.go, a Decl is not empty, and the Id is
+//     valid and registered in Env.Registry.
+//  3. Assemble: a Composed becomes the header naming the Id, its Params and
+//     the time of the run, its build constraint, its package clause, the
+//     import declaration of Imports, and its parts with an empty line
+//     between each two. [Stamp] prepends the generated mark to each Decl.
+//  4. Format: the formatter of the output formats each Go file once, a
+//     Whole named *.go included, and the framework stages exactly those
+//     bytes.
+//  5. Preflight: the output can take each file. No path is a file and a
+//     directory of another file, names an existing directory, or goes
+//     through an existing file or a symbolic link. A Composed replaces only
+//     a file its generator generated: one starting with its header or
+//     holding a declaration carrying its mark.
+//  6. Stale check: each file of the [Scope] of the run that holds a
+//     declaration carrying the mark of the generator, and that the run did
+//     not yield, is stale.
+//  7. Stage: when anything above failed or the context is done, Drive
+//     stages nothing and returns every error joined. Otherwise it stages
+//     every file, keeping a file that would change in the generated: line
+//     of its header only, and then warns through Env.Reporter about each
+//     stale file with an error wrapping [ErrStale].
 //
-// # What the framework does not do
+// [Proc] wraps a generator in a workflow proc: it decodes the param of a
+// step onto its default, builds the input of the generator and the scope
+// of its stale check from the param, the in and the out of the step, and
+// drives the generator into the out. [SourceProc] is the proc of a
+// generator taking an [Input]. It loads the options of the packages its in
+// loaded, reports the warnings of loading them, and checks the files of
+// those packages for stale ones, as [Input.Scope] tells.
 //
-// The framework does not format: the output formats a Go file as it stages
-// it, and the formatter moves the mark, a directive comment, to the end of
-// the doc comment of a Decl. It does not check that a Decl is one
-// declaration. It does not delete a stale file, and it leaves a stale
-// declaration inside a file the run yields to the generator.
+// # Registration
 //
-// # Example
+// A generator registers its Id with [MustRegister] and its proc with
+// workflow.Register under [Id.ProcKind], both from an init function. The
+// framework drives no generator whose Id the registry of the run does not
+// know: the registry tells the marks of the registered generators from
+// those of no generator, which the stale check, the replace check and the
+// conflict checks of the generators rely on.
 //
-// A generator declaring a constant per name of its input:
+// A spec names the procs of its steps by kind. The stock kinds are
+// overlayfs.open, opening the project as the output, packages.load,
+// loading packages from the output into the *gopackages.Packages a
+// SourceProc takes as its in, file.load, loading a document into the
+// *fileloader.Document a document generator may take as its in, and
+// overlayfs.copy_down, checking that the staged files compile and writing
+// them into the project.
 //
-//	var greetingId = base.Id{Namespace: "acme", Name: "greeting"}
+// # Params
 //
-//	func init() { base.MustRegister(greetingId) }
+// A step decodes its param into the Partial type of the proc and merges it
+// onto Default. [ParamOf] is the Partial of a param P with no partial
+// variant: the step decodes onto P.Default, so a key the step leaves out
+// keeps its default, and Default stays nil. A param with a partial variant,
+// as kamalib's own generators have, implements [ParamPartial] with value
+// receivers; its Merge lets the param of the step win.
 //
-//	var greeting = base.Generator[[]string]{
-//		Id: greetingId,
-//		Generate: func(
-//			_ context.Context,
-//			_ base.Env,
-//			names []string,
-//		) iter.Seq2[base.Output, error] {
-//			return func(yield func(base.Output, error) bool) {
-//				var parts []base.Part
+// # Example: a generator generating from a document
 //
-//				for _, name := range names {
-//					if !token.IsExported(name) {
-//						// The run goes on, so that every bad name is reported.
-//						if !yield(nil, fmt.Errorf("greeting: %q is not exported", name)) {
-//							return
-//						}
+// Package greet of the directory internal/example reads names from a
+// document and declares a greeting function per name. It registers its Id
+// and its proc:
 //
-//						continue
-//					}
+//	var id = base.Id{Namespace: "acme", Name: "greet"}
 //
-//					parts = append(parts, base.Decl(fmt.Sprintf(
-//						"// %s greets %s.\nconst %s = %q\n", name, name, name, "hello, "+name,
-//					)))
-//				}
-//
-//				yield(base.Composed{
-//					Path:    "greeting/greeting.go",
-//					Package: "greeting",
-//					Parts:   parts,
-//				}, nil)
-//			}
-//		},
+//	func init() {
+//		base.MustRegister(id)
+//		workflow.Register(id.ProcKind(), func() workflow.Proc { return proc })
 //	}
 //
-// A generator generating from loaded packages declares in each package a
-// constant counting the files of the package:
+// Its param needs no partial variant:
 //
-//	var countId = base.Id{Namespace: "acme", Name: "count"}
-//
-//	func init() { base.MustRegister(countId) }
-//
-//	type countInput = base.Input[struct{}, struct{}, struct{}, struct{}]
-//
-//	var count = base.Generator[countInput]{
-//		Id: countId,
-//		Generate: func(
-//			_ context.Context,
-//			_ base.Env,
-//			in countInput,
-//		) iter.Seq2[base.Output, error] {
-//			return func(yield func(base.Output, error) bool) {
-//				for _, pkg := range in.Packages {
-//					dir, err := in.Rel(filepath.Dir(pkg.GoFiles[0]))
-//					if err != nil {
-//						if !yield(nil, err) {
-//							return
-//						}
-//
-//						continue
-//					}
-//
-//					c := base.Composed{
-//						Path:    path.Join(dir, countId.Naming().SharedFile("count")),
-//						Package: pkg.Name,
-//						Parts: []base.Part{base.Decl(fmt.Sprintf(
-//							"// NumFiles counts the files of the package.\nconst NumFiles = %d\n",
-//							len(pkg.GoFiles),
-//						))},
-//					}
-//					if !yield(c, nil) {
-//						return
-//					}
-//				}
-//			}
-//		},
+//	// Default returns the values of the keys a step leaves out.
+//	func (Param) Default() Param {
+//		return Param{Input: "names.yaml", Dir: "greet", Package: "greet"}
 //	}
+//
+// Its proc reads the document from the out of the step and makes the
+// directory of the generated files the scope of the stale check:
+//
+//	var proc = base.Proc[base.ParamOf[Param], Param, base.None, Input]{
+//		Generator: base.Generator[Input]{Id: id, Generate: generate},
+//
+// Generate spells the imports of a new file with importdecl.NewFile,
+// yields a Composed holding a Text and a Decl per name, and a Whole:
+//
+//	c := base.Composed{
+//		Path:    path.Join(in.Param.Dir, id.Naming().SharedFile("greet")),
+//		Params:  map[string]any{"input": in.Param.Input},
+//		Package: in.Param.Package,
+//		Imports: imports,
+//		Parts:   parts,
+//	}
+//	if !yield(c, nil) {
+//		return
+//	}
+//
+//	yield(base.Whole{
+//		Path:    path.Join(in.Param.Dir, "names.txt"),
+//		Content: []byte(strings.Join(in.Names, "\n") + "\n"),
+//	}, nil)
+//
+// # Example: a generator generating from loaded packages
+//
+// Package foo declares a method returning a label for each type marked
+// //acme:foo [label=<label>]. Its type options decode the directive, and
+// [NewOptionLoader] loads them from the directives and the option files:
+//
+//	var proc = base.SourceProc[base.ParamOf[Param], Param, Param, struct{}, TypeOptions, struct{}]{
+//		Generator: base.Generator[Input]{Id: id, Generate: generate},
+//		Options: func(p Param) (Param, opt.Option[fileloader.PathInput], error) {
+//			return p, opt.None[fileloader.PathInput](), nil
+//		},
+//		Loader: base.NewOptionLoader[struct{}, TypeOptions, struct{}](id, 1, nil),
+//	}
+//
+// Generate yields a Composed per package holding marked types:
+//
+//	c := base.Composed{
+//		Path:    path.Join(dir, base.PackageFile(pkg, id.Naming().SharedFile("foo"))),
+//		Params:  in.Loaded.HeaderParams(pkg.PkgPath),
+//		Package: pkg.Name,
+//		Parts:   parts,
+//	}
+//
+// # Running
+//
+// A spec runs both, the packages for foo loaded by a packages.load step:
+//
+//	version: 1
+//	steps:
+//	  root:
+//	    proc: overlayfs.open
+//	  load:
+//	    proc: packages.load
+//	    in: root
+//	    param:
+//	      patterns: [./a, ./b]
+//	  greet:
+//	    proc: acme.greet.generate
+//	    out: root
+//	    param:
+//	      input: names.yaml
+//	  foo:
+//	    proc: acme.foo.generate
+//	    in: load
+//	    out: root
+//	    param:
+//	      method: Label
+//	  final:
+//	    proc: overlayfs.copy_down
+//	    in: root
+//	    after: [greet, foo]
+//
+// A command running such a spec is a main package importing the generators
+// and calling Main of package kamasimple/cli. A type of b losing its
+// directive leaves the file foo generated in b stale, and the next run
+// warns about it. The test of internal/example runs all of it.
+//
+// # Limits
+//
+//   - The framework does not format beyond its one formatting pass, and it
+//     does not check that a Decl is one declaration. [Stamp] puts the mark
+//     on whatever a Decl starts with: a comment detached by an empty line
+//     takes the mark and leaves the declaration unmarked, and of two
+//     declarations only the first is marked.
+//   - A blank or a dot import goes in a leading Text holding an import
+//     declaration of its own. A path whose first element holds no dot
+//     counts as the standard library in the import declaration of a
+//     Composed.
+//   - The framework does not delete a stale file, and it leaves a stale
+//     declaration inside a file the run yields to the generator.
+//   - The stale check cannot fire for a file referring to a type that no
+//     longer exists: loading the packages fails on the file first, until
+//     it is deleted.
+//   - One step per generator and scope: two steps of one generator whose
+//     scopes overlap report the files of each other as stale, and two
+//     steps yielding one path overwrite each other.
 //
 // # Helpers
 //
-// Beside the framework, the package holds helpers a generator may use. The
-// framework does not call them for a generator:
+// Beside the framework, the package holds helpers a generator may use:
 //
 //   - [Naming] names generated files, and [HostShared] places declarations
 //     several generated files share.
 //   - [SourcePackages], [DeclaringPackage], [PackageFile] and
-//     [BuildConstraint] read loaded packages.
-//   - [Generated], [UnownedDecls] and [DeclDocs] read the generated marks
-//     of declarations.
+//     [BuildConstraint] read loaded packages. SourceProc picks its packages
+//     with SourcePackages.
+//   - [Generated], [UnownedDecls], [DeclDocs] and [AstDeclDocs] read the
+//     generated marks of declarations, and [ExplainConflict] explains a
+//     conflict with a declaration carrying a mark of no registered
+//     generator.
 //   - [CheckPredeclared] and [MethodTypeParams] check and choose the names
 //     generated code spells.
 //   - [TypeGraph] and [MarkedTypeError] build the type graph of the

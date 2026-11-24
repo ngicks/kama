@@ -37,7 +37,9 @@ type Options struct {
 	// workflow.DefaultRegistry when nil.
 	Registry *workflow.Registry
 	// Progress receives the warnings and the progress of the steps. A
-	// warning about the spec file itself comes with an empty step.
+	// warning about the spec file itself comes with an empty step. A nil
+	// OnWarning drops the warnings, the stale warnings of the generators
+	// among them; cli.Progress writes them out.
 	Progress workflow.ProgressControl
 }
 

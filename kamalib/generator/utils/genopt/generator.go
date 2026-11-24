@@ -10,8 +10,12 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 )
 
-// NewLoader returns the loader of the generator of tool. optionFile finds the
-// central option files relative to the root; none are read when it is nil.
+// NewLoader returns the loader of the generator of tool: the directives
+// //tool:generator and the key generator of the option files. For a
+// generator of the base framework, tool and generator are the Namespace
+// and the Name of its Id, as base.NewOptionLoader passes them. optionFile
+// finds the central option files relative to the root; none are read when
+// it is nil.
 // A package without //tool:option-file generator=<path> reads
 // tool_generator.toml, .yaml, .yml or .json in its directory, the first one
 // present in that order.

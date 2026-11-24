@@ -635,7 +635,11 @@
 // A file of the loaded packages is stale when it holds a declaration with
 // the marker of the generator and the run does not produce it. The proc
 // reports a warning wrapping ErrStale for a stale file. The file is left in
-// place; delete it if it is no longer needed.
+// place; delete it if it is no longer needed. A stale file referring to a
+// type that no longer exists makes loading the packages fail until it is
+// deleted, before the warning can be reported. Two steps loading
+// overlapping packages report the files of each other as stale, so each
+// package belongs to one step.
 //
 // # Test files
 //
