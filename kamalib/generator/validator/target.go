@@ -3,6 +3,7 @@ package validator
 import (
 	"errors"
 	"fmt"
+	"go/ast"
 	"go/token"
 	"go/types"
 	"iter"
@@ -31,7 +32,7 @@ type selection struct {
 func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	sel := &selection{opts: opts, pkgs: pkgs}
 
-	g, err := base.TypeGraph(pkgs, opts.Markers)
+	g, err := sel.typeGraph()
 	if err != nil {
 		return nil, fmt.Errorf("validator: %w", err)
 	}
@@ -55,10 +56,28 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 	return sel, nil
 }
 
+// typeGraph returns the graph of the types of the loaded packages. It
+// leaves out a declaration carrying the marker of a registered generator,
+// which the generator writes again, unless a directive or an option file
+// entry marks it explicitly. A generator emitting data models writes
+// //kama:validate on the types it hands on to this generator.
+func (s *selection) typeGraph() (*typegraph.Graph, error) {
+	return typegraph.New(s.pkgs, nil, func(_ *ast.TypeSpec, obj types.Object) (bool, error) {
+		if !base.Generated(s.pkgs, s.opts.Markers, obj) {
+			return true, nil
+		}
+
+		to, _ := s.opts.Loaded.Option.Type(typegraph.QualifiedTypeFromObject(obj))
+		_, marked := explicitMark(to)
+
+		return marked, nil
+	})
+}
+
 // trim returns the marked types and the types holding them, trimmed from a
 // type graph built again from the packages.
 func (s *selection) trim() *typegraph.MatchedGraph {
-	g, err := base.TypeGraph(s.pkgs, s.opts.Markers)
+	g, err := s.typeGraph()
 	if err != nil {
 		// selectTargets built the same graph from the same packages and
 		// stopped the run on its error.

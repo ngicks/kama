@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:42Z
+//	validate: true
+// generated: 2026-11-24T12:04:03Z
 
 package nullable
 
@@ -18,6 +19,7 @@ import (
 
 // Nullable is generated from the schema at #.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Nullable struct {
 	ReqOneOf  opt.Option[Item]           `json:"reqOneOf"`
@@ -71,7 +73,8 @@ type nullableWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -99,6 +102,9 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
@@ -106,6 +112,7 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // NullableOptInline is generated from the schema at
 // #/properties/optInline/oneOf/0.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type NullableOptInline struct {
 	S  string                    `json:"s"`
@@ -142,7 +149,8 @@ type nullableOptInlineWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -162,12 +170,16 @@ func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // Item is generated from the schema at #/$defs/Item.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Item struct {
 	N  int64                     `json:"n"`
@@ -203,7 +215,8 @@ type itemWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -221,6 +234,9 @@ func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "n"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out

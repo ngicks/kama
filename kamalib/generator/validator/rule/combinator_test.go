@@ -33,7 +33,7 @@ func TestCombinatorParseErrors(t *testing.T) {
 		v        Validator
 		arg, msg string
 	}{
-		{And{}, "x", "operand x: unknown validator x; known: and, cmp,"},
+		{And{}, "x", "operand x: unknown validator x; known: and, closed, cmp,"},
 		{Or{}, "cmp=a b", `want , after cmp=a, got "b"`},
 		{Or{}, `cmp=">=1", length`, "operand length: want one or more comparisons"},
 		{Not{}, "", "want one operand, got 0"},

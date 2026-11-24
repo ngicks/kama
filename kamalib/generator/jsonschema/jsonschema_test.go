@@ -446,6 +446,7 @@ func TestGenerateHostileAnnotations(t *testing.T) {
 		switch {
 		case lit == marker:
 			markers++
+		case strings.HasPrefix(lit, validateDirective+" "):
 		case lit == "//", strings.HasPrefix(lit, "// "), strings.HasPrefix(lit, "//\t"):
 		default:
 			assert.Assert(t, false, "comment line %q", lit)

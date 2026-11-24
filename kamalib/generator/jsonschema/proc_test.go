@@ -34,34 +34,48 @@ func TestProcParam(t *testing.T) {
 		{
 			name:  "schema only",
 			param: procParam("api/schema.json", "", "", ""),
-			want:  Options{Package: "api", Schema: "api/schema.json", Dir: "api"},
+			want:  Options{Package: "api", Schema: "api/schema.json", Dir: "api", Validate: true},
 		},
 		{
 			name:  "schema at the root",
 			param: procParam("schema.json", "", "", ""),
-			want:  Options{Schema: "schema.json", Dir: "."},
+			want:  Options{Schema: "schema.json", Dir: ".", Validate: true},
 		},
 		{
 			name:  "everything set",
 			param: procParam("schema/a.json", "gen/types", "model", "Root"),
 			want: Options{
-				Package: "model", TypeName: "Root", Schema: "schema/a.json", Dir: "gen/types",
+				Package:  "model",
+				TypeName: "Root",
+				Schema:   "schema/a.json",
+				Dir:      "gen/types",
+				Validate: true,
 			},
 		},
 		{
 			name:  "package from dir",
 			param: procParam("a.json", "gen/types", "", ""),
-			want:  Options{Package: "types", Schema: "a.json", Dir: "gen/types"},
+			want:  Options{Package: "types", Schema: "a.json", Dir: "gen/types", Validate: true},
 		},
 		{
 			name:  "schema with a pointer",
 			param: procParam("tests/a.json#/0/schema", "", "", ""),
-			want:  Options{Package: "tests", Schema: "tests/a.json#/0/schema", Dir: "tests"},
+			want: Options{
+				Package:  "tests",
+				Schema:   "tests/a.json#/0/schema",
+				Dir:      "tests",
+				Validate: true,
+			},
 		},
 		{
 			name:  "schema with an empty pointer",
 			param: procParam("api/a.json#", "", "", ""),
-			want:  Options{Package: "api", Schema: "api/a.json#", Dir: "api"},
+			want:  Options{Package: "api", Schema: "api/a.json#", Dir: "api", Validate: true},
+		},
+		{
+			name:  "validate off",
+			param: withValidate(procParam("a.json", "", "p", ""), false),
+			want:  Options{Package: "p", Schema: "a.json", Dir: "."},
 		},
 		{name: "no schema", param: procParam("", "", "", ""), err: `invalid schema ""`},
 		{name: "pointer only", param: procParam("#/0", "", "", ""), err: `invalid schema "#/0"`},
@@ -172,7 +186,7 @@ func TestProcRun(t *testing.T) {
 	assert.NilError(t, jsonv2.Unmarshal([]byte(procSchema), &doc))
 
 	want, _, err := Generate(&doc, Options{
-		Package: "api", Schema: "api/schema.json", Now: gentest.Now,
+		Package: "api", Schema: "api/schema.json", Validate: true, Now: gentest.Now,
 	})
 	assert.NilError(t, err)
 
@@ -196,7 +210,9 @@ func TestProcRunPointer(t *testing.T) {
 	var doc jsonschema.Schema
 	assert.NilError(t, jsonv2.Unmarshal([]byte(procSchema), &doc))
 
-	want, _, err := Generate(&doc, Options{Package: "tests", Schema: schema, Now: gentest.Now})
+	want, _, err := Generate(&doc, Options{
+		Package: "tests", Schema: schema, Validate: true, Now: gentest.Now,
+	})
 	assert.NilError(t, err)
 
 	assert.Equal(t, want[0].Path, "tests/tests.kama_jsonschema.go")
@@ -376,6 +392,11 @@ func TestProcRunFails(t *testing.T) {
 
 // procParam returns the param a spec holding these keys decodes into. An
 // empty argument leaves its key out.
+func withValidate(p ProcParamPartial, on bool) ProcParamPartial {
+	p.Validate = und.Defined(on)
+	return p
+}
+
 func procParam(schema, dir, pkg, typeName string) ProcParamPartial {
 	set := func(s string) und.Und[string] {
 		if s == "" {

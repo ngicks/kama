@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T02:28:13Z
+//	validate: true
+// generated: 2026-11-24T12:04:06Z
 
 package nullableroot
 

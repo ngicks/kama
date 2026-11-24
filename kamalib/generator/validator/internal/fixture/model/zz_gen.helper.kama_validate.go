@@ -2,13 +2,14 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T11:32:42Z
+// generated: 2026-11-24T12:11:29Z
 
 package model
 
 import (
 	"cmp"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/url"
 	"reflect"
@@ -34,6 +35,21 @@ func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 		}
 	}
 	return nil
+}
+
+// kamaValidateClosed is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateClosed[K ~string, V any](m map[K]V, stopOnFirstError bool) error {
+	var errs []error
+	for _, k := range slices.Sorted(maps.Keys(m)) {
+		err := validation.Field(validation.New(validation.ErrClosed, "member is not allowed"), string(k))
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
 }
 
 // kamaValidateCmp is a helper of the generated Validate methods.

@@ -191,6 +191,7 @@ func DefaultRegistry() *Registry {
 		Format{Formats: DefaultFormats()},
 		Requires{},
 		Members{},
+		Closed{},
 		And{},
 		Or{},
 		Not{},

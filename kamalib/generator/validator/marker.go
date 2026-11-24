@@ -1,7 +1,9 @@
 package validator
 
 import (
+	"go/ast"
 	"go/types"
+	"slices"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
@@ -24,9 +26,10 @@ func (s *selection) callableIn(trimmed *typegraph.MatchedGraph, named *types.Nam
 // named itself, not promoted from an embedded field, with the shape
 // validateShape describes.
 //
-// A method carrying the marker of a registered generator in a loaded
-// package does not count. It is dropped and generated again, and a type
-// the run no longer targets must not keep validating through a stale file.
+// A method carrying the marker of this generator in a loaded package does
+// not count. It is dropped and generated again, and a type the run no
+// longer targets must not keep validating through a stale file. A method
+// another generator wrote counts as one written by hand.
 // An interface type does not count either: its nil value would panic.
 func (s *selection) implementor(named *types.Named) bool {
 	origin := named.Origin()
@@ -110,7 +113,15 @@ func returnsError(sig *types.Signature) bool {
 }
 
 // generated reports whether the declaration of obj, declared in a loaded
-// package, carries the marker of a registered generator.
+// package, carries the marker of this generator.
 func (s *selection) generated(obj types.Object) bool {
-	return base.Generated(s.pkgs, s.opts.Markers, obj)
+	pkg := base.DeclaringPackage(s.pkgs, obj)
+	if pkg == nil {
+		return false
+	}
+
+	return slices.ContainsFunc(base.DeclDocs(pkg, obj), func(doc *ast.CommentGroup) bool {
+		name, ok := s.opts.Markers.Generated(doc)
+		return ok && name == GeneratorId.String()
+	})
 }

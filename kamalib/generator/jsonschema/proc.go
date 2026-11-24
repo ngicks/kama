@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/ngicks/opiter"
+	"github.com/ngicks/option/und"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
@@ -45,6 +46,11 @@ type ProcParam struct {
 	// must be an exported Go identifier. Empty takes the title of the root
 	// schema.
 	TypeName string `json:"type_name"`
+	// Validate makes the generated decoders call the Validate methods the
+	// validator generator writes. A spec running Proc with it chains
+	// packages.load and validate.generate after Proc. False leaves the calls
+	// out, and decoding then checks no validation keyword.
+	Validate bool `json:"validate"`
 	// Unknown captures the keys of a param that name no field.
 	Unknown map[string]any `json:",embed"`
 }
@@ -52,7 +58,7 @@ type ProcParam struct {
 // DefaultProcParam returns the values a ProcParam takes for the keys a spec
 // leaves out.
 func DefaultProcParam() ProcParamPartial {
-	return ProcParamPartial{}
+	return ProcParamPartial{Validate: und.Defined(true)}
 }
 
 // UnknownKeys implements workflow.UnknownKeyer.
@@ -136,7 +142,13 @@ func (i *instance) Param(partial ProcParamPartial) error {
 		return err
 	}
 
-	i.opts = Options{Package: pkg, TypeName: p.TypeName, Schema: p.Schema, Dir: dir}
+	i.opts = Options{
+		Package:  pkg,
+		TypeName: p.TypeName,
+		Schema:   p.Schema,
+		Dir:      dir,
+		Validate: p.Validate,
+	}
 
 	return nil
 }

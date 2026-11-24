@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:48Z
+//	validate: true
+// generated: 2026-11-24T12:07:34Z
 
 package prefilter
 
@@ -33,6 +34,7 @@ type ShapeKind interface {
 
 // ShapeCircle holds the Circle member of Shape.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type ShapeCircle struct {
 	Circle Circle
@@ -45,6 +47,7 @@ func (ShapeCircle) isShapeKind() {}
 
 // ShapeSquare holds the Square member of Shape.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type ShapeSquare struct {
 	Square Square
@@ -110,6 +113,7 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Circle is generated from the schema at #/$defs/Circle.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Circle struct {
 	Kind   CircleKind                `json:"kind"`
@@ -148,7 +152,8 @@ type circleWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -168,6 +173,9 @@ func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "radius"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out
@@ -209,6 +217,7 @@ func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Square is generated from the schema at #/$defs/Square.
 //
+//kama:validate hook=off closed
 //kama:generated kama:jsonschema
 type Square struct {
 	Side opt.Option[float64]       `json:"side,omitzero"`
@@ -244,7 +253,8 @@ type squareWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -262,6 +272,9 @@ func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "side"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out

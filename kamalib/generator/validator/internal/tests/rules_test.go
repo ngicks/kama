@@ -282,3 +282,17 @@ func TestMembers(t *testing.T) {
 		Validate(false)
 	assert.ErrorContains(t, err, "want member count <= 3, got 4")
 }
+
+// TestClosed reports each entry of the embedded fallback at its member.
+func TestClosed(t *testing.T) {
+	assert.NilError(t, model.Strict{Name: "n"}.Validate(false))
+
+	strict := model.Strict{Extra: map[string]any{"b": 1, "a": 2}}
+
+	err := strict.Validate(false)
+	assert.DeepEqual(t, validation.Pointers(err), []string{"/a", "/b"})
+	assert.ErrorIs(t, err, validation.ErrClosed)
+	assert.ErrorContains(t, err, "member is not allowed")
+
+	assert.DeepEqual(t, validation.Pointers(strict.Validate(true)), []string{"/a"})
+}

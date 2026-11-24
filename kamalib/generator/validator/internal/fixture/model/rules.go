@@ -139,3 +139,11 @@ type Contact struct {
 	Phone *string            `json:"phone"`
 	Extra map[string]any     `json:",embed"`
 }
+
+// Strict holds no member beyond its fields.
+//
+//kama:validate closed hook=off
+type Strict struct {
+	Name  string         `json:"name"`
+	Extra map[string]any `json:",embed"`
+}

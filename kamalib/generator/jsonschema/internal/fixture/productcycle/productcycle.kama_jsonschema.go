@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:49Z
+//	validate: true
+// generated: 2026-11-24T12:04:13Z
 
 package productcycle
 
@@ -19,6 +20,7 @@ import (
 // Product is all of A, B and its own properties. It is generated from the
 // schema at #.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Product struct {
 	A   A                         `json:"-"`
@@ -62,7 +64,8 @@ type productWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A, B and the own
 // properties decode from the same object. A member that fails to decode
-// stops it. Otherwise it reports every member the schema rejects.
+// stops it. Otherwise it reports every member the schema rejects. A value
+// whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Product) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -86,12 +89,16 @@ func (v *Product) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // A is generated from the schema at #/$defs/A.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type A struct {
 	// A declares shared first.
@@ -131,7 +138,8 @@ type aWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -153,12 +161,16 @@ func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // B is generated from the schema at #/$defs/B.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type B struct {
 	// B declares shared too.
@@ -198,7 +210,8 @@ type bWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -220,12 +233,16 @@ func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // Back is generated from the schema at #/$defs/Back.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Back struct {
 	Product *Product                  `json:"product,omitzero"`
@@ -261,7 +278,8 @@ type backWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Back) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -279,6 +297,9 @@ func (v *Back) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "product"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out

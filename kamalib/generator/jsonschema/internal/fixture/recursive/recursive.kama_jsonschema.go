@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:48Z
+//	validate: true
+// generated: 2026-11-24T12:04:15Z
 
 package recursive
 
@@ -18,6 +19,7 @@ import (
 
 // Forest is generated from the schema at #.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Forest struct {
 	Trees  []Tree                    `json:"trees"`
@@ -62,7 +64,8 @@ type forestWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -88,12 +91,16 @@ func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // Tree is generated from the schema at #/$defs/Tree.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Tree struct {
 	Label    string                    `json:"label"`
@@ -132,7 +139,8 @@ type treeWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -154,12 +162,16 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // List is generated from the schema at #/$defs/List.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type List struct {
 	Value int64                     `json:"value"`
@@ -198,7 +210,8 @@ type listWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -220,12 +233,16 @@ func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // Chain is generated from the schema at #/$defs/Chain.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Chain struct {
 	Name string                    `json:"name"`
@@ -268,7 +285,8 @@ type chainWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -290,12 +308,16 @@ func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // Link is generated from the schema at #/$defs/Link.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Link struct {
 	Label string                    `json:"label"`
@@ -334,7 +356,8 @@ type linkWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -356,12 +379,16 @@ func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // Ouroboros is generated from the schema at #/$defs/Ouroboros.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Ouroboros struct {
 	Tail *Ouroboros                `json:"tail"`
@@ -401,7 +428,8 @@ type ouroborosWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Ouroboros) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -419,6 +447,9 @@ func (v *Ouroboros) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "tail"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out

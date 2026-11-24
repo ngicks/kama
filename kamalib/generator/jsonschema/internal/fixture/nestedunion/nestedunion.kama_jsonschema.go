@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:41Z
+//	validate: true
+// generated: 2026-11-24T12:04:02Z
 
 package nestedunion
 
@@ -18,6 +19,7 @@ import (
 
 // Chains is generated from the schema at #.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Chains struct {
 	Any     opt.Option[Any]           `json:"any,omitzero"`
@@ -59,7 +61,8 @@ type chainsWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Chains) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -83,6 +86,9 @@ func (v *Chains) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
@@ -104,6 +110,7 @@ type AnyKind interface {
 
 // AnyAnyLeft holds the AnyLeft member of Any.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type AnyAnyLeft struct {
 	AnyLeft AnyLeft
@@ -116,6 +123,7 @@ func (AnyAnyLeft) isAnyKind() {}
 
 // AnyAnyRight holds the AnyRight member of Any.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type AnyAnyRight struct {
 	AnyRight AnyRight
@@ -171,6 +179,7 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // AnyLeft is generated from the schema at #/$defs/AnyLeft.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type AnyLeft struct {
 	C  opt.Option[Any]           `json:"c,omitzero"`
@@ -209,7 +218,8 @@ type anyLeftWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -231,12 +241,16 @@ func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // AnyRight is generated from the schema at #/$defs/AnyRight.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type AnyRight struct {
 	C  opt.Option[Any]           `json:"c,omitzero"`
@@ -275,7 +289,8 @@ type anyRightWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *AnyRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -295,6 +310,9 @@ func (v *AnyRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "r"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out
@@ -318,6 +336,7 @@ type TaggedKind interface {
 
 // TaggedTaggedLeft holds the TaggedLeft member of Tagged.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type TaggedTaggedLeft struct {
 	TaggedLeft TaggedLeft
@@ -330,6 +349,7 @@ func (TaggedTaggedLeft) isTaggedKind() {}
 
 // TaggedTaggedRight holds the TaggedRight member of Tagged.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type TaggedTaggedRight struct {
 	TaggedRight TaggedRight
@@ -395,6 +415,7 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // TaggedLeft is generated from the schema at #/$defs/TaggedLeft.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type TaggedLeft struct {
 	Kind string                    `json:"kind"`
@@ -433,7 +454,8 @@ type taggedLeftWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -458,12 +480,16 @@ func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // TaggedRight is generated from the schema at #/$defs/TaggedRight.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type TaggedRight struct {
 	Kind string                    `json:"kind"`
@@ -502,7 +528,8 @@ type taggedRightWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *TaggedRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -527,6 +554,9 @@ func (v *TaggedRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
@@ -549,6 +579,7 @@ type OverlapKind interface {
 
 // OverlapOverlapLeft holds the OverlapLeft member of Overlap.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type OverlapOverlapLeft struct {
 	OverlapLeft OverlapLeft
@@ -561,6 +592,7 @@ func (OverlapOverlapLeft) isOverlapKind() {}
 
 // OverlapOverlapRight holds the OverlapRight member of Overlap.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type OverlapOverlapRight struct {
 	OverlapRight OverlapRight
@@ -626,6 +658,7 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // OverlapLeft is generated from the schema at #/$defs/OverlapLeft.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type OverlapLeft struct {
 	C  opt.Option[Overlap]       `json:"c,omitzero"`
@@ -664,7 +697,8 @@ type overlapLeftWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -686,12 +720,16 @@ func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // OverlapRight is generated from the schema at #/$defs/OverlapRight.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type OverlapRight struct {
 	C  opt.Option[Overlap]       `json:"c,omitzero"`
@@ -730,7 +768,8 @@ type overlapRightWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *OverlapRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -750,6 +789,9 @@ func (v *OverlapRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "l"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out

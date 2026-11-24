@@ -25,6 +25,7 @@ var (
 	ErrOr       = errors.New("or")
 	ErrOneOf    = errors.New("oneof")
 	ErrNot      = errors.New("not")
+	ErrClosed   = errors.New("closed")
 )
 
 // Error is an error located by a path of segments from the outermost value to the failing one.

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T10:13:55Z
+// generated: 2026-11-24T12:11:29Z
 
 package model
 
@@ -326,6 +326,21 @@ func (v Shipping) Validate(stopOnFirstError bool) error {
 func (v Contact) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Email.IsSome(), v.Phone != nil)+1+len(v.Extra), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Email.IsSome(), v.Phone != nil)+1+len(v.Extra), "<=", 3)); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v Strict) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := kamaValidateClosed(v.Extra, stopOnFirstError); err != nil {
 		if stopOnFirstError {
 			return err
 		}

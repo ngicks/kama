@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:40Z
+//	validate: true
+// generated: 2026-11-24T12:04:00Z
 
 package multikind
 
@@ -18,6 +19,7 @@ import (
 
 // Cell is generated from the schema at #.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Cell struct {
 	Value CellValue                 `json:"value"`
@@ -56,7 +58,8 @@ type cellWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -76,6 +79,9 @@ func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "label"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out
@@ -100,6 +106,7 @@ type CellValueKind interface {
 
 // CellValueString holds the String member of CellValue.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type CellValueString struct {
 	String string
@@ -112,6 +119,7 @@ func (CellValueString) isCellValueKind() {}
 
 // CellValueInteger holds the Integer member of CellValue.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type CellValueInteger struct {
 	Integer int64
@@ -124,6 +132,7 @@ func (CellValueInteger) isCellValueKind() {}
 
 // CellValueBoolean holds the Boolean member of CellValue.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type CellValueBoolean struct {
 	Boolean bool
@@ -206,6 +215,7 @@ type CellLabelKind interface {
 
 // CellLabelString holds the String member of CellLabel.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type CellLabelString struct {
 	String string
@@ -218,6 +228,7 @@ func (CellLabelString) isCellLabelKind() {}
 
 // CellLabelNumber holds the Number member of CellLabel.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type CellLabelNumber struct {
 	Number float64
@@ -230,6 +241,7 @@ func (CellLabelNumber) isCellLabelKind() {}
 
 // CellLabelNull holds the Null member of CellLabel.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type CellLabelNull struct{}
 

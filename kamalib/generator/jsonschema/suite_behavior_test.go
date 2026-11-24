@@ -51,9 +51,6 @@ const (
 	// suite accepts every other kind. The suite must call the instance
 	// valid.
 	reasonImpliedKind = "a schema without type takes the kind its keywords imply"
-	// Decoding keeps the members additionalProperties false rejects. The
-	// schema must hold additionalProperties.
-	reasonClosed = "additionalProperties false is not checked"
 )
 
 var unenforcedKeywords = []string{
@@ -217,10 +214,8 @@ var suiteAllowed = map[suiteKey]string{
 		"properties whose names are Javascript object property names",
 		"ignores other non-objects",
 	}: reasonImpliedKind,
-	{"ref.json", "root pointer ref", "match"}:              reasonImpliedKind,
-	{"ref.json", "root pointer ref", "recursive match"}:    reasonImpliedKind,
-	{"ref.json", "root pointer ref", "mismatch"}:           reasonClosed,
-	{"ref.json", "root pointer ref", "recursive mismatch"}: reasonClosed,
+	{"ref.json", "root pointer ref", "match"}:           reasonImpliedKind,
+	{"ref.json", "root pointer ref", "recursive match"}: reasonImpliedKind,
 	{
 		"ref.json",
 		"ref applies alongside sibling keywords",
@@ -501,6 +496,8 @@ func TestSuiteBehavior(t *testing.T) {
 	checkGenerated(t, generated)
 	checkUnsupported(t, unsupported, reasons)
 
+	runSuiteValidate(t)
+
 	writeFile(t, filepath.Join(suiteDir, "main.go"), driver.source())
 
 	results := runSuiteDriver(t)
@@ -670,15 +667,6 @@ func checkAllowed(reason string, schema jsontext.Value, valid bool) error {
 		if !held {
 			return errors.New("the schema holds no pure validation keyword")
 		}
-	case reasonClosed:
-		held, err := holdsKeyword(schema, []string{"additionalProperties"})
-		if err != nil {
-			return err
-		}
-
-		if !held {
-			return errors.New("the schema holds no additionalProperties")
-		}
 	case reasonImpliedKind:
 		if !valid {
 			return errors.New("the suite calls the instance invalid")
@@ -783,6 +771,45 @@ func runSuiteSpec(t *testing.T, file string, accepted []int) {
 	assert.NilError(t, err, file)
 	assert.Equal(t, len(g.Warnings()), 0, "%s: %v", file, g.Warnings())
 	assert.NilError(t, g.Run(ctx, workflow.ProgressControl{}), file)
+}
+
+// runSuiteValidate runs validate.generate over the packages of the module
+// in suiteDir, which the generated decoders call the Validate methods of.
+// The overlay is rooted at suiteDir, since the go command loads the
+// packages of a module from its own directory only.
+func runSuiteValidate(t *testing.T) {
+	t.Helper()
+
+	// The go.work of the repository does not list the module.
+	for k, v := range map[string]string{"GOWORK": "off", "GOFLAGS": "-mod=mod", "GOPROXY": "off"} {
+		t.Setenv(k, v)
+	}
+
+	ctx := context.Background()
+
+	dir, err := filepath.Abs(suiteDir)
+	assert.NilError(t, err)
+
+	spec := workflow.Spec{Version: workflow.SpecVersion, Steps: map[string]workflow.Step{
+		"root": {Proc: "overlayfs.open", Param: map[string]any{"root": dir}},
+		"load": {Proc: "packages.load", In: workflow.Names{"root"}},
+		"validate": {
+			Proc: "validate.generate",
+			In:   workflow.Names{"load"},
+			Out:  workflow.Names{"root"},
+		},
+		"final": {
+			Proc:  "overlayfs.copy_down",
+			In:    workflow.Names{"root"},
+			After: workflow.Names{"validate"},
+			Param: map[string]any{"fast_ignore_compile_errors": true},
+		},
+	}}
+
+	g, err := spec.Build(ctx, workflow.DefaultRegistry)
+	assert.NilError(t, err)
+	assert.Equal(t, len(g.Warnings()), 0, "%v", g.Warnings())
+	assert.NilError(t, g.Run(ctx, workflow.ProgressControl{}))
 }
 
 // suiteDriver collects the decodes the driver program runs.

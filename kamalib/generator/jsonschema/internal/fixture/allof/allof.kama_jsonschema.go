@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:38Z
+//	validate: true
+// generated: 2026-11-24T12:03:57Z
 
 package allof
 
@@ -19,6 +20,7 @@ import (
 // Employee is all of Person, Contract and its own properties. It is
 // generated from the schema at #.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Employee struct {
 	Person   Person                    `json:"-"`
@@ -61,7 +63,8 @@ type employeeWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. Person, Contract and
 // the own properties decode from the same object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -87,12 +90,16 @@ func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // Person is generated from the schema at #/$defs/Person.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Person struct {
 	Name string                    `json:"name"`
@@ -131,7 +138,8 @@ type personWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -153,12 +161,16 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // Contract is generated from the schema at #/$defs/Contract.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Contract struct {
 	Salary float64                   `json:"salary"`
@@ -197,7 +209,8 @@ type contractWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Contract) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -217,6 +230,9 @@ func (v *Contract) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "remote"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out

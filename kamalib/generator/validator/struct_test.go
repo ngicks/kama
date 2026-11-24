@@ -288,3 +288,17 @@ type Inner struct{ X int }
 	)
 	assertNotContains(t, fn, "if e.IsSome() {\n\t\t\tfor")
 }
+
+// TestStructFallbackSegment checks the entries of a field tagged
+// json:",embed" are located by their keys alone, as encoders write them as
+// members of the struct.
+func TestStructFallbackSegment(t *testing.T) {
+	fn := validateOf(t, map[string]string{
+		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
+			"\tN int `json:\"n\"`\n\textra map[string]Inner `json:\",embed\"`\n}\n\n" +
+			"//kama:validate hook=off\ntype Inner struct{ X int }\n",
+	}, "a.kama_validate.go", "A")
+
+	assertContains(t, fn, check(`validation.Key(e.Validate(stopOnFirstError), k)`))
+	assertNotContains(t, fn, `"extra"`)
+}

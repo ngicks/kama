@@ -493,7 +493,9 @@ func TestSelectionErrors(t *testing.T) {
 			name: "unknown validator on a type",
 			src:  "//kama:validate nope\ntype N int\n",
 			is:   ErrDirective,
-			msgs: []string{"unknown validator //kama:validate nope on type N; known: and, cmp"},
+			msgs: []string{
+				"unknown validator //kama:validate nope on type N; known: and, closed, cmp",
+			},
 		},
 		{
 			name: "validator given twice on a type",

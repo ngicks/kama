@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:39Z
+//	validate: true
+// generated: 2026-11-24T12:03:58Z
 
 package anyof
 
@@ -18,6 +19,7 @@ import (
 
 // Doc is generated from the schema at #.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Doc struct {
 	Label Label                     `json:"label"`
@@ -59,7 +61,8 @@ type docWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Doc) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -81,6 +84,9 @@ func (v *Doc) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "alt"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out
@@ -105,6 +111,7 @@ type DocValueKind interface {
 
 // DocValueString holds the String member of DocValue.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type DocValueString struct {
 	String string
@@ -117,6 +124,7 @@ func (DocValueString) isDocValueKind() {}
 
 // DocValueNull holds the Null member of DocValue.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type DocValueNull struct{}
 
@@ -127,6 +135,7 @@ func (DocValueNull) isDocValueKind() {}
 
 // DocValueInteger holds the Integer member of DocValue.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type DocValueInteger struct {
 	Integer int64
@@ -203,6 +212,7 @@ type LabelKind interface {
 
 // LabelNamed holds the Named member of Label.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type LabelNamed struct {
 	Named Named
@@ -215,6 +225,7 @@ func (LabelNamed) isLabelKind() {}
 
 // LabelTagged holds the Tagged member of Label.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type LabelTagged struct {
 	Tagged Tagged
@@ -270,6 +281,7 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Named is generated from the schema at #/$defs/Named.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Named struct {
 	Name string                    `json:"name"`
@@ -305,7 +317,8 @@ type namedWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -325,12 +338,16 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // Tagged is generated from the schema at #/$defs/Tagged.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Tagged struct {
 	Name opt.Option[string]        `json:"name,omitzero"`
@@ -369,7 +386,8 @@ type taggedWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -389,6 +407,9 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "tag"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out

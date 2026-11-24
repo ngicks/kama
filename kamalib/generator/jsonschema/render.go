@@ -92,7 +92,7 @@ func render(doc *jsonschema.Schema, opts Options) ([]byte, error) {
 
 	hdr, err := base.Header(
 		generatorPath,
-		map[string]any{"schema": opts.Schema, "type_name": typeName},
+		map[string]any{"schema": opts.Schema, "type_name": typeName, "validate": opts.Validate},
 		opts.Now(),
 	)
 	if err != nil {
@@ -200,6 +200,36 @@ func q(path, name string) genExpr {
 func docComment(text string) genExpr {
 	return lang.DocComment(GeneratorId.Marker(), "%s", commentLines(text))
 }
+
+// validatedDoc returns the doc comment of a type the validator generator
+// gives a Validate: docComment with the //kama:validate directive of the
+// args before the marker. The args name the validators of the value of the
+// type, and hook=off for a struct, whose hooks nothing writes.
+func validatedDoc(text string, args []string) genExpr {
+	return lang.Comment(
+		lang.Expr("%s", commentLines(text)),
+		lang.Expr(""),
+		lang.Expr("%s %s", validateDirective, strings.Join(args, " ")),
+		lang.Expr("%s", GeneratorId.Marker()),
+	)
+}
+
+// validateStep returns the statement returning the error of Validate of
+// the value v when the decoders validate, else nothing.
+func validateStep(opts Options, v genExpr) genStep {
+	if !opts.Validate {
+		return lang.Steps()
+	}
+
+	return lang.If(
+		lang.Expr("err := %s(%s); err != nil", q(runtimePath, "Validate"), v),
+		lang.Stmt("return err"),
+		nil,
+	)
+}
+
+// validateDirective is the directive of the validator generator.
+const validateDirective = "//kama:validate"
 
 // commentLines returns text as Go line comments: each line of text, as
 // "\r\n", "\r" and "\n" end them, wrapped at commentWidth, every line

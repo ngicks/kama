@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:44Z
+//	validate: true
+// generated: 2026-11-24T12:04:06Z
 
 package nullableenum
 
@@ -18,6 +19,7 @@ import (
 
 // Levels is generated from the schema at #.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Levels struct {
 	Ref    und.Und[int64]            `json:"ref,omitzero"`
@@ -62,7 +64,8 @@ type levelsWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -95,6 +98,9 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out

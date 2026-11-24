@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:47Z
+//	validate: true
+// generated: 2026-11-24T12:04:10Z
 
 package oneofoverlap
 
@@ -33,6 +34,7 @@ type EitherKind interface {
 
 // EitherLeft holds the Left member of Either.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type EitherLeft struct {
 	Left EitherLeftValue
@@ -45,6 +47,7 @@ func (EitherLeft) isEitherKind() {}
 
 // EitherRight holds the Right member of Either.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type EitherRight struct {
 	Right EitherRightValue
@@ -110,6 +113,7 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // EitherLeftValue is generated from the schema at #/oneOf/0.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type EitherLeftValue struct {
 	L  opt.Option[string]        `json:"l,omitzero"`
@@ -146,7 +150,8 @@ type eitherLeftValueWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -166,12 +171,16 @@ func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // EitherRightValue is generated from the schema at #/oneOf/1.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type EitherRightValue struct {
 	R  opt.Option[string]        `json:"r,omitzero"`
@@ -208,7 +217,8 @@ type eitherRightValueWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *EitherRightValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -226,6 +236,9 @@ func (v *EitherRightValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "r"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out

@@ -132,6 +132,7 @@
 //	format=<name>         validation.ErrFormat
 //	requires="<name> ..." validation.ErrRequired
 //	members="<op><n> ..." validation.ErrLength
+//	closed                validation.ErrClosed
 //	and(<v>, ...)         the errors of the operands
 //	or(<v>, ...)          validation.ErrOr
 //	not(<v>)              validation.ErrNot
@@ -230,6 +231,13 @@
 // encoded as a member always counts, and so does each entry of the
 // embedded fallback map, the field tagged json:",embed". A fallback of
 // another type and a struct inlining an embedded struct are errors.
+//
+// closed takes no arg and is written in the doc comment of a struct type,
+// as in //kama:validate closed. The value holds no JSON member beyond those
+// its fields encode as, as JSON Schema additionalProperties false requires:
+// the embedded fallback map is empty. Each entry is an error located at
+// its member, in the order of the keys. A fallback of another type than a
+// map keyed by strings is an error. A struct without one always passes.
 //
 // and, or, not, oneof and if take operands: validators written as the args
 // of //kama:validate are, separated by commas, as in or(cmp=">=10",

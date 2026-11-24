@@ -56,6 +56,10 @@ type Options struct {
 	// Dir is the directory the generated file lands in. Empty means the
 	// directory of the file of Schema.
 	Dir string
+	// Validate makes the decoders call Validate of the types the validator
+	// generator gives one, as described under Validation in the package
+	// documentation.
+	Validate bool
 	// Now gives the time the header of the generated file records. It is
 	// time.Now when nil.
 	Now func() time.Time

@@ -37,7 +37,7 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	steps := []genStep{
-		lang.Line(docComment(typeDoc(doc, ptr, lead))),
+		lang.Line(validatedDoc(typeDoc(doc, ptr, lead), structValidators(s))),
 		lang.Stmt("type %s struct {", name),
 	}
 
@@ -80,6 +80,17 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	steps = append(steps, wireSteps(doc, opts, ptr)...)
 
 	return append(steps, unmarshalSteps(doc, opts, ptr)...)
+}
+
+// structValidators returns the args of //kama:validate on the struct or
+// product of s: its hooks off and the validators of the object as a whole.
+func structValidators(s *jsonschema.Schema) []string {
+	args := []string{"hook=off"}
+	if closed(s) {
+		args = append(args, "closed")
+	}
+
+	return args
 }
 
 // extraType spells the Go type of the values of the members the struct or
@@ -298,6 +309,9 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 
 	text += "A member that fails to decode stops it. Otherwise it reports every member the " +
 		"schema rejects."
+	if opts.Validate {
+		text += " A value whose members all convert must pass Validate."
+	}
 
 	body := []genStep{
 		lang.Stmt("raw, err := %s(dec)", q(runtimePath, "ReadValue")),
@@ -331,6 +345,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 			lang.Stmt("return err"),
 			nil,
 		),
+		validateStep(opts, lang.Expr("out")),
 		lang.Stmt("*v = out"),
 		lang.Stmt("return nil"),
 	)

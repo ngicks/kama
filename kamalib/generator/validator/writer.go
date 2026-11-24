@@ -214,12 +214,13 @@ func (w *writer) field(st *types.Struct, i int) ([]genStep, []error) {
 // fieldWrap returns the wrapping of the errors of the field i of st with its
 // path segment, then with outer: the name in its json tag when it has one
 // other than "-", else its Go name. An embedded struct without a json name
-// adds no segment, as encoders inline its fields.
+// and a field tagged json:",embed" add no segment, as encoders inline
+// their fields or entries.
 func (w *writer) fieldWrap(st *types.Struct, i int, outer wrapFunc) wrapFunc {
 	v := st.Field(i)
 	name, _ := tagName(st, i)
 
-	if name == "" && v.Embedded() && isStructOrPointer(v.Type()) {
+	if name == "" && v.Embedded() && isStructOrPointer(v.Type()) || tagOption(st, i, "embed") {
 		return outer
 	}
 

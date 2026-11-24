@@ -60,8 +60,9 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	for i, m := range names {
-		steps = append(steps, lang.Line(docComment(
+		steps = append(steps, lang.Line(validatedDoc(
 			wrappers[i]+" holds the "+m+" member of "+name+".",
+			[]string{"hook=off"},
 		)))
 
 		if isNullMember(doc, ptr, i) {

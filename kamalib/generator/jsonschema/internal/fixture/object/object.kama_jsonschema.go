@@ -2,7 +2,8 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T11:53:45Z
+//	validate: true
+// generated: 2026-11-24T12:07:31Z
 
 package object
 
@@ -20,6 +21,7 @@ import (
 //
 // Object exercises every field shape of an object.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Object struct {
 	// ReqName is required and not null.
@@ -101,7 +103,8 @@ type objectWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -149,6 +152,9 @@ func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
@@ -189,6 +195,7 @@ func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // ObjectInline is generated from the schema at #/properties/inline.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type ObjectInline struct {
 	X  float64                   `json:"x"`
@@ -224,7 +231,8 @@ type objectInlineWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -244,12 +252,16 @@ func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // ObjectClosed is generated from the schema at #/properties/closed.
 //
+//kama:validate hook=off closed
 //kama:generated kama:jsonschema
 type ObjectClosed struct {
 	A  opt.Option[bool]          `json:"a,omitzero"`
@@ -285,7 +297,8 @@ type objectClosedWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -305,12 +318,16 @@ func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // ObjectOpen is generated from the schema at #/properties/open.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type ObjectOpen struct {
 	Id opt.Option[int64] `json:"id,omitzero"`
@@ -346,7 +363,8 @@ type objectOpenWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -366,12 +384,16 @@ func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
+	if err := jsonschemart.Validate(out); err != nil {
+		return err
+	}
 	*v = out
 	return nil
 }
 
 // Point is generated from the schema at #/$defs/Point.
 //
+//kama:validate hook=off
 //kama:generated kama:jsonschema
 type Point struct {
 	X  int64                     `json:"x"`
@@ -410,7 +432,8 @@ type pointWire struct {
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects.
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -430,6 +453,9 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "y"))
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out); err != nil {
 		return err
 	}
 	*v = out

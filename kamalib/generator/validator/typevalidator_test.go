@@ -290,6 +290,58 @@ func TestMembers(t *testing.T) {
 	assertContains(t, fs["B.Validate"], check(`kamaValidateMembers(1, "<=", 1)`))
 }
 
+// TestClosed passes the fallback map to the helper, and a struct without
+// one always passes.
+func TestClosed(t *testing.T) {
+	src := generateAndBuild(t, map[string]string{
+		"a.go": "package x\n\n" +
+			"//kama:validate closed hook=off\ntype A struct {\n" +
+			"\tN int\n\tE map[string]int `json:\",embed\"`\n}\n\n" +
+			"//kama:validate closed hook=off\ntype B struct{ N int }\n",
+	})["a.kama_validate.go"]
+	fs := gentest.Funcs(t, src)
+
+	assertContains(t, fs["A.Validate"], check(`kamaValidateClosed(v.E, stopOnFirstError)`))
+	assertNotContains(t, fs["B.Validate"], "kamaValidateClosed")
+}
+
+func TestClosedErrors(t *testing.T) {
+	cases := []struct {
+		name string
+		src  string
+		is   error
+		msg  string
+	}{
+		{
+			name: "fallback of another type",
+			src: "//kama:validate closed\ntype A struct {\n\tN int\n" +
+				"\tE []int `json:\",embed\"`\n}\n",
+			is:  ErrUnsupported,
+			msg: "the embedded fallback field of type []int is no map keyed by strings",
+		},
+		{
+			name: "arg",
+			src:  "//kama:validate closed=x hook=off\ntype A struct{ N int }\n",
+			is:   ErrUnsupported,
+			msg:  "closed takes no arg",
+		},
+		{
+			name: "on a field",
+			src:  "//kama:validate hook=off\ntype A struct {\n\t//kama:validate closed\n\tN int\n}\n",
+			is:   ErrDirective,
+			msg:  "closed",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := generate(t, map[string]string{"a.go": "package x\n\n" + tc.src}, Options{})
+			assert.ErrorIs(t, err, tc.is)
+			assert.ErrorContains(t, err, tc.msg)
+		})
+	}
+}
+
 func TestMembersErrors(t *testing.T) {
 	cases := []struct {
 		name string

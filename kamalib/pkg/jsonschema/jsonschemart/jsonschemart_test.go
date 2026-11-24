@@ -345,6 +345,25 @@ func TestMember(t *testing.T) {
 	assert.Assert(t, Member(jsontext.Value(`[]`), "a") == nil)
 }
 
+type validated struct{ err error }
+
+func (v validated) Validate(stopOnFirstError bool) error {
+	if stopOnFirstError {
+		return errors.New("stopOnFirstError is true")
+	}
+
+	return v.err
+}
+
+func TestValidate(t *testing.T) {
+	assert.NilError(t, Validate(validated{}))
+	assert.ErrorIs(t, Validate(validated{err: validation.ErrConst}), validation.ErrConst)
+
+	err := Validate(struct{}{})
+	assert.ErrorIs(t, err, ErrNoValidate)
+	assert.ErrorContains(t, err, "struct {} has no method Validate(bool) error")
+}
+
 func TestOmit(t *testing.T) {
 	assert.Assert(t, Omit(nil, "a") == nil)
 	assert.Assert(t, Omit(map[string]jsontext.Value{"a": nil}, "a") == nil)

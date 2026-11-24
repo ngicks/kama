@@ -150,10 +150,12 @@
 // type L *struct{ Next L; I Impl }, is an error wrapping ErrUnsupported.
 // Validate would need a recursive function to walk it.
 //
-// Declarations whose doc comment carries the genmark marker of a
-// registered generator are never targets. The generator reads files
-// emitted earlier like any other file and generates them again.
-// Options.Markers tells the registered generators.
+// A type declaration whose doc comment carries the genmark marker of a
+// registered generator is no target and no dependant, unless a
+// //kama:validate in its doc comment or an option file entry marks it
+// explicitly. A generator of data models, such as the one of package
+// github.com/ngicks/kama/kamalib/generator/jsonschema, hands its types on
+// that way. Options.Markers tells the registered generators.
 //
 // # Implementors
 //
@@ -167,8 +169,9 @@
 // with one function parameter per type parameter T1, ..., Tn of the type,
 // in order, and nothing else. Validate() error is no implementor, and any
 // other signature is ignored. A method of a loaded package carrying the
-// marker of a registered generator does not count. A stale generated file
-// therefore does not keep a type validated. A generated Validate of a
+// marker of this generator does not count. A stale generated file
+// therefore does not keep a type validated. A method another generator
+// wrote counts as one written by hand. A generated Validate of a
 // package outside the run counts like a hand-written one. An interface
 // type is never an implementor. Its nil value would panic.
 //
@@ -250,7 +253,9 @@
 // one and is not "-". Otherwise it is the Go name of the field. An embedded
 // struct, or pointer to a struct, without a json name adds no segment.
 // Encoders inline its fields. With a json name it adds that name. An
-// embedded field of another type adds its Go name.
+// embedded field of another type adds its Go name. A field tagged
+// json:",embed" adds no segment either. Encoders inline its entries, which
+// add their keys.
 //
 // # Hooks
 //

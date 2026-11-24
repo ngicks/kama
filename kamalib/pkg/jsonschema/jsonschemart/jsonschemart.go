@@ -27,6 +27,9 @@ var (
 	ErrNoMatch       = errors.New("no match")
 	ErrMultipleMatch = errors.New("multiple matches")
 	ErrNilKind       = errors.New("nil kind")
+	// ErrNoValidate reports a value without the method Validate the validator generator
+	// writes, since the generator has not run over the package of its type.
+	ErrNoValidate = errors.New("no Validate")
 )
 
 // ReadValue reads the next value of dec. The result stays valid after dec reads further.
@@ -60,6 +63,23 @@ func Unmarshal(raw jsontext.Value, v any) error {
 	}
 
 	return locate(leaf, se.JSONPointer)
+}
+
+// Validate returns the error of Validate(false) of v, which reports every error. v must have
+// the method Validate(bool) error, which the validator generator writes. It is called through
+// an interface, since a type gets that method only after the decoders calling it compile.
+func Validate(v any) error {
+	x, ok := v.(interface {
+		Validate(stopOnFirstError bool) error
+	})
+	if !ok {
+		return fmt.Errorf(
+			"%w: %T has no method Validate(bool) error; run validate.generate over its package",
+			ErrNoValidate, v,
+		)
+	}
+
+	return x.Validate(false)
 }
 
 // UnmarshalObject is [Unmarshal] for a value that must be a JSON object.

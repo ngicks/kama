@@ -118,6 +118,12 @@ func TestDecodeError(t *testing.T) {
 		{"enum null", doc("color", `null`), []string{"/color"}, validation.ErrNull},
 		{"null item", doc("tags", `["a",null]`), []string{"/tags/1"}, validation.ErrNull},
 		{"null map value", doc("counts", `{"a":null}`), []string{"/counts/a"}, validation.ErrNull},
+		{
+			"unknown member of a closed object",
+			doc("closed", `{"b":1,"a":true,"c":2}`),
+			[]string{"/closed/b", "/closed/c"},
+			validation.ErrClosed,
+		},
 		{"additional property type", doc("open", `{"z":5}`), []string{"/open/z"}, errSemantic},
 		{"missing raw", doc("anything", ""), []string{"/anything"}, validation.ErrRequired},
 		{
