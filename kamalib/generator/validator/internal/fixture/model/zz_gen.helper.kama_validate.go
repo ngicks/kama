@@ -23,7 +23,7 @@ import (
 
 // kamaValidateAll is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 	if !stopOnFirstError {
 		return validation.Join(errs...)
@@ -38,7 +38,7 @@ func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 
 // kamaValidateCmp is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateCmp[T cmp.Ordered](got T, op string, want T) error {
 	if !kamaValidateCompare(got, op, want) {
 		return validation.New(validation.ErrCompare, "want %s %s, got %s",
@@ -49,7 +49,7 @@ func kamaValidateCmp[T cmp.Ordered](got T, op string, want T) error {
 
 // kamaValidateCompare is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateCompare[T cmp.Ordered](got T, op string, want T) bool {
 	switch op {
 	case ">":
@@ -70,7 +70,7 @@ func kamaValidateCompare[T cmp.Ordered](got T, op string, want T) bool {
 
 // kamaValidateConst is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateConst[T comparable](got T, want ...T) error {
 	if !slices.Contains(want, got) {
 		spelled := make([]string, len(want))
@@ -85,14 +85,14 @@ func kamaValidateConst[T comparable](got T, want ...T) error {
 
 // kamaValidateCopy is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateCopy[T any](v T) *T {
 	return &v
 }
 
 // kamaValidateCount is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateCount(present ...bool) int {
 	n := 0
 	for _, ok := range present {
@@ -105,7 +105,7 @@ func kamaValidateCount(present ...bool) int {
 
 // kamaValidateEqual is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateEqual[T comparable](got T, op string, want T) error {
 	if (got == want) != (op == "==") {
 		return validation.New(validation.ErrCompare, "want %s %s, got %s",
@@ -116,7 +116,7 @@ func kamaValidateEqual[T comparable](got T, op string, want T) error {
 
 // kamaValidateFormatDate is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateFormatDate(got string) error {
 	if _, err := time.Parse(time.DateOnly, got); err != nil {
 		return validation.New(validation.ErrFormat, "want format date (2006-01-02), got %q", got)
@@ -126,7 +126,7 @@ func kamaValidateFormatDate(got string) error {
 
 // kamaValidateFormatDateTime is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateFormatDateTime(got string) error {
 	if _, err := time.Parse(time.RFC3339, got); err != nil {
 		return validation.New(validation.ErrFormat, "want format date-time (RFC 3339), got %q", got)
@@ -136,7 +136,7 @@ func kamaValidateFormatDateTime(got string) error {
 
 // kamaValidateFormatUrl is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateFormatUrl(got string) error {
 	if u, err := url.Parse(got); err != nil || u.Scheme == "" || u.Host == "" {
 		return validation.New(validation.ErrFormat, "want format url with a scheme and a host, got %q", got)
@@ -146,7 +146,7 @@ func kamaValidateFormatUrl(got string) error {
 
 // kamaValidateLength is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateLength(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
 		return validation.New(validation.ErrLength, "want length %s %d, got %d", op, want, got)
@@ -156,7 +156,7 @@ func kamaValidateLength(got int, op string, want int) error {
 
 // kamaValidateMembers is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateMembers(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
 		return validation.New(validation.ErrLength, "want member count %s %d, got %d", op, want, got)
@@ -166,7 +166,7 @@ func kamaValidateMembers(got int, op string, want int) error {
 
 // kamaValidateMultipleFloat is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateMultipleFloat(got float64, bitSize int, step, want string) error {
 	spelled := strconv.FormatFloat(got, 'g', -1, bitSize)
 	r, ok := new(big.Rat).SetString(spelled)
@@ -182,7 +182,7 @@ func kamaValidateMultipleFloat(got float64, bitSize int, step, want string) erro
 
 // kamaValidateMultipleInt is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateMultipleInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 |
 	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr](got, step T, want string) error {
 	if got%step != 0 {
@@ -193,7 +193,7 @@ func kamaValidateMultipleInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 |
 
 // kamaValidateNil is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateNil(ok bool) error {
 	if !ok {
 		return validation.New(validation.ErrNil, "want nil, got a non-nil value")
@@ -203,7 +203,7 @@ func kamaValidateNil(ok bool) error {
 
 // kamaValidateNonZero is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateNonZero[T comparable](t T) bool {
 	var zero T
 	return t != zero
@@ -211,7 +211,7 @@ func kamaValidateNonZero[T comparable](t T) bool {
 
 // kamaValidateNull is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateNull(ok bool) error {
 	if !ok {
 		return validation.New(validation.ErrNull, "want null, got a non-null value")
@@ -221,7 +221,7 @@ func kamaValidateNull(ok bool) error {
 
 // kamaValidateRegexpBytes is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateRegexpBytes(re *regexp.Regexp, got []byte) error {
 	if !re.Match(got) {
 		return validation.New(validation.ErrPattern, "want a match of %q, got %q", re.String(), got)
@@ -231,7 +231,7 @@ func kamaValidateRegexpBytes(re *regexp.Regexp, got []byte) error {
 
 // kamaValidateRegexpString is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateRegexpString(re *regexp.Regexp, got string) error {
 	if !re.MatchString(got) {
 		return validation.New(validation.ErrPattern, "want a match of %q, got %q", re.String(), got)
@@ -241,12 +241,12 @@ func kamaValidateRegexpString(re *regexp.Regexp, got string) error {
 
 // kamaValidateRegexp_39c46b3647 is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 var kamaValidateRegexp_39c46b3647 = regexp.MustCompile("^[a-z]+$")
 
 // kamaValidateRequired is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateRequired(ok bool, got string) error {
 	if !ok {
 		return validation.New(validation.ErrRequired, "want a value, got %s", got)
@@ -256,7 +256,7 @@ func kamaValidateRequired(ok bool, got string) error {
 
 // kamaValidateRequires is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateRequires(stopOnFirstError bool, field string, present bool, names []string, siblings ...bool) error {
 	if !present {
 		return nil
@@ -276,7 +276,7 @@ func kamaValidateRequires(stopOnFirstError bool, field string, present bool, nam
 
 // kamaValidateRunes is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateRunes(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
 		return validation.New(validation.ErrLength, "want rune count %s %d, got %d", op, want, got)
@@ -286,7 +286,7 @@ func kamaValidateRunes(got int, op string, want int) error {
 
 // kamaValidateSpell is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateSpell(v any) string {
 	if rv := reflect.ValueOf(v); rv.Kind() == reflect.String {
 		return strconv.Quote(rv.String())
@@ -296,7 +296,7 @@ func kamaValidateSpell(v any) string {
 
 // kamaValidateUnique is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateUnique[T comparable](got []T) error {
 	seen := make(map[T]int, len(got))
 	for i, x := range got {
@@ -310,7 +310,7 @@ func kamaValidateUnique[T comparable](got []T) error {
 
 // kamaValidateUniqueDeep is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateUniqueDeep[T any](got []T) error {
 	for i := range got {
 		for j := range i {
@@ -324,7 +324,7 @@ func kamaValidateUniqueDeep[T any](got []T) error {
 
 // kamaValidateZero is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateZero(ok bool, got string) error {
 	if !ok {
 		return validation.New(validation.ErrZero, "want the zero value, got %s", got)
@@ -334,7 +334,7 @@ func kamaValidateZero(ok bool, got string) error {
 
 // kamaValidateZeroComparable is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func kamaValidateZeroComparable[T comparable](t T) error {
 	var zero T
 	if t != zero {
@@ -345,7 +345,7 @@ func kamaValidateZeroComparable[T comparable](t T) error {
 
 // requiredComparable is a helper of the generated Validate methods.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func requiredComparable[T comparable](t T) error {
 	var zero T
 	if t == zero {

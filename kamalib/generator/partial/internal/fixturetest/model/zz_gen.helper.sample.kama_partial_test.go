@@ -13,7 +13,7 @@ import "github.com/ngicks/option/und"
 // kamaPartialFromTarget_e05acb9b2b_27bbea0cb1 converts Item into
 // und.Und[ItemPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_e05acb9b2b_27bbea0cb1(v Item) und.Und[ItemPartial] {
 	var x ItemPartial
 	x.FromValue(v)
@@ -24,7 +24,7 @@ func kamaPartialFromTarget_e05acb9b2b_27bbea0cb1(v Item) und.Und[ItemPartial] {
 // und.Und[ItemPartial]: it returns the merge of their values when both are
 // defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_2a225ea4b9_27bbea0cb1(l, r und.Und[ItemPartial]) und.Und[ItemPartial] {
 	if r.IsUndefined() {
 		return l

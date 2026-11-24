@@ -15,7 +15,7 @@ import (
 
 // ProcParamPartial is the partial variant of ProcParam.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type ProcParamPartial struct {
 	MergeStrategy       und.Und[string]               `json:"merge,omitzero"`
 	MergeNestedStrategy und.Und[string]               `json:"merge_nested,omitzero"`
@@ -27,7 +27,7 @@ type ProcParamPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *ProcParamPartial) FromValue(v ProcParam) {
 	p.MergeStrategy = und.Defined(v.MergeStrategy)
 	p.MergeNestedStrategy = und.Defined(v.MergeNestedStrategy)
@@ -39,7 +39,7 @@ func (p *ProcParamPartial) FromValue(v ProcParam) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p ProcParamPartial) ToValue() ProcParam {
 	var v ProcParam
 	v.MergeStrategy = p.MergeStrategy.Value()
@@ -53,7 +53,7 @@ func (p ProcParamPartial) ToValue() ProcParam {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
 	if !r.MergeStrategy.IsUndefined() {
 		p.MergeStrategy = r.MergeStrategy
@@ -76,7 +76,7 @@ func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p ProcParamPartial) ApplyTo(v ProcParam) ProcParam {
 	var base ProcParamPartial
 	base.FromValue(v)

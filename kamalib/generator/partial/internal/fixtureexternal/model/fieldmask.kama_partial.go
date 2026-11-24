@@ -18,7 +18,7 @@ import (
 
 // MaskedPartial is the partial variant of Masked.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MaskedPartial struct {
 	Name    und.Und[string] `json:"name,omitzero"`
 	Count   und.Und[int]    `json:"count,omitzero"`
@@ -42,7 +42,7 @@ type MaskedPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskedPartial) FromValue(v Masked) {
 	p.Name = und.Defined(v.Name)
 	p.Count = und.Defined(v.Count)
@@ -62,7 +62,7 @@ func (p *MaskedPartial) FromValue(v Masked) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskedPartial) ToValue() Masked {
 	var v Masked
 	v.Name = p.Name.Value()
@@ -87,7 +87,7 @@ func (p MaskedPartial) ToValue() Masked {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskedPartial) Merge(r MaskedPartial) MaskedPartial {
 	if !r.Name.IsUndefined() {
 		p.Name = r.Name
@@ -122,7 +122,7 @@ func (p MaskedPartial) Merge(r MaskedPartial) MaskedPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskedPartial) ApplyTo(v Masked) Masked {
 	var base MaskedPartial
 	base.FromValue(v)
@@ -135,7 +135,7 @@ func (p MaskedPartial) ApplyTo(v Masked) Masked {
 // value with field masks gives the paths of the fields of that value
 // instead. The paths of an embedded partial value are paths of p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskedPartial) FieldMask() []string {
 	var paths []string
 	if !p.Name.IsUndefined() {
@@ -196,7 +196,7 @@ func (p MaskedPartial) FieldMask() []string {
 // unknown or malformed path is an error. FromValueWithMask leaves p
 // unchanged on error.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskedPartial) FromValueWithMask(v Masked, paths []string) error {
 	var x MaskedPartial
 	var subInner []string
@@ -356,7 +356,7 @@ func (p *MaskedPartial) FromValueWithMask(v Masked, paths []string) error {
 
 // MaskInnerPartial is the partial variant of MaskInner.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MaskInnerPartial struct {
 	A    und.Und[string]          `json:",omitzero"`
 	B    und.Und[int]             `json:",omitzero"`
@@ -366,7 +366,7 @@ type MaskInnerPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskInnerPartial) FromValue(v MaskInner) {
 	p.A = und.Defined(v.A)
 	p.B = und.FromPointer(v.B).CollapseToNull()
@@ -376,7 +376,7 @@ func (p *MaskInnerPartial) FromValue(v MaskInner) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskInnerPartial) ToValue() MaskInner {
 	var v MaskInner
 	v.A = p.A.Value()
@@ -391,7 +391,7 @@ func (p MaskInnerPartial) ToValue() MaskInner {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskInnerPartial) Merge(r MaskInnerPartial) MaskInnerPartial {
 	if !r.A.IsUndefined() {
 		p.A = r.A
@@ -406,7 +406,7 @@ func (p MaskInnerPartial) Merge(r MaskInnerPartial) MaskInnerPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskInnerPartial) ApplyTo(v MaskInner) MaskInner {
 	var base MaskInnerPartial
 	base.FromValue(v)
@@ -419,7 +419,7 @@ func (p MaskInnerPartial) ApplyTo(v MaskInner) MaskInner {
 // value with field masks gives the paths of the fields of that value
 // instead. The paths of an embedded partial value are paths of p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskInnerPartial) FieldMask() []string {
 	var paths []string
 	if !p.A.IsUndefined() {
@@ -448,7 +448,7 @@ func (p MaskInnerPartial) FieldMask() []string {
 // unknown or malformed path is an error. FromValueWithMask leaves p
 // unchanged on error.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskInnerPartial) FromValueWithMask(v MaskInner, paths []string) error {
 	var x MaskInnerPartial
 	var subDeep []string
@@ -501,7 +501,7 @@ func (p *MaskInnerPartial) FromValueWithMask(v MaskInner, paths []string) error 
 
 // MaskDeepPartial is the partial variant of MaskDeep.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MaskDeepPartial struct {
 	X und.Und[int]      `json:",omitzero"`
 	Y und.Und[[]string] `json:",omitzero"`
@@ -510,7 +510,7 @@ type MaskDeepPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskDeepPartial) FromValue(v MaskDeep) {
 	p.X = und.Defined(v.X)
 	p.Y = und.WrapSlice(v.Y).CollapseToNull()
@@ -519,7 +519,7 @@ func (p *MaskDeepPartial) FromValue(v MaskDeep) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskDeepPartial) ToValue() MaskDeep {
 	var v MaskDeep
 	v.X = p.X.Value()
@@ -530,7 +530,7 @@ func (p MaskDeepPartial) ToValue() MaskDeep {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskDeepPartial) Merge(r MaskDeepPartial) MaskDeepPartial {
 	if !r.X.IsUndefined() {
 		p.X = r.X
@@ -544,7 +544,7 @@ func (p MaskDeepPartial) Merge(r MaskDeepPartial) MaskDeepPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskDeepPartial) ApplyTo(v MaskDeep) MaskDeep {
 	var base MaskDeepPartial
 	base.FromValue(v)
@@ -557,7 +557,7 @@ func (p MaskDeepPartial) ApplyTo(v MaskDeep) MaskDeep {
 // value with field masks gives the paths of the fields of that value
 // instead. The paths of an embedded partial value are paths of p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskDeepPartial) FieldMask() []string {
 	var paths []string
 	if !p.X.IsUndefined() {
@@ -580,7 +580,7 @@ func (p MaskDeepPartial) FieldMask() []string {
 // unknown or malformed path is an error. FromValueWithMask leaves p
 // unchanged on error.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskDeepPartial) FromValueWithMask(v MaskDeep, paths []string) error {
 	var x MaskDeepPartial
 	for _, path := range paths {
@@ -611,7 +611,7 @@ func (p *MaskDeepPartial) FromValueWithMask(v MaskDeep, paths []string) error {
 
 // MaskPlainPartial is the partial variant of MaskPlain.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MaskPlainPartial struct {
 	P und.Und[string] `json:",omitzero"`
 }
@@ -619,7 +619,7 @@ type MaskPlainPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskPlainPartial) FromValue(v MaskPlain) {
 	p.P = und.Defined(v.P)
 }
@@ -627,7 +627,7 @@ func (p *MaskPlainPartial) FromValue(v MaskPlain) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskPlainPartial) ToValue() MaskPlain {
 	var v MaskPlain
 	v.P = p.P.Value()
@@ -637,7 +637,7 @@ func (p MaskPlainPartial) ToValue() MaskPlain {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskPlainPartial) Merge(r MaskPlainPartial) MaskPlainPartial {
 	if !r.P.IsUndefined() {
 		p.P = r.P
@@ -648,7 +648,7 @@ func (p MaskPlainPartial) Merge(r MaskPlainPartial) MaskPlainPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskPlainPartial) ApplyTo(v MaskPlain) MaskPlain {
 	var base MaskPlainPartial
 	base.FromValue(v)
@@ -657,7 +657,7 @@ func (p MaskPlainPartial) ApplyTo(v MaskPlain) MaskPlain {
 
 // MaskEmbeddedPartial is the partial variant of MaskEmbedded.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MaskEmbeddedPartial struct {
 	E     und.Und[string]          `json:",omitzero"`
 	EDeep und.Und[MaskDeepPartial] `json:",omitzero"`
@@ -666,7 +666,7 @@ type MaskEmbeddedPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskEmbeddedPartial) FromValue(v MaskEmbedded) {
 	p.E = und.Defined(v.E)
 	p.EDeep = kamaPartialFromTarget_8e3ffda903_6a4c3c4e8b(v.EDeep)
@@ -675,7 +675,7 @@ func (p *MaskEmbeddedPartial) FromValue(v MaskEmbedded) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskEmbeddedPartial) ToValue() MaskEmbedded {
 	var v MaskEmbedded
 	v.E = p.E.Value()
@@ -686,7 +686,7 @@ func (p MaskEmbeddedPartial) ToValue() MaskEmbedded {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskEmbeddedPartial) Merge(r MaskEmbeddedPartial) MaskEmbeddedPartial {
 	if !r.E.IsUndefined() {
 		p.E = r.E
@@ -698,7 +698,7 @@ func (p MaskEmbeddedPartial) Merge(r MaskEmbeddedPartial) MaskEmbeddedPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskEmbeddedPartial) ApplyTo(v MaskEmbedded) MaskEmbedded {
 	var base MaskEmbeddedPartial
 	base.FromValue(v)
@@ -711,7 +711,7 @@ func (p MaskEmbeddedPartial) ApplyTo(v MaskEmbedded) MaskEmbedded {
 // value with field masks gives the paths of the fields of that value
 // instead. The paths of an embedded partial value are paths of p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskEmbeddedPartial) FieldMask() []string {
 	var paths []string
 	if !p.E.IsUndefined() {
@@ -737,7 +737,7 @@ func (p MaskEmbeddedPartial) FieldMask() []string {
 // unknown or malformed path is an error. FromValueWithMask leaves p
 // unchanged on error.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskEmbeddedPartial) FromValueWithMask(v MaskEmbedded, paths []string) error {
 	var x MaskEmbeddedPartial
 	var subEDeep []string
@@ -785,7 +785,7 @@ func (p *MaskEmbeddedPartial) FromValueWithMask(v MaskEmbedded, paths []string) 
 
 // MaskAuditPartial is the partial variant of MaskAudit.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MaskAuditPartial struct {
 	Note und.Und[string] `json:",omitzero"`
 }
@@ -793,7 +793,7 @@ type MaskAuditPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskAuditPartial) FromValue(v MaskAudit) {
 	p.Note = und.Defined(v.Note)
 }
@@ -801,7 +801,7 @@ func (p *MaskAuditPartial) FromValue(v MaskAudit) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskAuditPartial) ToValue() MaskAudit {
 	var v MaskAudit
 	v.Note = p.Note.Value()
@@ -811,7 +811,7 @@ func (p MaskAuditPartial) ToValue() MaskAudit {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskAuditPartial) Merge(r MaskAuditPartial) MaskAuditPartial {
 	if !r.Note.IsUndefined() {
 		p.Note = r.Note
@@ -822,7 +822,7 @@ func (p MaskAuditPartial) Merge(r MaskAuditPartial) MaskAuditPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskAuditPartial) ApplyTo(v MaskAudit) MaskAudit {
 	var base MaskAuditPartial
 	base.FromValue(v)
@@ -835,7 +835,7 @@ func (p MaskAuditPartial) ApplyTo(v MaskAudit) MaskAudit {
 // value with field masks gives the paths of the fields of that value
 // instead. The paths of an embedded partial value are paths of p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskAuditPartial) FieldMask() []string {
 	var paths []string
 	if !p.Note.IsUndefined() {
@@ -855,7 +855,7 @@ func (p MaskAuditPartial) FieldMask() []string {
 // unknown or malformed path is an error. FromValueWithMask leaves p
 // unchanged on error.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskAuditPartial) FromValueWithMask(v MaskAudit, paths []string) error {
 	var x MaskAuditPartial
 	for _, path := range paths {
@@ -881,7 +881,7 @@ func (p *MaskAuditPartial) FromValueWithMask(v MaskAudit, paths []string) error 
 
 // MaskBoxPartial is the partial variant of MaskBox.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MaskBoxPartial[T any] struct {
 	V   und.Und[T] `json:",omitzero"`
 	Ptr und.Und[T] `json:",omitzero"`
@@ -890,7 +890,7 @@ type MaskBoxPartial[T any] struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskBoxPartial[T]) FromValue(v MaskBox[T]) {
 	p.V = und.Defined(v.V)
 	p.Ptr = und.FromPointer(v.Ptr).CollapseToNull()
@@ -899,7 +899,7 @@ func (p *MaskBoxPartial[T]) FromValue(v MaskBox[T]) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskBoxPartial[T]) ToValue() MaskBox[T] {
 	var v MaskBox[T]
 	v.V = p.V.Value()
@@ -913,7 +913,7 @@ func (p MaskBoxPartial[T]) ToValue() MaskBox[T] {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskBoxPartial[T]) Merge(r MaskBoxPartial[T]) MaskBoxPartial[T] {
 	if !r.V.IsUndefined() {
 		p.V = r.V
@@ -927,7 +927,7 @@ func (p MaskBoxPartial[T]) Merge(r MaskBoxPartial[T]) MaskBoxPartial[T] {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskBoxPartial[T]) ApplyTo(v MaskBox[T]) MaskBox[T] {
 	var base MaskBoxPartial[T]
 	base.FromValue(v)
@@ -940,7 +940,7 @@ func (p MaskBoxPartial[T]) ApplyTo(v MaskBox[T]) MaskBox[T] {
 // value with field masks gives the paths of the fields of that value
 // instead. The paths of an embedded partial value are paths of p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskBoxPartial[T]) FieldMask() []string {
 	var paths []string
 	if !p.V.IsUndefined() {
@@ -963,7 +963,7 @@ func (p MaskBoxPartial[T]) FieldMask() []string {
 // unknown or malformed path is an error. FromValueWithMask leaves p
 // unchanged on error.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskBoxPartial[T]) FromValueWithMask(v MaskBox[T], paths []string) error {
 	var x MaskBoxPartial[T]
 	for _, path := range paths {
@@ -994,7 +994,7 @@ func (p *MaskBoxPartial[T]) FromValueWithMask(v MaskBox[T], paths []string) erro
 
 // MaskPairPartial is the partial variant of MaskPair.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MaskPairPartial[K comparable, V any] struct {
 	Key und.Und[K]                 `json:",omitzero"`
 	Box und.Und[MaskBoxPartial[V]] `json:",omitzero"`
@@ -1004,7 +1004,7 @@ type MaskPairPartial[K comparable, V any] struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskPairPartial[K, V]) FromValue(v MaskPair[K, V]) {
 	p.Key = und.Defined(v.Key)
 	p.Box = kamaPartialFromTarget_65638ba8ce_bffab2be4b[V](v.Box)
@@ -1014,7 +1014,7 @@ func (p *MaskPairPartial[K, V]) FromValue(v MaskPair[K, V]) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskPairPartial[K, V]) ToValue() MaskPair[K, V] {
 	var v MaskPair[K, V]
 	v.Key = p.Key.Value()
@@ -1026,7 +1026,7 @@ func (p MaskPairPartial[K, V]) ToValue() MaskPair[K, V] {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskPairPartial[K, V]) Merge(r MaskPairPartial[K, V]) MaskPairPartial[K, V] {
 	if !r.Key.IsUndefined() {
 		p.Key = r.Key
@@ -1041,7 +1041,7 @@ func (p MaskPairPartial[K, V]) Merge(r MaskPairPartial[K, V]) MaskPairPartial[K,
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskPairPartial[K, V]) ApplyTo(v MaskPair[K, V]) MaskPair[K, V] {
 	var base MaskPairPartial[K, V]
 	base.FromValue(v)
@@ -1054,7 +1054,7 @@ func (p MaskPairPartial[K, V]) ApplyTo(v MaskPair[K, V]) MaskPair[K, V] {
 // value with field masks gives the paths of the fields of that value
 // instead. The paths of an embedded partial value are paths of p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskPairPartial[K, V]) FieldMask() []string {
 	var paths []string
 	if !p.Key.IsUndefined() {
@@ -1083,7 +1083,7 @@ func (p MaskPairPartial[K, V]) FieldMask() []string {
 // unknown or malformed path is an error. FromValueWithMask leaves p
 // unchanged on error.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskPairPartial[K, V]) FromValueWithMask(v MaskPair[K, V], paths []string) error {
 	var x MaskPairPartial[K, V]
 	var subBox []string
@@ -1136,7 +1136,7 @@ func (p *MaskPairPartial[K, V]) FromValueWithMask(v MaskPair[K, V], paths []stri
 
 // MaskTreePartial is the partial variant of MaskTree.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MaskTreePartial struct {
 	Name  und.Und[string]           `json:",omitzero"`
 	Child und.Und[*MaskTreePartial] `json:",omitzero"`
@@ -1145,7 +1145,7 @@ type MaskTreePartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskTreePartial) FromValue(v MaskTree) {
 	p.Name = und.Defined(v.Name)
 	p.Child = kamaPartialFromTargetRef_3524c7518a_5cad3e3dc9(v.Child)
@@ -1154,7 +1154,7 @@ func (p *MaskTreePartial) FromValue(v MaskTree) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskTreePartial) ToValue() MaskTree {
 	var v MaskTree
 	v.Name = p.Name.Value()
@@ -1165,7 +1165,7 @@ func (p MaskTreePartial) ToValue() MaskTree {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskTreePartial) Merge(r MaskTreePartial) MaskTreePartial {
 	if !r.Name.IsUndefined() {
 		p.Name = r.Name
@@ -1177,7 +1177,7 @@ func (p MaskTreePartial) Merge(r MaskTreePartial) MaskTreePartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskTreePartial) ApplyTo(v MaskTree) MaskTree {
 	var base MaskTreePartial
 	base.FromValue(v)
@@ -1190,7 +1190,7 @@ func (p MaskTreePartial) ApplyTo(v MaskTree) MaskTree {
 // value with field masks gives the paths of the fields of that value
 // instead. The paths of an embedded partial value are paths of p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskTreePartial) FieldMask() []string {
 	var paths []string
 	if !p.Name.IsUndefined() {
@@ -1218,7 +1218,7 @@ func (p MaskTreePartial) FieldMask() []string {
 // unknown or malformed path is an error. FromValueWithMask leaves p
 // unchanged on error.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskTreePartial) FromValueWithMask(v MaskTree, paths []string) error {
 	var x MaskTreePartial
 	var subChild []string

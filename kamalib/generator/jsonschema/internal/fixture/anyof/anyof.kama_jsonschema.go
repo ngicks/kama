@@ -18,7 +18,7 @@ import (
 
 // Doc is generated from the schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Doc struct {
 	Label Label                `json:"label"`
 	Value DocValue             `json:"value"`
@@ -27,7 +27,7 @@ type Doc struct {
 
 // docWire keeps a missing member of Doc apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type docWire struct {
 	Label und.Und[Label] `json:"label,omitzero"`
 	Value jsontext.Value `json:"value,omitzero"`
@@ -37,7 +37,7 @@ type docWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Doc) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -65,7 +65,7 @@ func (v *Doc) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // DocValue is the first of String, Null, Integer that the value matches. It
 // is generated from the schema at #/properties/value.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type DocValue struct {
 	Kind DocValueKind
 }
@@ -73,48 +73,48 @@ type DocValue struct {
 // DocValueKind is implemented by DocValueString, DocValueNull and
 // DocValueInteger only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type DocValueKind interface {
 	isDocValueKind()
 }
 
 // DocValueString holds the String member of DocValue.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type DocValueString struct {
 	String string
 }
 
 // isDocValueKind marks DocValueString as a DocValueKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (DocValueString) isDocValueKind() {}
 
 // DocValueNull holds the Null member of DocValue.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type DocValueNull struct{}
 
 // isDocValueKind marks DocValueNull as a DocValueKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (DocValueNull) isDocValueKind() {}
 
 // DocValueInteger holds the Integer member of DocValue.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type DocValueInteger struct {
 	Integer int64
 }
 
 // isDocValueKind marks DocValueInteger as a DocValueKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (DocValueInteger) isDocValueKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v DocValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case DocValueString:
@@ -129,7 +129,7 @@ func (v DocValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the first member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *DocValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -164,45 +164,45 @@ func (v *DocValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Label is the first of Named, Tagged that the value matches. It is
 // generated from the schema at #/$defs/Label.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Label struct {
 	Kind LabelKind
 }
 
 // LabelKind is implemented by LabelNamed and LabelTagged only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type LabelKind interface {
 	isLabelKind()
 }
 
 // LabelNamed holds the Named member of Label.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type LabelNamed struct {
 	Named Named
 }
 
 // isLabelKind marks LabelNamed as a LabelKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (LabelNamed) isLabelKind() {}
 
 // LabelTagged holds the Tagged member of Label.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type LabelTagged struct {
 	Tagged Tagged
 }
 
 // isLabelKind marks LabelTagged as a LabelKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (LabelTagged) isLabelKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Label) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case LabelNamed:
@@ -215,7 +215,7 @@ func (v Label) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the first member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -245,14 +245,14 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Named is generated from the schema at #/$defs/Named.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Named struct {
 	Name string `json:"name"`
 }
 
 // namedWire keeps a missing member of Named apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type namedWire struct {
 	Name und.Und[string] `json:"name,omitzero"`
 }
@@ -260,7 +260,7 @@ type namedWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -283,7 +283,7 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Tagged is generated from the schema at #/$defs/Tagged.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Tagged struct {
 	Name opt.Option[string] `json:"name,omitzero"`
 	Tag  string             `json:"tag"`
@@ -291,7 +291,7 @@ type Tagged struct {
 
 // taggedWire keeps a missing member of Tagged apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type taggedWire struct {
 	Name und.Und[string] `json:"name,omitzero"`
 	Tag  und.Und[string] `json:"tag,omitzero"`
@@ -300,7 +300,7 @@ type taggedWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

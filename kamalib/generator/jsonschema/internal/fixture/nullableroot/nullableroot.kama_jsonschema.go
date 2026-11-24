@@ -16,12 +16,12 @@ import (
 
 // Code is generated from the schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Code opt.Option[float64]
 
 // MarshalJSONTo encodes v as its underlying type.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Code) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, opt.Option[float64](v))
 }
@@ -29,7 +29,7 @@ func (v Code) MarshalJSONTo(enc *jsontext.Encoder) error {
 // UnmarshalJSONFrom decodes v as its underlying type. It rejects a value
 // the schema does not allow.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Code) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

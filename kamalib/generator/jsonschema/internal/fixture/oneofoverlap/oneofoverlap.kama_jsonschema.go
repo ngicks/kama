@@ -19,45 +19,45 @@ import (
 // Either is exactly one of Left, Right. It is generated from the schema at
 // #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Either struct {
 	Kind EitherKind
 }
 
 // EitherKind is implemented by EitherLeft and EitherRight only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type EitherKind interface {
 	isEitherKind()
 }
 
 // EitherLeft holds the Left member of Either.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type EitherLeft struct {
 	Left EitherLeftValue
 }
 
 // isEitherKind marks EitherLeft as a EitherKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (EitherLeft) isEitherKind() {}
 
 // EitherRight holds the Right member of Either.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type EitherRight struct {
 	Right EitherRightValue
 }
 
 // isEitherKind marks EitherRight as a EitherKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (EitherRight) isEitherKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Either) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case EitherLeft:
@@ -70,7 +70,7 @@ func (v Either) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the only member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -110,7 +110,7 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // EitherLeftValue is generated from the schema at #/oneOf/0.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type EitherLeftValue struct {
 	L opt.Option[string] `json:"l,omitzero"`
 }
@@ -118,7 +118,7 @@ type EitherLeftValue struct {
 // eitherLeftValueWire keeps a missing member of EitherLeftValue apart from
 // null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type eitherLeftValueWire struct {
 	L und.Und[string] `json:"l,omitzero"`
 }
@@ -126,7 +126,7 @@ type eitherLeftValueWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -149,7 +149,7 @@ func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // EitherRightValue is generated from the schema at #/oneOf/1.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type EitherRightValue struct {
 	R opt.Option[string] `json:"r,omitzero"`
 }
@@ -157,7 +157,7 @@ type EitherRightValue struct {
 // eitherRightValueWire keeps a missing member of EitherRightValue apart
 // from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type eitherRightValueWire struct {
 	R und.Und[string] `json:"r,omitzero"`
 }
@@ -165,7 +165,7 @@ type eitherRightValueWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *EitherRightValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

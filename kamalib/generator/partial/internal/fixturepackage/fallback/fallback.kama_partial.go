@@ -18,7 +18,7 @@ import (
 
 // FallbackPartial is the partial variant of Fallback.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type FallbackPartial struct {
 	Name    und.Und[string] `json:"name,omitzero"`
 	Unknown map[string]any  `json:",embed"`
@@ -27,7 +27,7 @@ type FallbackPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *FallbackPartial) FromValue(v Fallback) {
 	p.Name = und.Defined(v.Name)
 	p.Unknown = v.Unknown
@@ -36,7 +36,7 @@ func (p *FallbackPartial) FromValue(v Fallback) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p FallbackPartial) ToValue() Fallback {
 	var v Fallback
 	v.Name = p.Name.Value()
@@ -47,7 +47,7 @@ func (p FallbackPartial) ToValue() Fallback {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p FallbackPartial) Merge(r FallbackPartial) FallbackPartial {
 	if !r.Name.IsUndefined() {
 		p.Name = r.Name
@@ -61,7 +61,7 @@ func (p FallbackPartial) Merge(r FallbackPartial) FallbackPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p FallbackPartial) ApplyTo(v Fallback) Fallback {
 	var base FallbackPartial
 	base.FromValue(v)
@@ -70,7 +70,7 @@ func (p FallbackPartial) ApplyTo(v Fallback) Fallback {
 
 // EmbeddingPartial is the partial variant of Embedding.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type EmbeddingPartial struct {
 	FallbackPartial
 	Id und.Und[int] `json:"id,omitzero"`
@@ -79,7 +79,7 @@ type EmbeddingPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *EmbeddingPartial) FromValue(v Embedding) {
 	p.FallbackPartial.FromValue(v.Fallback)
 	p.Id = und.Defined(v.Id)
@@ -88,7 +88,7 @@ func (p *EmbeddingPartial) FromValue(v Embedding) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p EmbeddingPartial) ToValue() Embedding {
 	var v Embedding
 	v.Fallback = p.FallbackPartial.ToValue()
@@ -99,7 +99,7 @@ func (p EmbeddingPartial) ToValue() Embedding {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p EmbeddingPartial) Merge(r EmbeddingPartial) EmbeddingPartial {
 	p.FallbackPartial = p.FallbackPartial.Merge(r.FallbackPartial)
 	if !r.Id.IsUndefined() {
@@ -111,7 +111,7 @@ func (p EmbeddingPartial) Merge(r EmbeddingPartial) EmbeddingPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p EmbeddingPartial) ApplyTo(v Embedding) Embedding {
 	var base EmbeddingPartial
 	base.FromValue(v)
@@ -120,7 +120,7 @@ func (p EmbeddingPartial) ApplyTo(v Embedding) Embedding {
 
 // PointerEmbeddingPartial is the partial variant of PointerEmbedding.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type PointerEmbeddingPartial struct {
 	FallbackPartial
 	Id und.Und[int] `json:"id,omitzero"`
@@ -129,7 +129,7 @@ type PointerEmbeddingPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *PointerEmbeddingPartial) FromValue(v PointerEmbedding) {
 	p.FallbackPartial = kamaPartialFromEmbedded_1fb6bd9c49_e9e1b7b270(v.Fallback)
 	p.Id = und.Defined(v.Id)
@@ -138,7 +138,7 @@ func (p *PointerEmbeddingPartial) FromValue(v PointerEmbedding) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PointerEmbeddingPartial) ToValue() PointerEmbedding {
 	var v PointerEmbedding
 	v.Fallback = kamaPartialToEmbedded_e9e1b7b270_1fb6bd9c49(p.FallbackPartial)
@@ -149,7 +149,7 @@ func (p PointerEmbeddingPartial) ToValue() PointerEmbedding {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PointerEmbeddingPartial) Merge(r PointerEmbeddingPartial) PointerEmbeddingPartial {
 	p.FallbackPartial = p.FallbackPartial.Merge(r.FallbackPartial)
 	if !r.Id.IsUndefined() {
@@ -161,7 +161,7 @@ func (p PointerEmbeddingPartial) Merge(r PointerEmbeddingPartial) PointerEmbeddi
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PointerEmbeddingPartial) ApplyTo(v PointerEmbedding) PointerEmbedding {
 	var base PointerEmbeddingPartial
 	base.FromValue(v)
@@ -170,7 +170,7 @@ func (p PointerEmbeddingPartial) ApplyTo(v PointerEmbedding) PointerEmbedding {
 
 // MaskedPartial is the partial variant of Masked.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MaskedPartial struct {
 	Name    und.Und[string] `json:"name,omitzero"`
 	Unknown map[string]any  `json:",embed"`
@@ -179,7 +179,7 @@ type MaskedPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskedPartial) FromValue(v Masked) {
 	p.Name = und.Defined(v.Name)
 	p.Unknown = v.Unknown
@@ -188,7 +188,7 @@ func (p *MaskedPartial) FromValue(v Masked) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskedPartial) ToValue() Masked {
 	var v Masked
 	v.Name = p.Name.Value()
@@ -199,7 +199,7 @@ func (p MaskedPartial) ToValue() Masked {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskedPartial) Merge(r MaskedPartial) MaskedPartial {
 	if !r.Name.IsUndefined() {
 		p.Name = r.Name
@@ -213,7 +213,7 @@ func (p MaskedPartial) Merge(r MaskedPartial) MaskedPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskedPartial) ApplyTo(v Masked) Masked {
 	var base MaskedPartial
 	base.FromValue(v)
@@ -226,7 +226,7 @@ func (p MaskedPartial) ApplyTo(v Masked) Masked {
 // value with field masks gives the paths of the fields of that value
 // instead. The paths of an embedded partial value are paths of p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MaskedPartial) FieldMask() []string {
 	var paths []string
 	if !p.Name.IsUndefined() {
@@ -246,7 +246,7 @@ func (p MaskedPartial) FieldMask() []string {
 // unknown or malformed path is an error. FromValueWithMask leaves p
 // unchanged on error.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MaskedPartial) FromValueWithMask(v Masked, paths []string) error {
 	var x MaskedPartial
 	for _, path := range paths {

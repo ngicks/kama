@@ -140,7 +140,7 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 		return err
 	}
 
-	stale := base.StaleCheck{Registry: base.DefaultRegistry, Generator: GeneratorName}
+	stale := base.StaleCheck{Registry: base.DefaultRegistry, Generator: GeneratorId}
 
 	staleWarnings, err := stale.Dir(i.fs.FS(), i.opts.Dir, files)
 	if err != nil {

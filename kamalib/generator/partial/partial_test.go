@@ -30,7 +30,7 @@ func registry(t *testing.T) *genmark.Registry {
 	t.Helper()
 
 	r := genmark.NewRegistry(base.ToolName)
-	assert.NilError(t, r.Register(GeneratorName))
+	assert.NilError(t, r.Register(GeneratorId.String()))
 
 	return r
 }
@@ -522,9 +522,9 @@ func TestGeneratedDeclsAreNotTargets(t *testing.T) {
 	files := generated(t, map[string]string{
 		"a.go": "// Package x is marked.\n//\n//kama:partial package\npackage x\n\ntype A struct{}\n",
 		"a.kama_partial.go": "package x\n\n" +
-			"//kama:generated kama-partial\ntype APartial struct{}\n\n" +
+			"//kama:generated kama:partial\ntype APartial struct{}\n\n" +
 			"// Leftover is marked by a registered generator.\n//\n" +
-			"//kama:generated kama-partial\ntype Leftover struct{}\n",
+			"//kama:generated kama:partial\ntype Leftover struct{}\n",
 		"other.go": "package x\n\n//kama:generated unregistered\ntype O struct{}\n",
 	})
 	assert.DeepEqual(t, partialTypes(t, files["a.kama_partial.go"]), []string{"APartial"})
@@ -722,7 +722,7 @@ func TestImports(t *testing.T) {
 
 	for _, src := range files {
 		assert.Assert(t, strings.HasPrefix(src, testHeader+"\n\npackage x\n"), src)
-		assert.Assert(t, strings.Contains(src, "\n//kama:generated kama-partial\ntype "), src)
+		assert.Assert(t, strings.Contains(src, "\n//kama:generated kama:partial\ntype "), src)
 	}
 }
 

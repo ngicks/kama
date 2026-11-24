@@ -16,7 +16,7 @@ import (
 
 // DeckPartial is the partial variant of Deck.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type DeckPartial struct {
 	Cards      und.Und[[]Card]           `json:"cards,omitzero"`
 	CardRefs   und.Und[[]*Card]          `json:"card_refs,omitzero"`
@@ -39,7 +39,7 @@ type DeckPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *DeckPartial) FromValue(v Deck) {
 	p.Cards = und.WrapSlice(v.Cards).CollapseToNull()
 	p.CardRefs = und.WrapSlice(v.CardRefs).CollapseToNull()
@@ -59,7 +59,7 @@ func (p *DeckPartial) FromValue(v Deck) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p DeckPartial) ToValue() Deck {
 	var v Deck
 	v.Cards = p.Cards.Value()
@@ -81,7 +81,7 @@ func (p DeckPartial) ToValue() Deck {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p DeckPartial) Merge(r DeckPartial) DeckPartial {
 	p.Cards = kamaPartialMergeAppend_5854f28cfb_9440f53f51(p.Cards, r.Cards)
 	p.CardRefs = kamaPartialMergeAppend_0adc63883e_dc8659cbbb(p.CardRefs, r.CardRefs)
@@ -108,7 +108,7 @@ func (p DeckPartial) Merge(r DeckPartial) DeckPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p DeckPartial) ApplyTo(v Deck) Deck {
 	var base DeckPartial
 	base.FromValue(v)
@@ -117,7 +117,7 @@ func (p DeckPartial) ApplyTo(v Deck) Deck {
 
 // CardPartial is the partial variant of Card.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type CardPartial struct {
 	Name und.Und[string] `json:"name,omitzero"`
 	Rank und.Und[int]    `json:"rank,omitzero"`
@@ -126,7 +126,7 @@ type CardPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *CardPartial) FromValue(v Card) {
 	p.Name = und.Defined(v.Name)
 	p.Rank = und.FromPointer(v.Rank).CollapseToNull()
@@ -135,7 +135,7 @@ func (p *CardPartial) FromValue(v Card) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardPartial) ToValue() Card {
 	var v Card
 	v.Name = p.Name.Value()
@@ -149,7 +149,7 @@ func (p CardPartial) ToValue() Card {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardPartial) Merge(r CardPartial) CardPartial {
 	if !r.Name.IsUndefined() {
 		p.Name = r.Name
@@ -163,7 +163,7 @@ func (p CardPartial) Merge(r CardPartial) CardPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardPartial) ApplyTo(v Card) Card {
 	var base CardPartial
 	base.FromValue(v)
@@ -172,13 +172,13 @@ func (p CardPartial) ApplyTo(v Card) Card {
 
 // CardsPartial is the partial variant of Cards.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type CardsPartial []und.Und[CardPartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *CardsPartial) FromValue(v Cards) {
 	if v == nil {
 		*p = nil
@@ -193,7 +193,7 @@ func (p *CardsPartial) FromValue(v Cards) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardsPartial) ToValue() Cards {
 	if p == nil {
 		return nil
@@ -208,7 +208,7 @@ func (p CardsPartial) ToValue() Cards {
 // Merge returns the elements of p then r in a new slice. A nil
 // p or r gives the other. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardsPartial) Merge(r CardsPartial) CardsPartial {
 	if r == nil {
 		return p
@@ -224,7 +224,7 @@ func (p CardsPartial) Merge(r CardsPartial) CardsPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardsPartial) ApplyTo(v Cards) Cards {
 	var base CardsPartial
 	base.FromValue(v)
@@ -233,13 +233,13 @@ func (p CardsPartial) ApplyTo(v Cards) Cards {
 
 // CardRefsPartial is the partial variant of CardRefs.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type CardRefsPartial []und.Und[CardPartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *CardRefsPartial) FromValue(v CardRefs) {
 	if v == nil {
 		*p = nil
@@ -254,7 +254,7 @@ func (p *CardRefsPartial) FromValue(v CardRefs) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardRefsPartial) ToValue() CardRefs {
 	if p == nil {
 		return nil
@@ -269,7 +269,7 @@ func (p CardRefsPartial) ToValue() CardRefs {
 // Merge returns the elements of p then r in a new slice. A nil
 // p or r gives the other. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardRefsPartial) Merge(r CardRefsPartial) CardRefsPartial {
 	if r == nil {
 		return p
@@ -285,7 +285,7 @@ func (p CardRefsPartial) Merge(r CardRefsPartial) CardRefsPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardRefsPartial) ApplyTo(v CardRefs) CardRefs {
 	var base CardRefsPartial
 	base.FromValue(v)
@@ -294,13 +294,13 @@ func (p CardRefsPartial) ApplyTo(v CardRefs) CardRefs {
 
 // CardMapPartial is the partial variant of CardMap.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type CardMapPartial map[string]und.Und[CardPartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *CardMapPartial) FromValue(v CardMap) {
 	if v == nil {
 		*p = nil
@@ -315,7 +315,7 @@ func (p *CardMapPartial) FromValue(v CardMap) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardMapPartial) ToValue() CardMap {
 	if p == nil {
 		return nil
@@ -330,7 +330,7 @@ func (p CardMapPartial) ToValue() CardMap {
 // Merge returns the entries of p with the entries of r set in a
 // new map. A nil p or r gives the other. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardMapPartial) Merge(r CardMapPartial) CardMapPartial {
 	if r == nil {
 		return p
@@ -347,7 +347,7 @@ func (p CardMapPartial) Merge(r CardMapPartial) CardMapPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardMapPartial) ApplyTo(v CardMap) CardMap {
 	var base CardMapPartial
 	base.FromValue(v)
@@ -356,13 +356,13 @@ func (p CardMapPartial) ApplyTo(v CardMap) CardMap {
 
 // CardRefMapPartial is the partial variant of CardRefMap.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type CardRefMapPartial map[string]und.Und[CardPartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *CardRefMapPartial) FromValue(v CardRefMap) {
 	if v == nil {
 		*p = nil
@@ -377,7 +377,7 @@ func (p *CardRefMapPartial) FromValue(v CardRefMap) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardRefMapPartial) ToValue() CardRefMap {
 	if p == nil {
 		return nil
@@ -392,7 +392,7 @@ func (p CardRefMapPartial) ToValue() CardRefMap {
 // Merge returns the entries of p with the entries of r set in a
 // new map. A nil p or r gives the other. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardRefMapPartial) Merge(r CardRefMapPartial) CardRefMapPartial {
 	if r == nil {
 		return p
@@ -409,7 +409,7 @@ func (p CardRefMapPartial) Merge(r CardRefMapPartial) CardRefMapPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CardRefMapPartial) ApplyTo(v CardRefMap) CardRefMap {
 	var base CardRefMapPartial
 	base.FromValue(v)
@@ -418,7 +418,7 @@ func (p CardRefMapPartial) ApplyTo(v CardRefMap) CardRefMap {
 
 // HandPartial is the partial variant of Hand.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type HandPartial struct {
 	Cards und.Und[CardsPartial]      `json:"cards,omitzero"`
 	Refs  und.Und[CardRefMapPartial] `json:"refs,omitzero"`
@@ -427,7 +427,7 @@ type HandPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *HandPartial) FromValue(v Hand) {
 	p.Cards = kamaPartialFromTarget_26d9cf4565_47624ff389(v.Cards)
 	p.Refs = kamaPartialFromTarget_45bc6777ae_053bb35b9d(v.Refs)
@@ -436,7 +436,7 @@ func (p *HandPartial) FromValue(v Hand) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p HandPartial) ToValue() Hand {
 	var v Hand
 	v.Cards = p.Cards.Value().ToValue()
@@ -447,7 +447,7 @@ func (p HandPartial) ToValue() Hand {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p HandPartial) Merge(r HandPartial) HandPartial {
 	if !r.Cards.IsUndefined() {
 		p.Cards = r.Cards
@@ -461,7 +461,7 @@ func (p HandPartial) Merge(r HandPartial) HandPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p HandPartial) ApplyTo(v Hand) Hand {
 	var base HandPartial
 	base.FromValue(v)
@@ -470,13 +470,13 @@ func (p HandPartial) ApplyTo(v Hand) Hand {
 
 // HandsPartial is the partial variant of Hands.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type HandsPartial []und.Und[HandPartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *HandsPartial) FromValue(v Hands) {
 	if v == nil {
 		*p = nil
@@ -491,7 +491,7 @@ func (p *HandsPartial) FromValue(v Hands) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p HandsPartial) ToValue() Hands {
 	if p == nil {
 		return nil
@@ -506,7 +506,7 @@ func (p HandsPartial) ToValue() Hands {
 // Merge returns the elements of p then r in a new slice. A nil
 // p or r gives the other. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p HandsPartial) Merge(r HandsPartial) HandsPartial {
 	if r == nil {
 		return p
@@ -522,7 +522,7 @@ func (p HandsPartial) Merge(r HandsPartial) HandsPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p HandsPartial) ApplyTo(v Hands) Hands {
 	var base HandsPartial
 	base.FromValue(v)
@@ -531,13 +531,13 @@ func (p HandsPartial) ApplyTo(v Hands) Hands {
 
 // PilesPartial is the partial variant of Piles.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type PilesPartial[T any] []und.Und[PilePartial[T]]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *PilesPartial[T]) FromValue(v Piles[T]) {
 	if v == nil {
 		*p = nil
@@ -552,7 +552,7 @@ func (p *PilesPartial[T]) FromValue(v Piles[T]) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PilesPartial[T]) ToValue() Piles[T] {
 	if p == nil {
 		return nil
@@ -567,7 +567,7 @@ func (p PilesPartial[T]) ToValue() Piles[T] {
 // Merge returns the elements of p then r in a new slice. A nil
 // p or r gives the other. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PilesPartial[T]) Merge(r PilesPartial[T]) PilesPartial[T] {
 	if r == nil {
 		return p
@@ -583,7 +583,7 @@ func (p PilesPartial[T]) Merge(r PilesPartial[T]) PilesPartial[T] {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PilesPartial[T]) ApplyTo(v Piles[T]) Piles[T] {
 	var base PilesPartial[T]
 	base.FromValue(v)
@@ -592,7 +592,7 @@ func (p PilesPartial[T]) ApplyTo(v Piles[T]) Piles[T] {
 
 // PilePartial is the partial variant of Pile.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type PilePartial[T any] struct {
 	Top und.Und[T] `json:"top,omitzero"`
 }
@@ -600,7 +600,7 @@ type PilePartial[T any] struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *PilePartial[T]) FromValue(v Pile[T]) {
 	p.Top = und.Defined(v.Top)
 }
@@ -608,7 +608,7 @@ func (p *PilePartial[T]) FromValue(v Pile[T]) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PilePartial[T]) ToValue() Pile[T] {
 	var v Pile[T]
 	v.Top = p.Top.Value()
@@ -618,7 +618,7 @@ func (p PilePartial[T]) ToValue() Pile[T] {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PilePartial[T]) Merge(r PilePartial[T]) PilePartial[T] {
 	if !r.Top.IsUndefined() {
 		p.Top = r.Top
@@ -629,7 +629,7 @@ func (p PilePartial[T]) Merge(r PilePartial[T]) PilePartial[T] {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PilePartial[T]) ApplyTo(v Pile[T]) Pile[T] {
 	var base PilePartial[T]
 	base.FromValue(v)

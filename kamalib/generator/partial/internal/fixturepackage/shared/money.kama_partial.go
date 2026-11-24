@@ -12,7 +12,7 @@ import "github.com/ngicks/option/und"
 
 // MoneyPartial is the partial variant of Money.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MoneyPartial struct {
 	Amount   und.Und[int64]  `json:"amount,omitzero"`
 	Currency und.Und[string] `json:"currency,omitzero"`
@@ -21,7 +21,7 @@ type MoneyPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MoneyPartial) FromValue(v Money) {
 	p.Amount = und.Defined(v.Amount)
 	p.Currency = und.Defined(v.Currency)
@@ -30,7 +30,7 @@ func (p *MoneyPartial) FromValue(v Money) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MoneyPartial) ToValue() Money {
 	var v Money
 	v.Amount = p.Amount.Value()
@@ -41,7 +41,7 @@ func (p MoneyPartial) ToValue() Money {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MoneyPartial) Merge(r MoneyPartial) MoneyPartial {
 	if !r.Amount.IsUndefined() {
 		p.Amount = r.Amount
@@ -55,7 +55,7 @@ func (p MoneyPartial) Merge(r MoneyPartial) MoneyPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MoneyPartial) ApplyTo(v Money) Money {
 	var base MoneyPartial
 	base.FromValue(v)

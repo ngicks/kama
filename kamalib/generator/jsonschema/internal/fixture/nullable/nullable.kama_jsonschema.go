@@ -17,7 +17,7 @@ import (
 
 // Nullable is generated from the schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Nullable struct {
 	ReqOneOf  opt.Option[Item]           `json:"reqOneOf"`
 	OptOneOf  und.Und[Item]              `json:"optOneOf,omitzero"`
@@ -30,7 +30,7 @@ type Nullable struct {
 
 // nullableWire keeps a missing member of Nullable apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type nullableWire struct {
 	ReqOneOf  und.Und[Item]              `json:"reqOneOf,omitzero"`
 	OptOneOf  und.Und[Item]              `json:"optOneOf,omitzero"`
@@ -44,7 +44,7 @@ type nullableWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -76,7 +76,7 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // NullableOptInline is generated from the schema at
 // #/properties/optInline/oneOf/0.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type NullableOptInline struct {
 	S string `json:"s"`
 }
@@ -84,7 +84,7 @@ type NullableOptInline struct {
 // nullableOptInlineWire keeps a missing member of NullableOptInline apart
 // from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type nullableOptInlineWire struct {
 	S und.Und[string] `json:"s,omitzero"`
 }
@@ -92,7 +92,7 @@ type nullableOptInlineWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -115,14 +115,14 @@ func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Item is generated from the schema at #/$defs/Item.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Item struct {
 	N int64 `json:"n"`
 }
 
 // itemWire keeps a missing member of Item apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type itemWire struct {
 	N und.Und[int64] `json:"n,omitzero"`
 }
@@ -130,7 +130,7 @@ type itemWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

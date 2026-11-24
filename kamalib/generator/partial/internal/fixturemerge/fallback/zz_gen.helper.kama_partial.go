@@ -18,7 +18,7 @@ import "github.com/ngicks/option/und"
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_6de6b87afb_d9bcd9fe82(l, r und.Und[[]string]) und.Und[[]string] {
 	if r.IsUndefined() {
 		return l

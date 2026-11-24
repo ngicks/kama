@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
@@ -29,7 +28,7 @@ func (o optionSource) origin() string { return o.src.Origin(o.arg, o.keys) }
 
 // spelling names the option o sets as its source spells it.
 func (o optionSource) spelling() string {
-	return o.src.Spelling(base.ToolName, directive, " ", o.arg)
+	return o.src.Spelling(GeneratorId.Namespace, GeneratorId.Name, " ", o.arg)
 }
 
 // subDirectiveError reports //kama:validate:<sub>, and shows the arg of
@@ -51,9 +50,9 @@ func subDirectiveError(src genopt.Source, sub string, kv []dircmnt.KeyValue) err
 	}
 
 	return fmt.Errorf(
-		"%w: %s: //%s:%s:%s; validators and hook are args of //%s:%s, as in //%s:%s %s",
-		ErrDirective, src.Pos, base.ToolName, directive, sub,
-		base.ToolName, directive, base.ToolName, directive, want,
+		"%w: %s: %s:%s; validators and hook are args of %s, as in %s %s",
+		ErrDirective, src.Pos, GeneratorId.Directive(), sub,
+		GeneratorId.Directive(), GeneratorId.Directive(), want,
 	)
 }
 

@@ -235,7 +235,7 @@ func TestFieldMaskErrors(t *testing.T) {
 		{
 			name: "method declared by hand",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct{ B int }\n\n" +
-				"//kama:generated kama-partial\ntype APartial struct{}\n\n" +
+				"//kama:generated kama:partial\ntype APartial struct{}\n\n" +
 				"func (APartial) FromValueWithMask() {}\n",
 			is:       ErrConflict,
 			contains: []string{"x.go:10:17", "method FromValueWithMask of"},

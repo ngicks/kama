@@ -13,12 +13,12 @@ import (
 
 // KeyDeadline is the context key for a time.Time value.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 var KeyDeadline = keyTypeFunc("time.Time")
 
 // WithDeadline returns a copy of ctx in which KeyDeadline is associated with v.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func WithDeadline(ctx context.Context, v time.Time) context.Context {
 	return context.WithValue(ctx, KeyDeadline, v)
 }
@@ -26,7 +26,7 @@ func WithDeadline(ctx context.Context, v time.Time) context.Context {
 // ValueDeadline returns the time.Time associated with KeyDeadline in ctx.
 // ok is false if no value is associated or the value is not a time.Time.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueDeadline(ctx context.Context) (v time.Time, ok bool) {
 	v, ok = ctx.Value(KeyDeadline).(time.Time)
 	return v, ok
@@ -35,7 +35,7 @@ func ValueDeadline(ctx context.Context) (v time.Time, ok bool) {
 // ValueDeadlineFallback returns the time.Time associated with KeyDeadline in ctx,
 // or fallback if ValueDeadline reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueDeadlineFallback(ctx context.Context, fallback time.Time) time.Time {
 	if v, ok := ValueDeadline(ctx); ok {
 		return v
@@ -46,7 +46,7 @@ func ValueDeadlineFallback(ctx context.Context, fallback time.Time) time.Time {
 // ValueDeadlineFallbackFn returns the time.Time associated with KeyDeadline in ctx,
 // or the result of fallbackFn if ValueDeadline reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueDeadlineFallbackFn(ctx context.Context, fallbackFn func() time.Time) time.Time {
 	if v, ok := ValueDeadline(ctx); ok {
 		return v
@@ -57,7 +57,7 @@ func ValueDeadlineFallbackFn(ctx context.Context, fallbackFn func() time.Time) t
 // ValueDeadlineDefault returns the time.Time associated with KeyDeadline in ctx,
 // or time.Time{} if ValueDeadline reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueDeadlineDefault(ctx context.Context) time.Time {
 	return ValueDeadlineFallbackFn(ctx, func() time.Time { return time.Time{} })
 }

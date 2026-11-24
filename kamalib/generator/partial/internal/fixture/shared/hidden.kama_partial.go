@@ -12,7 +12,7 @@ import "github.com/ngicks/option/und"
 
 // hiddenPartial is the partial variant of hidden.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type hiddenPartial struct {
 	Secret und.Und[string] `json:"secret,omitzero"`
 }
@@ -20,7 +20,7 @@ type hiddenPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *hiddenPartial) FromValue(v hidden) {
 	p.Secret = und.Defined(v.Secret)
 }
@@ -28,7 +28,7 @@ func (p *hiddenPartial) FromValue(v hidden) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p hiddenPartial) ToValue() hidden {
 	var v hidden
 	v.Secret = p.Secret.Value()
@@ -38,7 +38,7 @@ func (p hiddenPartial) ToValue() hidden {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p hiddenPartial) Merge(r hiddenPartial) hiddenPartial {
 	if !r.Secret.IsUndefined() {
 		p.Secret = r.Secret
@@ -49,7 +49,7 @@ func (p hiddenPartial) Merge(r hiddenPartial) hiddenPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p hiddenPartial) ApplyTo(v hidden) hidden {
 	var base hiddenPartial
 	base.FromValue(v)

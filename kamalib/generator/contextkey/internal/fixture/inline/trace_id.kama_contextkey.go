@@ -12,12 +12,12 @@ import (
 
 // KeyTraceId is the context key for a string value.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 var KeyTraceId = keyTypeFunc("string")
 
 // WithTraceId returns a copy of ctx in which KeyTraceId is associated with v.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func WithTraceId(ctx context.Context, v string) context.Context {
 	return context.WithValue(ctx, KeyTraceId, v)
 }
@@ -25,7 +25,7 @@ func WithTraceId(ctx context.Context, v string) context.Context {
 // ValueTraceId returns the string associated with KeyTraceId in ctx.
 // ok is false if no value is associated or the value is not a string.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueTraceId(ctx context.Context) (v string, ok bool) {
 	v, ok = ctx.Value(KeyTraceId).(string)
 	return v, ok
@@ -34,7 +34,7 @@ func ValueTraceId(ctx context.Context) (v string, ok bool) {
 // ValueTraceIdFallback returns the string associated with KeyTraceId in ctx,
 // or fallback if ValueTraceId reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueTraceIdFallback(ctx context.Context, fallback string) string {
 	if v, ok := ValueTraceId(ctx); ok {
 		return v
@@ -45,7 +45,7 @@ func ValueTraceIdFallback(ctx context.Context, fallback string) string {
 // ValueTraceIdFallbackFn returns the string associated with KeyTraceId in ctx,
 // or the result of fallbackFn if ValueTraceId reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueTraceIdFallbackFn(ctx context.Context, fallbackFn func() string) string {
 	if v, ok := ValueTraceId(ctx); ok {
 		return v
@@ -56,7 +56,7 @@ func ValueTraceIdFallbackFn(ctx context.Context, fallbackFn func() string) strin
 // ValueTraceIdDefault returns the string associated with KeyTraceId in ctx,
 // or "none" if ValueTraceId reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueTraceIdDefault(ctx context.Context) string {
 	return ValueTraceIdFallbackFn(ctx, func() string { return "none" })
 }

@@ -24,15 +24,16 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
-// GeneratorName is the name the generator marks its declarations with.
-const GeneratorName = "kama-partial"
+// GeneratorId identifies the generator. Its name is the directive
+// //kama:partial, and a Registry passed in Options registers it.
+var GeneratorId = base.Id{Namespace: "kama", Name: "partial"}
 
 // FileSuffix is inserted into the name of a source file to name the file
 // generated from it.
 const FileSuffix = ".kama_partial"
 
 // naming names the files the generator writes.
-var naming = base.Naming{Name: "kama_partial"}
+var naming = GeneratorId.Naming()
 
 // HelpersFile is the name of the file declaring the helpers the partial
 // files of a package call. The zz_gen. prefix marks a generated file no
@@ -52,7 +53,7 @@ func isHelpersFile(base string) bool { return naming.IsShared(helperKind, base) 
 // line of the header of every generated file.
 const generatorPath = "github.com/ngicks/kama/kamalib/generator/partial"
 
-func init() { base.MustRegister(GeneratorName) }
+func init() { base.MustRegister(GeneratorId) }
 
 var (
 	// ErrDirective reports a //kama:partial directive with unknown args or
@@ -299,7 +300,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 
 	stale := base.StaleCheck{
 		Registry:  opts.Registry,
-		Generator: GeneratorName,
+		Generator: GeneratorId,
 		// The flag set file has no build constraint and serves the partial
 		// files of every build variant. A package the run produced nothing
 		// for may still declare targets in files of a variant not loaded,
@@ -624,7 +625,7 @@ func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 			named.Obj().Name(),
 		),
 		"//",
-		base.Marker(GeneratorName),
+		GeneratorId.Marker(),
 	}
 
 	methods, err := w.decls()

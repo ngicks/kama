@@ -18,7 +18,7 @@ import (
 // Employee is all of Person, Contract and its own properties. It is
 // generated from the schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Employee struct {
 	Person   Person             `json:"-"`
 	Contract Contract           `json:"-"`
@@ -30,7 +30,7 @@ type Employee struct {
 // Contract and its own properties. The first of them to hold a member name
 // writes it.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Employee) MarshalJSONTo(enc *jsontext.Encoder) error {
 	type plain Employee
 	return jsonschemart.MarshalObjects(enc, v.Person, v.Contract, plain(v))
@@ -38,7 +38,7 @@ func (v Employee) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // employeeWire keeps a missing member of Employee apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type employeeWire struct {
 	Badge   und.Und[string] `json:"badge,omitzero"`
 	Manager und.Und[Person] `json:"manager,omitzero"`
@@ -48,7 +48,7 @@ type employeeWire struct {
 // the own properties decode from the same object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -75,7 +75,7 @@ func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Person is generated from the schema at #/$defs/Person.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Person struct {
 	Name string            `json:"name"`
 	Age  opt.Option[int64] `json:"age,omitzero"`
@@ -83,7 +83,7 @@ type Person struct {
 
 // personWire keeps a missing member of Person apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type personWire struct {
 	Name und.Und[string] `json:"name,omitzero"`
 	Age  und.Und[int64]  `json:"age,omitzero"`
@@ -92,7 +92,7 @@ type personWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -117,7 +117,7 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Contract is generated from the schema at #/$defs/Contract.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Contract struct {
 	Salary float64          `json:"salary"`
 	Remote opt.Option[bool] `json:"remote,omitzero"`
@@ -125,7 +125,7 @@ type Contract struct {
 
 // contractWire keeps a missing member of Contract apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type contractWire struct {
 	Salary und.Und[float64] `json:"salary,omitzero"`
 	Remote und.Und[bool]    `json:"remote,omitzero"`
@@ -134,7 +134,7 @@ type contractWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Contract) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

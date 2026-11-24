@@ -16,7 +16,7 @@ import (
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v User) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := validation.Field(requiredComparable(v.Name), "name"); err != nil {
@@ -82,7 +82,7 @@ func (v User) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Address) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := validation.Field(requiredComparable(v.City), "city"); err != nil {
@@ -97,7 +97,7 @@ func (v Address) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Tag) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := validation.Field(requiredComparable(v.Name), "name"); err != nil {
@@ -112,7 +112,7 @@ func (v Tag) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Pet) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := validation.Field(requiredComparable(v.Name), "name"); err != nil {
@@ -129,7 +129,7 @@ func (v Pet) Validate(stopOnFirstError bool) error {
 // A function given for a type parameter validates the values of that type;
 // nil leaves them unchecked.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Box[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstError bool) error) error {
 	var errs []error
 	for i, e := range v.Items {
@@ -158,7 +158,7 @@ func (v Box[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstE
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Team) Validate(stopOnFirstError bool) error {
 	var errs []error
 	for i, e := range v.Members {
@@ -183,7 +183,7 @@ func (v Team) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Roster) Validate(stopOnFirstError bool) error {
 	var errs []error
 	for i, e := range v {

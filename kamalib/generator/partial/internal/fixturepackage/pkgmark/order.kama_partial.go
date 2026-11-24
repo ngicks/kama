@@ -16,7 +16,7 @@ import (
 
 // OrderPartial is the partial variant of Order.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type OrderPartial struct {
 	ID       und.Und[string]              `json:"id,omitzero"`
 	Total    und.Und[shared.MoneyPartial] `json:"total,omitzero"`
@@ -29,7 +29,7 @@ type OrderPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *OrderPartial) FromValue(v Order) {
 	p.ID = und.Defined(v.ID)
 	p.Total = kamaPartialFromTarget_0ab3a7dfb0_eba3a8399c(v.Total)
@@ -42,7 +42,7 @@ func (p *OrderPartial) FromValue(v Order) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p OrderPartial) ToValue() Order {
 	var v Order
 	v.ID = p.ID.Value()
@@ -57,7 +57,7 @@ func (p OrderPartial) ToValue() Order {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p OrderPartial) Merge(r OrderPartial) OrderPartial {
 	if !r.ID.IsUndefined() {
 		p.ID = r.ID
@@ -77,7 +77,7 @@ func (p OrderPartial) Merge(r OrderPartial) OrderPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p OrderPartial) ApplyTo(v Order) Order {
 	var base OrderPartial
 	base.FromValue(v)
@@ -86,13 +86,13 @@ func (p OrderPartial) ApplyTo(v Order) Order {
 
 // LinesPartial is the partial variant of Lines.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type LinesPartial []und.Und[LinePartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *LinesPartial) FromValue(v Lines) {
 	if v == nil {
 		*p = nil
@@ -107,7 +107,7 @@ func (p *LinesPartial) FromValue(v Lines) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LinesPartial) ToValue() Lines {
 	if p == nil {
 		return nil
@@ -121,7 +121,7 @@ func (p LinesPartial) ToValue() Lines {
 
 // Merge returns r, or p when r is nil. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LinesPartial) Merge(r LinesPartial) LinesPartial {
 	if r == nil {
 		return p
@@ -132,7 +132,7 @@ func (p LinesPartial) Merge(r LinesPartial) LinesPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LinesPartial) ApplyTo(v Lines) Lines {
 	var base LinesPartial
 	base.FromValue(v)
@@ -141,7 +141,7 @@ func (p LinesPartial) ApplyTo(v Lines) Lines {
 
 // LinePartial is the partial variant of Line.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type LinePartial struct {
 	SKU und.Und[string] `json:"sku,omitzero"`
 	Qty und.Und[int]    `json:"qty,omitzero"`
@@ -150,7 +150,7 @@ type LinePartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *LinePartial) FromValue(v Line) {
 	p.SKU = und.Defined(v.SKU)
 	p.Qty = und.Defined(v.Qty)
@@ -159,7 +159,7 @@ func (p *LinePartial) FromValue(v Line) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LinePartial) ToValue() Line {
 	var v Line
 	v.SKU = p.SKU.Value()
@@ -170,7 +170,7 @@ func (p LinePartial) ToValue() Line {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LinePartial) Merge(r LinePartial) LinePartial {
 	if !r.SKU.IsUndefined() {
 		p.SKU = r.SKU
@@ -184,7 +184,7 @@ func (p LinePartial) Merge(r LinePartial) LinePartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LinePartial) ApplyTo(v Line) Line {
 	var base LinePartial
 	base.FromValue(v)

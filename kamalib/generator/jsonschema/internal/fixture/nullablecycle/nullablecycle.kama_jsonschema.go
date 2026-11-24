@@ -16,7 +16,7 @@ import (
 
 // Node is generated from the schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Node struct {
 	Value  int64 `json:"value"`
 	Parent *Node `json:"parent"`
@@ -25,7 +25,7 @@ type Node struct {
 
 // nodeWire keeps a missing member of Node apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type nodeWire struct {
 	Value  und.Und[int64] `json:"value,omitzero"`
 	Parent und.Und[Node]  `json:"parent,omitzero"`
@@ -35,7 +35,7 @@ type nodeWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

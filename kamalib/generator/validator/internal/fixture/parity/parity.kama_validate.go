@@ -17,7 +17,7 @@ import (
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Order) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := kamaValidateMembers(kamaValidateCount(v.Lines != nil)+3, ">=", 4); err != nil {
@@ -70,7 +70,7 @@ func (v Order) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Line) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Qty, ">", 0), kamaValidateCmp(v.Qty, "<=", 100)), "qty"); err != nil {
@@ -99,7 +99,7 @@ func (v Line) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Sku) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := kamaValidateRegexpString(kamaValidateRegexp_0ab128e122, string(v)); err != nil {
@@ -120,7 +120,7 @@ func (v Sku) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Batch) Validate(stopOnFirstError bool) error {
 	var errs []error
 	for _, k := range slices.Sorted(maps.Keys(v.Orders)) {

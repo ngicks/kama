@@ -198,7 +198,7 @@ func q(path, name string) genExpr {
 // commentLines of text, an empty comment line and the marker of the
 // generator.
 func docComment(text string) genExpr {
-	return lang.DocComment(base.Marker(GeneratorName), "%s", commentLines(text))
+	return lang.DocComment(GeneratorId.Marker(), "%s", commentLines(text))
 }
 
 // commentLines returns text as Go line comments: each line of text, as

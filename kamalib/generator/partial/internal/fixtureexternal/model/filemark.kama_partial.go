@@ -12,7 +12,7 @@ import "github.com/ngicks/option/und"
 
 // ConfigPartial is the partial variant of Config.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type ConfigPartial struct {
 	Limits und.Und[LimitsPartial] `toml:"limits,omitzero" json:",omitzero"`
 	Level  und.Und[Level]         `toml:"level,omitzero" json:",omitzero"`
@@ -22,7 +22,7 @@ type ConfigPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *ConfigPartial) FromValue(v Config) {
 	p.Limits = kamaPartialFromTarget_f51e357db5_b726f0d060(v.Limits)
 	p.Level = und.Defined(v.Level)
@@ -32,7 +32,7 @@ func (p *ConfigPartial) FromValue(v Config) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p ConfigPartial) ToValue() Config {
 	var v Config
 	v.Limits = p.Limits.Value().ToValue()
@@ -44,7 +44,7 @@ func (p ConfigPartial) ToValue() Config {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p ConfigPartial) Merge(r ConfigPartial) ConfigPartial {
 	p.Limits = kamaPartialMergeRecursive_e56a83de09_b726f0d060(p.Limits, r.Limits)
 	if !r.Level.IsUndefined() {
@@ -59,7 +59,7 @@ func (p ConfigPartial) Merge(r ConfigPartial) ConfigPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p ConfigPartial) ApplyTo(v Config) Config {
 	var base ConfigPartial
 	base.FromValue(v)
@@ -68,7 +68,7 @@ func (p ConfigPartial) ApplyTo(v Config) Config {
 
 // LimitsPartial is the partial variant of Limits.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type LimitsPartial struct {
 	Max und.Und[int] `yaml:"max,omitempty" json:",omitzero"`
 }
@@ -76,7 +76,7 @@ type LimitsPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *LimitsPartial) FromValue(v Limits) {
 	p.Max = und.Defined(v.Max)
 }
@@ -84,7 +84,7 @@ func (p *LimitsPartial) FromValue(v Limits) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LimitsPartial) ToValue() Limits {
 	var v Limits
 	v.Max = p.Max.Value()
@@ -94,7 +94,7 @@ func (p LimitsPartial) ToValue() Limits {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LimitsPartial) Merge(r LimitsPartial) LimitsPartial {
 	if !r.Max.IsUndefined() {
 		p.Max = r.Max
@@ -105,7 +105,7 @@ func (p LimitsPartial) Merge(r LimitsPartial) LimitsPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LimitsPartial) ApplyTo(v Limits) Limits {
 	var base LimitsPartial
 	base.FromValue(v)

@@ -3,13 +3,14 @@
 // Each Entry yields one file holding a key variable and the functions
 // WithName, ValueName, ValueNameFallback, ValueNameFallbackFn and
 // ValueNameDefault for a value of the entry's type. Every generated
-// declaration carries the genmark marker naming GeneratorName in its doc
+// declaration carries the genmark marker naming GeneratorId in its doc
 // comment.
 //
-// A file is named by inserting .contextkey into Entry.FileName before its
-// build constraint suffixes, as in sig.contextkey_linux.go for sig_linux.
-// It starts with the header base.Header prints: the generated-code line,
-// the params package and key_type_func, and the time of the run.
+// A file is named by inserting .kama_contextkey into Entry.FileName before
+// its build constraint suffixes, as in sig.kama_contextkey_linux.go for
+// sig_linux. It starts with the header base.Header prints: the
+// generated-code line, the params package and key_type_func, and the time
+// of the run.
 //
 // A key of the template file that names no field of Template or Entry is
 // no error. Proc warns, wrapping ErrUnknownKey, about each of them with
@@ -44,10 +45,10 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 )
 
-// GeneratorName is the name the generator marks its declarations with.
-const GeneratorName = "kama-contextkey"
+// GeneratorId identifies the generator.
+var GeneratorId = base.Id{Namespace: "kama", Name: "contextkey"}
 
-func init() { base.MustRegister(GeneratorName) }
+func init() { base.MustRegister(GeneratorId) }
 
 var (
 	ErrInvalidEntry = errors.New("contextkey: invalid entry")
@@ -61,7 +62,7 @@ var (
 const generatorPath = "github.com/ngicks/kama/kamalib/generator/contextkey"
 
 // naming names the files the generator writes.
-var naming = base.Naming{Name: "contextkey"}
+var naming = GeneratorId.Naming()
 
 // FileName returns the name of the file generated for an Entry whose
 // FileName is name.
@@ -221,7 +222,7 @@ func renderEntry(e Entry, opts Options, header string) ([]byte, error) {
 		Package:     opts.Package,
 		KeyTypeFunc: opts.KeyTypeFunc,
 		Imports:     imports,
-		Marker:      base.Marker(GeneratorName),
+		Marker:      GeneratorId.Marker(),
 	})
 	if err != nil {
 		return nil, err

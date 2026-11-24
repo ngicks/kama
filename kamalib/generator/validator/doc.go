@@ -468,7 +468,7 @@
 // to it, named by inserting .kama_validate before the build constraint
 // suffixes of its name, as in x.kama_validate_linux.go for x_linux.go,
 // with the //go:build line of the source file. Every generated declaration
-// carries the marker //kama:generated kama-validate.
+// carries the marker //kama:generated kama:validate.
 //
 // The helpers the Validate methods call go to the helpers file
 // zz_gen.helper.kama_validate.go of the package. A helper called only by

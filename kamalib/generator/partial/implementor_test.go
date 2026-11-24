@@ -123,7 +123,7 @@ func TestImplementorOfTheRun(t *testing.T) {
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ I I }\n\n" +
 			"//kama:partial ignore\ntype I struct{ N int }\n",
 		"stale.go": "package x\n\n// IPartial is left by an earlier run.\n//\n" +
-			"//kama:generated kama-partial\ntype IPartial struct{}\n",
+			"//kama:generated kama:partial\ntype IPartial struct{}\n",
 	}
 
 	out, _, err := Generate(

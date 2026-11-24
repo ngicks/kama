@@ -18,7 +18,7 @@ import (
 
 // Chains is generated from the schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Chains struct {
 	Any     opt.Option[Any]     `json:"any,omitzero"`
 	Tagged  opt.Option[Tagged]  `json:"tagged,omitzero"`
@@ -27,7 +27,7 @@ type Chains struct {
 
 // chainsWire keeps a missing member of Chains apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type chainsWire struct {
 	Any     und.Und[Any]     `json:"any,omitzero"`
 	Tagged  und.Und[Tagged]  `json:"tagged,omitzero"`
@@ -37,7 +37,7 @@ type chainsWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Chains) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -65,45 +65,45 @@ func (v *Chains) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Any is the first of AnyLeft, AnyRight that the value matches. It is
 // generated from the schema at #/$defs/Any.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Any struct {
 	Kind AnyKind
 }
 
 // AnyKind is implemented by AnyAnyLeft and AnyAnyRight only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type AnyKind interface {
 	isAnyKind()
 }
 
 // AnyAnyLeft holds the AnyLeft member of Any.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type AnyAnyLeft struct {
 	AnyLeft AnyLeft
 }
 
 // isAnyKind marks AnyAnyLeft as a AnyKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (AnyAnyLeft) isAnyKind() {}
 
 // AnyAnyRight holds the AnyRight member of Any.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type AnyAnyRight struct {
 	AnyRight AnyRight
 }
 
 // isAnyKind marks AnyAnyRight as a AnyKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (AnyAnyRight) isAnyKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Any) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case AnyAnyLeft:
@@ -116,7 +116,7 @@ func (v Any) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the first member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -146,7 +146,7 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // AnyLeft is generated from the schema at #/$defs/AnyLeft.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type AnyLeft struct {
 	C opt.Option[Any]    `json:"c,omitzero"`
 	L opt.Option[string] `json:"l,omitzero"`
@@ -154,7 +154,7 @@ type AnyLeft struct {
 
 // anyLeftWire keeps a missing member of AnyLeft apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type anyLeftWire struct {
 	C und.Und[Any]    `json:"c,omitzero"`
 	L und.Und[string] `json:"l,omitzero"`
@@ -163,7 +163,7 @@ type anyLeftWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -188,7 +188,7 @@ func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // AnyRight is generated from the schema at #/$defs/AnyRight.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type AnyRight struct {
 	C opt.Option[Any]    `json:"c,omitzero"`
 	R opt.Option[string] `json:"r,omitzero"`
@@ -196,7 +196,7 @@ type AnyRight struct {
 
 // anyRightWire keeps a missing member of AnyRight apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type anyRightWire struct {
 	C und.Und[Any]    `json:"c,omitzero"`
 	R und.Und[string] `json:"r,omitzero"`
@@ -205,7 +205,7 @@ type anyRightWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *AnyRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -231,45 +231,45 @@ func (v *AnyRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Tagged is exactly one of TaggedLeft, TaggedRight. It is generated from
 // the schema at #/$defs/Tagged.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Tagged struct {
 	Kind TaggedKind
 }
 
 // TaggedKind is implemented by TaggedTaggedLeft and TaggedTaggedRight only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type TaggedKind interface {
 	isTaggedKind()
 }
 
 // TaggedTaggedLeft holds the TaggedLeft member of Tagged.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type TaggedTaggedLeft struct {
 	TaggedLeft TaggedLeft
 }
 
 // isTaggedKind marks TaggedTaggedLeft as a TaggedKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (TaggedTaggedLeft) isTaggedKind() {}
 
 // TaggedTaggedRight holds the TaggedRight member of Tagged.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type TaggedTaggedRight struct {
 	TaggedRight TaggedRight
 }
 
 // isTaggedKind marks TaggedTaggedRight as a TaggedKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (TaggedTaggedRight) isTaggedKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Tagged) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case TaggedTaggedLeft:
@@ -282,7 +282,7 @@ func (v Tagged) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the only member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -322,7 +322,7 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // TaggedLeft is generated from the schema at #/$defs/TaggedLeft.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type TaggedLeft struct {
 	Kind string             `json:"kind"`
 	C    opt.Option[Tagged] `json:"c,omitzero"`
@@ -330,7 +330,7 @@ type TaggedLeft struct {
 
 // taggedLeftWire keeps a missing member of TaggedLeft apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type taggedLeftWire struct {
 	Kind und.Und[string] `json:"kind,omitzero"`
 	C    und.Und[Tagged] `json:"c,omitzero"`
@@ -339,7 +339,7 @@ type taggedLeftWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -367,7 +367,7 @@ func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // TaggedRight is generated from the schema at #/$defs/TaggedRight.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type TaggedRight struct {
 	Kind string             `json:"kind"`
 	C    opt.Option[Tagged] `json:"c,omitzero"`
@@ -375,7 +375,7 @@ type TaggedRight struct {
 
 // taggedRightWire keeps a missing member of TaggedRight apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type taggedRightWire struct {
 	Kind und.Und[string] `json:"kind,omitzero"`
 	C    und.Und[Tagged] `json:"c,omitzero"`
@@ -384,7 +384,7 @@ type taggedRightWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *TaggedRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -413,7 +413,7 @@ func (v *TaggedRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Overlap is exactly one of OverlapLeft, OverlapRight. It is generated from
 // the schema at #/$defs/Overlap.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Overlap struct {
 	Kind OverlapKind
 }
@@ -421,38 +421,38 @@ type Overlap struct {
 // OverlapKind is implemented by OverlapOverlapLeft and OverlapOverlapRight
 // only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type OverlapKind interface {
 	isOverlapKind()
 }
 
 // OverlapOverlapLeft holds the OverlapLeft member of Overlap.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type OverlapOverlapLeft struct {
 	OverlapLeft OverlapLeft
 }
 
 // isOverlapKind marks OverlapOverlapLeft as a OverlapKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (OverlapOverlapLeft) isOverlapKind() {}
 
 // OverlapOverlapRight holds the OverlapRight member of Overlap.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type OverlapOverlapRight struct {
 	OverlapRight OverlapRight
 }
 
 // isOverlapKind marks OverlapOverlapRight as a OverlapKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (OverlapOverlapRight) isOverlapKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Overlap) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case OverlapOverlapLeft:
@@ -465,7 +465,7 @@ func (v Overlap) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the only member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -505,7 +505,7 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // OverlapLeft is generated from the schema at #/$defs/OverlapLeft.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type OverlapLeft struct {
 	C opt.Option[Overlap] `json:"c,omitzero"`
 	L opt.Option[string]  `json:"l,omitzero"`
@@ -513,7 +513,7 @@ type OverlapLeft struct {
 
 // overlapLeftWire keeps a missing member of OverlapLeft apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type overlapLeftWire struct {
 	C und.Und[Overlap] `json:"c,omitzero"`
 	L und.Und[string]  `json:"l,omitzero"`
@@ -522,7 +522,7 @@ type overlapLeftWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -547,7 +547,7 @@ func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // OverlapRight is generated from the schema at #/$defs/OverlapRight.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type OverlapRight struct {
 	C opt.Option[Overlap] `json:"c,omitzero"`
 	L opt.Option[int64]   `json:"l,omitzero"`
@@ -555,7 +555,7 @@ type OverlapRight struct {
 
 // overlapRightWire keeps a missing member of OverlapRight apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type overlapRightWire struct {
 	C und.Und[Overlap] `json:"c,omitzero"`
 	L und.Und[int64]   `json:"l,omitzero"`
@@ -564,7 +564,7 @@ type overlapRightWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *OverlapRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

@@ -15,7 +15,6 @@ import (
 	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
@@ -401,7 +400,7 @@ func TestGenerateWarnsUnknownKeywords(t *testing.T) {
 func TestGenerateHostileAnnotations(t *testing.T) {
 	// The text is JSON string content, so the escapes are those of JSON.
 	hostile := `line one\n//go:generate sh -c evil\r//line evil.go:1\r\n` +
-		`//kama:generated kama-jsonschema\n */ /* open\n\t//go:build ignore\n` +
+		`//kama:generated kama:jsonschema\n */ /* open\n\t//go:build ignore\n` +
 		`   //export Evil\n\u0000\ufeff//go:embed x`
 	schema := `{
 		"title": "T",
@@ -424,7 +423,7 @@ func TestGenerateHostileAnnotations(t *testing.T) {
 
 	assert.NilError(t, generateSuite(jsontext.Value(schema)))
 
-	marker := base.Marker(GeneratorName)
+	marker := GeneratorId.Marker()
 	markers := 0
 
 	var s scanner.Scanner

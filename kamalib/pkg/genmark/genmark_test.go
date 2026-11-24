@@ -60,7 +60,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestGenerated(t *testing.T) {
-	r := newRegistry(t, "tool-partial", "tool-clone")
+	r := newRegistry(t, "tool-partial", "tool-clone", "acme:partial")
 
 	cases := []struct {
 		doc  string
@@ -70,6 +70,7 @@ func TestGenerated(t *testing.T) {
 		{"//tool:generated tool-partial", "tool-partial", true},
 		{"// Foo is generated.\n//tool:generated tool-clone", "tool-clone", true},
 		{"//tool:generated  tool-partial extra", "tool-partial", true},
+		{"//tool:generated acme:partial", "acme:partial", true},
 		{"//tool:generated unknown\n//tool:generated tool-clone", "tool-clone", true},
 		{"//tool:generated unknown", "", false},
 		{"//tool:generated", "", false},

@@ -19,45 +19,45 @@ import (
 // Shape is exactly one of Circle, Square. It is generated from the schema
 // at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Shape struct {
 	Kind ShapeKind
 }
 
 // ShapeKind is implemented by ShapeCircle and ShapeSquare only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ShapeKind interface {
 	isShapeKind()
 }
 
 // ShapeCircle holds the Circle member of Shape.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ShapeCircle struct {
 	Circle Circle
 }
 
 // isShapeKind marks ShapeCircle as a ShapeKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (ShapeCircle) isShapeKind() {}
 
 // ShapeSquare holds the Square member of Shape.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ShapeSquare struct {
 	Square Square
 }
 
 // isShapeKind marks ShapeSquare as a ShapeKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (ShapeSquare) isShapeKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Shape) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case ShapeCircle:
@@ -70,7 +70,7 @@ func (v Shape) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the only member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -110,7 +110,7 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Circle is generated from the schema at #/$defs/Circle.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Circle struct {
 	Kind   CircleKind `json:"kind"`
 	Radius float64    `json:"radius"`
@@ -118,7 +118,7 @@ type Circle struct {
 
 // circleWire keeps a missing member of Circle apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type circleWire struct {
 	Kind   und.Und[CircleKind] `json:"kind,omitzero"`
 	Radius und.Und[float64]    `json:"radius,omitzero"`
@@ -127,7 +127,7 @@ type circleWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -153,12 +153,12 @@ func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // CircleKind is generated from the schema at
 // #/$defs/Circle/properties/kind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CircleKind string
 
 // CircleKind values the schema allows.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 const (
 	CircleKindCircle CircleKind = "circle"
 )
@@ -166,7 +166,7 @@ const (
 // UnmarshalJSONFrom decodes v from one JSON string. It rejects a value the
 // schema does not list.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -185,14 +185,14 @@ func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Square is generated from the schema at #/$defs/Square.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Square struct {
 	Side opt.Option[float64] `json:"side,omitzero"`
 }
 
 // squareWire keeps a missing member of Square apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type squareWire struct {
 	Side    und.Und[float64]          `json:"side,omitzero"`
 	Unknown map[string]jsontext.Value `json:",embed"`
@@ -201,7 +201,7 @@ type squareWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

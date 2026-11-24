@@ -12,7 +12,7 @@ import "github.com/ngicks/option/und"
 
 // FallbackPartial is the partial variant of Fallback.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type FallbackPartial struct {
 	Tags    und.Und[[]string] `json:"tags,omitzero"`
 	Unknown map[string]any    `json:",embed"`
@@ -21,7 +21,7 @@ type FallbackPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *FallbackPartial) FromValue(v Fallback) {
 	p.Tags = und.WrapSlice(v.Tags).CollapseToNull()
 	p.Unknown = v.Unknown
@@ -30,7 +30,7 @@ func (p *FallbackPartial) FromValue(v Fallback) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p FallbackPartial) ToValue() Fallback {
 	var v Fallback
 	v.Tags = p.Tags.Value()
@@ -41,7 +41,7 @@ func (p FallbackPartial) ToValue() Fallback {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p FallbackPartial) Merge(r FallbackPartial) FallbackPartial {
 	p.Tags = kamaPartialMergeAppend_6de6b87afb_d9bcd9fe82(p.Tags, r.Tags)
 	if r.Unknown != nil {
@@ -53,7 +53,7 @@ func (p FallbackPartial) Merge(r FallbackPartial) FallbackPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p FallbackPartial) ApplyTo(v Fallback) Fallback {
 	var base FallbackPartial
 	base.FromValue(v)

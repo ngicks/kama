@@ -18,7 +18,7 @@ import (
 
 // Forest is generated from the schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Forest struct {
 	Trees  []Tree               `json:"trees"`
 	Groves opt.Option[[]Forest] `json:"groves,omitzero"`
@@ -28,7 +28,7 @@ type Forest struct {
 
 // forestWire keeps a missing member of Forest apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type forestWire struct {
 	Trees  und.Und[[]Tree]   `json:"trees,omitzero"`
 	Groves und.Und[[]Forest] `json:"groves,omitzero"`
@@ -39,7 +39,7 @@ type forestWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -68,7 +68,7 @@ func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Tree is generated from the schema at #/$defs/Tree.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Tree struct {
 	Label    string             `json:"label"`
 	Children opt.Option[[]Tree] `json:"children,omitzero"`
@@ -76,7 +76,7 @@ type Tree struct {
 
 // treeWire keeps a missing member of Tree apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type treeWire struct {
 	Label    und.Und[string] `json:"label,omitzero"`
 	Children und.Und[[]Tree] `json:"children,omitzero"`
@@ -85,7 +85,7 @@ type treeWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -110,7 +110,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // List is generated from the schema at #/$defs/List.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type List struct {
 	Value int64 `json:"value"`
 	Next  *List `json:"next,omitzero"`
@@ -118,7 +118,7 @@ type List struct {
 
 // listWire keeps a missing member of List apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type listWire struct {
 	Value und.Und[int64] `json:"value,omitzero"`
 	Next  und.Und[List]  `json:"next,omitzero"`
@@ -127,7 +127,7 @@ type listWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -152,7 +152,7 @@ func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Chain is generated from the schema at #/$defs/Chain.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Chain struct {
 	Name string `json:"name"`
 	Link *Link  `json:"link"`
@@ -161,7 +161,7 @@ type Chain struct {
 // MarshalJSONTo encodes v as one JSON object. A nil pointer of a required
 // member is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Chain) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if v.Link == nil {
 		return validation.Field(validation.New(validation.ErrNil, "required member is nil"), "link")
@@ -172,7 +172,7 @@ func (v Chain) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // chainWire keeps a missing member of Chain apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type chainWire struct {
 	Name und.Und[string] `json:"name,omitzero"`
 	Link und.Und[Link]   `json:"link,omitzero"`
@@ -181,7 +181,7 @@ type chainWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -206,7 +206,7 @@ func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Link is generated from the schema at #/$defs/Link.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Link struct {
 	Label string `json:"label"`
 	Chain *Chain `json:"chain,omitzero"`
@@ -214,7 +214,7 @@ type Link struct {
 
 // linkWire keeps a missing member of Link apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type linkWire struct {
 	Label und.Und[string] `json:"label,omitzero"`
 	Chain und.Und[Chain]  `json:"chain,omitzero"`
@@ -223,7 +223,7 @@ type linkWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -248,7 +248,7 @@ func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Ouroboros is generated from the schema at #/$defs/Ouroboros.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Ouroboros struct {
 	Tail *Ouroboros `json:"tail"`
 }
@@ -256,7 +256,7 @@ type Ouroboros struct {
 // MarshalJSONTo encodes v as one JSON object. A nil pointer of a required
 // member is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Ouroboros) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if v.Tail == nil {
 		return validation.Field(validation.New(validation.ErrNil, "required member is nil"), "tail")
@@ -267,7 +267,7 @@ func (v Ouroboros) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // ouroborosWire keeps a missing member of Ouroboros apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ouroborosWire struct {
 	Tail und.Und[Ouroboros] `json:"tail,omitzero"`
 }
@@ -275,7 +275,7 @@ type ouroborosWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Ouroboros) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

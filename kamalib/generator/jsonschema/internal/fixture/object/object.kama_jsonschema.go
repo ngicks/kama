@@ -19,7 +19,7 @@ import (
 //
 // Object exercises every field shape of an object.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Object struct {
 	// ReqName is required and not null.
 	ReqName      string                       `json:"reqName"`
@@ -42,7 +42,7 @@ type Object struct {
 
 // objectWire keeps a missing member of Object apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type objectWire struct {
 	ReqName      und.Und[string]           `json:"reqName,omitzero"`
 	OptName      und.Und[string]           `json:"optName,omitzero"`
@@ -65,7 +65,7 @@ type objectWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -116,12 +116,12 @@ func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // ObjectColor is generated from the schema at #/properties/color.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ObjectColor string
 
 // ObjectColor values the schema allows.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 const (
 	ObjectColorRed      ObjectColor = "red"
 	ObjectColorGreen    ObjectColor = "green"
@@ -131,7 +131,7 @@ const (
 // UnmarshalJSONFrom decodes v from one JSON string. It rejects a value the
 // schema does not list.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -150,14 +150,14 @@ func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // ObjectInline is generated from the schema at #/properties/inline.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ObjectInline struct {
 	X float64 `json:"x"`
 }
 
 // objectInlineWire keeps a missing member of ObjectInline apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type objectInlineWire struct {
 	X und.Und[float64] `json:"x,omitzero"`
 }
@@ -165,7 +165,7 @@ type objectInlineWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -188,14 +188,14 @@ func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // ObjectClosed is generated from the schema at #/properties/closed.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ObjectClosed struct {
 	A opt.Option[bool] `json:"a,omitzero"`
 }
 
 // objectClosedWire keeps a missing member of ObjectClosed apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type objectClosedWire struct {
 	A       und.Und[bool]             `json:"a,omitzero"`
 	Unknown map[string]jsontext.Value `json:",embed"`
@@ -204,7 +204,7 @@ type objectClosedWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -228,7 +228,7 @@ func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // ObjectOpen is generated from the schema at #/properties/open.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ObjectOpen struct {
 	Id                   opt.Option[int64] `json:"id,omitzero"`
 	AdditionalProperties map[string]string `json:",embed"`
@@ -236,7 +236,7 @@ type ObjectOpen struct {
 
 // objectOpenWire keeps a missing member of ObjectOpen apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type objectOpenWire struct {
 	Id                   und.Und[int64]    `json:"id,omitzero"`
 	AdditionalProperties map[string]string `json:",embed"`
@@ -245,7 +245,7 @@ type objectOpenWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -269,7 +269,7 @@ func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Point is generated from the schema at #/$defs/Point.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Point struct {
 	X int64 `json:"x"`
 	Y int64 `json:"y"`
@@ -277,7 +277,7 @@ type Point struct {
 
 // pointWire keeps a missing member of Point apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type pointWire struct {
 	X und.Und[int64] `json:"x,omitzero"`
 	Y und.Und[int64] `json:"y,omitzero"`
@@ -286,7 +286,7 @@ type pointWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

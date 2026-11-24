@@ -28,8 +28,8 @@ var ErrStale = errors.New("generator: stale generated file")
 type StaleCheck struct {
 	// Registry tells the generator a marker names.
 	Registry *genmark.Registry
-	// Generator is the name the generator marks its declarations with.
-	Generator string
+	// Generator is the generator whose marked files the check finds.
+	Generator Id
 	// Keep reports whether the file at path of pkg is left out although the
 	// run did not produce it. Nil keeps none.
 	Keep func(pkg *packages.Package, path string) bool
@@ -143,7 +143,7 @@ func (c StaleCheck) warning(name string) error {
 func (c StaleCheck) marked(f *ast.File) bool {
 	marked := func(cg *ast.CommentGroup) bool {
 		gen, ok := c.Registry.Generated(cg)
-		return ok && gen == c.Generator
+		return ok && gen == c.Generator.String()
 	}
 	markedSpec := func(spec ast.Spec) bool {
 		switch s := spec.(type) {

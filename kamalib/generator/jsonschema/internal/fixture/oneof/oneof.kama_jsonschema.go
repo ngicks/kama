@@ -18,7 +18,7 @@ import (
 
 // Zoo is generated from the schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Zoo struct {
 	Star     Pet                   `json:"star"`
 	Pets     []Pet                 `json:"pets"`
@@ -29,7 +29,7 @@ type Zoo struct {
 
 // zooWire keeps a missing member of Zoo apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type zooWire struct {
 	Star     und.Und[Pet]       `json:"star,omitzero"`
 	Pets     und.Und[[]Pet]     `json:"pets,omitzero"`
@@ -41,7 +41,7 @@ type zooWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Zoo) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -73,7 +73,7 @@ func (v *Zoo) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // ZooMixed is exactly one of String, Integer, Object. It is generated from
 // the schema at #/properties/mixed.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ZooMixed struct {
 	Kind ZooMixedKind
 }
@@ -81,50 +81,50 @@ type ZooMixed struct {
 // ZooMixedKind is implemented by ZooMixedString, ZooMixedInteger and
 // ZooMixedObject only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ZooMixedKind interface {
 	isZooMixedKind()
 }
 
 // ZooMixedString holds the String member of ZooMixed.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ZooMixedString struct {
 	String string
 }
 
 // isZooMixedKind marks ZooMixedString as a ZooMixedKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (ZooMixedString) isZooMixedKind() {}
 
 // ZooMixedInteger holds the Integer member of ZooMixed.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ZooMixedInteger struct {
 	Integer int64
 }
 
 // isZooMixedKind marks ZooMixedInteger as a ZooMixedKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (ZooMixedInteger) isZooMixedKind() {}
 
 // ZooMixedObject holds the Object member of ZooMixed.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ZooMixedObject struct {
 	Object ZooMixedObjectValue
 }
 
 // isZooMixedKind marks ZooMixedObject as a ZooMixedKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (ZooMixedObject) isZooMixedKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v ZooMixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case ZooMixedString:
@@ -139,7 +139,7 @@ func (v ZooMixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the only member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -191,7 +191,7 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // ZooMixedObjectValue is generated from the schema at
 // #/properties/mixed/oneOf/2.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ZooMixedObjectValue struct {
 	Note string `json:"note"`
 }
@@ -199,7 +199,7 @@ type ZooMixedObjectValue struct {
 // zooMixedObjectValueWire keeps a missing member of ZooMixedObjectValue
 // apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type zooMixedObjectValueWire struct {
 	Note und.Und[string] `json:"note,omitzero"`
 }
@@ -207,7 +207,7 @@ type zooMixedObjectValueWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *ZooMixedObjectValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -231,7 +231,7 @@ func (v *ZooMixedObjectValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // ZooAmount is exactly one of Integer, Number. It is generated from the
 // schema at #/properties/amount.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ZooAmount struct {
 	Kind ZooAmountKind
 }
@@ -239,38 +239,38 @@ type ZooAmount struct {
 // ZooAmountKind is implemented by ZooAmountInteger and ZooAmountNumber
 // only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ZooAmountKind interface {
 	isZooAmountKind()
 }
 
 // ZooAmountInteger holds the Integer member of ZooAmount.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ZooAmountInteger struct {
 	Integer int64
 }
 
 // isZooAmountKind marks ZooAmountInteger as a ZooAmountKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (ZooAmountInteger) isZooAmountKind() {}
 
 // ZooAmountNumber holds the Number member of ZooAmount.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type ZooAmountNumber struct {
 	Number float64
 }
 
 // isZooAmountKind marks ZooAmountNumber as a ZooAmountKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (ZooAmountNumber) isZooAmountKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v ZooAmount) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case ZooAmountInteger:
@@ -283,7 +283,7 @@ func (v ZooAmount) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the only member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -324,45 +324,45 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Pet is exactly one of Cat, Dog. It is generated from the schema at
 // #/$defs/Pet.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Pet struct {
 	Kind PetKind
 }
 
 // PetKind is implemented by PetCat and PetDog only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type PetKind interface {
 	isPetKind()
 }
 
 // PetCat holds the Cat member of Pet.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type PetCat struct {
 	Cat Cat
 }
 
 // isPetKind marks PetCat as a PetKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (PetCat) isPetKind() {}
 
 // PetDog holds the Dog member of Pet.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type PetDog struct {
 	Dog Dog
 }
 
 // isPetKind marks PetDog as a PetKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (PetDog) isPetKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Pet) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case PetCat:
@@ -375,7 +375,7 @@ func (v Pet) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the only member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -415,7 +415,7 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Cat is generated from the schema at #/$defs/Cat.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Cat struct {
 	Kind  string `json:"kind"`
 	Lives int64  `json:"lives"`
@@ -423,7 +423,7 @@ type Cat struct {
 
 // catWire keeps a missing member of Cat apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type catWire struct {
 	Kind  und.Und[string] `json:"kind,omitzero"`
 	Lives und.Und[int64]  `json:"lives,omitzero"`
@@ -432,7 +432,7 @@ type catWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -460,7 +460,7 @@ func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Dog is generated from the schema at #/$defs/Dog.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Dog struct {
 	Kind string `json:"kind"`
 	Good bool   `json:"good"`
@@ -468,7 +468,7 @@ type Dog struct {
 
 // dogWire keeps a missing member of Dog apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type dogWire struct {
 	Kind und.Und[string] `json:"kind,omitzero"`
 	Good und.Und[bool]   `json:"good,omitzero"`
@@ -477,7 +477,7 @@ type dogWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Dog) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

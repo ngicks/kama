@@ -310,7 +310,7 @@ func TestEmbeddedCollection(t *testing.T) {
 func TestRegistry(t *testing.T) {
 	files := map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{}\n",
-		"a.kama_partial.go": "package x\n\n//kama:generated kama-partial\n" +
+		"a.kama_partial.go": "package x\n\n//kama:generated kama:partial\n" +
 			"type APartial struct{}\n",
 	}
 	_, err := generate(t, files, Options{})
@@ -325,7 +325,7 @@ func TestRegistry(t *testing.T) {
 func TestMethodConflicts(t *testing.T) {
 	_, err := generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{}\n",
-		"a.kama_partial.go": "package x\n\n//kama:generated kama-partial\n" +
+		"a.kama_partial.go": "package x\n\n//kama:generated kama:partial\n" +
 			"type APartial struct{}\n\nfunc (APartial) Merge() {}\n",
 	}, Options{})
 	assert.ErrorIs(t, err, ErrConflict)

@@ -18,7 +18,7 @@ import (
 // Product is all of A, B and its own properties. It is generated from the
 // schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Product struct {
 	A   A     `json:"-"`
 	B   B     `json:"-"`
@@ -29,7 +29,7 @@ type Product struct {
 // and its own properties. The first of them to hold a member name writes
 // it. A nil pointer of a required member is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v Product) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if v.Req == nil {
 		return validation.Field(validation.New(validation.ErrNil, "required member is nil"), "req")
@@ -40,7 +40,7 @@ func (v Product) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // productWire keeps a missing member of Product apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type productWire struct {
 	Req und.Und[Back] `json:"req,omitzero"`
 }
@@ -49,7 +49,7 @@ type productWire struct {
 // properties decode from the same object. A member that fails to decode
 // stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Product) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -74,7 +74,7 @@ func (v *Product) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // A is generated from the schema at #/$defs/A.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type A struct {
 	// A declares shared first.
 	Shared opt.Option[string] `json:"shared,omitzero"`
@@ -83,7 +83,7 @@ type A struct {
 
 // aWire keeps a missing member of A apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type aWire struct {
 	Shared und.Und[string] `json:"shared,omitzero"`
 	A      und.Und[int64]  `json:"a,omitzero"`
@@ -92,7 +92,7 @@ type aWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -117,7 +117,7 @@ func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // B is generated from the schema at #/$defs/B.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type B struct {
 	// B declares shared too.
 	Shared opt.Option[string] `json:"shared,omitzero"`
@@ -126,7 +126,7 @@ type B struct {
 
 // bWire keeps a missing member of B apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type bWire struct {
 	Shared und.Und[string] `json:"shared,omitzero"`
 	B      und.Und[int64]  `json:"b,omitzero"`
@@ -135,7 +135,7 @@ type bWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -160,14 +160,14 @@ func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Back is generated from the schema at #/$defs/Back.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Back struct {
 	Product *Product `json:"product,omitzero"`
 }
 
 // backWire keeps a missing member of Back apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type backWire struct {
 	Product und.Und[Product] `json:"product,omitzero"`
 }
@@ -175,7 +175,7 @@ type backWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Back) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

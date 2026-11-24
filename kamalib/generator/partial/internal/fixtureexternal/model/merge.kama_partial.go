@@ -16,7 +16,7 @@ import (
 
 // MergingPartial is the partial variant of Merging.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type MergingPartial struct {
 	Tags     und.Und[[]string]       `json:"tags,omitzero"`
 	Attrs    und.Und[map[string]int] `json:"attrs,omitzero"`
@@ -33,7 +33,7 @@ type MergingPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MergingPartial) FromValue(v Merging) {
 	p.Tags = und.WrapSlice(v.Tags).CollapseToNull()
 	p.Attrs = und.WrapMap(v.Attrs).CollapseToNull()
@@ -50,7 +50,7 @@ func (p *MergingPartial) FromValue(v Merging) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MergingPartial) ToValue() Merging {
 	var v Merging
 	v.Tags = p.Tags.Value()
@@ -72,7 +72,7 @@ func (p MergingPartial) ToValue() Merging {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MergingPartial) Merge(r MergingPartial) MergingPartial {
 	p.Tags = kamaPartialMergeAppend_6de6b87afb_d9bcd9fe82(p.Tags, r.Tags)
 	p.Attrs = kamaPartialMergeAppend_88ccc7a5bc_82d3098647(p.Attrs, r.Attrs)
@@ -98,7 +98,7 @@ func (p MergingPartial) Merge(r MergingPartial) MergingPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p MergingPartial) ApplyTo(v Merging) Merging {
 	var base MergingPartial
 	base.FromValue(v)
@@ -109,7 +109,7 @@ func (p MergingPartial) ApplyTo(v Merging) Merging {
 // option. Every flag defaults to the zero value; FromFlagSet reads the
 // flags back after f is parsed.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MergingPartial) RegisterFlags(f PartialFlagSet) {
 	f.IntP("flagged", "", 0, "")
 }
@@ -119,7 +119,7 @@ func (p *MergingPartial) RegisterFlags(f PartialFlagSet) {
 // are, so merging p onto another partial value keeps the fields of the
 // flags not set.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *MergingPartial) FromFlagSet(f PartialFlagSet) error {
 	if f.Changed("flagged") {
 		v, err := f.GetInt("flagged")
@@ -133,7 +133,7 @@ func (p *MergingPartial) FromFlagSet(f PartialFlagSet) error {
 
 // EmbedsPartial is the partial variant of Embeds.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type EmbedsPartial struct {
 	Labels und.Und[LabelsPartial] `json:",omitzero"`
 	BasePartial
@@ -142,7 +142,7 @@ type EmbedsPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *EmbedsPartial) FromValue(v Embeds) {
 	p.Labels = kamaPartialFromTarget_e25e50328a_11d2edd724(v.Labels)
 	p.BasePartial = kamaPartialFromEmbedded_a09bc8b04a_8083a4b204(v.Base)
@@ -151,7 +151,7 @@ func (p *EmbedsPartial) FromValue(v Embeds) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p EmbedsPartial) ToValue() Embeds {
 	var v Embeds
 	v.Labels = p.Labels.Value().ToValue()
@@ -162,7 +162,7 @@ func (p EmbedsPartial) ToValue() Embeds {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p EmbedsPartial) Merge(r EmbedsPartial) EmbedsPartial {
 	p.Labels = kamaPartialMergeRecursive_07465c27a0_11d2edd724(p.Labels, r.Labels)
 	p.BasePartial = p.BasePartial.Merge(r.BasePartial)
@@ -172,7 +172,7 @@ func (p EmbedsPartial) Merge(r EmbedsPartial) EmbedsPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p EmbedsPartial) ApplyTo(v Embeds) Embeds {
 	var base EmbedsPartial
 	base.FromValue(v)
@@ -181,13 +181,13 @@ func (p EmbedsPartial) ApplyTo(v Embeds) Embeds {
 
 // LabelsPartial is the partial variant of Labels.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type LabelsPartial []und.Und[string]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *LabelsPartial) FromValue(v Labels) {
 	if v == nil {
 		*p = nil
@@ -202,7 +202,7 @@ func (p *LabelsPartial) FromValue(v Labels) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LabelsPartial) ToValue() Labels {
 	if p == nil {
 		return nil
@@ -216,7 +216,7 @@ func (p LabelsPartial) ToValue() Labels {
 
 // Merge returns r, or p when r is nil. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LabelsPartial) Merge(r LabelsPartial) LabelsPartial {
 	if r == nil {
 		return p
@@ -227,7 +227,7 @@ func (p LabelsPartial) Merge(r LabelsPartial) LabelsPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p LabelsPartial) ApplyTo(v Labels) Labels {
 	var base LabelsPartial
 	base.FromValue(v)

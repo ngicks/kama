@@ -17,7 +17,7 @@ import (
 
 // Levels is generated from the schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Levels struct {
 	Ref    und.Und[int64]      `json:"ref,omitzero"`
 	Const  und.Und[string]     `json:"const,omitzero"`
@@ -27,7 +27,7 @@ type Levels struct {
 
 // levelsWire keeps a missing member of Levels apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type levelsWire struct {
 	Ref    und.Und[int64]   `json:"ref,omitzero"`
 	Const  und.Und[string]  `json:"const,omitzero"`
@@ -38,7 +38,7 @@ type levelsWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

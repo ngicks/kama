@@ -85,7 +85,7 @@ type Comparable struct{ X, Y int }
 	assertContains(t, out[HelpersFile],
 		"func requiredComparable[T comparable](t T) error {",
 		"func kamaValidateRequired(ok bool, got string) error {",
-		"//kama:generated kama-validate",
+		"//kama:generated kama:validate",
 	)
 }
 
@@ -293,7 +293,7 @@ type A struct {
 		"\t\"errors\"\n",
 		"func kamaValidatePositive(n int64) error {",
 		"// kamaValidateNotPositive is a helper of the generated Validate methods.\n//\n"+
-			"//kama:generated kama-validate\nvar kamaValidateNotPositive = errors.New(",
+			"//kama:generated kama:validate\nvar kamaValidateNotPositive = errors.New(",
 	)
 
 	// The marked variable is the generator's own on the next run.

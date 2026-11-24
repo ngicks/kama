@@ -14,17 +14,17 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
-// GeneratorName is the name the generator marks its declarations with.
-const GeneratorName = "kama-jsonschema"
+// GeneratorId identifies the generator.
+var GeneratorId = base.Id{Namespace: "kama", Name: "jsonschema"}
 
 // naming names the files the generator writes.
-var naming = base.Naming{Name: "kama_jsonschema"}
+var naming = GeneratorId.Naming()
 
 // generatorPath is the import path of the generator, named by the first
 // line of the header of every generated file.
 const generatorPath = "github.com/ngicks/kama/kamalib/generator/jsonschema"
 
-func init() { base.MustRegister(GeneratorName) }
+func init() { base.MustRegister(GeneratorId) }
 
 var (
 	// ErrUnsupported reports a keyword or a shape of a schema the generator

@@ -12,7 +12,7 @@ package fallback
 // of p, a FallbackPartial, is undefined, the fields of embedded partial
 // values included. Blank fields are skipped.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialAllUndefined_ae5f33d0bc_48118fe3f3(p FallbackPartial) bool {
 	return p.Name.IsUndefined() &&
 		p.Unknown == nil
@@ -21,7 +21,7 @@ func kamaPartialAllUndefined_ae5f33d0bc_48118fe3f3(p FallbackPartial) bool {
 // kamaPartialFromEmbedded_44a1ea1ddb_ae5f33d0bc converts *Fallback into
 // FallbackPartial, or the zero partial value for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromEmbedded_44a1ea1ddb_ae5f33d0bc(v *Fallback) FallbackPartial {
 	var x FallbackPartial
 	if v != nil {
@@ -33,7 +33,7 @@ func kamaPartialFromEmbedded_44a1ea1ddb_ae5f33d0bc(v *Fallback) FallbackPartial 
 // kamaPartialToEmbedded_ae5f33d0bc_44a1ea1ddb converts FallbackPartial into
 // *Fallback, newly allocated, or nil when every field of p is undefined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToEmbedded_ae5f33d0bc_44a1ea1ddb(p FallbackPartial) *Fallback {
 	if kamaPartialAllUndefined_ae5f33d0bc_48118fe3f3(p) {
 		return nil

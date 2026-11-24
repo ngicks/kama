@@ -12,12 +12,12 @@ import (
 
 // KeyVerbose is the context key for a bool value.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 var KeyVerbose = keyTypeFunc("bool")
 
 // WithVerbose returns a copy of ctx in which KeyVerbose is associated with v.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func WithVerbose(ctx context.Context, v bool) context.Context {
 	return context.WithValue(ctx, KeyVerbose, v)
 }
@@ -25,7 +25,7 @@ func WithVerbose(ctx context.Context, v bool) context.Context {
 // ValueVerbose returns the bool associated with KeyVerbose in ctx.
 // ok is false if no value is associated or the value is not a bool.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueVerbose(ctx context.Context) (v bool, ok bool) {
 	v, ok = ctx.Value(KeyVerbose).(bool)
 	return v, ok
@@ -34,7 +34,7 @@ func ValueVerbose(ctx context.Context) (v bool, ok bool) {
 // ValueVerboseFallback returns the bool associated with KeyVerbose in ctx,
 // or fallback if ValueVerbose reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueVerboseFallback(ctx context.Context, fallback bool) bool {
 	if v, ok := ValueVerbose(ctx); ok {
 		return v
@@ -45,7 +45,7 @@ func ValueVerboseFallback(ctx context.Context, fallback bool) bool {
 // ValueVerboseFallbackFn returns the bool associated with KeyVerbose in ctx,
 // or the result of fallbackFn if ValueVerbose reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueVerboseFallbackFn(ctx context.Context, fallbackFn func() bool) bool {
 	if v, ok := ValueVerbose(ctx); ok {
 		return v
@@ -56,7 +56,7 @@ func ValueVerboseFallbackFn(ctx context.Context, fallbackFn func() bool) bool {
 // ValueVerboseDefault returns the bool associated with KeyVerbose in ctx,
 // or false if ValueVerbose reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueVerboseDefault(ctx context.Context) bool {
 	return ValueVerboseFallbackFn(ctx, func() bool { return false })
 }

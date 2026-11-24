@@ -17,7 +17,7 @@ import (
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Rules) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := validation.Field(kamaValidateZeroComparable(v.Zero), "zero"); err != nil {
@@ -194,7 +194,7 @@ func (v Rules) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v MultipleOf) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := validation.Field(kamaValidateMultipleInt(v.ByInt, 2, "2"), "by_int"); err != nil {
@@ -245,7 +245,7 @@ func (v MultipleOf) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Ordered) Validate(stopOnFirstError bool) error {
 	var errs []error
 	for _, k := range slices.Sorted(maps.Keys(v.ByName)) {
@@ -280,7 +280,7 @@ func (v Ordered) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Stamped) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := validation.Field(requiredComparable(v.At), "at"); err != nil {
@@ -301,7 +301,7 @@ func (v Stamped) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Shipping) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := kamaValidateRequires(stopOnFirstError, "street", v.Street.IsSome(), []string{"city", "zip"}, v.City != nil, v.Zip.IsDefined()); err != nil {
@@ -322,7 +322,7 @@ func (v Shipping) Validate(stopOnFirstError bool) error {
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
-//kama:generated kama-validate
+//kama:generated kama:validate
 func (v Contact) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Email.IsSome(), v.Phone != nil)+1+len(v.Extra), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Email.IsSome(), v.Phone != nil)+1+len(v.Extra), "<=", 3)); err != nil {

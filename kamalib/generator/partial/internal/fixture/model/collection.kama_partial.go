@@ -12,7 +12,7 @@ import "github.com/ngicks/option/und"
 
 // ShelfPartial is the partial variant of Shelf.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type ShelfPartial struct {
 	Books    und.Und[[]Book]           `json:"books,omitzero"`
 	BookRefs und.Und[[]*Book]          `json:"book_refs,omitzero"`
@@ -34,7 +34,7 @@ type ShelfPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *ShelfPartial) FromValue(v Shelf) {
 	p.Books = und.WrapSlice(v.Books).CollapseToNull()
 	p.BookRefs = und.WrapSlice(v.BookRefs).CollapseToNull()
@@ -53,7 +53,7 @@ func (p *ShelfPartial) FromValue(v Shelf) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p ShelfPartial) ToValue() Shelf {
 	var v Shelf
 	v.Books = p.Books.Value()
@@ -74,7 +74,7 @@ func (p ShelfPartial) ToValue() Shelf {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p ShelfPartial) Merge(r ShelfPartial) ShelfPartial {
 	if !r.Books.IsUndefined() {
 		p.Books = r.Books
@@ -102,7 +102,7 @@ func (p ShelfPartial) Merge(r ShelfPartial) ShelfPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p ShelfPartial) ApplyTo(v Shelf) Shelf {
 	var base ShelfPartial
 	base.FromValue(v)
@@ -111,7 +111,7 @@ func (p ShelfPartial) ApplyTo(v Shelf) Shelf {
 
 // CatalogPartial is the partial variant of Catalog.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type CatalogPartial struct {
 	Books    und.Und[[]Book]            `json:"books,omitzero"`
 	BookRefs und.Und[[]*Book]           `json:"book_refs,omitzero"`
@@ -127,7 +127,7 @@ type CatalogPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *CatalogPartial) FromValue(v Catalog) {
 	p.Books = und.WrapSlice(v.Books).CollapseToNull()
 	p.BookRefs = und.WrapSlice(v.BookRefs).CollapseToNull()
@@ -143,7 +143,7 @@ func (p *CatalogPartial) FromValue(v Catalog) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CatalogPartial) ToValue() Catalog {
 	var v Catalog
 	v.Books = p.Books.Value()
@@ -161,7 +161,7 @@ func (p CatalogPartial) ToValue() Catalog {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CatalogPartial) Merge(r CatalogPartial) CatalogPartial {
 	p.Books = kamaPartialMergeAppend_011cbfeb33_14cbb7f736(p.Books, r.Books)
 	p.BookRefs = kamaPartialMergeAppend_4dab343a0f_1ddc93702c(p.BookRefs, r.BookRefs)
@@ -180,7 +180,7 @@ func (p CatalogPartial) Merge(r CatalogPartial) CatalogPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p CatalogPartial) ApplyTo(v Catalog) Catalog {
 	var base CatalogPartial
 	base.FromValue(v)
@@ -189,7 +189,7 @@ func (p CatalogPartial) ApplyTo(v Catalog) Catalog {
 
 // BookPartial is the partial variant of Book.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type BookPartial struct {
 	Title und.Und[string] `json:"title,omitzero"`
 	Pages und.Und[int]    `json:"pages,omitzero"`
@@ -198,7 +198,7 @@ type BookPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *BookPartial) FromValue(v Book) {
 	p.Title = und.Defined(v.Title)
 	p.Pages = und.FromPointer(v.Pages).CollapseToNull()
@@ -207,7 +207,7 @@ func (p *BookPartial) FromValue(v Book) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookPartial) ToValue() Book {
 	var v Book
 	v.Title = p.Title.Value()
@@ -221,7 +221,7 @@ func (p BookPartial) ToValue() Book {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookPartial) Merge(r BookPartial) BookPartial {
 	if !r.Title.IsUndefined() {
 		p.Title = r.Title
@@ -235,7 +235,7 @@ func (p BookPartial) Merge(r BookPartial) BookPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookPartial) ApplyTo(v Book) Book {
 	var base BookPartial
 	base.FromValue(v)
@@ -244,13 +244,13 @@ func (p BookPartial) ApplyTo(v Book) Book {
 
 // BooksPartial is the partial variant of Books.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type BooksPartial []und.Und[BookPartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *BooksPartial) FromValue(v Books) {
 	if v == nil {
 		*p = nil
@@ -265,7 +265,7 @@ func (p *BooksPartial) FromValue(v Books) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BooksPartial) ToValue() Books {
 	if p == nil {
 		return nil
@@ -279,7 +279,7 @@ func (p BooksPartial) ToValue() Books {
 
 // Merge returns r, or p when r is nil. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BooksPartial) Merge(r BooksPartial) BooksPartial {
 	if r == nil {
 		return p
@@ -290,7 +290,7 @@ func (p BooksPartial) Merge(r BooksPartial) BooksPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BooksPartial) ApplyTo(v Books) Books {
 	var base BooksPartial
 	base.FromValue(v)
@@ -299,13 +299,13 @@ func (p BooksPartial) ApplyTo(v Books) Books {
 
 // BookRefsPartial is the partial variant of BookRefs.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type BookRefsPartial []und.Und[BookPartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *BookRefsPartial) FromValue(v BookRefs) {
 	if v == nil {
 		*p = nil
@@ -320,7 +320,7 @@ func (p *BookRefsPartial) FromValue(v BookRefs) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookRefsPartial) ToValue() BookRefs {
 	if p == nil {
 		return nil
@@ -334,7 +334,7 @@ func (p BookRefsPartial) ToValue() BookRefs {
 
 // Merge returns r, or p when r is nil. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookRefsPartial) Merge(r BookRefsPartial) BookRefsPartial {
 	if r == nil {
 		return p
@@ -345,7 +345,7 @@ func (p BookRefsPartial) Merge(r BookRefsPartial) BookRefsPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookRefsPartial) ApplyTo(v BookRefs) BookRefs {
 	var base BookRefsPartial
 	base.FromValue(v)
@@ -354,13 +354,13 @@ func (p BookRefsPartial) ApplyTo(v BookRefs) BookRefs {
 
 // BookMapPartial is the partial variant of BookMap.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type BookMapPartial map[string]und.Und[BookPartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *BookMapPartial) FromValue(v BookMap) {
 	if v == nil {
 		*p = nil
@@ -375,7 +375,7 @@ func (p *BookMapPartial) FromValue(v BookMap) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookMapPartial) ToValue() BookMap {
 	if p == nil {
 		return nil
@@ -389,7 +389,7 @@ func (p BookMapPartial) ToValue() BookMap {
 
 // Merge returns r, or p when r is nil. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookMapPartial) Merge(r BookMapPartial) BookMapPartial {
 	if r == nil {
 		return p
@@ -400,7 +400,7 @@ func (p BookMapPartial) Merge(r BookMapPartial) BookMapPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookMapPartial) ApplyTo(v BookMap) BookMap {
 	var base BookMapPartial
 	base.FromValue(v)
@@ -409,13 +409,13 @@ func (p BookMapPartial) ApplyTo(v BookMap) BookMap {
 
 // BookRefMapPartial is the partial variant of BookRefMap.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type BookRefMapPartial map[string]und.Und[BookPartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *BookRefMapPartial) FromValue(v BookRefMap) {
 	if v == nil {
 		*p = nil
@@ -430,7 +430,7 @@ func (p *BookRefMapPartial) FromValue(v BookRefMap) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookRefMapPartial) ToValue() BookRefMap {
 	if p == nil {
 		return nil
@@ -444,7 +444,7 @@ func (p BookRefMapPartial) ToValue() BookRefMap {
 
 // Merge returns r, or p when r is nil. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookRefMapPartial) Merge(r BookRefMapPartial) BookRefMapPartial {
 	if r == nil {
 		return p
@@ -455,7 +455,7 @@ func (p BookRefMapPartial) Merge(r BookRefMapPartial) BookRefMapPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p BookRefMapPartial) ApplyTo(v BookRefMap) BookRefMap {
 	var base BookRefMapPartial
 	base.FromValue(v)
@@ -464,7 +464,7 @@ func (p BookRefMapPartial) ApplyTo(v BookRefMap) BookRefMap {
 
 // SectionPartial is the partial variant of Section.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type SectionPartial struct {
 	Name  und.Und[string]            `json:"name,omitzero"`
 	Books und.Und[BooksPartial]      `json:"books,omitzero"`
@@ -474,7 +474,7 @@ type SectionPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *SectionPartial) FromValue(v Section) {
 	p.Name = und.Defined(v.Name)
 	p.Books = kamaPartialFromTarget_60d688abf1_096af22270(v.Books)
@@ -484,7 +484,7 @@ func (p *SectionPartial) FromValue(v Section) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p SectionPartial) ToValue() Section {
 	var v Section
 	v.Name = p.Name.Value()
@@ -496,7 +496,7 @@ func (p SectionPartial) ToValue() Section {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p SectionPartial) Merge(r SectionPartial) SectionPartial {
 	if !r.Name.IsUndefined() {
 		p.Name = r.Name
@@ -509,7 +509,7 @@ func (p SectionPartial) Merge(r SectionPartial) SectionPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p SectionPartial) ApplyTo(v Section) Section {
 	var base SectionPartial
 	base.FromValue(v)
@@ -518,13 +518,13 @@ func (p SectionPartial) ApplyTo(v Section) Section {
 
 // SectionsPartial is the partial variant of Sections.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type SectionsPartial []und.Und[SectionPartial]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *SectionsPartial) FromValue(v Sections) {
 	if v == nil {
 		*p = nil
@@ -539,7 +539,7 @@ func (p *SectionsPartial) FromValue(v Sections) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p SectionsPartial) ToValue() Sections {
 	if p == nil {
 		return nil
@@ -553,7 +553,7 @@ func (p SectionsPartial) ToValue() Sections {
 
 // Merge returns r, or p when r is nil. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p SectionsPartial) Merge(r SectionsPartial) SectionsPartial {
 	if r == nil {
 		return p
@@ -564,7 +564,7 @@ func (p SectionsPartial) Merge(r SectionsPartial) SectionsPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p SectionsPartial) ApplyTo(v Sections) Sections {
 	var base SectionsPartial
 	base.FromValue(v)
@@ -573,13 +573,13 @@ func (p SectionsPartial) ApplyTo(v Sections) Sections {
 
 // PagesPartial is the partial variant of Pages.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type PagesPartial[T any] []und.Und[PagePartial[T]]
 
 // FromValue sets p to the partial forms of the elements of v. A nil v
 // gives a nil p.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *PagesPartial[T]) FromValue(v Pages[T]) {
 	if v == nil {
 		*p = nil
@@ -594,7 +594,7 @@ func (p *PagesPartial[T]) FromValue(v Pages[T]) {
 // ToValue returns the value p describes. An undefined or null element
 // gives the zero value of the element, and a nil p gives nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PagesPartial[T]) ToValue() Pages[T] {
 	if p == nil {
 		return nil
@@ -608,7 +608,7 @@ func (p PagesPartial[T]) ToValue() Pages[T] {
 
 // Merge returns r, or p when r is nil. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PagesPartial[T]) Merge(r PagesPartial[T]) PagesPartial[T] {
 	if r == nil {
 		return p
@@ -619,7 +619,7 @@ func (p PagesPartial[T]) Merge(r PagesPartial[T]) PagesPartial[T] {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PagesPartial[T]) ApplyTo(v Pages[T]) Pages[T] {
 	var base PagesPartial[T]
 	base.FromValue(v)
@@ -628,7 +628,7 @@ func (p PagesPartial[T]) ApplyTo(v Pages[T]) Pages[T] {
 
 // PagePartial is the partial variant of Page.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type PagePartial[T any] struct {
 	Body und.Und[T] `json:"body,omitzero"`
 }
@@ -636,7 +636,7 @@ type PagePartial[T any] struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *PagePartial[T]) FromValue(v Page[T]) {
 	p.Body = und.Defined(v.Body)
 }
@@ -644,7 +644,7 @@ func (p *PagePartial[T]) FromValue(v Page[T]) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PagePartial[T]) ToValue() Page[T] {
 	var v Page[T]
 	v.Body = p.Body.Value()
@@ -654,7 +654,7 @@ func (p PagePartial[T]) ToValue() Page[T] {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PagePartial[T]) Merge(r PagePartial[T]) PagePartial[T] {
 	if !r.Body.IsUndefined() {
 		p.Body = r.Body
@@ -665,7 +665,7 @@ func (p PagePartial[T]) Merge(r PagePartial[T]) PagePartial[T] {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p PagePartial[T]) ApplyTo(v Page[T]) Page[T] {
 	var base PagePartial[T]
 	base.FromValue(v)

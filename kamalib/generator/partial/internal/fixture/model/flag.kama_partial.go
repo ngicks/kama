@@ -17,7 +17,7 @@ import (
 
 // FlagsPartial is the partial variant of Flags.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type FlagsPartial struct {
 	Name     und.Und[string]            `json:"name,omitzero"`
 	Verbose  und.Und[bool]              `json:"verbose,omitzero"`
@@ -45,7 +45,7 @@ type FlagsPartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *FlagsPartial) FromValue(v Flags) {
 	p.Name = und.Defined(v.Name)
 	p.Verbose = und.Defined(v.Verbose)
@@ -72,7 +72,7 @@ func (p *FlagsPartial) FromValue(v Flags) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p FlagsPartial) ToValue() Flags {
 	var v Flags
 	v.Name = p.Name.Value()
@@ -107,7 +107,7 @@ func (p FlagsPartial) ToValue() Flags {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p FlagsPartial) Merge(r FlagsPartial) FlagsPartial {
 	if !r.Name.IsUndefined() {
 		p.Name = r.Name
@@ -173,7 +173,7 @@ func (p FlagsPartial) Merge(r FlagsPartial) FlagsPartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p FlagsPartial) ApplyTo(v Flags) Flags {
 	var base FlagsPartial
 	base.FromValue(v)
@@ -184,7 +184,7 @@ func (p FlagsPartial) ApplyTo(v Flags) Flags {
 // option. Every flag defaults to the zero value; FromFlagSet reads the
 // flags back after f is parsed.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *FlagsPartial) RegisterFlags(f PartialFlagSet) {
 	f.StringP("name", "n", "", "the name")
 	f.BoolP("verbose", "v", false, "")
@@ -211,7 +211,7 @@ func (p *FlagsPartial) RegisterFlags(f PartialFlagSet) {
 // are, so merging p onto another partial value keeps the fields of the
 // flags not set.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *FlagsPartial) FromFlagSet(f PartialFlagSet) error {
 	if f.Changed("name") {
 		v, err := f.GetString("name")

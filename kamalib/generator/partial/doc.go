@@ -684,7 +684,7 @@
 // suffixes of its name, as in x.kama_partial_linux.go for x_linux.go, and
 // the //go:build line of the source file. The helpers the partial files
 // call go to the helpers files described under Helpers. Every generated
-// declaration carries the marker //kama:generated kama-partial.
+// declaration carries the marker //kama:generated kama:partial.
 //
 // The files other than the partial files start with zz_gen.: the helpers
 // file zz_gen.helper.kama_partial.go, the helpers files of constrained

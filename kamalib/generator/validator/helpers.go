@@ -159,7 +159,7 @@ func renderHelpersWith(
 		d.Decorations().Start = dst.Decorations{
 			"// " + hf.Names[i] + " is a helper of the generated Validate methods.",
 			"//",
-			base.Marker(GeneratorName),
+			GeneratorId.Marker(),
 		}
 	}
 

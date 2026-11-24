@@ -18,7 +18,7 @@ import (
 // of p, a BasePartial, is undefined, the fields of embedded partial values
 // included. Blank fields are skipped.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialAllUndefined_3f182bfec3_48118fe3f3(p BasePartial) bool {
 	return p.ID.IsUndefined()
 }
@@ -27,7 +27,7 @@ func kamaPartialAllUndefined_3f182bfec3_48118fe3f3(p BasePartial) bool {
 // of p, a MaskAuditPartial, is undefined, the fields of embedded partial
 // values included. Blank fields are skipped.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialAllUndefined_938178b318_48118fe3f3(p MaskAuditPartial) bool {
 	return p.Note.IsUndefined()
 }
@@ -36,7 +36,7 @@ func kamaPartialAllUndefined_938178b318_48118fe3f3(p MaskAuditPartial) bool {
 // of p, a MaskEmbeddedPartial, is undefined, the fields of embedded partial
 // values included. Blank fields are skipped.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialAllUndefined_c1c17f25c8_48118fe3f3(p MaskEmbeddedPartial) bool {
 	return p.E.IsUndefined() &&
 		p.EDeep.IsUndefined()
@@ -46,7 +46,7 @@ func kamaPartialAllUndefined_c1c17f25c8_48118fe3f3(p MaskEmbeddedPartial) bool {
 // of p, a AuditPartial, is undefined, the fields of embedded partial values
 // included. Blank fields are skipped.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialAllUndefined_d86f262313_48118fe3f3(p AuditPartial) bool {
 	return p.CreatedAt.IsUndefined()
 }
@@ -54,7 +54,7 @@ func kamaPartialAllUndefined_d86f262313_48118fe3f3(p AuditPartial) bool {
 // kamaPartialFromEmbedded_048f68293c_938178b318 converts *MaskAudit into
 // MaskAuditPartial, or the zero partial value for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromEmbedded_048f68293c_938178b318(v *MaskAudit) MaskAuditPartial {
 	var x MaskAuditPartial
 	if v != nil {
@@ -66,7 +66,7 @@ func kamaPartialFromEmbedded_048f68293c_938178b318(v *MaskAudit) MaskAuditPartia
 // kamaPartialFromEmbedded_4508983bce_3f182bfec3 converts *Base into
 // BasePartial, or the zero partial value for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromEmbedded_4508983bce_3f182bfec3(v *Base) BasePartial {
 	var x BasePartial
 	if v != nil {
@@ -78,7 +78,7 @@ func kamaPartialFromEmbedded_4508983bce_3f182bfec3(v *Base) BasePartial {
 // kamaPartialFromEmbedded_4bd57c3cd6_d86f262313 converts *Audit into
 // AuditPartial, or the zero partial value for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromEmbedded_4bd57c3cd6_d86f262313(v *Audit) AuditPartial {
 	var x AuditPartial
 	if v != nil {
@@ -90,7 +90,7 @@ func kamaPartialFromEmbedded_4bd57c3cd6_d86f262313(v *Audit) AuditPartial {
 // kamaPartialFromEmbedded_679402f797_c1c17f25c8 converts *MaskEmbedded into
 // MaskEmbeddedPartial, or the zero partial value for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromEmbedded_679402f797_c1c17f25c8(v *MaskEmbedded) MaskEmbeddedPartial {
 	var x MaskEmbeddedPartial
 	if v != nil {
@@ -103,7 +103,7 @@ func kamaPartialFromEmbedded_679402f797_c1c17f25c8(v *MaskEmbedded) MaskEmbedded
 // und.Und[*RingPartial], a newly allocated defined value, or null for a nil
 // v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTargetRef_137cb0dab1_9a44f3e19f(v *Ring) und.Und[*RingPartial] {
 	if v == nil {
 		return und.Null[*RingPartial]()
@@ -117,7 +117,7 @@ func kamaPartialFromTargetRef_137cb0dab1_9a44f3e19f(v *Ring) und.Und[*RingPartia
 // und.Und[*TreePartial], a newly allocated defined value, or null for a nil
 // v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTargetRef_441c625eb6_c84853de53(v *Tree) und.Und[*TreePartial] {
 	if v == nil {
 		return und.Null[*TreePartial]()
@@ -131,7 +131,7 @@ func kamaPartialFromTargetRef_441c625eb6_c84853de53(v *Tree) und.Und[*TreePartia
 // und.Und[*MaskPongPartial], a newly allocated defined value, or null for a
 // nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTargetRef_55a356d847_f0a81495d1(v *MaskPong) und.Und[*MaskPongPartial] {
 	if v == nil {
 		return und.Null[*MaskPongPartial]()
@@ -145,7 +145,7 @@ func kamaPartialFromTargetRef_55a356d847_f0a81495d1(v *MaskPong) und.Und[*MaskPo
 // und.Und[*MaskTreePartial], a newly allocated defined value, or null for a
 // nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTargetRef_b002f032f9_8528fd4c04(v *MaskTree) und.Und[*MaskTreePartial] {
 	if v == nil {
 		return und.Null[*MaskTreePartial]()
@@ -159,7 +159,7 @@ func kamaPartialFromTargetRef_b002f032f9_8528fd4c04(v *MaskTree) und.Und[*MaskTr
 // und.Und[*MaskPingPartial], a newly allocated defined value, or null for a
 // nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTargetRef_f20ac86138_9fc9cd476f(v *MaskPing) und.Und[*MaskPingPartial] {
 	if v == nil {
 		return und.Null[*MaskPingPartial]()
@@ -172,7 +172,7 @@ func kamaPartialFromTargetRef_f20ac86138_9fc9cd476f(v *MaskPing) und.Und[*MaskPi
 // kamaPartialFromTarget_006ba99dd8_a1d3a9be08 converts Index into
 // und.Und[IndexPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_006ba99dd8_a1d3a9be08(v Index) und.Und[IndexPartial] {
 	if v == nil {
 		return und.Null[IndexPartial]()
@@ -185,7 +185,7 @@ func kamaPartialFromTarget_006ba99dd8_a1d3a9be08(v Index) und.Und[IndexPartial] 
 // kamaPartialFromTarget_02ffa29b15_37447b88c1 converts Limits into
 // und.Und[LimitsPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_02ffa29b15_37447b88c1(v Limits) und.Und[LimitsPartial] {
 	var x LimitsPartial
 	x.FromValue(v)
@@ -195,7 +195,7 @@ func kamaPartialFromTarget_02ffa29b15_37447b88c1(v Limits) und.Und[LimitsPartial
 // kamaPartialFromTarget_07f8c00b5e_83c3aee0c4 converts Sections into
 // und.Und[SectionsPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_07f8c00b5e_83c3aee0c4(v Sections) und.Und[SectionsPartial] {
 	if v == nil {
 		return und.Null[SectionsPartial]()
@@ -208,7 +208,7 @@ func kamaPartialFromTarget_07f8c00b5e_83c3aee0c4(v Sections) und.Und[SectionsPar
 // kamaPartialFromTarget_10f3453d2a_d6e07cc146 converts *Geo into
 // und.Und[GeoPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_10f3453d2a_d6e07cc146(v *Geo) und.Und[GeoPartial] {
 	if v == nil {
 		return und.Null[GeoPartial]()
@@ -221,7 +221,7 @@ func kamaPartialFromTarget_10f3453d2a_d6e07cc146(v *Geo) und.Und[GeoPartial] {
 // kamaPartialFromTarget_1e28c6c80d_780cd01e3c converts MaskDeep into
 // und.Und[MaskDeepPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_1e28c6c80d_780cd01e3c(v MaskDeep) und.Und[MaskDeepPartial] {
 	var x MaskDeepPartial
 	x.FromValue(v)
@@ -231,7 +231,7 @@ func kamaPartialFromTarget_1e28c6c80d_780cd01e3c(v MaskDeep) und.Und[MaskDeepPar
 // kamaPartialFromTarget_22f063d41a_841fcba510 converts Forest into
 // und.Und[ForestPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_22f063d41a_841fcba510(v Forest) und.Und[ForestPartial] {
 	if v == nil {
 		return und.Null[ForestPartial]()
@@ -244,7 +244,7 @@ func kamaPartialFromTarget_22f063d41a_841fcba510(v Forest) und.Und[ForestPartial
 // kamaPartialFromTarget_2b86de4f47_b8e98641b1 converts BookRefMap into
 // und.Und[BookRefMapPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_2b86de4f47_b8e98641b1(v BookRefMap) und.Und[BookRefMapPartial] {
 	if v == nil {
 		return und.Null[BookRefMapPartial]()
@@ -257,7 +257,7 @@ func kamaPartialFromTarget_2b86de4f47_b8e98641b1(v BookRefMap) und.Und[BookRefMa
 // kamaPartialFromTarget_2d60f11792_5bf66b1c64 converts MaskBox[V] into
 // und.Und[MaskBoxPartial[V]], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_2d60f11792_5bf66b1c64[V any](v MaskBox[V]) und.Und[MaskBoxPartial[V]] {
 	var x MaskBoxPartial[V]
 	x.FromValue(v)
@@ -267,7 +267,7 @@ func kamaPartialFromTarget_2d60f11792_5bf66b1c64[V any](v MaskBox[V]) und.Und[Ma
 // kamaPartialFromTarget_2e1bbdb767_a3c93adcb4 converts Items into
 // und.Und[ItemsPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_2e1bbdb767_a3c93adcb4(v Items) und.Und[ItemsPartial] {
 	if v == nil {
 		return und.Null[ItemsPartial]()
@@ -280,7 +280,7 @@ func kamaPartialFromTarget_2e1bbdb767_a3c93adcb4(v Items) und.Und[ItemsPartial] 
 // kamaPartialFromTarget_3917e0f3a4_518905c91a converts BookMap into
 // und.Und[BookMapPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_3917e0f3a4_518905c91a(v BookMap) und.Und[BookMapPartial] {
 	if v == nil {
 		return und.Null[BookMapPartial]()
@@ -293,7 +293,7 @@ func kamaPartialFromTarget_3917e0f3a4_518905c91a(v BookMap) und.Und[BookMapParti
 // kamaPartialFromTarget_3b6174a9ba_018be32c1b converts *Item into
 // und.Und[ItemPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_3b6174a9ba_018be32c1b(v *Item) und.Und[ItemPartial] {
 	if v == nil {
 		return und.Null[ItemPartial]()
@@ -306,7 +306,7 @@ func kamaPartialFromTarget_3b6174a9ba_018be32c1b(v *Item) und.Und[ItemPartial] {
 // kamaPartialFromTarget_441c625eb6_f68aa24169 converts *Tree into
 // und.Und[TreePartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_441c625eb6_f68aa24169(v *Tree) und.Und[TreePartial] {
 	if v == nil {
 		return und.Null[TreePartial]()
@@ -319,7 +319,7 @@ func kamaPartialFromTarget_441c625eb6_f68aa24169(v *Tree) und.Und[TreePartial] {
 // kamaPartialFromTarget_5912c6892d_c8cb8cc2e5 converts BookRefs into
 // und.Und[BookRefsPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_5912c6892d_c8cb8cc2e5(v BookRefs) und.Und[BookRefsPartial] {
 	if v == nil {
 		return und.Null[BookRefsPartial]()
@@ -332,7 +332,7 @@ func kamaPartialFromTarget_5912c6892d_c8cb8cc2e5(v BookRefs) und.Und[BookRefsPar
 // kamaPartialFromTarget_60a5faf5ee_902aeb6f1b converts Elem into
 // und.Und[ElemPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_60a5faf5ee_902aeb6f1b(v Elem) und.Und[ElemPartial] {
 	var x ElemPartial
 	x.FromValue(v)
@@ -342,7 +342,7 @@ func kamaPartialFromTarget_60a5faf5ee_902aeb6f1b(v Elem) und.Und[ElemPartial] {
 // kamaPartialFromTarget_60d688abf1_096af22270 converts Books into
 // und.Und[BooksPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_60d688abf1_096af22270(v Books) und.Und[BooksPartial] {
 	if v == nil {
 		return und.Null[BooksPartial]()
@@ -355,7 +355,7 @@ func kamaPartialFromTarget_60d688abf1_096af22270(v Books) und.Und[BooksPartial] 
 // kamaPartialFromTarget_62f6a24d63_018be32c1b converts Item into
 // und.Und[ItemPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_62f6a24d63_018be32c1b(v Item) und.Und[ItemPartial] {
 	var x ItemPartial
 	x.FromValue(v)
@@ -365,7 +365,7 @@ func kamaPartialFromTarget_62f6a24d63_018be32c1b(v Item) und.Und[ItemPartial] {
 // kamaPartialFromTarget_70ed9c9af6_e1ff8a0c46 converts Address into
 // und.Und[AddressPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_70ed9c9af6_e1ff8a0c46(v Address) und.Und[AddressPartial] {
 	var x AddressPartial
 	x.FromValue(v)
@@ -375,7 +375,7 @@ func kamaPartialFromTarget_70ed9c9af6_e1ff8a0c46(v Address) und.Und[AddressParti
 // kamaPartialFromTarget_782ecb7c57_5e67be4078 converts *MaskInner into
 // und.Und[MaskInnerPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_782ecb7c57_5e67be4078(v *MaskInner) und.Und[MaskInnerPartial] {
 	if v == nil {
 		return und.Null[MaskInnerPartial]()
@@ -388,7 +388,7 @@ func kamaPartialFromTarget_782ecb7c57_5e67be4078(v *MaskInner) und.Und[MaskInner
 // kamaPartialFromTarget_791f3c9709_5a1b8718c5 converts *Book into
 // und.Und[BookPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_791f3c9709_5a1b8718c5(v *Book) und.Und[BookPartial] {
 	if v == nil {
 		return und.Null[BookPartial]()
@@ -401,7 +401,7 @@ func kamaPartialFromTarget_791f3c9709_5a1b8718c5(v *Book) und.Und[BookPartial] {
 // kamaPartialFromTarget_7a2371e6aa_9d51c331c6 converts Labels into
 // und.Und[LabelsPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_7a2371e6aa_9d51c331c6(v Labels) und.Und[LabelsPartial] {
 	if v == nil {
 		return und.Null[LabelsPartial]()
@@ -414,7 +414,7 @@ func kamaPartialFromTarget_7a2371e6aa_9d51c331c6(v Labels) und.Und[LabelsPartial
 // kamaPartialFromTarget_7f28156fff_5e67be4078 converts MaskInner into
 // und.Und[MaskInnerPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_7f28156fff_5e67be4078(v MaskInner) und.Und[MaskInnerPartial] {
 	var x MaskInnerPartial
 	x.FromValue(v)
@@ -424,7 +424,7 @@ func kamaPartialFromTarget_7f28156fff_5e67be4078(v MaskInner) und.Und[MaskInnerP
 // kamaPartialFromTarget_985275b20a_6e334d4eff converts Pair[string, Geo]
 // into und.Und[PairPartial[string, Geo]], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_985275b20a_6e334d4eff(v Pair[string, Geo]) und.Und[PairPartial[string, Geo]] {
 	var x PairPartial[string, Geo]
 	x.FromValue(v)
@@ -434,7 +434,7 @@ func kamaPartialFromTarget_985275b20a_6e334d4eff(v Pair[string, Geo]) und.Und[Pa
 // kamaPartialFromTarget_9d467ebc6d_b8e98641b1 converts *BookRefMap into
 // und.Und[BookRefMapPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_9d467ebc6d_b8e98641b1(v *BookRefMap) und.Und[BookRefMapPartial] {
 	if v == nil {
 		return und.Null[BookRefMapPartial]()
@@ -447,7 +447,7 @@ func kamaPartialFromTarget_9d467ebc6d_b8e98641b1(v *BookRefMap) und.Und[BookRefM
 // kamaPartialFromTarget_9d87893b62_664dd3c3b8 converts MaskPlain into
 // und.Und[MaskPlainPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_9d87893b62_664dd3c3b8(v MaskPlain) und.Und[MaskPlainPartial] {
 	var x MaskPlainPartial
 	x.FromValue(v)
@@ -457,7 +457,7 @@ func kamaPartialFromTarget_9d87893b62_664dd3c3b8(v MaskPlain) und.Und[MaskPlainP
 // kamaPartialFromTarget_a4e4836286_801f9ddfb0 converts Pages[string] into
 // und.Und[PagesPartial[string]], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_a4e4836286_801f9ddfb0(v Pages[string]) und.Und[PagesPartial[string]] {
 	if v == nil {
 		return und.Null[PagesPartial[string]]()
@@ -470,7 +470,7 @@ func kamaPartialFromTarget_a4e4836286_801f9ddfb0(v Pages[string]) und.Und[PagesP
 // kamaPartialFromTarget_ac8c8eea85_6be2b77d43 converts Page[T] into
 // und.Und[PagePartial[T]], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_ac8c8eea85_6be2b77d43[T any](v Page[T]) und.Und[PagePartial[T]] {
 	var x PagePartial[T]
 	x.FromValue(v)
@@ -480,7 +480,7 @@ func kamaPartialFromTarget_ac8c8eea85_6be2b77d43[T any](v Page[T]) und.Und[PageP
 // kamaPartialFromTarget_b3c7b140f2_ea1ba81c3e converts *Stat[float64] into
 // und.Und[StatPartial[float64]], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_b3c7b140f2_ea1ba81c3e(v *Stat[float64]) und.Und[StatPartial[float64]] {
 	if v == nil {
 		return und.Null[StatPartial[float64]]()
@@ -493,7 +493,7 @@ func kamaPartialFromTarget_b3c7b140f2_ea1ba81c3e(v *Stat[float64]) und.Und[StatP
 // kamaPartialFromTarget_d1891aa78f_096af22270 converts *Books into
 // und.Und[BooksPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_d1891aa78f_096af22270(v *Books) und.Und[BooksPartial] {
 	if v == nil {
 		return und.Null[BooksPartial]()
@@ -506,7 +506,7 @@ func kamaPartialFromTarget_d1891aa78f_096af22270(v *Books) und.Und[BooksPartial]
 // kamaPartialFromTarget_d8fb3d9655_5a1b8718c5 converts Book into
 // und.Und[BookPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_d8fb3d9655_5a1b8718c5(v Book) und.Und[BookPartial] {
 	var x BookPartial
 	x.FromValue(v)
@@ -516,7 +516,7 @@ func kamaPartialFromTarget_d8fb3d9655_5a1b8718c5(v Book) und.Und[BookPartial] {
 // kamaPartialFromTarget_f87d0c8fad_94558c4181 converts Section into
 // und.Und[SectionPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_f87d0c8fad_94558c4181(v Section) und.Und[SectionPartial] {
 	var x SectionPartial
 	x.FromValue(v)
@@ -526,7 +526,7 @@ func kamaPartialFromTarget_f87d0c8fad_94558c4181(v Section) und.Und[SectionParti
 // kamaPartialFromTarget_f8d3da8f6a_df6da22386 converts Box[int] into
 // und.Und[BoxPartial[int]], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_f8d3da8f6a_df6da22386(v Box[int]) und.Und[BoxPartial[int]] {
 	var x BoxPartial[int]
 	x.FromValue(v)
@@ -536,7 +536,7 @@ func kamaPartialFromTarget_f8d3da8f6a_df6da22386(v Box[int]) und.Und[BoxPartial[
 // kamaPartialFromTarget_f9289d6e1e_d6d34b052c converts MaskBox[int] into
 // und.Und[MaskBoxPartial[int]], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_f9289d6e1e_d6d34b052c(v MaskBox[int]) und.Und[MaskBoxPartial[int]] {
 	var x MaskBoxPartial[int]
 	x.FromValue(v)
@@ -551,7 +551,7 @@ func kamaPartialFromTarget_f9289d6e1e_d6d34b052c(v MaskBox[int]) und.Und[MaskBox
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_011cbfeb33_14cbb7f736(l, r und.Und[[]Book]) und.Und[[]Book] {
 	if r.IsUndefined() {
 		return l
@@ -576,7 +576,7 @@ func kamaPartialMergeAppend_011cbfeb33_14cbb7f736(l, r und.Und[[]Book]) und.Und[
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_2c62a9f280_83c3aee0c4(l, r und.Und[SectionsPartial]) und.Und[SectionsPartial] {
 	if r.IsUndefined() {
 		return l
@@ -601,7 +601,7 @@ func kamaPartialMergeAppend_2c62a9f280_83c3aee0c4(l, r und.Und[SectionsPartial])
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_31d49e32b6_096af22270(l, r und.Und[BooksPartial]) und.Und[BooksPartial] {
 	if r.IsUndefined() {
 		return l
@@ -626,7 +626,7 @@ func kamaPartialMergeAppend_31d49e32b6_096af22270(l, r und.Und[BooksPartial]) un
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_3e7db1ff82_740e681c85(l, r und.Und[map[string]Book]) und.Und[map[string]Book] {
 	if r.IsUndefined() {
 		return l
@@ -652,7 +652,7 @@ func kamaPartialMergeAppend_3e7db1ff82_740e681c85(l, r und.Und[map[string]Book])
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_4dab343a0f_1ddc93702c(l, r und.Und[[]*Book]) und.Und[[]*Book] {
 	if r.IsUndefined() {
 		return l
@@ -677,7 +677,7 @@ func kamaPartialMergeAppend_4dab343a0f_1ddc93702c(l, r und.Und[[]*Book]) und.Und
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_64b4bea439_b6b4e72332(l, r und.Und[[]int]) und.Und[[]int] {
 	if r.IsUndefined() {
 		return l
@@ -702,7 +702,7 @@ func kamaPartialMergeAppend_64b4bea439_b6b4e72332(l, r und.Und[[]int]) und.Und[[
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_6de6b87afb_d9bcd9fe82(l, r und.Und[[]string]) und.Und[[]string] {
 	if r.IsUndefined() {
 		return l
@@ -727,7 +727,7 @@ func kamaPartialMergeAppend_6de6b87afb_d9bcd9fe82(l, r und.Und[[]string]) und.Un
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_88ccc7a5bc_82d3098647(l, r und.Und[map[string]int]) und.Und[map[string]int] {
 	if r.IsUndefined() {
 		return l
@@ -753,7 +753,7 @@ func kamaPartialMergeAppend_88ccc7a5bc_82d3098647(l, r und.Und[map[string]int]) 
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_98abb7ec06_a3c93adcb4(l, r und.Und[ItemsPartial]) und.Und[ItemsPartial] {
 	if r.IsUndefined() {
 		return l
@@ -778,7 +778,7 @@ func kamaPartialMergeAppend_98abb7ec06_a3c93adcb4(l, r und.Und[ItemsPartial]) un
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_ae035d9425_b8e98641b1(l, r und.Und[BookRefMapPartial]) und.Und[BookRefMapPartial] {
 	if r.IsUndefined() {
 		return l
@@ -804,7 +804,7 @@ func kamaPartialMergeAppend_ae035d9425_b8e98641b1(l, r und.Und[BookRefMapPartial
 // A defined nil or empty side is not returned in place of the new value, so
 // the result never shares storage with l or r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeAppend_d15f114d70_91b321efd4(l, r und.Und[map[string]*Book]) und.Und[map[string]*Book] {
 	if r.IsUndefined() {
 		return l
@@ -826,7 +826,7 @@ func kamaPartialMergeAppend_d15f114d70_91b321efd4(l, r und.Und[map[string]*Book]
 // und.Und[*MaskPingPartial]: it returns a new merge of their values when
 // both are defined and non-nil, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_0821a9f55e_9fc9cd476f(l, r und.Und[*MaskPingPartial]) und.Und[*MaskPingPartial] {
 	if r.IsUndefined() {
 		return l
@@ -842,7 +842,7 @@ func kamaPartialMergeRecursive_0821a9f55e_9fc9cd476f(l, r und.Und[*MaskPingParti
 // und.Und[*RingPartial]: it returns a new merge of their values when both
 // are defined and non-nil, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_0b92dda7ec_9a44f3e19f(l, r und.Und[*RingPartial]) und.Und[*RingPartial] {
 	if r.IsUndefined() {
 		return l
@@ -858,7 +858,7 @@ func kamaPartialMergeRecursive_0b92dda7ec_9a44f3e19f(l, r und.Und[*RingPartial])
 // und.Und[*TreePartial]: it returns a new merge of their values when both
 // are defined and non-nil, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_0fada18840_c84853de53(l, r und.Und[*TreePartial]) und.Und[*TreePartial] {
 	if r.IsUndefined() {
 		return l
@@ -874,7 +874,7 @@ func kamaPartialMergeRecursive_0fada18840_c84853de53(l, r und.Und[*TreePartial])
 // und.Und[*MaskTreePartial]: it returns a new merge of their values when
 // both are defined and non-nil, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_1acded0782_8528fd4c04(l, r und.Und[*MaskTreePartial]) und.Und[*MaskTreePartial] {
 	if r.IsUndefined() {
 		return l
@@ -890,7 +890,7 @@ func kamaPartialMergeRecursive_1acded0782_8528fd4c04(l, r und.Und[*MaskTreeParti
 // und.Und[MaskDeepPartial]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_21f6ff8a31_780cd01e3c(l, r und.Und[MaskDeepPartial]) und.Und[MaskDeepPartial] {
 	if r.IsUndefined() {
 		return l
@@ -905,7 +905,7 @@ func kamaPartialMergeRecursive_21f6ff8a31_780cd01e3c(l, r und.Und[MaskDeepPartia
 // und.Und[AddressPartial]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_251d1aec18_e1ff8a0c46(l, r und.Und[AddressPartial]) und.Und[AddressPartial] {
 	if r.IsUndefined() {
 		return l
@@ -920,7 +920,7 @@ func kamaPartialMergeRecursive_251d1aec18_e1ff8a0c46(l, r und.Und[AddressPartial
 // und.Und[MaskPlainPartial]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_26dbf896cb_664dd3c3b8(l, r und.Und[MaskPlainPartial]) und.Und[MaskPlainPartial] {
 	if r.IsUndefined() {
 		return l
@@ -935,7 +935,7 @@ func kamaPartialMergeRecursive_26dbf896cb_664dd3c3b8(l, r und.Und[MaskPlainParti
 // und.Und[SectionsPartial]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_2c62a9f280_83c3aee0c4(l, r und.Und[SectionsPartial]) und.Und[SectionsPartial] {
 	if r.IsUndefined() {
 		return l
@@ -950,7 +950,7 @@ func kamaPartialMergeRecursive_2c62a9f280_83c3aee0c4(l, r und.Und[SectionsPartia
 // und.Und[BooksPartial]: it returns the merge of their values when both are
 // defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_31d49e32b6_096af22270(l, r und.Und[BooksPartial]) und.Und[BooksPartial] {
 	if r.IsUndefined() {
 		return l
@@ -965,7 +965,7 @@ func kamaPartialMergeRecursive_31d49e32b6_096af22270(l, r und.Und[BooksPartial])
 // und.Und[MaskBoxPartial[V]]: it returns the merge of their values when
 // both are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_360d9bae1d_5bf66b1c64[V any](l, r und.Und[MaskBoxPartial[V]]) und.Und[MaskBoxPartial[V]] {
 	if r.IsUndefined() {
 		return l
@@ -980,7 +980,7 @@ func kamaPartialMergeRecursive_360d9bae1d_5bf66b1c64[V any](l, r und.Und[MaskBox
 // und.Und[PairPartial[string, Geo]]: it returns the merge of their values
 // when both are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_364890d805_6e334d4eff(l, r und.Und[PairPartial[string, Geo]]) und.Und[PairPartial[string, Geo]] {
 	if r.IsUndefined() {
 		return l
@@ -995,7 +995,7 @@ func kamaPartialMergeRecursive_364890d805_6e334d4eff(l, r und.Und[PairPartial[st
 // und.Und[BookRefsPartial]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_3f1b90dff6_c8cb8cc2e5(l, r und.Und[BookRefsPartial]) und.Und[BookRefsPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1010,7 +1010,7 @@ func kamaPartialMergeRecursive_3f1b90dff6_c8cb8cc2e5(l, r und.Und[BookRefsPartia
 // und.Und[BookMapPartial]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_4ca22abc46_518905c91a(l, r und.Und[BookMapPartial]) und.Und[BookMapPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1025,7 +1025,7 @@ func kamaPartialMergeRecursive_4ca22abc46_518905c91a(l, r und.Und[BookMapPartial
 // und.Und[*MaskPongPartial]: it returns a new merge of their values when
 // both are defined and non-nil, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_4ea4f27d2c_f0a81495d1(l, r und.Und[*MaskPongPartial]) und.Und[*MaskPongPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1041,7 +1041,7 @@ func kamaPartialMergeRecursive_4ea4f27d2c_f0a81495d1(l, r und.Und[*MaskPongParti
 // und.Und[GeoPartial]: it returns the merge of their values when both are
 // defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_57a36dd457_d6e07cc146(l, r und.Und[GeoPartial]) und.Und[GeoPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1056,7 +1056,7 @@ func kamaPartialMergeRecursive_57a36dd457_d6e07cc146(l, r und.Und[GeoPartial]) u
 // und.Und[PagesPartial[string]]: it returns the merge of their values when
 // both are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_6340df29e7_801f9ddfb0(l, r und.Und[PagesPartial[string]]) und.Und[PagesPartial[string]] {
 	if r.IsUndefined() {
 		return l
@@ -1071,7 +1071,7 @@ func kamaPartialMergeRecursive_6340df29e7_801f9ddfb0(l, r und.Und[PagesPartial[s
 // und.Und[LabelsPartial]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_8384fb1be0_9d51c331c6(l, r und.Und[LabelsPartial]) und.Und[LabelsPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1086,7 +1086,7 @@ func kamaPartialMergeRecursive_8384fb1be0_9d51c331c6(l, r und.Und[LabelsPartial]
 // und.Und[ItemsPartial]: it returns the merge of their values when both are
 // defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_98abb7ec06_a3c93adcb4(l, r und.Und[ItemsPartial]) und.Und[ItemsPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1101,7 +1101,7 @@ func kamaPartialMergeRecursive_98abb7ec06_a3c93adcb4(l, r und.Und[ItemsPartial])
 // und.Und[MaskBoxPartial[int]]: it returns the merge of their values when
 // both are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_a037c1800f_d6d34b052c(l, r und.Und[MaskBoxPartial[int]]) und.Und[MaskBoxPartial[int]] {
 	if r.IsUndefined() {
 		return l
@@ -1116,7 +1116,7 @@ func kamaPartialMergeRecursive_a037c1800f_d6d34b052c(l, r und.Und[MaskBoxPartial
 // und.Und[BookRefMapPartial]: it returns the merge of their values when
 // both are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_ae035d9425_b8e98641b1(l, r und.Und[BookRefMapPartial]) und.Und[BookRefMapPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1131,7 +1131,7 @@ func kamaPartialMergeRecursive_ae035d9425_b8e98641b1(l, r und.Und[BookRefMapPart
 // und.Und[MaskInnerPartial]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_ae8bf9007b_5e67be4078(l, r und.Und[MaskInnerPartial]) und.Und[MaskInnerPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1146,7 +1146,7 @@ func kamaPartialMergeRecursive_ae8bf9007b_5e67be4078(l, r und.Und[MaskInnerParti
 // und.Und[BoxPartial[int]]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_b61f39d8eb_df6da22386(l, r und.Und[BoxPartial[int]]) und.Und[BoxPartial[int]] {
 	if r.IsUndefined() {
 		return l
@@ -1161,7 +1161,7 @@ func kamaPartialMergeRecursive_b61f39d8eb_df6da22386(l, r und.Und[BoxPartial[int
 // und.Und[LimitsPartial]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_b7b54a5d6e_37447b88c1(l, r und.Und[LimitsPartial]) und.Und[LimitsPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1176,7 +1176,7 @@ func kamaPartialMergeRecursive_b7b54a5d6e_37447b88c1(l, r und.Und[LimitsPartial]
 // und.Und[ElemPartial]: it returns the merge of their values when both are
 // defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_c4cf64b817_902aeb6f1b(l, r und.Und[ElemPartial]) und.Und[ElemPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1191,7 +1191,7 @@ func kamaPartialMergeRecursive_c4cf64b817_902aeb6f1b(l, r und.Und[ElemPartial]) 
 // und.Und[IndexPartial]: it returns the merge of their values when both are
 // defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_d61176e633_a1d3a9be08(l, r und.Und[IndexPartial]) und.Und[IndexPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1206,7 +1206,7 @@ func kamaPartialMergeRecursive_d61176e633_a1d3a9be08(l, r und.Und[IndexPartial])
 // und.Und[ForestPartial]: it returns the merge of their values when both
 // are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_ea92a772c1_841fcba510(l, r und.Und[ForestPartial]) und.Und[ForestPartial] {
 	if r.IsUndefined() {
 		return l
@@ -1221,7 +1221,7 @@ func kamaPartialMergeRecursive_ea92a772c1_841fcba510(l, r und.Und[ForestPartial]
 // und.Und[StatPartial[float64]]: it returns the merge of their values when
 // both are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_f30ee997cd_ea1ba81c3e(l, r und.Und[StatPartial[float64]]) und.Und[StatPartial[float64]] {
 	if r.IsUndefined() {
 		return l
@@ -1235,7 +1235,7 @@ func kamaPartialMergeRecursive_f30ee997cd_ea1ba81c3e(l, r und.Und[StatPartial[fl
 // kamaPartialToEmbedded_3f182bfec3_4508983bce converts BasePartial into
 // *Base, newly allocated, or nil when every field of p is undefined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToEmbedded_3f182bfec3_4508983bce(p BasePartial) *Base {
 	if kamaPartialAllUndefined_3f182bfec3_48118fe3f3(p) {
 		return nil
@@ -1248,7 +1248,7 @@ func kamaPartialToEmbedded_3f182bfec3_4508983bce(p BasePartial) *Base {
 // into *MaskAudit, newly allocated, or nil when every field of p is
 // undefined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToEmbedded_938178b318_048f68293c(p MaskAuditPartial) *MaskAudit {
 	if kamaPartialAllUndefined_938178b318_48118fe3f3(p) {
 		return nil
@@ -1261,7 +1261,7 @@ func kamaPartialToEmbedded_938178b318_048f68293c(p MaskAuditPartial) *MaskAudit 
 // into *MaskEmbedded, newly allocated, or nil when every field of p is
 // undefined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToEmbedded_c1c17f25c8_679402f797(p MaskEmbeddedPartial) *MaskEmbedded {
 	if kamaPartialAllUndefined_c1c17f25c8_48118fe3f3(p) {
 		return nil
@@ -1273,7 +1273,7 @@ func kamaPartialToEmbedded_c1c17f25c8_679402f797(p MaskEmbeddedPartial) *MaskEmb
 // kamaPartialToEmbedded_d86f262313_4bd57c3cd6 converts AuditPartial into
 // *Audit, newly allocated, or nil when every field of p is undefined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToEmbedded_d86f262313_4bd57c3cd6(p AuditPartial) *Audit {
 	if kamaPartialAllUndefined_d86f262313_48118fe3f3(p) {
 		return nil
@@ -1286,7 +1286,7 @@ func kamaPartialToEmbedded_d86f262313_4bd57c3cd6(p AuditPartial) *Audit {
 // und.Und[*MaskTreePartial] into *MaskTree, newly allocated, or nil when p
 // is undefined, null or nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTargetRef_8528fd4c04_b002f032f9(p und.Und[*MaskTreePartial]) *MaskTree {
 	if !p.IsDefined() || p.Value() == nil {
 		return nil
@@ -1299,7 +1299,7 @@ func kamaPartialToTargetRef_8528fd4c04_b002f032f9(p und.Und[*MaskTreePartial]) *
 // und.Und[*RingPartial] into *Ring, newly allocated, or nil when p is
 // undefined, null or nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTargetRef_9a44f3e19f_137cb0dab1(p und.Und[*RingPartial]) *Ring {
 	if !p.IsDefined() || p.Value() == nil {
 		return nil
@@ -1312,7 +1312,7 @@ func kamaPartialToTargetRef_9a44f3e19f_137cb0dab1(p und.Und[*RingPartial]) *Ring
 // und.Und[*MaskPingPartial] into *MaskPing, newly allocated, or nil when p
 // is undefined, null or nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTargetRef_9fc9cd476f_f20ac86138(p und.Und[*MaskPingPartial]) *MaskPing {
 	if !p.IsDefined() || p.Value() == nil {
 		return nil
@@ -1325,7 +1325,7 @@ func kamaPartialToTargetRef_9fc9cd476f_f20ac86138(p und.Und[*MaskPingPartial]) *
 // und.Und[*TreePartial] into *Tree, newly allocated, or nil when p is
 // undefined, null or nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTargetRef_c84853de53_441c625eb6(p und.Und[*TreePartial]) *Tree {
 	if !p.IsDefined() || p.Value() == nil {
 		return nil
@@ -1338,7 +1338,7 @@ func kamaPartialToTargetRef_c84853de53_441c625eb6(p und.Und[*TreePartial]) *Tree
 // und.Und[*MaskPongPartial] into *MaskPong, newly allocated, or nil when p
 // is undefined, null or nil.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTargetRef_f0a81495d1_55a356d847(p und.Und[*MaskPongPartial]) *MaskPong {
 	if !p.IsDefined() || p.Value() == nil {
 		return nil
@@ -1350,7 +1350,7 @@ func kamaPartialToTargetRef_f0a81495d1_55a356d847(p und.Und[*MaskPongPartial]) *
 // kamaPartialToTarget_018be32c1b_3b6174a9ba converts und.Und[ItemPartial]
 // into *Item, newly allocated, or nil when p is undefined or null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTarget_018be32c1b_3b6174a9ba(p und.Und[ItemPartial]) *Item {
 	if !p.IsDefined() {
 		return nil
@@ -1362,7 +1362,7 @@ func kamaPartialToTarget_018be32c1b_3b6174a9ba(p und.Und[ItemPartial]) *Item {
 // kamaPartialToTarget_096af22270_d1891aa78f converts und.Und[BooksPartial]
 // into *Books, newly allocated, or nil when p is undefined or null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTarget_096af22270_d1891aa78f(p und.Und[BooksPartial]) *Books {
 	if !p.IsDefined() {
 		return nil
@@ -1374,7 +1374,7 @@ func kamaPartialToTarget_096af22270_d1891aa78f(p und.Und[BooksPartial]) *Books {
 // kamaPartialToTarget_5a1b8718c5_791f3c9709 converts und.Und[BookPartial]
 // into *Book, newly allocated, or nil when p is undefined or null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTarget_5a1b8718c5_791f3c9709(p und.Und[BookPartial]) *Book {
 	if !p.IsDefined() {
 		return nil
@@ -1387,7 +1387,7 @@ func kamaPartialToTarget_5a1b8718c5_791f3c9709(p und.Und[BookPartial]) *Book {
 // und.Und[MaskInnerPartial] into *MaskInner, newly allocated, or nil when p
 // is undefined or null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTarget_5e67be4078_782ecb7c57(p und.Und[MaskInnerPartial]) *MaskInner {
 	if !p.IsDefined() {
 		return nil
@@ -1400,7 +1400,7 @@ func kamaPartialToTarget_5e67be4078_782ecb7c57(p und.Und[MaskInnerPartial]) *Mas
 // und.Und[BookRefMapPartial] into *BookRefMap, newly allocated, or nil when
 // p is undefined or null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTarget_b8e98641b1_9d467ebc6d(p und.Und[BookRefMapPartial]) *BookRefMap {
 	if !p.IsDefined() {
 		return nil
@@ -1412,7 +1412,7 @@ func kamaPartialToTarget_b8e98641b1_9d467ebc6d(p und.Und[BookRefMapPartial]) *Bo
 // kamaPartialToTarget_d6e07cc146_10f3453d2a converts und.Und[GeoPartial]
 // into *Geo, newly allocated, or nil when p is undefined or null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTarget_d6e07cc146_10f3453d2a(p und.Und[GeoPartial]) *Geo {
 	if !p.IsDefined() {
 		return nil
@@ -1425,7 +1425,7 @@ func kamaPartialToTarget_d6e07cc146_10f3453d2a(p und.Und[GeoPartial]) *Geo {
 // und.Und[StatPartial[float64]] into *Stat[float64], newly allocated, or
 // nil when p is undefined or null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTarget_ea1ba81c3e_b3c7b140f2(p und.Und[StatPartial[float64]]) *Stat[float64] {
 	if !p.IsDefined() {
 		return nil
@@ -1437,7 +1437,7 @@ func kamaPartialToTarget_ea1ba81c3e_b3c7b140f2(p und.Und[StatPartial[float64]]) 
 // kamaPartialToTarget_f68aa24169_441c625eb6 converts und.Und[TreePartial]
 // into *Tree, newly allocated, or nil when p is undefined or null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTarget_f68aa24169_441c625eb6(p und.Und[TreePartial]) *Tree {
 	if !p.IsDefined() {
 		return nil

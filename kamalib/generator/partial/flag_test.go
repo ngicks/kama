@@ -227,7 +227,7 @@ func TestFlagSetFile(t *testing.T) {
 	assert.Assert(t, strings.HasPrefix(src, testHeader+"\n\npackage x\n\nimport \"time\"\n"), src)
 	assert.Assert(
 		t,
-		strings.Contains(src, "\n//kama:generated kama-partial\ntype PartialFlagSet interface {\n"+
+		strings.Contains(src, "\n//kama:generated kama:partial\ntype PartialFlagSet interface {\n"+
 			"\tBoolP(name, shorthand string, value bool, usage string) *bool\n"+
 			"\tChanged(name string) bool\n"+
 			"\tDurationP(name, shorthand string, value time.Duration, usage string) *time.Duration\n"),
@@ -287,7 +287,7 @@ func TestFlagSetMarkedVar(t *testing.T) {
 	// only warns.
 	_, _, err := Generate(gentest.Load(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n\n" +
-			"// PartialFlagSet is stale.\n//\n//kama:generated kama-partial\nvar PartialFlagSet int\n",
+			"// PartialFlagSet is stale.\n//\n//kama:generated kama:partial\nvar PartialFlagSet int\n",
 	}), Options{Registry: registry(t), Now: gentest.Now})
 	assert.NilError(t, err)
 

@@ -17,11 +17,12 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
 
-// GeneratorName is the name the generator marks its declarations with.
-const GeneratorName = "kama-validate"
+// GeneratorId identifies the generator. Its name is the directive
+// //kama:validate, and a Registry passed in Options registers it.
+var GeneratorId = base.Id{Namespace: "kama", Name: "validate"}
 
 // naming names the files the generator writes.
-var naming = base.Naming{Name: "kama_validate"}
+var naming = GeneratorId.Naming()
 
 // HelpersFile is the name of the file declaring the helpers the generated
 // files of a package call. An external test package takes the name with
@@ -36,7 +37,7 @@ const helperKind = "helper"
 // line of the header of every generated file.
 const generatorPath = "github.com/ngicks/kama/kamalib/generator/validator"
 
-func init() { base.MustRegister(GeneratorName) }
+func init() { base.MustRegister(GeneratorId) }
 
 var (
 	// ErrDirective reports a //kama:validate directive or an option file
@@ -178,7 +179,7 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 
 	slices.SortFunc(files, func(a, b File) int { return cmp.Compare(a.Path, b.Path) })
 
-	stale := base.StaleCheck{Registry: opts.Markers, Generator: GeneratorName}
+	stale := base.StaleCheck{Registry: opts.Markers, Generator: GeneratorId}
 
 	return files, slices.Concat(opts.Loaded.Warnings, stale.Files(srcPkgs, files)), nil
 }

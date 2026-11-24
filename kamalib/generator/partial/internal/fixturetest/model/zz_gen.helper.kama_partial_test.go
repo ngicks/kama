@@ -16,7 +16,7 @@ import (
 // kamaPartialFromTarget_a8e70ccbb1_edc9f281aa converts model.Sample into
 // und.Und[model.SamplePartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_a8e70ccbb1_edc9f281aa(v model.Sample) und.Und[model.SamplePartial] {
 	var x model.SamplePartial
 	x.FromValue(v)
@@ -26,7 +26,7 @@ func kamaPartialFromTarget_a8e70ccbb1_edc9f281aa(v model.Sample) und.Und[model.S
 // kamaPartialFromTarget_e05acb9b2b_27bbea0cb1 converts model.Item into
 // und.Und[model.ItemPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_e05acb9b2b_27bbea0cb1(v model.Item) und.Und[model.ItemPartial] {
 	var x model.ItemPartial
 	x.FromValue(v)
@@ -37,7 +37,7 @@ func kamaPartialFromTarget_e05acb9b2b_27bbea0cb1(v model.Item) und.Und[model.Ite
 // und.Und[model.ItemPartial]: it returns the merge of their values when
 // both are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_2a225ea4b9_27bbea0cb1(l, r und.Und[model.ItemPartial]) und.Und[model.ItemPartial] {
 	if r.IsUndefined() {
 		return l
@@ -52,7 +52,7 @@ func kamaPartialMergeRecursive_2a225ea4b9_27bbea0cb1(l, r und.Und[model.ItemPart
 // und.Und[model.SamplePartial]: it returns the merge of their values when
 // both are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_9f001e07e2_edc9f281aa(l, r und.Und[model.SamplePartial]) und.Und[model.SamplePartial] {
 	if r.IsUndefined() {
 		return l

@@ -18,7 +18,7 @@ import (
 
 // Cell is generated from the schema at #.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type Cell struct {
 	Value CellValue             `json:"value"`
 	Label opt.Option[CellLabel] `json:"label,omitzero"`
@@ -26,7 +26,7 @@ type Cell struct {
 
 // cellWire keeps a missing member of Cell apart from null.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type cellWire struct {
 	Value und.Und[CellValue] `json:"value,omitzero"`
 	Label jsontext.Value     `json:"label,omitzero"`
@@ -35,7 +35,7 @@ type cellWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -61,7 +61,7 @@ func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // CellValue is the first of String, Integer, Boolean that the value
 // matches. It is generated from the schema at #/properties/value.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CellValue struct {
 	Kind CellValueKind
 }
@@ -69,50 +69,50 @@ type CellValue struct {
 // CellValueKind is implemented by CellValueString, CellValueInteger and
 // CellValueBoolean only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CellValueKind interface {
 	isCellValueKind()
 }
 
 // CellValueString holds the String member of CellValue.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CellValueString struct {
 	String string
 }
 
 // isCellValueKind marks CellValueString as a CellValueKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (CellValueString) isCellValueKind() {}
 
 // CellValueInteger holds the Integer member of CellValue.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CellValueInteger struct {
 	Integer int64
 }
 
 // isCellValueKind marks CellValueInteger as a CellValueKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (CellValueInteger) isCellValueKind() {}
 
 // CellValueBoolean holds the Boolean member of CellValue.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CellValueBoolean struct {
 	Boolean bool
 }
 
 // isCellValueKind marks CellValueBoolean as a CellValueKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (CellValueBoolean) isCellValueKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v CellValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case CellValueString:
@@ -127,7 +127,7 @@ func (v CellValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the first member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
@@ -167,7 +167,7 @@ func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // CellLabel is the first of String, Number, Null that the value matches. It
 // is generated from the schema at #/properties/label.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CellLabel struct {
 	Kind CellLabelKind
 }
@@ -175,48 +175,48 @@ type CellLabel struct {
 // CellLabelKind is implemented by CellLabelString, CellLabelNumber and
 // CellLabelNull only.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CellLabelKind interface {
 	isCellLabelKind()
 }
 
 // CellLabelString holds the String member of CellLabel.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CellLabelString struct {
 	String string
 }
 
 // isCellLabelKind marks CellLabelString as a CellLabelKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (CellLabelString) isCellLabelKind() {}
 
 // CellLabelNumber holds the Number member of CellLabel.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CellLabelNumber struct {
 	Number float64
 }
 
 // isCellLabelKind marks CellLabelNumber as a CellLabelKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (CellLabelNumber) isCellLabelKind() {}
 
 // CellLabelNull holds the Null member of CellLabel.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 type CellLabelNull struct{}
 
 // isCellLabelKind marks CellLabelNull as a CellLabelKind.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (CellLabelNull) isCellLabelKind() {}
 
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v CellLabel) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
 	case CellLabelString:
@@ -231,7 +231,7 @@ func (v CellLabel) MarshalJSONTo(enc *jsontext.Encoder) error {
 
 // UnmarshalJSONFrom decodes v from the first member the value matches.
 //
-//kama:generated kama-jsonschema
+//kama:generated kama:jsonschema
 func (v *CellLabel) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {

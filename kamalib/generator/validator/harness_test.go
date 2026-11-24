@@ -55,7 +55,7 @@ func markers(t *testing.T) *genmark.Registry {
 	t.Helper()
 
 	r := genmark.NewRegistry(base.ToolName)
-	assert.NilError(t, r.Register(GeneratorName))
+	assert.NilError(t, r.Register(GeneratorId.String()))
 
 	return r
 }

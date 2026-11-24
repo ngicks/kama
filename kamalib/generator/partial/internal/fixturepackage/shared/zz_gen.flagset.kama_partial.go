@@ -13,7 +13,7 @@ import "time"
 // PartialFlagSet is the flag set the RegisterFlags and FromFlagSet methods of
 // the package take. *FlagSet of github.com/spf13/pflag implements it.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type PartialFlagSet interface {
 	BoolP(name, shorthand string, value bool, usage string) *bool
 	Changed(name string) bool

@@ -17,7 +17,7 @@ import (
 // kamaPartialFromTarget_43d3aaf447_4ea628d969 converts Lines into
 // und.Und[LinesPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_43d3aaf447_4ea628d969(v Lines) und.Und[LinesPartial] {
 	if v == nil {
 		return und.Null[LinesPartial]()
@@ -30,7 +30,7 @@ func kamaPartialFromTarget_43d3aaf447_4ea628d969(v Lines) und.Und[LinesPartial] 
 // kamaPartialFromTarget_8512bfd8e4_0d667e5357 converts Line into
 // und.Und[LinePartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_8512bfd8e4_0d667e5357(v Line) und.Und[LinePartial] {
 	var x LinePartial
 	x.FromValue(v)
@@ -40,7 +40,7 @@ func kamaPartialFromTarget_8512bfd8e4_0d667e5357(v Line) und.Und[LinePartial] {
 // kamaPartialFromTarget_baf01a1518_f9e5efdda1 converts shared.Money into
 // und.Und[shared.MoneyPartial], defined.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_baf01a1518_f9e5efdda1(v shared.Money) und.Und[shared.MoneyPartial] {
 	var x shared.MoneyPartial
 	x.FromValue(v)
@@ -50,7 +50,7 @@ func kamaPartialFromTarget_baf01a1518_f9e5efdda1(v shared.Money) und.Und[shared.
 // kamaPartialFromTarget_e72b06c682_ddcd1c099b converts *model.User into
 // und.Und[model.UserPartial], defined, or null for a nil v.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialFromTarget_e72b06c682_ddcd1c099b(v *model.User) und.Und[model.UserPartial] {
 	if v == nil {
 		return und.Null[model.UserPartial]()
@@ -64,7 +64,7 @@ func kamaPartialFromTarget_e72b06c682_ddcd1c099b(v *model.User) und.Und[model.Us
 // und.Und[shared.MoneyPartial]: it returns the merge of their values when
 // both are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_3634e8924a_f9e5efdda1(l, r und.Und[shared.MoneyPartial]) und.Und[shared.MoneyPartial] {
 	if r.IsUndefined() {
 		return l
@@ -79,7 +79,7 @@ func kamaPartialMergeRecursive_3634e8924a_f9e5efdda1(l, r und.Und[shared.MoneyPa
 // und.Und[model.UserPartial]: it returns the merge of their values when
 // both are defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_824895718f_ddcd1c099b(l, r und.Und[model.UserPartial]) und.Und[model.UserPartial] {
 	if r.IsUndefined() {
 		return l
@@ -94,7 +94,7 @@ func kamaPartialMergeRecursive_824895718f_ddcd1c099b(l, r und.Und[model.UserPart
 // und.Und[LinesPartial]: it returns the merge of their values when both are
 // defined, l when r is undefined, and r otherwise.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialMergeRecursive_8e05a9a78a_4ea628d969(l, r und.Und[LinesPartial]) und.Und[LinesPartial] {
 	if r.IsUndefined() {
 		return l
@@ -109,7 +109,7 @@ func kamaPartialMergeRecursive_8e05a9a78a_4ea628d969(l, r und.Und[LinesPartial])
 // und.Und[model.UserPartial] into *model.User, newly allocated, or nil when
 // p is undefined or null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func kamaPartialToTarget_ddcd1c099b_e72b06c682(p und.Und[model.UserPartial]) *model.User {
 	if !p.IsDefined() {
 		return nil

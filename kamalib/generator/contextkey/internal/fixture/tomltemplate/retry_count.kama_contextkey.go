@@ -12,12 +12,12 @@ import (
 
 // KeyRetryCount is the context key for a int value.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 var KeyRetryCount = keyTypeFunc("int")
 
 // WithRetryCount returns a copy of ctx in which KeyRetryCount is associated with v.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func WithRetryCount(ctx context.Context, v int) context.Context {
 	return context.WithValue(ctx, KeyRetryCount, v)
 }
@@ -25,7 +25,7 @@ func WithRetryCount(ctx context.Context, v int) context.Context {
 // ValueRetryCount returns the int associated with KeyRetryCount in ctx.
 // ok is false if no value is associated or the value is not a int.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueRetryCount(ctx context.Context) (v int, ok bool) {
 	v, ok = ctx.Value(KeyRetryCount).(int)
 	return v, ok
@@ -34,7 +34,7 @@ func ValueRetryCount(ctx context.Context) (v int, ok bool) {
 // ValueRetryCountFallback returns the int associated with KeyRetryCount in ctx,
 // or fallback if ValueRetryCount reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueRetryCountFallback(ctx context.Context, fallback int) int {
 	if v, ok := ValueRetryCount(ctx); ok {
 		return v
@@ -45,7 +45,7 @@ func ValueRetryCountFallback(ctx context.Context, fallback int) int {
 // ValueRetryCountFallbackFn returns the int associated with KeyRetryCount in ctx,
 // or the result of fallbackFn if ValueRetryCount reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueRetryCountFallbackFn(ctx context.Context, fallbackFn func() int) int {
 	if v, ok := ValueRetryCount(ctx); ok {
 		return v
@@ -56,7 +56,7 @@ func ValueRetryCountFallbackFn(ctx context.Context, fallbackFn func() int) int {
 // ValueRetryCountDefault returns the int associated with KeyRetryCount in ctx,
 // or 3 if ValueRetryCount reports none.
 //
-//kama:generated kama-contextkey
+//kama:generated kama:contextkey
 func ValueRetryCountDefault(ctx context.Context) int {
 	return ValueRetryCountFallbackFn(ctx, func() int { return 3 })
 }

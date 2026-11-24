@@ -12,7 +12,7 @@ import "github.com/ngicks/option/und"
 
 // SamplePartial is the partial variant of Sample.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 type SamplePartial struct {
 	ItemPartial
 
@@ -24,7 +24,7 @@ type SamplePartial struct {
 // FromValue sets every field of p to the partial form of the field of v.
 // A nil pointer, slice or map and a none option become null.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p *SamplePartial) FromValue(v Sample) {
 	p.ItemPartial.FromValue(v.Item)
 	p.Count = und.Defined(v.Count)
@@ -35,7 +35,7 @@ func (p *SamplePartial) FromValue(v Sample) {
 // ToValue returns the value p describes. An undefined or null field
 // gives the zero value of the field.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p SamplePartial) ToValue() Sample {
 	var v Sample
 	v.Item = p.ItemPartial.ToValue()
@@ -48,7 +48,7 @@ func (p SamplePartial) ToValue() Sample {
 // Merge returns p with the fields of r merged onto it. An undefined
 // field of r keeps the field of p. Merge writes to neither p nor r.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p SamplePartial) Merge(r SamplePartial) SamplePartial {
 	p.ItemPartial = p.ItemPartial.Merge(r.ItemPartial)
 	if !r.Count.IsUndefined() {
@@ -62,7 +62,7 @@ func (p SamplePartial) Merge(r SamplePartial) SamplePartial {
 // ApplyTo returns v with the change p describes applied. It is
 // FromValue of v merged with p, converted back with ToValue.
 //
-//kama:generated kama-partial
+//kama:generated kama:partial
 func (p SamplePartial) ApplyTo(v Sample) Sample {
 	var base SamplePartial
 	base.FromValue(v)

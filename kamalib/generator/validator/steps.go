@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
@@ -24,5 +23,5 @@ var lang genhelper.Lang[genCtx]
 // comment group: the text of format and args, an empty comment line and the
 // marker of the generator.
 func docComment(format string, args ...any) genExpr {
-	return lang.DocComment(base.Marker(GeneratorName), format, args...)
+	return lang.DocComment(GeneratorId.Marker(), format, args...)
 }
