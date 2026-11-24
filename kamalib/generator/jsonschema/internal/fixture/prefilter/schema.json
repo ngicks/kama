@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Shape",
+  "oneOf": [{ "$ref": "#/$defs/Circle" }, { "$ref": "#/$defs/Square" }],
+  "$defs": {
+    "Circle": {
+      "type": "object",
+      "required": ["kind", "radius"],
+      "properties": { "kind": { "enum": ["circle"] }, "radius": { "type": "number" } }
+    },
+    "Square": {
+      "type": "object",
+      "properties": { "side": { "type": "number" } },
+      "additionalProperties": false
+    }
+  }
+}

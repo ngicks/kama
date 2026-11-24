@@ -123,6 +123,23 @@ func OptionalPointer[T any](u und.Und[T]) (*T, error) {
 	return o.Pointer(), nil
 }
 
+// RequiredNullablePointer is [RequiredNullable] for a member held by pointer. Nil means null.
+func RequiredNullablePointer[T any](u und.Und[T]) (*T, error) {
+	o, err := RequiredNullable(u)
+	if err != nil {
+		return nil, err
+	}
+
+	return o.Pointer(), nil
+}
+
+// OptionalNullablePointer returns the value of an optional, nullable member held by pointer. Nil
+// means absent or null.
+func OptionalNullablePointer[T any](u und.Und[T]) *T {
+	o := u.Flatten()
+	return o.Pointer()
+}
+
 // DecodeRequired decodes the raw text of a required member whose Go type accepts null itself,
 // such as a union holder with a null member. Nil raw means absent.
 func DecodeRequired[T any](raw jsontext.Value) (T, error) {

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Node",
+  "type": "object",
+  "required": ["value", "parent"],
+  "properties": {
+    "value": { "type": "integer" },
+    "parent": { "oneOf": [{ "$ref": "#" }, { "type": "null" }] },
+    "next": { "anyOf": [{ "type": "null" }, { "$ref": "#" }] }
+  }
+}

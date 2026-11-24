@@ -183,6 +183,23 @@ func TestConversions(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Equal(t, *p, int64(1))
 	})
+	t.Run("RequiredNullablePointer", func(t *testing.T) {
+		_, err := RequiredNullablePointer(undefined)
+		assert.ErrorIs(t, err, validation.ErrRequired)
+
+		p, err := RequiredNullablePointer(null)
+		assert.NilError(t, err)
+		assert.Assert(t, p == nil)
+
+		p, err = RequiredNullablePointer(defined)
+		assert.NilError(t, err)
+		assert.Equal(t, *p, int64(1))
+	})
+	t.Run("OptionalNullablePointer", func(t *testing.T) {
+		assert.Assert(t, OptionalNullablePointer(undefined) == nil)
+		assert.Assert(t, OptionalNullablePointer(null) == nil)
+		assert.Equal(t, *OptionalNullablePointer(defined), int64(1))
+	})
 	t.Run("DecodeRequired", func(t *testing.T) {
 		_, err := DecodeRequired[jsontext.Value](nil)
 		assert.ErrorIs(t, err, validation.ErrRequired)

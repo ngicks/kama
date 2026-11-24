@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cell",
+  "type": "object",
+  "required": ["value"],
+  "properties": {
+    "value": { "type": ["string", "integer", "boolean"] },
+    "label": { "type": ["string", "number", "null"] }
+  }
+}

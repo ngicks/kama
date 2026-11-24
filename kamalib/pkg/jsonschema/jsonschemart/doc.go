@@ -3,11 +3,11 @@
 // Generated code decodes every value from its raw text. An UnmarshalJSONFrom method reads one
 // value with [ReadValue], decodes it into its wire struct with [UnmarshalObject] or into a member
 // type with [Unmarshal], and converts the wire fields with [Required], [Optional],
-// [RequiredNullable], [RequiredPointer] and [OptionalPointer]. A member whose Go type accepts
-// null itself, such as a union holder with a null member, stays raw in the wire struct and
-// decodes through [DecodeRequired] or [DecodeOptional]. Errors are those of
-// github.com/ngicks/kama/kamalib/pkg/validation, located by the path of the offending member
-// relative to the value being decoded.
+// [RequiredNullable], [RequiredPointer], [OptionalPointer], [RequiredNullablePointer] and
+// [OptionalNullablePointer]. A member whose Go type accepts null itself, such as a union holder
+// with a null member, stays raw in the wire struct and decodes through [DecodeRequired] or
+// [DecodeOptional]. Errors are those of github.com/ngicks/kama/kamalib/pkg/validation, located
+// by the path of the offending member relative to the value being decoded.
 //
 // json.Unmarshal wraps the errors of a generated type in a json.SemanticError, so the errors of
 // several members collapse into one at the root. [Unmarshal] is the entry point that keeps the
