@@ -7,7 +7,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: go
   host: github.com
-  resolved_commit: 93b430809ff268fd8763b4e42d1b08cd9274e63f
+  resolved_commit: 6349ff0ceab97d9cc21041352d9619adc388958e
   version: 1.0.0
   virtual_path: bundle/go
   is_virtual: true
@@ -20,7 +20,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: cc-workers
   host: github.com
-  resolved_commit: 93b430809ff268fd8763b4e42d1b08cd9274e63f
+  resolved_commit: 6349ff0ceab97d9cc21041352d9619adc388958e
   version: 0.0.1
   virtual_path: pkg/cc-workers
   is_virtual: true
@@ -174,7 +174,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: agents-package-ngicks.go.basics
   host: github.com
-  resolved_commit: 93b430809ff268fd8763b4e42d1b08cd9274e63f
+  resolved_commit: 6349ff0ceab97d9cc21041352d9619adc388958e
   version: 1.0.0
   virtual_path: vpkg/instructions/ngicks.go.basics.instructions.md
   is_virtual: true
@@ -187,7 +187,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: agents-package-ngicks.go.design-preference
   host: github.com
-  resolved_commit: 93b430809ff268fd8763b4e42d1b08cd9274e63f
+  resolved_commit: 6349ff0ceab97d9cc21041352d9619adc388958e
   version: 1.0.0
   virtual_path: vpkg/instructions/ngicks.go.design-preference.instructions.md
   is_virtual: true
@@ -200,7 +200,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: go-check-outdated-patterns
   host: github.com
-  resolved_commit: 93b430809ff268fd8763b4e42d1b08cd9274e63f
+  resolved_commit: 6349ff0ceab97d9cc21041352d9619adc388958e
   version: unknown
   virtual_path: vpkg/skills/go-check-outdated-patterns
   is_virtual: true
@@ -227,7 +227,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: go-edit-cobra
   host: github.com
-  resolved_commit: 93b430809ff268fd8763b4e42d1b08cd9274e63f
+  resolved_commit: 6349ff0ceab97d9cc21041352d9619adc388958e
   version: unknown
   virtual_path: vpkg/skills/go-edit-cobra
   is_virtual: true
@@ -330,7 +330,7 @@ dependencies:
 - repo_url: ngicks/agents-package
   name: go-review-checklist
   host: github.com
-  resolved_commit: 93b430809ff268fd8763b4e42d1b08cd9274e63f
+  resolved_commit: 6349ff0ceab97d9cc21041352d9619adc388958e
   version: unknown
   virtual_path: vpkg/skills/go-review-checklist
   is_virtual: true
@@ -472,6 +472,15 @@ deployments:
   - .
   active_owner: .
   content_hash: sha256:445fdec3644cbdaf0ba256913330c992140272c18fbac2a88202a08068664711
+- kind: project-relative
+  target: claude
+  value: .claude/rules/kama.go.pure-functions.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:5f78500dae00f9b48ea2c8bb37bca406ab15f7ae7ee9616d05459b8979cf1166
 - kind: project-relative
   target: claude
   value: .claude/skills/go-check-outdated-patterns
@@ -1484,7 +1493,9 @@ local_deployed_files:
 - .claude/rules/kama.go.generator-single-source.md
 - .claude/rules/kama.go.iterator-chain.md
 - .claude/rules/kama.go.json-unknown-fields.md
+- .claude/rules/kama.go.pure-functions.md
 local_deployed_file_hashes:
   .claude/rules/kama.go.generator-single-source.md: sha256:ee61cda6f01bd5190f54431d38e5dee7bad9ff8a457159d6a6ecd4e7ebdb7bbd
   .claude/rules/kama.go.iterator-chain.md: sha256:bee45bd9b54df5846a42c07cbc7b9d8f4cc31e5247dbdb27233dd501db67304a
   .claude/rules/kama.go.json-unknown-fields.md: sha256:445fdec3644cbdaf0ba256913330c992140272c18fbac2a88202a08068664711
+  .claude/rules/kama.go.pure-functions.md: sha256:5f78500dae00f9b48ea2c8bb37bca406ab15f7ae7ee9616d05459b8979cf1166
