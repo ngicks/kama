@@ -17,7 +17,7 @@ import (
 )
 
 // GeneratorId identifies the generator. Its name is the directive
-// //kama:validate, and a Registry passed in Options registers it.
+// //kama:validate, and init registers it in base.DefaultRegistry.
 var GeneratorId = base.Id{Namespace: "kama", Name: "validate"}
 
 // naming names the files the generator writes.
@@ -131,11 +131,15 @@ func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, 
 			for _, c := range files {
 				rel, err := in.Rel(c.Path)
 				if err != nil {
-					err = fmt.Errorf("validator: %w", err)
+					if !yield(nil, fmt.Errorf("validator: %w", err)) {
+						return
+					}
+
+					continue
 				}
 
 				c.Path, c.Params = rel, in.Loaded.HeaderParams(pkgPath)
-				if !yield(c, err) {
+				if !yield(c, nil) {
 					return
 				}
 			}

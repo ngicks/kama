@@ -174,8 +174,18 @@ func TestPredeclaredShadowed(t *testing.T) {
 	}
 }
 
-// TestErrorsOfEveryPackage reports the error of each package: an error in
-// the files of one package does not stop the files of the next.
+// TestErrorsOfEveryFile reports the errors of each source file and of each
+// package: an error does not stop the next file or package.
+func TestErrorsOfEveryFile(t *testing.T) {
+	_, err := generate(t, map[string]string{
+		"a.go": "package x\n\n//kama:partial\ntype A[error any] struct{ V error }\n",
+		"b.go": "package x\n\n//kama:partial\ntype B[nil any] struct{ V nil }\n",
+	}, testRun{})
+	assert.ErrorIs(t, err, ErrConflict)
+	assert.ErrorContains(t, err, "type parameter error of A")
+	assert.ErrorContains(t, err, "type parameter nil of B")
+}
+
 func TestErrorsOfEveryPackage(t *testing.T) {
 	const src = "//kama:partial\ntype A struct {\n\t//kama:partial:merge append\n\tN []int\n}\n\n" +
 		"type append int\n"

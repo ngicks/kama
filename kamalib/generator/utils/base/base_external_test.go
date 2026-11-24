@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ngicks/kama/kamalib/pkg/genheader"
+
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
@@ -26,10 +28,14 @@ import (
 func source(t *testing.T, now time.Time, body string) []byte {
 	t.Helper()
 
-	hdr, err := base.Header("example.invalid/gen", map[string]any{"mode": "x"}, now)
+	hdr, err := genheader.GeneratorParams{
+		Name:      "example.invalid/gen",
+		Params:    map[string]any{"mode": "x"},
+		Generated: now,
+	}.Comment()
 	assert.NilError(t, err)
 
-	return []byte(strings.Join(hdr, "\n") + "\n\npackage p\n\n" + body + "\n")
+	return []byte(hdr + "\n\npackage p\n\n" + body + "\n")
 }
 
 func TestStage(t *testing.T) {

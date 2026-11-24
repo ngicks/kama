@@ -5,7 +5,10 @@
 // # Contract
 //
 // A generator is a [Generator]: an [Id] and a Generate function taking a
-// context, an [Env] and an input of the generator's own type. The Id is
+// context, an [Env] and an input of the generator's own type. A generator
+// generating from loaded packages takes an [Input]: the packages, the
+// options of their directives overlaid with those of the option files, the
+// options of the step and the root of the output. The Id is
 // the namespace and the name of the generator, such as kama:partial. It
 // names the directive of the generator, its option file key, its
 // generated mark //kama:generated kama:partial and its generated files. A
@@ -40,7 +43,9 @@
 // step onto its defaults, builds the input of the generator and its stale
 // check scope from the param, the in and the out of the step, and drives
 // the generator into the out. [SourceProc] is the proc of a generator
-// generating from loaded packages.
+// taking an [Input]. It loads the options of the packages its in loaded,
+// reports the warnings of loading them, and checks the files of those
+// packages for stale ones, as [Input.Scope] tells.
 //
 // # What the framework does not do
 //
@@ -92,13 +97,67 @@
 //		},
 //	}
 //
+// A generator generating from loaded packages declares in each package a
+// constant counting the files of the package:
+//
+//	var countId = base.Id{Namespace: "acme", Name: "count"}
+//
+//	func init() { base.MustRegister(countId) }
+//
+//	type countInput = base.Input[struct{}, struct{}, struct{}, struct{}]
+//
+//	var count = base.Generator[countInput]{
+//		Id: countId,
+//		Generate: func(
+//			_ context.Context,
+//			_ base.Env,
+//			in countInput,
+//		) iter.Seq2[base.Output, error] {
+//			return func(yield func(base.Output, error) bool) {
+//				for _, pkg := range in.Packages {
+//					dir, err := in.Rel(filepath.Dir(pkg.GoFiles[0]))
+//					if err != nil {
+//						if !yield(nil, err) {
+//							return
+//						}
+//
+//						continue
+//					}
+//
+//					c := base.Composed{
+//						Path:    path.Join(dir, countId.Naming().SharedFile("count")),
+//						Package: pkg.Name,
+//						Parts: []base.Part{base.Decl(fmt.Sprintf(
+//							"// NumFiles counts the files of the package.\nconst NumFiles = %d\n",
+//							len(pkg.GoFiles),
+//						))},
+//					}
+//					if !yield(c, nil) {
+//						return
+//					}
+//				}
+//			}
+//		},
+//	}
+//
 // # Helpers
 //
-// Beside the framework, the package holds helpers a generator may use:
-// [Naming] for the names of generated files, [Header], [HostShared] for
-// declarations several generated files share, [SourcePackages] and the
-// other functions over loaded packages, and [TypeGraph]. Package
-// github.com/ngicks/kama/kamalib/generator/utils/base/filescope spells
-// types for a generator building declarations as dst nodes. The framework
-// itself does not import dst.
+// Beside the framework, the package holds helpers a generator may use. The
+// framework does not call them for a generator:
+//
+//   - [Naming] names generated files, and [HostShared] places declarations
+//     several generated files share.
+//   - [SourcePackages], [DeclaringPackage], [PackageFile] and
+//     [BuildConstraint] read loaded packages.
+//   - [Generated], [UnownedDecls] and [DeclDocs] read the generated marks
+//     of declarations.
+//   - [CheckPredeclared] and [MethodTypeParams] check and choose the names
+//     generated code spells.
+//   - [TypeGraph] and [MarkedTypeError] build the type graph of the
+//     packages without the generated types.
+//
+// Package github.com/ngicks/kama/kamalib/generator/utils/base/filescope
+// spells types for a generator building declarations as dst nodes and
+// prints them as Decl parts. The framework itself does not import dst,
+// directly or not.
 package base

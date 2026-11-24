@@ -29,7 +29,7 @@ import (
 )
 
 // GeneratorId identifies the generator. Its name is the directive
-// //kama:partial, and a Registry passed in Options registers it.
+// //kama:partial, and init registers it in base.DefaultRegistry.
 var GeneratorId = base.Id{Namespace: "kama", Name: "partial"}
 
 // FileSuffix is inserted into the name of a source file to name the file
@@ -169,8 +169,8 @@ type Input = base.Input[Options, PackageOptions, TypeOptions, FieldOptions]
 // package: the file has no build constraint and serves the partial files
 // of every variant.
 //
-// An error in the files of one package does not stop the files of the
-// other packages.
+// Generate reports the errors of every source file of a package and goes
+// on with the next package.
 func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, error] {
 	return func(yield func(base.Output, error) bool) {
 		if err := in.Options.Validate(); err != nil {
@@ -223,11 +223,15 @@ func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, 
 			for _, c := range files {
 				rel, err := in.Rel(c.Path)
 				if err != nil {
-					err = fmt.Errorf("partial: %w", err)
+					if !yield(nil, fmt.Errorf("partial: %w", err)) {
+						return false
+					}
+
+					continue
 				}
 
 				c.Path, c.Params = rel, params
-				if !yield(c, err) {
+				if !yield(c, nil) {
 					return false
 				}
 			}
@@ -257,20 +261,7 @@ func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, 
 				continue
 			}
 
-			dir, ok, err := servedFlagSetDir(env.Out, in, pkg)
-			if err == nil && !ok {
-				continue
-			}
-
-			var files []base.Composed
-
-			if err == nil {
-				var c base.Composed
-
-				c, err = renderFlagSet(pkg, dir)
-				files = []base.Composed{c}
-			}
-
+			files, err := keptFlagSet(env.Out, in, pkg)
 			if !emit(headerParams(opts, in.Loaded, pkg.PkgPath), files, err) {
 				return
 			}
@@ -316,28 +307,30 @@ func renderPackageFiles(
 	return out, nil
 }
 
-// servedFlagSetDir returns the directory of pkg, a package the run
-// generates no file for, and whether a partial file of pkg other than its
-// flag set file lies there in out. Such a file is of a build variant the
-// run did not load, and calls the flag set file.
-func servedFlagSetDir(out fs.FS, in Input, pkg *packages.Package) (string, bool, error) {
+// keptFlagSet returns the flag set file of pkg, a package the run generates
+// no file for, when a partial file of pkg other than its flag set file lies
+// in its directory in out, and no file otherwise. Such a partial file is of
+// a build variant the run did not load, and calls the flag set file.
+func keptFlagSet(out fs.FS, in Input, pkg *packages.Package) ([]base.Composed, error) {
 	if len(pkg.Syntax) == 0 {
-		return "", false, nil
+		return nil, nil
 	}
 
 	dir := filepath.Dir(pkg.Fset.File(pkg.Syntax[0].Pos()).Name())
 
 	rel, err := in.Rel(dir)
 	if err != nil {
-		return "", false, err
+		return nil, fmt.Errorf("partial: %w", err)
 	}
 
 	entries, err := fs.ReadDir(out, rel)
 	if err != nil {
-		return "", false, fmt.Errorf("partial: read %q: %w", rel, err)
+		return nil, fmt.Errorf("partial: read %q: %w", rel, err)
 	}
 
 	flagSet := base.PackageFile(pkg, FlagSetFile)
+
+	served := false
 
 	for _, e := range entries {
 		name := e.Name()
@@ -347,16 +340,31 @@ func servedFlagSetDir(out fs.FS, in Input, pkg *packages.Package) (string, bool,
 
 		src, err := fs.ReadFile(out, path.Join(rel, name))
 		if err != nil {
-			return "", false, fmt.Errorf("partial: read %q: %w", path.Join(rel, name), err)
+			return nil, fmt.Errorf("partial: read %q: %w", path.Join(rel, name), err)
 		}
 
 		f, err := parser.ParseFile(token.NewFileSet(), name, src, parser.PackageClauseOnly)
 		if err == nil && f.Name.Name == pkg.Name {
-			return dir, true, nil
+			served = true
+			break
 		}
 	}
 
-	return "", false, nil
+	if !served {
+		return nil, nil
+	}
+
+	c, err := renderFlagSet(pkg, dir)
+	if err != nil {
+		return nil, err
+	}
+
+	files := []base.Composed{c}
+	if err := base.CheckPredeclared(pkg, files, ErrConflict); err != nil {
+		return nil, err
+	}
+
+	return files, nil
 }
 
 // renderPackage prints the partial files of pkg, sorted by path, and the
@@ -378,15 +386,23 @@ func renderPackage(
 ) ([]base.Composed, error) {
 	helpers := newHelperSet()
 
+	var errs []error
+
 	for _, f := range files {
 		nodes := typegraph.NodesIn(slices.Values(targets), f.src)
 
 		_, p, err := renderFileWith(sel, pkg, f, nodes, supportPaths, helpers)
 		if err != nil {
-			return nil, err
+			errs = append(errs, err)
+			continue
 		}
 
 		f.calls, f.support = p.calls, p.support
+	}
+
+	// The second pass needs the helpers of every file settled.
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
 	}
 
 	if err := helpers.resolve(); err != nil {

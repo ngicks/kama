@@ -160,7 +160,7 @@ func TestInputRel(t *testing.T) {
 }
 
 func TestHeader(t *testing.T) {
-	hdr, err := Header(
+	hdr, err := header(
 		"example.invalid/gen",
 		map[string]any{"b": 1, "a": "x"},
 		time.Date(2026, 11, 4, 19, 12, 33, 5, time.FixedZone("", 9*60*60)),

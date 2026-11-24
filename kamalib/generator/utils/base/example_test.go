@@ -7,6 +7,8 @@ import (
 	"go/token"
 	"iter"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -16,8 +18,9 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 )
 
-// greetingId and greeting are the generator the package doc writes. Their
-// code must stay textually the same as the doc example.
+// greetingId, greeting, countId, countInput and count are the generators
+// the package doc writes. Their code must stay textually the same as the
+// doc examples.
 var greetingId = base.Id{Namespace: "acme", Name: "greeting"}
 
 func init() { base.MustRegister(greetingId) }
@@ -56,8 +59,48 @@ var greeting = base.Generator[[]string]{
 	},
 }
 
-// TestExampleMatchesDoc keeps the doc example compiled: the declarations of
-// the doc are those of this file.
+var countId = base.Id{Namespace: "acme", Name: "count"}
+
+func init() { base.MustRegister(countId) }
+
+type countInput = base.Input[struct{}, struct{}, struct{}, struct{}]
+
+var count = base.Generator[countInput]{
+	Id: countId,
+	Generate: func(
+		_ context.Context,
+		_ base.Env,
+		in countInput,
+	) iter.Seq2[base.Output, error] {
+		return func(yield func(base.Output, error) bool) {
+			for _, pkg := range in.Packages {
+				dir, err := in.Rel(filepath.Dir(pkg.GoFiles[0]))
+				if err != nil {
+					if !yield(nil, err) {
+						return
+					}
+
+					continue
+				}
+
+				c := base.Composed{
+					Path:    path.Join(dir, countId.Naming().SharedFile("count")),
+					Package: pkg.Name,
+					Parts: []base.Part{base.Decl(fmt.Sprintf(
+						"// NumFiles counts the files of the package.\nconst NumFiles = %d\n",
+						len(pkg.GoFiles),
+					))},
+				}
+				if !yield(c, nil) {
+					return
+				}
+			}
+		}
+	},
+}
+
+// TestExampleMatchesDoc keeps the doc examples compiled: each code block of
+// the section Example of the doc is code of this file.
 func TestExampleMatchesDoc(t *testing.T) {
 	f, err := parser.ParseFile(
 		token.NewFileSet(), "doc.go", nil, parser.PackageClauseOnly|parser.ParseComments,
@@ -65,16 +108,51 @@ func TestExampleMatchesDoc(t *testing.T) {
 	assert.NilError(t, err)
 
 	doc := f.Doc.Text()
-	start := strings.Index(doc, "\tvar greetingId = ")
+	start := strings.Index(doc, "\n# Example\n")
 	end := strings.Index(doc, "\n# Helpers\n")
 	assert.Assert(t, start >= 0 && end > start, "no example in\n%s", doc)
 
-	example := strings.ReplaceAll(strings.TrimRight(doc[start:end], "\n"), "\n\t", "\n")
-	example = strings.TrimPrefix(example, "\t")
-
 	src, err := os.ReadFile("example_test.go")
 	assert.NilError(t, err)
-	assert.Assert(t, strings.Contains(string(src), example), "want\n%s", example)
+
+	blocks := codeBlocks(doc[start:end])
+	assert.Equal(t, len(blocks), 2)
+
+	for _, block := range blocks {
+		assert.Assert(t, strings.Contains(string(src), block), "want\n%s", block)
+	}
+}
+
+// codeBlocks returns the code blocks of section, a part of a doc comment,
+// without their indentation.
+func codeBlocks(section string) []string {
+	var (
+		blocks []string
+		block  []string
+	)
+
+	flush := func() {
+		if len(block) > 0 {
+			blocks = append(blocks, strings.TrimRight(strings.Join(block, "\n"), "\n"))
+		}
+
+		block = nil
+	}
+
+	for line := range strings.SplitSeq(section, "\n") {
+		switch {
+		case strings.HasPrefix(line, "\t"):
+			block = append(block, strings.TrimPrefix(line, "\t"))
+		case line == "" && len(block) > 0:
+			block = append(block, "")
+		default:
+			flush()
+		}
+	}
+
+	flush()
+
+	return blocks
 }
 
 func TestExampleGreeting(t *testing.T) {
@@ -98,4 +176,37 @@ func TestExampleGreeting(t *testing.T) {
 		"package greeting\n\n//kama:generated acme:greeting\n"+
 			"// Bob greets Bob.\nconst Bob = \"hello, Bob\"\n",
 	), string(files[0].Content))
+}
+
+func TestExampleCount(t *testing.T) {
+	f, pkgs := gentest.LoadFs(t, map[string]string{
+		"a.go":   "package x\n",
+		"b.go":   "package x\n",
+		"y/y.go": "package y\n",
+	})
+	env := base.Env{
+		Reporter: gentest.NopReporter{},
+		Now:      gentest.Now(),
+		Registry: base.DefaultRegistry,
+	}
+
+	files, err := base.Assemble(t.Context(), count, env, countInput{
+		Packages: base.SourcePackages(pkgs),
+		Root:     f.Root(),
+	})
+	assert.NilError(t, err)
+
+	got := map[string]string{}
+	for _, file := range files {
+		got[file.Path] = string(file.Content)
+	}
+
+	dir := gentest.InlineDir(t)
+	assert.Equal(t, len(got), 2)
+	assert.Assert(t, strings.HasSuffix(
+		got[dir+"/zz_gen.count.acme_count.go"],
+		"package x\n\n//kama:generated acme:count\n"+
+			"// NumFiles counts the files of the package.\nconst NumFiles = 2\n",
+	), got)
+	assert.Assert(t, strings.Contains(got[dir+"/y/zz_gen.count.acme_count.go"], "NumFiles = 1"))
 }

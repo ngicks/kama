@@ -5,8 +5,7 @@ package genhelper
 // of instantiating [Expr], [Stmt], [Name], [Fail] and [FailGen] at every call.
 // Most methods are the package-level function of the same name with C fixed.
 // [Lang.Case], [Lang.Default] and [Lang.Steps] build values of the types
-// [Case] and [Steps]. [Lang.DocComment] composes a doc comment carrying a
-// generator marker.
+// [Case] and [Steps].
 //
 // Lang is zero-size and holds no state, so its zero value is ready to use and
 // any number of values behave the same.
@@ -40,18 +39,6 @@ func (Lang[C]) Join(sep string, parts ...Gen[C]) Gen[C] {
 // Comment is [Comment] for the context type C.
 func (Lang[C]) Comment(parts ...Gen[C]) Gen[C] {
 	return Comment(parts...)
-}
-
-// DocComment returns the doc comment of a generated declaration as one
-// comment group: the text of format and args, an empty comment line and
-// marker. The caller passes the directive comment marking its generator as
-// marker.
-func (l Lang[C]) DocComment(marker, format string, args ...any) Gen[C] {
-	return l.Comment(
-		l.Expr(format, args...),
-		l.Expr(""),
-		l.Expr("%s", marker),
-	)
 }
 
 // Fail is [Fail] for the context type C.

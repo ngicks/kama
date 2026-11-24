@@ -133,14 +133,14 @@ func assemble(id Id, env Env, out Output) (File, error) {
 
 // compose prints the unformatted content of c.
 func compose(id Id, env Env, c Composed) ([]byte, error) {
-	header, err := Header(id.String(), c.Params, env.Now)
+	hdr, err := header(id.String(), c.Params, env.Now)
 	if err != nil {
 		return nil, err
 	}
 
 	var b bytes.Buffer
 
-	b.WriteString(strings.Join(header, "\n") + "\n\n")
+	b.WriteString(strings.Join(hdr, "\n") + "\n\n")
 
 	if c.BuildConstraint != "" {
 		b.WriteString(c.BuildConstraint + "\n\n")

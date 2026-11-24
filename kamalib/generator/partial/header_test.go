@@ -13,7 +13,6 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/genheader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
@@ -82,13 +81,13 @@ func TestFileHeader(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			hdr, err := base.Header(
-				GeneratorId.String(),
-				headerParams(c.opts.WithDefaults(), c.loaded, "example.invalid/x"),
-				now,
-			)
+			hdr, err := genheader.GeneratorParams{
+				Name:      GeneratorId.String(),
+				Params:    headerParams(c.opts.WithDefaults(), c.loaded, "example.invalid/x"),
+				Generated: now,
+			}.Comment()
 			assert.NilError(t, err)
-			assert.Equal(t, strings.Join(hdr, "\n"), header+"\n// params:\n"+
+			assert.Equal(t, hdr, header+"\n// params:\n"+
 				c.params+"\n// generated: 2026-11-04T10:12:33Z")
 		})
 	}
