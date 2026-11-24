@@ -13,16 +13,22 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
 // assembleRoot runs Generator on doc into package p with type name Root,
 // leaving out the formatting of generateFiles, which the budgets do not
 // cover.
 func assembleRoot(doc *jsonschema.Schema) ([]File, error) {
-	env := base.Env{Reporter: gentest.NopReporter{}, Now: gentest.Now()}
 	in := Input{Doc: doc, Options: Options{Package: "p", TypeName: "Root"}}
 
-	return base.Assemble(context.Background(), Generator, env, in)
+	return gentest.Prepare(
+		context.Background(),
+		Generator,
+		base.DefaultRegistry,
+		in,
+		overlayfs.WithFormatter(gentest.AsIs{}),
+	)
 }
 
 // TestGenerateTime generates the hostile shapes of the benchmarks within

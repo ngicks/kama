@@ -5,14 +5,9 @@ import (
 	"errors"
 	"go/ast"
 	"go/types"
-	"io/fs"
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
-	"time"
-
-	"github.com/ngicks/kama/kamalib/pkg/genheader"
 
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
@@ -21,63 +16,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
-	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
-
-// source returns a generated file of package p with the header of now.
-func source(t *testing.T, now time.Time, body string) []byte {
-	t.Helper()
-
-	hdr, err := genheader.GeneratorParams{
-		Name:      "example.invalid/gen",
-		Params:    map[string]any{"mode": "x"},
-		Generated: now,
-	}.Comment()
-	assert.NilError(t, err)
-
-	return []byte(hdr + "\n\npackage p\n\n" + body + "\n")
-}
-
-func TestStage(t *testing.T) {
-	ctx := context.Background()
-	f, err := overlayfs.New(t.TempDir())
-	assert.NilError(t, err)
-
-	defer f.Close()
-
-	first := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	files := func(now time.Time, a string) []base.File {
-		return []base.File{
-			{Path: "a.go", Content: source(t, now, a)},
-			{Path: "sub/b.go", Content: source(t, now, "var B = 1")},
-		}
-	}
-	read := func(name string) string {
-		b, err := fs.ReadFile(f.FS(), name)
-		assert.NilError(t, err)
-
-		return string(b)
-	}
-
-	r := &gentest.RecordReporter{}
-	assert.NilError(t, base.Stage(ctx, f, files(first, "var A = 1"), r))
-	assert.DeepEqual(t, r.Messages, []string{"2 files written, 0 files unchanged"})
-
-	a, b := read("a.go"), read("sub/b.go")
-
-	// A later run changing nothing but the time keeps both files.
-	r = &gentest.RecordReporter{}
-	assert.NilError(t, base.Stage(ctx, f, files(first.Add(time.Hour), "var A = 1"), r))
-	assert.DeepEqual(t, r.Messages, []string{"0 files written, 2 files unchanged"})
-	assert.Equal(t, read("a.go"), a)
-
-	r = &gentest.RecordReporter{}
-	assert.NilError(t, base.Stage(ctx, f, files(first.Add(time.Hour), "var A = 2"), r))
-	assert.DeepEqual(t, r.Messages, []string{"1 file written, 1 file unchanged"})
-	assert.Assert(t, strings.Contains(read("a.go"), "var A = 2"))
-	assert.Assert(t, strings.Contains(read("a.go"), "generated: 2026-01-01T01:00:00Z"))
-	assert.Equal(t, read("sub/b.go"), b)
-}
 
 func fileOf(t *testing.T, pkgs []*packages.Package, name string) (*packages.Package, *ast.File) {
 	t.Helper()

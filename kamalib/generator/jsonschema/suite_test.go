@@ -19,6 +19,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
 type suiteGroup struct {
@@ -118,13 +119,7 @@ func generateSuite(raw jsontext.Value, assertFormats bool) (err error) {
 		return fmt.Errorf("decode: %w", err)
 	}
 
-	env := base.Env{
-		Reporter: gentest.NopReporter{},
-		Now:      gentest.Now(),
-		Registry: base.DefaultRegistry,
-	}
-
-	files, err := base.Assemble(context.Background(), Generator, env, Input{
+	files, err := gentest.Prepare(context.Background(), Generator, base.DefaultRegistry, Input{
 		Doc: &doc,
 		Options: Options{
 			Package:       "suite",
@@ -132,7 +127,7 @@ func generateSuite(raw jsontext.Value, assertFormats bool) (err error) {
 			Load:          remoteLoader(os.DirFS(filepath.FromSlash("../..")), suiteRemotes()),
 			AssertFormats: assertFormats,
 		},
-	})
+	}, overlayfs.WithFormatter(gentest.AsIs{}))
 	if err != nil {
 		return err
 	}

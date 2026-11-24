@@ -55,6 +55,26 @@ func TestWriteRejectsInvalidGo(t *testing.T) {
 	assert.ErrorIs(t, err, fs.ErrNotExist)
 }
 
+func TestWriteFormatted(t *testing.T) {
+	calls := 0
+	f, err := New(t.TempDir(), WithFormatter(formatterFunc(
+		func(_ context.Context, _ string, src []byte) ([]byte, error) {
+			calls++
+			return src, nil
+		},
+	)))
+	assert.NilError(t, err)
+
+	defer f.Close()
+
+	assert.NilError(t, f.WriteFormatted("sub/x.go", []byte("package x\nfunc F( ) {}\n")))
+	assert.Equal(t, calls, 0)
+
+	got, err := fs.ReadFile(f.FS(), "sub/x.go")
+	assert.NilError(t, err)
+	assert.Equal(t, string(got), "package x\nfunc F( ) {}\n")
+}
+
 type formatterFunc func(ctx context.Context, path string, src []byte) ([]byte, error)
 
 func (fn formatterFunc) Format(ctx context.Context, path string, src []byte) ([]byte, error) {

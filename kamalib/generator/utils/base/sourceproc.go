@@ -85,6 +85,9 @@ func (in Input[O, P, T, F]) Scope() Scope {
 //
 // Partial is the partial variant of the param Param that a spec decodes
 // into. O, P, T and F are those of the [Input] of the generator.
+//
+// Default, Options and Loader are required: Instantiate returns an error
+// when one is nil.
 type SourceProc[Partial ParamPartial[Partial, Param], Param, O, P, T, F any] struct {
 	Generator Generator[Input[O, P, T, F]]
 	// Default returns the values Param takes for the keys a spec leaves out.
@@ -134,6 +137,13 @@ func (p SourceProc[Partial, Param, O, P, T, F]) Instantiate(
 	ctx context.Context,
 	dryRun bool,
 ) (workflow.Instance, error) {
+	switch {
+	case p.Options == nil:
+		return nil, fmt.Errorf("base: proc of %s: Options is nil", p.Generator.Id)
+	case p.Loader == nil:
+		return nil, fmt.Errorf("base: proc of %s: Loader is nil", p.Generator.Id)
+	}
+
 	return p.proc().Instantiate(ctx, dryRun)
 }
 
@@ -198,6 +208,12 @@ func (p SourceProc[Partial, Param, O, P, T, F]) input(
 		}
 
 		return Input[O, P, T, F]{}, Scope{}, err
+	}
+
+	if loaded == nil {
+		return Input[O, P, T, F]{}, Scope{}, fmt.Errorf(
+			"base: %s: the option loader returned no options and no error", p.Generator.Id,
+		)
 	}
 
 	in := Input[O, P, T, F]{Packages: srcPkgs, Loaded: loaded, Options: opts, Root: out.Root()}

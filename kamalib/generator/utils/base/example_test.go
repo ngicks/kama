@@ -156,18 +156,11 @@ func codeBlocks(section string) []string {
 }
 
 func TestExampleGreeting(t *testing.T) {
-	ctx := context.Background()
-	env := base.Env{
-		Reporter: gentest.NopReporter{},
-		Now:      gentest.Now(),
-		Registry: base.DefaultRegistry,
-	}
-
-	_, err := base.Assemble(ctx, greeting, env, []string{"alice", "Bob", "carol"})
+	_, err := gentest.Assemble(t, greeting, base.DefaultRegistry, []string{"alice", "Bob", "carol"})
 	assert.ErrorContains(t, err, `greeting: "alice" is not exported`)
 	assert.ErrorContains(t, err, `greeting: "carol" is not exported`)
 
-	files, err := base.Assemble(ctx, greeting, env, []string{"Bob"})
+	files, err := gentest.Assemble(t, greeting, base.DefaultRegistry, []string{"Bob"})
 	assert.NilError(t, err)
 	assert.Equal(t, len(files), 1)
 	assert.Equal(t, files[0].Path, "greeting/greeting.go")
@@ -184,13 +177,7 @@ func TestExampleCount(t *testing.T) {
 		"b.go":   "package x\n",
 		"y/y.go": "package y\n",
 	})
-	env := base.Env{
-		Reporter: gentest.NopReporter{},
-		Now:      gentest.Now(),
-		Registry: base.DefaultRegistry,
-	}
-
-	files, err := base.Assemble(t.Context(), count, env, countInput{
+	files, err := gentest.Assemble(t, count, base.DefaultRegistry, countInput{
 		Packages: base.SourcePackages(pkgs),
 		Root:     f.Root(),
 	})

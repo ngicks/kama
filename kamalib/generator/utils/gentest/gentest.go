@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ngicks/opiter"
 	"go.yaml.in/yaml/v4"
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
@@ -102,10 +103,11 @@ func LoadFs(
 	return f, pkgs
 }
 
-// Run runs g on in as base.Drive does with out, a registry and the time
-// now, and stages nothing. It returns the files formatted by out, with
-// absolute paths under the root of out and sorted by path, the warnings g
-// reported followed by those of the stale check of scope, and the errors.
+// Run prepares the run of g on in as base.Drive does with out, a registry
+// and the time now, and stages nothing. It returns the files of the plan
+// with absolute paths under the root of out and sorted by path, the
+// warnings g reported followed by those of the stale check of scope, and
+// the error of base.Prepare.
 func Run[I any](
 	ctx context.Context,
 	g base.Generator[I],
@@ -118,34 +120,79 @@ func Run[I any](
 	r := &RecordReporter{}
 	env := base.Env{Reporter: r, Now: now, Registry: reg, Out: out.FS()}
 
-	files, err := base.Assemble(ctx, g, env, in)
+	plan, err := base.Prepare(ctx, g, env, in, scope, out)
 	if err != nil {
 		return nil, r.Warnings, err
 	}
 
-	stale, err := base.StaleCheck{Registry: reg, Generator: g.Id}.InScope(out.FS(), scope, files)
-	if err != nil {
-		return nil, r.Warnings, err
-	}
+	files := opiter.WrapSeq(slices.Values(plan.Files)).
+		Map(func(f base.File) base.File {
+			return base.File{
+				Path:    filepath.Join(out.Root(), filepath.FromSlash(f.Path)),
+				Content: f.Content,
+			}
+		}).
+		CollectSlice()
 
-	formatted := make([]base.File, 0, len(files))
+	slices.SortFunc(files, func(a, b base.File) int { return cmp.Compare(a.Path, b.Path) })
 
-	for _, f := range files {
-		content, err := out.Format(ctx, f.Path, f.Content)
-		if err != nil {
-			return nil, r.Warnings, err
-		}
-
-		formatted = append(formatted, base.File{
-			Path:    filepath.Join(out.Root(), filepath.FromSlash(f.Path)),
-			Content: content,
-		})
-	}
-
-	slices.SortFunc(formatted, func(a, b base.File) int { return cmp.Compare(a.Path, b.Path) })
-
-	return formatted, slices.Concat(r.Warnings, stale), nil
+	return files, slices.Concat(r.Warnings, plan.Stale), nil
 }
+
+// Assemble prepares the run of g on in as base.Prepare does into an empty
+// output whose formatter leaves every file as it is, with the registry reg
+// and the time Now. It returns the files as the framework assembles them,
+// sorted by path, and the error of base.Prepare.
+func Assemble[I any](
+	t *testing.T,
+	g base.Generator[I],
+	reg *genmark.Registry,
+	in I,
+) ([]base.File, error) {
+	t.Helper()
+
+	return Prepare(t.Context(), g, reg, in, overlayfs.WithFormatter(AsIs{}))
+}
+
+// Prepare prepares the run of g on in as base.Prepare does into an empty
+// temporary output opened with opts, with the registry reg and the time
+// Now. It returns the files of the plan sorted by path, and the error of
+// base.Prepare.
+func Prepare[I any](
+	ctx context.Context,
+	g base.Generator[I],
+	reg *genmark.Registry,
+	in I,
+	opts ...overlayfs.Option,
+) ([]base.File, error) {
+	dir, err := os.MkdirTemp("", "gentest-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+
+	f, err := overlayfs.New(dir, opts...)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	env := base.Env{Reporter: NopReporter{}, Now: Now(), Registry: reg, Out: f.FS()}
+
+	plan, err := base.Prepare(ctx, g, env, in, base.Scope{}, f)
+	if err != nil {
+		return nil, err
+	}
+
+	slices.SortFunc(plan.Files, func(a, b base.File) int { return cmp.Compare(a.Path, b.Path) })
+
+	return plan.Files, nil
+}
+
+// AsIs is the formatter of an overlay that leaves every file as it is.
+type AsIs struct{}
+
+func (AsIs) Format(_ context.Context, _ string, src []byte) ([]byte, error) { return src, nil }
 
 // Write writes files, generated under the root of f, into f.
 func Write(t *testing.T, f *overlayfs.Fs, files []base.File) {

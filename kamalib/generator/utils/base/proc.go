@@ -2,6 +2,7 @@ package base
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -26,7 +27,11 @@ import (
 //	Out(*overlayfs.Fs)
 //	Files(context.Context, workflow.Reporter) ([]File, error)
 //
-// Files returns the files Run would stage, and stages nothing.
+// Files returns the files Run would stage, as [Prepare] returns them, and
+// stages nothing.
+//
+// Default and Input are required: Instantiate returns an error when one
+// is nil.
 type Proc[Pp ParamPartial[Pp, P], P, X, I any] struct {
 	Generator Generator[I]
 	// Default returns the values P takes for the keys a step leaves out.
@@ -70,6 +75,15 @@ func (Proc[Pp, P, X, I]) OutTypes() []reflect.Type {
 func (Proc[Pp, P, X, I]) AsInputType() reflect.Type { return nil }
 
 func (p Proc[Pp, P, X, I]) Instantiate(context.Context, bool) (workflow.Instance, error) {
+	switch {
+	case p.Generator.Generate == nil:
+		return nil, fmt.Errorf("base: proc of %s: Generator.Generate is nil", p.Generator.Id)
+	case p.Default == nil:
+		return nil, fmt.Errorf("base: proc of %s: Default is nil", p.Generator.Id)
+	case p.Input == nil:
+		return nil, fmt.Errorf("base: proc of %s: Input is nil", p.Generator.Id)
+	}
+
 	r := &procRun[Pp, P, X, I]{proc: p}
 
 	// workflow calls In with exactly the ins InTypes declares, so a step
@@ -130,12 +144,17 @@ func (r *procRun[Pp, P, X, I]) Run(ctx context.Context, rep workflow.Reporter) e
 }
 
 func (r *procRun[Pp, P, X, I]) Files(ctx context.Context, rep workflow.Reporter) ([]File, error) {
-	in, _, err := r.proc.Input(ctx, r.param, r.in, r.out)
+	in, scope, err := r.proc.Input(ctx, r.param, r.in, r.out)
 	if err != nil {
 		return nil, err
 	}
 
-	return Assemble(ctx, r.proc.Generator, r.env(rep), in)
+	plan, err := Prepare(ctx, r.proc.Generator, r.env(rep), in, scope, r.out)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.Files, nil
 }
 
 func (r *procRun[Pp, P, X, I]) env(rep workflow.Reporter) Env {

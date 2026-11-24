@@ -1,23 +1,28 @@
 package base
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"io/fs"
+	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/ngicks/kama/kamalib/pkg/genheader"
+	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
 // File is a file a generator produced.
 type File struct {
-	// Path locates the file. A generator documents whether its paths are
-	// absolute or relative; Stage takes slash-separated paths relative to
-	// the root of the Fs it writes to.
+	// Path locates the file: slash-separated and relative to the root of
+	// the output.
 	Path    string
 	Content []byte
 }
@@ -27,26 +32,36 @@ func inside(rel string) bool {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
-// Stage writes files, whose paths are relative to the root of fsys, into
-// fsys and reports to r how many it wrote and how many it left unchanged.
+// stage writes files, formatted as fsys formats them, into fsys as they
+// are, and reports to r how many it wrote and how many it left unchanged.
+// A done ctx stages nothing.
 //
 // A file of fsys that would change in the generated: line of its header
 // only is left as it is, so a run without changes leaves every file byte
 // for byte as it was.
-func Stage(ctx context.Context, fsys *overlayfs.Fs, files []File, r workflow.Reporter) error {
+func stage(ctx context.Context, fsys *overlayfs.Fs, files []File, r workflow.Reporter) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	var written, kept int
 
 	for _, f := range files {
-		changed, err := stageFile(ctx, fsys, f)
-		if err != nil {
-			return err
+		existing, err := fs.ReadFile(fsys.FS(), f.Path)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("base: read %q: %w", f.Path, err)
 		}
 
-		if changed {
-			written++
-		} else {
+		if err == nil && genheader.SameExceptGenerated(existing, f.Content) {
 			kept++
+			continue
 		}
+
+		if err := fsys.WriteFormatted(f.Path, f.Content); err != nil {
+			return fmt.Errorf("base: write %q: %w", f.Path, err)
+		}
+
+		written++
 	}
 
 	r.Progress(fmt.Sprintf("%s written, %s unchanged", fileCount(written), fileCount(kept)))
@@ -62,34 +77,115 @@ func fileCount(n int) string {
 	return fmt.Sprintf("%d files", n)
 }
 
-// stageFile writes f unless the file in fsys differs from it in the
-// generated: line only, and reports whether it wrote.
-//
-// Generators return unformatted content, and fsys.Write formats what it
-// stages. The comparison uses the formatted content so it holds for any
-// formatter fsys runs. An unchanged file is left untouched: restoring it
-// with fsys.Write would format the existing, already formatted file again,
-// and not every formatter is idempotent.
-func stageFile(ctx context.Context, fsys *overlayfs.Fs, f File) (bool, error) {
-	existing, err := fs.ReadFile(fsys.FS(), f.Path)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return false, fmt.Errorf("base: read %q: %w", f.Path, err)
+// preflight returns an error for each output of outs that fsys cannot take
+// or must not take, so that a run stages all of its files or none.
+func preflight(fsys fs.FS, id Id, reg *genmark.Registry, outs []output) []error {
+	paths := map[string]bool{}
+	for _, o := range outs {
+		paths[o.Path] = true
 	}
 
-	if existing != nil {
-		formatted, err := fsys.Format(ctx, f.Path, f.Content)
+	var errs []error
+
+	for _, o := range outs {
+		if err := writable(fsys, paths, o.Path); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %q: %w", id, o.Path, err))
+			continue
+		}
+
+		if o.composed {
+			if err := replaceable(fsys, id, reg, o.Path); err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", id, err))
+			}
+		}
+	}
+
+	return errs
+}
+
+// writable reports why a write of name into fsys would fail or would write
+// elsewhere: a directory of name is yielded as a file, is no directory or
+// is a symbolic link, or name is a directory or a symbolic link. The
+// overlay does not create a directory through a symbolic link, and a
+// symbolic link at name would write its target, which another output may
+// name too.
+func writable(fsys fs.FS, paths map[string]bool, name string) error {
+	var dirs []string
+	for d := path.Dir(name); d != "."; d = path.Dir(d) {
+		dirs = append(dirs, d)
+	}
+
+	slices.Reverse(dirs)
+
+	for _, d := range dirs {
+		if paths[d] {
+			return fmt.Errorf("%q is yielded as a file too", d)
+		}
+	}
+
+	for _, d := range dirs {
+		fi, err := fs.Lstat(fsys, d)
+		if errors.Is(err, fs.ErrNotExist) {
+			break
+		}
+
 		if err != nil {
-			return false, fmt.Errorf("base: format %q: %w", f.Path, err)
+			return err
 		}
 
-		if genheader.SameExceptGenerated(existing, formatted) {
-			return false, nil
+		if fi.Mode()&fs.ModeSymlink != 0 {
+			return fmt.Errorf("%q is a symbolic link", d)
+		}
+
+		if !fi.IsDir() {
+			return fmt.Errorf("%q is not a directory", d)
 		}
 	}
 
-	if err := fsys.Write(ctx, f.Path, f.Content); err != nil {
-		return false, fmt.Errorf("base: write %q: %w", f.Path, err)
+	fi, err := fs.Lstat(fsys, name)
+
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return nil
+	case err != nil:
+		return err
+	case fi.Mode()&fs.ModeSymlink != 0:
+		return errors.New("is a symbolic link")
+	case fi.IsDir():
+		return errors.New("is a directory")
 	}
 
-	return true, nil
+	return nil
+}
+
+// replaceable reports an existing file at name of fsys that a Composed of
+// id must not replace: one written by hand or by another generator. The
+// file is id's when it starts with the header of id or holds a
+// declaration carrying the mark of id. A Whole replaces any file, since
+// editing a file in place is what it is for.
+func replaceable(fsys fs.FS, id Id, reg *genmark.Registry, name string) error {
+	src, err := fs.ReadFile(fsys, name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+
+	if err != nil {
+		return fmt.Errorf("read %q: %w", name, err)
+	}
+
+	if bytes.HasPrefix(src, []byte(genheader.GeneratedComment(id.String())+"\n")) {
+		return nil
+	}
+
+	f, err := parser.ParseFile(
+		token.NewFileSet(), name, src, parser.ParseComments|parser.SkipObjectResolution,
+	)
+	if err == nil && (StaleCheck{Registry: reg, Generator: id}).marked(f) {
+		return nil
+	}
+
+	return fmt.Errorf(
+		"%q exists and is not generated by %s; a Composed replaces only a file of its generator",
+		name, id,
+	)
 }

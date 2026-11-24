@@ -162,6 +162,17 @@ func (f *Fs) Write(ctx context.Context, name string, content []byte) error {
 		return err
 	}
 
+	return f.WriteFormatted(name, content)
+}
+
+// WriteFormatted stages content at name as it is. A caller that formatted
+// content with Format already writes it with WriteFormatted, so content is
+// formatted once: not every formatter is idempotent.
+func (f *Fs) WriteFormatted(name string, content []byte) error {
+	if f.merged == nil {
+		return ErrClosed
+	}
+
 	if dir := path.Dir(name); dir != "." {
 		if err := f.merged.MkdirAll(dir, 0o755); err != nil {
 			return err
