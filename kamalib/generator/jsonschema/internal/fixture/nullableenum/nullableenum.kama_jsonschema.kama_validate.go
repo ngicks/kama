@@ -2,14 +2,94 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:04:05Z
+// generated: 2026-11-24T12:26:19Z
 
 package nullableenum
+
+import "github.com/ngicks/kama/kamalib/pkg/validation"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
 func (v Levels) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if v.Ref.IsDefined() {
+		if err := validation.Field(v.Ref.Value().Validate(stopOnFirstError), "ref"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Const.IsDefined() {
+		if err := validation.Field(v.Const.Value().Validate(stopOnFirstError), "const"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Big.IsDefined() {
+		if err := validation.Field(v.Big.Value().Validate(stopOnFirstError), "big"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Number.IsSome() {
+		if err := validation.Field(kamaValidateConst(v.Number.Value(), 1.5, 18446744073709551616), "number"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v LevelsConst) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := kamaValidateConst(v, "x"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v LevelsBig) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := kamaValidateConst(v, 18446744073709551616); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v Level) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := kamaValidateConst(v, 1, 2, 3); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
 }

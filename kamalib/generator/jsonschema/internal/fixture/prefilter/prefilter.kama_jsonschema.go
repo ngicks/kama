@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:07:34Z
+// generated: 2026-11-24T12:27:07Z
 
 package prefilter
 
@@ -185,6 +185,7 @@ func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // CircleKind is generated from the schema at
 // #/$defs/Circle/properties/kind.
 //
+//kama:validate const=`"circle"`
 //kama:generated kama:jsonschema
 type CircleKind string
 
@@ -195,8 +196,8 @@ const (
 	CircleKindCircle CircleKind = "circle"
 )
 
-// UnmarshalJSONFrom decodes v from one JSON string. It rejects a value the
-// schema does not list.
+// UnmarshalJSONFrom decodes v from one JSON string. The value must pass
+// Validate, which rejects a value the schema does not list.
 //
 //kama:generated kama:jsonschema
 func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -208,7 +209,7 @@ func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, (*string)(&s)); err != nil {
 		return err
 	}
-	if err := jsonschemart.Enum(s, CircleKindCircle); err != nil {
+	if err := jsonschemart.Validate(s); err != nil {
 		return err
 	}
 	*v = s

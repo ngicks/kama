@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:04:02Z
+// generated: 2026-11-24T12:26:57Z
 
 package nestedunion
 
@@ -418,6 +418,7 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:generated kama:jsonschema
 type TaggedLeft struct {
+	//kama:validate const=`"left"`
 	Kind string                    `json:"kind"`
 	C    opt.Option[Tagged]        `json:"c,omitzero"`
 	_x   map[string]jsontext.Value `json:",embed"`
@@ -471,9 +472,6 @@ func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.Kind, err = jsonschemart.Required(w.Kind)
 	errs = append(errs, validation.Field(err, "kind"))
-	if w.Kind.IsDefined() {
-		errs = append(errs, validation.Field(jsonschemart.Enum(w.Kind.Value(), "left"), "kind"))
-	}
 	out.C, err = jsonschemart.Optional(w.C)
 	errs = append(errs, validation.Field(err, "c"))
 	out._x = w.AdditionalProperties
@@ -492,6 +490,7 @@ func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:generated kama:jsonschema
 type TaggedRight struct {
+	//kama:validate const=`"right"`
 	Kind string                    `json:"kind"`
 	C    opt.Option[Tagged]        `json:"c,omitzero"`
 	_x   map[string]jsontext.Value `json:",embed"`
@@ -545,9 +544,6 @@ func (v *TaggedRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.Kind, err = jsonschemart.Required(w.Kind)
 	errs = append(errs, validation.Field(err, "kind"))
-	if w.Kind.IsDefined() {
-		errs = append(errs, validation.Field(jsonschemart.Enum(w.Kind.Value(), "right"), "kind"))
-	}
 	out.C, err = jsonschemart.Optional(w.C)
 	errs = append(errs, validation.Field(err, "c"))
 	out._x = w.AdditionalProperties

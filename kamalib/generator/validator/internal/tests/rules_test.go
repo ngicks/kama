@@ -296,3 +296,23 @@ func TestClosed(t *testing.T) {
 
 	assert.DeepEqual(t, validation.Pointers(strict.Validate(true)), []string{"/a"})
 }
+
+// TestBoundsOfIntegers compares integers exactly with numbers their types
+// cannot represent.
+func TestBoundsOfIntegers(t *testing.T) {
+	for _, half := range []int{2, 3} {
+		assert.NilError(t, model.Bounds{Half: half, Small: -128}.Validate(false))
+	}
+
+	for _, half := range []int{1, 4} {
+		err := model.Bounds{Half: half}.Validate(false)
+		assert.DeepEqual(t, validation.Pointers(err), []string{"/half"})
+		assert.ErrorIs(t, err, validation.ErrCompare)
+	}
+
+	n := 0
+
+	err := model.Bounds{Half: 2, Never: &n}.Validate(false)
+	assert.DeepEqual(t, validation.Pointers(err), []string{"/never"})
+	assert.ErrorContains(t, err, "want == 0.5, got 0")
+}

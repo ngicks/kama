@@ -66,7 +66,7 @@ func render(doc *jsonschema.Schema, opts Options) ([]byte, error) {
 	var steps []genStep
 
 	if !declares(doc, "") {
-		steps = rootSteps(doc, opts)
+		steps = definedSteps(doc, opts, "")
 	}
 
 	for ptr := range schemas(doc) {
@@ -124,6 +124,8 @@ func declSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		return unionSteps(doc, opts, ptr)
 	case stringEnum(s):
 		return enumSteps(doc, opts, ptr)
+	case valueType(doc, ptr):
+		return definedSteps(doc, opts, ptr)
 	}
 
 	return objectSteps(doc, opts, ptr)
@@ -209,7 +211,7 @@ func validatedDoc(text string, args []string) genExpr {
 	return lang.Comment(
 		lang.Expr("%s", commentLines(text)),
 		lang.Expr(""),
-		lang.Expr("%s %s", validateDirective, strings.Join(args, " ")),
+		lang.Expr("%s", strings.Join(append([]string{validateDirective}, args...), " ")),
 		lang.Expr("%s", GeneratorId.Marker()),
 	)
 }
@@ -345,6 +347,30 @@ func goTypeSeen(
 		return typeName(doc, opts, r)
 	}
 
+	return builtinTypeSeen(c, doc, opts, r, s, seen)
+}
+
+// builtinType spells the built-in Go type of the schema at ptr, which a
+// type it declares is defined over.
+func builtinType(c genCtx, doc *jsonschema.Schema, opts Options, ptr string) (string, error) {
+	r, s, err := resolved(doc, ptr)
+	if err != nil {
+		return "", err
+	}
+
+	return builtinTypeSeen(c, doc, opts, r, s, []string{r})
+}
+
+// builtinTypeSeen is builtinType for the schema s at r, reached through
+// the schemas of seen.
+func builtinTypeSeen(
+	c genCtx,
+	doc *jsonschema.Schema,
+	opts Options,
+	r string,
+	s *jsonschema.Schema,
+	seen []string,
+) (string, error) {
 	k, err := kinds(doc, r)
 	if err != nil {
 		return "", err
@@ -400,17 +426,6 @@ func elemTypeSeen(
 	ptr string,
 	seen []string,
 ) (string, error) {
-	r, s, err := resolvedValue(doc, ptr)
-	if err != nil {
-		return "", err
-	}
-
-	// Only an object property and the root have a place to check a value
-	// against them, and the root does not come here.
-	if s.Const != nil || (s.Enum != nil && !stringEnum(s)) {
-		return "", unsupported(r, "enum or const outside an object property")
-	}
-
 	t, err := goTypeSeen(c, doc, opts, ptr, seen)
 	if err != nil || !nullable(doc, ptr) {
 		return t, err

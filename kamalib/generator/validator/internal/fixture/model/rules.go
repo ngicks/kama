@@ -140,6 +140,18 @@ type Contact struct {
 	Extra map[string]any     `json:",embed"`
 }
 
+// Bounds compares integers with numbers their types cannot represent.
+//
+//kama:validate hook=off
+type Bounds struct {
+	//kama:validate cmp=">1.5 <=3.5"
+	Half int `json:"half"`
+	//kama:validate cmp="<300 >=-1e30 !=0.5"
+	Small int8 `json:"small"`
+	//kama:validate cmp="==0.5"
+	Never *int `json:"never"`
+}
+
 // Strict holds no member beyond its fields.
 //
 //kama:validate closed hook=off

@@ -161,12 +161,6 @@ func TestGenerateRejects(t *testing.T) {
 			"#/properties/a:",
 		},
 		{
-			"const outside a property",
-			`{"type":"object","properties":{"a":{"type":"array","items":{"const":1}}}}`,
-			ErrUnsupported,
-			"#/properties/a/items:",
-		},
-		{
 			"const that is no Go constant of its type",
 			`{"type":"object","properties":{"a":{"type":"integer","const":1.5}}}`,
 			ErrUnsupported,
@@ -179,11 +173,22 @@ func TestGenerateRejects(t *testing.T) {
 			"#/properties/a/type:",
 		},
 		{
-			"const in a nullable union outside a property",
-			`{"type":"object","properties":{"a":{"type":"array",
-			"items":{"anyOf":[{"const":1},{"type":"null"}]}}}}`,
+			"minLength that is no integer",
+			`{"type":"string","minLength":1.5}`,
 			ErrUnsupported,
-			"#/properties/a/items",
+			"#/minLength: 1.5 is no non-negative integer",
+		},
+		{
+			"multipleOf of zero",
+			`{"type":"number","multipleOf":0}`,
+			ErrUnsupported,
+			"#/multipleOf: 0 is not above zero",
+		},
+		{
+			"minimum that is no number",
+			`{"type":"number","minimum":"1"}`,
+			ErrUnsupported,
+			`#/minimum: "1" is no number`,
 		},
 		{
 			"type next to an allOf of one member of another kind",
@@ -305,7 +310,26 @@ func TestGenerateRootType(t *testing.T) {
 		{
 			"enum",
 			`{"enum":[1,2]}`,
-			[]string{"type Root int64", "jsonschemart.Enum(out, 1, 2)"},
+			[]string{"//kama:validate const=\"1 2\"\n", "type Root int64"},
+		},
+		{
+			"const of items",
+			`{"items":{"const":1}}`,
+			[]string{
+				"type Root []RootItem",
+				"//kama:validate const=\"1\"\n",
+				"type RootItem int64",
+			},
+		},
+		{
+			"const of a nullable union of items",
+			`{"items":{"anyOf":[{"const":1},{"type":"null"}]}}`,
+			[]string{"type Root []opt.Option[RootItem]", "type RootItem int64"},
+		},
+		{
+			"keywords of a string",
+			`{"type":"string","minLength":2.0,"maxLength":1e1,"pattern":"^a\""}`,
+			[]string{"//kama:validate runes=\">=2 <=10\" regexp=`^a\"`\n"},
 		},
 		{"ref", `{"$ref":"#/$defs/a","$defs":{"a":{"type":"object"}}}`, []string{"type Root A"}},
 	}

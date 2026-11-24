@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:07:35Z
+// generated: 2026-11-24T12:26:26Z
 
 package prefilter
 
@@ -43,7 +43,29 @@ func (v ShapeSquare) Validate(stopOnFirstError bool) error {
 //
 //kama:generated kama:validate
 func (v Circle) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if err := validation.Field(v.Kind.Validate(stopOnFirstError), "kind"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v CircleKind) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := kamaValidateConst(v, "circle"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first

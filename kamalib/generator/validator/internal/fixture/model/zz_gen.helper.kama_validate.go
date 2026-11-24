@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:11:29Z
+// generated: 2026-11-24T12:30:35Z
 
 package model
 
@@ -215,6 +215,14 @@ func kamaValidateMultipleInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 |
 		return validation.New(validation.ErrMultiple, "want a multiple of %s, got %d", want, got)
 	}
 	return nil
+}
+
+// kamaValidateNever is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateNever(got any, op, want string) error {
+	return validation.New(validation.ErrCompare, "want %s %s, got %s",
+		op, want, kamaValidateSpell(got))
 }
 
 // kamaValidateNil is a helper of the generated Validate methods.

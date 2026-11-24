@@ -44,31 +44,19 @@ type suiteKey struct {
 // The reasons a decode of generated code may disagree with the verdict of
 // the suite. checkAllowed tells what each reason needs of the test.
 const (
-	// The generated code does not check the pure validation keywords. The
-	// schema must hold one of unenforcedKeywords.
-	reasonUnenforced = "a pure validation keyword is not checked"
+	// The generated code does not check a validation keyword of the schema.
+	// Generate must warn about it with ErrUnenforced.
+	reasonUnenforced = "Generate warns that a validation keyword is not enforced"
 	// A schema without type takes the kind its keywords imply, where the
 	// suite accepts every other kind. The suite must call the instance
 	// valid.
 	reasonImpliedKind = "a schema without type takes the kind its keywords imply"
 )
 
-var unenforcedKeywords = []string{
-	"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
-	"minLength", "maxLength", "pattern", "format", "minItems", "maxItems",
-	"uniqueItems", "minProperties", "maxProperties", "dependentRequired",
-	"contentEncoding", "contentMediaType", "contentSchema",
-}
-
 // suiteAllowed lists the tests the generated code disagrees with by
 // design, with the reason.
 var suiteAllowed = map[suiteKey]string{
-	{"anyOf.json", "anyOf", "neither anyOf valid"}: reasonUnenforced,
-	{
-		"default.json",
-		"the default keyword does not do anything if the property is missing",
-		"an explicit property value is checked against maximum (failing)",
-	}: reasonUnenforced,
+	{"anyOf.json", "anyOf", "neither anyOf valid"}:                        reasonUnenforced,
 	{"dependentRequired.json", "single dependency", "missing dependency"}: reasonUnenforced,
 	{
 		"dependentRequired.json",
@@ -193,12 +181,7 @@ var suiteAllowed = map[suiteKey]string{
 		"1.5e-8 is not multiple of 1e-8",
 	}: reasonUnenforced,
 	{"pattern.json", "pattern validation", "a non-matching pattern is invalid"}: reasonUnenforced,
-	{
-		"pattern.json",
-		"pattern with Unicode property escape requires unicode mode",
-		"Digits do not match",
-	}: reasonUnenforced,
-	{"properties.json", "object properties validation", "ignores arrays"}: reasonImpliedKind,
+	{"properties.json", "object properties validation", "ignores arrays"}:       reasonImpliedKind,
 	{
 		"properties.json",
 		"object properties validation",
@@ -214,13 +197,8 @@ var suiteAllowed = map[suiteKey]string{
 		"properties whose names are Javascript object property names",
 		"ignores other non-objects",
 	}: reasonImpliedKind,
-	{"ref.json", "root pointer ref", "match"}:           reasonImpliedKind,
-	{"ref.json", "root pointer ref", "recursive match"}: reasonImpliedKind,
-	{
-		"ref.json",
-		"ref applies alongside sibling keywords",
-		"ref valid, maxItems invalid",
-	}: reasonUnenforced,
+	{"ref.json", "root pointer ref", "match"}:                             reasonImpliedKind,
+	{"ref.json", "root pointer ref", "recursive match"}:                   reasonImpliedKind,
 	{"required.json", "required validation", "ignores arrays"}:            reasonImpliedKind,
 	{"required.json", "required validation", "ignores strings"}:           reasonImpliedKind,
 	{"required.json", "required validation", "ignores other non-objects"}: reasonImpliedKind,
@@ -659,13 +637,21 @@ func compareSuiteKeys(a, b suiteKey) int {
 func checkAllowed(reason string, schema jsontext.Value, valid bool) error {
 	switch reason {
 	case reasonUnenforced:
-		held, err := holdsKeyword(schema, unenforcedKeywords)
+		var doc jsonschema.Schema
+		if err := jsonv2.Unmarshal(schema, &doc); err != nil {
+			return err
+		}
+
+		_, warnings, err := Generate(&doc, Options{Package: "suite", TypeName: "Root"})
 		if err != nil {
 			return err
 		}
 
-		if !held {
-			return errors.New("the schema holds no pure validation keyword")
+		if !slices.ContainsFunc(
+			warnings,
+			func(w error) bool { return errors.Is(w, ErrUnenforced) },
+		) {
+			return errors.New("Generate warns about no unenforced keyword")
 		}
 	case reasonImpliedKind:
 		if !valid {
@@ -676,39 +662,6 @@ func checkAllowed(reason string, schema jsontext.Value, valid bool) error {
 	}
 
 	return nil
-}
-
-// holdsKeyword reports whether a schema of raw that the generator reads
-// holds one of keywords as a keyword. A property of that name is no
-// keyword.
-func holdsKeyword(raw jsontext.Value, keywords []string) (bool, error) {
-	var doc jsonschema.Schema
-	if err := jsonv2.Unmarshal(raw, &doc); err != nil {
-		return false, err
-	}
-
-	for _, s := range schemas(&doc) {
-		b, err := jsonv2.Marshal(s)
-		if err != nil {
-			return false, err
-		}
-
-		var members map[string]jsontext.Value
-
-		if jsontext.Value(b).Kind() != '{' {
-			continue
-		}
-
-		if err := jsonv2.Unmarshal(b, &members); err != nil {
-			return false, err
-		}
-
-		if slices.ContainsFunc(keywords, func(kw string) bool { _, ok := members[kw]; return ok }) {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 // suiteStem returns the directory of the packages of file under suiteDir.

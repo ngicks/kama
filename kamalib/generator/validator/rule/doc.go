@@ -188,7 +188,10 @@
 // type of the value: a number, a quoted string, true or false, as in
 // cmp=">=0 <100" or cmp=`>"b"`. The value satisfies every comparison. It applies to
 // integer, float and string underlying types, and with == and != only to
-// bool underlying types. A literal the type cannot represent is an error.
+// bool underlying types. A literal the type cannot represent is an error,
+// except a number on an integer type, which compares exactly: >=1.5 holds
+// for the values >=2, <=1e30 for every value of int64 and ==1.5 for none.
+// A comparison no value satisfies reports the literal as written.
 //
 // const takes one or more Go literals of the type of the value, as in
 // const="1 2 3" or const=`"red" "dark blue"`. The value equals one of them.

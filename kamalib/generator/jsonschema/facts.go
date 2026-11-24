@@ -501,7 +501,8 @@ func stringEnum(s *jsonschema.Schema) bool {
 }
 
 // declares reports whether the schema at ptr declares a Go type of its
-// own: a struct, a union, a product of allOf or a string enum. A
+// own: a struct, a union, a product of allOf, a string enum or a type
+// defined over a built-in type to validate its value. A
 // reference, an allOf of one member and a nullable union take the type of
 // another schema, and the other schemas are spelled by built-in types.
 func declares(doc *jsonschema.Schema, ptr string) bool {
@@ -511,7 +512,7 @@ func declares(doc *jsonschema.Schema, ptr string) bool {
 		return false
 	}
 
-	return union(s) || s.AllOf != nil || stringEnum(s) || structKind(s)
+	return union(s) || s.AllOf != nil || stringEnum(s) || structKind(s) || valueType(doc, ptr)
 }
 
 // union reports whether s holds a oneOf, an anyOf or a type of two or more

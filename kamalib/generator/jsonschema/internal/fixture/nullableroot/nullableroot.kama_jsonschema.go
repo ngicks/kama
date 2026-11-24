@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:04:06Z
+// generated: 2026-11-24T12:26:20Z
 
 package nullableroot
 
@@ -18,17 +18,16 @@ import (
 // Code is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-type Code opt.Option[float64]
+type Code opt.Option[CodeValue]
 
 // MarshalJSONTo encodes v as its underlying type.
 //
 //kama:generated kama:jsonschema
 func (v Code) MarshalJSONTo(enc *jsontext.Encoder) error {
-	return json.MarshalEncode(enc, opt.Option[float64](v))
+	return json.MarshalEncode(enc, opt.Option[CodeValue](v))
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. It rejects a value
-// the schema does not allow.
+// UnmarshalJSONFrom decodes v as its underlying type.
 //
 //kama:generated kama:jsonschema
 func (v *Code) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -36,15 +35,43 @@ func (v *Code) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var out opt.Option[float64]
+	var out opt.Option[CodeValue]
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if out.IsSome() {
-		if err := jsonschemart.NumberEnum(raw, "1.5", "18446744073709551616"); err != nil {
-			return err
-		}
-	}
 	*v = Code(out)
+	return nil
+}
+
+// CodeValue is generated from the schema at #/anyOf/0.
+//
+//kama:validate const="1.5 18446744073709551616"
+//kama:generated kama:jsonschema
+type CodeValue float64
+
+// MarshalJSONTo encodes v as its underlying type.
+//
+//kama:generated kama:jsonschema
+func (v CodeValue) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, float64(v))
+}
+
+// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
+// Validate.
+//
+//kama:generated kama:jsonschema
+func (v *CodeValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	raw, err := jsonschemart.ReadValue(dec)
+	if err != nil {
+		return err
+	}
+	var out float64
+	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(CodeValue(out)); err != nil {
+		return err
+	}
+	*v = CodeValue(out)
 	return nil
 }

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:07:31Z
+// generated: 2026-11-24T12:27:03Z
 
 package object
 
@@ -161,6 +161,7 @@ func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // ObjectColor is generated from the schema at #/properties/color.
 //
+//kama:validate const=`"red" "green" "dark-blue"`
 //kama:generated kama:jsonschema
 type ObjectColor string
 
@@ -173,8 +174,8 @@ const (
 	ObjectColorDarkBlue ObjectColor = "dark-blue"
 )
 
-// UnmarshalJSONFrom decodes v from one JSON string. It rejects a value the
-// schema does not list.
+// UnmarshalJSONFrom decodes v from one JSON string. The value must pass
+// Validate, which rejects a value the schema does not list.
 //
 //kama:generated kama:jsonschema
 func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -186,7 +187,7 @@ func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, (*string)(&s)); err != nil {
 		return err
 	}
-	if err := jsonschemart.Enum(s, ObjectColorRed, ObjectColorGreen, ObjectColorDarkBlue); err != nil {
+	if err := jsonschemart.Validate(s); err != nil {
 		return err
 	}
 	*v = s

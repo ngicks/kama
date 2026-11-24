@@ -2,13 +2,17 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:07:31Z
+// generated: 2026-11-24T12:26:22Z
 
 package object
 
 import (
+	"fmt"
 	"maps"
+	"reflect"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
@@ -26,4 +30,29 @@ func kamaValidateClosed[K ~string, V any](m map[K]V, stopOnFirstError bool) erro
 		errs = append(errs, err)
 	}
 	return validation.Join(errs...)
+}
+
+// kamaValidateConst is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateConst[T comparable](got T, want ...T) error {
+	if !slices.Contains(want, got) {
+		spelled := make([]string, len(want))
+		for i, w := range want {
+			spelled[i] = kamaValidateSpell(w)
+		}
+		return validation.New(validation.ErrConst, "want one of %s, got %s",
+			strings.Join(spelled, ", "), kamaValidateSpell(got))
+	}
+	return nil
+}
+
+// kamaValidateSpell is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateSpell(v any) string {
+	if rv := reflect.ValueOf(v); rv.Kind() == reflect.String {
+		return strconv.Quote(rv.String())
+	}
+	return fmt.Sprint(v)
 }

@@ -114,7 +114,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{"nested null", doc("optPoint", `null`), []string{"/optPoint"}, validation.ErrNull},
 		{"nested not object", doc("reqPoint", `[]`), []string{"/reqPoint"}, jsonschemart.ErrType},
-		{"enum", doc("color", `"blue"`), []string{"/color"}, jsonschemart.ErrEnum},
+		{"enum", doc("color", `"blue"`), []string{"/color"}, validation.ErrConst},
 		{"enum null", doc("color", `null`), []string{"/color"}, validation.ErrNull},
 		{"null item", doc("tags", `["a",null]`), []string{"/tags/1"}, validation.ErrNull},
 		{"null map value", doc("counts", `{"a":null}`), []string{"/counts/a"}, validation.ErrNull},

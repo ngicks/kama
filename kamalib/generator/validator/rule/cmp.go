@@ -2,7 +2,12 @@ package rule
 
 import (
 	"fmt"
+	"go/ast"
+	"go/constant"
+	"go/parser"
+	"go/token"
 	"go/types"
+	"math/big"
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
@@ -14,7 +19,10 @@ import (
 // value: a number, a quoted string, true or false.
 //
 // It applies to types of an integer, float or string underlying type, and
-// with == and != only to types of a bool underlying type.
+// with == and != only to types of a bool underlying type. On an integer
+// type a number literal the type cannot represent, such as 1.5 or 1e30,
+// compares exactly: >=1.5 holds for the values >=2, ==1.5 for none and
+// <=1e30 for every value of int64.
 type Cmp struct{}
 
 // Name returns "cmp".
@@ -55,7 +63,7 @@ func (o CmpOptions) Check(t types.Type) error {
 	}
 
 	for _, c := range o.Comparisons {
-		if _, err := literalValue(t, c.Operand); err != nil {
+		if _, _, err := onType(t, c); err != nil {
 			return err
 		}
 	}
@@ -77,15 +85,147 @@ func (o CmpOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 		e.Declare(spellName, spellDecl)
 	}
 
-	return joinCalls(e, o.Comparisons, func(c Comparison) Gen {
-		return lang.Expr("%s(%s, %s, %s)", helper, v, strconv.Quote(c.Op), c.Operand)
-	}), nil
+	var calls []Gen
+
+	for _, c := range o.Comparisons {
+		on, holds, err := onType(t, c)
+		if err != nil {
+			return nil, err
+		}
+
+		switch holds {
+		case holdsAlways:
+		case holdsNever:
+			e.Declare(neverName, neverDecl)
+			calls = append(calls, lang.Expr(
+				"%s(%s, %s, %s)", neverName, v, strconv.Quote(c.Op), strconv.Quote(c.Operand),
+			))
+		default:
+			calls = append(calls, lang.Expr(
+				"%s(%s, %s, %s)", helper, v, strconv.Quote(on.Op), on.Operand,
+			))
+		}
+	}
+
+	return joinErrors(e, calls), nil
+}
+
+// The verdicts of onType on a comparison that needs no code.
+const (
+	holdsAlways = "always"
+	holdsNever  = "never"
+)
+
+// onType returns c as a comparison with an operand of t holding for the
+// same values of t. On an integer type, an operand that is a number t
+// cannot represent is rounded to the bound of the values satisfying c, and
+// holds tells holdsAlways or holdsNever when every value or none satisfies
+// c. Another operand must be a value of t.
+func onType(t types.Type, c Comparison) (Comparison, string, error) {
+	_, err := literalValue(t, c.Operand)
+	if err == nil || typequery.BasicInfo(t)&types.IsInteger == 0 {
+		return c, "", err
+	}
+
+	r, ok := exactNumber(c.Operand)
+	if !ok {
+		return c, "", err
+	}
+
+	lo, hi := integerRange(t)
+
+	floor := new(big.Int).Div(r.Num(), r.Denom())
+	ceil := new(big.Int).Neg(new(big.Int).Div(new(big.Int).Neg(r.Num()), r.Denom()))
+	one := big.NewInt(1)
+
+	var bound *big.Int
+
+	op := c.Op
+
+	switch op {
+	case "==":
+		return c, holdsNever, nil
+	case "!=":
+		return c, holdsAlways, nil
+	case ">":
+		op, bound = ">=", floor.Add(floor, one)
+	case ">=":
+		bound = ceil
+	case "<":
+		op, bound = "<=", ceil.Sub(ceil, one)
+	case "<=":
+		bound = floor
+	}
+
+	switch {
+	case op == ">=" && bound.Cmp(hi) > 0, op == "<=" && bound.Cmp(lo) < 0:
+		return c, holdsNever, nil
+	case op == ">=" && bound.Cmp(lo) <= 0, op == "<=" && bound.Cmp(hi) >= 0:
+		return c, holdsAlways, nil
+	}
+
+	return Comparison{Op: op, Operand: bound.String()}, "", nil
+}
+
+// exactNumber returns the value of lit, a Go number literal with an
+// optional sign, exactly.
+func exactNumber(lit string) (*big.Rat, bool) {
+	x, err := parser.ParseExpr(lit)
+	if err != nil || !isLiteral(x) {
+		return nil, false
+	}
+
+	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}}
+	if types.CheckExpr(token.NewFileSet(), nil, token.NoPos, x, info) != nil {
+		return nil, false
+	}
+
+	v := info.Types[x].Value
+	if v == nil || (v.Kind() != constant.Int && v.Kind() != constant.Float) {
+		return nil, false
+	}
+
+	return new(big.Rat).SetString(v.ExactString())
+}
+
+// integerRange returns the least and the greatest value of the integer
+// type t, taking int, uint and uintptr as 64 bits wide.
+func integerRange(t types.Type) (*big.Int, *big.Int) {
+	bits := map[types.BasicKind]uint{
+		types.Int8: 8, types.Int16: 16, types.Int32: 32,
+		types.Uint8: 8, types.Uint16: 16, types.Uint32: 32,
+	}[t.Underlying().(*types.Basic).Kind()]
+	if bits == 0 {
+		bits = 64
+	}
+
+	if typequery.BasicInfo(t)&types.IsUnsigned != 0 {
+		return new(big.Int), new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), bits), big.NewInt(1))
+	}
+
+	hi := new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), bits-1), big.NewInt(1))
+
+	return new(big.Int).Neg(new(big.Int).Add(hi, big.NewInt(1))), hi
 }
 
 const (
 	cmpName   = "kamaValidateCmp"
 	equalName = "kamaValidateEqual"
+	// neverName is the helper of a comparison no value of the type
+	// satisfies, which spells the operand as written.
+	neverName = "kamaValidateNever"
 )
+
+func neverDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
+
+	return lang.Func(
+		lang.Expr("func %s(%s any, %s, %s string) error",
+			neverName, shadow("got"), shadow("op"), shadow("want")),
+		lang.Stmt("return %s.New(%s.ErrCompare, \"want %%s %%s, got %%s\",\n%s, %s, %s(%s))",
+			v, v, ref("op"), ref("want"), spellName, ref("got")),
+	)
+}
 
 func cmpDecl(imp Importer) Step {
 	return lang.Func(

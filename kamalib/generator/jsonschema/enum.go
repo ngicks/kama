@@ -11,8 +11,8 @@ import (
 )
 
 // enumSteps returns the declarations of the enum of strings at ptr: the
-// string type, a constant per value and UnmarshalJSONFrom rejecting any
-// other value.
+// string type, whose directive checks the values and the other keywords of
+// a string, a constant per value and UnmarshalJSONFrom running Validate.
 func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -32,8 +32,16 @@ func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		return []genStep{lang.Fail(err)}
 	}
 
+	decodeDoc := "UnmarshalJSONFrom decodes v from one JSON string."
+	if opts.Validate {
+		decodeDoc += " The value must pass Validate, which rejects a value the schema does not list."
+	}
+
 	steps := []genStep{
-		lang.Line(docComment(typeDoc(doc, ptr, name+" is generated from the schema at #"+ptr+"."))),
+		lang.Line(validatedDoc(
+			typeDoc(doc, ptr, name+" is generated from the schema at #"+ptr+"."),
+			declArgs(doc, ptr),
+		)),
 		lang.Stmt("type %s string", name),
 		lang.Line(docComment(name + " values the schema allows.")),
 		lang.Stmt("const ("),
@@ -49,8 +57,7 @@ func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	return append(steps,
 		lang.Stmt(")"),
 		lang.DocFunc(
-			docComment("UnmarshalJSONFrom decodes v from one JSON string. It rejects a value the "+
-				"schema does not list."),
+			docComment(decodeDoc),
 			lang.Expr(
 				"func (v *%s) UnmarshalJSONFrom(dec *%s) error",
 				name,
@@ -64,13 +71,7 @@ func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 				lang.Stmt("return err"),
 				nil,
 			),
-			lang.If(
-				lang.Expr(
-					"err := %s(s, %s); err != nil", q(runtimePath, "Enum"), joinComma(consts),
-				),
-				lang.Stmt("return err"),
-				nil,
-			),
+			validateStep(opts, lang.Expr("s")),
 			lang.Stmt("*v = s"),
 			lang.Stmt("return nil"),
 		),

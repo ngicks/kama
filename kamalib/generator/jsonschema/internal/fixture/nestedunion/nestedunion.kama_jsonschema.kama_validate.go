@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:04:02Z
+// generated: 2026-11-24T12:26:16Z
 
 package nestedunion
 
@@ -97,7 +97,14 @@ func (v TaggedTaggedRight) Validate(stopOnFirstError bool) error {
 //
 //kama:generated kama:validate
 func (v TaggedLeft) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if err := validation.Field(kamaValidateConst(v.Kind, "left"), "kind"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -105,7 +112,14 @@ func (v TaggedLeft) Validate(stopOnFirstError bool) error {
 //
 //kama:generated kama:validate
 func (v TaggedRight) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if err := validation.Field(kamaValidateConst(v.Kind, "right"), "kind"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first

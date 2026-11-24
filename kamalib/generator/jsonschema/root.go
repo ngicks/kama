@@ -4,34 +4,25 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
-// rootSteps returns the declarations of the root of doc when the root
-// declares no Go type of its own: a type defined over the Go type of the
-// root, encoding as it and decoding as it checks the const or the enum of
-// the root.
+// definedSteps returns the declarations of a type defined over the
+// built-in Go type of the schema at ptr: the root when it declares no type
+// of its own, or a schema valueType reports. The type encodes and decodes
+// as its underlying type. Its directive names the validators of the
+// keywords of the schema, which UnmarshalJSONFrom then runs through
+// Validate.
 //
 // The root needs a name to be decoded into, while a schema elsewhere in
-// the document is spelled by a built-in type. The defined type loses the
-// methods of the Go type, such as those of opt.Option, so its own methods
-// convert to it.
-func rootSteps(doc *jsonschema.Schema, opts Options) []genStep {
-	name, err := typeName(doc, opts, "")
+// the document is spelled by a built-in type unless keywords need a
+// Validate. The defined type loses the methods of the underlying type,
+// such as those of opt.Option, so its own methods convert to it.
+func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
+	name, err := typeName(doc, opts, ptr)
 	if err != nil {
 		return []genStep{lang.Fail(err)}
 	}
 
-	// A nullable root decodes into an opt.Option, whose value holds the
-	// enum and whose none is the null the root admits besides.
-	value := lang.Expr("out")
-	if nullable(doc, "") {
-		value = lang.Expr("out.Value()")
-	}
-
-	enum, err := enumCheck(doc, "", value, lang.Expr("raw"))
-	if err != nil {
-		return []genStep{lang.Fail(err)}
-	}
-
-	underlying := rootType(doc, opts)
+	underlying := definedType(doc, opts, ptr)
+	args, marked := definedArgs(doc, ptr)
 
 	decodeDoc := "UnmarshalJSONFrom decodes v as its underlying type."
 	decode := []genStep{
@@ -45,19 +36,21 @@ func rootSteps(doc *jsonschema.Schema, opts Options) []genStep {
 		),
 	}
 
-	if enum != nil {
-		decodeDoc += " It rejects a value the schema does not allow."
+	text := typeDoc(doc, ptr, name+" is generated from the schema at #"+ptr+".")
+	declDoc := docComment(text)
 
-		check := lang.If(lang.Expr("err := %s; err != nil", enum), lang.Stmt("return err"), nil)
-		if nullable(doc, "") {
-			check = lang.If(lang.Expr("out.IsSome()"), check, nil)
+	if marked {
+		declDoc = validatedDoc(text, args)
+
+		if opts.Validate {
+			decodeDoc += " The value must pass Validate."
+
+			decode = append(decode, validateStep(opts, lang.Expr("%s(out)", name)))
 		}
-
-		decode = append(decode, check)
 	}
 
 	return []genStep{
-		lang.Line(docComment(typeDoc(doc, "", name+" is generated from the schema at #."))),
+		lang.Line(declDoc),
 		lang.Stmt("type %s %s", name, underlying),
 		lang.DocFunc(
 			docComment("MarshalJSONTo encodes v as its underlying type."),
@@ -76,10 +69,33 @@ func rootSteps(doc *jsonschema.Schema, opts Options) []genStep {
 	}
 }
 
-// rootType spells the Go type of the root of doc as a value of its own:
-// the type goType spells, in an opt.Option when the root is nullable.
-func rootType(doc *jsonschema.Schema, opts Options) genExpr {
+// definedArgs returns the args of //kama:validate on the defined type of
+// the schema at ptr, and whether the type carries the directive: it names
+// validators, or the type is a slice or a map, whose Validate walks the
+// elements. A defined type of a struct, such as the opt.Option of a
+// nullable root, carries none. Its value has validated itself on decoding.
+func definedArgs(doc *jsonschema.Schema, ptr string) ([]string, bool) {
+	args := declArgs(doc, ptr)
+	if len(args) > 0 {
+		return args, true
+	}
+
+	switch placeKind(doc, ptr) {
+	case "array", "map":
+		return nil, ptr != "" || !nullable(doc, ptr)
+	}
+
+	return nil, false
+}
+
+// definedType spells the underlying type of the defined type of the schema
+// at ptr: its built-in Go type, in an opt.Option for a nullable root.
+func definedType(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	return func(c genCtx) (string, error) {
+		if ptr != "" {
+			return builtinType(c, doc, opts, ptr)
+		}
+
 		t, err := goType(doc, opts, "")(c)
 		if err != nil || !nullable(doc, "") {
 			return t, err

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:04:09Z
+// generated: 2026-11-24T12:27:04Z
 
 package oneof
 
@@ -486,6 +486,7 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:generated kama:jsonschema
 type Cat struct {
+	//kama:validate const=`"cat"`
 	Kind  string                    `json:"kind"`
 	Lives int64                     `json:"lives"`
 	_x    map[string]jsontext.Value `json:",embed"`
@@ -539,9 +540,6 @@ func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.Kind, err = jsonschemart.Required(w.Kind)
 	errs = append(errs, validation.Field(err, "kind"))
-	if w.Kind.IsDefined() {
-		errs = append(errs, validation.Field(jsonschemart.Enum(w.Kind.Value(), "cat"), "kind"))
-	}
 	out.Lives, err = jsonschemart.Required(w.Lives)
 	errs = append(errs, validation.Field(err, "lives"))
 	out._x = w.AdditionalProperties
@@ -560,6 +558,7 @@ func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:generated kama:jsonschema
 type Dog struct {
+	//kama:validate const=`"dog"`
 	Kind string                    `json:"kind"`
 	Good bool                      `json:"good"`
 	_x   map[string]jsontext.Value `json:",embed"`
@@ -613,9 +612,6 @@ func (v *Dog) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.Kind, err = jsonschemart.Required(w.Kind)
 	errs = append(errs, validation.Field(err, "kind"))
-	if w.Kind.IsDefined() {
-		errs = append(errs, validation.Field(jsonschemart.Enum(w.Kind.Value(), "dog"), "kind"))
-	}
 	out.Good, err = jsonschemart.Required(w.Good)
 	errs = append(errs, validation.Field(err, "good"))
 	out._x = w.AdditionalProperties

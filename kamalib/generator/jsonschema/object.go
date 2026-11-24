@@ -37,7 +37,7 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	steps := []genStep{
-		lang.Line(validatedDoc(typeDoc(doc, ptr, lead), structValidators(s))),
+		lang.Line(validatedDoc(typeDoc(doc, ptr, lead), declArgs(doc, ptr))),
 		lang.Stmt("type %s struct {", name),
 	}
 
@@ -52,10 +52,20 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	for _, n := range s.Properties {
 		pp := child(ptr, "properties", n.Name)
 
+		var comment []genExpr
+
 		if a := annotations(n.Schema); len(a) > 0 {
-			steps = append(steps, lang.Line(lang.Comment(
-				lang.Expr("%s", commentLines(strings.Join(a, "\n\n"))),
-			)))
+			comment = append(comment, lang.Expr("%s", commentLines(strings.Join(a, "\n\n"))))
+		}
+
+		if args := fieldArgs(doc, ptr, n.Name); len(args) > 0 {
+			comment = append(comment, lang.Expr(
+				"%s", strings.Join(append([]string{validateDirective}, args...), " "),
+			))
+		}
+
+		if comment != nil {
+			steps = append(steps, lang.Line(lang.Comment(comment...)))
 		}
 
 		steps = append(steps, lang.Stmt(
@@ -80,17 +90,6 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	steps = append(steps, wireSteps(doc, opts, ptr)...)
 
 	return append(steps, unmarshalSteps(doc, opts, ptr)...)
-}
-
-// structValidators returns the args of //kama:validate on the struct or
-// product of s: its hooks off and the validators of the object as a whole.
-func structValidators(s *jsonschema.Schema) []string {
-	args := []string{"hook=off"}
-	if closed(s) {
-		args = append(args, "closed")
-	}
-
-	return args
 }
 
 // extraType spells the Go type of the values of the members the struct or
@@ -481,68 +480,13 @@ func decodeSteps(doc *jsonschema.Schema, opts Options, ptr, name string) []genSt
 		steps = conv("Optional")
 	}
 
-	enum, err := enumCheck(
-		doc,
-		pp,
-		lang.Expr("w.%s.Value()", f),
-		lang.Expr("%s(raw, %s)", q(runtimePath, "Member"), strconv.Quote(name)),
-	)
-	if err != nil {
-		return append(steps, lang.Fail(err))
-	}
-
-	if enum == nil {
-		return steps
-	}
-
-	// IsDefined skips null, which a nullable value admits besides the enum.
-	return append(steps, lang.If(
-		lang.Expr("w.%s.IsDefined()", f),
-		lang.Stmt(
-			"errs = append(errs, %s(%s, %s))",
-			q(validPath, "Field"),
-			enum,
-			strconv.Quote(name),
-		),
-		nil,
-	))
+	return steps
 }
 
-// enumCheck returns the call checking a value of the schema at ptr against
-// its const or its enum of scalars, or nil when it has neither. value
-// spells the Go value and raw its JSON text. A number compares by raw,
-// since its float64 rounds a value beyond 2^53.
-func enumCheck(doc *jsonschema.Schema, ptr string, value, raw genExpr) (genExpr, error) {
-	allowed, err := allowedValues(doc, ptr)
-	if err != nil || allowed == nil {
-		return nil, err
-	}
-
-	r, _, err := resolvedValue(doc, ptr)
-	if err != nil {
-		return nil, err
-	}
-
-	k, err := kinds(doc, r)
-	if err != nil {
-		return nil, err
-	}
-
-	if slices.Equal(k, []string{"number"}) {
-		return lang.Expr(
-			"%s(%s, %s)", q(runtimePath, "NumberEnum"), raw, joinComma(quoteAll(allowed)),
-		), nil
-	}
-
-	return lang.Expr("%s(%s, %s)", q(runtimePath, "Enum"), value, joinComma(allowed)), nil
-}
-
-// allowedValues returns the Go literals of the const or the enum of scalars
-// the schema at ptr restricts its value to, or nil when it has neither. It
-// reads the value of a nullable union. An enum of strings declares a type
-// that checks itself.
+// allowedValues returns the Go literals of the const or the enum of
+// scalars of the schema at ptr itself, or nil when it has neither.
 func allowedValues(doc *jsonschema.Schema, ptr string) ([]string, error) {
-	r, s, err := resolvedValue(doc, ptr)
+	s, err := at(doc, ptr)
 	if err != nil {
 		return nil, err
 	}
@@ -552,22 +496,22 @@ func allowedValues(doc *jsonschema.Schema, ptr string) ([]string, error) {
 		values = []jsontext.Value{s.Const}
 	}
 
-	if values == nil || (s.Const == nil && stringEnum(s)) {
+	if values == nil {
 		return nil, nil
 	}
 
-	k, err := kinds(doc, r)
+	k, err := kinds(doc, ptr)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(k) != 1 {
-		return nil, unsupported(r, "enum or const of more than one kind")
+		return nil, unsupported(ptr, "enum or const of more than one kind")
 	}
 
 	return opiter.TryCollect(
 		opiter.WrapSeq(slices.Values(values)).
-			Disassemble(func(v jsontext.Value) (string, error) { return goLiteral(r, k[0], v) }),
+			Disassemble(func(v jsontext.Value) (string, error) { return goLiteral(ptr, k[0], v) }),
 	)
 }
 

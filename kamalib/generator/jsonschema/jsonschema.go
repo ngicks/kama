@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/token"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -83,7 +84,9 @@ type File = base.File
 //
 // The warnings wrap ErrUnknownKeyword, one per unknown keyword of a schema
 // the generator reads, in the order of the schemas and of the keyword
-// names. The error wraps ErrUnsupported, ErrConflict or ErrOptions.
+// names, then ErrUnenforced, one per validation keyword the generated code
+// does not check, in the same order. The error wraps ErrUnsupported,
+// ErrConflict or ErrOptions.
 func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 	opts = opts.WithDefaults()
 
@@ -112,7 +115,9 @@ func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 
 	path := naming.SourceFile(filepath.Join(dir, opts.Package+".go"))
 
-	return []File{{Path: path, Content: content}}, unknownKeywords(doc), nil
+	warnings := slices.Concat(unknownKeywords(doc), unenforcedKeywords(doc))
+
+	return []File{{Path: path, Content: content}}, warnings, nil
 }
 
 // unknownKeywords returns a warning for each unknown keyword of the

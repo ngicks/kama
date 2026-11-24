@@ -7,7 +7,7 @@ import (
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
+	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
 
 func TestDecode(t *testing.T) {
@@ -15,9 +15,11 @@ func TestDecode(t *testing.T) {
 		in   string
 		want Code
 	}{
-		{`null`, Code(opt.None[float64]())},
-		{`1.5`, Code(opt.Some(1.5))},
-		{`18446744073709551616`, Code(opt.Some[float64](18446744073709551616))},
+		{`null`, Code(opt.None[CodeValue]())},
+		{`1.5`, Code(opt.Some[CodeValue](1.5))},
+		{`18446744073709551616`, Code(opt.Some[CodeValue](18446744073709551616))},
+		// The float64 of the value cannot tell 2^64+1 from 2^64.
+		{`18446744073709551617`, Code(opt.Some[CodeValue](18446744073709551616))},
 	}
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {
@@ -27,10 +29,6 @@ func TestDecode(t *testing.T) {
 		})
 	}
 
-	for _, in := range []string{`2`, `18446744073709551617`} {
-		t.Run(in, func(t *testing.T) {
-			var v Code
-			assert.ErrorIs(t, json.Unmarshal([]byte(in), &v), jsonschemart.ErrEnum)
-		})
-	}
+	var v Code
+	assert.ErrorIs(t, json.Unmarshal([]byte(`2`), &v), validation.ErrConst)
 }

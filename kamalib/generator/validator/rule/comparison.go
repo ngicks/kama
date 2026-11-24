@@ -183,11 +183,18 @@ func isLiteral(x ast.Expr) bool {
 // calls to kamaValidateAll with the stop flag of e. kamaValidateAll returns
 // the first error when the flag is true and all of them joined otherwise.
 func joinCalls(e Emitter, cs []Comparison, call func(c Comparison) Gen) Gen {
-	calls := opiter.WrapSeq(slices.Values(cs)).
+	return joinErrors(e, opiter.WrapSeq(slices.Values(cs)).
 		Map(call).
-		CollectSlice()
+		CollectSlice())
+}
 
-	if len(calls) == 1 {
+// joinErrors returns the expression of type error of calls, each of type
+// error, as joinCalls does. No call gives a nil error.
+func joinErrors(e Emitter, calls []Gen) Gen {
+	switch len(calls) {
+	case 0:
+		return lang.Expr("error(nil)")
+	case 1:
 		return calls[0]
 	}
 

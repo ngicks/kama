@@ -11,7 +11,6 @@ import (
 	"github.com/ngicks/option/und"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
 
@@ -28,15 +27,19 @@ func TestDecode(t *testing.T) {
 		{
 			"null",
 			`{"ref":null,"const":null,"big":null}`,
-			Levels{Ref: und.Null[int64](), Const: und.Null[string](), Big: und.Null[float64]()},
+			Levels{
+				Ref:   und.Null[Level](),
+				Const: und.Null[LevelsConst](),
+				Big:   und.Null[LevelsBig](),
+			},
 		},
 		{
 			"allowed",
 			`{"ref":2,"const":"x","big":18446744073709551616,"number":1.5}`,
 			Levels{
-				Ref:    und.Defined[int64](2),
-				Const:  und.Defined("x"),
-				Big:    und.Defined[float64](18446744073709551616),
+				Ref:    und.Defined[Level](2),
+				Const:  und.Defined[LevelsConst]("x"),
+				Big:    und.Defined[LevelsBig](18446744073709551616),
 				Number: opt.Some(1.5),
 			},
 		},
@@ -51,6 +54,14 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+// TestDecodeFloatPrecision checks a number the float64 of an enum cannot
+// tell apart from an allowed one, since the value compares as float64.
+func TestDecodeFloatPrecision(t *testing.T) {
+	var v Levels
+	assert.NilError(t, json.Unmarshal([]byte(`{"number":18446744073709551617}`), &v))
+	assert.Equal(t, v.Number.Value(), float64(18446744073709551616))
+}
+
 func TestDecodeError(t *testing.T) {
 	cases := []struct {
 		name string
@@ -59,9 +70,8 @@ func TestDecodeError(t *testing.T) {
 	}{
 		{"enum behind a reference in a nullable union", `{"ref":9}`, "/ref"},
 		{"const in a nullable union", `{"const":"zzz"}`, "/const"},
-		{"number above 2^53 in a nullable union", `{"big":18446744073709551617}`, "/big"},
+		{"number in a nullable union", `{"big":1}`, "/big"},
 		{"enum of numbers", `{"number":2}`, "/number"},
-		{"enum of numbers above 2^53", `{"number":18446744073709551617}`, "/number"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -72,7 +82,7 @@ func TestDecodeError(t *testing.T) {
 			se, ok := errors.AsType[*json.SemanticError](err)
 			assert.Assert(t, ok, "%T: %v", err, err)
 			assert.DeepEqual(t, validation.Pointers(se.Err), []string{tc.at})
-			assert.ErrorIs(t, se.Err, jsonschemart.ErrEnum)
+			assert.ErrorIs(t, se.Err, validation.ErrConst)
 		})
 	}
 }

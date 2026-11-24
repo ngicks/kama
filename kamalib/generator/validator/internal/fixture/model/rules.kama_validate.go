@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:11:29Z
+// generated: 2026-11-24T12:30:35Z
 
 package model
 
@@ -330,6 +330,35 @@ func (v Contact) Validate(stopOnFirstError bool) error {
 			return err
 		}
 		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v Bounds) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Half, ">=", 2), kamaValidateCmp(v.Half, "<=", 3)), "half"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := validation.Field(error(nil), "small"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.Never != nil {
+		if err := validation.Field(kamaValidateNever((*v.Never), "==", "0.5"), "never"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
 	}
 	return validation.Join(errs...)
 }

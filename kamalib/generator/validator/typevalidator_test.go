@@ -305,6 +305,28 @@ func TestClosed(t *testing.T) {
 	assertNotContains(t, fs["B.Validate"], "kamaValidateClosed")
 }
 
+// TestCmpIntegerBounds rounds a number an integer type cannot represent to
+// the bound of the values satisfying the comparison. A comparison every
+// value satisfies emits nothing, and one no value satisfies always fails.
+func TestCmpIntegerBounds(t *testing.T) {
+	src := generateAndBuild(t, map[string]string{
+		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
+			"\t//kama:validate cmp=\">1.5 <2.5\"\n\tA int\n" +
+			"\t//kama:validate cmp=\">=-1e30 <=1e30 !=0.5\"\n\tB int8\n" +
+			"\t//kama:validate cmp=\">300\"\n\tC uint8\n}\n",
+	})["a.kama_validate.go"]
+	fn := gentest.Funcs(t, src)["A.Validate"]
+
+	assertContains(
+		t,
+		fn,
+		`kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.A, ">=", 2), `+
+			`kamaValidateCmp(v.A, "<=", 2))`,
+		check(`validation.Field(error(nil), "B")`),
+		`kamaValidateNever(v.C, ">", "300")`,
+	)
+}
+
 func TestClosedErrors(t *testing.T) {
 	cases := []struct {
 		name string

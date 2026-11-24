@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:04:06Z
+// generated: 2026-11-24T12:27:00Z
 
 package nullableenum
 
@@ -22,9 +22,10 @@ import (
 //kama:validate hook=off
 //kama:generated kama:jsonschema
 type Levels struct {
-	Ref    und.Und[int64]            `json:"ref,omitzero"`
-	Const  und.Und[string]           `json:"const,omitzero"`
-	Big    und.Und[float64]          `json:"big,omitzero"`
+	Ref   und.Und[Level]       `json:"ref,omitzero"`
+	Const und.Und[LevelsConst] `json:"const,omitzero"`
+	Big   und.Und[LevelsBig]   `json:"big,omitzero"`
+	//kama:validate const="1.5 18446744073709551616"
 	Number opt.Option[float64]       `json:"number,omitzero"`
 	_x     map[string]jsontext.Value `json:",embed"`
 }
@@ -43,9 +44,9 @@ func (v Levels) AdditionalProperties() map[string]jsontext.Value {
 //kama:generated kama:jsonschema
 func (v Levels) MarshalJSONTo(enc *jsontext.Encoder) error {
 	type plain struct {
-		Ref                  und.Und[int64]            `json:"ref,omitzero"`
-		Const                und.Und[string]           `json:"const,omitzero"`
-		Big                  und.Und[float64]          `json:"big,omitzero"`
+		Ref                  und.Und[Level]            `json:"ref,omitzero"`
+		Const                und.Und[LevelsConst]      `json:"const,omitzero"`
+		Big                  und.Und[LevelsBig]        `json:"big,omitzero"`
 		Number               opt.Option[float64]       `json:"number,omitzero"`
 		AdditionalProperties map[string]jsontext.Value `json:",embed"`
 	}
@@ -56,9 +57,9 @@ func (v Levels) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 type levelsWire struct {
-	Ref                  und.Und[int64]            `json:"ref,omitzero"`
-	Const                und.Und[string]           `json:"const,omitzero"`
-	Big                  und.Und[float64]          `json:"big,omitzero"`
+	Ref                  und.Und[Level]            `json:"ref,omitzero"`
+	Const                und.Und[LevelsConst]      `json:"const,omitzero"`
+	Big                  und.Und[LevelsBig]        `json:"big,omitzero"`
 	Number               und.Und[float64]          `json:"number,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
@@ -80,22 +81,10 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Levels
 	var errs []error
 	out.Ref = w.Ref
-	if w.Ref.IsDefined() {
-		errs = append(errs, validation.Field(jsonschemart.Enum(w.Ref.Value(), 1, 2, 3), "ref"))
-	}
 	out.Const = w.Const
-	if w.Const.IsDefined() {
-		errs = append(errs, validation.Field(jsonschemart.Enum(w.Const.Value(), "x"), "const"))
-	}
 	out.Big = w.Big
-	if w.Big.IsDefined() {
-		errs = append(errs, validation.Field(jsonschemart.NumberEnum(jsonschemart.Member(raw, "big"), "18446744073709551616"), "big"))
-	}
 	out.Number, err = jsonschemart.Optional(w.Number)
 	errs = append(errs, validation.Field(err, "number"))
-	if w.Number.IsDefined() {
-		errs = append(errs, validation.Field(jsonschemart.NumberEnum(jsonschemart.Member(raw, "number"), "1.5", "18446744073709551616"), "number"))
-	}
 	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
@@ -104,5 +93,104 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		return err
 	}
 	*v = out
+	return nil
+}
+
+// LevelsConst is generated from the schema at #/properties/const/oneOf/0.
+//
+//kama:validate const=`"x"`
+//kama:generated kama:jsonschema
+type LevelsConst string
+
+// MarshalJSONTo encodes v as its underlying type.
+//
+//kama:generated kama:jsonschema
+func (v LevelsConst) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, string(v))
+}
+
+// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
+// Validate.
+//
+//kama:generated kama:jsonschema
+func (v *LevelsConst) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	raw, err := jsonschemart.ReadValue(dec)
+	if err != nil {
+		return err
+	}
+	var out string
+	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(LevelsConst(out)); err != nil {
+		return err
+	}
+	*v = LevelsConst(out)
+	return nil
+}
+
+// LevelsBig is generated from the schema at #/properties/big/oneOf/0.
+//
+//kama:validate const="18446744073709551616"
+//kama:generated kama:jsonschema
+type LevelsBig float64
+
+// MarshalJSONTo encodes v as its underlying type.
+//
+//kama:generated kama:jsonschema
+func (v LevelsBig) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, float64(v))
+}
+
+// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
+// Validate.
+//
+//kama:generated kama:jsonschema
+func (v *LevelsBig) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	raw, err := jsonschemart.ReadValue(dec)
+	if err != nil {
+		return err
+	}
+	var out float64
+	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(LevelsBig(out)); err != nil {
+		return err
+	}
+	*v = LevelsBig(out)
+	return nil
+}
+
+// Level is generated from the schema at #/$defs/Level.
+//
+//kama:validate const="1 2 3"
+//kama:generated kama:jsonschema
+type Level int64
+
+// MarshalJSONTo encodes v as its underlying type.
+//
+//kama:generated kama:jsonschema
+func (v Level) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, int64(v))
+}
+
+// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
+// Validate.
+//
+//kama:generated kama:jsonschema
+func (v *Level) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	raw, err := jsonschemart.ReadValue(dec)
+	if err != nil {
+		return err
+	}
+	var out int64
+	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(Level(out)); err != nil {
+		return err
+	}
+	*v = Level(out)
 	return nil
 }

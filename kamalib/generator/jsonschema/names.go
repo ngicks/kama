@@ -149,8 +149,19 @@ func memberTypeName(
 	}
 
 	p, err := typeNameAt(doc, opts, parent, ends, seen)
-	if err != nil || nullableUnion(doc, parent) || transparentAllOf(ps) {
-		return p, err
+	if err != nil {
+		return "", err
+	}
+
+	// The value of a nullable union and the member of an allOf of one member
+	// take the name of the schema holding them, which declares no type. The
+	// root declares a type under that name anyway, so its value takes Value.
+	if nullableUnion(doc, parent) || transparentAllOf(ps) {
+		if parent == "" {
+			return p + "Value", nil
+		}
+
+		return p, nil
 	}
 
 	i, _ := strconv.Atoi(index)

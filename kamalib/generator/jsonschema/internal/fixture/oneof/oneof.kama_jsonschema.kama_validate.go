@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:04:09Z
+// generated: 2026-11-24T12:26:24Z
 
 package oneof
 
@@ -106,7 +106,14 @@ func (v PetDog) Validate(stopOnFirstError bool) error {
 //
 //kama:generated kama:validate
 func (v Cat) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if err := validation.Field(kamaValidateConst(v.Kind, "cat"), "kind"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -114,5 +121,12 @@ func (v Cat) Validate(stopOnFirstError bool) error {
 //
 //kama:generated kama:validate
 func (v Dog) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if err := validation.Field(kamaValidateConst(v.Kind, "dog"), "kind"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
 }

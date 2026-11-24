@@ -86,7 +86,7 @@ func checkTypes(doc *jsonschema.Schema, opts Options) error {
 	}
 
 	if !declares(doc, "") {
-		spell(rootType(doc, opts))
+		spell(definedType(doc, opts, ""))
 	}
 
 	for ptr, s := range schemas(doc) {
@@ -140,6 +140,8 @@ func checkSchema(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []err
 	if !s.Type.IsZero() {
 		errs = append(errs, checkType(ptr, s)...)
 	}
+
+	errs = append(errs, checkKeywords(ptr, s)...)
 
 	switch {
 	case s.Ref.IsSome():

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:07:31Z
+// generated: 2026-11-24T12:26:22Z
 
 package object
 
@@ -44,6 +44,12 @@ func (v Object) Validate(stopOnFirstError bool) error {
 			errs = append(errs, err)
 		}
 	}
+	if err := validation.Field(v.Color.Validate(stopOnFirstError), "color"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
 	if err := validation.Field(v.Inline.Validate(stopOnFirstError), "inline"); err != nil {
 		if stopOnFirstError {
 			return err
@@ -65,6 +71,21 @@ func (v Object) Validate(stopOnFirstError bool) error {
 			}
 			errs = append(errs, err)
 		}
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v ObjectColor) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := kamaValidateConst(v, "red", "green", "dark-blue"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
 	}
 	return validation.Join(errs...)
 }
