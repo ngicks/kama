@@ -32,6 +32,13 @@
 // prepended to every leaf inside err. They distribute over a value made by [Join]. They treat
 // any other error as one leaf. An error that wraps a path error of this package is such a leaf.
 //
+// # Composed errors
+//
+// [Compose] creates a leaf error whose failure other errors explain, as the error of an or
+// combinator carries the error of each alternative. Its message lists the causes indented
+// below its own. errors.Is reports its kind only, and the lookups locate the leaf alone.
+// [Causes] returns the causes.
+//
 // # Locating errors
 //
 // The lookups split a value made by [Join] into its leaves and locate each leaf on its own.

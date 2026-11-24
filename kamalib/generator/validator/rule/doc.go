@@ -41,7 +41,7 @@
 //
 //	type multipleOptions struct{ N int64 }
 //
-//	func (multiple) Parse(arg string) (rule.Rule, error) {
+//	func (multiple) Parse(arg string, _ rule.Resolver) (rule.Rule, error) {
 //		n, err := strconv.ParseInt(arg, 10, 64)
 //		if err != nil || n <= 0 {
 //			return nil, fmt.Errorf("%w: want a positive integer", rule.ErrArgs)
@@ -97,6 +97,21 @@
 // applies it to the field itself, never to the value a pointer or an
 // option holds, and adds no path segment of the field to its errors.
 //
+// # Writing a combinator
+//
+// A combinator is a validator whose arg names other validators, as
+// and(cmp=">=1", required) does. Parse receives the Resolver of the
+// registry in use and passes arg to ParseOperands. ParseOperands splits
+// arg with dircmnt.ParseCallArgs and parses each operand through the
+// Resolver, user validators and replaced built-ins included. The options
+// hold the operands. Check delegates to Rule.Check of each operand, and
+// Emit to Rule.Emit, combining the expressions of the operands into one
+// expression of type error, usually a call of a helper taking their
+// errors. A user combinator replaces a built-in one by its name, like any
+// other validator. The built-in combinators turn into a StructRule or a
+// SiblingRule when an operand is one. A user combinator taking such
+// operands implements StructRule or SiblingRule itself.
+//
 // # Built-in validators
 //
 // The built-in validators report leaf errors created by validation.New with
@@ -117,6 +132,11 @@
 //	format=<name>         validation.ErrFormat
 //	requires="<name> ..." validation.ErrRequired
 //	members="<op><n> ..." validation.ErrLength
+//	and(<v>, ...)         the errors of the operands
+//	or(<v>, ...)          validation.ErrOr
+//	not(<v>)              validation.ErrNot
+//	oneof(<v>, ...)       validation.ErrOneOf
+//	if(<c>, <t>[, <e>])   the errors of the operand t or e
 //
 // required takes no arg. The value is not the zero value: an opt.Option
 // is some, an und.Und or an elastic.Elastic is defined, a pointer, slice,
@@ -210,6 +230,26 @@
 // encoded as a member always counts, and so does each entry of the
 // embedded fallback map, the field tagged json:",embed". A fallback of
 // another type and a struct inlining an embedded struct are errors.
+//
+// and, or, not, oneof and if take operands: validators written as the args
+// of //kama:validate are, separated by commas, as in or(cmp=">=10",
+// const="0"). They apply to a type every operand applies to. and holds
+// when every operand holds and returns their errors, joined or with
+// stopOnFirstError the first one. and() always holds. or holds when an
+// operand holds. Its error, none of n alternatives holds, carries the
+// error of every operand as a cause, which validation.Causes returns.
+// errors.Is does not reach the causes. or() never holds. not takes one
+// operand and holds when it fails. Its error spells the operand. oneof
+// holds when exactly one operand holds. When none does, its error carries
+// the errors of the operands as causes. When several do, it spells them.
+// if takes cond, then and an optional else. When cond holds, it returns
+// the error of then, otherwise that of else, or nil without else. The
+// error of cond never surfaces. The operands of a combinator all run, so
+// the generated code holds no closures. A combinator with a requires
+// operand is bound to the siblings of its field, and one with a members
+// operand to its struct, as package validator describes. The spelling of
+// an operand in an error message quotes its value, as in
+// not(const=5) reporting want the value to fail const="5".
 //
 // A validator with several comparisons, as length, runes, cmp and members
 // take, checks them all. With stopOnFirstError true it returns the first

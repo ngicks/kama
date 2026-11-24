@@ -29,7 +29,7 @@ type RegexpOptions struct {
 }
 
 // Parse decodes arg into a pattern that compiles.
-func (Regexp) Parse(arg string) (Rule, error) {
+func (Regexp) Parse(arg string, _ Resolver) (Rule, error) {
 	if arg == "" {
 		return nil, argsError(errors.New("want a pattern, as in regexp=\"^[a-z]+$\""))
 	}

@@ -36,7 +36,7 @@ type MultipleOfOptions struct {
 }
 
 // Parse decodes arg into a positive number literal.
-func (MultipleOf) Parse(arg string) (Rule, error) {
+func (MultipleOf) Parse(arg string, _ Resolver) (Rule, error) {
 	if _, err := divisorValue(arg); err != nil {
 		return nil, argsError(err)
 	}

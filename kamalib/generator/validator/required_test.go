@@ -138,8 +138,8 @@ func TestRequiredErrors(t *testing.T) {
 			is: ErrDirective,
 			msgs: []string{
 				"unknown validator //kama:validate requird on field N;" +
-					" known: cmp, const, format, length, members, multipleof, nil, null, regexp," +
-					" required, requires, runes, unique, zero",
+					" known: and, cmp, const, format, if, length, members, multipleof, nil, not," +
+					" null, oneof, or, regexp, required, requires, runes, unique, zero",
 			},
 		},
 		{
@@ -206,7 +206,7 @@ type positive struct{}
 
 func (positive) Name() string { return "positive" }
 
-func (positive) Parse(string) (rule.Rule, error) { return positive{}, nil }
+func (positive) Parse(string, rule.Resolver) (rule.Rule, error) { return positive{}, nil }
 
 func (positive) Check(t types.Type) error {
 	if b, ok := t.Underlying().(*types.Basic); ok && b.Info()&types.IsInteger != 0 {

@@ -25,7 +25,7 @@ func (multiple) Name() string { return "multiple" }
 
 type multipleOptions struct{ N int64 }
 
-func (multiple) Parse(arg string) (rule.Rule, error) {
+func (multiple) Parse(arg string, _ rule.Resolver) (rule.Rule, error) {
 	n, err := strconv.ParseInt(arg, 10, 64)
 	if err != nil || n <= 0 {
 		return nil, fmt.Errorf("%w: want a positive integer", rule.ErrArgs)
@@ -82,12 +82,12 @@ func TestExampleMatchesDoc(t *testing.T) {
 }
 
 func TestExampleParse(t *testing.T) {
-	r, err := multiple{}.Parse("3")
+	r, err := multiple{}.Parse("3", nil)
 	assert.NilError(t, err)
 	assert.Equal(t, r, rule.Rule(multipleOptions{N: 3}))
 
 	for _, arg := range []string{"", "0", "-3", "1.5", "three"} {
-		_, err := multiple{}.Parse(arg)
+		_, err := multiple{}.Parse(arg, nil)
 		assert.ErrorIs(t, err, rule.ErrArgs, "arg %q", arg)
 		assert.ErrorContains(t, err, "want a positive integer", "arg %q", arg)
 	}

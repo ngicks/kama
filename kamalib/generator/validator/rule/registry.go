@@ -6,6 +6,7 @@ import (
 	"go/types"
 	"maps"
 	"slices"
+	"strings"
 )
 
 // Validator is one kind of validator //kama:validate can name.
@@ -16,14 +17,32 @@ type Validator interface {
 	// Parse decodes arg into the rule to apply.
 	//
 	// arg is the argument of the validator: the value of the arg name=value
-	// of //kama:validate, unquoted, or the args of its option file entry. It
-	// is empty when the directive names the validator alone. Validators
-	// taking several tokens split arg with dircmnt.ParseArgsKeyValue.
+	// of //kama:validate, unquoted, the args of the call name(...) as
+	// dircmnt.SpellCallArgs spells them, or the args of its option file
+	// entry. It is empty when the directive names the validator alone.
+	// Validators taking several tokens split arg with
+	// dircmnt.ParseArgsKeyValue.
+	//
+	// r parses other validators through the registry in use. A validator
+	// whose arg names validators, as and(...) does, parses them with
+	// ParseOperands. Other validators ignore r.
 	//
 	// An error reports an arg that is wrong whatever the type is. It should
 	// wrap ErrArgs.
-	Parse(arg string) (Rule, error)
+	Parse(arg string, r Resolver) (Rule, error)
 }
+
+// Resolver parses a validator by name, as the registry in use holds it.
+// *Registry is a Resolver.
+type Resolver interface {
+	// Resolve returns the rule of the validator named name parsed with
+	// arg. An error of a name it does not know wraps ErrUnknown.
+	Resolve(name, arg string) (Rule, error)
+}
+
+// ErrUnknown marks the error of Resolver.Resolve for a name the registry
+// does not hold. It wraps ErrArgs too.
+var ErrUnknown = errors.New("validator: unknown validator")
 
 // ErrArgs marks an error of Validator.Parse, which the argument causes
 // for any type. A validator wraps it as fmt.Errorf("%w: ...", ErrArgs) does.
@@ -154,7 +173,8 @@ func NewRegistry(vs ...Validator) *Registry {
 
 // DefaultRegistry returns a new registry holding the built-in validators:
 // required, zero, nil, null, regexp, length, runes, cmp, const, multipleof,
-// unique, format with DefaultFormats, requires and members.
+// unique, format with DefaultFormats, requires and members, and the
+// combinators and, or, not, oneof and if.
 func DefaultRegistry() *Registry {
 	return NewRegistry(
 		Required{},
@@ -171,6 +191,11 @@ func DefaultRegistry() *Registry {
 		Format{Formats: DefaultFormats()},
 		Requires{},
 		Members{},
+		And{},
+		Or{},
+		Not{},
+		OneOf{},
+		If{},
 	)
 }
 
@@ -181,6 +206,19 @@ func (r *Registry) Register(v Validator) { r.validators[v.Name()] = v }
 func (r *Registry) Lookup(name string) (Validator, bool) {
 	v, ok := r.validators[name]
 	return v, ok
+}
+
+// Resolve parses arg with the validator named name. It implements
+// Resolver.
+func (r *Registry) Resolve(name, arg string) (Rule, error) {
+	v, ok := r.Lookup(name)
+	if !ok {
+		return nil, unknownErr{fmt.Errorf(
+			"unknown validator %s; known: %s", name, strings.Join(r.Names(), ", "),
+		)}
+	}
+
+	return v.Parse(arg, r)
 }
 
 // Names returns the names of the validators, sorted.
@@ -201,6 +239,12 @@ type argsErr struct{ error }
 func (e argsErr) Unwrap() error { return e.error }
 
 func (argsErr) Is(target error) bool { return target == ErrArgs }
+
+type unknownErr struct{ error }
+
+func (e unknownErr) Unwrap() error { return e.error }
+
+func (unknownErr) Is(target error) bool { return target == ErrUnknown || target == ErrArgs }
 
 // noArg reports an argument given to a validator that takes none.
 func noArg(arg string) error {

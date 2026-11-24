@@ -24,7 +24,7 @@ func (Zero) Name() string { return "zero" }
 type ZeroOptions struct{}
 
 // Parse accepts only the empty arg.
-func (Zero) Parse(arg string) (Rule, error) {
+func (Zero) Parse(arg string, _ Resolver) (Rule, error) {
 	return ZeroOptions{}, noArg(arg)
 }
 

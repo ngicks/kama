@@ -45,6 +45,17 @@ type Line struct {
 //kama:validate regexp="^[A-Z]+$" runes="<=8"
 type Sku string
 
+// Discount holds combinators, a type-level one among them.
+//
+//kama:validate hook=off or(members="==0", members=">=2")
+type Discount struct {
+	//kama:validate or(cmp=">=10", const="0") not(or(const="5", const="7"))
+	Percent opt.Option[int] `json:"percent"`
+	//kama:validate if(const=`"fixed"`, requires=amount, oneof(const=`"percent"`, regexp="^p"))
+	Kind   string `json:"kind"`
+	Amount *int   `json:"amount"`
+}
+
 // Batch holds orders, which makes it a dependant.
 type Batch struct {
 	Orders map[string]Order `json:"orders"`

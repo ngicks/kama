@@ -26,7 +26,7 @@ func (Required) Name() string { return "required" }
 type RequiredOptions struct{}
 
 // Parse accepts only the empty arg.
-func (Required) Parse(arg string) (Rule, error) {
+func (Required) Parse(arg string, _ Resolver) (Rule, error) {
 	return RequiredOptions{}, noArg(arg)
 }
 

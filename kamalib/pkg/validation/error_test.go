@@ -97,6 +97,29 @@ func TestWrapDistributesOverJoin(t *testing.T) {
 	assert.Equal(t, len(err.(interface{ Unwrap() []error }).Unwrap()), 2)
 }
 
+func TestCompose(t *testing.T) {
+	cmp := Field(New(ErrCompare, "want >= 10, got 5"), "a")
+	join := Join(New(ErrConst, "want 1"), New(ErrPattern, "want ^x"))
+	err := Field(Compose(ErrOr, []error{cmp, nil, join}, "none of %d alternatives holds", 3), "b")
+
+	assert.Equal(t, err.Error(), "validation failed at .b: or: none of 3 alternatives holds\n"+
+		"\tvalidation failed at .a: compare: want >= 10, got 5\n"+
+		"\tvalidation failed: const: want 1\n"+
+		"\tvalidation failed: pattern: want ^x")
+	assert.Assert(t, errors.Is(err, ErrOr))
+	assert.Assert(t, !errors.Is(err, ErrCompare))
+	assert.DeepEqual(t, Pointers(err), []string{"/b"})
+	assert.Equal(t, len(At(err, "/b")), 1)
+	assert.Equal(t, len(Causes(err)), 2)
+	assert.Equal(t, Causes(err)[0], cmp)
+	assert.Equal(t, Causes(err)[1], join)
+	assert.Assert(t, Causes(New(ErrOr, "x")) == nil)
+	assert.Assert(t, Causes(errors.New("x")) == nil)
+
+	none := Compose(ErrOr, nil, "none of 0 alternatives holds")
+	assert.Equal(t, none.Error(), "validation failed: or: none of 0 alternatives holds")
+}
+
 func TestErrorsIs(t *testing.T) {
 	leaf := New(ErrRequired, "missing")
 

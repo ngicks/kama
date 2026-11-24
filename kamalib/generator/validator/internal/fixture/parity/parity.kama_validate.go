@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T10:13:55Z
+// generated: 2026-11-24T11:38:10Z
 
 package parity
 
@@ -109,6 +109,43 @@ func (v Sku) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if err := kamaValidateRunes(utf8.RuneCountInString(string(v)), "<=", 8); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v Discount) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := kamaValidateOr(kamaValidateMembers(kamaValidateCount(v.Percent.IsSome(), v.Amount != nil)+1, "==", 0), kamaValidateMembers(kamaValidateCount(v.Percent.IsSome(), v.Amount != nil)+1, ">=", 2)); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.Percent.IsSome() {
+		if err := validation.Field(kamaValidateOr(kamaValidateCmp(v.Percent.Value(), ">=", 10), kamaValidateConst(v.Percent.Value(), 0)), "percent"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Percent.IsSome() {
+		if err := validation.Field(kamaValidateNot(kamaValidateOr(kamaValidateConst(v.Percent.Value(), 5), kamaValidateConst(v.Percent.Value(), 7)), "or(const=\"5\", const=\"7\")"), "percent"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if err := kamaValidateIf(validation.Field(kamaValidateConst(v.Kind, "fixed"), "kind"), kamaValidateRequires(stopOnFirstError, "kind", kamaValidateNonZero(v.Kind), []string{"amount"}, v.Amount != nil), validation.Field(kamaValidateOneOf([]string{"const=\"\\\"percent\\\"\"", "regexp=\"^p\""}, kamaValidateConst(v.Kind, "percent"), kamaValidateRegexpString(kamaValidateRegexp_9a393f5966, v.Kind)), "kind")); err != nil {
 		if stopOnFirstError {
 			return err
 		}

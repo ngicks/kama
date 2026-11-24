@@ -26,7 +26,7 @@ func (Unique) Name() string { return "unique" }
 type UniqueOptions struct{}
 
 // Parse accepts only the empty arg.
-func (Unique) Parse(arg string) (Rule, error) {
+func (Unique) Parse(arg string, _ Resolver) (Rule, error) {
 	return UniqueOptions{}, noArg(arg)
 }
 

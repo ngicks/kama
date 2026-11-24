@@ -18,7 +18,7 @@ func (Nil) Name() string { return "nil" }
 type NilOptions struct{}
 
 // Parse accepts only the empty arg.
-func (Nil) Parse(arg string) (Rule, error) {
+func (Nil) Parse(arg string, _ Resolver) (Rule, error) {
 	return NilOptions{}, noArg(arg)
 }
 

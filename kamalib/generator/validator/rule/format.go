@@ -63,7 +63,7 @@ type FormatOptions struct {
 }
 
 // Parse decodes arg into the name of one of f.Formats and its helper.
-func (f Format) Parse(arg string) (Rule, error) {
+func (f Format) Parse(arg string, _ Resolver) (Rule, error) {
 	known := strings.Join(slices.Sorted(maps.Keys(f.Formats)), ", ")
 
 	if arg == "" {

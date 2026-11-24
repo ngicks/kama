@@ -52,7 +52,7 @@ func (v ConstValue) Literal() string {
 
 // Parse decodes arg into one or more values. Check tells whether they are
 // values of the type.
-func (Const) Parse(arg string) (Rule, error) {
+func (Const) Parse(arg string, _ Resolver) (Rule, error) {
 	args, err := argTokens(arg)
 	if err != nil {
 		return nil, err

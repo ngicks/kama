@@ -3,6 +3,7 @@ package validation
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -21,6 +22,9 @@ var (
 	ErrFormat   = errors.New("format")
 	ErrMultiple = errors.New("multiple")
 	ErrUnique   = errors.New("unique")
+	ErrOr       = errors.New("or")
+	ErrOneOf    = errors.New("oneof")
+	ErrNot      = errors.New("not")
 )
 
 // Error is an error located by a path of segments from the outermost value to the failing one.
@@ -34,6 +38,40 @@ type Error struct {
 // message.
 func New(kind error, format string, args ...any) error {
 	return &Error{err: &leaf{kind: kind, msg: fmt.Sprintf(format, args...)}}
+}
+
+// Compose returns a leaf error at the root path, as New does, whose failure causes explain,
+// such as the errors of the alternatives of which none holds. Its message is that of New
+// followed by the message of each non-nil cause on lines of its own, indented by a tab.
+// errors.Is(err, kind) reports true. The causes are not on its unwrap chain, so errors.Is
+// does not report their kinds, and the lookups locate the leaf alone. [Causes] returns them.
+func Compose(kind error, causes []error, format string, args ...any) error {
+	var kept []error
+
+	for _, c := range causes {
+		if c != nil {
+			kept = append(kept, c)
+		}
+	}
+
+	return &Error{err: &leaf{kind: kind, msg: fmt.Sprintf(format, args...), causes: kept}}
+}
+
+// Causes returns the causes of the first leaf error made by [Compose] on the Unwrap() error
+// chain of err, or nil when there is none.
+func Causes(err error) []error {
+	for err != nil {
+		switch x := err.(type) {
+		case *leaf:
+			return slices.Clone(x.causes)
+		case interface{ Unwrap() error }:
+			err = x.Unwrap()
+		default:
+			return nil
+		}
+	}
+
+	return nil
 }
 
 // Field returns err with the struct field name prepended to the path of every leaf.
@@ -110,16 +148,29 @@ type segment struct {
 // leaf keeps the formatted message apart from kind so that New stays a plain printf wrapper
 // for vet and a %w in the caller's format cannot change what Unwrap returns.
 type leaf struct {
-	kind error
-	msg  string
+	kind   error
+	msg    string
+	causes []error
 }
 
 func (l *leaf) Error() string {
-	if l.kind == nil {
-		return l.msg
+	var b strings.Builder
+
+	if l.kind != nil {
+		b.WriteString(l.kind.Error())
+		b.WriteString(": ")
 	}
 
-	return l.kind.Error() + ": " + l.msg
+	b.WriteString(l.msg)
+
+	for _, c := range l.causes {
+		for line := range strings.SplitSeq(c.Error(), "\n") {
+			b.WriteString("\n\t")
+			b.WriteString(line)
+		}
+	}
+
+	return b.String()
 }
 
 func (l *leaf) Unwrap() error {

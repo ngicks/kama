@@ -22,7 +22,7 @@ func (Null) Name() string { return "null" }
 type NullOptions struct{}
 
 // Parse accepts only the empty arg.
-func (Null) Parse(arg string) (Rule, error) {
+func (Null) Parse(arg string, _ Resolver) (Rule, error) {
 	return NullOptions{}, noArg(arg)
 }
 

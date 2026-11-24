@@ -126,7 +126,7 @@ func (o *TypeOptions) UnmarshalKeyValue(
 
 	for _, a := range kv {
 		switch {
-		case a.Key == ignoreWord && !a.HasValue:
+		case a.Key == ignoreWord && !a.HasValue && !a.Call:
 			o.Ignore = true
 		case a.Key == ignoreWord:
 			return fmt.Errorf(
@@ -152,7 +152,7 @@ func (o *TypeOptions) UnmarshalKeyValue(
 		default:
 			o.Validators = append(o.Validators, ValidatorOptions{
 				Name: a.Key,
-				Args: a.Value,
+				Args: a.Arg(),
 				src:  optionSource{src: src, arg: a.Key},
 			})
 		}
@@ -223,7 +223,7 @@ func (o *FieldOptions) UnmarshalKeyValue(
 		if a.Key != hookWord {
 			o.Validators = append(o.Validators, ValidatorOptions{
 				Name: a.Key,
-				Args: a.Value,
+				Args: a.Arg(),
 				src:  optionSource{src: src, arg: a.Key},
 			})
 
@@ -289,11 +289,14 @@ func validatorUnknownKeys(vs []ValidatorOptions, keys [][]string) [][]string {
 }
 
 // ValidatorOptions are one validator of a field or a type: the arg
-// Name=Args of //kama:validate, or Name alone when Args is empty.
+// Name=Args or the call Name(Args) of //kama:validate, or Name alone when
+// Args is empty.
 type ValidatorOptions struct {
 	Name string `json:"name"`
 	// Args is the one argument of the validator, unparsed. Empty stands for
-	// none.
+	// none. For a call it holds the args between the parentheses as
+	// dircmnt.SpellCallArgs spells them, as in cmp=">=10", const="0" for
+	// or(cmp=">=10", const="0").
 	Args string `json:"args"`
 	// Unknown captures the keys of an option file entry that name no
 	// option.

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T10:13:55Z
+// generated: 2026-11-24T11:32:42Z
 
 package model
 
@@ -144,6 +144,16 @@ func kamaValidateFormatUrl(got string) error {
 	return nil
 }
 
+// kamaValidateIf is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateIf(cond, then, otherwise error) error {
+	if cond == nil {
+		return then
+	}
+	return otherwise
+}
+
 // kamaValidateLength is a helper of the generated Validate methods.
 //
 //kama:generated kama:validate
@@ -209,6 +219,16 @@ func kamaValidateNonZero[T comparable](t T) bool {
 	return t != zero
 }
 
+// kamaValidateNot is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateNot(err error, operand string) error {
+	if err != nil {
+		return nil
+	}
+	return validation.New(validation.ErrNot, "want the value to fail %s", operand)
+}
+
 // kamaValidateNull is a helper of the generated Validate methods.
 //
 //kama:generated kama:validate
@@ -217,6 +237,39 @@ func kamaValidateNull(ok bool) error {
 		return validation.New(validation.ErrNull, "want null, got a non-null value")
 	}
 	return nil
+}
+
+// kamaValidateOneOf is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateOneOf(operands []string, errs ...error) error {
+	var held []string
+	for i, err := range errs {
+		if err == nil {
+			held = append(held, operands[i])
+		}
+	}
+	if len(held) == 1 {
+		return nil
+	}
+	if len(held) == 0 {
+		return validation.Compose(validation.ErrOneOf, errs, "none of %d alternatives holds", len(errs))
+	}
+	return validation.New(validation.ErrOneOf,
+		"want exactly one of %d alternatives to hold, got %d: %s",
+		len(errs), len(held), strings.Join(held, ", "))
+}
+
+// kamaValidateOr is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateOr(errs ...error) error {
+	for _, err := range errs {
+		if err == nil {
+			return nil
+		}
+	}
+	return validation.Compose(validation.ErrOr, errs, "none of %d alternatives holds", len(errs))
 }
 
 // kamaValidateRegexpBytes is a helper of the generated Validate methods.
@@ -243,6 +296,21 @@ func kamaValidateRegexpString(re *regexp.Regexp, got string) error {
 //
 //kama:generated kama:validate
 var kamaValidateRegexp_39c46b3647 = regexp.MustCompile("^[a-z]+$")
+
+// kamaValidateRegexp_5cd67a1734 is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+var kamaValidateRegexp_5cd67a1734 = regexp.MustCompile("^a")
+
+// kamaValidateRegexp_91140f58d6 is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+var kamaValidateRegexp_91140f58d6 = regexp.MustCompile("b$")
+
+// kamaValidateRegexp_9c5b6217da is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+var kamaValidateRegexp_9c5b6217da = regexp.MustCompile("^x")
 
 // kamaValidateRequired is a helper of the generated Validate methods.
 //

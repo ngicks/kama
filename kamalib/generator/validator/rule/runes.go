@@ -29,7 +29,7 @@ type RunesOptions struct {
 
 // Parse decodes arg into comparisons with non-negative integers, as Length
 // does.
-func (Runes) Parse(arg string) (Rule, error) {
+func (Runes) Parse(arg string, _ Resolver) (Rule, error) {
 	cs, err := parseLengths(arg)
 	if err != nil {
 		return nil, err

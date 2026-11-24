@@ -359,9 +359,11 @@ func (w *writer) typeValidator(u types.Type, vo ValidatorOptions) (genStep, erro
 	return s, nil
 }
 
-// parse returns the rule of the validator vo. place names what vo applies
-// to in errors, as in field Name. An error of the args alone would repeat
-// for the value a pointer or an option holds, so apply never sees it.
+// parse returns the rule of the validator vo, which parses the validators
+// its arg names through the registry, as a combinator does. place names
+// what vo applies to in errors, as in field Name. An error of the args
+// alone would repeat for the value a pointer or an option holds, so apply
+// never sees it.
 func (w *writer) parse(vo ValidatorOptions, place string) (rule.Rule, error) {
 	val, ok := w.sel.opts.Registry.Lookup(vo.Name)
 	if !ok {
@@ -372,7 +374,13 @@ func (w *writer) parse(vo ValidatorOptions, place string) (rule.Rule, error) {
 		)
 	}
 
-	r, err := val.Parse(vo.Args)
+	r, err := val.Parse(vo.Args, w.sel.opts.Registry)
+	if errors.Is(err, rule.ErrUnknown) {
+		return nil, fmt.Errorf(
+			"%w: %s: %s on %s: %w", ErrDirective, vo.src.origin(), vo.src.spelling(), place, err,
+		)
+	}
+
 	if err != nil {
 		return nil, ruleError(vo, place, err)
 	}

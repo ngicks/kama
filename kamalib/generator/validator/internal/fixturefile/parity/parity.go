@@ -34,6 +34,12 @@ type Line struct {
 
 type Sku string
 
+type Discount struct {
+	Percent opt.Option[int] `json:"percent"`
+	Kind    string          `json:"kind"`
+	Amount  *int            `json:"amount"`
+}
+
 // Batch holds orders, which makes it a dependant.
 type Batch struct {
 	Orders map[string]Order `json:"orders"`

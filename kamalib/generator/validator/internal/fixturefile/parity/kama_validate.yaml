@@ -1,4 +1,4 @@
-# The options of Line and Sku, standing for their directives in
+# The options of Line, Sku and Discount, standing for their directives in
 # internal/fixture/parity.
 version: 1
 types:
@@ -19,3 +19,19 @@ types:
         args: "^[A-Z]+$"
       - name: runes
         args: "<=8"
+  Discount:
+    hook: false
+    validators:
+      - name: or
+        args: 'members="==0", members=">=2"'
+    fields:
+      Percent:
+        validators:
+          - name: or
+            args: 'cmp=">=10", const=0'
+          - name: not
+            args: or(const=5, const=7)
+      Kind:
+        validators:
+          - name: if
+            args: 'const=`"fixed"`, requires=amount, oneof(const=`"percent"`, regexp=^p)'

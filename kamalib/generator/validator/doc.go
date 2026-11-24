@@ -36,7 +36,8 @@
 //
 // One directive, //kama:validate, carries every option. Its args follow the
 // grammar of dircmnt.ParseArgsKeyValue: space-separated words written key
-// or key=value. A value is a bare word or a quoted or raw Go string literal:
+// or key=value, and calls written name(arg, ...). A value is a bare word or
+// a quoted or raw Go string literal:
 //
 //	//kama:validate hook=off
 //	type User struct {
@@ -54,6 +55,8 @@
 //		Score float64
 //		//kama:validate const=`"red" "dark blue"`
 //		Color string
+//		//kama:validate or(cmp=">=10", const="0") not(const="5")
+//		Stock int
 //	}
 //
 // The place of the directive gives its args their meaning:
@@ -296,12 +299,17 @@
 // comparison, as in >=1 or =="a b". regexp takes the whole arg as its
 // pattern. An empty arg, as in name="", counts as no arg.
 //
+// A call name(a, b) gives the validator name the arg a, b: the args between
+// the parentheses as dircmnt.SpellCallArgs spells them. The combinators
+// take their operands this way. Combinators describes them.
+//
 // Several validators on one field must all pass. A name the registry does
 // not hold is an error wrapping ErrDirective. The error names the field
 // and lists the known validators. These are errors wrapping ErrDirective
 // too:
 //
-//   - the same validator named twice on one field or one type.
+//   - the same validator named twice on one field or one type. Join two
+//     uses of one combinator with and(...), as in and(not(a), not(b)).
 //   - a validator on a field of a type that gets no Validate, or in the doc
 //     comment of such a type, as in //kama:validate ignore cmp=">0".
 //   - //kama:validate without args on a field.
@@ -330,6 +338,47 @@
 // required, zero and null only.
 //
 // Package rule documents the built-in validators and the errors they report.
+//
+// # Combinators
+//
+// The combinators and, or, not, oneof and if are validators of the
+// registry whose args are other validators, the operands. An operand is
+// written as an arg of //kama:validate is, a combinator included:
+//
+//	//kama:validate or(cmp=">=10", const="0") not(regexp="^x")
+//	//kama:validate if(const=`"fixed"`, requires=amount, const=`"percent"`)
+//	//kama:validate or(and(cmp=">=1", not(or(const="5", const="7"))), const="-1")
+//
+// Inside the parentheses a bare value ends at ",", "(" and ")", so a value
+// holding one of them is quoted. A call may span several directive lines.
+//
+//   - and(a, ...): every operand holds. and() always holds.
+//   - or(a, ...): at least one operand holds. or() never holds.
+//   - not(a): the one operand fails.
+//   - oneof(a, ...): exactly one operand holds.
+//   - if(cond, then[, else]): when cond holds, then holds, otherwise else
+//     holds. Without else a value failing cond passes. The error of cond
+//     never surfaces.
+//
+// The combinators parse their operands through the registry of the run,
+// so a user validator and a validator replacing a built-in are operands
+// too. An operand name the registry does not hold is an error wrapping
+// ErrDirective. A combinator applies to a type only when every operand
+// applies to it. The retry on the value a pointer, an opt.Option or an
+// und.Und holds applies to the combinator as a whole, and every operand
+// sees the same value: or(nil, cmp=">=1") applies to neither *int nor int
+// and is an error.
+//
+// A combinator holding a rule.SiblingRule operand, such as requires, is a
+// rule.SiblingRule itself. It applies to the field itself, and its other
+// operands apply to the type of the field, never to the value it holds.
+// Its errors are located at the field, except those the sibling operand
+// locates at a sibling. A combinator holding a rule.StructRule operand,
+// such as members, is a rule.StructRule and goes in the doc comment of a
+// struct type. Operands of both kinds in one combinator are an error.
+//
+// and and if return the errors of their operands. or, not and oneof return
+// errors of their own, which package rule describes.
 //
 // # Type validators
 //
@@ -436,10 +485,13 @@
 //	        validators:             # //kama:validate cmp=">=1" on Level
 //	          - name: cmp
 //	            args: ">=1"
+//	          - name: or            # or(const="0", cmp=">=10") on Level
+//	            args: 'const="0", cmp=">=10"'
 //
 // Listing a type marks it unless ignore is true. Its hooks are then on by
-// default. args is the arg a directive gives after name=, unquoted. An
-// empty or absent args stands for no arg. The validators of a type stand
+// default. args is the arg a directive gives after name=, unquoted, or the
+// args between the parentheses of a call. An empty or absent args stands
+// for no arg. The validators of a type stand
 // for the validators of its doc comment. A validator listed twice on one
 // field or one type is an error. The file has no equivalent of //kama:validate file.
 // version is required and is 1. An unknown key is a warning wrapping
@@ -506,8 +558,6 @@
 //
 // # Not supported
 //
-//   - and(...) and or(...) combinators. Several validators on one field
-//     are all required.
 //   - Validators on the elements of a slice or map, and on the fields of a
 //     struct type literal. Write a hook, or give the element type a
 //     Validate or validators of its own.

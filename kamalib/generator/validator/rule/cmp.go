@@ -28,7 +28,7 @@ type CmpOptions struct {
 
 // Parse decodes arg into comparisons. Check tells whether their operands
 // are values of the type.
-func (Cmp) Parse(arg string) (Rule, error) {
+func (Cmp) Parse(arg string, _ Resolver) (Rule, error) {
 	cs, err := parseComparisons(arg)
 	if err != nil {
 		return nil, err

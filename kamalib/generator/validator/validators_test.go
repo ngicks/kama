@@ -503,7 +503,7 @@ type lengthOne struct{}
 
 func (lengthOne) Name() string { return "length" }
 
-func (lengthOne) Parse(arg string) (rule.Rule, error) {
+func (lengthOne) Parse(arg string, _ rule.Resolver) (rule.Rule, error) {
 	if arg != "" {
 		return nil, fmt.Errorf("%w: unexpected arg %q; want none", rule.ErrArgs, arg)
 	}
@@ -573,7 +573,7 @@ func (multiple) Name() string { return "multiple" }
 
 type multipleOptions struct{ N int64 }
 
-func (multiple) Parse(arg string) (rule.Rule, error) {
+func (multiple) Parse(arg string, _ rule.Resolver) (rule.Rule, error) {
 	n, err := strconv.ParseInt(arg, 10, 64)
 	if err != nil || n <= 0 {
 		return nil, fmt.Errorf("%w: want a positive integer", rule.ErrArgs)

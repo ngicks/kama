@@ -1,0 +1,268 @@
+package rule
+
+import (
+	"errors"
+	"fmt"
+	"go/types"
+	"slices"
+	"strconv"
+
+	"github.com/ngicks/opiter"
+
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+)
+
+// Operand is a validator a combinator applies to the value it validates.
+type Operand struct {
+	// Text spells the operand by what the validator receives, its name and
+	// its arg, with the name bare and the value quoted, as in cmp=">=1" or
+	// not(required). A directive and an option file writing the same
+	// operand, one quoting a value and the other not, give the same Text.
+	// The values in the args of a call are quoted too.
+	Text string
+	// Rule is the operand parsed through the registry in use.
+	Rule Rule
+}
+
+// ParseOperands parses arg, the args of a combinator as
+// dircmnt.ParseCallArgs reads them, into operands. Each arg names a
+// validator by its key, which r parses with the arg dircmnt.KeyValue.Arg
+// returns: cmp=">=10", not(required) gives cmp with >=10 and not with
+// required. A registered validator under the name of a built-in replaces
+// the built-in here too.
+func ParseOperands(arg string, r Resolver) ([]Operand, error) {
+	args, err := dircmnt.ParseCallArgs(arg)
+	if err != nil {
+		return nil, argsError(err)
+	}
+
+	ops := make([]Operand, 0, len(args))
+
+	for _, kv := range args {
+		kv.KeyQuoted = false
+		text := quoteValues(kv).String()
+
+		rule, err := r.Resolve(kv.Key, kv.Arg())
+		if err != nil {
+			return nil, fmt.Errorf("operand %s: %w", text, err)
+		}
+
+		ops = append(ops, Operand{Text: text, Rule: rule})
+	}
+
+	return ops, nil
+}
+
+// quoteValues returns kv with every value quoted, those of its call args
+// included. A quoted and a bare value read back alike.
+func quoteValues(kv dircmnt.KeyValue) dircmnt.KeyValue {
+	kv.ValueQuoted = kv.HasValue
+	kv.Args = opiter.WrapSeq(slices.Values(kv.Args)).
+		Map(quoteValues).
+		CollectSlice()
+
+	return kv
+}
+
+// errorSource tells where the errors of a combinator come from.
+type errorSource bool
+
+const (
+	// operandErrors is the source of a combinator returning the errors of
+	// its operands, as and does.
+	operandErrors errorSource = false
+	// ownErrors is the source of a combinator returning an error of its
+	// own, as or does.
+	ownErrors errorSource = true
+)
+
+// combine returns the rule build makes of ops. When an operand is a
+// SiblingRule or a StructRule, the combinator is one too, and build runs
+// on the operands bound to the struct. src tells how the errors of the
+// combinator get the path segment of the field a SiblingRule leaves out.
+func combine(ops []Operand, src errorSource, build func(ops []Operand) Rule) (Rule, error) {
+	siblings := opiter.WrapSeq(slices.Values(ops)).
+		Any(func(op Operand) bool { return isSiblingRule(op.Rule) })
+
+	whole := opiter.WrapSeq(slices.Values(ops)).
+		Any(func(op Operand) bool { return isStructRule(op.Rule) })
+
+	switch {
+	case siblings && whole:
+		return nil, argsError(errors.New("operands read the siblings of a struct field and" +
+			" validate a struct as a whole; no place takes both"))
+	case siblings:
+		return siblingCombinator{ops: ops, src: src, build: build}, nil
+	case whole:
+		return structCombinator{ops: ops, build: build}, nil
+	}
+
+	return build(ops), nil
+}
+
+func isSiblingRule(r Rule) bool {
+	_, ok := r.(SiblingRule)
+	return ok
+}
+
+func isStructRule(r Rule) bool {
+	_, ok := r.(StructRule)
+	return ok
+}
+
+// checkOperands reports every operand of ops that cannot apply to t.
+func checkOperands(ops []Operand, t types.Type) error {
+	var errs []error
+
+	for _, op := range ops {
+		if err := op.Rule.Check(t); err != nil {
+			errs = append(errs, fmt.Errorf("operand %s: %w", op.Text, err))
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+// emitOperands returns the expression of each operand of ops validating v
+// of type t.
+func emitOperands(e Emitter, ops []Operand, t types.Type, v Gen) ([]Gen, error) {
+	out := make([]Gen, 0, len(ops))
+
+	for _, op := range ops {
+		g, err := op.Rule.Emit(e, t, v)
+		if err != nil {
+			return nil, fmt.Errorf("operand %s: %w", op.Text, err)
+		}
+
+		out = append(out, g)
+	}
+
+	return out, nil
+}
+
+// texts returns the Text of each of ops quoted, as Go string literals.
+func texts(ops []Operand) []string {
+	return opiter.WrapSeq(slices.Values(ops)).
+		Map(func(op Operand) string { return strconv.Quote(op.Text) }).
+		CollectSlice()
+}
+
+// siblingCombinator is a combinator with an operand reading the siblings
+// of the field. As a SiblingRule it applies to the field itself, never to
+// the value a pointer or an option holds, and its other operands apply to
+// the type of the field too.
+type siblingCombinator struct {
+	ops   []Operand
+	src   errorSource
+	build func(ops []Operand) Rule
+}
+
+// Check rejects every type: an operand needs the struct holding the
+// field, which Siblings gives.
+func (siblingCombinator) Check(types.Type) error { return errCombinatorSiblings }
+
+// Emit fails as Check does.
+func (siblingCombinator) Emit(Emitter, types.Type, Gen) (Gen, error) {
+	return nil, errCombinatorSiblings
+}
+
+// Siblings binds each SiblingRule operand to s and the field named field.
+// The errors such an operand returns are located already. The combinator
+// locates the other errors at the field: those of each other operand when
+// it returns the errors of its operands, else its own.
+func (c siblingCombinator) Siblings(s Struct, field string) (Rule, error) {
+	bound := make([]Operand, 0, len(c.ops))
+
+	for _, op := range c.ops {
+		sr, ok := op.Rule.(SiblingRule)
+
+		switch {
+		case ok:
+			r, err := sr.Siblings(s, field)
+			if err != nil {
+				return nil, fmt.Errorf("operand %s: %w", op.Text, err)
+			}
+
+			op.Rule = r
+		case c.src == operandErrors:
+			op.Rule = atField{rule: op.Rule, field: field}
+		}
+
+		bound = append(bound, op)
+	}
+
+	if c.src == ownErrors {
+		return atField{rule: c.build(bound), field: field}, nil
+	}
+
+	return c.build(bound), nil
+}
+
+var errCombinatorSiblings = errors.New("an operand reads the siblings of a struct field;" +
+	" write the combinator on a field of a struct")
+
+// structCombinator is a combinator with an operand validating a struct as
+// a whole. As a StructRule it is written in the doc comment of a struct
+// type.
+type structCombinator struct {
+	ops   []Operand
+	build func(ops []Operand) Rule
+}
+
+// Check rejects every type: an operand needs the struct, which Struct
+// gives.
+func (structCombinator) Check(types.Type) error { return errCombinatorStruct }
+
+// Emit fails as Check does.
+func (structCombinator) Emit(Emitter, types.Type, Gen) (Gen, error) {
+	return nil, errCombinatorStruct
+}
+
+// Struct binds each StructRule operand to s.
+func (c structCombinator) Struct(s Struct) (Rule, error) {
+	bound := make([]Operand, 0, len(c.ops))
+
+	for _, op := range c.ops {
+		if sr, ok := op.Rule.(StructRule); ok {
+			r, err := sr.Struct(s)
+			if err != nil {
+				return nil, fmt.Errorf("operand %s: %w", op.Text, err)
+			}
+
+			op.Rule = r
+		}
+
+		bound = append(bound, op)
+	}
+
+	return c.build(bound), nil
+}
+
+var errCombinatorStruct = errors.New("an operand validates a struct as a whole;" +
+	" write the combinator in the doc comment of a struct type")
+
+// atField is rule with its errors located at the struct field named field.
+type atField struct {
+	rule  Rule
+	field string
+}
+
+// Check accepts the types rule accepts.
+func (a atField) Check(t types.Type) error {
+	if err := a.rule.Check(t); err != nil {
+		return fmt.Errorf("%w; a combinator reading the siblings of a field applies to the field"+
+			" itself, never to the value it holds", err)
+	}
+
+	return nil
+}
+
+// Emit wraps the expression of rule with validation.Field.
+func (a atField) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+	g, err := a.rule.Emit(e, t, v)
+	if err != nil {
+		return nil, err
+	}
+
+	return lang.Expr("%s.Field(%s, %s)", e.Import(ValidationPath), g, strconv.Quote(a.field)), nil
+}

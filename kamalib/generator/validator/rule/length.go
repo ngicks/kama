@@ -25,7 +25,7 @@ type LengthOptions struct {
 }
 
 // Parse decodes arg into comparisons with non-negative integers.
-func (Length) Parse(arg string) (Rule, error) {
+func (Length) Parse(arg string, _ Resolver) (Rule, error) {
 	cs, err := parseLengths(arg)
 	if err != nil {
 		return nil, err

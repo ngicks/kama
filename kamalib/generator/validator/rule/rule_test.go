@@ -9,11 +9,11 @@ import (
 )
 
 func TestRequiredParse(t *testing.T) {
-	o, err := Required{}.Parse("")
+	o, err := Required{}.Parse("", nil)
 	assert.NilError(t, err)
 	assert.Equal(t, o, RequiredOptions{})
 
-	_, err = Required{}.Parse("yes")
+	_, err = Required{}.Parse("yes", nil)
 	assert.ErrorIs(t, err, ErrArgs)
 	assert.ErrorContains(t, err, `unexpected arg "yes"; want none`)
 }
@@ -27,37 +27,37 @@ func TestRegexpVarName(t *testing.T) {
 }
 
 func TestZeroParse(t *testing.T) {
-	o, err := Zero{}.Parse("")
+	o, err := Zero{}.Parse("", nil)
 	assert.NilError(t, err)
 	assert.Equal(t, o, ZeroOptions{})
 
-	_, err = Zero{}.Parse("yes")
+	_, err = Zero{}.Parse("yes", nil)
 	assert.ErrorIs(t, err, ErrArgs)
 	assert.ErrorContains(t, err, `unexpected arg "yes"; want none`)
 }
 
 func TestNilParse(t *testing.T) {
-	o, err := Nil{}.Parse("")
+	o, err := Nil{}.Parse("", nil)
 	assert.NilError(t, err)
 	assert.Equal(t, o, NilOptions{})
 
-	_, err = Nil{}.Parse("x")
+	_, err = Nil{}.Parse("x", nil)
 	assert.ErrorIs(t, err, ErrArgs)
 	assert.ErrorContains(t, err, `unexpected arg "x"; want none`)
 }
 
 func TestNullParse(t *testing.T) {
-	o, err := Null{}.Parse("")
+	o, err := Null{}.Parse("", nil)
 	assert.NilError(t, err)
 	assert.Equal(t, o, NullOptions{})
 
-	_, err = Null{}.Parse("x")
+	_, err = Null{}.Parse("x", nil)
 	assert.ErrorIs(t, err, ErrArgs)
 	assert.ErrorContains(t, err, `unexpected arg "x"; want none`)
 }
 
 func TestRegexpParse(t *testing.T) {
-	o, err := Regexp{}.Parse(`^a="b c"$`)
+	o, err := Regexp{}.Parse(`^a="b c"$`, nil)
 	assert.NilError(t, err)
 	assert.Equal(t, o, RegexpOptions{Pattern: `^a="b c"$`})
 
@@ -65,14 +65,14 @@ func TestRegexpParse(t *testing.T) {
 		"":   "want a pattern",
 		"a(": `pattern "a(" does not compile`,
 	} {
-		_, err := Regexp{}.Parse(arg)
+		_, err := Regexp{}.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)
 		assert.ErrorContains(t, err, msg, arg)
 	}
 }
 
 func TestLengthParse(t *testing.T) {
-	o, err := Length{}.Parse(">=1 <=+10")
+	o, err := Length{}.Parse(">=1 <=+10", nil)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, o, LengthOptions{Comparisons: []Comparison{
 		{Op: ">=", Operand: "1"},
@@ -88,14 +88,14 @@ func TestLengthParse(t *testing.T) {
 		`"1`:      "unterminated quoted string",
 		">=\"a\"": "is no value of int",
 	} {
-		_, err := Length{}.Parse(arg)
+		_, err := Length{}.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)
 		assert.ErrorContains(t, err, msg, arg)
 	}
 }
 
 func TestCmpParse(t *testing.T) {
-	o, err := Cmp{}.Parse(`>=1 !="a"`)
+	o, err := Cmp{}.Parse(`>=1 !="a"`, nil)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, o, CmpOptions{Comparisons: []Comparison{
 		{Op: ">=", Operand: "1"},
@@ -107,14 +107,14 @@ func TestCmpParse(t *testing.T) {
 		">=":  `arg ">=" is no comparison`,
 		"a=1": `arg "a=1" is no comparison`,
 	} {
-		_, err := Cmp{}.Parse(arg)
+		_, err := Cmp{}.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)
 		assert.ErrorContains(t, err, msg, arg)
 	}
 }
 
 func TestConstParse(t *testing.T) {
-	o, err := Const{}.Parse(`1 "dark blue"`)
+	o, err := Const{}.Parse(`1 "dark blue"`, nil)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, o, ConstOptions{Values: []ConstValue{
 		{Text: "1"},
@@ -127,7 +127,7 @@ func TestConstParse(t *testing.T) {
 		"a=1": `arg "a=1" is a key=value pair`,
 		`"a`:  "unterminated quoted string",
 	} {
-		_, err := Const{}.Parse(arg)
+		_, err := Const{}.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)
 		assert.ErrorContains(t, err, msg, arg)
 	}
@@ -136,7 +136,7 @@ func TestConstParse(t *testing.T) {
 func TestFormatParse(t *testing.T) {
 	f := Format{Formats: DefaultFormats()}
 
-	o, err := f.Parse("date")
+	o, err := f.Parse("date", nil)
 	assert.NilError(t, err)
 	assert.Equal(t, o.(FormatOptions).Name, "date")
 	assert.Equal(t, o.(FormatOptions).Helper.Name, "kamaValidateFormatDate")
@@ -145,14 +145,14 @@ func TestFormatParse(t *testing.T) {
 		"":     "want one format name; known: date, date-time, url",
 		"uuid": `unknown format "uuid"; known: date, date-time, url`,
 	} {
-		_, err := f.Parse(arg)
+		_, err := f.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)
 		assert.ErrorContains(t, err, msg, arg)
 	}
 }
 
 func TestRunesParse(t *testing.T) {
-	o, err := Runes{}.Parse(">=1 <=+10")
+	o, err := Runes{}.Parse(">=1 <=+10", nil)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, o, RunesOptions{Comparisons: []Comparison{
 		{Op: ">=", Operand: "1"},
@@ -166,7 +166,7 @@ func TestRunesParse(t *testing.T) {
 		">=1.0": "length 1.0 is not an integer literal",
 		">=n":   "n is not a Go literal",
 	} {
-		_, err := Runes{}.Parse(arg)
+		_, err := Runes{}.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)
 		assert.ErrorContains(t, err, msg, arg)
 	}
@@ -190,7 +190,7 @@ func TestRunesCheck(t *testing.T) {
 
 func TestMultipleOfParse(t *testing.T) {
 	for _, arg := range []string{"2", "+2", "1.5", "0.0001", "1e-8", "0x10", "1_000"} {
-		o, err := MultipleOf{}.Parse(arg)
+		o, err := MultipleOf{}.Parse(arg, nil)
 		assert.NilError(t, err, arg)
 		assert.Equal(t, o, Rule(MultipleOfOptions{Divisor: arg}))
 	}
@@ -207,7 +207,7 @@ func TestMultipleOfParse(t *testing.T) {
 		"n":      "divisor n is not an integer or float literal",
 		"1e9999": "divisor 1e9999 is out of range",
 	} {
-		_, err := MultipleOf{}.Parse(arg)
+		_, err := MultipleOf{}.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)
 		assert.ErrorContains(t, err, msg, arg)
 	}
@@ -240,11 +240,11 @@ func TestMultipleOfCheck(t *testing.T) {
 }
 
 func TestUniqueParse(t *testing.T) {
-	o, err := Unique{}.Parse("")
+	o, err := Unique{}.Parse("", nil)
 	assert.NilError(t, err)
 	assert.Equal(t, o, UniqueOptions{})
 
-	_, err = Unique{}.Parse("x")
+	_, err = Unique{}.Parse("x", nil)
 	assert.ErrorIs(t, err, ErrArgs)
 	assert.ErrorContains(t, err, `unexpected arg "x"; want none`)
 }
@@ -317,7 +317,7 @@ func (s testStruct) Fallback() (types.Type, Gen, bool) {
 }
 
 func TestRequiresParse(t *testing.T) {
-	o, err := Requires{}.Parse(`b "c d"`)
+	o, err := Requires{}.Parse(`b "c d"`, nil)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, o, RequiresOptions{Names: []string{"b", "c d"}})
 
@@ -325,7 +325,7 @@ func TestRequiresParse(t *testing.T) {
 		"":    "want one or more JSON names of sibling fields",
 		"b=1": `arg "b=1" is no JSON name`,
 	} {
-		_, err := Requires{}.Parse(arg)
+		_, err := Requires{}.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)
 		assert.ErrorContains(t, err, msg, arg)
 	}
@@ -359,7 +359,7 @@ func TestRequiresSiblings(t *testing.T) {
 }
 
 func TestMembersParse(t *testing.T) {
-	o, err := Members{}.Parse(">=1 <=3")
+	o, err := Members{}.Parse(">=1 <=3", nil)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, o, MembersOptions{Comparisons: []Comparison{
 		{Op: ">=", Operand: "1"},
@@ -370,7 +370,7 @@ func TestMembersParse(t *testing.T) {
 		"":    "want one or more comparisons",
 		">-1": "length -1 is negative",
 	} {
-		_, err := Members{}.Parse(arg)
+		_, err := Members{}.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)
 		assert.ErrorContains(t, err, msg, arg)
 	}

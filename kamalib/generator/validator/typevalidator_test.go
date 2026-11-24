@@ -136,7 +136,7 @@ type fields struct{}
 
 func (fields) Name() string { return "fields" }
 
-func (fields) Parse(string) (rule.Rule, error) { return fieldsOptions{}, nil }
+func (fields) Parse(string, rule.Resolver) (rule.Rule, error) { return fieldsOptions{}, nil }
 
 type fieldsOptions struct{}
 

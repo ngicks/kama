@@ -33,7 +33,7 @@ type RequiresOptions struct {
 }
 
 // Parse decodes arg into one or more names separated by spaces.
-func (Requires) Parse(arg string) (Rule, error) {
+func (Requires) Parse(arg string, _ Resolver) (Rule, error) {
 	args, err := argTokens(arg)
 	if err != nil {
 		return nil, err
