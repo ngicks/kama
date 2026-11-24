@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:04:15Z
+// generated: 2026-11-24T12:42:21Z
 
 package recursive
 
@@ -91,7 +91,7 @@ func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -162,7 +162,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -233,7 +233,7 @@ func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -308,7 +308,7 @@ func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -379,7 +379,7 @@ func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -449,7 +449,7 @@ func (v *Ouroboros) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out

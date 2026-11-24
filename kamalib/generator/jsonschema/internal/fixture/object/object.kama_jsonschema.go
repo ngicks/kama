@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:27:03Z
+// generated: 2026-11-24T12:42:14Z
 
 package object
 
@@ -152,7 +152,7 @@ func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -187,7 +187,7 @@ func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, (*string)(&s)); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(s); err != nil {
+	if err := jsonschemart.Validate(s, false); err != nil {
 		return err
 	}
 	*v = s
@@ -253,7 +253,7 @@ func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -319,7 +319,7 @@ func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -385,7 +385,7 @@ func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -456,7 +456,7 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out

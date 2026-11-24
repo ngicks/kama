@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:27:00Z
+// generated: 2026-11-24T12:42:11Z
 
 package nullableenum
 
@@ -89,7 +89,7 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -122,7 +122,7 @@ func (v *LevelsConst) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(LevelsConst(out)); err != nil {
+	if err := jsonschemart.Validate(LevelsConst(out), false); err != nil {
 		return err
 	}
 	*v = LevelsConst(out)
@@ -155,7 +155,7 @@ func (v *LevelsBig) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(LevelsBig(out)); err != nil {
+	if err := jsonschemart.Validate(LevelsBig(out), false); err != nil {
 		return err
 	}
 	*v = LevelsBig(out)
@@ -188,7 +188,7 @@ func (v *Level) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Level(out)); err != nil {
+	if err := jsonschemart.Validate(Level(out), false); err != nil {
 		return err
 	}
 	*v = Level(out)

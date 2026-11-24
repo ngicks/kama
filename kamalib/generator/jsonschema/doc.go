@@ -3,12 +3,17 @@
 //
 // Generate writes one file, <package>.kama_jsonschema.go, holding a type for
 // the root schema and for every schema under it that needs one. The types
-// decode with encoding/json/v2 and check the keywords that decide what a
-// value is: type, enum, const, required and additionalProperties. Errors
-// are those of package github.com/ngicks/kama/kamalib/pkg/validation,
-// located by the JSON path of the offending member. The generated code
-// imports package github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart.
-// Proc runs Generate as the workflow step kind jsonschema.generate.
+// decode with encoding/json/v2. Decoding checks the keywords that decide
+// the shape of a value, type and required. The validation keywords become
+// //kama:validate directives on the types and their fields, and the
+// validator generator of package
+// github.com/ngicks/kama/kamalib/generator/validator writes the Validate
+// methods checking them. The decoders call Validate where a value converts
+// from its wire form to its type, as Validation describes. Errors are those
+// of package github.com/ngicks/kama/kamalib/pkg/validation, located by the
+// JSON path of the offending member. The generated code imports package
+// github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart. Proc runs
+// Generate as the workflow step kind jsonschema.generate.
 //
 // # Proc
 //
@@ -24,6 +29,7 @@
 //	type_name  the name of the root type, an exported Go identifier
 //	           used as written; the title of the root schema when left
 //	           out
+//	validate   whether the decoders call Validate; true when left out
 //
 // The schema file holds JSON. A schema param with a fragment, such as
 // tests/minimum.json#/0/schema, takes the value the RFC 6901 pointer of the
@@ -32,7 +38,8 @@
 // an object or a boolean, and it is the root that "#" refers to in a $ref.
 // Proc reads it from the raw bytes of the file, so the order of its members
 // and the text of its numbers survive. A spec generating the types of
-// api/schema.json into api/api.kama_jsonschema.go of package api:
+// api/schema.json into api/api.kama_jsonschema.go of package api, then
+// their Validate methods:
 //
 //	version: 1
 //	steps:
@@ -44,13 +51,28 @@
 //	    param:
 //	      schema: api/schema.json
 //	      type_name: Pet
+//	  load:
+//	    proc: packages.load
+//	    in: root
+//	    after: generate
+//	  validate:
+//	    proc: validate.generate
+//	    in: load
+//	    out: root
 //	  final:
 //	    proc: overlayfs.copy_down
 //	    in: root
-//	    after: generate
+//	    after: validate
 //
-// The header of the generated file names the schema and type_name params
-// and the time of the run. Proc keeps a file that differs from the
+// A spec running Proc with validate true needs the validate.generate step.
+// Without it the decoders fail with an error wrapping
+// jsonschemart.ErrNoValidate. With validate false the directives are still
+// written, the decoders call no Validate, and decoding checks no
+// validation keyword. A union then takes the first member that decodes a
+// value, even one holding a nested union that matches none of its members.
+//
+// The header of the generated file names the schema, type_name and
+// validate params and the time of the run. Proc keeps a file that differs from the
 // existing one in the generated: line only. A Go file of the output
 // directory that holds a declaration marked by the generator and that the
 // run does not produce is stale. Proc reports a warning wrapping ErrStale
@@ -66,8 +88,11 @@
 // # Shapes
 //
 // A schema declares a Go type of its own when it is an object, an enum of
-// strings, a union or an allOf of several members. Other schemas are
-// spelled by built-in types where they are used:
+// strings, a union or an allOf of several members. A schema outside an
+// object property whose validation keywords apply to its value declares a
+// type defined over its built-in type, as type PetName string, whose
+// directive names their validators. Other schemas are spelled by built-in
+// types where they are used:
 //
 //	string                       string
 //	integer                      int64
@@ -87,9 +112,9 @@
 // A root that declares no type of its own still needs a name to decode a
 // document into. It declares a type defined over its Go type, such as
 // type Root []int64, or type Root opt.Option[string] for a nullable root.
-// The type encodes and decodes as its Go type and checks the const or the
-// enum of the root. A schema that refers to the root by $ref takes the Go
-// type, not the name, so such a root holding itself is an error.
+// The type encodes and decodes as its Go type. A schema that refers to the
+// root by $ref takes the Go type, not the name, so such a root holding
+// itself is an error.
 //
 // A nullable value is a type naming null and one other kind, or a oneOf or
 // an anyOf of exactly a schema and a schema of type null. It is no union.
@@ -106,16 +131,18 @@
 // A member of a union takes the name of its wrapper followed by "Value",
 // and a member of an allOf the name of its object followed by the member
 // name. The value of a nullable value and the member of an allOf of one
-// member take the name of the schema holding them. A $ref takes the type of
-// the schema it names; a reference declares nothing.
+// member take the name of the schema holding them, followed by "Value" when
+// that schema is the root, whose type already takes the name. A $ref takes
+// the type of the schema it names; a reference declares nothing.
 //
 // Names are upper-camel-cased on the characters an identifier cannot hold,
 // as foo_bar and foo-bar give FooBar. A name that gives no exported
 // identifier is an error wrapping ErrUnsupported. Two names colliding in
 // the package, in a struct or in its wire struct, or a field named like
-// MarshalJSONTo or UnmarshalJSONFrom, is an error wrapping ErrConflict. A
-// property named so that its field is Unknown or AdditionalProperties
-// collides with the field the generator adds for additionalProperties.
+// a method of the struct, MarshalJSONTo, UnmarshalJSONFrom,
+// AdditionalProperties or Validate, is an error wrapping ErrConflict. A
+// union named Pet declares PetKind and PetUnknown besides its wrappers, so
+// a member titled Unknown collides too.
 //
 // # Objects
 //
@@ -136,17 +163,22 @@
 // The struct decodes through an unexported wire struct. It holds a
 // property as an und.Und, which keeps a missing member apart from null, or
 // as a jsontext.Value where the Go type of the property holds null itself.
-// UnmarshalJSONFrom converts each wire field and reports every member the
-// schema rejects. A const or an enum of other than strings is checked
-// there, also inside a nullable value, whose null it lets through. Numbers
-// compare by the values their JSON texts write, exactly. An enum of
-// strings declares a string type with a constant per value, which rejects
-// any other value itself.
+// UnmarshalJSONFrom converts each wire field and reports every member
+// missing or null against the required x nullable matrix. Once every member
+// converts, the struct must pass Validate. An enum of strings declares a
+// string type with a constant per value, whose Validate rejects any other
+// value.
 //
-// additionalProperties false makes decoding reject the members the object
-// does not declare. A schema next to properties keeps them in the field
-// AdditionalProperties, a map encoded inline. Absent or true ignores them
-// on decoding and drops them.
+// Every struct holds the members its properties do not name in the
+// unexported field _x, tagged json:",embed", which the method
+// AdditionalProperties returns. Decoding never rejects such a member, and
+// encoding writes them back. _x is a map[string]T for an
+// additionalProperties schema T, whose values decode as T, and a
+// map[string]jsontext.Value otherwise. additionalProperties false makes
+// Validate report each member of _x, with an error wrapping
+// validation.ErrClosed located at the member. encoding/json/v2 refuses a
+// tagged unexported field, so every struct encodes through MarshalJSONTo,
+// and go vet reports the tag, which the validator generator reads.
 //
 // # Recursion
 //
@@ -180,18 +212,31 @@
 // an enum of one value does not hold that value, when a required member is
 // missing and, under additionalProperties false, when the value holds a
 // member the object does not declare. The remaining members decode the
-// value in schema order. An anyOf and a type of several kinds take the
-// first that succeeds and do not try later members. A oneOf needs exactly
-// one to succeed. It stops at the second success and reports an error
-// naming the two members, without trying later members. When no member
-// succeeds, the error holds the error of every member tried. Marshaling
-// writes the member the holder holds.
+// value in schema order, and a member that decodes it matches when its
+// wrapper passes Validate. An anyOf and a type of several kinds take the
+// first member that matches and do not try later members. A oneOf needs
+// exactly one to match and stops at the second, without trying later
+// members.
 //
-// The generated code does not check the keywords listed under Not
-// enforced, so it cannot tell apart two members of a oneOf that differ
-// only in them, or in annotations, nor a member holding only them, which
-// every value matches. Such a oneOf is an error wrapping ErrUnsupported,
-// since the generated code would reject values the schema accepts.
+// Decoding a union never fails on the selection. A value no member matches,
+// or that two members of a oneOf match, gives the wrapper PetUnknown,
+// holding the value as jsontext.Value and the error of the selection.
+// Validate of the holder returns that error, which holds the error of
+// every member tried or names the two members matching. The decoder of a
+// struct holding the union reports it through its Validate. A union
+// decoded alone reports it only when Validate is called. Marshaling writes
+// the member the holder holds, the value of PetUnknown as it is.
+//
+// The holder has a Validate of its own, which calls the Validate of the
+// wrapper it holds. The wrappers carry //kama:validate and get theirs from
+// the validator generator.
+//
+// The generated code does not check every validation keyword, as
+// Validation lists, so it cannot tell apart two members of a oneOf that
+// differ only in keywords one of them leaves unchecked, or in annotations,
+// nor a member holding only such keywords, which every value matches. Such
+// a oneOf is an error wrapping ErrUnsupported, since the generated code
+// would reject values the schema accepts.
 //
 // # allOf
 //
@@ -200,8 +245,12 @@
 // allOf of more members declares a struct with a field per member, tagged
 // "-", followed by the fields of its own properties.
 // Decoding decodes each member and the own properties from the same
-// object. Marshaling writes one object holding the members of each, the
-// first to write a member name winning. A member must be an object. A
+// object. The _x of the product holds the members that neither a member
+// nor an own property declares. The product clears the _x of each member
+// struct, which holds the members of the others, so a member value of an
+// additionalProperties schema of a member is checked on decoding only.
+// Marshaling writes one object holding the members of each, then those of
+// _x, the first to write a member name winning. A member must be an object. A
 // member rejecting other members by additionalProperties false, a member
 // holding the product itself, additionalProperties next to the allOf and
 // a property two members declare differently are errors. Two declarations
@@ -209,16 +258,58 @@
 // an extension keyword, are not different. A required member held by a nil
 // pointer is an error on marshaling, as in a struct.
 //
-// # Not enforced
+// # Validation
 //
-// minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf,
-// minLength, maxLength, pattern, format, minItems, maxItems, uniqueItems,
-// minProperties, maxProperties, dependentRequired and the content keywords
-// are accepted and not checked. description and deprecated feed doc
-// comments, keeping the lines of a description. Every line is printed as
-// a line comment of its own, so a description cannot write a directive or
-// end the comment. title names the root type and members of unions and
-// allOf instead, and the other annotations are ignored.
+// The validation keywords become args of //kama:validate on the field of
+// an object property, or on the type a schema declares:
+//
+//	minimum, maximum, exclusiveMinimum,
+//	exclusiveMaximum                      cmp on integers and numbers
+//	multipleOf                            multipleof
+//	minLength, maxLength                  runes on strings
+//	pattern                               regexp on strings
+//	minItems, maxItems                    length on arrays
+//	uniqueItems                           unique
+//	minProperties, maxProperties          length on a map, members on a
+//	                                      struct
+//	dependentRequired                     requires on the field of the key,
+//	                                      required on a member a required
+//	                                      key depends on
+//	enum, const                           const on scalars
+//	additionalProperties false            closed on a struct
+//
+// A keyword applies to one kind of value only, as minLength to strings, and
+// a value of another kind satisfies it. A struct and every union wrapper
+// carry hook=off, since the generator writes no hook. A property takes the
+// keywords of its own schema. A schema it refers to declares a type with
+// its own. A number compares as the Go value, so an enum of numbers cannot
+// tell apart two numbers one float64 holds. unique compares raw JSON text
+// byte by byte, so 1 and 1.0 differ. requires, required and members count
+// an und.Und holding null as absent, while JSON Schema counts a member
+// holding null as present. regexp is RE2, not ECMA-262.
+//
+// Generate warns with ErrUnenforced about a validation keyword the
+// generated code does not check: a keyword of a schema of no single kind,
+// whose Go type is jsontext.Value, of a union or of a nullable root, a
+// pattern RE2 does not compile, a dependentRequired naming a member
+// without a property, an object keyword next to a $ref to a struct, and a
+// keyword of a schema outside an object property that declares no type,
+// such as one next to a $ref.
+//
+// Decoders call Validate through jsonschemart.Validate, since the
+// generated file compiles before the validator generator runs. A struct
+// validates once its members convert, a type of a validated value once it
+// decodes, and a union validates each member it tries. A struct nested in
+// another is validated by its own decoder and again by the Validate of the
+// outer one, so decoding a value nested n levels deep validates the
+// innermost value n times.
+//
+// format and the content keywords are annotations and give no directive.
+// description and deprecated feed doc comments, keeping the lines of a
+// description. Every line is printed as a line comment of its own, so a
+// description cannot write a directive or end the comment. title names the
+// root type and members of unions and allOf instead, and the other
+// annotations are ignored.
 //
 // # Unsupported
 //
@@ -234,9 +325,10 @@
 //   - a nil schema of a document built in Go, the false schema as a
 //     value, a schema admitting null only outside a union, and a slice or
 //     a map holding itself with no declared type in between;
-//   - a const or an enum outside an object property and the root other
-//     than an enum of strings, one mixing kinds, and a value that is no Go
-//     constant of its type;
+//   - a const or an enum mixing kinds, and a value that is no Go constant
+//     of its type;
+//   - a numeric keyword that is no number, a multipleOf not above zero, and
+//     a length or a count that is no non-negative integer;
 //   - a required member without a property;
 //   - a type next to a oneOf or an anyOf that narrows its members or
 //     admits null that no member admits, a type next to an allOf of one

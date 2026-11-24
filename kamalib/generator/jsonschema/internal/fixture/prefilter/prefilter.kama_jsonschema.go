@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:27:07Z
+// generated: 2026-11-24T12:42:18Z
 
 package prefilter
 
@@ -58,6 +58,22 @@ type ShapeSquare struct {
 //kama:generated kama:jsonschema
 func (ShapeSquare) isShapeKind() {}
 
+// ShapeUnknown holds a value of Shape that no member decodes, or that two
+// members decode. UnmarshalJSONFrom yields it instead of failing, and
+// Validate reports it with the reasons decoding left in it. MarshalJSONTo
+// writes Value as it is.
+//
+//kama:generated kama:jsonschema
+type ShapeUnknown struct {
+	Value jsontext.Value
+	err   error
+}
+
+// isShapeKind marks ShapeUnknown as a ShapeKind.
+//
+//kama:generated kama:jsonschema
+func (ShapeUnknown) isShapeKind() {}
+
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
 //kama:generated kama:jsonschema
@@ -67,11 +83,33 @@ func (v Shape) MarshalJSONTo(enc *jsontext.Encoder) error {
 		return json.MarshalEncode(enc, k.Circle)
 	case ShapeSquare:
 		return json.MarshalEncode(enc, k.Square)
+	case ShapeUnknown:
+		return enc.WriteValue(k.Value)
 	}
 	return validation.New(jsonschemart.ErrNilKind, "Shape holds no member")
 }
 
-// UnmarshalJSONFrom decodes v from the only member the value matches.
+// Validate reports why the member v holds is invalid, through the Validate
+// of its wrapper, which the validator generator writes. ShapeUnknown and a
+// nil Kind are errors.
+//
+//kama:generated kama:jsonschema
+func (v Shape) Validate(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case ShapeCircle:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case ShapeSquare:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case ShapeUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "Shape holds no member")
+}
+
+// UnmarshalJSONFrom decodes v from the only member the value matches. A
+// member matches when it decodes the value and its wrapper passes Validate.
+// A value no member matches, or two members match, gives ShapeUnknown,
+// which Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -87,10 +125,15 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Circle", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "Circle")
+			if err := jsonschemart.Validate(ShapeCircle{Circle: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("Circle", err))
+			} else {
+				if found != nil {
+					*v = Shape{Kind: ShapeUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Circle")}}
+					return nil
+				}
+				found, name = ShapeCircle{Circle: m}, "Circle"
 			}
-			found, name = ShapeCircle{Circle: m}, "Circle"
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.OnlyMembers(raw, "side") {
@@ -98,14 +141,20 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Square", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "Square")
+			if err := jsonschemart.Validate(ShapeSquare{Square: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("Square", err))
+			} else {
+				if found != nil {
+					*v = Shape{Kind: ShapeUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Square")}}
+					return nil
+				}
+				found, name = ShapeSquare{Square: m}, "Square"
 			}
-			found, name = ShapeSquare{Square: m}, "Square"
 		}
 	}
 	if found == nil {
-		return jsonschemart.NoMatch(errs)
+		*v = Shape{Kind: ShapeUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+		return nil
 	}
 	*v = Shape{Kind: found}
 	return nil
@@ -175,7 +224,7 @@ func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -209,7 +258,7 @@ func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, (*string)(&s)); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(s); err != nil {
+	if err := jsonschemart.Validate(s, false); err != nil {
 		return err
 	}
 	*v = s
@@ -275,7 +324,7 @@ func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out

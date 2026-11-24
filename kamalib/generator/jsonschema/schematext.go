@@ -36,8 +36,9 @@ func withoutAnnotations(s jsonschema.Schema) jsonschema.Schema {
 	return s
 }
 
-// withoutUnchecked is withoutAnnotations that also drops the pure
-// validation keywords, which the generated code does not check.
+// withoutUnchecked is withoutAnnotations that also drops the validation
+// keywords, which a schema whose keywords the generated code does not all
+// check compares without.
 func withoutUnchecked(s jsonschema.Schema) jsonschema.Schema {
 	s = withoutAnnotations(s)
 

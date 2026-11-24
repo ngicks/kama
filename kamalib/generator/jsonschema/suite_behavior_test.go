@@ -44,9 +44,10 @@ type suiteKey struct {
 // The reasons a decode of generated code may disagree with the verdict of
 // the suite. checkAllowed tells what each reason needs of the test.
 const (
-	// The generated code does not check a validation keyword of the schema.
-	// Generate must warn about it with ErrUnenforced.
-	reasonUnenforced = "Generate warns that a validation keyword is not enforced"
+	// A validation keyword sits on a schema of no single kind, whose Go
+	// value is raw JSON text that no validator checks. Generate must warn
+	// with ErrUnenforced about a keyword of such a schema.
+	reasonUnenforced = "a validation keyword of a schema of raw JSON text is not enforced"
 	// A schema without type takes the kind its keywords imply, where the
 	// suite accepts every other kind. The suite must call the instance
 	// valid.
@@ -647,11 +648,17 @@ func checkAllowed(reason string, schema jsontext.Value, valid bool) error {
 			return err
 		}
 
-		if !slices.ContainsFunc(
-			warnings,
-			func(w error) bool { return errors.Is(w, ErrUnenforced) },
-		) {
-			return errors.New("Generate warns about no unenforced keyword")
+		raw := func(w error) bool {
+			ptr, ok := strings.CutPrefix(w.Error(), ErrUnenforced.Error()+": #")
+			if !errors.Is(w, ErrUnenforced) || !ok {
+				return false
+			}
+
+			return placeKind(&doc, ptr[:strings.LastIndex(ptr, "/")]) == ""
+		}
+
+		if !slices.ContainsFunc(warnings, raw) {
+			return errors.New("Generate warns about no keyword of a schema of raw JSON text")
 		}
 	case reasonImpliedKind:
 		if !valid {
@@ -829,12 +836,19 @@ func suitePackage(file string, gi int) string {
 	return name + "_" + strconv.Itoa(gi)
 }
 
-// driverCheck is the function of the driver deciding the line of a case.
+// driverCheck is the function of the driver deciding the line of a case. A
+// value decodes when Unmarshal succeeds and the value passes its Validate,
+// if any: a union yields its unknown member rather than failing, which only
+// Validate reports.
 // Deterministic sorts the members of a map, which would otherwise make two
 // encodings of one value differ.
 const driverCheck = `func check[T any](b []byte) string {
 	var v T
 	if json.Unmarshal(b, &v) != nil {
+		return "0"
+	}
+
+	if x, ok := any(v).(interface{ Validate(bool) error }); ok && x.Validate(false) != nil {
 		return "0"
 	}
 

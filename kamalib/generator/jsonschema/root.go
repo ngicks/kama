@@ -39,6 +39,22 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	text := typeDoc(doc, ptr, name+" is generated from the schema at #"+ptr+".")
 	declDoc := docComment(text)
 
+	if opts.Validate && rootUnion(doc, ptr) {
+		decodeDoc += " The union it holds must pass Validate, since decoding a union fails on no value."
+		value := lang.Expr("out")
+
+		check := validateStep(opts, value)
+		if nullable(doc, ptr) {
+			check = lang.If(
+				lang.Expr("out.IsSome()"),
+				validateStep(opts, lang.Expr("out.Value()")),
+				nil,
+			)
+		}
+
+		decode = append(decode, check)
+	}
+
 	if marked {
 		declDoc = validatedDoc(text, args)
 
@@ -67,6 +83,19 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 			append(decode, lang.Stmt("*v = %s(out)", name), lang.Stmt("return nil"))...,
 		),
 	}
+}
+
+// rootUnion reports whether ptr is the root, defined over a union holder or
+// a nullable one. The root has no Validate of its own to report the unknown
+// member of the holder, so its decoder validates the holder.
+func rootUnion(doc *jsonschema.Schema, ptr string) bool {
+	if ptr != "" {
+		return false
+	}
+
+	r, s, err := resolvedValue(doc, ptr)
+
+	return err == nil && union(s) && declares(doc, r)
 }
 
 // definedArgs returns the args of //kama:validate on the defined type of

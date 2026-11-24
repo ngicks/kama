@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:04:10Z
+// generated: 2026-11-24T12:42:17Z
 
 package oneofoverlap
 
@@ -58,6 +58,22 @@ type EitherRight struct {
 //kama:generated kama:jsonschema
 func (EitherRight) isEitherKind() {}
 
+// EitherUnknown holds a value of Either that no member decodes, or that two
+// members decode. UnmarshalJSONFrom yields it instead of failing, and
+// Validate reports it with the reasons decoding left in it. MarshalJSONTo
+// writes Value as it is.
+//
+//kama:generated kama:jsonschema
+type EitherUnknown struct {
+	Value jsontext.Value
+	err   error
+}
+
+// isEitherKind marks EitherUnknown as a EitherKind.
+//
+//kama:generated kama:jsonschema
+func (EitherUnknown) isEitherKind() {}
+
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
 //kama:generated kama:jsonschema
@@ -67,11 +83,33 @@ func (v Either) MarshalJSONTo(enc *jsontext.Encoder) error {
 		return json.MarshalEncode(enc, k.Left)
 	case EitherRight:
 		return json.MarshalEncode(enc, k.Right)
+	case EitherUnknown:
+		return enc.WriteValue(k.Value)
 	}
 	return validation.New(jsonschemart.ErrNilKind, "Either holds no member")
 }
 
-// UnmarshalJSONFrom decodes v from the only member the value matches.
+// Validate reports why the member v holds is invalid, through the Validate
+// of its wrapper, which the validator generator writes. EitherUnknown and a
+// nil Kind are errors.
+//
+//kama:generated kama:jsonschema
+func (v Either) Validate(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case EitherLeft:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case EitherRight:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case EitherUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "Either holds no member")
+}
+
+// UnmarshalJSONFrom decodes v from the only member the value matches. A
+// member matches when it decodes the value and its wrapper passes Validate.
+// A value no member matches, or two members match, gives EitherUnknown,
+// which Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -87,10 +125,15 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Left", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "Left")
+			if err := jsonschemart.Validate(EitherLeft{Left: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("Left", err))
+			} else {
+				if found != nil {
+					*v = Either{Kind: EitherUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Left")}}
+					return nil
+				}
+				found, name = EitherLeft{Left: m}, "Left"
 			}
-			found, name = EitherLeft{Left: m}, "Left"
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") {
@@ -98,14 +141,20 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Right", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "Right")
+			if err := jsonschemart.Validate(EitherRight{Right: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("Right", err))
+			} else {
+				if found != nil {
+					*v = Either{Kind: EitherUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Right")}}
+					return nil
+				}
+				found, name = EitherRight{Right: m}, "Right"
 			}
-			found, name = EitherRight{Right: m}, "Right"
 		}
 	}
 	if found == nil {
-		return jsonschemart.NoMatch(errs)
+		*v = Either{Kind: EitherUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+		return nil
 	}
 	*v = Either{Kind: found}
 	return nil
@@ -171,7 +220,7 @@ func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -238,7 +287,7 @@ func (v *EitherRightValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out

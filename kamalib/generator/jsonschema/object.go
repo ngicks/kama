@@ -419,8 +419,7 @@ func declaredMembers(doc *jsonschema.Schema, ptr string, seen []string) []string
 }
 
 // decodeSteps returns the statements converting the wire field of the
-// property name of the object at ptr into its field, then checking the
-// value against an enum or a const of scalars.
+// property name of the object at ptr into its field.
 func decodeSteps(doc *jsonschema.Schema, opts Options, ptr, name string) []genStep {
 	pp := child(ptr, "properties", name)
 	f := fieldName(pp, name)

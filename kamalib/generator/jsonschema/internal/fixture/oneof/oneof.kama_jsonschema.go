@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:27:04Z
+// generated: 2026-11-24T12:42:15Z
 
 package oneof
 
@@ -96,7 +96,7 @@ func (v *Zoo) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -158,6 +158,22 @@ type ZooMixedObject struct {
 //kama:generated kama:jsonschema
 func (ZooMixedObject) isZooMixedKind() {}
 
+// ZooMixedUnknown holds a value of ZooMixed that no member decodes, or that
+// two members decode. UnmarshalJSONFrom yields it instead of failing, and
+// Validate reports it with the reasons decoding left in it. MarshalJSONTo
+// writes Value as it is.
+//
+//kama:generated kama:jsonschema
+type ZooMixedUnknown struct {
+	Value jsontext.Value
+	err   error
+}
+
+// isZooMixedKind marks ZooMixedUnknown as a ZooMixedKind.
+//
+//kama:generated kama:jsonschema
+func (ZooMixedUnknown) isZooMixedKind() {}
+
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
 //kama:generated kama:jsonschema
@@ -169,11 +185,35 @@ func (v ZooMixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 		return json.MarshalEncode(enc, k.Integer)
 	case ZooMixedObject:
 		return json.MarshalEncode(enc, k.Object)
+	case ZooMixedUnknown:
+		return enc.WriteValue(k.Value)
 	}
 	return validation.New(jsonschemart.ErrNilKind, "ZooMixed holds no member")
 }
 
-// UnmarshalJSONFrom decodes v from the only member the value matches.
+// Validate reports why the member v holds is invalid, through the Validate
+// of its wrapper, which the validator generator writes. ZooMixedUnknown and
+// a nil Kind are errors.
+//
+//kama:generated kama:jsonschema
+func (v ZooMixed) Validate(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case ZooMixedString:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case ZooMixedInteger:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case ZooMixedObject:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case ZooMixedUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "ZooMixed holds no member")
+}
+
+// UnmarshalJSONFrom decodes v from the only member the value matches. A
+// member matches when it decodes the value and its wrapper passes Validate.
+// A value no member matches, or two members match, gives ZooMixedUnknown,
+// which Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -189,10 +229,15 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("String", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "String")
+			if err := jsonschemart.Validate(ZooMixedString{String: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("String", err))
+			} else {
+				if found != nil {
+					*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "String")}}
+					return nil
+				}
+				found, name = ZooMixedString{String: m}, "String"
 			}
-			found, name = ZooMixedString{String: m}, "String"
 		}
 	}
 	if jsonschemart.IsKind(raw, "integer") {
@@ -200,10 +245,15 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Integer", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "Integer")
+			if err := jsonschemart.Validate(ZooMixedInteger{Integer: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("Integer", err))
+			} else {
+				if found != nil {
+					*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Integer")}}
+					return nil
+				}
+				found, name = ZooMixedInteger{Integer: m}, "Integer"
 			}
-			found, name = ZooMixedInteger{Integer: m}, "Integer"
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.HasMembers(raw, "note") {
@@ -211,14 +261,20 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Object", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "Object")
+			if err := jsonschemart.Validate(ZooMixedObject{Object: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("Object", err))
+			} else {
+				if found != nil {
+					*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Object")}}
+					return nil
+				}
+				found, name = ZooMixedObject{Object: m}, "Object"
 			}
-			found, name = ZooMixedObject{Object: m}, "Object"
 		}
 	}
 	if found == nil {
-		return jsonschemart.NoMatch(errs)
+		*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+		return nil
 	}
 	*v = ZooMixed{Kind: found}
 	return nil
@@ -285,7 +341,7 @@ func (v *ZooMixedObjectValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -334,6 +390,22 @@ type ZooAmountNumber struct {
 //kama:generated kama:jsonschema
 func (ZooAmountNumber) isZooAmountKind() {}
 
+// ZooAmountUnknown holds a value of ZooAmount that no member decodes, or
+// that two members decode. UnmarshalJSONFrom yields it instead of failing,
+// and Validate reports it with the reasons decoding left in it.
+// MarshalJSONTo writes Value as it is.
+//
+//kama:generated kama:jsonschema
+type ZooAmountUnknown struct {
+	Value jsontext.Value
+	err   error
+}
+
+// isZooAmountKind marks ZooAmountUnknown as a ZooAmountKind.
+//
+//kama:generated kama:jsonschema
+func (ZooAmountUnknown) isZooAmountKind() {}
+
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
 //kama:generated kama:jsonschema
@@ -343,11 +415,33 @@ func (v ZooAmount) MarshalJSONTo(enc *jsontext.Encoder) error {
 		return json.MarshalEncode(enc, k.Integer)
 	case ZooAmountNumber:
 		return json.MarshalEncode(enc, k.Number)
+	case ZooAmountUnknown:
+		return enc.WriteValue(k.Value)
 	}
 	return validation.New(jsonschemart.ErrNilKind, "ZooAmount holds no member")
 }
 
-// UnmarshalJSONFrom decodes v from the only member the value matches.
+// Validate reports why the member v holds is invalid, through the Validate
+// of its wrapper, which the validator generator writes. ZooAmountUnknown
+// and a nil Kind are errors.
+//
+//kama:generated kama:jsonschema
+func (v ZooAmount) Validate(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case ZooAmountInteger:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case ZooAmountNumber:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case ZooAmountUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "ZooAmount holds no member")
+}
+
+// UnmarshalJSONFrom decodes v from the only member the value matches. A
+// member matches when it decodes the value and its wrapper passes Validate.
+// A value no member matches, or two members match, gives ZooAmountUnknown,
+// which Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -363,10 +457,15 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Integer", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "Integer")
+			if err := jsonschemart.Validate(ZooAmountInteger{Integer: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("Integer", err))
+			} else {
+				if found != nil {
+					*v = ZooAmount{Kind: ZooAmountUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Integer")}}
+					return nil
+				}
+				found, name = ZooAmountInteger{Integer: m}, "Integer"
 			}
-			found, name = ZooAmountInteger{Integer: m}, "Integer"
 		}
 	}
 	if jsonschemart.IsKind(raw, "number") {
@@ -374,14 +473,20 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Number", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "Number")
+			if err := jsonschemart.Validate(ZooAmountNumber{Number: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("Number", err))
+			} else {
+				if found != nil {
+					*v = ZooAmount{Kind: ZooAmountUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Number")}}
+					return nil
+				}
+				found, name = ZooAmountNumber{Number: m}, "Number"
 			}
-			found, name = ZooAmountNumber{Number: m}, "Number"
 		}
 	}
 	if found == nil {
-		return jsonschemart.NoMatch(errs)
+		*v = ZooAmount{Kind: ZooAmountUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+		return nil
 	}
 	*v = ZooAmount{Kind: found}
 	return nil
@@ -428,6 +533,22 @@ type PetDog struct {
 //kama:generated kama:jsonschema
 func (PetDog) isPetKind() {}
 
+// PetUnknown holds a value of Pet that no member decodes, or that two
+// members decode. UnmarshalJSONFrom yields it instead of failing, and
+// Validate reports it with the reasons decoding left in it. MarshalJSONTo
+// writes Value as it is.
+//
+//kama:generated kama:jsonschema
+type PetUnknown struct {
+	Value jsontext.Value
+	err   error
+}
+
+// isPetKind marks PetUnknown as a PetKind.
+//
+//kama:generated kama:jsonschema
+func (PetUnknown) isPetKind() {}
+
 // MarshalJSONTo encodes the member v holds. A nil Kind is an error.
 //
 //kama:generated kama:jsonschema
@@ -437,11 +558,33 @@ func (v Pet) MarshalJSONTo(enc *jsontext.Encoder) error {
 		return json.MarshalEncode(enc, k.Cat)
 	case PetDog:
 		return json.MarshalEncode(enc, k.Dog)
+	case PetUnknown:
+		return enc.WriteValue(k.Value)
 	}
 	return validation.New(jsonschemart.ErrNilKind, "Pet holds no member")
 }
 
-// UnmarshalJSONFrom decodes v from the only member the value matches.
+// Validate reports why the member v holds is invalid, through the Validate
+// of its wrapper, which the validator generator writes. PetUnknown and a
+// nil Kind are errors.
+//
+//kama:generated kama:jsonschema
+func (v Pet) Validate(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case PetCat:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case PetDog:
+		return jsonschemart.Validate(k, stopOnFirstError)
+	case PetUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "Pet holds no member")
+}
+
+// UnmarshalJSONFrom decodes v from the only member the value matches. A
+// member matches when it decodes the value and its wrapper passes Validate.
+// A value no member matches, or two members match, gives PetUnknown, which
+// Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -457,10 +600,15 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Cat", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "Cat")
+			if err := jsonschemart.Validate(PetCat{Cat: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("Cat", err))
+			} else {
+				if found != nil {
+					*v = Pet{Kind: PetUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Cat")}}
+					return nil
+				}
+				found, name = PetCat{Cat: m}, "Cat"
 			}
-			found, name = PetCat{Cat: m}, "Cat"
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.MemberEquals(raw, "kind", "\"dog\"") && jsonschemart.HasMembers(raw, "kind", "good") {
@@ -468,14 +616,20 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Dog", err))
 		} else {
-			if found != nil {
-				return jsonschemart.MultipleMatch(name, "Dog")
+			if err := jsonschemart.Validate(PetDog{Dog: m}, false); err != nil {
+				errs = append(errs, jsonschemart.MemberError("Dog", err))
+			} else {
+				if found != nil {
+					*v = Pet{Kind: PetUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Dog")}}
+					return nil
+				}
+				found, name = PetDog{Dog: m}, "Dog"
 			}
-			found, name = PetDog{Dog: m}, "Dog"
 		}
 	}
 	if found == nil {
-		return jsonschemart.NoMatch(errs)
+		*v = Pet{Kind: PetUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+		return nil
 	}
 	*v = Pet{Kind: found}
 	return nil
@@ -546,7 +700,7 @@ func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -618,7 +772,7 @@ func (v *Dog) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out); err != nil {
+	if err := jsonschemart.Validate(out, false); err != nil {
 		return err
 	}
 	*v = out

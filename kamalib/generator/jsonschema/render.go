@@ -224,7 +224,7 @@ func validateStep(opts Options, v genExpr) genStep {
 	}
 
 	return lang.If(
-		lang.Expr("err := %s(%s); err != nil", q(runtimePath, "Validate"), v),
+		lang.Expr("err := %s(%s, false); err != nil", q(runtimePath, "Validate"), v),
 		lang.Stmt("return err"),
 		nil,
 	)

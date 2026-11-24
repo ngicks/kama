@@ -288,61 +288,11 @@ func TestConversions(t *testing.T) {
 	})
 }
 
-func TestEnum(t *testing.T) {
-	assert.NilError(t, Enum("a", "a", "b"))
+func TestUnknownMember(t *testing.T) {
+	assert.ErrorIs(t, UnknownMember(nil), ErrNoMatch)
 
-	err := Enum("c", "a", "b")
-	assert.ErrorIs(t, err, ErrEnum)
-	assert.Equal(t, err.Error(), "validation failed: enum: want one of [a b], got c")
-}
-
-func TestNumberEnum(t *testing.T) {
-	cases := []struct {
-		in      string
-		allowed []string
-	}{
-		{"1", []string{"1"}},
-		{"1.0", []string{"1"}},
-		{"10e-1", []string{"1"}},
-		{"-0", []string{"0"}},
-		{"0e99999999999999999999", []string{"0.0"}},
-		{"1.5", []string{"2", "15e-1"}},
-		{"18446744073709551616", []string{"1.8446744073709551616e19"}},
-		{"1e99999999999999999999", []string{"10e99999999999999999998"}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.in, func(t *testing.T) {
-			assert.NilError(t, NumberEnum(jsontext.Value(tc.in), tc.allowed...))
-		})
-	}
-
-	rejected := []struct {
-		in      string
-		allowed []string
-	}{
-		{"18446744073709551617", []string{"18446744073709551616"}},
-		{"-1", []string{"1"}},
-		{"1e99999999999999999999", []string{"1e99999999999999999998"}},
-		{"1e-99999999999999999999", []string{"0"}},
-		{`"1"`, []string{"1"}},
-		{"null", []string{"1"}},
-	}
-	for _, tc := range rejected {
-		t.Run("rejects "+tc.in, func(t *testing.T) {
-			assert.ErrorIs(t, NumberEnum(jsontext.Value(tc.in), tc.allowed...), ErrEnum)
-		})
-	}
-
-	err := NumberEnum(jsontext.Value(`3`), "1", "2.0")
-	assert.Equal(t, err.Error(), "validation failed: enum: want one of [1 2.0], got 3")
-}
-
-func TestMember(t *testing.T) {
-	obj := jsontext.Value(`{"a":1.50,"b":null}`)
-	assert.Equal(t, string(Member(obj, "a")), `1.50`)
-	assert.Equal(t, string(Member(obj, "b")), `null`)
-	assert.Assert(t, Member(obj, "c") == nil)
-	assert.Assert(t, Member(jsontext.Value(`[]`), "a") == nil)
+	err := MultipleMatch("A", "B")
+	assert.Equal(t, UnknownMember(err), err)
 }
 
 type validated struct{ err error }
@@ -356,10 +306,11 @@ func (v validated) Validate(stopOnFirstError bool) error {
 }
 
 func TestValidate(t *testing.T) {
-	assert.NilError(t, Validate(validated{}))
-	assert.ErrorIs(t, Validate(validated{err: validation.ErrConst}), validation.ErrConst)
+	assert.NilError(t, Validate(validated{}, false))
+	assert.ErrorIs(t, Validate(validated{err: validation.ErrConst}, false), validation.ErrConst)
+	assert.ErrorContains(t, Validate(validated{}, true), "stopOnFirstError is true")
 
-	err := Validate(struct{}{})
+	err := Validate(struct{}{}, false)
 	assert.ErrorIs(t, err, ErrNoValidate)
 	assert.ErrorContains(t, err, "struct {} has no method Validate(bool) error")
 }

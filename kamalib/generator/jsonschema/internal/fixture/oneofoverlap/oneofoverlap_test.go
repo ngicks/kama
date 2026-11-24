@@ -3,7 +3,6 @@ package oneofoverlap
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
-	"errors"
 	"reflect"
 	"testing"
 
@@ -32,14 +31,19 @@ func TestDecode(t *testing.T) {
 }
 
 // TestDecodeBothMatch checks a value both objects accept, which a oneOf
-// rejects naming both.
+// holds as unknown and Validate rejects naming both.
 func TestDecodeBothMatch(t *testing.T) {
 	var v Either
+	assert.NilError(t, json.Unmarshal([]byte(`{}`), &v))
 
-	err := json.Unmarshal([]byte(`{}`), &v)
+	_, ok := v.Kind.(EitherUnknown)
+	assert.Assert(t, ok, "%T", v.Kind)
 
-	se, ok := errors.AsType[*json.SemanticError](err)
-	assert.Assert(t, ok, "%T: %v", err, err)
-	assert.ErrorIs(t, se.Err, jsonschemart.ErrMultipleMatch)
-	assert.ErrorContains(t, se.Err, "value matches Left, Right")
+	err := v.Validate(false)
+	assert.ErrorIs(t, err, jsonschemart.ErrMultipleMatch)
+	assert.ErrorContains(t, err, "value matches Left, Right")
+
+	out, err := json.Marshal(v)
+	assert.NilError(t, err)
+	assert.Equal(t, string(out), `{}`)
 }

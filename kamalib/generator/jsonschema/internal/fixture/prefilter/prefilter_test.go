@@ -3,7 +3,6 @@ package prefilter
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
-	"errors"
 	"strings"
 	"testing"
 
@@ -42,8 +41,9 @@ func TestSelect(t *testing.T) {
 
 // TestPrefilter decodes values that one member would decode were it not
 // dropped first. Circle drops a value whose kind is not "circle" and Square
-// a value holding a member it does not declare, so no member matches and
-// their decode errors stay out of the result.
+// a value holding a member it does not declare, so no member matches, the
+// value is unknown and their decode errors stay out of the error Validate
+// reports.
 func TestPrefilter(t *testing.T) {
 	cases := []struct {
 		name string
@@ -55,14 +55,16 @@ func TestPrefilter(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var v Shape
+			assert.NilError(t, json.Unmarshal([]byte(tc.in), &v))
 
-			err := json.Unmarshal([]byte(tc.in), &v)
+			u, ok := v.Kind.(ShapeUnknown)
+			assert.Assert(t, ok, "%T", v.Kind)
+			assert.Equal(t, string(u.Value), tc.in)
 
-			se, ok := errors.AsType[*json.SemanticError](err)
-			assert.Assert(t, ok, "%T: %v", err, err)
-			assert.ErrorIs(t, se.Err, jsonschemart.ErrNoMatch)
-			assert.DeepEqual(t, validation.Pointers(se.Err), []string{""})
-			assert.Assert(t, !strings.Contains(se.Err.Error(), "member "), se.Err.Error())
+			err := v.Validate(false)
+			assert.ErrorIs(t, err, jsonschemart.ErrNoMatch)
+			assert.DeepEqual(t, validation.Pointers(err), []string{""})
+			assert.Assert(t, !strings.Contains(err.Error(), "member "), err.Error())
 		})
 	}
 }

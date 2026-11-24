@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:03:59Z
+// generated: 2026-11-24T12:42:04Z
 
 package anyof
 
@@ -13,7 +13,28 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 //
 //kama:generated kama:validate
 func (v Doc) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if err := validation.Field(v.Label.Validate(stopOnFirstError), "label"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := validation.Field(v.Value.Validate(stopOnFirstError), "value"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.Alt.IsSome() {
+		if err := validation.Field(v.Alt.Value().Validate(stopOnFirstError), "alt"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first

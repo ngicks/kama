@@ -81,49 +81,81 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		)
 	}
 
-	var cases []genhelper.Case[genCtx]
+	unknown := name + "Unknown"
 
-	// A union of null members only reads no field of the member it holds.
-	tag := lang.Expr("v.Kind.(type)")
+	steps = append(steps,
+		lang.Line(docComment(unknown+" holds a value of "+name+" that no member decodes"+
+			map[bool]string{true: ", or that two members decode"}[oneOf]+
+			". UnmarshalJSONFrom yields it instead of failing, and Validate reports it with "+
+			"the reasons decoding left in it. MarshalJSONTo writes Value as it is.")),
+		lang.Stmt("type %s struct {", unknown),
+		lang.Stmt("Value %s", q(jsontextPath, "Value")),
+		lang.Stmt("err error"),
+		lang.Stmt("}"),
+		lang.Line(docComment("is"+kind+" marks "+unknown+" as a "+kind+".")),
+		lang.Stmt("func (%s) is%s() {}", unknown, kind),
+	)
+
+	var marshalCases, validateCases []genhelper.Case[genCtx]
 
 	for i, m := range names {
-		body := lang.Stmt("return %s(enc, k.%s)", q(jsonPath, "MarshalEncode"), m)
+		marshal := lang.Stmt("return %s(enc, k.%s)", q(jsonPath, "MarshalEncode"), m)
+		validate := lang.Stmt("return %s(k, stopOnFirstError)", q(runtimePath, "Validate"))
+
 		if isNullMember(doc, ptr, i) {
-			body = lang.Stmt("return enc.WriteToken(%s)", q(jsontextPath, "Null"))
+			marshal = lang.Stmt("return enc.WriteToken(%s)", q(jsontextPath, "Null"))
+			validate = lang.Stmt("return nil")
 		}
 
-		if !isNullMember(doc, ptr, i) {
-			tag = lang.Expr("k := v.Kind.(type)")
-		}
-
-		cases = append(cases, lang.Case(lang.Expr("%s", wrappers[i]), body))
+		marshalCases = append(marshalCases, lang.Case(lang.Expr("%s", wrappers[i]), marshal))
+		validateCases = append(validateCases, lang.Case(lang.Expr("%s", wrappers[i]), validate))
 	}
 
-	steps = append(steps, lang.DocFunc(
-		docComment("MarshalJSONTo encodes the member v holds. A nil Kind is an error."),
-		lang.Expr("func (v %s) MarshalJSONTo(enc *%s) error", name, q(jsontextPath, "Encoder")),
-		lang.Switch(tag, cases...),
-		lang.Stmt(
-			"return %s(%s, %s)",
-			q(
-				validPath,
-				"New",
-			),
-			q(runtimePath, "ErrNilKind"),
-			strconv.Quote(name+" holds no member"),
-		),
+	marshalCases = append(marshalCases,
+		lang.Case(lang.Expr("%s", unknown), lang.Stmt("return enc.WriteValue(k.Value)")),
+	)
+	validateCases = append(validateCases, lang.Case(
+		lang.Expr("%s", unknown), lang.Stmt("return %s(k.err)", q(runtimePath, "UnknownMember")),
 	))
+
+	nilKind := lang.Stmt(
+		"return %s(%s, %s)",
+		q(validPath, "New"),
+		q(runtimePath, "ErrNilKind"),
+		strconv.Quote(name+" holds no member"),
+	)
+
+	steps = append(steps,
+		lang.DocFunc(
+			docComment("MarshalJSONTo encodes the member v holds. A nil Kind is an error."),
+			lang.Expr(
+				"func (v %s) MarshalJSONTo(enc *%s) error", name, q(jsontextPath, "Encoder"),
+			),
+			lang.Switch(lang.Expr("k := v.Kind.(type)"), marshalCases...),
+			nilKind,
+		),
+		lang.DocFunc(
+			docComment("Validate reports why the member v holds is invalid, through the Validate "+
+				"of its wrapper, which the validator generator writes. "+unknown+
+				" and a nil Kind are errors."),
+			lang.Expr("func (v %s) Validate(stopOnFirstError bool) error", name),
+			lang.Switch(lang.Expr("k := v.Kind.(type)"), validateCases...),
+			nilKind,
+		),
+	)
 
 	return append(steps, unionUnmarshal(doc, opts, ptr))
 }
 
 // unionUnmarshal returns UnmarshalJSONFrom of the union at ptr: the members
-// the value may match decode it in schema order. An anyOf stops at the
-// first that succeeds. A oneOf stops at the second, which makes the value
-// an error. Decoding every member would make a value nested in unions
-// cost time exponential in its depth even when the first member accepts
-// every level. A value no member accepts still costs that much, since
-// every member of every level fails.
+// the value may match decode it in schema order, and with Options.Validate
+// a member decoding it must pass the Validate of its wrapper too. An anyOf
+// stops at the first that succeeds. A oneOf stops at the second, which
+// makes the value unknown, as does a value no member decodes. Decoding
+// every member would make a value nested in unions cost time exponential
+// in its depth even when the first member accepts every level. A value no
+// member accepts still costs that much, since every member of every level
+// fails.
 func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -136,7 +168,9 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 	}
 
 	oneOf := unionKeyword(s) == "oneOf"
-
+	setUnknown := func(reason genExpr) genStep {
+		return lang.Stmt("*v = %s{Kind: %sUnknown{Value: raw, err: %s}}", name, name, reason)
+	}
 	body := []genStep{
 		lang.Stmt("raw, err := %s(dec)", q(runtimePath, "ReadValue")),
 		lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
@@ -170,8 +204,11 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 			found = lang.Steps(
 				lang.If(
 					lang.Expr("found != nil"),
-					lang.Stmt(
-						"return %s(name, %s)", q(runtimePath, "MultipleMatch"), strconv.Quote(m),
+					lang.Steps(
+						setUnknown(lang.Expr(
+							"%s(name, %s)", q(runtimePath, "MultipleMatch"), strconv.Quote(m),
+						)),
+						lang.Stmt("return nil"),
 					),
 					nil,
 				),
@@ -180,22 +217,35 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 		}
 
 		then := found
+
 		if !isNullMember(doc, ptr, i) {
+			failed := lang.Stmt(
+				"errs = append(errs, %s(%s, err))", q(runtimePath, "MemberError"), strconv.Quote(m),
+			)
+
+			var decoded genStep = found
+			if opts.Validate {
+				decoded = lang.If(
+					lang.Expr("err := %s(%s, false); err != nil", q(runtimePath, "Validate"), kind),
+					failed,
+					found,
+				)
+			}
+
 			then = lang.Steps(
 				lang.Stmt("var m %s", unionMemberType(doc, opts, ptr, i)),
 				lang.If(
 					lang.Expr("err := %s(raw, &m); err != nil", q(runtimePath, "Unmarshal")),
-					lang.Stmt(
-						"errs = append(errs, %s(%s, err))",
-						q(runtimePath, "MemberError"), strconv.Quote(m),
-					),
-					found,
+					failed,
+					decoded,
 				),
 			)
 		}
 
 		body = append(body, lang.If(memberCondition(doc, ptr, i), then, nil))
 	}
+
+	noMatch := setUnknown(lang.Expr("%s(errs)", q(runtimePath, "NoMatch")))
 
 	text := "UnmarshalJSONFrom decodes v from the first member the value matches."
 
@@ -205,15 +255,27 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 		body = append(body,
 			lang.If(
 				lang.Expr("found == nil"),
-				lang.Stmt("return %s(errs)", q(runtimePath, "NoMatch")),
+				lang.Steps(noMatch, lang.Stmt("return nil")),
 				nil,
 			),
 			lang.Stmt("*v = %s{Kind: found}", name),
 			lang.Stmt("return nil"),
 		)
 	} else {
-		body = append(body, lang.Stmt("return %s(errs)", q(runtimePath, "NoMatch")))
+		body = append(body, noMatch, lang.Stmt("return nil"))
 	}
+
+	if opts.Validate {
+		text += " A member matches when it decodes the value and its wrapper passes Validate."
+	}
+
+	both := ""
+	if oneOf {
+		both = ", or two members match,"
+	}
+
+	text += " A value no member matches" + both + " gives " + name +
+		"Unknown, which Validate reports."
 
 	return lang.DocFunc(
 		docComment(text),

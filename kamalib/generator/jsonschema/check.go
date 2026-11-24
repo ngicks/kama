@@ -22,6 +22,9 @@ var unsupportedKeywords = []string{
 	"unevaluatedItems", "unevaluatedProperties", "contains", "propertyNames", "$dynamicRef",
 }
 
+// countKeywords count the members of an object.
+var countKeywords = []string{"minProperties", "maxProperties"}
+
 // scalarKinds are the kinds a Go scalar type holds.
 var scalarKinds = []string{"string", "integer", "number", "boolean"}
 
@@ -250,11 +253,13 @@ func checkUnion(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []erro
 }
 
 // checkDistinct reports the members of the oneOf at ptr that the generated
-// code cannot tell apart, since it does not check the pure validation
-// keywords: two members equal but for those keywords, which a value always
-// matches both or neither of, and a member holding no other keyword, which
-// every value matches. The schema may still tell them apart, so the
-// generated code would reject values the schema accepts.
+// code cannot tell apart, since it does not check every validation keyword:
+// two members equal but for keywords one of them leaves unchecked, which a
+// value then matches both or neither of, and a member holding no other
+// keyword, which every value matches. The schema may still tell them apart,
+// so the generated code would reject values the schema accepts. A member
+// whose validation keywords are all checked keeps them, since selecting a
+// member runs its Validate.
 func checkDistinct(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
 	kw := "oneOf"
 	n := len(listOf(s, kw))
@@ -266,13 +271,19 @@ func checkDistinct(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []e
 	var errs []error
 
 	checked := func(i int) (string, string, bool) {
-		_, rs, err := resolved(doc, child(ptr, kw, strconv.Itoa(i)))
+		r, rs, err := resolved(doc, child(ptr, kw, strconv.Itoa(i)))
 		if err != nil {
 			return "", "", false
 		}
 
 		a, okA := schemaText(rs, withoutAnnotations)
-		c, okC := schemaText(rs, withoutUnchecked)
+
+		drop := withoutAnnotations
+		if !allChecked(doc, r) {
+			drop = withoutUnchecked
+		}
+
+		c, okC := schemaText(rs, drop)
 
 		return a, c, okA && okC
 	}
@@ -302,6 +313,16 @@ func checkDistinct(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []e
 	return errs
 }
 
+// allChecked reports whether the generated code checks every validation
+// keyword of the schema at ptr and of the schemas under it.
+func allChecked(doc *jsonschema.Schema, ptr string) bool {
+	return !opiter.WrapSeq2(schemas(doc)).
+		Filter(func(p string, _ *jsonschema.Schema) bool {
+			return p == ptr || strings.HasPrefix(p, ptr+"/")
+		}).
+		Any(func(p string, _ *jsonschema.Schema) bool { return len(uncheckedAt(doc, p)) > 0 })
+}
+
 func checkAllOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
 	if len(s.AllOf) == 0 {
 		return []error{unsupported(child(ptr, "allOf"), "allOf has no member")}
@@ -320,6 +341,12 @@ func checkAllOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []erro
 		return []error{
 			unsupported(child(ptr, "type"), "allOf of more than one member that is no object"),
 		}
+	}
+
+	if kw := present(s, countKeywords); len(kw) > 0 {
+		return []error{unsupported(
+			child(ptr, kw[0]), "%s next to allOf, whose own fields hold part of the members", kw[0],
+		)}
 	}
 
 	if s.AdditionalProperties != nil && s.AdditionalProperties.Bool != opt.Some(true) {
@@ -371,6 +398,12 @@ func checkAllOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []erro
 				errs,
 				unsupported(mp, "allOf member rejects the members of the other schemas"),
 			)
+		}
+
+		// The product clears the members of the others from the _x of the
+		// member, which then counts fewer members than the object holds.
+		if kw := present(rs, countKeywords); len(kw) > 0 {
+			errs = append(errs, unsupported(child(r, kw[0]), "%s of an allOf member", kw[0]))
 		}
 
 		if onCycle(doc, ptr, mp) {
@@ -554,6 +587,7 @@ func checkNames(doc *jsonschema.Schema, opts Options) error {
 		switch {
 		case union(s):
 			declare(name+"Kind", ptr)
+			declare(name+"Unknown", ptr)
 
 			for i := range members(s) {
 				m, err := memberName(doc, opts, ptr, i)

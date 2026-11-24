@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:26:24Z
+// generated: 2026-11-24T12:42:16Z
 
 package oneof
 
@@ -13,7 +13,44 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 //
 //kama:generated kama:validate
 func (v Zoo) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if err := validation.Field(v.Star.Validate(stopOnFirstError), "star"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	for i, e := range v.Pets {
+		if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "pets"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Favorite.IsSome() {
+		if err := validation.Field(v.Favorite.Value().Validate(stopOnFirstError), "favorite"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if err := validation.Field(v.Mixed.Validate(stopOnFirstError), "mixed"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.Amount.IsSome() {
+		if err := validation.Field(v.Amount.Value().Validate(stopOnFirstError), "amount"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first

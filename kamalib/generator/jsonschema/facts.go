@@ -146,6 +146,8 @@ func present(s *jsonschema.Schema, keywords []string) []string {
 		"contains":              s.Contains != nil,
 		"propertyNames":         s.PropertyNames != nil,
 		"$dynamicRef":           s.DynamicRef.IsSome(),
+		"minProperties":         s.MinProperties != nil,
+		"maxProperties":         s.MaxProperties != nil,
 	}
 
 	return opiter.WrapSeq(slices.Values(keywords)).

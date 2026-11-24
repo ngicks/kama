@@ -22,8 +22,6 @@ import (
 // this package wrap them, or the sentinels of the validation package, through [validation.New].
 var (
 	ErrType          = errors.New("type")
-	ErrEnum          = errors.New("enum")
-	ErrUnknownMember = errors.New("unknown member")
 	ErrNoMatch       = errors.New("no match")
 	ErrMultipleMatch = errors.New("multiple matches")
 	ErrNilKind       = errors.New("nil kind")
@@ -65,10 +63,10 @@ func Unmarshal(raw jsontext.Value, v any) error {
 	return locate(leaf, se.JSONPointer)
 }
 
-// Validate returns the error of Validate(false) of v, which reports every error. v must have
-// the method Validate(bool) error, which the validator generator writes. It is called through
-// an interface, since a type gets that method only after the decoders calling it compile.
-func Validate(v any) error {
+// Validate returns the error of the method Validate(stopOnFirstError) of v, which the validator
+// generator writes. It is called through an interface, since a type gets that method only after
+// the decoders calling it compile. A v without the method is an error wrapping ErrNoValidate.
+func Validate(v any, stopOnFirstError bool) error {
 	x, ok := v.(interface {
 		Validate(stopOnFirstError bool) error
 	})
@@ -79,7 +77,18 @@ func Validate(v any) error {
 		)
 	}
 
-	return x.Validate(false)
+	return x.Validate(stopOnFirstError)
+}
+
+// UnknownMember returns the error of the unknown member of a union, which holds a value no
+// member decoded. err is the error decoding left, as NoMatch or MultipleMatch give it. A nil
+// err, as of an unknown member built in Go, gives an error wrapping ErrNoMatch.
+func UnknownMember(err error) error {
+	if err == nil {
+		return validation.New(ErrNoMatch, "value matches no member")
+	}
+
+	return err
 }
 
 // UnmarshalObject is [Unmarshal] for a value that must be a JSON object.
@@ -185,41 +194,6 @@ func DecodeOptional[T any](raw jsontext.Value) (opt.Option[T], error) {
 	}
 
 	return opt.Some(v), nil
-}
-
-// Enum reports an error unless v is one of allowed.
-func Enum[T comparable](v T, allowed ...T) error {
-	if slices.Contains(allowed, v) {
-		return nil
-	}
-
-	return validation.New(ErrEnum, "want one of %v, got %v", allowed, v)
-}
-
-// NumberEnum reports an error unless raw is a JSON number equal to one of allowed, the texts of
-// JSON numbers. It compares the values the texts write exactly, so 1.0 equals 1 and 2^64+1 does
-// not equal 2^64, which float64 cannot tell apart.
-func NumberEnum(raw jsontext.Value, allowed ...string) error {
-	if raw.Kind() == '0' {
-		v := parseDecimal(string(raw))
-
-		equal := slices.ContainsFunc(
-			allowed,
-			func(a string) bool { return v.equal(parseDecimal(a)) },
-		)
-		if equal {
-			return nil
-		}
-	}
-
-	return validation.New(ErrEnum, "want one of %v, got %s", allowed, raw)
-}
-
-// Member returns the value of the member name of the object raw, or nil when raw is no object
-// or lacks the member.
-func Member(raw jsontext.Value, name string) jsontext.Value {
-	v, _ := member(raw, name)
-	return v
 }
 
 // Omit returns the members of members not named by names, or nil when none is left.
@@ -465,10 +439,6 @@ func parseDecimal(num string) decimal {
 	point.Add(point, big.NewInt(int64(len(whole)-(len(all)-len(digits)))))
 
 	return decimal{neg: neg, digits: strings.TrimRight(digits, "0"), point: point}
-}
-
-func (d decimal) equal(o decimal) bool {
-	return d.neg == o.neg && d.digits == o.digits && d.point.Cmp(o.point) == 0
 }
 
 // locate cannot tell an array index from an object member named by digits, so it takes a

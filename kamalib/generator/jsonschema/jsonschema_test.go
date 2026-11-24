@@ -173,6 +173,18 @@ func TestGenerateRejects(t *testing.T) {
 			"#/properties/a/type:",
 		},
 		{
+			"minProperties next to allOf",
+			`{"allOf":[{"type":"object"},{"type":"object"}],"minProperties":1}`,
+			ErrUnsupported,
+			"#/minProperties: minProperties next to allOf",
+		},
+		{
+			"maxProperties of an allOf member",
+			`{"allOf":[{"type":"object","maxProperties":1},{"type":"object"}]}`,
+			ErrUnsupported,
+			"#/allOf/0/maxProperties: maxProperties of an allOf member",
+		},
+		{
 			"minLength that is no integer",
 			`{"type":"string","minLength":1.5}`,
 			ErrUnsupported,
@@ -220,7 +232,7 @@ func TestGenerateRejects(t *testing.T) {
 		{
 			"oneOf members differing in unchecked keywords only",
 			`{"type":"object","properties":{"s":{"oneOf":[
-				{"type":"string","format":"email"},{"type":"string","format":"uri"}
+				{"type":"array","items":{"minimum":1}},{"type":"array","items":{"minimum":2}}
 			]}}}`,
 			ErrUnsupported,
 			"#/properties/s/oneOf:",
@@ -228,8 +240,8 @@ func TestGenerateRejects(t *testing.T) {
 		{
 			"oneOf members differing in unchecked keywords of a property only",
 			`{"oneOf":[
-				{"type":"object","properties":{"a":{"type":"string","pattern":"^a"}}},
-				{"type":"object","properties":{"a":{"type":"string","pattern":"^b"}}}
+				{"type":"object","properties":{"a":{"maxLength":1}}},
+				{"type":"object","properties":{"a":{"maxLength":2}}}
 			]}`,
 			ErrUnsupported,
 			"#/oneOf:",

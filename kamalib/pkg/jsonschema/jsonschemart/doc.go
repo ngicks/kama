@@ -19,9 +19,15 @@
 // It decodes a number with a zero fraction, such as 1.0 or 1e2, into an int64, since JSON Schema
 // calls such a number an integer.
 //
+// Decoders call the Validate methods the validator generator writes through [Validate], which
+// compiles before those methods exist. A product struct of allOf keeps in its own fallback map
+// the members [Omit] leaves, and marshals through [MarshalObjects].
+//
 // Union holders select their member with [IsKind], [HasMembers], [OnlyMembers] and
-// [MemberEquals], then decode the value with each remaining member and report a failure with
-// [NoMatch] or [MultipleMatch]. Product structs of allOf marshal through [MarshalObjects].
+// [MemberEquals], then decode the value with each remaining member and validate its wrapper. A
+// value no member matches, or two members of a oneOf match, becomes the unknown member of the
+// union, holding the error of [NoMatch] or [MultipleMatch], which the Validate of the holder
+// returns through [UnknownMember].
 //
 // # Dependencies
 //

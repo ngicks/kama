@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:26:16Z
+// generated: 2026-11-24T12:42:07Z
 
 package nestedunion
 
@@ -13,7 +13,32 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 //
 //kama:generated kama:validate
 func (v Chains) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if v.Any.IsSome() {
+		if err := validation.Field(v.Any.Value().Validate(stopOnFirstError), "any"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Tagged.IsSome() {
+		if err := validation.Field(v.Tagged.Value().Validate(stopOnFirstError), "tagged"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Overlap.IsSome() {
+		if err := validation.Field(v.Overlap.Value().Validate(stopOnFirstError), "overlap"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -51,7 +76,16 @@ func (v AnyAnyRight) Validate(stopOnFirstError bool) error {
 //
 //kama:generated kama:validate
 func (v AnyLeft) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -59,7 +93,16 @@ func (v AnyLeft) Validate(stopOnFirstError bool) error {
 //
 //kama:generated kama:validate
 func (v AnyRight) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -104,6 +147,14 @@ func (v TaggedLeft) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
 	return validation.Join(errs...)
 }
 
@@ -118,6 +169,14 @@ func (v TaggedRight) Validate(stopOnFirstError bool) error {
 			return err
 		}
 		errs = append(errs, err)
+	}
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
 	}
 	return validation.Join(errs...)
 }
@@ -157,7 +216,16 @@ func (v OverlapOverlapRight) Validate(stopOnFirstError bool) error {
 //
 //kama:generated kama:validate
 func (v OverlapLeft) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -165,5 +233,14 @@ func (v OverlapLeft) Validate(stopOnFirstError bool) error {
 //
 //kama:generated kama:validate
 func (v OverlapRight) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
 }

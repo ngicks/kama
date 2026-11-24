@@ -2,16 +2,33 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:04:01Z
+// generated: 2026-11-24T12:42:05Z
 
 package multikind
+
+import "github.com/ngicks/kama/kamalib/pkg/validation"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
 func (v Cell) Validate(stopOnFirstError bool) error {
-	return nil
+	var errs []error
+	if err := validation.Field(v.Value.Validate(stopOnFirstError), "value"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.Label.IsSome() {
+		if err := validation.Field(v.Label.Value().Validate(stopOnFirstError), "label"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
