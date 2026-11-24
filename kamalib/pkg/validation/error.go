@@ -19,6 +19,8 @@ var (
 	ErrCompare  = errors.New("compare")
 	ErrConst    = errors.New("const")
 	ErrFormat   = errors.New("format")
+	ErrMultiple = errors.New("multiple")
+	ErrUnique   = errors.New("unique")
 )
 
 // Error is an error located by a path of segments from the outermost value to the failing one.

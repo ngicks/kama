@@ -103,8 +103,8 @@ func NewRegistry(vs ...Validator) *Registry {
 }
 
 // DefaultRegistry returns a new registry holding the built-in validators:
-// required, zero, nil, null, regexp, length, cmp, const and format with
-// DefaultFormats.
+// required, zero, nil, null, regexp, length, runes, cmp, const, multipleof,
+// unique and format with DefaultFormats.
 func DefaultRegistry() *Registry {
 	return NewRegistry(
 		Required{},
@@ -113,8 +113,11 @@ func DefaultRegistry() *Registry {
 		Null{},
 		Regexp{},
 		Length{},
+		Runes{},
 		Cmp{},
 		Const{},
+		MultipleOf{},
+		Unique{},
 		Format{Formats: DefaultFormats()},
 	)
 }

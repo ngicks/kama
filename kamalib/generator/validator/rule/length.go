@@ -2,10 +2,6 @@ package rule
 
 import (
 	"fmt"
-	"go/ast"
-	"go/constant"
-	"go/parser"
-	"go/token"
 	"go/types"
 	"strconv"
 )
@@ -30,34 +26,9 @@ type LengthOptions struct {
 
 // Parse decodes arg into comparisons with non-negative integers.
 func (Length) Parse(arg string) (Rule, error) {
-	cs, err := parseComparisons(arg)
+	cs, err := parseLengths(arg)
 	if err != nil {
 		return nil, err
-	}
-
-	for _, c := range cs {
-		n := c.Operand
-
-		val, err := literalValue(types.Typ[types.Int], n)
-		if err != nil {
-			return nil, argsError(err)
-		}
-
-		if constant.Sign(val) < 0 {
-			return nil, argsError(fmt.Errorf("length %s is negative", n))
-		}
-
-		// int accepts 1.0 and 'a' as well, which are no lengths as written.
-		// literalValue parsed n already. cmp accepts a unary plus, so length
-		// does too.
-		x, _ := parser.ParseExpr(n)
-		if u, ok := x.(*ast.UnaryExpr); ok && u.Op == token.ADD {
-			x = u.X
-		}
-
-		if lit, ok := x.(*ast.BasicLit); !ok || lit.Kind != token.INT {
-			return nil, argsError(fmt.Errorf("length %s is not an integer literal", n))
-		}
 	}
 
 	return LengthOptions{Comparisons: cs}, nil

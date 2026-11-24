@@ -2,13 +2,14 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-22T14:07:18Z
+// generated: 2026-11-24T07:47:33Z
 
 package model
 
 import (
 	"cmp"
 	"fmt"
+	"math/big"
 	"net/url"
 	"reflect"
 	"regexp"
@@ -82,6 +83,13 @@ func kamaValidateConst[T comparable](got T, want ...T) error {
 	return nil
 }
 
+// kamaValidateCopy is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateCopy[T any](v T) *T {
+	return &v
+}
+
 // kamaValidateEqual is a helper of the generated Validate methods.
 //
 //kama:generated kama-validate
@@ -129,6 +137,33 @@ func kamaValidateFormatUrl(got string) error {
 func kamaValidateLength(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
 		return validation.New(validation.ErrLength, "want length %s %d, got %d", op, want, got)
+	}
+	return nil
+}
+
+// kamaValidateMultipleFloat is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateMultipleFloat(got float64, bitSize int, step, want string) error {
+	spelled := strconv.FormatFloat(got, 'g', -1, bitSize)
+	r, ok := new(big.Rat).SetString(spelled)
+	if ok {
+		s, _ := new(big.Rat).SetString(step)
+		ok = r.Quo(r, s).IsInt()
+	}
+	if !ok {
+		return validation.New(validation.ErrMultiple, "want a multiple of %s, got %s", want, spelled)
+	}
+	return nil
+}
+
+// kamaValidateMultipleInt is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateMultipleInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 |
+	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr](got, step T, want string) error {
+	if got%step != 0 {
+		return validation.New(validation.ErrMultiple, "want a multiple of %s, got %d", want, got)
 	}
 	return nil
 }
@@ -188,6 +223,16 @@ func kamaValidateRequired(ok bool, got string) error {
 	return nil
 }
 
+// kamaValidateRunes is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateRunes(got int, op string, want int) error {
+	if !kamaValidateCompare(got, op, want) {
+		return validation.New(validation.ErrLength, "want rune count %s %d, got %d", op, want, got)
+	}
+	return nil
+}
+
 // kamaValidateSpell is a helper of the generated Validate methods.
 //
 //kama:generated kama-validate
@@ -196,6 +241,34 @@ func kamaValidateSpell(v any) string {
 		return strconv.Quote(rv.String())
 	}
 	return fmt.Sprint(v)
+}
+
+// kamaValidateUnique is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateUnique[T comparable](got []T) error {
+	seen := make(map[T]int, len(got))
+	for i, x := range got {
+		if j, ok := seen[x]; ok {
+			return validation.New(validation.ErrUnique, "want unique elements, got equal elements at %d and %d", j, i)
+		}
+		seen[x] = i
+	}
+	return nil
+}
+
+// kamaValidateUniqueDeep is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateUniqueDeep[T any](got []T) error {
+	for i := range got {
+		for j := range i {
+			if reflect.DeepEqual(got[j], got[i]) {
+				return validation.New(validation.ErrUnique, "want unique elements, got equal elements at %d and %d", j, i)
+			}
+		}
+	}
+	return nil
 }
 
 // kamaValidateZero is a helper of the generated Validate methods.

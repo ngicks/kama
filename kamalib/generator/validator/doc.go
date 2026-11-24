@@ -42,14 +42,16 @@
 //	type User struct {
 //		//kama:validate required
 //		Name string
-//		//kama:validate required length=">=1 <=10"
+//		//kama:validate required length=">=1 <=10" unique
 //		Tags []string
-//		//kama:validate regexp="^[a-z-]+$" hook=on
+//		//kama:validate regexp="^[a-z-]+$" runes="<=64" hook=on
 //		Slug string
 //		//kama:validate format=date
 //		Born string
 //		//kama:validate cmp=">=0 <100" const="1 2 3"
 //		N int
+//		//kama:validate multipleof=0.5
+//		Score float64
 //		//kama:validate const=`"red" "dark blue"`
 //		Color string
 //	}
@@ -280,7 +282,7 @@
 // validator of the registry: name alone, or name=<arg>. The validators run
 // in the order written. arg is one string. The directive grammar unquotes
 // it, and the validator receives it unchanged. Each validator parses its
-// own arg. length, cmp and const split it into tokens with
+// own arg. length, runes, cmp and const split it into tokens with
 // dircmnt.ParseArgsKeyValue. A bare token starting with <, >, = or ! is one
 // comparison, as in >=1 or =="a b". regexp takes the whole arg as its
 // pattern. An empty arg, as in name="", counts as no arg.

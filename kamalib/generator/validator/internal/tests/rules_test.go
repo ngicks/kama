@@ -17,7 +17,7 @@ import (
 )
 
 func validRules() model.Rules {
-	name := "c"
+	name, quarter := "c", float32(0.75)
 
 	return model.Rules{
 		Null:      und.Null[int](),
@@ -25,10 +25,16 @@ func validRules() model.Rules {
 		SlugBytes: []byte("abc"),
 		Items:     []int{1},
 		Code:      opt.Some("ab"),
+		Kana:      "あい",
+		Tags:      []any{1, "1", []int{1}, []int{2}},
+		Triple:    opt.Some([3]int{1, 2, 3}),
+		Refs:      []*int{new(1), new(2)},
 		Level:     99,
 		Name:      &name,
 		Ratio:     0.5,
 		Score:     11,
+		Step:      -9,
+		Quarter:   &quarter,
 		Agreed:    true,
 		Color:     "dark blue",
 		Pick:      3,
@@ -41,7 +47,7 @@ func validRules() model.Rules {
 
 // invalidRules breaks every validator of Rules once.
 func invalidRules() model.Rules {
-	one, name, defined := 1, "b", und.Defined(1)
+	one, name, defined, quarter := 1, "b", und.Defined(1), float32(0.3)
 
 	return model.Rules{
 		Zero:      1,
@@ -53,10 +59,16 @@ func invalidRules() model.Rules {
 		SlugBytes: []byte("a-b"),
 		Items:     []int{1, 2, 3, 4},
 		Code:      opt.Some("abc"),
+		Kana:      "abc",
+		Tags:      []any{[]int{1}, "a", []int{1}},
+		Triple:    opt.Some([3]int{1, 2, 1}),
+		Refs:      []*int{new(1), new(1)},
 		Level:     100,
 		Name:      &name,
 		Ratio:     0.25,
 		Score:     0,
+		Step:      4,
+		Quarter:   &quarter,
 		Agreed:    false,
 		Color:     "green",
 		Pick:      4,
@@ -76,6 +88,7 @@ func TestRulesValid(t *testing.T) {
 	// value it would hold.
 	r := validRules()
 	r.Name, r.Code, r.At, r.NullPtr = nil, opt.None[string](), opt.None[string](), nil
+	r.Triple, r.Quarter = opt.None[[3]int](), nil
 	assert.NilError(t, r.Validate(false))
 }
 
@@ -96,10 +109,16 @@ func TestRulesInvalid(t *testing.T) {
 		{"/slug_bytes", validation.ErrPattern, `got "a-b"`},
 		{"/items", validation.ErrLength, "want length <= 3, got 4"},
 		{"/code", validation.ErrLength, "want length == 2, got 3"},
+		{"/kana", validation.ErrLength, "want rune count == 2, got 3"},
+		{"/tags", validation.ErrUnique, "want unique elements, got equal elements at 0 and 2"},
+		{"/triple", validation.ErrUnique, "want unique elements, got equal elements at 0 and 2"},
+		{"/refs", validation.ErrUnique, "want unique elements, got equal elements at 0 and 1"},
 		{"/level", validation.ErrCompare, "want < 100, got 100"},
 		{"/name", validation.ErrCompare, `want > "b", got "b"`},
 		{"/ratio", validation.ErrCompare, "want >= 0.5, got 0.25"},
 		{"/score", validation.ErrCompare, "want > 10, got 0"},
+		{"/step", validation.ErrMultiple, "want a multiple of 3, got 4"},
+		{"/quarter", validation.ErrMultiple, "want a multiple of 0.25, got 0.3"},
 		{"/agreed", validation.ErrCompare, "want == true, got false"},
 		{"/color", validation.ErrConst, `want one of "red", "dark blue", got "green"`},
 		{"/pick", validation.ErrConst, "want one of 1, 2, 3, got 4"},

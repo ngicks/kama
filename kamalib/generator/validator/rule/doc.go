@@ -97,8 +97,11 @@
 //	null                  validation.ErrNull
 //	regexp=<pattern>      validation.ErrPattern
 //	length="<op><n> ..."  validation.ErrLength
+//	runes="<op><n> ..."   validation.ErrLength
 //	cmp="<op><v> ..."     validation.ErrCompare
 //	const="<v> ..."       validation.ErrConst
+//	multipleof=<n>        validation.ErrMultiple
+//	unique                validation.ErrUnique
 //	format=<name>         validation.ErrFormat
 //
 // required takes no arg. The value is not the zero value: an opt.Option
@@ -140,6 +143,12 @@
 // It applies to string, slice, array, map and channel underlying types.
 // The length of a string is its number of bytes.
 //
+// runes takes the arg of length. The number of runes of the value of a
+// string underlying type, as utf8.RuneCountInString counts them,
+// satisfies every comparison. A JSON string counts its length the same
+// way. runes does not apply to []byte, which encodes to a JSON string of
+// another length.
+//
 // cmp takes one or more comparisons <op><v>, where v is a Go literal of the
 // type of the value: a number, a quoted string, true or false, as in
 // cmp=">=0 <100" or cmp=`>"b"`. The value satisfies every comparison. It applies to
@@ -152,12 +161,25 @@
 // takes quoted literals only and any other type bare literals only.
 // const=`"1"` and const=1 therefore never mean the same.
 //
+// multipleof takes one positive integer or float literal n, as in
+// multipleof=2 or multipleof=0.01. The value divided by n is an integer.
+// It applies to integer and float underlying types. An integer value is
+// tested with % by the numerator of n in lowest terms, which must be a
+// value of the type. A float value is tested exactly, as the shortest
+// decimal reading back as the value, so float64(0.0075) is a multiple of
+// 0.0001. NaN and the infinities are multiples of nothing.
+//
+// unique takes no arg. No two elements of the value of a slice or array
+// underlying type are equal by value. Elements of a comparable type holding
+// no pointer, interface or type parameter compare with ==. Other elements
+// compare with reflect.DeepEqual, which follows pointers.
+//
 // format takes one format name, as in format=date. The value of a string underlying type is
 // of that format. DefaultFormats holds the built-in formats: date parses
 // with time.DateOnly, date-time parses with time.RFC3339, and url parses
 // with net/url and has a scheme and a host.
 //
-// A validator with several comparisons, as length and cmp take, checks
+// A validator with several comparisons, as length, runes and cmp take, checks
 // them all. With stopOnFirstError true it returns the first failure only,
 // otherwise every failure joined.
 package rule

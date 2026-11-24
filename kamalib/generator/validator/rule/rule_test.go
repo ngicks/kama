@@ -1,6 +1,7 @@
 package rule
 
 import (
+	"go/types"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -146,5 +147,150 @@ func TestFormatParse(t *testing.T) {
 		_, err := f.Parse(arg)
 		assert.ErrorIs(t, err, ErrArgs, arg)
 		assert.ErrorContains(t, err, msg, arg)
+	}
+}
+
+func TestRunesParse(t *testing.T) {
+	o, err := Runes{}.Parse(">=1 <=+10")
+	assert.NilError(t, err)
+	assert.DeepEqual(t, o, RunesOptions{Comparisons: []Comparison{
+		{Op: ">=", Operand: "1"},
+		{Op: "<=", Operand: "+10"},
+	}})
+
+	for arg, msg := range map[string]string{
+		"":      "want one or more comparisons",
+		"=1":    `arg "=1" is no comparison`,
+		">=-1":  "length -1 is negative",
+		">=1.0": "length 1.0 is not an integer literal",
+		">=n":   "n is not a Go literal",
+	} {
+		_, err := Runes{}.Parse(arg)
+		assert.ErrorIs(t, err, ErrArgs, arg)
+		assert.ErrorContains(t, err, msg, arg)
+	}
+}
+
+func TestRunesCheck(t *testing.T) {
+	o := RunesOptions{Comparisons: []Comparison{{Op: ">=", Operand: "1"}}}
+	str := types.NewNamed(types.NewTypeName(0, nil, "Str", nil), types.Typ[types.String], nil)
+
+	assert.NilError(t, o.Check(types.Typ[types.String]))
+	assert.NilError(t, o.Check(str))
+
+	for _, typ := range []types.Type{
+		bytesType,
+		types.NewSlice(types.Typ[types.Rune]),
+		types.Typ[types.Int],
+	} {
+		assert.ErrorContains(t, o.Check(typ), typ.String()+" is not a string type")
+	}
+}
+
+func TestMultipleOfParse(t *testing.T) {
+	for _, arg := range []string{"2", "+2", "1.5", "0.0001", "1e-8", "0x10", "1_000"} {
+		o, err := MultipleOf{}.Parse(arg)
+		assert.NilError(t, err, arg)
+		assert.Equal(t, o, Rule(MultipleOfOptions{Divisor: arg}))
+	}
+
+	for arg, msg := range map[string]string{
+		"":       `divisor "" is not a Go literal`,
+		"0":      "divisor 0 is not positive",
+		"0.0":    "divisor 0.0 is not positive",
+		"-1":     "divisor -1 is not an integer or float literal",
+		`"1"`:    `divisor "1" is not an integer or float literal`,
+		"'a'":    "divisor 'a' is not an integer or float literal",
+		"1i":     "divisor 1i is not an integer or float literal",
+		"1+1":    "divisor 1+1 is not an integer or float literal",
+		"n":      "divisor n is not an integer or float literal",
+		"1e9999": "divisor 1e9999 is out of range",
+	} {
+		_, err := MultipleOf{}.Parse(arg)
+		assert.ErrorIs(t, err, ErrArgs, arg)
+		assert.ErrorContains(t, err, msg, arg)
+	}
+}
+
+func TestMultipleOfCheck(t *testing.T) {
+	for _, tc := range []struct {
+		divisor string
+		typ     types.Type
+		msg     string
+	}{
+		{"3", types.Typ[types.Int], ""},
+		{"1.5", types.Typ[types.Uint8], ""},
+		{"1e-8", types.Typ[types.Int64], ""},
+		{"0.5", types.Typ[types.Float32], ""},
+		{"1e300", types.Typ[types.Float64], ""},
+		{"300", types.Typ[types.Int8], "divisor 300: 300 is no value of int8"},
+		{"51.2", types.Typ[types.Uint8], "divisor 51.2: 256 is no value of uint8"},
+		{"2", types.Typ[types.String], "string is not an integer or float type"},
+		{"2", types.Typ[types.Complex128], "complex128 is not an integer or float type"},
+		{"2", types.NewSlice(types.Typ[types.Int]), "[]int is not an integer or float type"},
+	} {
+		err := MultipleOfOptions{Divisor: tc.divisor}.Check(tc.typ)
+		if tc.msg == "" {
+			assert.NilError(t, err, tc.divisor)
+		} else {
+			assert.ErrorContains(t, err, tc.msg, tc.divisor)
+		}
+	}
+}
+
+func TestUniqueParse(t *testing.T) {
+	o, err := Unique{}.Parse("")
+	assert.NilError(t, err)
+	assert.Equal(t, o, UniqueOptions{})
+
+	_, err = Unique{}.Parse("x")
+	assert.ErrorIs(t, err, ErrArgs)
+	assert.ErrorContains(t, err, `unexpected arg "x"; want none`)
+}
+
+func TestUniqueCheck(t *testing.T) {
+	param := types.NewTypeParam(
+		types.NewTypeName(0, nil, "T", nil),
+		types.NewInterfaceType(nil, nil),
+	)
+	anyType := types.Universe.Lookup("any").Type()
+	field := func(typ types.Type) *types.Struct {
+		return types.NewStruct([]*types.Var{types.NewField(0, nil, "F", typ, false)}, nil)
+	}
+
+	for _, tc := range []struct {
+		typ    types.Type
+		helper string
+	}{
+		{types.NewSlice(types.Typ[types.Int]), uniqueName},
+		{types.NewArray(types.Typ[types.String], 3), uniqueName},
+
+		{types.NewSlice(field(types.Typ[types.Int])), uniqueName},
+		{types.NewSlice(types.NewArray(types.Typ[types.Int], 2)), uniqueName},
+		{types.NewSlice(anyType), uniqueDeepName},
+		{types.NewSlice(field(anyType)), uniqueDeepName},
+		{types.NewSlice(types.NewArray(anyType, 2)), uniqueDeepName},
+		{types.NewSlice(types.NewSlice(types.Typ[types.Int])), uniqueDeepName},
+		{types.NewSlice(param), uniqueDeepName},
+		{types.NewSlice(types.NewPointer(types.Typ[types.Int])), uniqueDeepName},
+		{types.NewSlice(field(types.NewPointer(types.Typ[types.Int]))), uniqueDeepName},
+		{types.NewSlice(types.NewChan(types.SendRecv, types.Typ[types.Int])), uniqueName},
+	} {
+		assert.NilError(t, UniqueOptions{}.Check(tc.typ), tc.typ.String())
+
+		helper, _ := uniqueHelper(tc.typ)
+		assert.Equal(t, helper, tc.helper, tc.typ.String())
+	}
+
+	for _, typ := range []types.Type{
+		types.Typ[types.String],
+		types.NewMap(types.Typ[types.String], types.Typ[types.Int]),
+		param,
+	} {
+		assert.ErrorContains(
+			t,
+			UniqueOptions{}.Check(typ),
+			typ.String()+" is not a slice or array type",
+		)
 	}
 }

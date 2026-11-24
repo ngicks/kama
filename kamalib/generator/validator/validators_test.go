@@ -92,6 +92,12 @@ type A[T comparable] struct {
 	LenPtr *[]int
 	//kama:validate length=">=+1"
 	LenPlus string
+	//kama:validate runes=">=1 <=10"
+	RunesString string
+	//kama:validate runes="==3"
+	RunesStr Str
+	//kama:validate runes=">0"
+	RunesOpt opt.Option[string]
 	//kama:validate cmp=">=-1 <10"
 	CmpInt int8
 	//kama:validate cmp=">0"
@@ -116,6 +122,36 @@ type A[T comparable] struct {
 	ConstBool bool
 	//kama:validate const=1
 	ConstPtr *int
+	//kama:validate multipleof=3
+	MulInt int
+	//kama:validate multipleof=1.5
+	MulUint8 uint8
+	//kama:validate multipleof=2
+	MulNamed Int
+	//kama:validate multipleof=0.0001
+	MulFloat float64
+	//kama:validate multipleof=+0.5
+	MulFloat32 float32
+	//kama:validate multipleof=2
+	MulPtr *float64
+	//kama:validate unique
+	UniqueInts []int
+	//kama:validate unique
+	UniqueBytes Bytes
+	//kama:validate unique
+	UniqueArray [3]int
+	//kama:validate unique
+	UniqueArrayPtr *[3]int
+	//kama:validate unique
+	UniqueArrayOpt opt.Option[[3]int]
+	//kama:validate unique
+	UniqueAny []any
+	//kama:validate unique
+	UniquePtrs []*int
+	//kama:validate unique
+	UniqueParam []T
+	//kama:validate unique
+	UniqueDeepArray [2][]int
 	//kama:validate format=date
 	FormatDate string
 	//kama:validate format=date-time
@@ -127,7 +163,9 @@ type A[T comparable] struct {
 	})
 	fn := gentest.Funcs(t, out["a.kama_validate.go"])["A.Validate"]
 
-	assertContains(t, fn,
+	assertContains(
+		t,
+		fn,
 		`kamaValidateZeroComparable(v.Zero)`,
 		`kamaValidateZeroComparable(v.ZeroStruct)`,
 		`kamaValidateZero(v.ZeroPtr == nil, "a non-nil value")`,
@@ -160,6 +198,12 @@ type A[T comparable] struct {
 		`kamaValidateLength(len(v.LenOpt.Value()), ">", 0)`,
 		`kamaValidateLength(len((*v.LenPtr)), ">", 0)`,
 		`kamaValidateLength(len(v.LenPlus), ">=", +1)`,
+		`kamaValidateAll(stopOnFirstError, `+
+			`kamaValidateRunes(utf8.RuneCountInString(v.RunesString), ">=", 1), `+
+			`kamaValidateRunes(utf8.RuneCountInString(v.RunesString), "<=", 10))`,
+		`kamaValidateRunes(utf8.RuneCountInString(string(v.RunesStr)), "==", 3)`,
+		"if v.RunesOpt.IsSome() {",
+		`kamaValidateRunes(utf8.RuneCountInString(v.RunesOpt.Value()), ">", 0)`,
 		`kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.CmpInt, ">=", -1), `+
 			`kamaValidateCmp(v.CmpInt, "<", 10))`,
 		`kamaValidateCmp(v.CmpUint, ">", 0)`,
@@ -174,6 +218,24 @@ type A[T comparable] struct {
 		`kamaValidateConst(v.ConstString, "a", "b c")`,
 		`kamaValidateConst(v.ConstBool, false)`,
 		`kamaValidateConst((*v.ConstPtr), 1)`,
+		`kamaValidateMultipleInt(v.MulInt, 3, "3")`,
+		`kamaValidateMultipleInt(v.MulUint8, 3, "1.5")`,
+		`kamaValidateMultipleInt(v.MulNamed, 2, "2")`,
+		`kamaValidateMultipleFloat(v.MulFloat, 64, "1/10000", "0.0001")`,
+		`kamaValidateMultipleFloat(float64(v.MulFloat32), 32, "1/2", "+0.5")`,
+		"if v.MulPtr != nil {",
+		`kamaValidateMultipleFloat((*v.MulPtr), 64, "2/1", "2")`,
+		`kamaValidateUnique(v.UniqueInts)`,
+		`kamaValidateUnique(v.UniqueBytes)`,
+		`kamaValidateUnique(kamaValidateCopy(v.UniqueArray)[:])`,
+		"if v.UniqueArrayPtr != nil {",
+		`kamaValidateUnique(kamaValidateCopy((*v.UniqueArrayPtr))[:])`,
+		"if v.UniqueArrayOpt.IsSome() {",
+		`kamaValidateUnique(kamaValidateCopy(v.UniqueArrayOpt.Value())[:])`,
+		`kamaValidateUniqueDeep(v.UniqueAny)`,
+		`kamaValidateUniqueDeep(v.UniquePtrs)`,
+		`kamaValidateUniqueDeep(v.UniqueParam)`,
+		`kamaValidateUniqueDeep(kamaValidateCopy(v.UniqueDeepArray)[:])`,
 		`kamaValidateFormatDate(v.FormatDate)`,
 		`kamaValidateFormatDateTime(string(v.FormatDateTime))`,
 		"if v.FormatUrl.IsSome() {",
@@ -188,6 +250,12 @@ type A[T comparable] struct {
 		"func kamaValidateCompare[T cmp.Ordered](got T, op string, want T) bool {",
 		"func kamaValidateSpell(v any) string {",
 		"func kamaValidateAll(stopOnFirstError bool, errs ...error) error {",
+		"func kamaValidateRunes(got int, op string, want int) error {",
+		"func kamaValidateMultipleInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 |",
+		"func kamaValidateMultipleFloat(got float64, bitSize int, step, want string) error {",
+		"func kamaValidateUnique[T comparable](got []T) error {",
+		"func kamaValidateUniqueDeep[T any](got []T) error {",
+		"func kamaValidateCopy[T any](v T) *T {",
 	)
 }
 
@@ -275,6 +343,46 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 				"int is not a string, slice, array, map or channel type"}},
 		{"length float on option", "//kama:validate length=\">=1.5\"\n\tN opt.Option[string]",
 			ErrUnsupported, []string{"1.5 is no value of int"}},
+		// runes
+		{"runes no args", "//kama:validate runes\n\tN string", ErrUnsupported,
+			[]string{"want one or more comparisons"}},
+		{"runes negative", "//kama:validate runes=\">=-1\"\n\tN string", ErrUnsupported,
+			[]string{"//kama:validate runes on field V", "length -1 is negative"}},
+		{"runes bytes", "//kama:validate runes=\">=1\"\n\tN []byte", ErrUnsupported,
+			[]string{"[]byte is not a string type"}},
+		{"runes slice", "//kama:validate runes=\">=1\"\n\tN []string", ErrUnsupported,
+			[]string{"[]string is not a string type"}},
+		// multipleof
+		{"multipleof no args", "//kama:validate multipleof\n\tN int", ErrUnsupported,
+			[]string{`divisor "" is not a Go literal`}},
+		{"multipleof zero", "//kama:validate multipleof=0\n\tN int", ErrUnsupported,
+			[]string{"//kama:validate multipleof on field V", "divisor 0 is not positive"}},
+		{"multipleof negative", "//kama:validate multipleof=-2\n\tN *int", ErrUnsupported,
+			[]string{"divisor -2 is not an integer or float literal"}},
+		{"multipleof overflow", "//kama:validate multipleof=300\n\tN int8", ErrUnsupported,
+			[]string{"divisor 300: 300 is no value of int8"}},
+		{"multipleof numerator overflow", "//kama:validate multipleof=51.2\n\tN uint8",
+			ErrUnsupported, []string{"divisor 51.2: 256 is no value of uint8"}},
+		{"multipleof string", "//kama:validate multipleof=2\n\tN string", ErrUnsupported,
+			[]string{"string is not an integer or float type"}},
+		{"multipleof type parameter", "//kama:validate multipleof=2\n\tN P", ErrUnsupported,
+			[]string{"P is not an integer or float type"}},
+		// unique
+		{"unique args", "//kama:validate unique=x\n\tN []int", ErrUnsupported,
+			[]string{`unexpected arg "x"; want none`}},
+		{
+			"unique map",
+			"//kama:validate unique\n\tN map[string]int",
+			ErrUnsupported,
+			[]string{
+				"//kama:validate unique on field V",
+				"map[string]int is not a slice or array type",
+			},
+		},
+		{"unique type parameter", "//kama:validate unique\n\tN P", ErrUnsupported,
+			[]string{"P is not a slice or array type"}},
+		{"unique elastic", "//kama:validate unique\n\tN elastic.Elastic[int]", ErrUnsupported,
+			[]string{"elastic.Elastic[int] is not a slice or array type"}},
 		// cmp
 		{"cmp no args", "//kama:validate cmp\n\tN int", ErrUnsupported,
 			[]string{"want one or more comparisons"}},

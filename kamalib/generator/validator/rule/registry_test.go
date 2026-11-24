@@ -16,7 +16,8 @@ func (n named) Name() string { return n.name }
 
 func TestRegistry(t *testing.T) {
 	assert.DeepEqual(t, DefaultRegistry().Names(), []string{
-		"cmp", "const", "format", "length", "nil", "null", "regexp", "required", "zero",
+		"cmp", "const", "format", "length", "multipleof", "nil", "null", "regexp", "required",
+		"runes", "unique", "zero",
 	})
 
 	reg := NewRegistry(Required{}, named{name: "a"})

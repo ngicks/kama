@@ -37,6 +37,14 @@ type Rules struct {
 	Items []int `json:"items"`
 	//kama:validate length="==2"
 	Code opt.Option[string] `json:"code"`
+	//kama:validate runes="==2"
+	Kana string `json:"kana"`
+	//kama:validate unique
+	Tags []any `json:"tags"`
+	//kama:validate unique
+	Triple opt.Option[[3]int] `json:"triple"`
+	//kama:validate unique
+	Refs []*int `json:"refs"`
 	//kama:validate cmp=">=0 <100"
 	Level Level `json:"level"`
 	//kama:validate cmp=`>"b"`
@@ -45,6 +53,10 @@ type Rules struct {
 	Ratio float64 `json:"ratio"`
 	//kama:validate cmp=">10 !=5"
 	Score int `json:"score"`
+	//kama:validate multipleof=3
+	Step int `json:"step"`
+	//kama:validate multipleof=0.25
+	Quarter *float32 `json:"quarter"`
 	//kama:validate cmp="==true"
 	Agreed bool `json:"agreed"`
 	//kama:validate const=`"red" "dark blue"`
@@ -59,6 +71,28 @@ type Rules struct {
 	Url string `json:"url"`
 	//kama:validate null
 	Elastic elastic.Elastic[int] `json:"elastic"`
+}
+
+// MultipleOf holds a field per schema of multipleOf.json of the JSON
+// Schema test suite. 1e308 overflows an integer type, so the field of the
+// schema of type integer and multipleOf 0.123456789 is a float.
+//
+//kama:validate hook=off
+type MultipleOf struct {
+	//kama:validate multipleof=2
+	ByInt int `json:"by_int"`
+	//kama:validate multipleof=1.5
+	ByNumber float64 `json:"by_number"`
+	//kama:validate multipleof=0.0001
+	BySmallNumber float64 `json:"by_small_number"`
+	//kama:validate multipleof=0.0001
+	BySmallNumber32 float32 `json:"by_small_number32"`
+	//kama:validate multipleof=1e-8
+	ByVerySmallNumber float64 `json:"by_very_small_number"`
+	//kama:validate multipleof=0.123456789
+	FloatDivisionInf float64 `json:"float_division_inf"`
+	//kama:validate multipleof=1e-8
+	SmallMultipleOfLargeInteger int64 `json:"small_multiple_of_large_integer"`
 }
 
 // Ordered holds maps whose keys the generated code visits in sorted
