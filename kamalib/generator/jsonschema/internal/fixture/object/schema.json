@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Object",
+  "description": "Object exercises every field shape of an object.",
+  "type": "object",
+  "required": [
+    "reqName",
+    "reqNullName",
+    "reqPoint",
+    "reqNullPoint",
+    "color",
+    "tags",
+    "inline",
+    "anything"
+  ],
+  "properties": {
+    "reqName": { "description": "ReqName is required and not null.", "type": "string" },
+    "optName": { "type": "string" },
+    "reqNullName": { "type": ["string", "null"] },
+    "optNullName": { "type": ["string", "null"] },
+    "reqPoint": { "$ref": "#/$defs/Point" },
+    "optPoint": { "$ref": "#/$defs/Point" },
+    "reqNullPoint": { "oneOf": [{ "$ref": "#/$defs/Point" }, { "type": "null" }] },
+    "optNullPoint": { "oneOf": [{ "$ref": "#/$defs/Point" }, { "type": "null" }] },
+    "color": { "type": "string", "enum": ["red", "green", "dark-blue"] },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "counts": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "inline": {
+      "type": "object",
+      "required": ["x"],
+      "properties": { "x": { "type": "number" } }
+    },
+    "closed": {
+      "type": "object",
+      "properties": { "a": { "type": "boolean" } },
+      "additionalProperties": false
+    },
+    "open": {
+      "type": "object",
+      "properties": { "id": { "type": "integer" } },
+      "additionalProperties": { "type": "string" }
+    },
+    "anything": {},
+    "extra": {}
+  },
+  "$defs": {
+    "Point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": { "x": { "type": "integer" }, "y": { "type": "integer" } }
+    }
+  }
+}

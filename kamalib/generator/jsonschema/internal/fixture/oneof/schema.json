@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Zoo",
+  "type": "object",
+  "required": ["star", "pets", "mixed"],
+  "properties": {
+    "star": { "$ref": "#/$defs/Pet" },
+    "pets": { "type": "array", "items": { "$ref": "#/$defs/Pet" } },
+    "favorite": { "$ref": "#/$defs/Pet" },
+    "mixed": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "integer" },
+        { "type": "object", "required": ["note"], "properties": { "note": { "type": "string" } } }
+      ]
+    },
+    "amount": { "oneOf": [{ "type": "integer" }, { "type": "number" }] }
+  },
+  "$defs": {
+    "Pet": { "oneOf": [{ "$ref": "#/$defs/Cat" }, { "$ref": "#/$defs/Dog" }] },
+    "Cat": {
+      "type": "object",
+      "required": ["kind", "lives"],
+      "properties": { "kind": { "const": "cat" }, "lives": { "type": "integer" } }
+    },
+    "Dog": {
+      "type": "object",
+      "required": ["kind", "good"],
+      "properties": { "kind": { "const": "dog" }, "good": { "type": "boolean" } }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Nullable",
+  "type": "object",
+  "required": ["reqOneOf", "reqAnyOf", "reqType"],
+  "properties": {
+    "reqOneOf": { "oneOf": [{ "$ref": "#/$defs/Item" }, { "type": "null" }] },
+    "optOneOf": { "oneOf": [{ "$ref": "#/$defs/Item" }, { "type": "null" }] },
+    "reqAnyOf": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+    "optAnyOf": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+    "reqType": { "type": ["string", "null"] },
+    "optType": { "type": ["string", "null"] },
+    "optInline": {
+      "oneOf": [
+        { "type": "object", "required": ["s"], "properties": { "s": { "type": "string" } } },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$defs": {
+    "Item": {
+      "type": "object",
+      "required": ["n"],
+      "properties": { "n": { "type": "integer" } }
+    }
+  }
+}

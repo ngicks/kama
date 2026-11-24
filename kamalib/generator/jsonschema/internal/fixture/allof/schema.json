@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Employee",
+  "type": "object",
+  "allOf": [{ "$ref": "#/$defs/Person" }, { "$ref": "#/$defs/Contract" }],
+  "required": ["badge"],
+  "properties": {
+    "badge": { "type": "string" },
+    "manager": { "allOf": [{ "$ref": "#/$defs/Person" }] }
+  },
+  "$defs": {
+    "Person": {
+      "type": "object",
+      "required": ["name"],
+      "properties": { "name": { "type": "string" }, "age": { "type": "integer" } }
+    },
+    "Contract": {
+      "type": "object",
+      "required": ["salary"],
+      "properties": { "salary": { "type": "number" }, "remote": { "type": "boolean" } }
+    }
+  }
+}

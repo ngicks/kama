@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Doc",
+  "type": "object",
+  "required": ["label", "value"],
+  "properties": {
+    "label": { "$ref": "#/$defs/Label" },
+    "value": { "anyOf": [{ "type": "string" }, { "type": "null" }, { "type": "integer" }] },
+    "alt": { "$ref": "#/properties/value" }
+  },
+  "$defs": {
+    "Label": { "anyOf": [{ "$ref": "#/$defs/Named" }, { "$ref": "#/$defs/Tagged" }] },
+    "Named": {
+      "type": "object",
+      "required": ["name"],
+      "properties": { "name": { "type": "string" } }
+    },
+    "Tagged": {
+      "type": "object",
+      "required": ["tag"],
+      "properties": { "name": { "type": "string" }, "tag": { "type": "string" } }
+    }
+  }
+}
