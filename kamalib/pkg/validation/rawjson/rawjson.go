@@ -5,7 +5,6 @@ import (
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 	"iter"
-	"math/big"
 	"regexp"
 	"slices"
 	"strings"
@@ -19,7 +18,7 @@ import (
 func Kind[T ~[]byte](v T, kinds ...string) error {
 	got := kindOf(jsontext.Value(v))
 	if slices.Contains(kinds, got) ||
-		got == "number" && slices.Contains(kinds, "integer") && isInteger(jsontext.Value(v)) {
+		got == "number" && slices.Contains(kinds, "integer") && isInteger(string(v)) {
 		return nil
 	}
 
@@ -31,7 +30,11 @@ func Kind[T ~[]byte](v T, kinds ...string) error {
 // of another kind passes.
 func Compare[T ~[]byte](v T, op, num string) error {
 	raw := jsontext.Value(v)
-	if raw.Kind() != '0' || holds(compareNumbers(string(raw), num), op) {
+	if raw.Kind() != '0' {
+		return nil
+	}
+
+	if c, ok := compareNumbers(string(raw), num); ok && holds(c, op) {
 		return nil
 	}
 
@@ -197,7 +200,8 @@ func Equal(a, b jsontext.Value) bool {
 
 	switch a.Kind() {
 	case '0':
-		return compareNumbers(string(a), string(b)) == 0
+		c, ok := compareNumbers(string(a), string(b))
+		return ok && c == 0
 	case '"':
 		sa, okA := stringOf(a)
 		sb, okB := stringOf(b)
@@ -360,75 +364,4 @@ func compareInts(a, b int) int {
 	}
 
 	return 0
-}
-
-// maxExponent bounds the decimal exponent of a number compared exactly. A
-// rational of a larger exponent would take memory and time growing with
-// it, so such a number compares as a float of high precision instead.
-const maxExponent = 10000
-
-// rational returns the JSON number text as an exact rational, or false
-// when its exponent is beyond maxExponent.
-func rational(text string) (*big.Rat, bool) {
-	if i := strings.IndexAny(text, "eE"); i >= 0 {
-		exp, ok := new(big.Int).SetString(strings.TrimPrefix(text[i+1:], "+"), 10)
-		if !ok || exp.CmpAbs(big.NewInt(maxExponent)) > 0 {
-			return nil, false
-		}
-	}
-
-	return new(big.Rat).SetString(text)
-}
-
-// floatPrec is the precision of the floats numbers beyond maxExponent
-// compare as.
-const floatPrec = 4096
-
-func float(text string) *big.Float {
-	f, _, err := big.ParseFloat(text, 10, floatPrec, big.ToNearestEven)
-	if err != nil {
-		return new(big.Float)
-	}
-
-	return f
-}
-
-func compareNumbers(a, b string) int {
-	ra, okA := rational(a)
-	rb, okB := rational(b)
-
-	if okA && okB {
-		return ra.Cmp(rb)
-	}
-
-	return float(a).Cmp(float(b))
-}
-
-func isInteger(v jsontext.Value) bool {
-	if r, ok := rational(string(v)); ok {
-		return r.IsInt()
-	}
-
-	return float(string(v)).IsInt()
-}
-
-// multiple reports whether num divides v to an integer.
-func multiple(v, num string) bool {
-	rv, okV := rational(v)
-	rn, okN := rational(num)
-
-	if okV && okN {
-		if rn.Sign() == 0 {
-			return false
-		}
-
-		return new(big.Rat).Quo(rv, rn).IsInt()
-	}
-
-	fn := float(num)
-	if fn.Sign() == 0 {
-		return false
-	}
-
-	return new(big.Float).SetPrec(floatPrec).Quo(float(v), fn).IsInt()
 }
