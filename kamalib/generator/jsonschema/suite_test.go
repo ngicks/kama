@@ -55,7 +55,7 @@ func TestSuiteNeverPanics(t *testing.T) {
 		for _, g := range gs {
 			groups++
 
-			err := generateSuite(g.Schema)
+			err := generateSuite(g.Schema, false)
 			if err == nil {
 				generated++
 				continue
@@ -104,7 +104,7 @@ func suiteRemotes() []Remote {
 
 // generateSuite runs Generate over raw and checks its output. A panic
 // comes back as an error wrapping neither sentinel.
-func generateSuite(raw jsontext.Value) (err error) {
+func generateSuite(raw jsontext.Value, assertFormats bool) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
@@ -117,11 +117,12 @@ func generateSuite(raw jsontext.Value) (err error) {
 	}
 
 	files, _, err := Generate(&doc, Options{
-		Package:  "suite",
-		TypeName: "Root",
-		Schema:   "schema.json",
-		Load:     remoteLoader(os.DirFS(filepath.FromSlash("../..")), suiteRemotes()),
-		Now:      gentest.Now,
+		Package:       "suite",
+		TypeName:      "Root",
+		Schema:        "schema.json",
+		Load:          remoteLoader(os.DirFS(filepath.FromSlash("../..")), suiteRemotes()),
+		AssertFormats: assertFormats,
+		Now:           gentest.Now,
 	})
 	if err != nil {
 		return err

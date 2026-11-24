@@ -148,8 +148,8 @@ func TestFormatParse(t *testing.T) {
 	assert.Equal(t, o.(FormatOptions).Helper.Name, "kamaValidateFormatDate")
 
 	for arg, msg := range map[string]string{
-		"":     "want one format name; known: date, date-time, url",
-		"uuid": `unknown format "uuid"; known: date, date-time, url`,
+		"":      "want one format name; known: date, date-time, ipv4, ipv6, url, uuid",
+		"email": `unknown format "email"; known: date, date-time, ipv4, ipv6, url, uuid`,
 	} {
 		_, err := f.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)

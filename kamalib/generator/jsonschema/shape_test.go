@@ -36,7 +36,7 @@ func TestSuiteRootShapes(t *testing.T) {
 		assert.NilError(t, jsonv2.Unmarshal(b, &gs))
 
 		for _, g := range gs {
-			if generateSuite(g.Schema) != nil {
+			if generateSuite(g.Schema, false) != nil {
 				continue
 			}
 

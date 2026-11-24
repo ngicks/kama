@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:30:35Z
+// generated: 2026-11-24T16:55:05Z
 
 package model
 
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"maps"
 	"math/big"
+	"net/netip"
 	"net/url"
 	"reflect"
 	"regexp"
@@ -150,12 +151,42 @@ func kamaValidateFormatDateTime(got string) error {
 	return nil
 }
 
+// kamaValidateFormatIpv4 is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateFormatIpv4(got string) error {
+	if a, err := netip.ParseAddr(got); err != nil || !a.Is4() {
+		return validation.New(validation.ErrFormat, "want format ipv4, got %q", got)
+	}
+	return nil
+}
+
+// kamaValidateFormatIpv6 is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateFormatIpv6(got string) error {
+	if a, err := netip.ParseAddr(got); err != nil || !a.Is6() || a.Zone() != "" {
+		return validation.New(validation.ErrFormat, "want format ipv6, got %q", got)
+	}
+	return nil
+}
+
 // kamaValidateFormatUrl is a helper of the generated Validate methods.
 //
 //kama:generated kama:validate
 func kamaValidateFormatUrl(got string) error {
 	if u, err := url.Parse(got); err != nil || u.Scheme == "" || u.Host == "" {
 		return validation.New(validation.ErrFormat, "want format url with a scheme and a host, got %q", got)
+	}
+	return nil
+}
+
+// kamaValidateFormatUuid is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateFormatUuid(got string) error {
+	if len(got) != 36 || strings.Count(got, "-") != 4 || got[8] != '-' || got[13] != '-' || got[18] != '-' || got[23] != '-' || strings.Trim(got, "-0123456789abcdefABCDEF") != "" {
+		return validation.New(validation.ErrFormat, "want format uuid, got %q", got)
 	}
 	return nil
 }

@@ -143,3 +143,17 @@ func withoutVocabularies(s *jsonschema.Schema, dropped []string) *jsonschema.Sch
 
 	return &c
 }
+
+// assertedFormats are the formats of draft 2020-12 the default format
+// helpers of the validator generator check. Their names are the same in
+// both.
+var assertedFormats = []string{"date", "date-time", "ipv4", "ipv6", "uuid"}
+
+// assertedFormat returns the format of s that opts asserts, or "".
+func assertedFormat(opts Options, s *jsonschema.Schema) string {
+	if f := s.Format.UnwrapOr(""); opts.AssertFormats && slices.Contains(assertedFormats, f) {
+		return f
+	}
+
+	return ""
+}

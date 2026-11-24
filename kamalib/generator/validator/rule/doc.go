@@ -263,9 +263,11 @@
 // compare with reflect.DeepEqual, which follows pointers.
 //
 // format takes one format name, as in format=date. The value of a string underlying type is
-// of that format. DefaultFormats holds the built-in formats: date parses
-// with time.DateOnly, date-time parses with time.RFC3339, and url parses
-// with net/url and has a scheme and a host.
+// of that format. On raw JSON text a string is of that format and a value of another kind
+// passes. DefaultFormats holds the built-in formats: date parses with time.DateOnly,
+// date-time parses with time.RFC3339, url parses with net/url and has a scheme and a host,
+// ipv4 and ipv6 parse with net/netip as an address of that family without a zone, and uuid
+// is 32 hexadecimal digits in hyphenated groups of 8, 4, 4, 4 and 12.
 //
 // requires takes one or more JSON member names of sibling fields, as in
 // requires="city zip". When the field is present, each sibling named is

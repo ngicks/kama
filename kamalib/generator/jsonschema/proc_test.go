@@ -209,21 +209,25 @@ steps:
 	assert.DeepEqual(t, got, []string{"workflow: unknown key: steps.types.param.remotes.0.flie"})
 }
 
-// TestProcRunRemotes generates a schema referring to two other documents,
-// one a remote with dir maps and one a remote with file maps.
+// TestProcRunRemotes generates a schema referring to three other
+// documents, two of which remotes with dir map and one a remote with file.
 func TestProcRunRemotes(t *testing.T) {
 	f := procFs(t, map[string]string{
 		"api/schema.json": `{"title": "pet", "type": "object", "properties": {
 			"tag": {"$ref": "http://x.test/schemas/tag.json"},
-			"owner": {"$ref": "http://y.test/owner#/$defs/name"}}}`,
+			"owner": {"$ref": "http://y.test/owner#/$defs/name"},
+			"kind": {"$ref": "kind.json"}}}`,
 		"remote/schemas/tag.json": `{"type": "string", "maxLength": 3}`,
 		"owner.json":              `{"$defs": {"name": {"type": "string"}}}`,
+		"local/kind.json":         `{"type": "string", "enum": ["cat", "dog"]}`,
 	})
 
 	param := procParam("api/schema.json", "", "", "")
 	param.Remotes = und.Defined([]Remote{
 		{Uri: "http://x.test/", Dir: "remote"},
 		{Uri: "http://y.test/owner", File: "owner.json"},
+		// The root has no $id, so kind.json resolves to /kind.json.
+		{Uri: "/", Dir: "local"},
 	})
 
 	r := runProc(t, f, param, gentest.Now())
@@ -232,7 +236,9 @@ func TestProcRunRemotes(t *testing.T) {
 	got, err := fs.ReadFile(f.FS(), "api/api.kama_jsonschema.go")
 	assert.NilError(t, err)
 
-	for _, want := range []string{"type Tag string", "opt.Option[Tag]", "Owner opt.Option[string]"} {
+	for _, want := range []string{
+		"type Tag string", "opt.Option[Tag]", "Owner opt.Option[string]", "KindCat Kind = \"cat\"",
+	} {
 		assert.Assert(t, strings.Contains(string(got), want), "%s: %s", want, got)
 	}
 }

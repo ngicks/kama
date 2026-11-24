@@ -23,7 +23,8 @@
 // and Locate. [ResolvePointer] returns the schema at a pointer from the root. [ResourcesAlong]
 // returns the resources holding a schema, from the root down, and [DynamicAnchor] the schema of
 // a resource declaring a $dynamicAnchor, which a caller resolving $dynamicRef in a dynamic scope
-// asks for each resource of the scope. An empty retrieval URI leaves a relative URI relative. A
+// asks for each resource of the scope. Against an empty or a relative base URI the path of a
+// relative URI is rooted, as "a.json" gives "/a.json". A
 // URI naming no
 // resource of the document fails with [ErrNonLocalRef], and a fragment that names no schema
 // fails with [ErrUnresolved].

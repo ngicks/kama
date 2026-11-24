@@ -126,6 +126,10 @@ func kindArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string,
 			args = append(args, "runes="+quoteArg(l))
 		}
 
+		if f := assertedFormat(opts, s); f != "" {
+			args = append(args, "format="+quoteArg(f))
+		}
+
 		if s.Pattern.IsSome() {
 			if _, err := regexp.Compile(s.Pattern.Value()); err != nil {
 				unchecked = append(unchecked, "pattern")

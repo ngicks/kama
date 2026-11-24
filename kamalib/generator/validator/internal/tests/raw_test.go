@@ -43,6 +43,35 @@ func TestRawFields(t *testing.T) {
 		assert.NilError(t, b.Validate(false), mixed)
 	}
 
+	formats := validRawBag()
+	formats.Id = jsontext.Value(`"123e4567-e89b-12d3-a456-426614174000"`)
+	formats.Ipv4 = jsontext.Value(`"192.168.0.1"`)
+	formats.Ipv6 = jsontext.Value(`"::1"`)
+	assert.NilError(t, formats.Validate(false))
+
+	// A format checks strings only.
+	formats.Id, formats.Ipv4, formats.Ipv6 = jsontext.Value(
+		`1`,
+	), jsontext.Value(
+		`[]`,
+	), jsontext.Value(
+		`null`,
+	)
+	assert.NilError(t, formats.Validate(false))
+
+	for _, set := range []func(b *model.RawBag){
+		func(b *model.RawBag) { b.Id = jsontext.Value(`"123e4567-e89b-12d3-a456-42661417400"`) },
+		func(b *model.RawBag) { b.Id = jsontext.Value(`"123e4567xe89b-12d3-a456-426614174000"`) },
+		func(b *model.RawBag) { b.Ipv4 = jsontext.Value(`"192.168.0.01"`) },
+		func(b *model.RawBag) { b.Ipv4 = jsontext.Value(`"::1"`) },
+		func(b *model.RawBag) { b.Ipv6 = jsontext.Value(`"192.168.0.1"`) },
+		func(b *model.RawBag) { b.Ipv6 = jsontext.Value(`"fe80::1%eth0"`) },
+	} {
+		b := validRawBag()
+		set(&b)
+		assert.ErrorIs(t, b.Validate(false), validation.ErrFormat)
+	}
+
 	b := validRawBag()
 	b.Fixed = jsontext.Value(`1.0`)
 	assert.NilError(t, b.Validate(false))

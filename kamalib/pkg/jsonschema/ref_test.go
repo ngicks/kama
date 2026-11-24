@@ -238,14 +238,18 @@ func TestBaseUri(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, got, "http://example.com/dir/doc.json")
 
-	// Without a base URI a relative URI stays relative.
+	// Without a base URI the path of a relative URI is rooted.
 	got, err = BaseUri(&bare, "", "/$defs/a")
 	assert.NilError(t, err)
-	assert.Equal(t, got, "a.json")
+	assert.Equal(t, got, "/a.json")
 
 	got, err = RefUri(&bare, "", "", "other.json#/x")
 	assert.NilError(t, err)
-	assert.Equal(t, got, "other.json#/x")
+	assert.Equal(t, got, "/other.json#/x")
+
+	got, err = RefUri(&bare, "", "/$defs/a", "other.json")
+	assert.NilError(t, err)
+	assert.Equal(t, got, "/other.json")
 }
 
 func TestResources(t *testing.T) {

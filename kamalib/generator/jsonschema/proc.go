@@ -51,6 +51,10 @@ type ProcParam struct {
 	// files of the out of Proc holding them. The generator never fetches a
 	// document from the network.
 	Remotes []Remote `json:"remotes"`
+	// AssertFormats makes the format keyword assert the formats the
+	// validator generator has a helper for. False keeps format an
+	// annotation.
+	AssertFormats bool `json:"assert_formats"`
 	// Validate makes the generated decoders call the Validate methods the
 	// validator generator writes. A spec running Proc with it chains
 	// packages.load and validate.generate after Proc. False leaves the calls
@@ -176,11 +180,12 @@ func (i *instance) Param(partial ProcParamPartial) error {
 
 	i.remotes = p.Remotes
 	i.opts = Options{
-		Package:  pkg,
-		TypeName: p.TypeName,
-		Schema:   p.Schema,
-		Dir:      dir,
-		Validate: p.Validate,
+		Package:       pkg,
+		TypeName:      p.TypeName,
+		Schema:        p.Schema,
+		Dir:           dir,
+		Validate:      p.Validate,
+		AssertFormats: p.AssertFormats,
 	}
 
 	return nil

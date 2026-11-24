@@ -75,6 +75,17 @@ func Pattern[T ~[]byte](v T, re *regexp.Regexp) error {
 	return validation.New(validation.ErrPattern, "want a match of %q, got %q", re.String(), s)
 }
 
+// Format reports a string v that check, a helper testing one format,
+// rejects. A value of another kind passes.
+func Format[T ~[]byte](v T, check func(string) error) error {
+	s, ok := stringOf(jsontext.Value(v))
+	if !ok {
+		return nil
+	}
+
+	return check(s)
+}
+
 // Items reports an array v whose number of elements does not compare to n
 // by op. A value of another kind passes.
 func Items[T ~[]byte](v T, op string, n int) error {

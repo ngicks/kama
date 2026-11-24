@@ -71,7 +71,7 @@ func rulesOf(
 		return single(args), err
 	}
 
-	args := leafRules(s, keep)
+	args := leafRules(opts, s, keep)
 
 	steps := []func() ([]string, error){
 		func() ([]string, error) { return propsRules(s, sub, inPlace, keep) },
@@ -179,7 +179,7 @@ func argName(a string) string {
 
 // leafRules returns the args of the keywords of s holding no subschema that
 // keep keeps.
-func leafRules(s *jsonschema.Schema, keep func(kw string) bool) []string {
+func leafRules(opts Options, s *jsonschema.Schema, keep func(kw string) bool) []string {
 	var args []string
 
 	add := func(name, arg string, keywords ...string) {
@@ -212,6 +212,7 @@ func leafRules(s *jsonschema.Schema, keep func(kw string) bool) []string {
 	}
 
 	add("runes", lengths(s.MinLength, s.MaxLength), "minLength", "maxLength")
+	add("format", assertedFormat(opts, s), "format")
 
 	if s.Pattern.IsSome() {
 		if _, err := regexp.Compile(s.Pattern.Value()); err == nil {

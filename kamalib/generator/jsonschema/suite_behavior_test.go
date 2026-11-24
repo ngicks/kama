@@ -2,7 +2,6 @@ package jsonschema
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
@@ -100,6 +99,116 @@ var suiteUnsupported = map[string]int{}
 // rejected for, as rejectReasons spells it.
 var suiteUnsupportedReasons = []string{}
 
+// optionalGenerated is the generated table of the optional set of
+// suiteSets.
+var optionalGenerated = map[string]int{
+	"optional/anchor.json":                       1,
+	"optional/bignum.json":                       8,
+	"optional/dependencies-compatibility.json":   7,
+	"optional/dynamicRef.json":                   1,
+	"optional/ecmascript-regex.json":             20,
+	"optional/float-overflow.json":               1,
+	"optional/format-assertion.json":             1,
+	"optional/format/date-time.json":             1,
+	"optional/format/date.json":                  1,
+	"optional/format/duration.json":              1,
+	"optional/format/ecmascript-regex.json":      6,
+	"optional/format/email.json":                 1,
+	"optional/format/hostname.json":              2,
+	"optional/format/idn-email.json":             1,
+	"optional/format/idn-hostname.json":          2,
+	"optional/format/ipv4.json":                  1,
+	"optional/format/ipv6.json":                  1,
+	"optional/format/iri-reference.json":         1,
+	"optional/format/iri.json":                   1,
+	"optional/format/json-pointer.json":          1,
+	"optional/format/regex.json":                 1,
+	"optional/format/relative-json-pointer.json": 1,
+	"optional/format/time.json":                  1,
+	"optional/format/unknown.json":               1,
+	"optional/format/uri-reference.json":         1,
+	"optional/format/uri-template.json":          1,
+	"optional/format/uri.json":                   1,
+	"optional/format/uuid.json":                  1,
+	"optional/id.json":                           1,
+	"optional/no-schema.json":                    1,
+	"optional/non-bmp-regex.json":                2,
+	"optional/unknownKeyword.json":               1,
+}
+
+// optionalUnsupported is the unsupported table of the optional set.
+var optionalUnsupported = map[string]int{
+	"optional/cross-draft.json":         1,
+	"optional/format-assertion.json":    1,
+	"optional/refOfUnknownKeyword.json": 5,
+}
+
+// optionalUnsupportedReasons are the reasons of the optional set.
+var optionalUnsupportedReasons = []string{
+	"unsupported schema: meta-schema %q is not that of draft 2020-12",
+	"unsupported schema: meta-schema %q requires vocabulary %q",
+	"unsupported schema: reference %q names no schema",
+}
+
+// optionalExceptions are the exceptions of the optional set. A key is a
+// file, a file and a group, or a file, a group and a test, as
+// suiteKey.String spells them. A key naming a file or a group excuses only
+// the instances the suite calls invalid, which a check the generated code
+// leaves out accepts; an instance the generated code rejects although the
+// suite calls it valid needs a key of its own.
+var optionalExceptions = map[string]string{
+	"optional/bignum.json: integer: a bignum is an integer": "an integer is int64, " +
+		"which a bignum overflows",
+	"optional/bignum.json: integer: a negative bignum is an integer": "an integer is int64, " +
+		"which a bignum overflows",
+	"optional/float-overflow.json: all integers are multiples of 0.5, if overflow is handled: " +
+		"valid if optional overflow handling is implemented": "an integer is int64, " +
+		"which 1e308 overflows",
+	"optional/dependencies-compatibility.json": "dependencies is no keyword of draft 2020-12",
+	"optional/ecmascript-regex.json":           "regexp is RE2, not ECMA 262",
+	"optional/ecmascript-regex.json: ECMA 262 \\s matches whitespace: " +
+		"Line tabulation matches": "regexp is RE2, whose \\s matches ASCII whitespace only",
+	"optional/ecmascript-regex.json: ECMA 262 \\s matches whitespace: " +
+		"latin-1 non-breaking-space matches": "regexp is RE2, whose \\s matches ASCII whitespace only",
+	"optional/ecmascript-regex.json: ECMA 262 \\s matches whitespace: " +
+		"zero-width whitespace matches": "regexp is RE2, whose \\s matches ASCII whitespace only",
+	"optional/ecmascript-regex.json: ECMA 262 \\s matches whitespace: " +
+		"paragraph separator matches (line terminator)": "regexp is RE2, whose \\s matches " +
+		"ASCII whitespace only",
+	"optional/ecmascript-regex.json: ECMA 262 \\s matches whitespace: " +
+		"EM SPACE matches (Space_Separator)": "regexp is RE2, whose \\s matches ASCII whitespace only",
+	"optional/format/date-time.json: validation of date-time strings: " +
+		"a valid date-time with a leap second, UTC": "time.RFC3339 rejects a leap second",
+	"optional/format/date-time.json: validation of date-time strings: " +
+		"a valid date-time with a leap second, with minus offset": "time.RFC3339 rejects a leap second",
+	"optional/format/date-time.json: validation of date-time strings: " +
+		"an invalid offset in date-time string": "time.RFC3339 accepts an offset hour out of range",
+	"optional/format/date-time.json: validation of date-time strings: " +
+		"an invalid offset minute in date-time string": "time.RFC3339 accepts an offset minute " +
+		"out of range",
+	"optional/format/date-time.json: validation of date-time strings: " +
+		"case-insensitive T and Z": "time.RFC3339 rejects a lower-case t and z",
+	"optional/format/date-time.json: validation of date-time strings: " +
+		"a comma decimal separator with a time-offset": "time.RFC3339 accepts a comma before " +
+		"the fraction of a second",
+	// The schemas of format/ecmascript-regex.json name the format regex.
+	"optional/format/ecmascript-regex.json":      "format regex not asserted",
+	"optional/format/duration.json":              "format duration not asserted",
+	"optional/format/email.json":                 "format email not asserted",
+	"optional/format/hostname.json":              "format hostname not asserted",
+	"optional/format/idn-email.json":             "format idn-email not asserted",
+	"optional/format/idn-hostname.json":          "format idn-hostname not asserted",
+	"optional/format/iri.json":                   "format iri not asserted",
+	"optional/format/iri-reference.json":         "format iri-reference not asserted",
+	"optional/format/json-pointer.json":          "format json-pointer not asserted",
+	"optional/format/regex.json":                 "format regex not asserted",
+	"optional/format/relative-json-pointer.json": "format relative-json-pointer not asserted",
+	"optional/format/time.json":                  "format time not asserted",
+	"optional/format/uri.json":                   "format uri not asserted",
+	"optional/format/uri-reference.json":         "format uri-reference not asserted",
+	"optional/format/uri-template.json":          "format uri-template not asserted",
+}
+
 // suiteEnv names the environment variable that enables TestSuiteBehavior.
 const suiteEnv = "KAMA_JSONSCHEMA_SUITE"
 
@@ -108,22 +217,68 @@ const suiteEnv = "KAMA_JSONSCHEMA_SUITE"
 // that no longer compiles breaks no build but the suite run.
 var suiteDir = filepath.Join("internal", "suite")
 
-// TestSuiteBehavior generates every group of the top-level files of the
-// draft 2020-12 suite that Generate accepts as a fixture under suiteDir,
-// through the proc as a workflow spec runs it, and checks the instances
-// of the suite against them. Run it with
+// suiteSet is a set of files of the suite and the tables checking them.
+type suiteSet struct {
+	// patterns match the files of the set, relative to suiteRoot.
+	patterns []string
+	// generated is the least number of groups of each file that Generate
+	// accepts. A file generating fewer means Generate rejects schemas it
+	// used to accept. A file missing here generates none.
+	generated map[string]int
+	// unsupported is the number of groups of each file that Generate
+	// rejects. A file missing here rejects none.
+	unsupported map[string]int
+	// reasons lists every reason a group is rejected for, as rejectReasons
+	// spells it.
+	reasons []string
+	// exceptions maps the instances on which the generated code disagrees
+	// with the suite to the reason: a key names the instances of a file, of
+	// a group or one instance, as suiteKey.String spells it, or its prefix
+	// ending at the file or the group. Each key must name a disagreement.
+	exceptions map[string]string
+	// assertFormats is the assert_formats param of the set.
+	assertFormats bool
+}
+
+// suiteSets are the top-level files of the suite, which the generated code
+// agrees with on every instance, and the files of its optional directory.
+var suiteSets = []suiteSet{
+	{
+		patterns:    []string{"*.json"},
+		generated:   suiteGenerated,
+		unsupported: suiteUnsupported,
+		reasons:     suiteUnsupportedReasons,
+	},
+	{
+		patterns:      []string{"optional/*.json", "optional/format/*.json"},
+		generated:     optionalGenerated,
+		unsupported:   optionalUnsupported,
+		reasons:       optionalUnsupportedReasons,
+		exceptions:    optionalExceptions,
+		assertFormats: true,
+	},
+}
+
+// suiteRoot holds the tests of draft 2020-12 of the suite.
+var suiteRoot = filepath.FromSlash("../../pkg/jsonschema/testdata/suite/tests/draft2020-12")
+
+// TestSuiteBehavior generates every group of the files of suiteSets that
+// Generate accepts as a fixture under suiteDir, through the proc as a
+// workflow spec runs it, and checks the instances of the suite against
+// them. Run it with
 //
 //	KAMA_JSONSCHEMA_SUITE=1 go test ./generator/jsonschema/ -run TestSuite
 //
-// The fixtures stay on disk for inspection. Group gi of file f.json is the
-// package <f>/g<gi> of the module in suiteDir, generated from the schema
-// f.json#/<gi>/schema with the root type Root.
+// The fixtures stay on disk for inspection. Group gi of file f.json, a path
+// relative to suiteRoot, is the package <f>/g<gi> of the module in suiteDir,
+// generated from the schema f.json#/<gi>/schema with the root type Root.
 //
 // A driver program in suiteDir decodes each instance of a group into the
 // root type of its package. A decode succeeds exactly when the suite calls
-// the instance valid. Each file generates at least the groups suiteGenerated
-// records, and rejects exactly the groups suiteUnsupported records, each
-// for reasons of suiteUnsupportedReasons.
+// the instance valid, unless the exceptions of the set name the instance,
+// on which it must fail to. Each file generates at least the groups the
+// set records, and rejects exactly the groups it records, each for reasons
+// it lists.
 //
 // The driver encodes every value that decodes, decodes the result and
 // encodes it again. The second decode must succeed and both encodings must
@@ -139,11 +294,6 @@ func TestSuiteBehavior(t *testing.T) {
 		t.Skip("builds a program from the generated suite fixtures")
 	}
 
-	root := filepath.FromSlash("../../pkg/jsonschema/testdata/suite/tests/draft2020-12")
-
-	files, err := filepath.Glob(filepath.Join(root, "*.json"))
-	assert.NilError(t, err)
-
 	suiteModule(t)
 
 	var (
@@ -152,49 +302,63 @@ func TestSuiteBehavior(t *testing.T) {
 		driver suiteDriver
 	)
 
-	generated, unsupported, reasons := map[string]int{}, map[string]int{}, map[string]int{}
+	exceptions := map[string]string{}
 
-	for _, path := range files {
-		b, err := os.ReadFile(path)
-		assert.NilError(t, err)
+	for _, set := range suiteSets {
+		maps.Copy(exceptions, set.exceptions)
 
-		var gs []suiteGroup
-		assert.NilError(t, jsonv2.Unmarshal(b, &gs))
+		generated, unsupported, reasons := map[string]int{}, map[string]int{}, map[string]int{}
 
-		file := filepath.Base(path)
+		for _, file := range set.files(t) {
+			b, err := os.ReadFile(filepath.Join(suiteRoot, filepath.FromSlash(file)))
+			assert.NilError(t, err)
 
-		var accepted []int
+			var gs []suiteGroup
+			assert.NilError(t, jsonv2.Unmarshal(b, &gs))
 
-		for gi, g := range gs {
-			err := generateSuite(g.Schema)
-			if errors.Is(err, ErrUnsupported) || errors.Is(err, ErrConflict) {
-				unsupported[file]++
+			var accepted []int
 
-				for _, r := range slices.Compact(slices.Sorted(slices.Values(rejectReasons(err)))) {
-					reasons[r]++
+			for gi, g := range gs {
+				err := generateSuite(g.Schema, set.assertFormats)
+				if errors.Is(err, ErrUnsupported) || errors.Is(err, ErrConflict) {
+					unsupported[file]++
+
+					for _, r := range slices.Compact(slices.Sorted(slices.Values(rejectReasons(err)))) {
+						reasons[r]++
+					}
+
+					continue
 				}
 
-				continue
+				assert.NilError(t, err, "%s: %s", file, g.Description)
+
+				accepted = append(accepted, gi)
+				generated[file]++
+
+				for _, c := range g.Tests {
+					keys = append(
+						keys,
+						suiteKey{file: file, group: g.Description, test: c.Description},
+					)
+					valid = append(valid, c.Valid)
+
+					driver.add(file, gi, c.Data)
+				}
 			}
 
-			assert.NilError(t, err, "%s: %s", file, g.Description)
-
-			accepted = append(accepted, gi)
-			generated[file]++
-
-			for _, c := range g.Tests {
-				keys = append(keys, suiteKey{file: file, group: g.Description, test: c.Description})
-				valid = append(valid, c.Valid)
-
-				driver.add(file, gi, c.Data)
-			}
+			runSuiteSpec(t, file, accepted, set.assertFormats)
 		}
 
-		runSuiteSpec(t, file, accepted)
-	}
+		checkGenerated(t, set.generated, generated)
+		checkUnsupported(t, set, unsupported, reasons)
 
-	checkGenerated(t, generated)
-	checkUnsupported(t, unsupported, reasons)
+		t.Logf("%v: %d groups generated, %d unsupported", set.patterns,
+			sumValues(generated), sumValues(unsupported))
+
+		for _, reason := range slices.Sorted(maps.Keys(reasons)) {
+			t.Logf("unsupported: %d groups: %s", reasons[reason], reason)
+		}
+	}
 
 	runSuiteValidate(t)
 
@@ -203,81 +367,122 @@ func TestSuiteBehavior(t *testing.T) {
 	results := runSuiteDriver(t)
 	assert.Equal(t, len(results), len(keys))
 
-	agree := 0
+	agree, excused := 0, map[string]int{}
 
 	for i, k := range keys {
 		if msg, ok := strings.CutPrefix(results[i], "E "); ok {
-			t.Errorf("%s: %s: %s: round trip: %s", k.file, k.group, k.test, msg)
+			t.Errorf("%s: round trip: %s", k, msg)
 		}
 
-		if got := results[i] != "0"; got != valid[i] {
-			t.Errorf("%s: %s: %s: valid is %t, decoding succeeded is %t",
-				k.file, k.group, k.test, valid[i], got)
-
-			continue
+		if got := results[i] != "0"; got == valid[i] {
+			agree++
+		} else if key, ok := k.exception(exceptions, valid[i]); ok {
+			excused[key]++
+		} else {
+			t.Errorf("%s: valid is %t, decoding succeeded is %t", k, valid[i], got)
 		}
-
-		agree++
 	}
 
-	assert.Equal(t, len(slices.Compact(slices.SortedFunc(slices.Values(keys), compareSuiteKeys))),
-		len(keys), "a test of the suite is located twice")
-
-	t.Logf("%d groups generated, %d unsupported; %d instances checked, %d agree",
-		sumValues(generated), sumValues(unsupported), len(keys), agree)
-
-	for _, reason := range slices.Sorted(maps.Keys(reasons)) {
-		t.Logf("unsupported: %d groups: %s", reasons[reason], reason)
+	for _, key := range slices.Sorted(maps.Keys(exceptions)) {
+		if excused[key] == 0 {
+			t.Errorf("an exception excuses no disagreement: %s: %s", key, exceptions[key])
+		}
 	}
+
+	located := opiter.WrapSeq(slices.Values(keys)).
+		Map(suiteKey.String).
+		Collect(slices.Sorted)
+	assert.Equal(t, len(slices.Compact(located)), len(keys), "a test of the suite is located twice")
+
+	t.Logf("%d instances checked, %d agree, %d excepted", len(keys), agree, sumValues(excused))
+}
+
+// String spells k as the exceptions of a suiteSet key it.
+func (k suiteKey) String() string { return k.file + ": " + k.group + ": " + k.test }
+
+// exception returns the key of exceptions naming k, an instance the suite
+// calls valid as valid tells: k itself, or its group or its file for an
+// invalid one.
+func (k suiteKey) exception(exceptions map[string]string, valid bool) (string, bool) {
+	keys := []string{k.String()}
+	if !valid {
+		keys = append(keys, k.file+": "+k.group, k.file)
+	}
+
+	return opiter.WrapSeq(slices.Values(keys)).
+		Filter(func(key string) bool { _, ok := exceptions[key]; return ok }).
+		First().
+		Unpack()
+}
+
+// files returns the files of the set, slash-separated and relative to
+// suiteRoot.
+func (s suiteSet) files(t *testing.T) []string {
+	t.Helper()
+
+	var files []string
+
+	for _, p := range s.patterns {
+		matches, err := filepath.Glob(filepath.Join(suiteRoot, filepath.FromSlash(p)))
+		assert.NilError(t, err)
+
+		for _, m := range matches {
+			rel, err := filepath.Rel(suiteRoot, m)
+			assert.NilError(t, err)
+
+			files = append(files, filepath.ToSlash(rel))
+		}
+	}
+
+	return files
 }
 
 // checkGenerated reports a file of the suite that generates fewer groups
-// than suiteGenerated records, and logs one that generates more.
-func checkGenerated(t *testing.T, generated map[string]int) {
+// than want records, and logs one that generates more.
+func checkGenerated(t *testing.T, want, generated map[string]int) {
 	t.Helper()
 
-	for _, file := range slices.Sorted(maps.Keys(suiteGenerated)) {
-		if generated[file] < suiteGenerated[file] {
+	for _, file := range slices.Sorted(maps.Keys(want)) {
+		if generated[file] < want[file] {
 			t.Errorf("%s: %d groups generated, want at least %d",
-				file, generated[file], suiteGenerated[file])
+				file, generated[file], want[file])
 		}
 	}
 
 	for _, file := range slices.Sorted(maps.Keys(generated)) {
-		if generated[file] > suiteGenerated[file] {
-			t.Logf("%s: %d groups generated, more than %d: raise the number in suiteGenerated",
-				file, generated[file], suiteGenerated[file])
+		if generated[file] > want[file] {
+			t.Logf("%s: %d groups generated, more than %d: raise the number of the set",
+				file, generated[file], want[file])
 		}
 	}
 }
 
 // checkUnsupported reports a file of the suite that rejects another number
-// of groups than suiteUnsupported records, a reason of a rejection that
-// suiteUnsupportedReasons does not list and a listed reason no rejection
-// has.
-func checkUnsupported(t *testing.T, unsupported, reasons map[string]int) {
+// of groups than set records, a reason of a rejection that set does not
+// list and a listed reason no rejection has.
+func checkUnsupported(t *testing.T, set suiteSet, unsupported, reasons map[string]int) {
 	t.Helper()
 
 	files := slices.Compact(
-		opiter.WrapSeq(maps.Keys(suiteUnsupported)).
+		opiter.WrapSeq(maps.Keys(set.unsupported)).
 			Concat(maps.Keys(unsupported)).
 			Collect(slices.Sorted),
 	)
 
 	for _, file := range files {
-		if unsupported[file] != suiteUnsupported[file] {
-			t.Errorf("%s: %d groups unsupported, suiteUnsupported records %d",
-				file, unsupported[file], suiteUnsupported[file])
+		if unsupported[file] != set.unsupported[file] {
+			t.Errorf("%s: %d groups unsupported, the set records %d",
+				file, unsupported[file], set.unsupported[file])
 		}
 	}
 
 	for _, r := range slices.Sorted(maps.Keys(reasons)) {
-		if !slices.Contains(suiteUnsupportedReasons, r) {
-			t.Errorf("unsupported for a reason suiteUnsupportedReasons does not list: %s", r)
+		if !slices.Contains(set.reasons, r) {
+			t.Errorf("unsupported for a reason the set does not list: %s", r)
 		}
 	}
 
-	for _, r := range suiteUnsupportedReasons {
+	for _, r := range set.reasons {
 		if reasons[r] == 0 {
 			t.Errorf("no group is unsupported for the listed reason: %s", r)
 		}
@@ -328,11 +533,6 @@ func sumValues(m map[string]int) int {
 		Reduce(func(sum, n int) int { return sum + n }, 0)
 }
 
-func compareSuiteKeys(a, b suiteKey) int {
-	return cmp.Or(cmp.Compare(a.file, b.file), cmp.Compare(a.group, b.group),
-		cmp.Compare(a.test, b.test))
-}
-
 // suiteStem returns the directory of the packages of file under suiteDir.
 func suiteStem(file string) string { return strings.TrimSuffix(file, ".json") }
 
@@ -340,11 +540,12 @@ func suiteStem(file string) string { return strings.TrimSuffix(file, ".json") }
 func suiteGroupDir(gi int) string { return fmt.Sprintf("g%03d", gi) }
 
 // runSuiteSpec generates the groups accepted of file into suiteDir with a
-// workflow running one jsonschema.generate step per group. The overlay is
+// workflow running one jsonschema.generate step per group, asserting
+// formats as assertFormats tells. The overlay is
 // rooted at this module, which holds both the suite and suiteDir. The
 // copy down skips its compile check: the packages under suiteDir belong
 // to another module, and building the driver checks them.
-func runSuiteSpec(t *testing.T, file string, accepted []int) {
+func runSuiteSpec(t *testing.T, file string, accepted []int, assertFormats bool) {
 	t.Helper()
 
 	if len(accepted) == 0 {
@@ -377,10 +578,11 @@ func runSuiteSpec(t *testing.T, file string, accepted []int) {
 			Proc: "jsonschema.generate",
 			Out:  workflow.Names{"root"},
 			Param: map[string]any{
-				"schema":    fmt.Sprintf("%s#/%d/schema", schema, gi),
-				"dir":       path.Join(out, name),
-				"type_name": "Root",
-				"remotes":   remotes,
+				"schema":         fmt.Sprintf("%s#/%d/schema", schema, gi),
+				"dir":            path.Join(out, name),
+				"type_name":      "Root",
+				"remotes":        remotes,
+				"assert_formats": assertFormats,
 			},
 		}
 	}

@@ -427,13 +427,17 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 		// format
 		{"format unknown", "//kama:validate format=email\n\tN string", ErrUnsupported,
 			[]string{"//kama:validate format on field V",
-				`unknown format "email"; known: date, date-time, url`}},
+				`unknown format "email"; known: date, date-time, ipv4, ipv6, url, uuid`}},
 		{"format no name", "//kama:validate format\n\tN string", ErrUnsupported,
-			[]string{"want one format name; known: date, date-time, url"}},
+			[]string{"want one format name; known: date, date-time, ipv4, ipv6, url, uuid"}},
 		{"format int", "//kama:validate format=date\n\tN int", ErrUnsupported,
-			[]string{"int is not a string type"}},
-		{"format elastic", "//kama:validate format=date\n\tN elastic.Elastic[string]",
-			ErrUnsupported, []string{"elastic.Elastic[string] is not a string type"}},
+			[]string{"int is neither a string type nor raw JSON text"}},
+		{
+			"format elastic",
+			"//kama:validate format=date\n\tN elastic.Elastic[string]",
+			ErrUnsupported,
+			[]string{"elastic.Elastic[string] is neither a string type nor raw JSON text"},
+		},
 		{"nil elastic", "//kama:validate nil\n\tN elastic.Elastic[*int]", ErrUnsupported,
 			[]string{"elastic.Elastic[*int] is not nillable"}},
 		{"regexp elastic", "//kama:validate regexp=a\n\tN elastic.Elastic[string]",
@@ -443,7 +447,7 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 		{"const elastic", "//kama:validate const=1\n\tN elastic.Elastic[int]", ErrUnsupported,
 			[]string{"elastic.Elastic[int] is not a bool, numeric or string type"}},
 		{"format bytes", "//kama:validate format=date\n\tN []byte", ErrUnsupported,
-			[]string{"[]byte is not a string type"}},
+			[]string{"[]byte is neither a string type nor raw JSON text"}},
 	}
 
 	for _, tc := range cases {
@@ -686,7 +690,11 @@ func TestFormatExtra(t *testing.T) {
 	assertContains(t, out[HelpersFile], "func kamaValidateFormatLower(got string) error {")
 
 	_, err = generate(t, files, Options{})
-	assert.ErrorContains(t, err, `unknown format "lower"; known: date, date-time, url`)
+	assert.ErrorContains(
+		t,
+		err,
+		`unknown format "lower"; known: date, date-time, ipv4, ipv6, url, uuid`,
+	)
 }
 
 // TestPromotedIsZero calls IsZero only when the zero value can call it. A

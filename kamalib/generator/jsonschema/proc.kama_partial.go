@@ -4,7 +4,7 @@
 //	merge_nested: "recursive"
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T16:06:40Z
+// generated: 2026-11-24T16:56:04Z
 
 package jsonschema
 
@@ -14,13 +14,14 @@ import "github.com/ngicks/option/und"
 //
 //kama:generated kama:partial
 type ProcParamPartial struct {
-	Schema   und.Und[string]   `json:"schema,omitzero"`
-	Dir      und.Und[string]   `json:"dir,omitzero"`
-	Package  und.Und[string]   `json:"package,omitzero"`
-	TypeName und.Und[string]   `json:"type_name,omitzero"`
-	Remotes  und.Und[[]Remote] `json:"remotes,omitzero"`
-	Validate und.Und[bool]     `json:"validate,omitzero"`
-	Unknown  map[string]any    `json:",embed"`
+	Schema        und.Und[string]   `json:"schema,omitzero"`
+	Dir           und.Und[string]   `json:"dir,omitzero"`
+	Package       und.Und[string]   `json:"package,omitzero"`
+	TypeName      und.Und[string]   `json:"type_name,omitzero"`
+	Remotes       und.Und[[]Remote] `json:"remotes,omitzero"`
+	AssertFormats und.Und[bool]     `json:"assert_formats,omitzero"`
+	Validate      und.Und[bool]     `json:"validate,omitzero"`
+	Unknown       map[string]any    `json:",embed"`
 }
 
 // FromValue sets every field of p to the partial form of the field of v.
@@ -33,6 +34,7 @@ func (p *ProcParamPartial) FromValue(v ProcParam) {
 	p.Package = und.Defined(v.Package)
 	p.TypeName = und.Defined(v.TypeName)
 	p.Remotes = und.WrapSlice(v.Remotes).CollapseToNull()
+	p.AssertFormats = und.Defined(v.AssertFormats)
 	p.Validate = und.Defined(v.Validate)
 	p.Unknown = v.Unknown
 }
@@ -48,6 +50,7 @@ func (p ProcParamPartial) ToValue() ProcParam {
 	v.Package = p.Package.Value()
 	v.TypeName = p.TypeName.Value()
 	v.Remotes = p.Remotes.Value()
+	v.AssertFormats = p.AssertFormats.Value()
 	v.Validate = p.Validate.Value()
 	v.Unknown = p.Unknown
 	return v
@@ -72,6 +75,9 @@ func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
 	}
 	if !r.Remotes.IsUndefined() {
 		p.Remotes = r.Remotes
+	}
+	if !r.AssertFormats.IsUndefined() {
+		p.AssertFormats = r.AssertFormats
 	}
 	if !r.Validate.IsUndefined() {
 		p.Validate = r.Validate

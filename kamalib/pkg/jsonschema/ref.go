@@ -263,26 +263,17 @@ func resolveId(base, id string) (string, error) {
 	return u, nil
 }
 
-// resolveUri resolves ref against base as RFC 3986 tells. An empty base
-// leaves ref as it is and an empty ref gives base without its fragment,
-// since resolving either would root the path of a relative URI.
+// resolveUri resolves ref against base as RFC 3986 tells. Against an
+// empty or a relative base the path of a relative reference is rooted, as
+// "" and "a.json" give "/a.json", so a URI resolves to one spelling
+// whatever document it is written in.
 func resolveUri(base, ref string) (string, error) {
-	r, err := url.Parse(ref)
+	b, err := url.Parse(base)
 	if err != nil {
 		return "", err
 	}
 
-	if base == "" {
-		return r.String(), nil
-	}
-
-	// A relative base would otherwise come back with a rooted path.
-	if ref == "" {
-		base, _, _ = strings.Cut(base, "#")
-		return base, nil
-	}
-
-	b, err := url.Parse(base)
+	r, err := url.Parse(ref)
 	if err != nil {
 		return "", err
 	}

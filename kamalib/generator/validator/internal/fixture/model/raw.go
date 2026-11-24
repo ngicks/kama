@@ -23,4 +23,10 @@ type RawBag struct {
 	Fixed jsontext.Value `json:"fixed"`
 	//kama:validate not(cmp=">=5")
 	Below Loose `json:"below"`
+	//kama:validate format=uuid
+	Id jsontext.Value `json:"id,omitzero"`
+	//kama:validate format=ipv4
+	Ipv4 jsontext.Value `json:"ipv4,omitzero"`
+	//kama:validate format=ipv6
+	Ipv6 jsontext.Value `json:"ipv6,omitzero"`
 }

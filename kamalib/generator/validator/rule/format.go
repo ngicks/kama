@@ -12,7 +12,9 @@ import (
 // Format is the validator //kama:validate format=<name>: the value is a
 // string of the named format.
 //
-// It applies to types of a string underlying type. Formats holds the
+// It applies to types of a string underlying type and to raw JSON text, as
+// IsRawJson tells, where it checks strings and passes a value of another
+// kind. Formats holds the
 // formats by name; DefaultFormats returns the built-in ones. A caller adds
 // a format by registering a Format holding it in place of the built-in
 // one:
@@ -39,8 +41,47 @@ type FormatHelper struct {
 //   - date: a date as time.DateOnly (2006-01-02) parses it.
 //   - date-time: a date and time as time.RFC3339 parses it.
 //   - url: a URL that net/url parses, with a scheme and a host.
+//   - ipv4: an IPv4 address in dotted decimal, as netip.ParseAddr parses
+//     it.
+//   - ipv6: an IPv6 address without a zone, as netip.ParseAddr parses it.
+//   - uuid: a UUID as RFC 9562 spells it, 32 hexadecimal digits in groups
+//     of 8, 4, 4, 4 and 12 separated by hyphens.
 func DefaultFormats() map[string]FormatHelper {
 	return map[string]FormatHelper{
+		"ipv4": {Name: "kamaValidateFormatIpv4", Decl: checkFormatDecl(
+			"kamaValidateFormatIpv4", "ipv4", func(imp Importer) Gen {
+				return lang.Expr("%s, %s := %s.ParseAddr(%s); %s != nil || !%s.Is4()",
+					shadow("a"), shadow("err"), imp.Import("net/netip"), ref("got"),
+					ref("err"), ref("a"))
+			},
+		)},
+		"ipv6": {Name: "kamaValidateFormatIpv6", Decl: checkFormatDecl(
+			"kamaValidateFormatIpv6", "ipv6", func(imp Importer) Gen {
+				return lang.Expr(
+					`%s, %s := %s.ParseAddr(%s); %s != nil || !%s.Is6() || %s.Zone() != ""`,
+					shadow("a"),
+					shadow("err"),
+					imp.Import("net/netip"),
+					ref("got"),
+					ref("err"),
+					ref("a"),
+					ref("a"),
+				)
+			},
+		)},
+		"uuid": {Name: "kamaValidateFormatUuid", Decl: checkFormatDecl(
+			"kamaValidateFormatUuid", "uuid", func(imp Importer) Gen {
+				str := imp.Import("strings")
+
+				return lang.Expr(
+					`len(%s) != 36 || %s.Count(%s, "-") != 4 || `+
+						`%s[8] != '-' || %s[13] != '-' || %s[18] != '-' || %s[23] != '-' || `+
+						`%s.Trim(%s, "-0123456789abcdefABCDEF") != ""`,
+					ref("got"), str, ref("got"), ref("got"), ref("got"), ref("got"), ref("got"),
+					str, ref("got"),
+				)
+			},
+		)},
 		"date": {Name: "kamaValidateFormatDate", Decl: timeFormatDecl(
 			"kamaValidateFormatDate", "DateOnly", "date (2006-01-02)",
 		)},
@@ -78,18 +119,23 @@ func (f Format) Parse(arg string, _ Resolver) (Rule, error) {
 	return FormatOptions{Name: arg, Helper: h}, nil
 }
 
-// Check accepts string types.
+// Check accepts string types and raw JSON text.
 func (FormatOptions) Check(t types.Type) error {
-	if !isStringType(t) {
-		return fmt.Errorf("%s is not a string type", t)
+	if !isStringType(t) && !IsRawJson(t) {
+		return fmt.Errorf("%s is neither a string type nor raw JSON text", t)
 	}
 
 	return nil
 }
 
-// Emit calls the helper of the format.
+// Emit calls the helper of the format, through rawjson.Format on raw JSON
+// text.
 func (o FormatOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	e.Declare(o.Helper.Name, o.Helper.Decl)
+
+	if IsRawJson(t) {
+		return rawCall(e, "Format", v, lang.Expr("%s", o.Helper.Name)), nil
+	}
 
 	return lang.Expr("%s(%s)", o.Helper.Name, convert(t, types.Typ[types.String], "string", v)), nil
 }
@@ -105,6 +151,26 @@ func timeFormatDecl(name, layout, desc string) func(imp Importer) Step {
 			lang.If(
 				lang.Expr("_, %s := %s.Parse(%s.%s, %s); %s != nil",
 					shadow("err"), tm, tm, layout, ref("got"), ref("err")),
+				lang.Stmt("return %s.New(%s.ErrFormat, %s, %s)",
+					v, v, strconv.Quote("want format "+desc+", got %q"), ref("got")),
+				nil,
+			),
+			lang.Stmt("return nil"),
+		)
+	}
+}
+
+// checkFormatDecl returns the declaration of the helper name rejecting a
+// string for which the if header failed gives true, which reads the string
+// as got.
+func checkFormatDecl(name, desc string, failed func(imp Importer) Gen) func(imp Importer) Step {
+	return func(imp Importer) Step {
+		v := imp.Import(ValidationPath)
+
+		return lang.Func(
+			lang.Expr("func %s(%s string) error", name, shadow("got")),
+			lang.If(
+				failed(imp),
 				lang.Stmt("return %s.New(%s.ErrFormat, %s, %s)",
 					v, v, strconv.Quote("want format "+desc+", got %q"), ref("got")),
 				nil,

@@ -62,6 +62,11 @@ type Options struct {
 	// embeds the documents it loads, as described under References in the
 	// package documentation. A nil Load makes such a reference an error.
 	Load func(uri string) (*jsonschema.Schema, error)
+	// AssertFormats makes the format keyword assert the formats the
+	// validator generator has a helper for, as assertedFormats lists.
+	// Without it format is an annotation, as draft 2020-12 has it by
+	// default.
+	AssertFormats bool
 	// Validate makes the decoders call Validate of the types the validator
 	// generator gives one, as described under Validation in the package
 	// documentation.

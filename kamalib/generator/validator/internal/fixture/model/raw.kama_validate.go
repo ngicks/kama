@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T13:29:27Z
+// generated: 2026-11-24T16:55:05Z
 
 package model
 
@@ -93,6 +93,24 @@ func (v RawBag) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if err := validation.Field(v.Below.Validate(stopOnFirstError), "below"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := validation.Field(rawjson.Format(v.Id, kamaValidateFormatUuid), "id"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := validation.Field(rawjson.Format(v.Ipv4, kamaValidateFormatIpv4), "ipv4"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := validation.Field(rawjson.Format(v.Ipv6, kamaValidateFormatIpv6), "ipv6"); err != nil {
 		if stopOnFirstError {
 			return err
 		}

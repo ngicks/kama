@@ -34,6 +34,9 @@
 //	           the out, as References describes; each entry has uri and
 //	           either file, the file of that URI, or dir, the directory
 //	           a URI starting with uri continues into
+//	assert_formats
+//	           whether format asserts the formats the validator
+//	           generator checks; false when left out
 //
 // The schema file holds JSON. A schema param with a fragment, such as
 // tests/minimum.json#/0/schema, takes the value the RFC 6901 pointer of the
@@ -235,9 +238,10 @@
 // A $ref resolves against the base URI of the schema holding it, which the
 // $id of that schema and of the schemas above it give, as package
 // github.com/ngicks/kama/kamalib/pkg/jsonschema resolves it. A root without
-// $id has an empty base URI, against which a relative reference stays
-// relative: Options.Load and the remotes param see pet.json for a $ref
-// pet.json. A schema declaring $id below the root is a
+// $id has an empty base URI, against which the path of a relative
+// reference is rooted: Options.Load and the remotes param see /pet.json for
+// a $ref pet.json, which a remote with uri / and a dir covers. A schema declaring $id below the
+// root is a
 // schema resource of its own: a reference names it by its URI, a fragment
 // pointer in a reference starts at the resource, and an $anchor is looked
 // up in the resource holding the reference. A schema of an embedded
@@ -516,7 +520,17 @@
 // outer one, so decoding a value nested n levels deep validates the
 // innermost value n times.
 //
-// format and the content keywords are annotations and give no directive.
+// The content keywords are annotations and give no directive, and so is
+// format unless Options.AssertFormats is set. It makes format=<name> of the
+// validator generator check the formats date, date-time, ipv4, ipv6 and
+// uuid, on a string or on raw JSON text, and leaves the other formats
+// annotations. date-time parses with time.RFC3339, which rejects a leap
+// second and a lower-case t or z and accepts an offset out of range. The
+// format of an object property, of a type a schema declares and of a
+// schema in the validators of raw JSON text is checked. A schema that
+// declares no type for its other keywords, such as a string under items
+// or under $defs, leaves its format unchecked, since format gives it no
+// type of its own.
 // description and deprecated feed doc comments, keeping the lines of a
 // description. Every line is printed as a line comment of its own, so a
 // description cannot write a directive or end the comment. title names the

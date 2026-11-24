@@ -367,7 +367,7 @@ func TestGenerateHostileAnnotations(t *testing.T) {
 
 	content := files[0].Content
 
-	assert.NilError(t, generateSuite(jsontext.Value(schema)))
+	assert.NilError(t, generateSuite(jsontext.Value(schema), false))
 
 	marker := GeneratorId.Marker()
 	markers := 0
@@ -608,10 +608,14 @@ func TestGenerateDocuments(t *testing.T) {
 				`to "http://x.test/a.json": no such document`,
 		},
 		{
-			name:   "relative reference of a root without $id",
-			schema: `{"type":"object","properties":{"a":{"$ref":"pet.json"}}}`,
-			docs:   map[string]string{"pet.json": `{"type":"object"}`},
-			want:   []string{"type Pet struct", "A opt.Option[Pet]"},
+			name: "relative references of a root without $id",
+			schema: `{"type":"object","properties":{"a":{"$ref":"a.json"},
+				"b":{"$ref":"b.json"}}}`,
+			docs: map[string]string{
+				"/a.json": `{"type":"object","properties":{"b":{"$ref":"b.json"}}}`,
+				"/b.json": `{"type":"object","properties":{"a":{"$ref":"a.json"}}}`,
+			},
+			want: []string{"type A struct", "type B struct", "B opt.Option[B]"},
 		},
 		{
 			name: "definition keyed by an absolute URI without $id",
@@ -732,5 +736,27 @@ func TestGenerateVocabularies(t *testing.T) {
 				tc.meta == "http://x.test/optional",
 			)
 		})
+	}
+}
+
+func TestGenerateAssertFormats(t *testing.T) {
+	var doc jsonschema.Schema
+	assert.NilError(t, jsonv2.Unmarshal([]byte(`{"type":"object","properties":{
+		"id":{"type":"string","format":"uuid"},
+		"raw":{"format":"date","minLength":1},
+		"mail":{"type":"string","format":"email"}}}`), &doc))
+
+	for _, assertFormats := range []bool{false, true} {
+		files, _, err := Generate(&doc, Options{
+			Package: "p", TypeName: "Root", AssertFormats: assertFormats,
+		})
+		assert.NilError(t, err)
+
+		content := string(files[0].Content)
+
+		assert.Equal(t, strings.Contains(content, `//kama:validate format="uuid"`), assertFormats)
+		assert.Equal(t, strings.Contains(content, `format="date"`), assertFormats)
+		// The validator generator has no helper for email.
+		assert.Assert(t, !strings.Contains(content, `format="email"`))
 	}
 }
