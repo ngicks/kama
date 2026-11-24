@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Product",
+  "allOf": [{ "$ref": "#/$defs/A" }, { "$ref": "#/$defs/B" }],
+  "required": ["req"],
+  "properties": {
+    "req": { "$ref": "#/$defs/Back" }
+  },
+  "$defs": {
+    "A": {
+      "type": "object",
+      "properties": {
+        "shared": { "type": "string", "description": "A declares shared first." },
+        "a": { "type": "integer" }
+      }
+    },
+    "B": {
+      "type": "object",
+      "properties": {
+        "shared": { "type": "string", "description": "B declares shared too.", "x-note": 1 },
+        "b": { "type": "integer" }
+      }
+    },
+    "Back": {
+      "type": "object",
+      "properties": { "product": { "$ref": "#" } }
+    }
+  }
+}

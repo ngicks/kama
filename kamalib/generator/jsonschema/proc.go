@@ -35,8 +35,9 @@ type ProcParam struct {
 	// Package is the package clause of the generated file. Empty means the
 	// base name of Dir.
 	Package string `json:"package"`
-	// TypeName names the Go type of the root schema. Empty takes the title
-	// of the root schema.
+	// TypeName names the Go type of the root schema as it is written, so it
+	// must be an exported Go identifier. Empty takes the title of the root
+	// schema.
 	TypeName string `json:"type_name"`
 	// Unknown captures the keys of a param that name no field.
 	Unknown map[string]any `json:",embed"`
@@ -118,6 +119,10 @@ func (i *instance) Param(partial ProcParamPartial) error {
 		if err := checkPackage(pkg); err != nil {
 			return fmt.Errorf("%w; set package", err)
 		}
+	}
+
+	if err := checkTypeName(p.TypeName); err != nil {
+		return err
 	}
 
 	i.opts = Options{Package: pkg, TypeName: p.TypeName, Schema: p.Schema, Dir: dir}

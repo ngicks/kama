@@ -70,6 +70,21 @@ func TestProcParam(t *testing.T) {
 			param: procParam("a.json", "", "a.b", ""),
 			err:   `package name "a.b"`,
 		},
+		{
+			name:  "type name not exported",
+			param: procParam("a.json", "", "", "pet"),
+			err:   `type name "pet"`,
+		},
+		{
+			name:  "type name not an identifier",
+			param: procParam("a.json", "", "", "a b"),
+			err:   `type name "a b"`,
+		},
+		{
+			name:  "type name starting with a digit",
+			param: procParam("a.json", "", "", "1x"),
+			err:   `type name "1x"`,
+		},
 	}
 
 	for _, tc := range cases {
@@ -138,6 +153,19 @@ func TestProcRun(t *testing.T) {
 	got, err := fs.ReadFile(f.FS(), "api/api.kama_jsonschema.go")
 	assert.NilError(t, err)
 	assert.Equal(t, string(got), string(want[0].Content))
+}
+
+// TestProcRunWarnsUnknownKeywords passes the warnings of Generate to the
+// reporter.
+func TestProcRunWarnsUnknownKeywords(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"api/schema.json": `{"title": "pet", "type": "object", "propertys": {}}`,
+	})
+
+	r := runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now())
+	assert.Equal(t, len(r.Warnings), 1, "%v", r.Warnings)
+	assert.ErrorIs(t, r.Warnings[0], ErrUnknownKeyword)
+	assert.ErrorContains(t, r.Warnings[0], "#/propertys")
 }
 
 // TestProcRunPackageFromRoot takes the base name of the root of the out

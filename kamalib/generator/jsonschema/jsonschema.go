@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"go/token"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
@@ -32,14 +35,19 @@ var (
 	ErrConflict = errors.New("jsonschema: name conflict")
 	// ErrOptions reports options Generate cannot work with.
 	ErrOptions = errors.New("jsonschema: invalid options")
+	// ErrUnknownKeyword is the warning of a member of a schema that names no
+	// keyword of draft 2020-12, such as a typo or a keyword of an older
+	// draft. The warning names its JSON pointer. A member whose name starts
+	// with "x-" is an extension keyword and gives none.
+	ErrUnknownKeyword = errors.New("jsonschema: unknown keyword")
 )
 
 // Options configures Generate.
 type Options struct {
 	// Package is the name of the package the generated file belongs to.
 	Package string
-	// TypeName names the Go type of the root schema. Empty takes the title
-	// of the root schema.
+	// TypeName names the Go type of the root schema as it is, so it must be
+	// an exported Go identifier. Empty takes the title of the root schema.
 	TypeName string
 	// Schema is the path of the schema file. The header of the generated
 	// file records it as it is.
@@ -68,14 +76,17 @@ type File = base.File
 // Generate returns the Go declarations of doc, one file holding a type for
 // the root schema and for every schema under it that needs one.
 //
-// No warning is defined yet; the slice is there for the proc, which
-// reports the warnings of every generator the same way.
-//
-// The error wraps ErrUnsupported, ErrConflict or ErrOptions.
+// The warnings wrap ErrUnknownKeyword, one per unknown keyword of a schema
+// the generator reads, in the order of the schemas and of the keyword
+// names. The error wraps ErrUnsupported, ErrConflict or ErrOptions.
 func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 	opts = opts.WithDefaults()
 
 	if err := checkPackage(opts.Package); err != nil {
+		return nil, nil, err
+	}
+
+	if err := checkTypeName(opts.TypeName); err != nil {
 		return nil, nil, err
 	}
 
@@ -95,7 +106,33 @@ func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 
 	path := naming.SourceFile(filepath.Join(dir, opts.Package+".go"))
 
-	return []File{{Path: path, Content: content}}, nil, nil
+	return []File{{Path: path, Content: content}}, unknownKeywords(doc), nil
+}
+
+// unknownKeywords returns a warning for each unknown keyword of the
+// schemas of doc.
+func unknownKeywords(doc *jsonschema.Schema) []error {
+	var warnings []error
+
+	for ptr, s := range schemas(doc) {
+		warnings = append(warnings, opiter.WrapSeq2(opiter.MapsSorted(s.Unknown)).
+			OmitL().
+			Filter(func(k string) bool { return !strings.HasPrefix(k, "x-") }).
+			Map(func(k string) error { return fmt.Errorf("%w: #%s", ErrUnknownKeyword, child(ptr, k)) }).
+			CollectSlice()...)
+	}
+
+	return warnings
+}
+
+// checkTypeName reports name when it is neither empty nor an exported Go
+// identifier.
+func checkTypeName(name string) error {
+	if name != "" && (!token.IsIdentifier(name) || !token.IsExported(name)) {
+		return fmt.Errorf("%w: type name %q is no exported Go identifier", ErrOptions, name)
+	}
+
+	return nil
 }
 
 // checkPackage reports pkg when it is no package name.

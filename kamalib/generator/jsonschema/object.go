@@ -9,7 +9,6 @@ import (
 
 	"github.com/ngicks/opiter"
 
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
@@ -55,7 +54,7 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 
 		if a := annotations(n.Schema); len(a) > 0 {
 			steps = append(steps, lang.Line(lang.Comment(
-				lang.Expr("%s", genhelper.WrapComment(strings.Join(a, "\n\n"), commentWidth)),
+				lang.Expr("%s", commentLines(strings.Join(a, "\n\n"))),
 			)))
 		}
 
@@ -73,10 +72,10 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	steps = append(steps, lang.Stmt("}"))
-	steps = append(steps, marshalSteps(doc, opts, ptr, name, parts)...)
-	steps = append(steps, wireSteps(doc, opts, ptr, name)...)
+	steps = append(steps, marshalSteps(doc, opts, ptr)...)
+	steps = append(steps, wireSteps(doc, opts, ptr)...)
 
-	return append(steps, unmarshalSteps(doc, opts, ptr, name, parts)...)
+	return append(steps, unmarshalSteps(doc, opts, ptr)...)
 }
 
 // productParts names what the product at ptr is made of: its members
@@ -106,25 +105,39 @@ func productParts(doc *jsonschema.Schema, opts Options, ptr string) (string, err
 
 // marshalSteps returns MarshalJSONTo of the struct or product at ptr. A
 // product writes its members and own properties into one object. A struct
-// needs one only to reject a nil pointer of a required member.
-func marshalSteps(
-	doc *jsonschema.Schema,
-	opts Options,
-	ptr, name, parts string,
-) []genStep {
+// needs one only to reject a nil pointer of a required member, which a
+// product rejects too.
+func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
 		return []genStep{lang.Fail(err)}
 	}
 
+	name, err := typeName(doc, opts, ptr)
+	if err != nil {
+		return []genStep{lang.Fail(err)}
+	}
+
 	sig := lang.Expr("func (v %s) MarshalJSONTo(enc *%s) error", name, q(jsontextPath, "Encoder"))
+	nilText := "A nil pointer of a required member is an error."
+	body := nilChecks(doc, ptr)
 
 	if s.AllOf != nil {
+		parts, err := productParts(doc, opts, ptr)
+		if err != nil {
+			return []genStep{lang.Fail(err)}
+		}
+
+		text := "MarshalJSONTo encodes v as one JSON object holding the members of " + parts +
+			". The first of them to hold a member name writes it."
+		if body != nil {
+			text += " " + nilText
+		}
+
 		values := opiter.WrapSeq(opiter.Range(0, len(s.AllOf))).
 			Map(func(i int) genExpr { return lang.Expr("v.%s", memberField(doc, opts, ptr, i)) }).
 			CollectSlice()
 
-		body := []genStep{}
 		if s.Properties != nil {
 			body = append(body, lang.Stmt("type plain %s", name))
 			values = append(values, lang.Expr("plain(v)"))
@@ -134,12 +147,32 @@ func marshalSteps(
 			"return %s(enc, %s)", q(runtimePath, "MarshalObjects"), lang.Join(", ", values...),
 		))
 
-		return []genStep{lang.DocFunc(
-			docComment("MarshalJSONTo encodes v as one JSON object holding the members of "+
-				parts+". The first of them to hold a member name writes it."),
-			sig,
-			body...,
-		)}
+		return []genStep{lang.DocFunc(docComment(text), sig, body...)}
+	}
+
+	if body == nil {
+		return nil
+	}
+
+	body = append(body,
+		lang.Stmt("type plain %s", name),
+		lang.Stmt("return %s(enc, plain(v))", q(jsonPath, "MarshalEncode")),
+	)
+
+	return []genStep{lang.DocFunc(
+		docComment("MarshalJSONTo encodes v as one JSON object. "+nilText),
+		sig,
+		body...,
+	)}
+}
+
+// nilChecks returns the statements of MarshalJSONTo of the struct or
+// product at ptr that reject a nil pointer of a required member, or nil
+// when no required member is a pointer.
+func nilChecks(doc *jsonschema.Schema, ptr string) []genStep {
+	s, err := at(doc, ptr)
+	if err != nil {
+		return []genStep{lang.Fail(err)}
 	}
 
 	var body []genStep
@@ -161,28 +194,19 @@ func marshalSteps(
 		))
 	}
 
-	if body == nil {
-		return nil
-	}
-
-	body = append(body,
-		lang.Stmt("type plain %s", name),
-		lang.Stmt("return %s(enc, plain(v))", q(jsonPath, "MarshalEncode")),
-	)
-
-	return []genStep{lang.DocFunc(
-		docComment("MarshalJSONTo encodes v as one JSON object. A nil pointer of a required "+
-			"member is an error."),
-		sig,
-		body...,
-	)}
+	return body
 }
 
 // wireSteps returns the struct the object at ptr decodes through: every
 // property as an und.Und, or as raw text where its Go type holds null
 // itself, then the members the object rejects or keeps.
-func wireSteps(doc *jsonschema.Schema, opts Options, ptr, name string) []genStep {
+func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
+	if err != nil {
+		return []genStep{lang.Fail(err)}
+	}
+
+	name, err := typeName(doc, opts, ptr)
 	if err != nil {
 		return []genStep{lang.Fail(err)}
 	}
@@ -222,18 +246,25 @@ func wireSteps(doc *jsonschema.Schema, opts Options, ptr, name string) []genStep
 }
 
 // unmarshalSteps returns UnmarshalJSONFrom of the struct or product at ptr.
-func unmarshalSteps(
-	doc *jsonschema.Schema,
-	opts Options,
-	ptr, name, parts string,
-) []genStep {
+func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
 		return []genStep{lang.Fail(err)}
 	}
 
+	name, err := typeName(doc, opts, ptr)
+	if err != nil {
+		return []genStep{lang.Fail(err)}
+	}
+
 	text := "UnmarshalJSONFrom decodes v from one JSON object. "
+
 	if s.AllOf != nil {
+		parts, err := productParts(doc, opts, ptr)
+		if err != nil {
+			return []genStep{lang.Fail(err)}
+		}
+
 		text += strings.Replace(parts, "its own", "the own", 1) + " decode from the same object. "
 	}
 
@@ -358,31 +389,68 @@ func decodeSteps(doc *jsonschema.Schema, opts Options, ptr, name string) []genSt
 		steps = conv("Optional")
 	}
 
-	allowed, err := allowedValues(doc, pp)
+	enum, err := enumCheck(
+		doc,
+		pp,
+		lang.Expr("w.%s.Value()", f),
+		lang.Expr("%s(raw, %s)", q(runtimePath, "Member"), strconv.Quote(name)),
+	)
 	if err != nil {
 		return append(steps, lang.Fail(err))
 	}
 
-	if allowed == nil {
+	if enum == nil {
 		return steps
 	}
 
+	// IsDefined skips null, which a nullable value admits besides the enum.
 	return append(steps, lang.If(
 		lang.Expr("w.%s.IsDefined()", f),
 		lang.Stmt(
-			"errs = append(errs, %s(%s(w.%s.Value(), %s), %s))",
-			q(validPath, "Field"), q(runtimePath, "Enum"), f, strings.Join(allowed, ", "),
+			"errs = append(errs, %s(%s, %s))",
+			q(validPath, "Field"),
+			enum,
 			strconv.Quote(name),
 		),
 		nil,
 	))
 }
 
+// enumCheck returns the call checking a value of the schema at ptr against
+// its const or its enum of scalars, or nil when it has neither. value
+// spells the Go value and raw its JSON text. A number compares by raw,
+// since its float64 rounds a value beyond 2^53.
+func enumCheck(doc *jsonschema.Schema, ptr string, value, raw genExpr) (genExpr, error) {
+	allowed, err := allowedValues(doc, ptr)
+	if err != nil || allowed == nil {
+		return nil, err
+	}
+
+	r, _, err := resolvedValue(doc, ptr)
+	if err != nil {
+		return nil, err
+	}
+
+	k, err := kinds(doc, r)
+	if err != nil {
+		return nil, err
+	}
+
+	if slices.Equal(k, []string{"number"}) {
+		return lang.Expr(
+			"%s(%s, %s)", q(runtimePath, "NumberEnum"), raw, joinComma(quoteAll(allowed)),
+		), nil
+	}
+
+	return lang.Expr("%s(%s, %s)", q(runtimePath, "Enum"), value, joinComma(allowed)), nil
+}
+
 // allowedValues returns the Go literals of the const or the enum of scalars
-// the schema at ptr restricts its value to, or nil when it has neither. An
-// enum of strings declares a type that checks itself.
+// the schema at ptr restricts its value to, or nil when it has neither. It
+// reads the value of a nullable union. An enum of strings declares a type
+// that checks itself.
 func allowedValues(doc *jsonschema.Schema, ptr string) ([]string, error) {
-	r, s, err := resolved(doc, ptr)
+	r, s, err := resolvedValue(doc, ptr)
 	if err != nil {
 		return nil, err
 	}

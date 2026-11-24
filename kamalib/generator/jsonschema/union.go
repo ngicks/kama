@@ -113,19 +113,19 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		),
 	))
 
-	return append(steps, unionUnmarshal(doc, opts, ptr, name, names))
+	return append(steps, unionUnmarshal(doc, opts, ptr))
 }
 
 // unionUnmarshal returns UnmarshalJSONFrom of the union at ptr: every
 // member the value may match decodes it, and OneOf or AnyOf picks the
 // result.
-func unionUnmarshal(
-	doc *jsonschema.Schema,
-	opts Options,
-	ptr, name string,
-	names []string,
-) genStep {
+func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 	s, err := at(doc, ptr)
+	if err != nil {
+		return lang.Fail(err)
+	}
+
+	name, err := typeName(doc, opts, ptr)
 	if err != nil {
 		return lang.Fail(err)
 	}
@@ -144,7 +144,12 @@ func unionUnmarshal(
 
 	body = append(body, lang.Stmt("var errs []error"))
 
-	for i, m := range names {
+	for i := range members(s) {
+		m, err := memberName(doc, opts, ptr, i)
+		if err != nil {
+			return lang.Fail(err)
+		}
+
 		found := []genStep{lang.Stmt("found = append(found, %s{%s: m})", name+m, m)}
 		if isNullMember(doc, ptr, i) {
 			found = []genStep{lang.Stmt("found = append(found, %s{})", name+m)}

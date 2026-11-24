@@ -58,6 +58,7 @@ func child(ptr string, keys ...string) string {
 // the root and, depth first, the schemas under properties, the schema of
 // additionalProperties, items, the members of oneOf, anyOf and allOf, then
 // those under $defs. No reference is followed, so each schema comes once.
+// A nil schema comes as it is, with nothing under it.
 func schemas(doc *jsonschema.Schema) iter.Seq2[string, *jsonschema.Schema] {
 	return func(yield func(string, *jsonschema.Schema) bool) {
 		visit("", doc, yield)
@@ -67,6 +68,10 @@ func schemas(doc *jsonschema.Schema) iter.Seq2[string, *jsonschema.Schema] {
 func visit(ptr string, s *jsonschema.Schema, yield func(string, *jsonschema.Schema) bool) bool {
 	if !yield(ptr, s) {
 		return false
+	}
+
+	if s == nil {
+		return true
 	}
 
 	for _, n := range s.Properties {
@@ -314,7 +319,8 @@ func nullMember(doc *jsonschema.Schema, ptr string) bool {
 
 // nullableUnion reports whether the schema at ptr is a oneOf or an anyOf of
 // one schema and a schema admitting null only, which make a nullable value
-// of that schema.
+// of that schema. In a oneOf the other schema must not admit null, or null
+// would match both members.
 func nullableUnion(doc *jsonschema.Schema, ptr string) bool {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -331,8 +337,17 @@ func nullableUnion(doc *jsonschema.Schema, ptr string) bool {
 	nulls := opiter.WrapSeq(slices.Values([]int{0, 1})).
 		Filter(func(i int) bool { return nullMember(doc, child(ptr, kw, strconv.Itoa(i))) }).
 		CollectSlice()
+	if len(nulls) != 1 {
+		return false
+	}
 
-	return len(nulls) == 1
+	if kw == "anyOf" {
+		return true
+	}
+
+	k, err := kinds(doc, child(ptr, kw, strconv.Itoa(1-nulls[0])))
+
+	return err == nil && !slices.Contains(k, "null")
 }
 
 // valueMember returns the pointer of the member of the nullable union at
@@ -346,6 +361,27 @@ func valueMember(doc *jsonschema.Schema, ptr string) string {
 	}
 
 	return child(ptr, kw, "0")
+}
+
+// resolvedValue is resolved for a schema that is no nullable union. For a
+// nullable union it gives the schema of its value instead, which holds the
+// const or the enum the value is checked against.
+func resolvedValue(doc *jsonschema.Schema, ptr string) (string, *jsonschema.Schema, error) {
+	var seen []string
+
+	for {
+		r, s, err := resolved(doc, ptr)
+		if err != nil || !nullableUnion(doc, r) {
+			return r, s, err
+		}
+
+		if slices.Contains(seen, r) {
+			return "", nil, unsupported(r, "is a nullable value of itself")
+		}
+
+		seen = append(seen, r)
+		ptr = valueMember(doc, r)
+	}
 }
 
 // nullable reports whether the schema at ptr is a nullable value of
@@ -403,8 +439,9 @@ func declares(doc *jsonschema.Schema, ptr string) bool {
 	return union(s) || s.AllOf != nil || stringEnum(s) || structKind(s)
 }
 
-// union reports whether s is a union: a oneOf, an anyOf or a type of two or
-// more kinds. A nullable union is not one, which only declares checks.
+// union reports whether s holds a oneOf, an anyOf or a type of two or more
+// kinds. It does not tell a nullable union apart, which declares no union:
+// callers that need the difference ask nullableUnion, as declares does.
 func union(s *jsonschema.Schema) bool { return unionKeyword(s) != "" || multiKind(s) }
 
 // product reports whether s is an allOf of members that each give a field.

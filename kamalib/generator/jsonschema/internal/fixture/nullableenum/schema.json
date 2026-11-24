@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Levels",
+  "type": "object",
+  "properties": {
+    "ref": { "anyOf": [{ "$ref": "#/$defs/Level" }, { "type": "null" }] },
+    "const": { "oneOf": [{ "const": "x" }, { "type": "null" }] },
+    "big": { "oneOf": [{ "type": "number", "const": 18446744073709551616 }, { "type": "null" }] },
+    "number": { "type": "number", "enum": [1.5, 18446744073709551616] }
+  },
+  "$defs": {
+    "Level": { "type": "integer", "enum": [1, 2, 3] }
+  }
+}

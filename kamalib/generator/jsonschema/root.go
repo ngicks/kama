@@ -1,8 +1,6 @@
 package jsonschema
 
 import (
-	"strings"
-
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
@@ -21,7 +19,14 @@ func rootSteps(doc *jsonschema.Schema, opts Options) []genStep {
 		return []genStep{lang.Fail(err)}
 	}
 
-	allowed, err := allowedValues(doc, "")
+	// A nullable root decodes into an opt.Option, whose value holds the
+	// enum and whose none is the null the root admits besides.
+	value := lang.Expr("out")
+	if nullable(doc, "") {
+		value = lang.Expr("out.Value()")
+	}
+
+	enum, err := enumCheck(doc, "", value, lang.Expr("raw"))
 	if err != nil {
 		return []genStep{lang.Fail(err)}
 	}
@@ -40,18 +45,15 @@ func rootSteps(doc *jsonschema.Schema, opts Options) []genStep {
 		),
 	}
 
-	if allowed != nil {
+	if enum != nil {
 		decodeDoc += " It rejects a value the schema does not allow."
 
-		decode = append(decode, lang.If(
-			lang.Expr(
-				"err := %s(out, %s); err != nil",
-				q(runtimePath, "Enum"),
-				strings.Join(allowed, ", "),
-			),
-			lang.Stmt("return err"),
-			nil,
-		))
+		check := lang.If(lang.Expr("err := %s; err != nil", enum), lang.Stmt("return err"), nil)
+		if nullable(doc, "") {
+			check = lang.If(lang.Expr("out.IsSome()"), check, nil)
+		}
+
+		decode = append(decode, check)
 	}
 
 	return []genStep{

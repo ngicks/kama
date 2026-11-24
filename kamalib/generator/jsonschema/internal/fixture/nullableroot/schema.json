@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Code",
+  "anyOf": [{ "type": "number", "enum": [1.5, 18446744073709551616] }, { "type": "null" }]
+}

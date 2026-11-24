@@ -1,8 +1,6 @@
 package jsonschema
 
 import (
-	"bytes"
-	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"
@@ -34,6 +32,17 @@ var methodNames = []string{"MarshalJSONTo", "UnmarshalJSONFrom"}
 // check reports every schema of doc the generator cannot express, then
 // every pair of Go names that collide.
 func check(doc *jsonschema.Schema, opts Options) error {
+	// The other checks read every schema they reach, so a nil one is
+	// reported before any of them runs.
+	nils := opiter.WrapSeq2(schemas(doc)).
+		Filter(func(_ string, s *jsonschema.Schema) bool { return s == nil }).
+		OmitL().
+		Map(func(ptr string) error { return unsupported(ptr, "a nil schema") }).
+		CollectSlice()
+	if err := errors.Join(nils...); err != nil {
+		return err
+	}
+
 	var errs []error
 
 	for ptr, s := range schemas(doc) {
@@ -194,29 +203,98 @@ func checkUnion(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []erro
 		return []error{unsupported(child(ptr, kw), "%s has no member", kw)}
 	}
 
+	var errs []error
+	if kw == "oneOf" {
+		errs = checkDistinct(doc, ptr, s)
+	}
+
 	if s.Type.IsZero() {
-		return nil
+		return errs
 	}
 
 	// A type next to the union narrows it unless every member already
 	// admits only kinds the type lists.
+	var admitted []string
+
 	for i := range listOf(s, kw) {
 		k, err := kinds(doc, child(ptr, kw, strconv.Itoa(i)))
 		if err != nil {
-			return []error{err}
+			return append(errs, err)
 		}
+
+		admitted = append(admitted, k...)
 
 		for _, m := range k {
 			if !slices.Contains(s.Type.Names, m) &&
 				(m != "integer" || !slices.Contains(s.Type.Names, "number")) {
-				return []error{
+				return append(errs,
 					unsupported(child(ptr, "type"), "type narrows the members of %s", kw),
-				}
+				)
 			}
 		}
 	}
 
-	return nil
+	// The type would make the holder nullable while no member decodes null.
+	if slices.Contains(s.Type.Names, "null") && !slices.Contains(admitted, "null") {
+		errs = append(errs, unsupported(
+			child(ptr, "type"), "type admits null, which no member of %s does", kw,
+		))
+	}
+
+	return errs
+}
+
+// checkDistinct reports the members of the oneOf at ptr that the generated
+// code cannot tell apart, since it does not check the pure validation
+// keywords: two members equal but for those keywords, which a value always
+// matches both or neither of, and a member holding no other keyword, which
+// every value matches. The schema may still tell them apart, so the
+// generated code would reject values the schema accepts.
+func checkDistinct(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
+	kw := "oneOf"
+	n := len(listOf(s, kw))
+
+	if n < 2 {
+		return nil
+	}
+
+	var errs []error
+
+	checked := func(i int) (string, string, bool) {
+		_, rs, err := resolved(doc, child(ptr, kw, strconv.Itoa(i)))
+		if err != nil {
+			return "", "", false
+		}
+
+		a, okA := schemaText(rs, withoutAnnotations)
+		c, okC := schemaText(rs, withoutUnchecked)
+
+		return a, c, okA && okC
+	}
+
+	for i := range n {
+		a, c, ok := checked(i)
+		if ok && c == "{}" && a != "{}" {
+			errs = append(errs, unsupported(
+				child(ptr, kw, strconv.Itoa(i)),
+				"oneOf member holds only keywords the generated code does not check, "+
+					"so it matches every value",
+			))
+		}
+
+		for j := i + 1; j < n; j++ {
+			b, d, okJ := checked(j)
+			if ok && okJ && c == d && a != b {
+				errs = append(errs, unsupported(
+					child(ptr, kw),
+					"members %d and %d differ only in keywords the generated code does not check",
+					i, j,
+				))
+			}
+		}
+	}
+
+	return errs
 }
 
 func checkAllOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
@@ -225,7 +303,7 @@ func checkAllOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []erro
 	}
 
 	if transparentAllOf(s) {
-		return nil
+		return checkTransparentType(doc, ptr, s)
 	}
 
 	other := shapesOtherThan(s, "allOf", "type", "properties", "required", "additionalProperties")
@@ -306,8 +384,31 @@ func checkAllOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []erro
 	return errs
 }
 
-// sameSchema reports whether the schemas at a and b encode to the same
-// JSON text.
+// checkTransparentType reports a type next to the allOf of one member at
+// ptr that admits other kinds than the member. The allOf takes the type of
+// the member, which would drop the type.
+func checkTransparentType(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
+	if s.Type.IsZero() {
+		return nil
+	}
+
+	k, err := kinds(doc, child(ptr, "allOf", "0"))
+	if err != nil {
+		return []error{err}
+	}
+
+	if !slices.Equal(slices.Sorted(slices.Values(k)), slices.Sorted(slices.Values(s.Type.Names))) {
+		return []error{unsupported(
+			child(ptr, "type"), "type differs from the kinds %v of the only allOf member", k,
+		)}
+	}
+
+	return nil
+}
+
+// sameSchema reports whether the schemas at a and b admit the same values
+// and give the same Go type: they encode to the same JSON text once the
+// annotations are gone from them and from every schema under them.
 func sameSchema(doc *jsonschema.Schema, a, b string) bool {
 	sa, errA := at(doc, a)
 	sb, errB := at(doc, b)
@@ -316,10 +417,10 @@ func sameSchema(doc *jsonschema.Schema, a, b string) bool {
 		return false
 	}
 
-	ja, errA := jsonv2.Marshal(sa)
-	jb, errB := jsonv2.Marshal(sb)
+	ja, okA := schemaText(sa, withoutAnnotations)
+	jb, okB := schemaText(sb, withoutAnnotations)
 
-	return errA == nil && errB == nil && bytes.Equal(ja, jb)
+	return okA && okB && ja == jb
 }
 
 func checkEnum(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
@@ -345,6 +446,10 @@ func checkEnum(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error
 	}
 
 	if stringEnum(s) {
+		if !slices.Equal(k, []string{"string"}) {
+			return []error{unsupported(child(ptr, "type"), "enum of strings next to type %v", k)}
+		}
+
 		return nil
 	}
 

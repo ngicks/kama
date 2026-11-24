@@ -150,8 +150,9 @@ func suffixed(
 }
 
 func rootName(doc *jsonschema.Schema, opts Options) (string, error) {
+	// Generate has checked that the type name is an identifier.
 	if opts.TypeName != "" {
-		return identifier("", "type name", opts.TypeName)
+		return opts.TypeName, nil
 	}
 
 	if doc.Title.IsNone() {

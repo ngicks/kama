@@ -20,8 +20,9 @@
 //	dir        the output directory, relative to the root of the out;
 //	           the directory of schema when left out
 //	package    the package clause; the base name of dir when left out
-//	type_name  the name of the root type; the title of the root schema
-//	           when left out
+//	type_name  the name of the root type, an exported Go identifier
+//	           used as written; the title of the root schema when left
+//	           out
 //
 // The schema file holds JSON. A spec generating the types of
 // api/schema.json into api/api.kama_jsonschema.go of package api:
@@ -49,6 +50,11 @@
 // of package github.com/ngicks/kama/kamalib/generator/utils/base for it
 // and leaves it in place. Every file the generator marks in one directory
 // must therefore come from one run.
+//
+// A member of a schema that names no keyword of draft 2020-12, such as a
+// typo or a keyword of an older draft, gives a warning wrapping
+// ErrUnknownKeyword that names its JSON pointer. A member whose name starts
+// with x- is an extension keyword and gives none.
 //
 // # Shapes
 //
@@ -80,6 +86,8 @@
 //
 // A nullable value is a type naming null and one other kind, or a oneOf or
 // an anyOf of exactly a schema and a schema of type null. It is no union.
+// In a oneOf the schema must not admit null itself, or null would match
+// both members, and the oneOf stays a union.
 // Outside an object property it is an opt.Option of the type of the other
 // kind.
 //
@@ -118,12 +126,15 @@
 // A T that holds null itself, jsontext.Value or a union with a member of
 // type null, is the field when required and an opt.Option otherwise.
 //
-// The struct decodes through an unexported wire struct holding every
-// property as an und.Und, which keeps a missing member apart from null.
+// The struct decodes through an unexported wire struct. It holds a
+// property as an und.Und, which keeps a missing member apart from null, or
+// as a jsontext.Value where the Go type of the property holds null itself.
 // UnmarshalJSONFrom converts each wire field and reports every member the
 // schema rejects. A const or an enum of other than strings is checked
-// there. An enum of strings declares a string type with a constant per
-// value, which rejects any other value itself.
+// there, also inside a nullable value, whose null it lets through. Numbers
+// compare by the values their JSON texts write, exactly. An enum of
+// strings declares a string type with a constant per value, which rejects
+// any other value itself.
 //
 // additionalProperties false makes decoding reject the members the object
 // does not declare. A schema next to properties keeps them in the field
@@ -166,25 +177,38 @@
 // several kinds take the first in schema order and do not keep later
 // matches. Marshaling writes the member the holder holds.
 //
+// The generated code does not check the keywords listed under Not
+// enforced, so it cannot tell apart two members of a oneOf that differ
+// only in them, or in annotations, nor a member holding only them, which
+// every value matches. Such a oneOf is an error wrapping ErrUnsupported,
+// since the generated code would reject values the schema accepts.
+//
 // # allOf
 //
 // An allOf of one member and no keyword other than type takes the type of
-// the member. An allOf of more members declares a struct with a field per
-// member, tagged "-", followed by the fields of its own properties.
+// the member. The type must then name the kinds the member admits. An
+// allOf of more members declares a struct with a field per member, tagged
+// "-", followed by the fields of its own properties.
 // Decoding decodes each member and the own properties from the same
 // object. Marshaling writes one object holding the members of each, the
 // first to write a member name winning. A member must be an object. A
 // member rejecting other members by additionalProperties false, a member
 // holding the product itself, additionalProperties next to the allOf and
-// a property two members declare differently are errors.
+// a property two members declare differently are errors. Two declarations
+// differing only in annotations, such as title, description, default or
+// an extension keyword, are not different. A required member held by a nil
+// pointer is an error on marshaling, as in a struct.
 //
 // # Not enforced
 //
 // minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf,
 // minLength, maxLength, pattern, format, minItems, maxItems, uniqueItems,
 // minProperties, maxProperties, dependentRequired and the content keywords
-// are accepted and not checked. title, description and deprecated feed
-// doc comments, and the other annotations are ignored.
+// are accepted and not checked. description and deprecated feed doc
+// comments, keeping the lines of a description. Every line is printed as
+// a line comment of its own, so a description cannot write a directive or
+// end the comment. title names the root type and members of unions and
+// allOf instead, and the other annotations are ignored.
 //
 // # Unsupported
 //
@@ -197,13 +221,18 @@
 //   - a $ref leaving the document, a $ref next to a keyword that changes
 //     the type, a chain of references back to itself, and $id below the
 //     root;
-//   - the false schema as a value, a schema admitting null only outside a
-//     union, and a slice or a map holding itself with no declared type in
-//     between;
+//   - a nil schema of a document built in Go, the false schema as a
+//     value, a schema admitting null only outside a union, and a slice or
+//     a map holding itself with no declared type in between;
 //   - a const or an enum outside an object property and the root other
 //     than an enum of strings, one mixing kinds, and a value that is no Go
 //     constant of its type;
 //   - a required member without a property;
-//   - a type next to a oneOf or an anyOf that narrows its members, and
-//     keywords of both an object and an array.
+//   - a type next to a oneOf or an anyOf that narrows its members or
+//     admits null that no member admits, a type next to an allOf of one
+//     member naming other kinds than the member, an enum of strings next
+//     to a type other than string, and keywords of both an object and an
+//     array;
+//   - a oneOf of members the generated code cannot tell apart, as told
+//     under Unions.
 package jsonschema

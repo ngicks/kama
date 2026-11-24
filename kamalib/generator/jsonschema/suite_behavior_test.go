@@ -188,8 +188,6 @@ var suiteAllowed = map[suiteKey]string{
 		"by very small number",
 		"1.5e-8 is not multiple of 1e-8",
 	}: reasonUnenforced,
-	{"oneOf.json", "oneOf", "first oneOf valid"}:                                reasonUnenforced,
-	{"oneOf.json", "oneOf", "neither oneOf valid"}:                              reasonUnenforced,
 	{"pattern.json", "pattern validation", "a non-matching pattern is invalid"}: reasonUnenforced,
 	{
 		"pattern.json",

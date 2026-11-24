@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
+	"iter"
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/dave/dst"
 	"github.com/ngicks/opiter"
@@ -192,14 +194,51 @@ func q(path, name string) genExpr {
 	return func(c genCtx) (string, error) { return c.Package().Qual(path, name) }
 }
 
-// docComment returns the doc comment of a declaration: text wrapped at
-// commentWidth, an empty comment line and the marker of the generator.
+// docComment returns the doc comment of a declaration: the lines of
+// commentLines of text, an empty comment line and the marker of the
+// generator.
 func docComment(text string) genExpr {
-	return lang.DocComment(
-		base.Marker(GeneratorName),
-		"%s",
-		genhelper.WrapComment(text, commentWidth),
-	)
+	return lang.DocComment(base.Marker(GeneratorName), "%s", commentLines(text))
+}
+
+// commentLines returns text as Go line comments: each line of text, as
+// "\r\n", "\r" and "\n" end them, wrapped at commentWidth, every line
+// starting with "// " and an empty line being "//". genhelper prints text
+// that is comments already as it is.
+//
+// Text from the schema thus never starts a comment line itself, so it
+// cannot write a directive such as //go:generate or //line, forge the
+// marker of the generator or open or close a block comment. A control
+// character other than a line end and a byte order mark, which Go source
+// rejects, becomes a space.
+func commentLines(text string) string {
+	printable := func(r rune) rune {
+		if unicode.IsControl(r) || r == '\ufeff' {
+			return ' '
+		}
+
+		return r
+	}
+
+	lines := strings.Split(strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(text), "\n")
+
+	commented := opiter.WrapSeq(slices.Values(lines)).
+		FlatMap(func(l string) iter.Seq[string] {
+			return strings.SplitSeq(
+				genhelper.WrapComment(strings.Map(printable, l), commentWidth),
+				"\n",
+			)
+		}).
+		Map(func(l string) string {
+			if l == "" {
+				return "//"
+			}
+
+			return "// " + l
+		}).
+		CollectSlice()
+
+	return strings.Join(commented, "\n")
 }
 
 // typeDoc returns lead followed by the description of the schema at ptr
@@ -214,7 +253,8 @@ func typeDoc(doc *jsonschema.Schema, ptr, lead string) string {
 }
 
 // annotations returns the paragraphs of a doc comment the description and
-// deprecated keywords of s give.
+// deprecated keywords of s give. The title names a type or a member
+// instead, so it gives no paragraph.
 func annotations(s *jsonschema.Schema) []string {
 	var out []string
 
@@ -330,7 +370,7 @@ func elemTypeSeen(
 	ptr string,
 	seen []string,
 ) (string, error) {
-	r, s, err := resolved(doc, ptr)
+	r, s, err := resolvedValue(doc, ptr)
 	if err != nil {
 		return "", err
 	}
