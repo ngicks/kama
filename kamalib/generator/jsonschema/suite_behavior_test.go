@@ -364,6 +364,10 @@ func TestSuiteBehavior(t *testing.T) {
 
 	writeFile(t, filepath.Join(suiteDir, "main.go"), driver.source())
 
+	// Plain go vet runs structtag, which rejects a json tag on an
+	// unexported field, among the checks the generated code must pass.
+	suiteGo(t, "vet", "./...")
+
 	results := runSuiteDriver(t)
 	assert.Equal(t, len(results), len(keys))
 
@@ -807,7 +811,17 @@ func suiteModule(t *testing.T) {
 func runSuiteDriver(t *testing.T) []string {
 	t.Helper()
 
-	cmd := exec.Command("go", "run", ".")
+	return opiter.WrapSeq(strings.Lines(suiteGo(t, "run", "."))).
+		Map(func(l string) string { return strings.TrimSuffix(l, "\n") }).
+		CollectSlice()
+}
+
+// suiteGo runs the go command with args in suiteDir and returns its
+// standard output. A failing command fails t with its standard error.
+func suiteGo(t *testing.T, args ...string) string {
+	t.Helper()
+
+	cmd := exec.Command("go", args...)
 	cmd.Dir = suiteDir
 
 	// The go.work of the repository does not list the module.
@@ -818,11 +832,9 @@ func runSuiteDriver(t *testing.T) []string {
 	cmd.Stderr = &stderr
 
 	out, err := cmd.Output()
-	assert.NilError(t, err, "%s", stderr.String())
+	assert.NilError(t, err, "go %s: %s", strings.Join(args, " "), stderr.String())
 
-	return opiter.WrapSeq(strings.Lines(string(out))).
-		Map(func(l string) string { return strings.TrimSuffix(l, "\n") }).
-		CollectSlice()
+	return string(out)
 }
 
 func writeFile(t *testing.T, path string, content []byte) {

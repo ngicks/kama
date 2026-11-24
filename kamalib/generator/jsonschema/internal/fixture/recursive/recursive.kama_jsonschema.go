@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:41:07Z
+// generated: 2026-11-24T20:10:50Z
 
 package recursive
 
@@ -23,34 +23,11 @@ import (
 //kama:validate hook=off
 //kama:validate decoded
 type Forest struct {
-	Trees  []Tree                    `json:"trees"`
-	Groves opt.Option[[]Forest]      `json:"groves,omitzero"`
-	List   opt.Option[List]          `json:"list,omitzero"`
-	Chain  Chain                     `json:"chain"`
-	_x     map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Forest
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Forest) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Forest) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Trees                []Tree                    `json:"trees"`
-		Groves               opt.Option[[]Forest]      `json:"groves,omitzero"`
-		List                 opt.Option[List]          `json:"list,omitzero"`
-		Chain                Chain                     `json:"chain"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Trees: v.Trees, Groves: v.Groves, List: v.List, Chain: v.Chain, AdditionalProperties: v._x})
+	Trees                []Tree                    `json:"trees"`
+	Groves               opt.Option[[]Forest]      `json:"groves,omitzero"`
+	List                 opt.Option[List]          `json:"list,omitzero"`
+	Chain                Chain                     `json:"chain"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // forestWire keeps a missing member of Forest apart from null.
@@ -88,7 +65,7 @@ func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "list"))
 	out.Chain, err = jsonschemart.Required(w.Chain)
 	errs = append(errs, validation.Field(err, "chain"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -105,30 +82,9 @@ func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Tree struct {
-	Label    string                    `json:"label"`
-	Children opt.Option[[]Tree]        `json:"children,omitzero"`
-	_x       map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Tree declares
-// no field for.
-//
-//kama:generated kama:jsonschema
-func (v Tree) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Tree) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Label                string                    `json:"label"`
-		Children             opt.Option[[]Tree]        `json:"children,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Label: v.Label, Children: v.Children, AdditionalProperties: v._x})
+	Label                string                    `json:"label"`
+	Children             opt.Option[[]Tree]        `json:"children,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // treeWire keeps a missing member of Tree apart from null.
@@ -160,7 +116,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "label"))
 	out.Children, err = jsonschemart.Optional(w.Children)
 	errs = append(errs, validation.Field(err, "children"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -177,30 +133,9 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type List struct {
-	Value int64                     `json:"value"`
-	Next  *List                     `json:"next,omitzero"`
-	_x    map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that List declares
-// no field for.
-//
-//kama:generated kama:jsonschema
-func (v List) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v List) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Value                int64                     `json:"value"`
-		Next                 *List                     `json:"next,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Value: v.Value, Next: v.Next, AdditionalProperties: v._x})
+	Value                int64                     `json:"value"`
+	Next                 *List                     `json:"next,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // listWire keeps a missing member of List apart from null.
@@ -232,7 +167,7 @@ func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "value"))
 	out.Next, err = jsonschemart.OptionalPointer(w.Next)
 	errs = append(errs, validation.Field(err, "next"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -249,34 +184,21 @@ func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Chain struct {
-	Name string                    `json:"name"`
-	Link *Link                     `json:"link"`
-	_x   map[string]jsontext.Value `json:",embed"`
+	Name                 string                    `json:"name"`
+	Link                 *Link                     `json:"link"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
-// AdditionalProperties returns the members of the object that Chain
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Chain) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included. A nil pointer of a required member
-// is an error.
+// MarshalJSONTo encodes v as one JSON object. A nil pointer of a required
+// member is an error.
 //
 //kama:generated kama:jsonschema
 func (v Chain) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if v.Link == nil {
 		return validation.Field(validation.New(validation.ErrNil, "required member is nil"), "link")
 	}
-	type plain struct {
-		Name                 string                    `json:"name"`
-		Link                 *Link                     `json:"link"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Name: v.Name, Link: v.Link, AdditionalProperties: v._x})
+	type plain Chain
+	return json.MarshalEncode(enc, plain(v))
 }
 
 // chainWire keeps a missing member of Chain apart from null.
@@ -308,7 +230,7 @@ func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "name"))
 	out.Link, err = jsonschemart.RequiredPointer(w.Link)
 	errs = append(errs, validation.Field(err, "link"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -325,30 +247,9 @@ func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Link struct {
-	Label string                    `json:"label"`
-	Chain *Chain                    `json:"chain,omitzero"`
-	_x    map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Link declares
-// no field for.
-//
-//kama:generated kama:jsonschema
-func (v Link) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Link) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Label                string                    `json:"label"`
-		Chain                *Chain                    `json:"chain,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Label: v.Label, Chain: v.Chain, AdditionalProperties: v._x})
+	Label                string                    `json:"label"`
+	Chain                *Chain                    `json:"chain,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // linkWire keeps a missing member of Link apart from null.
@@ -380,7 +281,7 @@ func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "label"))
 	out.Chain, err = jsonschemart.OptionalPointer(w.Chain)
 	errs = append(errs, validation.Field(err, "chain"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -397,32 +298,20 @@ func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Ouroboros struct {
-	Tail *Ouroboros                `json:"tail"`
-	_x   map[string]jsontext.Value `json:",embed"`
+	Tail                 *Ouroboros                `json:"tail"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
-// AdditionalProperties returns the members of the object that Ouroboros
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Ouroboros) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included. A nil pointer of a required member
-// is an error.
+// MarshalJSONTo encodes v as one JSON object. A nil pointer of a required
+// member is an error.
 //
 //kama:generated kama:jsonschema
 func (v Ouroboros) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if v.Tail == nil {
 		return validation.Field(validation.New(validation.ErrNil, "required member is nil"), "tail")
 	}
-	type plain struct {
-		Tail                 *Ouroboros                `json:"tail"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Tail: v.Tail, AdditionalProperties: v._x})
+	type plain Ouroboros
+	return json.MarshalEncode(enc, plain(v))
 }
 
 // ouroborosWire keeps a missing member of Ouroboros apart from null.
@@ -451,7 +340,7 @@ func (v *Ouroboros) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.Tail, err = jsonschemart.RequiredPointer(w.Tail)
 	errs = append(errs, validation.Field(err, "tail"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

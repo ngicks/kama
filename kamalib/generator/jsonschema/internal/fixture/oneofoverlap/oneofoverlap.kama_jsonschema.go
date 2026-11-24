@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:41:04Z
+// generated: 2026-11-24T20:10:41Z
 
 package oneofoverlap
 
@@ -195,28 +195,8 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type EitherLeftValue struct {
-	L  opt.Option[string]        `json:"l,omitzero"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that
-// EitherLeftValue declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v EitherLeftValue) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v EitherLeftValue) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		L                    opt.Option[string]        `json:"l,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{L: v.L, AdditionalProperties: v._x})
+	L                    opt.Option[string]        `json:"l,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // eitherLeftValueWire keeps a missing member of EitherLeftValue apart from
@@ -246,7 +226,7 @@ func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.L, err = jsonschemart.Optional(w.L)
 	errs = append(errs, validation.Field(err, "l"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -263,28 +243,8 @@ func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type EitherRightValue struct {
-	R  opt.Option[string]        `json:"r,omitzero"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that
-// EitherRightValue declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v EitherRightValue) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v EitherRightValue) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		R                    opt.Option[string]        `json:"r,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{R: v.R, AdditionalProperties: v._x})
+	R                    opt.Option[string]        `json:"r,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // eitherRightValueWire keeps a missing member of EitherRightValue apart
@@ -314,7 +274,7 @@ func (v *EitherRightValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.R, err = jsonschemart.Optional(w.R)
 	errs = append(errs, validation.Field(err, "r"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

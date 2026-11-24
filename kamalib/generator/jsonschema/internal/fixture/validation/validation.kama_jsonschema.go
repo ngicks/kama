@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:41:16Z
+// generated: 2026-11-24T20:11:03Z
 
 package validation
 
@@ -42,42 +42,12 @@ type Order struct {
 	//kama:validate const="1 2 3"
 	Level opt.Option[int64] `json:"level,omitzero"`
 	//kama:validate requires=`"discount"`
-	Coupon   opt.Option[string]        `json:"coupon,omitzero"`
-	Discount opt.Option[float64]       `json:"discount,omitzero"`
-	Closed   opt.Option[OrderClosed]   `json:"closed,omitzero"`
-	Typed    opt.Option[OrderTyped]    `json:"typed,omitzero"`
-	Pick     opt.Option[OrderPick]     `json:"pick,omitzero"`
-	_x       map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Order
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Order) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Order) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Id                   string                                  `json:"id"`
-		Count                opt.Option[int64]                       `json:"count,omitzero"`
-		Ratio                opt.Option[float64]                     `json:"ratio,omitzero"`
-		Items                []Sku                                   `json:"items"`
-		Labels               opt.Option[map[string]OrderLabelsValue] `json:"labels,omitzero"`
-		Level                opt.Option[int64]                       `json:"level,omitzero"`
-		Coupon               opt.Option[string]                      `json:"coupon,omitzero"`
-		Discount             opt.Option[float64]                     `json:"discount,omitzero"`
-		Closed               opt.Option[OrderClosed]                 `json:"closed,omitzero"`
-		Typed                opt.Option[OrderTyped]                  `json:"typed,omitzero"`
-		Pick                 opt.Option[OrderPick]                   `json:"pick,omitzero"`
-		AdditionalProperties map[string]jsontext.Value               `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Id: v.Id, Count: v.Count, Ratio: v.Ratio, Items: v.Items, Labels: v.Labels, Level: v.Level, Coupon: v.Coupon, Discount: v.Discount, Closed: v.Closed, Typed: v.Typed, Pick: v.Pick, AdditionalProperties: v._x})
+	Coupon               opt.Option[string]        `json:"coupon,omitzero"`
+	Discount             opt.Option[float64]       `json:"discount,omitzero"`
+	Closed               opt.Option[OrderClosed]   `json:"closed,omitzero"`
+	Typed                opt.Option[OrderTyped]    `json:"typed,omitzero"`
+	Pick                 opt.Option[OrderPick]     `json:"pick,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // orderWire keeps a missing member of Order apart from null.
@@ -136,7 +106,7 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "typed"))
 	out.Pick, err = jsonschemart.Optional(w.Pick)
 	errs = append(errs, validation.Field(err, "pick"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -189,28 +159,8 @@ func (v *OrderLabelsValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate closed
 //kama:validate decoded
 type OrderClosed struct {
-	A  opt.Option[bool]          `json:"a,omitzero"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that OrderClosed
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v OrderClosed) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v OrderClosed) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		A                    opt.Option[bool]          `json:"a,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{A: v.A, AdditionalProperties: v._x})
+	A                    opt.Option[bool]          `json:"a,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // orderClosedWire keeps a missing member of OrderClosed apart from null.
@@ -239,7 +189,7 @@ func (v *OrderClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.A, err = jsonschemart.Optional(w.A)
 	errs = append(errs, validation.Field(err, "a"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -256,28 +206,8 @@ func (v *OrderClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type OrderTyped struct {
-	N  opt.Option[int64]          `json:"n,omitzero"`
-	_x map[string]OrderTypedValue `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that OrderTyped
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v OrderTyped) AdditionalProperties() map[string]OrderTypedValue {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v OrderTyped) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		N                    opt.Option[int64]          `json:"n,omitzero"`
-		AdditionalProperties map[string]OrderTypedValue `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{N: v.N, AdditionalProperties: v._x})
+	N                    opt.Option[int64]          `json:"n,omitzero"`
+	AdditionalProperties map[string]OrderTypedValue `json:",embed"`
 }
 
 // orderTypedWire keeps a missing member of OrderTyped apart from null.
@@ -306,7 +236,7 @@ func (v *OrderTyped) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.N, err = jsonschemart.Optional(w.N)
 	errs = append(errs, validation.Field(err, "n"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

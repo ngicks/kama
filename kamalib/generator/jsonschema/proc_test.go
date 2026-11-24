@@ -237,10 +237,12 @@ func TestProcRunRemotes(t *testing.T) {
 	got, err := fs.ReadFile(f.FS(), "api/api.kama_jsonschema.go")
 	assert.NilError(t, err)
 
+	// gofmt aligns the fields of a struct, so runs of spaces compare as one.
+	spaced := strings.Join(strings.Fields(string(got)), " ")
 	for _, want := range []string{
 		"type Tag string", "opt.Option[Tag]", "Owner opt.Option[string]", "KindCat Kind = \"cat\"",
 	} {
-		assert.Assert(t, strings.Contains(string(got), want), "%s: %s", want, got)
+		assert.Assert(t, strings.Contains(spaced, want), "%s: %s", want, got)
 	}
 }
 

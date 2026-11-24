@@ -13,7 +13,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 )
 
-// allFields compares the unexported field _x of the generated structs too.
+// allFields compares unexported fields too, such as those of opt.Option.
 var allFields = gocmp.Exporter(func(reflect.Type) bool { return true })
 
 func TestDecode(t *testing.T) {
@@ -23,8 +23,8 @@ func TestDecode(t *testing.T) {
 		t,
 		v.Kind,
 		EitherKind(EitherLeft{Left: EitherLeftValue{
-			L:  opt.Some("a"),
-			_x: map[string]jsontext.Value{"r": jsontext.Value("1")},
+			L:                    opt.Some("a"),
+			AdditionalProperties: map[string]jsontext.Value{"r": jsontext.Value("1")},
 		}}),
 		allFields,
 	)

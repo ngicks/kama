@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:56Z
+// generated: 2026-11-24T20:10:33Z
 
 package nullableenum
 
@@ -27,31 +27,8 @@ type Levels struct {
 	Const und.Und[LevelsConst] `json:"const,omitzero"`
 	Big   und.Und[LevelsBig]   `json:"big,omitzero"`
 	//kama:validate const="1.5 18446744073709551616"
-	Number opt.Option[float64]       `json:"number,omitzero"`
-	_x     map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Levels
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Levels) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Levels) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Ref                  und.Und[Level]            `json:"ref,omitzero"`
-		Const                und.Und[LevelsConst]      `json:"const,omitzero"`
-		Big                  und.Und[LevelsBig]        `json:"big,omitzero"`
-		Number               opt.Option[float64]       `json:"number,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Ref: v.Ref, Const: v.Const, Big: v.Big, Number: v.Number, AdditionalProperties: v._x})
+	Number               opt.Option[float64]       `json:"number,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // levelsWire keeps a missing member of Levels apart from null.
@@ -86,7 +63,7 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	out.Big = w.Big
 	out.Number, err = jsonschemart.Optional(w.Number)
 	errs = append(errs, validation.Field(err, "number"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

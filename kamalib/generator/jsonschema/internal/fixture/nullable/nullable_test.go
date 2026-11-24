@@ -15,7 +15,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
 
-// allFields compares the unexported field _x of the generated structs too.
+// allFields compares unexported fields too, such as those of opt.Option.
 var allFields = gocmp.Exporter(func(reflect.Type) bool { return true })
 
 const required = `"reqOneOf":null,"reqAnyOf":null,"reqType":null`

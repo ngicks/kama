@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T19:06:28Z
+// generated: 2026-11-24T20:10:37Z
 
 package object
 
@@ -115,7 +115,7 @@ func (v ObjectInline) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v ObjectClosed) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := kamaValidateClosed(v._x, stopOnFirstError); err != nil {
+	if err := kamaValidateClosed(v.AdditionalProperties, stopOnFirstError); err != nil {
 		if stopOnFirstError {
 			return err
 		}

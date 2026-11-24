@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:50Z
+// generated: 2026-11-24T20:10:24Z
 
 package multikind
 
@@ -23,30 +23,9 @@ import (
 //kama:validate hook=off
 //kama:validate decoded
 type Cell struct {
-	Value CellValue                 `json:"value"`
-	Label opt.Option[CellLabel]     `json:"label,omitzero"`
-	_x    map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Cell declares
-// no field for.
-//
-//kama:generated kama:jsonschema
-func (v Cell) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Cell) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Value                CellValue                 `json:"value"`
-		Label                opt.Option[CellLabel]     `json:"label,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Value: v.Value, Label: v.Label, AdditionalProperties: v._x})
+	Value                CellValue                 `json:"value"`
+	Label                opt.Option[CellLabel]     `json:"label,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // cellWire keeps a missing member of Cell apart from null.
@@ -78,7 +57,7 @@ func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "value"))
 	out.Label, err = jsonschemart.DecodeOptional[CellLabel](w.Label)
 	errs = append(errs, validation.Field(err, "label"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

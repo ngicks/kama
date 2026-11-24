@@ -1,6 +1,7 @@
 package edgecases
 
 import (
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"testing"
 
@@ -27,14 +28,20 @@ func check(t *testing.T, ok []string, bad map[string]error) {
 
 func TestPropertiesNamedLikeMethods(t *testing.T) {
 	var v Root
-	assert.NilError(t, json.Unmarshal([]byte(`{"validate": "a", "additionalProperties": 1}`), &v))
+	assert.NilError(t, json.Unmarshal(
+		[]byte(`{"validate": "a", "additionalProperties": 1, "other": 2}`), &v,
+	))
 	assert.Equal(t, v.ValidateField.Value(), "a")
-	assert.Equal(t, v.AdditionalPropertiesField.Value(), int64(1))
-	assert.Equal(t, len(v.AdditionalProperties()), 0)
+	assert.Equal(t, v.AdditionalProperties.Value(), int64(1))
+	assert.DeepEqual(
+		t,
+		v.AdditionalProperties_2,
+		map[string]jsontext.Value{"other": jsontext.Value("2")},
+	)
 
 	out, err := json.Marshal(v)
 	assert.NilError(t, err)
-	assert.Equal(t, string(out), `{"validate":"a","additionalProperties":1}`)
+	assert.Equal(t, string(out), `{"validate":"a","additionalProperties":1,"other":2}`)
 }
 
 // TestConstNextToEnum applies both: no value equals {"a":1} and {"a":2}.

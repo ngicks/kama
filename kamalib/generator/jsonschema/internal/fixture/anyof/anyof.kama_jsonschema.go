@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:44Z
+// generated: 2026-11-24T20:10:15Z
 
 package anyof
 
@@ -23,32 +23,10 @@ import (
 //kama:validate hook=off
 //kama:validate decoded
 type Doc struct {
-	Label Label                     `json:"label"`
-	Value DocValue                  `json:"value"`
-	Alt   opt.Option[DocValue]      `json:"alt,omitzero"`
-	_x    map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Doc declares
-// no field for.
-//
-//kama:generated kama:jsonschema
-func (v Doc) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Doc) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Label                Label                     `json:"label"`
-		Value                DocValue                  `json:"value"`
-		Alt                  opt.Option[DocValue]      `json:"alt,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Label: v.Label, Value: v.Value, Alt: v.Alt, AdditionalProperties: v._x})
+	Label                Label                     `json:"label"`
+	Value                DocValue                  `json:"value"`
+	Alt                  opt.Option[DocValue]      `json:"alt,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // docWire keeps a missing member of Doc apart from null.
@@ -83,7 +61,7 @@ func (v *Doc) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "value"))
 	out.Alt, err = jsonschemart.DecodeOptional[DocValue](w.Alt)
 	errs = append(errs, validation.Field(err, "alt"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -487,28 +465,8 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Named struct {
-	Name string                    `json:"name"`
-	_x   map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Named
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Named) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Named) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Name                 string                    `json:"name"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Name: v.Name, AdditionalProperties: v._x})
+	Name                 string                    `json:"name"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // namedWire keeps a missing member of Named apart from null.
@@ -537,7 +495,7 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.Name, err = jsonschemart.Required(w.Name)
 	errs = append(errs, validation.Field(err, "name"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -554,30 +512,9 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Tagged struct {
-	Name opt.Option[string]        `json:"name,omitzero"`
-	Tag  string                    `json:"tag"`
-	_x   map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Tagged
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Tagged) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Tagged) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Name                 opt.Option[string]        `json:"name,omitzero"`
-		Tag                  string                    `json:"tag"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Name: v.Name, Tag: v.Tag, AdditionalProperties: v._x})
+	Name                 opt.Option[string]        `json:"name,omitzero"`
+	Tag                  string                    `json:"tag"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // taggedWire keeps a missing member of Tagged apart from null.
@@ -609,7 +546,7 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "name"))
 	out.Tag, err = jsonschemart.Required(w.Tag)
 	errs = append(errs, validation.Field(err, "tag"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

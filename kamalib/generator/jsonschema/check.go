@@ -28,8 +28,14 @@ var scalarKinds = []string{"string", "integer", "number", "boolean"}
 // of it may be named, as fieldIdent ensures. Validate and ValidateShallow
 // are the methods the validator generator declares on it.
 var methodNames = []string{
-	"MarshalJSONTo", "UnmarshalJSONFrom", "AdditionalProperties", "Validate", "ValidateShallow",
+	"MarshalJSONTo", "UnmarshalJSONFrom", "Validate", "ValidateShallow",
 }
+
+// otherMethodNames are the methods the generators write on raw and probe
+// types but never on a struct. The fallback field keeps clear of them too,
+// so that its name does not depend on which methods a struct happens to
+// get.
+var otherMethodNames = []string{"ValidateEvaluated", "RawJson"}
 
 // check reports every schema of doc the generator cannot express, then
 // every pair of Go names that collide.
@@ -653,7 +659,7 @@ func fieldNames(doc *jsonschema.Schema, opts Options, ptr string, s *jsonschema.
 		add(wire, fieldIdent(f), "property "+strconv.Quote(n.Name))
 	}
 
-	add(wire, "AdditionalProperties", "the field of the members no property declares")
-
+	// fallbackField picks a name no field or method takes, so the fallback
+	// field never collides.
 	return errs
 }

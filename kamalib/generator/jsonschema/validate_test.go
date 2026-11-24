@@ -92,9 +92,24 @@ func TestGenerateDirectives(t *testing.T) {
 				"validate":{"type":"string"},"additionalProperties":{"type":"integer"}
 			}}`,
 			[]string{
-				"plain{ValidateField: v.ValidateField, " +
-					"AdditionalPropertiesField: v.AdditionalPropertiesField, AdditionalProperties: v._x}",
+				"\tValidateField          string                    `json:\"validate\"`\n" +
+					"\tAdditionalProperties   opt.Option[int64]         " +
+					"`json:\"additionalProperties,omitzero\"`\n" +
+					"\tAdditionalProperties_2 map[string]jsontext.Value `json:\",embed\"`\n}\n",
 				"out.ValidateField, err = jsonschemart.Required(w.ValidateField)",
+				"out.AdditionalProperties_2 = w.AdditionalProperties_2\n",
+			},
+		},
+		{
+			"product of a member with a property named additionalProperties",
+			`{"allOf":[{"$ref":"#/$defs/a"}],"properties":{"b":{"type":"string"}},"$defs":{
+				"a":{"type":"object","properties":{"additionalProperties":{"type":"integer"}}}
+			}}`,
+			[]string{
+				"out.AdditionalProperties = jsonschemart.Omit(" +
+					"w.AdditionalProperties, \"additionalProperties\", \"b\")\n",
+				"out.A.AdditionalProperties_2 = nil\n",
+				"type plain Root\n",
 			},
 		},
 		{

@@ -3,13 +3,12 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:54Z
+// generated: 2026-11-24T20:10:30Z
 
 package nullablecycle
 
 import (
 	"encoding/json/jsontext"
-	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamalib/pkg/validation"
@@ -22,32 +21,10 @@ import (
 //kama:validate hook=off
 //kama:validate decoded
 type Node struct {
-	Value  int64                     `json:"value"`
-	Parent *Node                     `json:"parent"`
-	Next   *Node                     `json:"next,omitzero"`
-	_x     map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Node declares
-// no field for.
-//
-//kama:generated kama:jsonschema
-func (v Node) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Node) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Value                int64                     `json:"value"`
-		Parent               *Node                     `json:"parent"`
-		Next                 *Node                     `json:"next,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Value: v.Value, Parent: v.Parent, Next: v.Next, AdditionalProperties: v._x})
+	Value                int64                     `json:"value"`
+	Parent               *Node                     `json:"parent"`
+	Next                 *Node                     `json:"next,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // nodeWire keeps a missing member of Node apart from null.
@@ -81,7 +58,7 @@ func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	out.Parent, err = jsonschemart.RequiredNullablePointer(w.Parent)
 	errs = append(errs, validation.Field(err, "parent"))
 	out.Next = jsonschemart.OptionalNullablePointer(w.Next)
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

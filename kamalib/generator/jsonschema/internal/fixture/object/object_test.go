@@ -78,13 +78,13 @@ func TestAdditionalProperties(t *testing.T) {
 		"open", `{"id":1,"p":"q"}`,
 	)), &v))
 
-	assert.DeepEqual(t, v.AdditionalProperties(), map[string]jsontext.Value{"zzz": []byte(`[1]`)})
+	assert.DeepEqual(t, v.AdditionalProperties, map[string]jsontext.Value{"zzz": []byte(`[1]`)})
 	assert.DeepEqual(
 		t,
-		v.Inline.AdditionalProperties(),
+		v.Inline.AdditionalProperties,
 		map[string]jsontext.Value{"y": []byte(`2`)},
 	)
-	assert.DeepEqual(t, v.Open.Value().AdditionalProperties(), map[string]string{"p": "q"})
+	assert.DeepEqual(t, v.Open.Value().AdditionalProperties, map[string]string{"p": "q"})
 }
 
 func TestDecodeError(t *testing.T) {

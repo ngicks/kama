@@ -46,11 +46,11 @@ func TestOrder(t *testing.T) {
 	)
 
 	order := Order{
-		Kind:  OrderKindCard,
-		Card:  opt.Some("c"),
-		Note:  opt.Some("n"),
-		Lines: opt.Some([]int64{0, 2}),
-		_x:    map[string]jsontext.Value{"id": jsontext.Value("1")},
+		Kind:                 OrderKindCard,
+		Card:                 opt.Some("c"),
+		Note:                 opt.Some("n"),
+		Lines:                opt.Some([]int64{0, 2}),
+		AdditionalProperties: map[string]jsontext.Value{"id": jsontext.Value("1")},
 	}
 	assert.NilError(t, order.Validate(false))
 
@@ -64,13 +64,13 @@ func TestOrder(t *testing.T) {
 	assert.Assert(t, len(validation.At(err, "/lines")) > 0, "%v", err)
 
 	order.Lines = opt.None[[]int64]()
-	order._x["x-b"] = jsontext.Value("2")
+	order.AdditionalProperties["x-b"] = jsontext.Value("2")
 	err = order.Validate(false)
 	assert.ErrorIs(t, err, validation.ErrKind)
 	assert.Assert(t, len(validation.At(err, "/x-b")) > 0, "%v", err)
 
-	delete(order._x, "id")
-	delete(order._x, "x-b")
+	delete(order.AdditionalProperties, "id")
+	delete(order.AdditionalProperties, "x-b")
 	assert.ErrorIs(t, order.Validate(false), validation.ErrRequired)
 }
 
@@ -107,7 +107,7 @@ func TestPerson(t *testing.T) {
 	p := Person{Named: Named{Name: "a"}, Aged: Aged{Age: opt.Some[int64](3)}}
 	assert.NilError(t, p.Validate(false))
 
-	p._x = map[string]jsontext.Value{"nick": jsontext.Value(`"b"`)}
+	p.AdditionalProperties = map[string]jsontext.Value{"nick": jsontext.Value(`"b"`)}
 	assert.ErrorIs(t, p.Validate(false), validation.ErrNot)
 }
 
@@ -131,7 +131,10 @@ func TestSealed(t *testing.T) {
 		map[string]error{`{"a": 1, "b": 2}`: validation.ErrOr},
 	)
 
-	s := Sealed{A: opt.Some[int64](1), _x: map[string]jsontext.Value{"b": jsontext.Value("2")}}
+	s := Sealed{
+		A:                    opt.Some[int64](1),
+		AdditionalProperties: map[string]jsontext.Value{"b": jsontext.Value("2")},
+	}
 	err := s.Validate(false)
 	assert.ErrorIs(t, err, validation.ErrOr)
 	assert.Assert(t, len(validation.At(err, "/b")) > 0, "%v", err)
@@ -143,10 +146,13 @@ func TestTagged(t *testing.T) {
 		map[string]error{`{"a": 1, "b": 2}`: validation.ErrOr, `{"x-b": 1}`: validation.ErrKind},
 	)
 
-	v := Tagged{A: opt.Some[int64](1), _x: map[string]jsontext.Value{"x-b": jsontext.Value(`"s"`)}}
+	v := Tagged{
+		A:                    opt.Some[int64](1),
+		AdditionalProperties: map[string]jsontext.Value{"x-b": jsontext.Value(`"s"`)},
+	}
 	assert.NilError(t, v.Validate(false))
 
-	v._x["b"] = jsontext.Value("2")
+	v.AdditionalProperties["b"] = jsontext.Value("2")
 	err := v.Validate(false)
 	assert.ErrorIs(t, err, validation.ErrOr)
 	assert.Assert(t, len(validation.At(err, "/b")) > 0, "%v", err)

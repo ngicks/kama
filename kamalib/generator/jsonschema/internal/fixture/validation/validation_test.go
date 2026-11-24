@@ -19,7 +19,7 @@ func TestDecodeValid(t *testing.T) {
 	var v Order
 	assert.NilError(t, json.Unmarshal([]byte(valid), &v))
 
-	assert.DeepEqual(t, v.Typed.Value().AdditionalProperties(), map[string]OrderTypedValue{"m": 3})
+	assert.DeepEqual(t, v.Typed.Value().AdditionalProperties, map[string]OrderTypedValue{"m": 3})
 	assert.DeepEqual(t, v.Pick.Value().Kind, OrderPickKind(OrderPickOption2{Option2: "abcd"}))
 
 	out, err := json.Marshal(v)

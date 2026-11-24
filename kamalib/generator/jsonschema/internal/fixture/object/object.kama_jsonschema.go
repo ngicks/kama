@@ -3,13 +3,12 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:41:01Z
+// generated: 2026-11-24T20:10:36Z
 
 package object
 
 import (
 	"encoding/json/jsontext"
-	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamalib/pkg/validation"
@@ -26,58 +25,23 @@ import (
 //kama:validate decoded
 type Object struct {
 	// ReqName is required and not null.
-	ReqName      string                       `json:"reqName"`
-	OptName      opt.Option[string]           `json:"optName,omitzero"`
-	ReqNullName  opt.Option[string]           `json:"reqNullName"`
-	OptNullName  und.Und[string]              `json:"optNullName,omitzero"`
-	ReqPoint     Point                        `json:"reqPoint"`
-	OptPoint     opt.Option[Point]            `json:"optPoint,omitzero"`
-	ReqNullPoint opt.Option[Point]            `json:"reqNullPoint"`
-	OptNullPoint und.Und[Point]               `json:"optNullPoint,omitzero"`
-	Color        ObjectColor                  `json:"color"`
-	Tags         []string                     `json:"tags"`
-	Counts       opt.Option[map[string]int64] `json:"counts,omitzero"`
-	Inline       ObjectInline                 `json:"inline"`
-	Closed       opt.Option[ObjectClosed]     `json:"closed,omitzero"`
-	Open         opt.Option[ObjectOpen]       `json:"open,omitzero"`
-	Anything     jsontext.Value               `json:"anything"`
-	Extra        opt.Option[jsontext.Value]   `json:"extra,omitzero"`
-	_x           map[string]jsontext.Value    `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Object
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Object) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Object) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		ReqName              string                       `json:"reqName"`
-		OptName              opt.Option[string]           `json:"optName,omitzero"`
-		ReqNullName          opt.Option[string]           `json:"reqNullName"`
-		OptNullName          und.Und[string]              `json:"optNullName,omitzero"`
-		ReqPoint             Point                        `json:"reqPoint"`
-		OptPoint             opt.Option[Point]            `json:"optPoint,omitzero"`
-		ReqNullPoint         opt.Option[Point]            `json:"reqNullPoint"`
-		OptNullPoint         und.Und[Point]               `json:"optNullPoint,omitzero"`
-		Color                ObjectColor                  `json:"color"`
-		Tags                 []string                     `json:"tags"`
-		Counts               opt.Option[map[string]int64] `json:"counts,omitzero"`
-		Inline               ObjectInline                 `json:"inline"`
-		Closed               opt.Option[ObjectClosed]     `json:"closed,omitzero"`
-		Open                 opt.Option[ObjectOpen]       `json:"open,omitzero"`
-		Anything             jsontext.Value               `json:"anything"`
-		Extra                opt.Option[jsontext.Value]   `json:"extra,omitzero"`
-		AdditionalProperties map[string]jsontext.Value    `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{ReqName: v.ReqName, OptName: v.OptName, ReqNullName: v.ReqNullName, OptNullName: v.OptNullName, ReqPoint: v.ReqPoint, OptPoint: v.OptPoint, ReqNullPoint: v.ReqNullPoint, OptNullPoint: v.OptNullPoint, Color: v.Color, Tags: v.Tags, Counts: v.Counts, Inline: v.Inline, Closed: v.Closed, Open: v.Open, Anything: v.Anything, Extra: v.Extra, AdditionalProperties: v._x})
+	ReqName              string                       `json:"reqName"`
+	OptName              opt.Option[string]           `json:"optName,omitzero"`
+	ReqNullName          opt.Option[string]           `json:"reqNullName"`
+	OptNullName          und.Und[string]              `json:"optNullName,omitzero"`
+	ReqPoint             Point                        `json:"reqPoint"`
+	OptPoint             opt.Option[Point]            `json:"optPoint,omitzero"`
+	ReqNullPoint         opt.Option[Point]            `json:"reqNullPoint"`
+	OptNullPoint         und.Und[Point]               `json:"optNullPoint,omitzero"`
+	Color                ObjectColor                  `json:"color"`
+	Tags                 []string                     `json:"tags"`
+	Counts               opt.Option[map[string]int64] `json:"counts,omitzero"`
+	Inline               ObjectInline                 `json:"inline"`
+	Closed               opt.Option[ObjectClosed]     `json:"closed,omitzero"`
+	Open                 opt.Option[ObjectOpen]       `json:"open,omitzero"`
+	Anything             jsontext.Value               `json:"anything"`
+	Extra                opt.Option[jsontext.Value]   `json:"extra,omitzero"`
+	AdditionalProperties map[string]jsontext.Value    `json:",embed"`
 }
 
 // objectWire keeps a missing member of Object apart from null.
@@ -149,7 +113,7 @@ func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "anything"))
 	out.Extra, err = jsonschemart.DecodeOptional[jsontext.Value](w.Extra)
 	errs = append(errs, validation.Field(err, "extra"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -202,28 +166,8 @@ func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type ObjectInline struct {
-	X  float64                   `json:"x"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that ObjectInline
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v ObjectInline) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v ObjectInline) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		X                    float64                   `json:"x"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{X: v.X, AdditionalProperties: v._x})
+	X                    float64                   `json:"x"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // objectInlineWire keeps a missing member of ObjectInline apart from null.
@@ -252,7 +196,7 @@ func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.X, err = jsonschemart.Required(w.X)
 	errs = append(errs, validation.Field(err, "x"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -270,28 +214,8 @@ func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate closed
 //kama:validate decoded
 type ObjectClosed struct {
-	A  opt.Option[bool]          `json:"a,omitzero"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that ObjectClosed
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v ObjectClosed) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v ObjectClosed) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		A                    opt.Option[bool]          `json:"a,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{A: v.A, AdditionalProperties: v._x})
+	A                    opt.Option[bool]          `json:"a,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // objectClosedWire keeps a missing member of ObjectClosed apart from null.
@@ -320,7 +244,7 @@ func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.A, err = jsonschemart.Optional(w.A)
 	errs = append(errs, validation.Field(err, "a"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -337,28 +261,8 @@ func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type ObjectOpen struct {
-	Id opt.Option[int64] `json:"id,omitzero"`
-	_x map[string]string `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that ObjectOpen
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v ObjectOpen) AdditionalProperties() map[string]string {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v ObjectOpen) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Id                   opt.Option[int64] `json:"id,omitzero"`
-		AdditionalProperties map[string]string `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Id: v.Id, AdditionalProperties: v._x})
+	Id                   opt.Option[int64] `json:"id,omitzero"`
+	AdditionalProperties map[string]string `json:",embed"`
 }
 
 // objectOpenWire keeps a missing member of ObjectOpen apart from null.
@@ -387,7 +291,7 @@ func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.Id, err = jsonschemart.Optional(w.Id)
 	errs = append(errs, validation.Field(err, "id"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -404,30 +308,9 @@ func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Point struct {
-	X  int64                     `json:"x"`
-	Y  int64                     `json:"y"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Point
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Point) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Point) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		X                    int64                     `json:"x"`
-		Y                    int64                     `json:"y"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{X: v.X, Y: v.Y, AdditionalProperties: v._x})
+	X                    int64                     `json:"x"`
+	Y                    int64                     `json:"y"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // pointWire keeps a missing member of Point apart from null.
@@ -459,7 +342,7 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "x"))
 	out.Y, err = jsonschemart.Required(w.Y)
 	errs = append(errs, validation.Field(err, "y"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

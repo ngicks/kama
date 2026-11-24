@@ -15,7 +15,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
 
-// allFields compares the unexported field _x of the generated structs too.
+// allFields compares unexported fields too, such as those of opt.Option.
 var allFields = gocmp.Exporter(func(reflect.Type) bool { return true })
 
 func TestDecode(t *testing.T) {
@@ -30,8 +30,8 @@ func TestDecode(t *testing.T) {
 			`{"label":{"name":"a","tag":"b"},"value":"s"}`,
 			Doc{
 				Label: Label{Kind: LabelNamed{Named: Named{
-					Name: "a",
-					_x:   map[string]jsontext.Value{"tag": jsontext.Value(`"b"`)},
+					Name:                 "a",
+					AdditionalProperties: map[string]jsontext.Value{"tag": jsontext.Value(`"b"`)},
 				}}},
 				Value: DocValue{Kind: DocValueString{String: "s"}},
 			},

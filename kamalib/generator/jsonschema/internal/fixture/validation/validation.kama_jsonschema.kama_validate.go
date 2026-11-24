@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T19:06:43Z
+// generated: 2026-11-24T20:11:04Z
 
 package validation
 
@@ -20,7 +20,7 @@ import (
 //kama:generated kama:validate
 func (v Order) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v._x), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v._x), "<=", 11)); err != nil {
+	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v.AdditionalProperties), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v.AdditionalProperties), "<=", 11)); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -151,7 +151,7 @@ func (v Order) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Order) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
-	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v._x), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v._x), "<=", 11)); err != nil {
+	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v.AdditionalProperties), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v.AdditionalProperties), "<=", 11)); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -259,7 +259,7 @@ func (v OrderLabelsValue) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v OrderClosed) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := kamaValidateClosed(v._x, stopOnFirstError); err != nil {
+	if err := kamaValidateClosed(v.AdditionalProperties, stopOnFirstError); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -274,8 +274,8 @@ func (v OrderClosed) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v OrderTyped) Validate(stopOnFirstError bool) error {
 	var errs []error
-	for _, k := range slices.Sorted(maps.Keys(v._x)) {
-		e := v._x[k]
+	for _, k := range slices.Sorted(maps.Keys(v.AdditionalProperties)) {
+		e := v.AdditionalProperties[k]
 		if err := validation.Key(e.Validate(stopOnFirstError), k); err != nil {
 			if stopOnFirstError {
 				return err

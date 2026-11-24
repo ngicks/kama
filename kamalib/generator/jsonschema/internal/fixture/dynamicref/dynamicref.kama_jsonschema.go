@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:47Z
+// generated: 2026-11-24T20:10:20Z
 
 package dynamicref
 
@@ -68,30 +68,9 @@ func (v StrictTree) RawJson() jsontext.Value {
 //kama:validate hook=off
 //kama:validate decoded
 type Tree struct {
-	Data     opt.Option[jsontext.Value]     `json:"data,omitzero"`
-	Children opt.Option[[]TreeChildrenItem] `json:"children,omitzero"`
-	_x       map[string]jsontext.Value      `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Tree declares
-// no field for.
-//
-//kama:generated kama:jsonschema
-func (v Tree) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Tree) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Data                 opt.Option[jsontext.Value]     `json:"data,omitzero"`
-		Children             opt.Option[[]TreeChildrenItem] `json:"children,omitzero"`
-		AdditionalProperties map[string]jsontext.Value      `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Data: v.Data, Children: v.Children, AdditionalProperties: v._x})
+	Data                 opt.Option[jsontext.Value]     `json:"data,omitzero"`
+	Children             opt.Option[[]TreeChildrenItem] `json:"children,omitzero"`
+	AdditionalProperties map[string]jsontext.Value      `json:",embed"`
 }
 
 // treeWire keeps a missing member of Tree apart from null.
@@ -123,7 +102,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "data"))
 	out.Children, err = jsonschemart.Optional(w.Children)
 	errs = append(errs, validation.Field(err, "children"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

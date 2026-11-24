@@ -3,13 +3,12 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:42Z
+// generated: 2026-11-24T20:10:13Z
 
 package allof
 
 import (
 	"encoding/json/jsontext"
-	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamalib/pkg/validation"
@@ -24,33 +23,21 @@ import (
 //kama:validate hook=off
 //kama:validate decoded
 type Employee struct {
-	Person   Person                    `json:"-"`
-	Contract Contract                  `json:"-"`
-	Badge    string                    `json:"badge"`
-	Manager  opt.Option[Person]        `json:"manager,omitzero"`
-	_x       map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Employee
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Employee) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
+	Person               Person                    `json:"-"`
+	Contract             Contract                  `json:"-"`
+	Badge                string                    `json:"badge"`
+	Manager              opt.Option[Person]        `json:"manager,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // MarshalJSONTo encodes v as one JSON object holding the members of Person,
-// Contract and its own properties and those AdditionalProperties returns.
-// The first of them to hold a member name writes it.
+// Contract and its own properties and the members no property declares. The
+// first of them to hold a member name writes it.
 //
 //kama:generated kama:jsonschema
 func (v Employee) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Badge                string                    `json:"badge"`
-		Manager              opt.Option[Person]        `json:"manager,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return jsonschemart.MarshalObjects(enc, v.Person, v.Contract, plain{Badge: v.Badge, Manager: v.Manager, AdditionalProperties: v._x})
+	type plain Employee
+	return jsonschemart.MarshalObjects(enc, v.Person, v.Contract, plain(v))
 }
 
 // employeeWire keeps a missing member of Employee apart from null.
@@ -85,9 +72,9 @@ func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "badge"))
 	out.Manager, err = jsonschemart.Optional(w.Manager)
 	errs = append(errs, validation.Field(err, "manager"))
-	out._x = jsonschemart.Omit(w.AdditionalProperties, "name", "age", "salary", "remote", "badge", "manager")
-	out.Person._x = nil
-	out.Contract._x = nil
+	out.AdditionalProperties = jsonschemart.Omit(w.AdditionalProperties, "name", "age", "salary", "remote", "badge", "manager")
+	out.Person.AdditionalProperties = nil
+	out.Contract.AdditionalProperties = nil
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -104,30 +91,9 @@ func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Person struct {
-	Name string                    `json:"name"`
-	Age  opt.Option[int64]         `json:"age,omitzero"`
-	_x   map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Person
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Person) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Person) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Name                 string                    `json:"name"`
-		Age                  opt.Option[int64]         `json:"age,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Name: v.Name, Age: v.Age, AdditionalProperties: v._x})
+	Name                 string                    `json:"name"`
+	Age                  opt.Option[int64]         `json:"age,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // personWire keeps a missing member of Person apart from null.
@@ -159,7 +125,7 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "name"))
 	out.Age, err = jsonschemart.Optional(w.Age)
 	errs = append(errs, validation.Field(err, "age"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -176,30 +142,9 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Contract struct {
-	Salary float64                   `json:"salary"`
-	Remote opt.Option[bool]          `json:"remote,omitzero"`
-	_x     map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Contract
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Contract) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Contract) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Salary               float64                   `json:"salary"`
-		Remote               opt.Option[bool]          `json:"remote,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Salary: v.Salary, Remote: v.Remote, AdditionalProperties: v._x})
+	Salary               float64                   `json:"salary"`
+	Remote               opt.Option[bool]          `json:"remote,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // contractWire keeps a missing member of Contract apart from null.
@@ -231,7 +176,7 @@ func (v *Contract) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "salary"))
 	out.Remote, err = jsonschemart.Optional(w.Remote)
 	errs = append(errs, validation.Field(err, "remote"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

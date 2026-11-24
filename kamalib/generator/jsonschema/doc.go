@@ -178,11 +178,15 @@
 // Names are upper-camel-cased on the characters an identifier cannot hold,
 // as foo_bar and foo-bar give FooBar. A name that gives no exported
 // identifier is an error wrapping ErrUnsupported. A field named like a
-// method of the struct, MarshalJSONTo, UnmarshalJSONFrom,
-// AdditionalProperties or Validate, takes the suffix Field, as a property
-// validate gives the field ValidateField. Two names colliding in the
-// package, in a struct or in its wire struct, after that suffix, is an
-// error wrapping ErrConflict. A
+// method of the struct, MarshalJSONTo, UnmarshalJSONFrom, Validate or
+// ValidateShallow, takes the suffix Field, as a property validate gives the
+// field ValidateField. Two names colliding in the package, in a struct or
+// in its wire struct, after that suffix, is an error wrapping ErrConflict.
+// The fallback field of a struct, described under Objects, never collides:
+// it takes the first of AdditionalProperties, AdditionalProperties_2,
+// AdditionalProperties_3, ... that no field and no generated method takes,
+// so a property additionalProperties keeps the name AdditionalProperties.
+// A
 // union named Pet declares PetKind and PetUnknown besides its wrappers, so
 // a member titled Unknown collides too.
 //
@@ -203,7 +207,8 @@
 // An object declaring a property whose name holds a comma, a quote, a
 // backslash or a control character does not fit a struct and is raw JSON
 // text. A member an object requires without declaring a property for it
-// stays in _x, which the validators of the value encoded as JSON check.
+// stays in the fallback field, which the validators of the value encoded
+// as JSON check.
 //
 // The struct decodes through an unexported wire struct. It holds a
 // property as an und.Und, which keeps a missing member apart from null, or
@@ -214,19 +219,20 @@
 // string type with a constant per value, whose Validate rejects any other
 // value.
 //
-// Every struct holds the members its properties do not name in the
-// unexported field _x, tagged json:",embed", which the method
-// AdditionalProperties returns. Decoding never rejects such a member, and
-// encoding writes them back. _x is a map[string]T for an
-// additionalProperties schema T, whose values decode as T, and a
-// map[string]jsontext.Value otherwise. additionalProperties false makes
-// Validate report each member of _x, with an error wrapping
-// validation.ErrClosed located at the member. Next to patternProperties,
-// which takes some of those members from additionalProperties, _x is a
+// Every struct holds the members its properties do not name in its
+// fallback field, an exported field tagged json:",embed" and named
+// AdditionalProperties unless a property takes that name. Decoding never
+// rejects such a member, and encoding writes them back. The fallback field
+// is a map[string]T for an additionalProperties schema T, whose values
+// decode as T, and a map[string]jsontext.Value otherwise.
+// additionalProperties false makes Validate report each member of the
+// fallback field, with an error wrapping validation.ErrClosed located at
+// the member. Next to patternProperties, which takes some of those members
+// from additionalProperties, the fallback field is a
 // map[string]jsontext.Value and both keywords check the value encoded as
-// JSON. encoding/json/v2 refuses a
-// tagged unexported field, so every struct encodes through MarshalJSONTo,
-// and go vet reports the tag, which the validator generator reads.
+// JSON. A struct encodes by the default encoding of encoding/json/v2. A
+// product, and a struct holding a required member by a pointer, declare
+// MarshalJSONTo, described under allOf and Recursion.
 //
 // # Recursion
 //
@@ -415,13 +421,14 @@
 // members. An allOf without type that makes no product is raw JSON text
 // checked by and.
 // Decoding decodes each member and the own properties from the same
-// object. The _x of the product holds the members that neither a member
-// nor an own property declares. The product clears the _x of each member
-// struct, which holds the members of the others, so a member value of an
-// additionalProperties schema of a member is checked on decoding only.
-// Marshaling writes one object holding the members of each, then those of
-// _x, the first to write a member name winning. A member holding the
-// product itself is an error. Two members declaring one property
+// object. The fallback field of the product holds the members that
+// neither a member nor an own property declares. The product clears the
+// fallback field of each member struct, which holds the members of the
+// others, so a member value of an additionalProperties schema of a member
+// is checked on decoding only. Marshaling writes one object holding the
+// members of each, then those of its fallback field, the first to write a
+// member name winning. A member holding the product itself is an error. Two members declaring one
+// property
 // differently make no product; declarations differing only in annotations,
 // such as title, description, default or an extension keyword, are not
 // different. A required member held by a nil pointer is an error on

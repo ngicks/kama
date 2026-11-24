@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T19:06:42Z
+// generated: 2026-11-24T20:11:02Z
 
 package typedkeywords
 
@@ -297,7 +297,7 @@ func (v shapeSquareProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 //kama:generated kama:validate
 func (v Circle) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := kamaValidateClosed(v._x, stopOnFirstError); err != nil {
+	if err := kamaValidateClosed(v.AdditionalProperties, stopOnFirstError); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -312,7 +312,7 @@ func (v Circle) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Square) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := kamaValidateClosed(v._x, stopOnFirstError); err != nil {
+	if err := kamaValidateClosed(v.AdditionalProperties, stopOnFirstError); err != nil {
 		if stopOnFirstError {
 			return err
 		}

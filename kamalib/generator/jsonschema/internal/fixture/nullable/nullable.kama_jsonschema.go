@@ -3,13 +3,12 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:53Z
+// generated: 2026-11-24T20:10:28Z
 
 package nullable
 
 import (
 	"encoding/json/jsontext"
-	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamalib/pkg/validation"
@@ -23,40 +22,14 @@ import (
 //kama:validate hook=off
 //kama:validate decoded
 type Nullable struct {
-	ReqOneOf  opt.Option[Item]           `json:"reqOneOf"`
-	OptOneOf  und.Und[Item]              `json:"optOneOf,omitzero"`
-	ReqAnyOf  opt.Option[int64]          `json:"reqAnyOf"`
-	OptAnyOf  und.Und[int64]             `json:"optAnyOf,omitzero"`
-	ReqType   opt.Option[string]         `json:"reqType"`
-	OptType   und.Und[string]            `json:"optType,omitzero"`
-	OptInline und.Und[NullableOptInline] `json:"optInline,omitzero"`
-	_x        map[string]jsontext.Value  `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Nullable
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Nullable) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Nullable) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		ReqOneOf             opt.Option[Item]           `json:"reqOneOf"`
-		OptOneOf             und.Und[Item]              `json:"optOneOf,omitzero"`
-		ReqAnyOf             opt.Option[int64]          `json:"reqAnyOf"`
-		OptAnyOf             und.Und[int64]             `json:"optAnyOf,omitzero"`
-		ReqType              opt.Option[string]         `json:"reqType"`
-		OptType              und.Und[string]            `json:"optType,omitzero"`
-		OptInline            und.Und[NullableOptInline] `json:"optInline,omitzero"`
-		AdditionalProperties map[string]jsontext.Value  `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{ReqOneOf: v.ReqOneOf, OptOneOf: v.OptOneOf, ReqAnyOf: v.ReqAnyOf, OptAnyOf: v.OptAnyOf, ReqType: v.ReqType, OptType: v.OptType, OptInline: v.OptInline, AdditionalProperties: v._x})
+	ReqOneOf             opt.Option[Item]           `json:"reqOneOf"`
+	OptOneOf             und.Und[Item]              `json:"optOneOf,omitzero"`
+	ReqAnyOf             opt.Option[int64]          `json:"reqAnyOf"`
+	OptAnyOf             und.Und[int64]             `json:"optAnyOf,omitzero"`
+	ReqType              opt.Option[string]         `json:"reqType"`
+	OptType              und.Und[string]            `json:"optType,omitzero"`
+	OptInline            und.Und[NullableOptInline] `json:"optInline,omitzero"`
+	AdditionalProperties map[string]jsontext.Value  `json:",embed"`
 }
 
 // nullableWire keeps a missing member of Nullable apart from null.
@@ -99,7 +72,7 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "reqType"))
 	out.OptType = w.OptType
 	out.OptInline = w.OptInline
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -117,28 +90,8 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type NullableOptInline struct {
-	S  string                    `json:"s"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that
-// NullableOptInline declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v NullableOptInline) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v NullableOptInline) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		S                    string                    `json:"s"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{S: v.S, AdditionalProperties: v._x})
+	S                    string                    `json:"s"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // nullableOptInlineWire keeps a missing member of NullableOptInline apart
@@ -168,7 +121,7 @@ func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.S, err = jsonschemart.Required(w.S)
 	errs = append(errs, validation.Field(err, "s"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -185,28 +138,8 @@ func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Item struct {
-	N  int64                     `json:"n"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Item declares
-// no field for.
-//
-//kama:generated kama:jsonschema
-func (v Item) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Item) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		N                    int64                     `json:"n"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{N: v.N, AdditionalProperties: v._x})
+	N                    int64                     `json:"n"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // itemWire keeps a missing member of Item apart from null.
@@ -235,7 +168,7 @@ func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.N, err = jsonschemart.Required(w.N)
 	errs = append(errs, validation.Field(err, "n"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

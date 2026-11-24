@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:51Z
+// generated: 2026-11-24T20:10:26Z
 
 package nestedunion
 
@@ -23,32 +23,10 @@ import (
 //kama:validate hook=off
 //kama:validate decoded
 type Chains struct {
-	Any     opt.Option[Any]           `json:"any,omitzero"`
-	Tagged  opt.Option[Tagged]        `json:"tagged,omitzero"`
-	Overlap opt.Option[Overlap]       `json:"overlap,omitzero"`
-	_x      map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Chains
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Chains) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Chains) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Any                  opt.Option[Any]           `json:"any,omitzero"`
-		Tagged               opt.Option[Tagged]        `json:"tagged,omitzero"`
-		Overlap              opt.Option[Overlap]       `json:"overlap,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Any: v.Any, Tagged: v.Tagged, Overlap: v.Overlap, AdditionalProperties: v._x})
+	Any                  opt.Option[Any]           `json:"any,omitzero"`
+	Tagged               opt.Option[Tagged]        `json:"tagged,omitzero"`
+	Overlap              opt.Option[Overlap]       `json:"overlap,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // chainsWire keeps a missing member of Chains apart from null.
@@ -83,7 +61,7 @@ func (v *Chains) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "tagged"))
 	out.Overlap, err = jsonschemart.Optional(w.Overlap)
 	errs = append(errs, validation.Field(err, "overlap"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -301,30 +279,9 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type AnyLeft struct {
-	C  opt.Option[Any]           `json:"c,omitzero"`
-	L  opt.Option[string]        `json:"l,omitzero"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that AnyLeft
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v AnyLeft) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v AnyLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		C                    opt.Option[Any]           `json:"c,omitzero"`
-		L                    opt.Option[string]        `json:"l,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{C: v.C, L: v.L, AdditionalProperties: v._x})
+	C                    opt.Option[Any]           `json:"c,omitzero"`
+	L                    opt.Option[string]        `json:"l,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // anyLeftWire keeps a missing member of AnyLeft apart from null.
@@ -356,7 +313,7 @@ func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "c"))
 	out.L, err = jsonschemart.Optional(w.L)
 	errs = append(errs, validation.Field(err, "l"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -373,30 +330,9 @@ func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type AnyRight struct {
-	C  opt.Option[Any]           `json:"c,omitzero"`
-	R  opt.Option[string]        `json:"r,omitzero"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that AnyRight
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v AnyRight) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v AnyRight) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		C                    opt.Option[Any]           `json:"c,omitzero"`
-		R                    opt.Option[string]        `json:"r,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{C: v.C, R: v.R, AdditionalProperties: v._x})
+	C                    opt.Option[Any]           `json:"c,omitzero"`
+	R                    opt.Option[string]        `json:"r,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // anyRightWire keeps a missing member of AnyRight apart from null.
@@ -428,7 +364,7 @@ func (v *AnyRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "c"))
 	out.R, err = jsonschemart.Optional(w.R)
 	errs = append(errs, validation.Field(err, "r"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -660,30 +596,9 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate decoded
 type TaggedLeft struct {
 	//kama:validate const=`"left"`
-	Kind string                    `json:"kind"`
-	C    opt.Option[Tagged]        `json:"c,omitzero"`
-	_x   map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that TaggedLeft
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v TaggedLeft) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v TaggedLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Kind                 string                    `json:"kind"`
-		C                    opt.Option[Tagged]        `json:"c,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Kind: v.Kind, C: v.C, AdditionalProperties: v._x})
+	Kind                 string                    `json:"kind"`
+	C                    opt.Option[Tagged]        `json:"c,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // taggedLeftWire keeps a missing member of TaggedLeft apart from null.
@@ -715,7 +630,7 @@ func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "kind"))
 	out.C, err = jsonschemart.Optional(w.C)
 	errs = append(errs, validation.Field(err, "c"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -733,30 +648,9 @@ func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate decoded
 type TaggedRight struct {
 	//kama:validate const=`"right"`
-	Kind string                    `json:"kind"`
-	C    opt.Option[Tagged]        `json:"c,omitzero"`
-	_x   map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that TaggedRight
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v TaggedRight) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v TaggedRight) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Kind                 string                    `json:"kind"`
-		C                    opt.Option[Tagged]        `json:"c,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Kind: v.Kind, C: v.C, AdditionalProperties: v._x})
+	Kind                 string                    `json:"kind"`
+	C                    opt.Option[Tagged]        `json:"c,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // taggedRightWire keeps a missing member of TaggedRight apart from null.
@@ -788,7 +682,7 @@ func (v *TaggedRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "kind"))
 	out.C, err = jsonschemart.Optional(w.C)
 	errs = append(errs, validation.Field(err, "c"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -1020,30 +914,9 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type OverlapLeft struct {
-	C  opt.Option[Overlap]       `json:"c,omitzero"`
-	L  opt.Option[string]        `json:"l,omitzero"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that OverlapLeft
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v OverlapLeft) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v OverlapLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		C                    opt.Option[Overlap]       `json:"c,omitzero"`
-		L                    opt.Option[string]        `json:"l,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{C: v.C, L: v.L, AdditionalProperties: v._x})
+	C                    opt.Option[Overlap]       `json:"c,omitzero"`
+	L                    opt.Option[string]        `json:"l,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // overlapLeftWire keeps a missing member of OverlapLeft apart from null.
@@ -1075,7 +948,7 @@ func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "c"))
 	out.L, err = jsonschemart.Optional(w.L)
 	errs = append(errs, validation.Field(err, "l"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -1092,30 +965,9 @@ func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type OverlapRight struct {
-	C  opt.Option[Overlap]       `json:"c,omitzero"`
-	L  opt.Option[int64]         `json:"l,omitzero"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that OverlapRight
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v OverlapRight) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v OverlapRight) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		C                    opt.Option[Overlap]       `json:"c,omitzero"`
-		L                    opt.Option[int64]         `json:"l,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{C: v.C, L: v.L, AdditionalProperties: v._x})
+	C                    opt.Option[Overlap]       `json:"c,omitzero"`
+	L                    opt.Option[int64]         `json:"l,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // overlapRightWire keeps a missing member of OverlapRight apart from null.
@@ -1147,7 +999,7 @@ func (v *OverlapRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "c"))
 	out.L, err = jsonschemart.Optional(w.L)
 	errs = append(errs, validation.Field(err, "l"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

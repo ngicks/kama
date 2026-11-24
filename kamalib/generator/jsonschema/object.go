@@ -3,6 +3,7 @@ package jsonschema
 import (
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -80,16 +81,12 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	steps = append(steps,
-		lang.Stmt("_x map[string]%s `json:\",embed\"`", extraType(doc, opts, ptr)),
-		lang.Stmt("}"),
-		lang.DocFunc(
-			docComment("AdditionalProperties returns the members of the object that "+name+
-				" declares no field for."),
-			lang.Expr(
-				"func (v %s) AdditionalProperties() map[string]%s", name, extraType(doc, opts, ptr),
-			),
-			lang.Stmt("return v._x"),
+		lang.Stmt(
+			"%s map[string]%s `json:\",embed\"`",
+			fallbackField(doc, opts, ptr),
+			extraType(doc, opts, ptr),
 		),
+		lang.Stmt("}"),
 	)
 	steps = append(steps, marshalSteps(doc, opts, ptr)...)
 	steps = append(steps, wireSteps(doc, opts, ptr)...)
@@ -138,10 +135,11 @@ func productParts(doc *jsonschema.Schema, opts Options, ptr string) (string, err
 	return text, nil
 }
 
-// marshalSteps returns MarshalJSONTo of the struct or product at ptr. It
-// copies the fields into a local struct whose additional members are an
-// exported field, since encoding/json/v2 refuses the tagged unexported
-// field _x. A product writes its members and that struct into one object.
+// marshalSteps returns MarshalJSONTo of the struct or product at ptr, or
+// nil where the default encoding suffices. A product writes its members and
+// its own fields into one object, and a required pointer on a cycle must
+// not encode as null. The local type plain drops the method, so that
+// encoding v from it does not call the method again.
 func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -153,11 +151,13 @@ func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		return []genStep{lang.Fail(err)}
 	}
 
-	sig := lang.Expr("func (v %s) MarshalJSONTo(enc *%s) error", name, q(jsontextPath, "Encoder"))
 	body := nilChecks(doc, ptr)
+	if body == nil && !product(doc, ptr, s) {
+		return nil
+	}
 
-	text := "MarshalJSONTo encodes v as one JSON object, the members AdditionalProperties " +
-		"returns included."
+	sig := lang.Expr("func (v %s) MarshalJSONTo(enc *%s) error", name, q(jsontextPath, "Encoder"))
+	text := "MarshalJSONTo encodes v as one JSON object."
 
 	if product(doc, ptr, s) {
 		parts, err := productParts(doc, opts, ptr)
@@ -166,7 +166,7 @@ func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		}
 
 		text = "MarshalJSONTo encodes v as one JSON object holding the members of " + parts +
-			" and those AdditionalProperties returns. The first of them to hold a member name " +
+			" and the members no property declares. The first of them to hold a member name " +
 			"writes it."
 	}
 
@@ -174,28 +174,8 @@ func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		text += " A nil pointer of a required member is an error."
 	}
 
-	body = append(body, lang.Stmt("type plain struct {"))
-
-	inits := make([]genExpr, 0, len(s.Properties)+1)
-
-	for _, n := range s.Properties {
-		f := fieldName(child(ptr, "properties", n.Name), n.Name)
-
-		body = append(body, lang.Stmt(
-			"%s %s `json:%s`", f, fieldType(doc, opts, ptr, n.Name), tagFor(doc, ptr, n.Name),
-		))
-		inits = append(inits, lang.Expr("%s: v.%s", f, f))
-	}
-
-	body = append(body,
-		lang.Stmt(
-			"AdditionalProperties map[string]%s `json:\",embed\"`", extraType(doc, opts, ptr),
-		),
-		lang.Stmt("}"),
-	)
-
-	inits = append(inits, lang.Expr("AdditionalProperties: v._x"))
-	value := lang.Expr("plain{%s}", lang.Join(", ", inits...))
+	body = append(body, lang.Stmt("type plain %s", name))
+	value := lang.Expr("plain(v)")
 
 	if !product(doc, ptr, s) {
 		body = append(body, lang.Stmt("return %s(enc, %s)", q(jsonPath, "MarshalEncode"), value))
@@ -282,7 +262,9 @@ func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 
 	return append(steps,
 		lang.Stmt(
-			"AdditionalProperties map[string]%s `json:\",embed\"`", extraType(doc, opts, ptr),
+			"%s map[string]%s `json:\",embed\"`",
+			fallbackField(doc, opts, ptr),
+			extraType(doc, opts, ptr),
 		),
 		lang.Stmt("}"),
 	)
@@ -367,32 +349,106 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 	}
 }
 
-// extraSteps returns the statements setting _x of the struct or product at
-// ptr from the wire struct. Every member of a product decodes the whole
-// object, so the _x of a member struct holds the members of the others.
-// The product keeps in its own _x the members none of them declares and
-// clears the _x of its members, so that encoding writes each member once.
+// extraSteps returns the statements setting the fallback field of the
+// struct or product at ptr from the wire struct. Every member of a product
+// decodes the whole object, so the fallback field of a member struct holds
+// the members of the others. The product keeps in its own fallback field
+// the members none of them declares and clears those of its members, so
+// that encoding writes each member once.
 func extraSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
 		return []genStep{lang.Fail(err)}
 	}
 
+	f := fallbackField(doc, opts, ptr)
+
 	if !product(doc, ptr, s) {
-		return []genStep{lang.Stmt("out._x = w.AdditionalProperties")}
+		return []genStep{lang.Stmt("out.%s = w.%s", f, f)}
 	}
 
-	args := append([]string{"w.AdditionalProperties"}, quoteAll(declaredMembers(doc, ptr, nil))...)
-	steps := []genStep{lang.Stmt("out._x = %s(%s)", q(runtimePath, "Omit"), joinComma(args))}
+	args := lang.Expr("w.%s", f)
+	if names := quoteAll(declaredMembers(doc, ptr, nil)); len(names) > 0 {
+		args = lang.Expr("w.%s, %s", f, joinComma(names))
+	}
+
+	steps := []genStep{lang.Stmt("out.%s = %s(%s)", f, q(runtimePath, "Omit"), args)}
 
 	for i := range productOf(doc, ptr, s) {
 		if r, rs, err := resolved(doc, child(ptr, "allOf", strconv.Itoa(i))); err == nil &&
 			(structKind(rs) || product(doc, r, rs)) {
-			steps = append(steps, lang.Stmt("out.%s._x = nil", memberField(doc, opts, ptr, i)))
+			steps = append(steps, lang.Stmt(
+				"out.%s.%s = nil", memberField(doc, opts, ptr, i), fallbackField(doc, opts, r),
+			))
 		}
 	}
 
 	return steps
+}
+
+// fallbackField returns the Go name of the field of the struct or product
+// at ptr that holds the members its properties do not name, as fallbackName
+// picks it.
+func fallbackField(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
+	return func(genCtx) (string, error) {
+		s, err := at(doc, ptr)
+		if err != nil {
+			return "", err
+		}
+
+		name, err := typeName(doc, opts, ptr)
+		if err != nil {
+			return "", err
+		}
+
+		taken := slices.Concat(methodNames, otherMethodNames)
+
+		for i := range productOf(doc, ptr, s) {
+			m, err := memberName(doc, opts, ptr, i)
+			if err != nil {
+				return "", err
+			}
+
+			taken = append(taken, fieldIdent(m))
+		}
+
+		for _, n := range s.Properties {
+			// check reports a property giving no Go name.
+			if f, err := identifier(
+				child(ptr, "properties", n.Name),
+				"property",
+				n.Name,
+			); err == nil {
+				taken = append(taken, fieldIdent(f))
+			}
+		}
+
+		return fallbackName(name, taken), nil
+	}
+}
+
+// fallbackName returns AdditionalProperties, or, when taken holds it, the
+// first of AdditionalProperties_2, AdditionalProperties_3, ... that taken
+// does not hold. typ names the struct in the panic on running out of
+// suffixes, which a finite taken never causes.
+func fallbackName(typ string, taken []string) string {
+	const base = "AdditionalProperties"
+
+	if !slices.Contains(taken, base) {
+		return base
+	}
+
+	// i turns negative when it overflows, which ends the loop.
+	for i := 2; i > 0; i++ {
+		if n := base + "_" + strconv.Itoa(i); !slices.Contains(taken, n) {
+			return n
+		}
+	}
+
+	panic(fmt.Sprintf(
+		"jsonschema: %s: the suffix of the field %s of its additional members overflows int",
+		typ, base,
+	))
 }
 
 // declaredMembers returns the names of the members the object at ptr
@@ -567,7 +623,8 @@ func memberField(doc *jsonschema.Schema, opts Options, ptr string, i int) genExp
 
 // fieldIdent returns name, the Go name of a field, with the suffix Field
 // when a method of the struct takes the name, as for a property named
-// validate or additionalProperties.
+// validate. A property named additionalProperties keeps its name, and
+// fallbackName moves the fallback field out of its way instead.
 func fieldIdent(name string) string {
 	if slices.Contains(methodNames, name) {
 		return name + "Field"

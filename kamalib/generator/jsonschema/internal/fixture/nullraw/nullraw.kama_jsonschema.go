@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:59Z
+// generated: 2026-11-24T20:10:37Z
 
 package nullraw
 
@@ -38,41 +38,12 @@ type Root struct {
 	P und.Und[string]            `json:"p,omitzero"`
 	//kama:validate kind="string null"
 	//kama:validate and(kind="string")
-	S  opt.Option[jsontext.Value] `json:"s,omitzero"`
-	D  opt.Option[RootD]          `json:"d,omitzero"`
-	Q  opt.Option[N]              `json:"q,omitzero"`
-	L  opt.Option[[]RootLItem]    `json:"l,omitzero"`
-	M  opt.Option[map[string]N]   `json:"m,omitzero"`
-	_x map[string]jsontext.Value  `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Root declares
-// no field for.
-//
-//kama:generated kama:jsonschema
-func (v Root) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Root) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		R                    jsontext.Value             `json:"r"`
-		A                    opt.Option[jsontext.Value] `json:"a,omitzero"`
-		C                    opt.Option[jsontext.Value] `json:"c,omitzero"`
-		E                    opt.Option[jsontext.Value] `json:"e,omitzero"`
-		P                    und.Und[string]            `json:"p,omitzero"`
-		S                    opt.Option[jsontext.Value] `json:"s,omitzero"`
-		D                    opt.Option[RootD]          `json:"d,omitzero"`
-		Q                    opt.Option[N]              `json:"q,omitzero"`
-		L                    opt.Option[[]RootLItem]    `json:"l,omitzero"`
-		M                    opt.Option[map[string]N]   `json:"m,omitzero"`
-		AdditionalProperties map[string]jsontext.Value  `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{R: v.R, A: v.A, C: v.C, E: v.E, P: v.P, S: v.S, D: v.D, Q: v.Q, L: v.L, M: v.M, AdditionalProperties: v._x})
+	S                    opt.Option[jsontext.Value] `json:"s,omitzero"`
+	D                    opt.Option[RootD]          `json:"d,omitzero"`
+	Q                    opt.Option[N]              `json:"q,omitzero"`
+	L                    opt.Option[[]RootLItem]    `json:"l,omitzero"`
+	M                    opt.Option[map[string]N]   `json:"m,omitzero"`
+	AdditionalProperties map[string]jsontext.Value  `json:",embed"`
 }
 
 // rootWire keeps a missing member of Root apart from null.
@@ -127,7 +98,7 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "l"))
 	out.M, err = jsonschemart.Optional(w.M)
 	errs = append(errs, validation.Field(err, "m"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

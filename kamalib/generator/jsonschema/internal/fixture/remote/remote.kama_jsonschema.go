@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:41:09Z
+// generated: 2026-11-24T20:10:52Z
 
 package remote
 
@@ -25,32 +25,10 @@ import (
 //kama:validate hook=off
 //kama:validate decoded
 type Invoice struct {
-	Total    Money                     `json:"total"`
-	Currency opt.Option[MoneyCurrency] `json:"currency,omitzero"`
-	Payer    opt.Option[Party]         `json:"payer,omitzero"`
-	_x       map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Invoice
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Invoice) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Invoice) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Total                Money                     `json:"total"`
-		Currency             opt.Option[MoneyCurrency] `json:"currency,omitzero"`
-		Payer                opt.Option[Party]         `json:"payer,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Total: v.Total, Currency: v.Currency, Payer: v.Payer, AdditionalProperties: v._x})
+	Total                Money                     `json:"total"`
+	Currency             opt.Option[MoneyCurrency] `json:"currency,omitzero"`
+	Payer                opt.Option[Party]         `json:"payer,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // invoiceWire keeps a missing member of Invoice apart from null.
@@ -85,7 +63,7 @@ func (v *Invoice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "currency"))
 	out.Payer, err = jsonschemart.Optional(w.Payer)
 	errs = append(errs, validation.Field(err, "payer"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -104,30 +82,9 @@ func (v *Invoice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate decoded
 type Money struct {
 	//kama:validate cmp=">=0"
-	Amount   int64                     `json:"amount"`
-	Currency MoneyCurrency             `json:"currency"`
-	_x       map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Money
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Money) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Money) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Amount               int64                     `json:"amount"`
-		Currency             MoneyCurrency             `json:"currency"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Amount: v.Amount, Currency: v.Currency, AdditionalProperties: v._x})
+	Amount               int64                     `json:"amount"`
+	Currency             MoneyCurrency             `json:"currency"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // moneyWire keeps a missing member of Money apart from null.
@@ -159,7 +116,7 @@ func (v *Money) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "amount"))
 	out.Currency, err = jsonschemart.Required(w.Currency)
 	errs = append(errs, validation.Field(err, "currency"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -212,32 +169,10 @@ func (v *MoneyCurrency) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:validate decoded
 type Party struct {
-	Name    string                    `json:"name"`
-	Balance opt.Option[Money]         `json:"balance,omitzero"`
-	Partner *Party                    `json:"partner,omitzero"`
-	_x      map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Party
-// declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v Party) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Party) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		Name                 string                    `json:"name"`
-		Balance              opt.Option[Money]         `json:"balance,omitzero"`
-		Partner              *Party                    `json:"partner,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{Name: v.Name, Balance: v.Balance, Partner: v.Partner, AdditionalProperties: v._x})
+	Name                 string                    `json:"name"`
+	Balance              opt.Option[Money]         `json:"balance,omitzero"`
+	Partner              *Party                    `json:"partner,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // partyWire keeps a missing member of Party apart from null.
@@ -272,7 +207,7 @@ func (v *Party) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "balance"))
 	out.Partner, err = jsonschemart.OptionalPointer(w.Partner)
 	errs = append(errs, validation.Field(err, "partner"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

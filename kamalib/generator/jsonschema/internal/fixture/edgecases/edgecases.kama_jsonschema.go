@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:48Z
+// generated: 2026-11-24T20:10:22Z
 
 package edgecases
 
@@ -23,9 +23,9 @@ import (
 //kama:validate hook=off
 //kama:validate decoded
 type Root struct {
-	ValidateField             opt.Option[string] `json:"validate,omitzero"`
-	AdditionalPropertiesField opt.Option[int64]  `json:"additionalProperties,omitzero"`
-	Ce                        opt.Option[CE]     `json:"ce,omitzero"`
+	ValidateField        opt.Option[string] `json:"validate,omitzero"`
+	AdditionalProperties opt.Option[int64]  `json:"additionalProperties,omitzero"`
+	Ce                   opt.Option[CE]     `json:"ce,omitzero"`
 	//kama:validate json(unique, prefix(kind="number"))
 	PrefixUnique opt.Option[[]jsontext.Value] `json:"prefixUnique,omitzero"`
 	//kama:validate json(unique)
@@ -65,80 +65,38 @@ type Root struct {
 	//kama:validate const="18446744073709551617"
 	TypedBig opt.Option[float64] `json:"typedBig,omitzero"`
 	//kama:validate const="18446744073709551617 `\"x\"`"
-	RawBig opt.Option[jsontext.Value] `json:"rawBig,omitzero"`
-	_x     map[string]jsontext.Value  `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that Root declares
-// no field for.
-//
-//kama:generated kama:jsonschema
-func (v Root) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v Root) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		ValidateField             opt.Option[string]            `json:"validate,omitzero"`
-		AdditionalPropertiesField opt.Option[int64]             `json:"additionalProperties,omitzero"`
-		Ce                        opt.Option[CE]                `json:"ce,omitzero"`
-		PrefixUnique              opt.Option[[]jsontext.Value]  `json:"prefixUnique,omitzero"`
-		ObjectUnique              opt.Option[[]O]               `json:"objectUnique,omitzero"`
-		NumberUnique              opt.Option[[]float64]         `json:"numberUnique,omitzero"`
-		EmptyName                 opt.Option[jsontext.Value]    `json:"emptyName,omitzero"`
-		RequiresEmpty             opt.Option[jsontext.Value]    `json:"requiresEmpty,omitzero"`
-		MaxHuge                   opt.Option[float64]           `json:"maxHuge,omitzero"`
-		MinHuge                   opt.Option[int64]             `json:"minHuge,omitzero"`
-		ExclusiveHuge             opt.Option[float64]           `json:"exclusiveHuge,omitzero"`
-		MultipleHuge              opt.Option[int64]             `json:"multipleHuge,omitzero"`
-		MultipleHugeNumber        opt.Option[float64]           `json:"multipleHugeNumber,omitzero"`
-		MultipleTiny              opt.Option[float64]           `json:"multipleTiny,omitzero"`
-		LengthHuge                opt.Option[string]            `json:"lengthHuge,omitzero"`
-		LengthHugeMin             opt.Option[string]            `json:"lengthHugeMin,omitzero"`
-		MembersStruct             opt.Option[RootMembersStruct] `json:"membersStruct,omitzero"`
-		RawMaxLength              opt.Option[jsontext.Value]    `json:"rawMaxLength,omitzero"`
-		RawContains               opt.Option[jsontext.Value]    `json:"rawContains,omitzero"`
-		RawMinContains            opt.Option[jsontext.Value]    `json:"rawMinContains,omitzero"`
-		MembersHuge               opt.Option[map[string]int64]  `json:"membersHuge,omitzero"`
-		TypedBig                  opt.Option[float64]           `json:"typedBig,omitzero"`
-		RawBig                    opt.Option[jsontext.Value]    `json:"rawBig,omitzero"`
-		AdditionalProperties      map[string]jsontext.Value     `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{ValidateField: v.ValidateField, AdditionalPropertiesField: v.AdditionalPropertiesField, Ce: v.Ce, PrefixUnique: v.PrefixUnique, ObjectUnique: v.ObjectUnique, NumberUnique: v.NumberUnique, EmptyName: v.EmptyName, RequiresEmpty: v.RequiresEmpty, MaxHuge: v.MaxHuge, MinHuge: v.MinHuge, ExclusiveHuge: v.ExclusiveHuge, MultipleHuge: v.MultipleHuge, MultipleHugeNumber: v.MultipleHugeNumber, MultipleTiny: v.MultipleTiny, LengthHuge: v.LengthHuge, LengthHugeMin: v.LengthHugeMin, MembersStruct: v.MembersStruct, RawMaxLength: v.RawMaxLength, RawContains: v.RawContains, RawMinContains: v.RawMinContains, MembersHuge: v.MembersHuge, TypedBig: v.TypedBig, RawBig: v.RawBig, AdditionalProperties: v._x})
+	RawBig                 opt.Option[jsontext.Value] `json:"rawBig,omitzero"`
+	AdditionalProperties_2 map[string]jsontext.Value  `json:",embed"`
 }
 
 // rootWire keeps a missing member of Root apart from null.
 //
 //kama:generated kama:jsonschema
 type rootWire struct {
-	ValidateField             und.Und[string]            `json:"validate,omitzero"`
-	AdditionalPropertiesField und.Und[int64]             `json:"additionalProperties,omitzero"`
-	Ce                        und.Und[CE]                `json:"ce,omitzero"`
-	PrefixUnique              und.Und[[]jsontext.Value]  `json:"prefixUnique,omitzero"`
-	ObjectUnique              und.Und[[]O]               `json:"objectUnique,omitzero"`
-	NumberUnique              und.Und[[]float64]         `json:"numberUnique,omitzero"`
-	EmptyName                 jsontext.Value             `json:"emptyName,omitzero"`
-	RequiresEmpty             jsontext.Value             `json:"requiresEmpty,omitzero"`
-	MaxHuge                   und.Und[float64]           `json:"maxHuge,omitzero"`
-	MinHuge                   und.Und[int64]             `json:"minHuge,omitzero"`
-	ExclusiveHuge             und.Und[float64]           `json:"exclusiveHuge,omitzero"`
-	MultipleHuge              und.Und[int64]             `json:"multipleHuge,omitzero"`
-	MultipleHugeNumber        und.Und[float64]           `json:"multipleHugeNumber,omitzero"`
-	MultipleTiny              und.Und[float64]           `json:"multipleTiny,omitzero"`
-	LengthHuge                und.Und[string]            `json:"lengthHuge,omitzero"`
-	LengthHugeMin             und.Und[string]            `json:"lengthHugeMin,omitzero"`
-	MembersStruct             und.Und[RootMembersStruct] `json:"membersStruct,omitzero"`
-	RawMaxLength              jsontext.Value             `json:"rawMaxLength,omitzero"`
-	RawContains               jsontext.Value             `json:"rawContains,omitzero"`
-	RawMinContains            jsontext.Value             `json:"rawMinContains,omitzero"`
-	MembersHuge               und.Und[map[string]int64]  `json:"membersHuge,omitzero"`
-	TypedBig                  und.Und[float64]           `json:"typedBig,omitzero"`
-	RawBig                    und.Und[jsontext.Value]    `json:"rawBig,omitzero"`
-	AdditionalProperties      map[string]jsontext.Value  `json:",embed"`
+	ValidateField          und.Und[string]            `json:"validate,omitzero"`
+	AdditionalProperties   und.Und[int64]             `json:"additionalProperties,omitzero"`
+	Ce                     und.Und[CE]                `json:"ce,omitzero"`
+	PrefixUnique           und.Und[[]jsontext.Value]  `json:"prefixUnique,omitzero"`
+	ObjectUnique           und.Und[[]O]               `json:"objectUnique,omitzero"`
+	NumberUnique           und.Und[[]float64]         `json:"numberUnique,omitzero"`
+	EmptyName              jsontext.Value             `json:"emptyName,omitzero"`
+	RequiresEmpty          jsontext.Value             `json:"requiresEmpty,omitzero"`
+	MaxHuge                und.Und[float64]           `json:"maxHuge,omitzero"`
+	MinHuge                und.Und[int64]             `json:"minHuge,omitzero"`
+	ExclusiveHuge          und.Und[float64]           `json:"exclusiveHuge,omitzero"`
+	MultipleHuge           und.Und[int64]             `json:"multipleHuge,omitzero"`
+	MultipleHugeNumber     und.Und[float64]           `json:"multipleHugeNumber,omitzero"`
+	MultipleTiny           und.Und[float64]           `json:"multipleTiny,omitzero"`
+	LengthHuge             und.Und[string]            `json:"lengthHuge,omitzero"`
+	LengthHugeMin          und.Und[string]            `json:"lengthHugeMin,omitzero"`
+	MembersStruct          und.Und[RootMembersStruct] `json:"membersStruct,omitzero"`
+	RawMaxLength           jsontext.Value             `json:"rawMaxLength,omitzero"`
+	RawContains            jsontext.Value             `json:"rawContains,omitzero"`
+	RawMinContains         jsontext.Value             `json:"rawMinContains,omitzero"`
+	MembersHuge            und.Und[map[string]int64]  `json:"membersHuge,omitzero"`
+	TypedBig               und.Und[float64]           `json:"typedBig,omitzero"`
+	RawBig                 und.Und[jsontext.Value]    `json:"rawBig,omitzero"`
+	AdditionalProperties_2 map[string]jsontext.Value  `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -159,7 +117,7 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.ValidateField, err = jsonschemart.Optional(w.ValidateField)
 	errs = append(errs, validation.Field(err, "validate"))
-	out.AdditionalPropertiesField, err = jsonschemart.Optional(w.AdditionalPropertiesField)
+	out.AdditionalProperties, err = jsonschemart.Optional(w.AdditionalProperties)
 	errs = append(errs, validation.Field(err, "additionalProperties"))
 	out.Ce, err = jsonschemart.Optional(w.Ce)
 	errs = append(errs, validation.Field(err, "ce"))
@@ -203,7 +161,7 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "typedBig"))
 	out.RawBig, err = jsonschemart.Optional(w.RawBig)
 	errs = append(errs, validation.Field(err, "rawBig"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties_2 = w.AdditionalProperties_2
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -222,28 +180,8 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate members="<=9223372036854775808"
 //kama:validate decoded
 type RootMembersStruct struct {
-	A  opt.Option[jsontext.Value] `json:"a,omitzero"`
-	_x map[string]jsontext.Value  `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that
-// RootMembersStruct declares no field for.
-//
-//kama:generated kama:jsonschema
-func (v RootMembersStruct) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v RootMembersStruct) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		A                    opt.Option[jsontext.Value] `json:"a,omitzero"`
-		AdditionalProperties map[string]jsontext.Value  `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{A: v.A, AdditionalProperties: v._x})
+	A                    opt.Option[jsontext.Value] `json:"a,omitzero"`
+	AdditionalProperties map[string]jsontext.Value  `json:",embed"`
 }
 
 // rootMembersStructWire keeps a missing member of RootMembersStruct apart
@@ -273,7 +211,7 @@ func (v *RootMembersStruct) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.A, err = jsonschemart.DecodeOptional[jsontext.Value](w.A)
 	errs = append(errs, validation.Field(err, "a"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -332,28 +270,8 @@ func (v CE) RawJson() jsontext.Value {
 //kama:validate hook=off
 //kama:validate decoded
 type O struct {
-	X  opt.Option[float64]       `json:"x,omitzero"`
-	_x map[string]jsontext.Value `json:",embed"`
-}
-
-// AdditionalProperties returns the members of the object that O declares no
-// field for.
-//
-//kama:generated kama:jsonschema
-func (v O) AdditionalProperties() map[string]jsontext.Value {
-	return v._x
-}
-
-// MarshalJSONTo encodes v as one JSON object, the members
-// AdditionalProperties returns included.
-//
-//kama:generated kama:jsonschema
-func (v O) MarshalJSONTo(enc *jsontext.Encoder) error {
-	type plain struct {
-		X                    opt.Option[float64]       `json:"x,omitzero"`
-		AdditionalProperties map[string]jsontext.Value `json:",embed"`
-	}
-	return json.MarshalEncode(enc, plain{X: v.X, AdditionalProperties: v._x})
+	X                    opt.Option[float64]       `json:"x,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // oWire keeps a missing member of O apart from null.
@@ -382,7 +300,7 @@ func (v *O) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.X, err = jsonschemart.Optional(w.X)
 	errs = append(errs, validation.Field(err, "x"))
-	out._x = w.AdditionalProperties
+	out.AdditionalProperties = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
