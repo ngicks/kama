@@ -270,19 +270,22 @@ func TestStructRuleErrors(t *testing.T) {
 	}
 }
 
-// TestMembers counts the fields of an optional state that are present, the
-// other fields and the entries of the embedded fallback.
+// TestMembers counts the fields of an optional state that encoders may
+// leave out and that are present, the other fields and the entries of the
+// embedded fallback.
 func TestMembers(t *testing.T) {
 	src := generateAndBuild(t, map[string]string{
 		"a.go": "package x\n\nimport \"github.com/ngicks/option/opt\"\n\n" +
 			"//kama:validate members=\">=1 <=3\" hook=off\ntype A struct {\n" +
-			"\tA opt.Option[int] `json:\"a\"`\n\tB *int\n\tC int\n\tD string `json:\"-\"`\n" +
+			"\tA opt.Option[int] `json:\"a,omitzero\"`\n\tB *int `json:\",omitempty\"`\n" +
+			"\tC int\n\tD string `json:\"-\"`\n\tF *int\n" +
 			"\tE map[string]any `json:\",embed\"`\n}\n\n" +
 			"//kama:validate members=\"<=1\" hook=off\ntype B struct{ N int }\n",
 	})["a.kama_validate.go"]
 	fs := gentest.Funcs(t, src)
 
-	count := `kamaValidateCount(v.A.IsSome(), v.B != nil)+1+len(v.E)`
+	// F counts always, as encoders write null for nil.
+	count := `kamaValidateCount(v.A.IsSome(), v.B != nil)+2+len(v.E)`
 	assertContains(t, fs["A.Validate"],
 		`kamaValidateMembers(`+count+`, ">=", 1)`,
 		`kamaValidateMembers(`+count+`, "<=", 3)`,

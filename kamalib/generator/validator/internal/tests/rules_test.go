@@ -247,8 +247,13 @@ func TestRequires(t *testing.T) {
 		}
 	}
 
-	invalid := model.Shipping{Street: opt.Some(""), Zip: und.Null[string](), Express: true}
-	err := invalid.Validate(false)
+	// A null Zip is present, as a JSON member holding null is.
+	err := model.Shipping{Street: opt.Some(""), Zip: und.Null[string](), Express: true}.
+		Validate(false)
+	assert.DeepEqual(t, validation.Pointers(err), []string{"/city"})
+
+	invalid := model.Shipping{Street: opt.Some(""), Express: true}
+	err = invalid.Validate(false)
 	assert.DeepEqual(t, validation.Pointers(err), []string{"/city", "/zip"})
 	assert.ErrorIs(t, validation.At(err, "/city")[0], validation.ErrRequired)
 	assert.ErrorContains(t, validation.At(err, "/zip")[0], `want a value, as "street" has one`)

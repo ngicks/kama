@@ -12,7 +12,6 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
-	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // fixedNames are the identifiers the signature and the body of every
@@ -406,7 +405,7 @@ func (w *writer) apply(r rule.Rule, t types.Type, x genExpr, wrap wrapFunc) (gen
 		return w.emit(r, t, x, wrap), nil
 	}
 
-	held, guard, value, ok := heldValue(t, x)
+	held, guard, value, ok := rule.HeldValue(t, x)
 	if !ok {
 		return nil, checkErr
 	}
@@ -432,30 +431,6 @@ func (w *writer) emit(r rule.Rule, t types.Type, x genExpr, wrap wrapFunc) genSt
 
 		return e(c)
 	}))
-}
-
-// heldValue returns the one value a pointer, an opt.Option or an und.Und x
-// of type t may hold: its type, the condition of x holding it and the
-// expression of it.
-func heldValue(t types.Type, x genExpr) (types.Type, genExpr, genExpr, bool) {
-	if p, ok := types.Unalias(t).(*types.Pointer); ok {
-		return p.Elem(), lang.Expr("%s != nil", x), lang.Expr("(*%s)", x), true
-	}
-
-	switch {
-	case typequery.IsNamed(t, typequery.OptPath, "Option"):
-		return typequery.TypeArg(t),
-			lang.Expr("%s.IsSome()", x),
-			lang.Expr("%s.Value()", x),
-			true
-	case typequery.IsNamed(t, typequery.UndPath, "Und"):
-		return typequery.TypeArg(t),
-			lang.Expr("%s.IsDefined()", x),
-			lang.Expr("%s.Value()", x),
-			true
-	}
-
-	return nil, nil, nil, false
 }
 
 // check returns the statement collecting the error the expression err

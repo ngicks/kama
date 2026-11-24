@@ -161,7 +161,7 @@ func TestCombinatorSiblings(t *testing.T) {
 
 	at := bound.(atField)
 	assert.Equal(t, at.field, "a")
-	_, ok = at.rule.(OrOptions).Operands[0].Rule.(ConstOptions)
+	_, ok = at.rule.(OrOptions).Operands[0].Rule.(onHeld).rule.(ConstOptions)
 	assert.Assert(t, ok, "%T", at.rule.(OrOptions).Operands[0].Rule)
 
 	r, err = And{}.Parse("requires=z", reg)

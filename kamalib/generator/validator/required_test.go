@@ -78,8 +78,8 @@ type Comparable struct{ X, Y int }
 		`kamaValidateRequired(v.I != nil, "nil")`,
 		`kamaValidateRequired(!v.Time.IsZero(), "the zero value")`,
 		`kamaValidateRequired(v.O.IsSome(), "none")`,
-		`kamaValidateRequired(v.U.IsDefined(), "undefined or null")`,
-		`kamaValidateRequired(v.E.IsDefined(), "undefined or null")`,
+		`kamaValidateRequired(!v.U.IsUndefined(), "undefined")`,
+		`kamaValidateRequired(!v.E.IsUndefined(), "undefined")`,
 		`requiredComparable(v.T)`,
 	)
 	assertContains(t, out[HelpersFile],

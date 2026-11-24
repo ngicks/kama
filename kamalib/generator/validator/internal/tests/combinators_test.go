@@ -156,3 +156,29 @@ func TestSparse(t *testing.T) {
 	assert.ErrorContains(t, err, "want member count >= 2, got 1")
 	assert.DeepEqual(t, validation.Pointers(err), []string{""})
 }
+
+func TestCounted(t *testing.T) {
+	assert.NilError(t, model.Counted{}.Validate(false))
+
+	err := model.Counted{A: opt.Some(1)}.Validate(false)
+	assert.ErrorIs(t, err, validation.ErrLength)
+	assert.ErrorContains(t, err, "want member count <= 1, got 2")
+}
+
+// TestCombinatorsHeldOperand runs the operand cmp of if on the value the
+// pointer Limit holds, while requires reads the pointer itself.
+func TestCombinatorsHeldOperand(t *testing.T) {
+	small, big := 5, 100
+
+	c := validCombinators()
+	c.Limit = &small
+	assert.NilError(t, c.Validate(false))
+
+	c.Limit, c.Note = &big, opt.Some("n")
+	assert.NilError(t, c.Validate(false))
+
+	c.Note = opt.None[string]()
+	err := c.Validate(false)
+	assert.ErrorIs(t, err, validation.ErrRequired)
+	assert.DeepEqual(t, validation.Pointers(err), []string{"/note"})
+}

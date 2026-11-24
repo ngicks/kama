@@ -11,8 +11,9 @@ import (
 // Required is the validator //kama:validate required: the value is not the
 // zero value.
 //
-// An opt.Option must be some, an und.Und or an elastic.Elastic must be
-// defined, and a pointer, slice, map, channel, function or interface must
+// An opt.Option must be some, an und.Und or an elastic.Elastic must not be
+// undefined, so null counts as a value, as a JSON member holding null is
+// present. A pointer, slice, map, channel, function or interface must
 // not be nil. A type with a method IsZero() bool must not be zero by it.
 // Any other comparable type must not equal its zero value. IsZero counts
 // when the type declares it or embedded fields promote it without a
@@ -89,7 +90,7 @@ func presence(t types.Type, v Gen) (cond Gen, got string, ok bool) {
 		return lang.Expr("%s.IsSome()", v), "none", true
 	case typequery.IsNamed(t, typequery.UndPath, "Und"),
 		typequery.IsNamed(t, typequery.ElasticPath, "Elastic"):
-		return lang.Expr("%s.IsDefined()", v), "undefined or null", true
+		return lang.Expr("!%s.IsUndefined()", v), "undefined", true
 	}
 
 	nonZero := lang.Expr("%s(%s)", nonZeroName, v)

@@ -140,7 +140,8 @@
 //	if(<c>, <t>[, <e>])   the errors of the operand t or e
 //
 // required takes no arg. The value is not the zero value: an opt.Option
-// is some, an und.Und or an elastic.Elastic is defined, a pointer, slice,
+// is some, an und.Und or an elastic.Elastic is not undefined, so null
+// counts as a value, as a JSON member holding null is present, a pointer, slice,
 // map, channel, function or interface is not nil, a type with a method
 // IsZero() bool is not zero by it, and any other comparable type, a
 // comparable type parameter included, does not equal its zero value.
@@ -220,7 +221,7 @@
 // requires takes one or more JSON member names of sibling fields, as in
 // requires="city zip". When the field is present, each sibling named is
 // present too, as JSON Schema dependentRequired tests. Present means what
-// required tests, so an und.Und holding null is absent. The field and each
+// required tests, so an und.Und holding null is present. The field and each
 // sibling must be of a type required applies to. A name no sibling field
 // encodes as is an error. The error of a missing sibling is located at the
 // sibling. requires applies to a pointer or an option field itself and
@@ -230,8 +231,9 @@
 // struct type, as in //kama:validate members=">=1 <=3". The number of JSON
 // members of the value satisfies every comparison, as JSON Schema
 // minProperties and maxProperties count them. A field of an option type or
-// a nillable type counts when required would pass on it. Any other field
-// encoded as a member always counts, and so does each entry of the
+// a nillable type whose json tag holds omitzero or omitempty counts when
+// required would pass on it. Any other field encoded as a member always
+// counts, as encoders write it, as null when it holds no value, and so does each entry of the
 // embedded fallback map, the field tagged json:",embed". A fallback of
 // another type and a struct inlining an embedded struct are errors.
 //
@@ -255,10 +257,13 @@
 // the errors of the operands as causes. When several do, it spells them.
 // if takes cond, then and an optional else. When cond holds, it returns
 // the error of then, otherwise that of else, or nil without else. The
-// error of cond never surfaces. The operands of a combinator all run, so
-// the generated code holds no closures. A combinator with a requires
+// error of cond never surfaces. The operands of a combinator all run, as
+// the arguments of one helper call. A combinator with a requires
 // operand is bound to the siblings of its field, and one with a members
-// operand to its struct, as package validator describes. The spelling of
+// operand to its struct, as package validator describes. The other
+// operands of a combinator bound to the siblings apply to the value a
+// pointer or an option holds when they reject the field, inside a function
+// literal guarding a nil pointer. The spelling of
 // an operand in an error message quotes its value, as in
 // not(const=5) reporting want the value to fail const="5".
 //

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T11:26:19Z
+// generated: 2026-11-24T13:12:10Z
 
 package model
 
@@ -58,6 +58,17 @@ func (v Combinators) Validate(stopOnFirstError bool) error {
 			errs = append(errs, err)
 		}
 	}
+	if err := kamaValidateIf(validation.Field(func() error {
+		if v.Limit != nil {
+			return kamaValidateCmp((*v.Limit), ">=", 100)
+		}
+		return nil
+	}(), "limit"), kamaValidateRequires(stopOnFirstError, "limit", v.Limit != nil, []string{"note"}, v.Note.IsSome()), nil); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
 	return validation.Join(errs...)
 }
 
@@ -68,6 +79,21 @@ func (v Combinators) Validate(stopOnFirstError bool) error {
 func (v Sparse) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := kamaValidateOr(kamaValidateMembers(kamaValidateCount(v.A.IsSome(), v.B != nil, v.C.IsSome()), "==", 0), kamaValidateMembers(kamaValidateCount(v.A.IsSome(), v.B != nil, v.C.IsSome()), ">=", 2)); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v Counted) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := kamaValidateMembers(kamaValidateCount(v.A.IsSome())+1, "<=", 1); err != nil {
 		if stopOnFirstError {
 			return err
 		}

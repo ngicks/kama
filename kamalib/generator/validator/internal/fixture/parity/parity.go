@@ -16,7 +16,7 @@ type Order struct {
 	//kama:validate required regexp="^[A-Z]{3}-[0-9]+$"
 	Id string `json:"id"`
 	//kama:validate length=">=1 <=5"
-	Lines []Line `json:"lines"`
+	Lines []Line `json:"lines,omitzero"`
 	//kama:validate const=`"eur" "usd"`
 	Currency string `json:"currency"`
 	//kama:validate hook=on
@@ -50,10 +50,10 @@ type Sku string
 //kama:validate hook=off or(members="==0", members=">=2")
 type Discount struct {
 	//kama:validate or(cmp=">=10", const="0") not(or(const="5", const="7"))
-	Percent opt.Option[int] `json:"percent"`
+	Percent opt.Option[int] `json:"percent,omitzero"`
 	//kama:validate if(const=`"fixed"`, requires=amount, oneof(const=`"percent"`, regexp="^p"))
 	Kind   string `json:"kind"`
-	Amount *int   `json:"amount"`
+	Amount *int   `json:"amount,omitzero"`
 }
 
 // Batch holds orders, which makes it a dependant.

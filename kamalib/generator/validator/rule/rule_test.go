@@ -312,6 +312,8 @@ func (s testStruct) Member(name string) (types.Type, Gen, bool) {
 	return t, lang.Expr("v.%s", name), ok
 }
 
+func (testStruct) Omittable(string) bool { return true }
+
 func (s testStruct) Fallback() (types.Type, Gen, bool) {
 	return s.fallback, lang.Expr("v.X"), s.fallback != nil
 }

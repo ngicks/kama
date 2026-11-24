@@ -149,8 +149,9 @@ func texts(ops []Operand) []string {
 
 // siblingCombinator is a combinator with an operand reading the siblings
 // of the field. As a SiblingRule it applies to the field itself, never to
-// the value a pointer or an option holds, and its other operands apply to
-// the type of the field too.
+// the value a pointer or an option holds. Its other operands apply to the
+// type of the field, else to the value it holds, and hold when it holds
+// none.
 type siblingCombinator struct {
 	ops   []Operand
 	src   errorSource
@@ -185,7 +186,9 @@ func (c siblingCombinator) Siblings(s Struct, field string) (Rule, error) {
 
 			op.Rule = r
 		case c.src == operandErrors:
-			op.Rule = atField{rule: op.Rule, field: field}
+			op.Rule = atField{rule: onHeld{rule: op.Rule}, field: field}
+		default:
+			op.Rule = onHeld{rule: op.Rule}
 		}
 
 		bound = append(bound, op)
@@ -248,14 +251,7 @@ type atField struct {
 }
 
 // Check accepts the types rule accepts.
-func (a atField) Check(t types.Type) error {
-	if err := a.rule.Check(t); err != nil {
-		return fmt.Errorf("%w; a combinator reading the siblings of a field applies to the field"+
-			" itself, never to the value it holds", err)
-	}
-
-	return nil
-}
+func (a atField) Check(t types.Type) error { return a.rule.Check(t) }
 
 // Emit wraps the expression of rule with validation.Field.
 func (a atField) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {

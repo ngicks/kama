@@ -135,8 +135,8 @@ type Shipping struct {
 //kama:validate members=">=2 <=3" hook=off
 type Contact struct {
 	Name  string             `json:"name"`
-	Email opt.Option[string] `json:"email"`
-	Phone *string            `json:"phone"`
+	Email opt.Option[string] `json:"email,omitzero"`
+	Phone *string            `json:"phone,omitzero"`
 	Extra map[string]any     `json:",embed"`
 }
 

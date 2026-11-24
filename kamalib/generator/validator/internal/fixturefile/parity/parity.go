@@ -13,7 +13,7 @@ var ErrNote = errors.New("note too long")
 
 type Order struct {
 	Id       string `json:"id"`
-	Lines    []Line `json:"lines"`
+	Lines    []Line `json:"lines,omitzero"`
 	Currency string `json:"currency"`
 	Note     string `json:"note"`
 }
@@ -35,9 +35,9 @@ type Line struct {
 type Sku string
 
 type Discount struct {
-	Percent opt.Option[int] `json:"percent"`
+	Percent opt.Option[int] `json:"percent,omitzero"`
 	Kind    string          `json:"kind"`
-	Amount  *int            `json:"amount"`
+	Amount  *int            `json:"amount,omitzero"`
 }
 
 // Batch holds orders, which makes it a dependant.

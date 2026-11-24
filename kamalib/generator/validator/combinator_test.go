@@ -142,13 +142,31 @@ func TestCombinatorSiblings(t *testing.T) {
 	assertNotContains(t, fn, "if v.B != nil {")
 }
 
+// TestCombinatorSiblingsHeld applies an operand other than requires of a
+// combinator bound to the siblings to the value a pointer holds, under a
+// guard of its own.
+func TestCombinatorSiblingsHeld(t *testing.T) {
+	fn := validateOf(t, map[string]string{
+		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
+			"\t//kama:validate if(cmp=\">=1\", requires=b)\n\tA *int `json:\"a\"`\n" +
+			"\tB *int `json:\"b\"`\n}\n",
+	}, "a.kama_validate.go", "A")
+
+	assertContains(t, fn,
+		"kamaValidateIf(validation.Field(func() error {",
+		"if v.A != nil {",
+		`return kamaValidateCmp((*v.A), ">=", 1)`,
+		`kamaValidateRequires(stopOnFirstError, "a", v.A != nil, []string{"b"}, v.B != nil)`,
+	)
+}
+
 // TestCombinatorMembers binds a combinator holding members to the struct
 // in the doc comment of a struct type.
 func TestCombinatorMembers(t *testing.T) {
 	fn := validateOf(t, map[string]string{
 		"a.go": "package x\n\nimport \"github.com/ngicks/option/opt\"\n\n" +
 			"//kama:validate hook=off or(members=\"==0\", members=\">=2\")\ntype A struct {\n" +
-			"\tA opt.Option[int] `json:\"a\"`\n\tB *int `json:\"b\"`\n}\n",
+			"\tA opt.Option[int] `json:\"a,omitzero\"`\n\tB *int `json:\"b,omitzero\"`\n}\n",
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn, check(`kamaValidateOr(`+
@@ -195,15 +213,14 @@ func TestCombinatorErrors(t *testing.T) {
 			msgs: []string{"no place takes both"},
 		},
 		{
-			name: "operand on a held value with requires",
+			name: "operand on no held value with requires",
 			src: "//kama:validate hook=off\ntype A struct {\n" +
-				"\t//kama:validate if(cmp=\">=1\", requires=b)\n\tA *int `json:\"a\"`\n" +
+				"\t//kama:validate if(cmp=\">=1\", requires=b)\n\tA []int `json:\"a\"`\n" +
 				"\tB int `json:\"b\"`\n}\n",
 			is: []error{ErrUnsupported},
 			msgs: []string{
 				"//kama:validate if on field A",
-				`operand cmp=">=1": *int is not an integer, float, string or bool type;` +
-					" a combinator reading the siblings of a field applies to the field itself",
+				`operand cmp=">=1": []int is not an integer, float, string or bool type`,
 			},
 		},
 		{

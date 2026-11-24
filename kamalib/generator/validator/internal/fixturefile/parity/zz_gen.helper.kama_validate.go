@@ -2,7 +2,7 @@
 // params:
 //	option_file: "validate.yaml"
 //	package_option_file: "parity/kama_validate.yaml"
-// generated: 2026-11-24T11:32:44Z
+// generated: 2026-11-24T13:15:29Z
 
 package parity
 

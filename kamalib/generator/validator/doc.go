@@ -375,9 +375,11 @@
 // and is an error.
 //
 // A combinator holding a rule.SiblingRule operand, such as requires, is a
-// rule.SiblingRule itself. It applies to the field itself, and its other
-// operands apply to the type of the field, never to the value it holds.
-// Its errors are located at the field, except those the sibling operand
+// rule.SiblingRule itself. It applies to the field itself. Each of its
+// other operands applies to the type of the field, else to the value a
+// pointer, an opt.Option or an und.Und holds, and holds when the field
+// holds none: if(cmp=">=1", requires=b) on a field A *int compares *A when
+// A is not nil. Its errors are located at the field, except those the sibling operand
 // locates at a sibling. A combinator holding a rule.StructRule operand,
 // such as members, is a rule.StructRule and goes in the doc comment of a
 // struct type. Operands of both kinds in one combinator are an error.

@@ -16,7 +16,8 @@ import (
 // Schema dependentRequired tests. A name is the JSON member name a sibling
 // field encodes as. Present means what Required tests: an option holds a
 // value, a nillable value is not nil, and any other value is not its zero
-// value. An und.Und or an elastic.Elastic holding null is therefore absent.
+// value. An und.Und or an elastic.Elastic holding null is therefore
+// present, as a JSON member holding null is.
 //
 // It is a SiblingRule. It applies to a struct field whose type Required
 // applies to, and each sibling named must be of such a type. The error of a

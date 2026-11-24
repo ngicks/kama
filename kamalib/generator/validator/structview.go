@@ -51,6 +51,16 @@ func (s structView) Member(name string) (types.Type, genExpr, bool) {
 	return nil, nil, false
 }
 
+func (s structView) Omittable(name string) bool {
+	for i := range s.st.NumFields() {
+		if n, ok := memberName(s.st, i); ok && n == name {
+			return tagOption(s.st, i, "omitzero") || tagOption(s.st, i, "omitempty")
+		}
+	}
+
+	return false
+}
+
 func (s structView) Fallback() (types.Type, genExpr, bool) {
 	for i := range s.st.NumFields() {
 		v := s.st.Field(i)

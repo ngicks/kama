@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:30:35Z
+// generated: 2026-11-24T13:15:27Z
 
 package model
 
@@ -304,7 +304,7 @@ func (v Stamped) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Shipping) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := kamaValidateRequires(stopOnFirstError, "street", v.Street.IsSome(), []string{"city", "zip"}, v.City != nil, v.Zip.IsDefined()); err != nil {
+	if err := kamaValidateRequires(stopOnFirstError, "street", v.Street.IsSome(), []string{"city", "zip"}, v.City != nil, !v.Zip.IsUndefined()); err != nil {
 		if stopOnFirstError {
 			return err
 		}

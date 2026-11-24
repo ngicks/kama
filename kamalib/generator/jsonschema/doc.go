@@ -285,8 +285,10 @@
 // its own. A number compares as the Go value, so an enum of numbers cannot
 // tell apart two numbers one float64 holds. unique compares raw JSON text
 // byte by byte, so 1 and 1.0 differ. requires, required and members count
-// an und.Und holding null as absent, while JSON Schema counts a member
-// holding null as present. regexp is RE2, not ECMA-262.
+// an und.Und holding null as present, as JSON Schema counts a member
+// holding null. An optional nullable property on a cycle is a pointer,
+// which is nil for null and absent alike, so it counts as absent.
+// regexp is RE2, not ECMA-262.
 //
 // Generate warns with ErrUnenforced about a validation keyword the
 // generated code does not check: a keyword of a schema of no single kind,

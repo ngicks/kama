@@ -121,6 +121,10 @@ type Struct interface {
 	// the expression of its value, or false when no field Members lists
 	// encodes as name.
 	Member(name string) (types.Type, Gen, bool)
+	// Omittable reports whether encoders may leave out the member name: the
+	// json tag of its field holds omitzero or omitempty. Encoders write any
+	// other member, as null for a value holding none.
+	Omittable(name string) bool
 	// Fallback returns the type of the embedded fallback field, a field
 	// tagged json:",embed" whose type is no struct, and the expression of
 	// its value, or false when the struct has none.

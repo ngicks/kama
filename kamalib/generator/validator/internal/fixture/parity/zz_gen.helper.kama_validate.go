@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T11:32:42Z
+// generated: 2026-11-24T13:15:27Z
 
 package parity
 

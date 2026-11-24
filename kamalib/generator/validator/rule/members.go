@@ -15,10 +15,12 @@ import (
 // The operators and n are those of Length.
 //
 // It is a StructRule, written in the doc comment of a struct type. A field
-// of an option type or a nillable type counts when it is present as
-// Required tests it: an opt.Option holds a value, an und.Und or an
-// elastic.Elastic is defined, and a pointer, slice, map, channel, function
-// or interface is not nil. Any other field always counts. The embedded
+// of an option type or a nillable type whose json tag holds omitzero or
+// omitempty counts when it is present as Required tests it: an opt.Option
+// holds a value, an und.Und or an elastic.Elastic is not undefined, and a
+// pointer, slice, map, channel, function or interface is not nil. Any
+// other field always counts, as encoders write it, as null when it holds
+// no value. The embedded
 // fallback field, tagged json:",embed", counts its entries and must be a
 // map. A struct inlining an embedded struct is an error, since Members
 // does not count the members such a struct adds.
@@ -115,7 +117,7 @@ func (m membersOf) count(e Emitter) (Gen, error) {
 
 	for _, name := range names {
 		t, v, _ := m.s.Member(name)
-		if !optionalState(t) {
+		if !optionalState(t) || !m.s.Omittable(name) {
 			always++
 			continue
 		}

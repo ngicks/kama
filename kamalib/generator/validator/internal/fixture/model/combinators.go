@@ -21,13 +21,25 @@ type Combinators struct {
 	Nested int `json:"nested"`
 	//kama:validate or(cmp=">=10", const="0")
 	Held opt.Option[int] `json:"held"`
+	//kama:validate if(cmp=">=100", requires=note)
+	Limit *int               `json:"limit,omitzero"`
+	Note  opt.Option[string] `json:"note,omitzero"`
 }
 
 // Sparse holds either no member or two members or more.
 //
 //kama:validate hook=off or(members="==0", members=">=2")
 type Sparse struct {
-	A opt.Option[int] `json:"a"`
-	B *int            `json:"b"`
-	C opt.Option[int] `json:"c"`
+	A opt.Option[int] `json:"a,omitzero"`
+	B *int            `json:"b,omitzero"`
+	C opt.Option[int] `json:"c,omitzero"`
+}
+
+// Counted holds one member at most. Its member b always counts, as
+// encoders write null for none.
+//
+//kama:validate hook=off members="<=1"
+type Counted struct {
+	A opt.Option[int] `json:"a,omitzero"`
+	B opt.Option[int] `json:"b"`
 }

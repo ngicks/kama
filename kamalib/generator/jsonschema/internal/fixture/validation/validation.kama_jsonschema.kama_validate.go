@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:46:31Z
+// generated: 2026-11-24T13:16:49Z
 
 package validation
 
@@ -20,7 +20,7 @@ import (
 //kama:generated kama:validate
 func (v Order) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Items != nil, v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+1+len(v._x), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Items != nil, v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+1+len(v._x), "<=", 11)); err != nil {
+	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v._x), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v._x), "<=", 11)); err != nil {
 		if stopOnFirstError {
 			return err
 		}
