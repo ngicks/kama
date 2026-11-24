@@ -8,12 +8,12 @@
 //
 // A file is named by inserting .kama_contextkey into Entry.FileName before
 // its build constraint suffixes, as in sig.kama_contextkey_linux.go for
-// sig_linux. It starts with the header base.Header prints: the
+// sig_linux. It starts with the header of package base: the
 // generated-code line, the params package and key_type_func, and the time
 // of the run.
 //
 // A key of the template file that names no field of Template or Entry is
-// no error. Proc warns, wrapping ErrUnknownKey, about each of them with
+// no error. Generate warns, wrapping ErrUnknownKey, about each of them with
 // the path of the file and the key path, as in entries.0.default.
 //
 // Proc keeps a file that would change in the generated: line only, and
@@ -26,22 +26,23 @@
 package contextkey
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"go/parser"
 	"go/token"
+	"go/types"
+	"iter"
+	"path"
 	"slices"
 	"strconv"
 	"strings"
-	"text/template"
-	"time"
-
-	"github.com/ngicks/kama/kamalib/generator/utils/base"
 
 	"github.com/ngicks/opiter"
 
-	"github.com/ngicks/kama/kamalib/pkg/genmark"
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 )
 
@@ -50,16 +51,16 @@ var GeneratorId = base.Id{Namespace: "kama", Name: "contextkey"}
 
 func init() { base.MustRegister(GeneratorId) }
 
+// Generator generates the files of the entries of an Input.
+var Generator = base.Generator[Input]{Id: GeneratorId, Generate: Generate}
+
 var (
 	ErrInvalidEntry = errors.New("contextkey: invalid entry")
-	// ErrUnknownKey is wrapped by the warnings of Proc about the keys of a
-	// template file that name no field of Template or Entry.
+	// ErrUnknownKey is wrapped by the warnings of Generate about the keys of
+	// a template file that name no field of Template or Entry.
 	ErrUnknownKey = errors.New("contextkey: unknown key")
+	ErrNoEntries  = errors.New("contextkey: no entries")
 )
-
-// generatorPath is the import path of the package, as the header of the
-// generated files spells it.
-const generatorPath = "github.com/ngicks/kama/kamalib/generator/contextkey"
 
 // naming names the files the generator writes.
 var naming = GeneratorId.Naming()
@@ -67,6 +68,17 @@ var naming = GeneratorId.Naming()
 // FileName returns the name of the file generated for an Entry whose
 // FileName is name.
 func FileName(name string) string { return naming.SourceFile(name + ".go") }
+
+// Input is the input of a run of Generator.
+type Input struct {
+	// Path is the path of the template file, which messages name.
+	Path     string
+	Template Template
+	// Dir is the directory the files land in, slash-separated and relative
+	// to the root of the output.
+	Dir     string
+	Options Options
+}
 
 // Template is the decoded template file. The json tags of Template and
 // Entry give its keys. The keys are lowercase snake case.
@@ -100,7 +112,7 @@ type Entry struct {
 	DefaultExpr string `json:"default_expr"`
 	// Imports are package paths the generated file needs besides "context".
 	Imports []string `json:"imports"`
-	// Unknown captures the keys of the entry that name no field. Render
+	// Unknown captures the keys of the entry that name no field. Generate
 	// ignores it.
 	Unknown map[string]any `json:",embed"`
 }
@@ -125,7 +137,7 @@ func (e Entry) validate() error {
 	return nil
 }
 
-// Options configures Render.
+// Options configures Generate.
 type Options struct {
 	// Package is the package clause of generated files.
 	Package string
@@ -133,24 +145,6 @@ type Options struct {
 	// returns a key. It must return a distinct key on every call, since
 	// entries of the same Type pass it the same string.
 	KeyTypeFunc string
-	// Now returns the time the header of generated files states. Nil
-	// means time.Now.
-	Now func() time.Time
-	// Registry tells the generators markers name, for the stale file
-	// warnings of the proc. Nil means base.DefaultRegistry.
-	Registry *genmark.Registry
-}
-
-func (o Options) withDefaults() Options {
-	if o.Now == nil {
-		o.Now = time.Now
-	}
-
-	if o.Registry == nil {
-		o.Registry = base.DefaultRegistry
-	}
-
-	return o
 }
 
 func (o Options) validate() error {
@@ -165,151 +159,195 @@ func (o Options) validate() error {
 	return nil
 }
 
-// Render returns the source of every entry keyed by file name. The source
-// parses but is left unformatted; overlayfs.Fs formats it on write.
-func Render(entries []Entry, opts Options) (map[string][]byte, error) {
-	if err := opts.validate(); err != nil {
+// Generate yields one file per entry of in, in the order of the entries,
+// and warns about the unknown keys of its template. An invalid entry and
+// a file name two entries share are errors naming the template file.
+func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, error] {
+	return func(yield func(base.Output, error) bool) {
+		for _, k := range in.Template.UnknownKeys() {
+			env.Reporter.Warn(
+				fmt.Errorf("%w: %s: %s", ErrUnknownKey, in.Path, strings.Join(k, ".")),
+			)
+		}
+
+		if err := in.Options.validate(); err != nil {
+			yield(nil, err)
+			return
+		}
+
+		if len(in.Template.Entries) == 0 {
+			yield(nil, fmt.Errorf("%w: %s", ErrNoEntries, in.Path))
+			return
+		}
+
+		seen := map[string]bool{}
+
+		for _, e := range in.Template.Entries {
+			out, err := entryFile(in, e, seen[e.FileName])
+			if err != nil {
+				err = fmt.Errorf("%s: %w", in.Path, err)
+			}
+
+			seen[e.FileName] = true
+
+			if !yield(out, err) {
+				return
+			}
+		}
+	}
+}
+
+// entryFile returns the file of e. dup tells that an earlier entry has its
+// file name.
+func entryFile(in Input, e Entry, dup bool) (base.Output, error) {
+	if err := e.validate(); err != nil {
 		return nil, err
 	}
 
-	opts = opts.withDefaults()
+	if dup {
+		return nil, fmt.Errorf("%w: duplicate file name %q", ErrInvalidEntry, e.FileName)
+	}
 
-	hdr, err := base.Header(generatorPath, map[string]any{
-		"package":       opts.Package,
-		"key_type_func": opts.KeyTypeFunc,
-	}, opts.Now())
+	imports, err := entryImports(in.Options.Package, e)
+	if err != nil {
+		return nil, fmt.Errorf("contextkey: %q: %w", e.FileName, err)
+	}
+
+	c := genhelper.NewBaseContext(genhelper.NewScope(), &genhelper.Package{Imports: imports})
+
+	parts, err := opiter.TryCollect(
+		opiter.WrapSeq(slices.Values(entrySteps(in.Options, e))).
+			Disassemble(func(step genStep) (base.Part, error) { return renderDecl(c, step) }),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("contextkey: render %q: %w", e.FileName, err)
+	}
+
+	return base.Composed{
+		Path: path.Join(in.Dir, FileName(e.FileName)),
+		Params: map[string]any{
+			"package":       in.Options.Package,
+			"key_type_func": in.Options.KeyTypeFunc,
+		},
+		Package: in.Options.Package,
+		Imports: imports,
+		Parts:   parts,
+	}, nil
+}
+
+// renderDecl renders the declaration of step. A type or a default
+// expression of an entry can still break the declaration it goes into,
+// which is reported here rather than when the file is staged.
+func renderDecl(c genhelper.BaseContext, step genStep) (base.Part, error) {
+	text, err := lang.Render(c, step)
 	if err != nil {
 		return nil, err
 	}
 
-	header := strings.Join(hdr, "\n")
+	_, err = parser.ParseFile(
+		token.NewFileSet(), "", "package p\n\n"+text, parser.SkipObjectResolution,
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	out := make(map[string][]byte, len(entries))
-	for _, e := range entries {
-		if err := e.validate(); err != nil {
+	return base.Decl(text), nil
+}
+
+// entryImports returns the imports of the file of e: context and the
+// imports of e. The packages are not loaded, so an import keeps the name
+// its path suggests and the file names no import, leaving the package
+// name to the compiler, as the type and the default expression of e
+// spell it.
+func entryImports(pkgName string, e Entry) (*importdecl.Map, error) {
+	parser := importdecl.NewParser(types.NewPackage(pkgName, pkgName))
+
+	for _, p := range slices.Concat([]string{"context"}, e.Imports) {
+		imp := importdecl.Import{Package: importdecl.Package{Path: p}}
+		imp.Package.Name = imp.Ident()
+
+		if err := parser.Require(imp); err != nil {
 			return nil, err
 		}
-
-		name := FileName(e.FileName)
-		if _, dup := out[name]; dup {
-			return nil, fmt.Errorf("%w: duplicate file name %q", ErrInvalidEntry, e.FileName)
-		}
-
-		src, err := renderEntry(e, opts, header)
-		if err != nil {
-			return nil, fmt.Errorf("contextkey: render %q: %w", e.FileName, err)
-		}
-
-		out[name] = src
 	}
 
-	return out, nil
+	return parser.ParseAst(nil)
 }
 
-func renderEntry(e Entry, opts Options, header string) ([]byte, error) {
-	imports := slices.Concat([]string{"context"}, e.Imports)
-	slices.Sort(imports)
+type genStep = genhelper.Step[genhelper.BaseContext]
 
-	imports = opiter.WrapSeq(slices.Values(slices.Compact(imports))).
-		Map(strconv.Quote).
-		CollectSlice()
+// lang is the vocabulary of steps of the generated declarations.
+var lang genhelper.Lang[genhelper.BaseContext]
 
-	var buf bytes.Buffer
+// entrySteps returns the declarations of e, one step each. The bodies
+// spell their locals by fixed names: the only other identifiers in scope
+// are the package-level ones of the entry, which differ from them.
+func entrySteps(opts Options, e Entry) []genStep {
+	key := "Key" + e.Name
+	value := "Value" + e.Name
 
-	err := fileTemplate.Execute(&buf, templateData{
-		Entry:       e,
-		Header:      header,
-		Package:     opts.Package,
-		KeyTypeFunc: opts.KeyTypeFunc,
-		Imports:     imports,
-		Marker:      GeneratorId.Marker(),
-	})
-	if err != nil {
-		return nil, err
+	doc := func(text string) genhelper.Gen[genhelper.BaseContext] {
+		return lang.Comment(lang.Expr("%s", text))
 	}
+	ifValue := lang.If(lang.Expr("v, ok := %s(ctx); ok", value), lang.Stmt("return v"), nil)
 
-	if _, err := parser.ParseFile(
-		token.NewFileSet(),
-		"",
-		buf.Bytes(),
-		parser.SkipObjectResolution,
-	); err != nil {
-		return nil, err
+	return []genStep{
+		lang.Steps(
+			lang.Line(doc(fmt.Sprintf("%s is the context key for a %s value.", key, e.Type))),
+			lang.Stmt("var %s = %s(%s)", key, opts.KeyTypeFunc, strconv.Quote(e.Type)),
+		),
+		lang.DocFunc(
+			doc(fmt.Sprintf(
+				"With%s returns a copy of ctx in which %s is associated with v.", e.Name, key,
+			)),
+			lang.Expr("func With%s(ctx context.Context, v %s) context.Context", e.Name, e.Type),
+			lang.Stmt("return context.WithValue(ctx, %s, v)", key),
+		),
+		lang.DocFunc(
+			doc(fmt.Sprintf(
+				"%s returns the %s associated with %s in ctx.\n"+
+					"ok is false if no value is associated or the value is not a %s.",
+				value, e.Type, key, e.Type,
+			)),
+			lang.Expr("func %s(ctx context.Context) (v %s, ok bool)", value, e.Type),
+			lang.Stmt("v, ok = ctx.Value(%s).(%s)", key, e.Type),
+			lang.Stmt("return v, ok"),
+		),
+		lang.DocFunc(
+			doc(fmt.Sprintf(
+				"%sFallback returns the %s associated with %s in ctx,\n"+
+					"or fallback if %s reports none.",
+				value, e.Type, key, value,
+			)),
+			lang.Expr(
+				"func %sFallback(ctx context.Context, fallback %s) %s", value, e.Type, e.Type,
+			),
+			ifValue,
+			lang.Stmt("return fallback"),
+		),
+		lang.DocFunc(
+			doc(fmt.Sprintf(
+				"%sFallbackFn returns the %s associated with %s in ctx,\n"+
+					"or the result of fallbackFn if %s reports none.",
+				value, e.Type, key, value,
+			)),
+			lang.Expr(
+				"func %sFallbackFn(ctx context.Context, fallbackFn func() %s) %s",
+				value, e.Type, e.Type,
+			),
+			ifValue,
+			lang.Stmt("return fallbackFn()"),
+		),
+		lang.DocFunc(
+			doc(fmt.Sprintf(
+				"%sDefault returns the %s associated with %s in ctx,\n"+
+					"or %s if %s reports none.",
+				value, e.Type, key, e.DefaultExpr, value,
+			)),
+			lang.Expr("func %sDefault(ctx context.Context) %s", value, e.Type),
+			lang.Stmt(
+				"return %sFallbackFn(ctx, func() %s { return %s })", value, e.Type, e.DefaultExpr,
+			),
+		),
 	}
-
-	return buf.Bytes(), nil
 }
-
-type templateData struct {
-	Entry
-	// Header is the comment the file starts with.
-	Header      string
-	Package     string
-	KeyTypeFunc string
-	// Imports are quoted import paths.
-	Imports []string
-	Marker  string
-}
-
-var fileTemplate = template.Must(template.New("contextkey").Parse(
-	`{{.Header}}
-
-package {{.Package}}
-
-import (
-{{- range .Imports}}
-	{{.}}
-{{- end}}
-)
-
-// Key{{.Name}} is the context key for a {{.Type}} value.
-//
-{{.Marker}}
-var Key{{.Name}} = {{.KeyTypeFunc}}({{printf "%q" .Type}})
-
-// With{{.Name}} returns a copy of ctx in which Key{{.Name}} is associated with v.
-//
-{{.Marker}}
-func With{{.Name}}(ctx context.Context, v {{.Type}}) context.Context {
-	return context.WithValue(ctx, Key{{.Name}}, v)
-}
-
-// Value{{.Name}} returns the {{.Type}} associated with Key{{.Name}} in ctx.
-// ok is false if no value is associated or the value is not a {{.Type}}.
-//
-{{.Marker}}
-func Value{{.Name}}(ctx context.Context) (v {{.Type}}, ok bool) {
-	v, ok = ctx.Value(Key{{.Name}}).({{.Type}})
-	return v, ok
-}
-
-// Value{{.Name}}Fallback returns the {{.Type}} associated with Key{{.Name}} in ctx,
-// or fallback if Value{{.Name}} reports none.
-//
-{{.Marker}}
-func Value{{.Name}}Fallback(ctx context.Context, fallback {{.Type}}) {{.Type}} {
-	if v, ok := Value{{.Name}}(ctx); ok {
-		return v
-	}
-	return fallback
-}
-
-// Value{{.Name}}FallbackFn returns the {{.Type}} associated with Key{{.Name}} in ctx,
-// or the result of fallbackFn if Value{{.Name}} reports none.
-//
-{{.Marker}}
-func Value{{.Name}}FallbackFn(ctx context.Context, fallbackFn func() {{.Type}}) {{.Type}} {
-	if v, ok := Value{{.Name}}(ctx); ok {
-		return v
-	}
-	return fallbackFn()
-}
-
-// Value{{.Name}}Default returns the {{.Type}} associated with Key{{.Name}} in ctx,
-// or {{.DefaultExpr}} if Value{{.Name}} reports none.
-//
-{{.Marker}}
-func Value{{.Name}}Default(ctx context.Context) {{.Type}} {
-	return Value{{.Name}}FallbackFn(ctx, func() {{.Type}} { return {{.DefaultExpr}} })
-}
-`))

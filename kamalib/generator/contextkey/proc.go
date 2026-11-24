@@ -3,15 +3,9 @@ package contextkey
 import (
 	"context"
 	"encoding/json/v2"
-	"errors"
 	"fmt"
 	"io/fs"
-	"path"
-	"reflect"
-	"slices"
-	"strings"
 
-	"github.com/ngicks/opiter"
 	"github.com/ngicks/option/und"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
@@ -21,9 +15,7 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register("contextkey.generate", NewProc) }
-
-var ErrNoEntries = errors.New("contextkey: no entries")
+func init() { workflow.Register(GeneratorId.ProcKind(), NewProc) }
 
 // ProcParam configures Proc. A spec decodes into ProcParamPartial, which
 // Proc merges onto DefaultProcParam.
@@ -50,109 +42,50 @@ func DefaultProcParam() ProcParamPartial {
 // UnknownKeys implements workflow.UnknownKeyer.
 func (p *ProcParamPartial) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
-// Proc renders the Template its in decodes to and stages the files in its
-// out. A file of its out that would change in the generated: line of its
-// header only is not staged. Proc reports a warning for each unknown key of
-// the template file and for each stale file of its output directory, and
-// the number of files written and unchanged.
+// Proc runs Generator on the Template its in decodes to and stages the
+// files in its out, as base.Proc does. Its stale check covers the Go files
+// of its output directory.
 //
 //	Param(ProcParamPartial) error
 //	In(*fileloader.Document)
 //	Out(*overlayfs.Fs)
-type Proc struct{}
-
-// NewProc returns a new Proc.
-func NewProc() workflow.Proc { return Proc{} }
-
-func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParamPartial]() }
-
-func (Proc) InTypes() []reflect.Type {
-	return []reflect.Type{reflect.TypeFor[*fileloader.Document]()}
+var Proc = base.Proc[ProcParamPartial, ProcParam, *fileloader.Document, Input]{
+	Generator: Generator,
+	Default:   DefaultProcParam,
+	Check:     checkParam,
+	Input:     procInput,
 }
 
-func (Proc) OutTypes() []reflect.Type {
-	return []reflect.Type{reflect.TypeFor[*overlayfs.Fs]()}
-}
+// NewProc returns Proc. It is the constructor of the kind
+// contextkey.generate in workflow.DefaultRegistry.
+func NewProc() workflow.Proc { return Proc }
 
-func (Proc) AsInputType() reflect.Type { return nil }
-
-func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
-	return &instance{}, nil
-}
-
-func (Proc) CleanUp(context.Context) error { return nil }
-
-type instance struct {
-	dir  string
-	opts Options
-	doc  *fileloader.Document
-	fs   *overlayfs.Fs
-}
-
-func (i *instance) Param(partial ProcParamPartial) error {
-	p := DefaultProcParam().Merge(partial).ToValue()
+func checkParam(p ProcParam) error {
 	if !fs.ValidPath(p.Dir) {
 		return fmt.Errorf("contextkey: invalid dir %q", p.Dir)
 	}
 
-	opts := Options{Package: p.Package, KeyTypeFunc: p.KeyTypeFunc}
-	if err := opts.validate(); err != nil {
-		return err
-	}
-
-	i.dir, i.opts = p.Dir, opts
-
-	return nil
+	return paramOptions(p).validate()
 }
 
-func (i *instance) In(doc *fileloader.Document) { i.doc = doc }
+func paramOptions(p ProcParam) Options {
+	return Options{Package: p.Package, KeyTypeFunc: p.KeyTypeFunc}
+}
 
-func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
-
-func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
-	tmpl, err := decodeTemplate(i.doc.Data)
+func procInput(
+	_ context.Context,
+	p ProcParam,
+	doc *fileloader.Document,
+	_ *overlayfs.Fs,
+) (Input, base.Scope, error) {
+	tmpl, err := decodeTemplate(doc.Data)
 	if err != nil {
-		return fmt.Errorf("contextkey: %s: %w", i.doc.Path, err)
+		return Input{}, base.Scope{}, fmt.Errorf("contextkey: %s: %w", doc.Path, err)
 	}
 
-	if len(tmpl.Entries) == 0 {
-		return fmt.Errorf("%w: %s", ErrNoEntries, i.doc.Path)
-	}
+	in := Input{Path: doc.Path, Template: tmpl, Dir: p.Dir, Options: paramOptions(p)}
 
-	files, err := Render(tmpl.Entries, i.opts)
-	if err != nil {
-		return fmt.Errorf("%s: %w", i.doc.Path, err)
-	}
-
-	inDir := func(name string, src []byte) base.File {
-		return base.File{Path: path.Join(i.dir, name), Content: src}
-	}
-
-	produced := opiter.WrapSeq2(opiter.MapsSorted(files)).
-		Assemble(inDir).
-		CollectSlice()
-
-	opts := i.opts.withDefaults()
-	stale := base.StaleCheck{Registry: opts.Registry, Generator: GeneratorId}
-
-	staleWarnings, err := stale.InScope(i.fs.FS(), base.Scope{Dirs: []string{i.dir}}, produced)
-	if err != nil {
-		return fmt.Errorf("contextkey: %w", err)
-	}
-
-	warnings := opiter.WrapSeq(slices.Values(tmpl.UnknownKeys())).
-		Map(func(k []string) error {
-			return fmt.Errorf("%w: %s: %s", ErrUnknownKey, i.doc.Path, strings.Join(k, "."))
-		}).
-		CollectSlice()
-
-	return base.StageWithWarnings(
-		ctx,
-		i.fs,
-		produced,
-		slices.Concat(warnings, staleWarnings),
-		r,
-	)
+	return in, base.Scope{Dirs: []string{p.Dir}}, nil
 }
 
 // decodeTemplate converts the format-neutral data fileloader decodes into
