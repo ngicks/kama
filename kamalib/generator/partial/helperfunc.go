@@ -47,11 +47,11 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 				return "", err
 			}
 
-			file, support := p.FileScope, p.support
-			p.FileScope, p.support = fresh, map[string]bool{}
+			file, support := p.Scope, p.support
+			p.Scope, p.support = fresh, map[string]bool{}
 			_, err = p.helperDecl(fn, h)
 			h.spelled = p.support
-			p.FileScope, p.support = file, support
+			p.Scope, p.support = file, support
 
 			if err != nil {
 				return "", err
@@ -159,7 +159,7 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 		Map(typeParamName).
 		CollectSlice()
 
-	// The FileScope of p is the one in effect now, which call swaps while
+	// The Scope of p is the one in effect now, which call swaps while
 	// it renders.
 	f := helperFunc{c: p.FuncContext(names)}
 	if len(tparams) > 0 {

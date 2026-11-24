@@ -78,38 +78,65 @@ func (c StaleCheck) Files(pkgs []*packages.Package, produced []File) []error {
 		CollectSlice()
 }
 
-// Dir returns a warning wrapping ErrStale for each Go file directly in dir
-// of fsys holding a declaration marked by the generator that is not among
-// produced, sorted by path. dir and the paths of produced are
-// slash-separated and relative to the root of fsys. It serves generators
-// that read no packages. Keep is not consulted.
+// Scope is where the stale check of a run looks for files carrying the
+// generated mark of the generator. Paths are slash-separated and relative
+// to the root of the output.
+type Scope struct {
+	// Files are files the run is responsible for, such as the files of the
+	// packages a run read.
+	Files []string
+	// Dirs are directories the run is responsible for. Every Go file
+	// directly in one of them counts.
+	Dirs []string
+}
+
+// InScope returns a warning wrapping ErrStale for each Go file of scope in
+// fsys holding a declaration marked by the generator that is not among
+// produced, sorted by path. The paths of produced are slash-separated and
+// relative to the root of fsys. A file or a directory of scope that does
+// not exist holds no stale file. Keep is not consulted.
 //
-// Every marked file of dir must come from the one run: files another run
-// of the generator wrote there are reported.
-func (c StaleCheck) Dir(fsys fs.FS, dir string, produced []File) ([]error, error) {
+// The check works from the generated mark, so a file the generator edited
+// in place in an earlier run counts as well as a file of its own. It looks
+// at whole files: a stale declaration inside a file the run yields is left
+// to the generator.
+func (c StaleCheck) InScope(fsys fs.FS, scope Scope, produced []File) ([]error, error) {
 	made := map[string]bool{}
 	for _, f := range produced {
 		made[path.Clean(f.Path)] = true
 	}
 
-	entries, err := fs.ReadDir(fsys, dir)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil
-	}
+	candidates := slices.Clone(scope.Files)
 
-	if err != nil {
-		return nil, fmt.Errorf("base: read %q: %w", dir, err)
+	for _, dir := range scope.Dirs {
+		entries, err := fs.ReadDir(fsys, dir)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("base: read %q: %w", dir, err)
+		}
+
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".go") {
+				candidates = append(candidates, path.Join(dir, e.Name()))
+			}
+		}
 	}
 
 	var out []error
 
-	for _, e := range entries {
-		name := path.Join(dir, e.Name())
-		if e.IsDir() || !strings.HasSuffix(name, ".go") || made[name] {
+	for _, name := range slices.Compact(slices.Sorted(slices.Values(candidates))) {
+		if made[path.Clean(name)] {
 			continue
 		}
 
 		src, err := fs.ReadFile(fsys, name)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+
 		if err != nil {
 			return nil, fmt.Errorf("base: read %q: %w", name, err)
 		}

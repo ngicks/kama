@@ -81,7 +81,7 @@ type procInstance interface {
 	In(pkgs *procpackages.Packages)
 	Out(f *overlayfs.Fs)
 	Run(ctx context.Context, r workflow.Reporter) error
-	Generate() ([]File, []error, error)
+	Files(ctx context.Context, r workflow.Reporter) ([]File, error)
 }
 
 func newInstance(t *testing.T, p workflow.Proc) procInstance {

@@ -85,7 +85,7 @@ func TestFixtureUpToDate(t *testing.T) {
 			assert.NilError(t, i.Param(fx.param))
 			i.In(&gopackages.Packages{Pkgs: pkgs})
 			i.Out(f)
-			files, _, err := i.Generate()
+			files, err := i.Files(ctx, gentest.NopReporter{})
 			assert.NilError(t, err)
 
 			r := &gentest.RecordReporter{}

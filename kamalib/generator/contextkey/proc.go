@@ -135,7 +135,7 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 	opts := i.opts.withDefaults()
 	stale := base.StaleCheck{Registry: opts.Registry, Generator: GeneratorId}
 
-	staleWarnings, err := stale.Dir(i.fs.FS(), i.dir, produced)
+	staleWarnings, err := stale.InScope(i.fs.FS(), base.Scope{Dirs: []string{i.dir}}, produced)
 	if err != nil {
 		return fmt.Errorf("contextkey: %w", err)
 	}

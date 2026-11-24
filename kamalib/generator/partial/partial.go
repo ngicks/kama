@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
 
 	"github.com/ngicks/opiter"
 
@@ -415,13 +416,13 @@ func renderHelpers(
 		maps.Copy(require, h.spelled)
 	}
 
-	scope, err := base.NewFileScope(pkg, reserve, slices.Sorted(maps.Keys(require)))
+	scope, err := filescope.New(pkg, reserve, slices.Sorted(maps.Keys(require)))
 	if err != nil {
 		return nil, err
 	}
 
 	p := &mapper{
-		sel: sel, FileScope: scope,
+		sel: sel, Scope: scope,
 		helpers: helpers, calls: map[*helper]bool{}, support: map[string]bool{},
 		refs: map[string]bool{},
 	}
@@ -522,13 +523,13 @@ func renderFileWith(
 			base.MethodTypeParams(pkg.Types.Scope(), n.Detail.Type.TypeParams(), localNames)...)
 	}
 
-	scope, err := base.NewFileScope(pkg, reserve, require)
+	scope, err := filescope.New(pkg, reserve, require)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	p := &mapper{
-		sel: sel, FileScope: scope,
+		sel: sel, Scope: scope,
 		helpers: helpers, calls: map[*helper]bool{}, support: map[string]bool{},
 	}
 

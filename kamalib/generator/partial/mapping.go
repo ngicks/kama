@@ -11,7 +11,7 @@ import (
 
 	"github.com/dave/dst"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
@@ -20,14 +20,14 @@ import (
 	"github.com/ngicks/opiter"
 )
 
-// mapper builds the partial declarations of a file. Its FileScope spells
+// mapper builds the partial declarations of a file. Its Scope spells
 // the packages and the types of the file.
 //
 // calls, support and refs tell what the declarations written so far call
 // and spell. No source holds them: they are facts about the output.
 type mapper struct {
 	sel *selection
-	*base.FileScope
+	*filescope.Scope
 	// helpers are the helpers of the package, shared by its files.
 	helpers *helperSet
 	// calls are the helpers the file calls.

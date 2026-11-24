@@ -15,6 +15,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
@@ -127,7 +128,7 @@ func renderFileWith(
 		}
 	}
 
-	scope, err := base.NewFileScope(pkg, reserve, require)
+	scope, err := filescope.New(pkg, reserve, require)
 	if err != nil {
 		return nil, nil, err
 	}

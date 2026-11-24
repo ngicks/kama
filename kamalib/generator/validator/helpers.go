@@ -17,6 +17,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
@@ -41,7 +42,7 @@ func newHelperSet() *helperSet {
 // uses and imports are facts about the output, which no source holds: the
 // helpers the file calls and the packages it asked for by path.
 type emitter struct {
-	scope   *base.FileScope
+	scope   *filescope.Scope
 	helpers *helperSet
 	uses    map[string]bool
 	imports map[string]bool
@@ -49,7 +50,7 @@ type emitter struct {
 
 var _ rule.Emitter = (*emitter)(nil)
 
-func newEmitter(scope *base.FileScope, helpers *helperSet) *emitter {
+func newEmitter(scope *filescope.Scope, helpers *helperSet) *emitter {
 	return &emitter{
 		scope:   scope,
 		helpers: helpers,
@@ -123,7 +124,7 @@ func renderHelpersWith(
 	helpers *helperSet,
 	require []string,
 ) ([]byte, *emitter, error) {
-	scope, err := base.NewFileScope(pkg, helperLocals, require)
+	scope, err := filescope.New(pkg, helperLocals, require)
 	if err != nil {
 		return nil, nil, err
 	}

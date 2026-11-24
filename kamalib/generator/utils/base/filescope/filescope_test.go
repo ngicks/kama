@@ -1,4 +1,4 @@
-package base_test
+package filescope_test
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/dave/dst/decorator"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 )
 
@@ -21,7 +21,7 @@ func TestFileScope(t *testing.T) {
 	})
 	pkg := pkgs[0]
 
-	s, err := base.NewFileScope(pkg, []string{"fmt"}, []string{"fmt", "strings"})
+	s, err := filescope.New(pkg, []string{"fmt"}, []string{"fmt", "strings"})
 	assert.NilError(t, err)
 
 	st := pkg.Types.Scope().Lookup("A").Type().Underlying().(*types.Struct)
@@ -52,7 +52,7 @@ func TestFileScope(t *testing.T) {
 	assert.Equal(t, s.Position(st.Field(0).Pos()).Line, 6)
 
 	// Only the packages used are imported.
-	imports := func(s *base.FileScope) string {
+	imports := func(s *filescope.Scope) string {
 		t.Helper()
 
 		f := &dst.File{Name: dst.NewIdent("x")}
@@ -84,7 +84,7 @@ func TestFileScope(t *testing.T) {
 func TestFileScopeFuncContext(t *testing.T) {
 	pkgs := gentest.Load(t, map[string]string{"a.go": "package x\n\nvar v int\n"})
 
-	s, err := base.NewFileScope(pkgs[0], nil, nil)
+	s, err := filescope.New(pkgs[0], nil, nil)
 	assert.NilError(t, err)
 
 	// A local of a generated function avoids the package-level identifiers

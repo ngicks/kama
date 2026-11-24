@@ -203,7 +203,7 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 
 	stale := base.StaleCheck{Registry: base.DefaultRegistry, Generator: GeneratorId}
 
-	staleWarnings, err := stale.Dir(i.fs.FS(), i.opts.Dir, files)
+	staleWarnings, err := stale.InScope(i.fs.FS(), base.Scope{Dirs: []string{i.opts.Dir}}, files)
 	if err != nil {
 		return fmt.Errorf("jsonschema: %w", err)
 	}
