@@ -103,6 +103,13 @@ func typeNameAt(
 	return "", unsupported(ptr, "no Go name for a schema at this keyword")
 }
 
+// twoTokenKeywords hold a map or a list of schemas, so that a step through
+// one takes the name or the index after it.
+var twoTokenKeywords = []string{
+	"$defs", "properties", "oneOf", "anyOf", "allOf", "patternProperties", "dependentSchemas",
+	"prefixItems",
+}
+
 // stepEnds returns the offsets in ptr, a pointer schemas yields, where each
 // of its steps ends. A step is a keyword and, where the keyword holds a map
 // or a list, the name or index under it. It parses from the front, since a
@@ -123,7 +130,7 @@ func stepEnds(ptr string) []int {
 		end += 1 + len(toks[i])
 		i++
 
-		if slices.Contains([]string{"$defs", "properties", "oneOf", "anyOf", "allOf"}, kw) &&
+		if slices.Contains(twoTokenKeywords, kw) &&
 			i < len(toks) {
 			end += 1 + len(toks[i])
 			i++

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"go/types"
 	"regexp"
-	"strconv"
 )
 
 // Regexp is the validator //kama:validate regexp=<pattern>: the value
@@ -56,11 +55,7 @@ func (RegexpOptions) Check(t types.Type) error {
 // Emit calls the helper matching strings or bytes with the variable
 // holding the compiled pattern.
 func (o RegexpOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
-	re := regexpVarName(o.Pattern)
-	e.Declare(re, func(imp Importer) Step {
-		return lang.Stmt("var %s = %s.MustCompile(%s)",
-			re, imp.Import("regexp"), strconv.Quote(o.Pattern))
-	})
+	re := declareRegexp(e, o.Pattern)
 
 	if IsRawJson(t) {
 		return rawCall(e, "Pattern", v, lang.Expr("%s", re)), nil

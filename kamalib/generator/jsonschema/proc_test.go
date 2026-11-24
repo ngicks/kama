@@ -306,9 +306,10 @@ func TestProcRunFails(t *testing.T) {
 	}{
 		{
 			name:   "unsupported",
-			schema: `{"title": "a", "type": "object", "properties": {"x": {"not": {}}}}`,
+			schema: `{"title": "a", "type": "object", "properties": {"x": {"$dynamicRef": "#a"}}}`,
 			is:     ErrUnsupported,
-			msg:    "jsonschema: api/schema.json: jsonschema: unsupported schema: #/properties/x/not:",
+			msg: "jsonschema: api/schema.json: jsonschema: unsupported schema: " +
+				"#/properties/x/$dynamicRef:",
 		},
 		{name: "invalid json", schema: `{"title": `, msg: "jsonschema: api/schema.json: "},
 		{name: "missing", is: fs.ErrNotExist, msg: "api/schema.json"},

@@ -37,7 +37,7 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	steps := []genStep{
-		lang.Line(validatedDoc(typeDoc(doc, ptr, lead), declArgs(doc, ptr))),
+		lang.Line(validatedDoc(typeDoc(doc, ptr, lead), declArgs(doc, opts, ptr))),
 		lang.Stmt("type %s struct {", name),
 	}
 
@@ -58,7 +58,7 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 			comment = append(comment, lang.Expr("%s", commentLines(strings.Join(a, "\n\n"))))
 		}
 
-		if args := fieldArgs(doc, ptr, n.Name); len(args) > 0 {
+		if args := fieldArgs(doc, opts, ptr, n.Name); len(args) > 0 {
 			comment = append(comment, lang.Expr("%s", directiveLines(args)))
 		}
 
@@ -379,8 +379,8 @@ func extraSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	steps := []genStep{lang.Stmt("out._x = %s(%s)", q(runtimePath, "Omit"), joinComma(args))}
 
 	for i := range s.AllOf {
-		if _, rs, err := resolved(doc, child(ptr, "allOf", strconv.Itoa(i))); err == nil &&
-			(structKind(rs) || product(rs)) {
+		if r, rs, err := resolved(doc, child(ptr, "allOf", strconv.Itoa(i))); err == nil &&
+			(structKind(rs) || product(doc, r, rs)) {
 			steps = append(steps, lang.Stmt("out.%s._x = nil", memberField(doc, opts, ptr, i)))
 		}
 	}

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T13:38:06Z
+// generated: 2026-11-24T14:37:21Z
 
 package rawroot
 
@@ -24,7 +24,7 @@ import (
 //kama:validate length=">=1"
 //kama:validate unique
 //kama:validate members="<=2"
-//kama:validate if(required="\"a\"", required="\"b\"")
+//kama:validate if(required="a", required="b")
 //kama:generated kama:jsonschema
 type Loose jsontext.Value
 
@@ -65,7 +65,7 @@ func (v Loose) RawJson() jsontext.Value {
 
 // Mixed is generated from the schema at #/$defs/Mixed.
 //
-//kama:validate const=`1 "\"a\"" null "{\"b\":[]}"`
+//kama:validate const="1 `\"a\"` null `{\"b\":[]}`"
 //kama:generated kama:jsonschema
 type Mixed jsontext.Value
 

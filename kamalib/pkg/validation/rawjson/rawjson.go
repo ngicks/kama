@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
+	"iter"
 	"math/big"
 	"regexp"
 	"slices"
@@ -291,6 +292,32 @@ func members(v jsontext.Value) map[string]jsontext.Value {
 	}
 
 	return out
+}
+
+// orderedMembers yields the members of the object v in the order v holds
+// them, so that errors come in that order.
+func orderedMembers(v jsontext.Value) iter.Seq2[string, jsontext.Value] {
+	return func(yield func(string, jsontext.Value) bool) {
+		dec := jsontext.NewDecoder(bytes.NewReader(v))
+		if _, err := dec.ReadToken(); err != nil {
+			return
+		}
+
+		for dec.PeekKind() != '}' {
+			tok, err := dec.ReadToken()
+			if err != nil {
+				return
+			}
+
+			// The token is valid until the next read only.
+			name := tok.String()
+
+			value, err := dec.ReadValue()
+			if err != nil || !yield(name, value.Clone()) {
+				return
+			}
+		}
+	}
 }
 
 // holds reports whether the result c of comparing two values satisfies op.

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T13:15:27Z
+// generated: 2026-11-24T14:37:31Z
 
 package parity
 
@@ -145,7 +145,7 @@ func (v Discount) Validate(stopOnFirstError bool) error {
 			errs = append(errs, err)
 		}
 	}
-	if err := kamaValidateIf(validation.Field(kamaValidateConst(v.Kind, "fixed"), "kind"), kamaValidateRequires(stopOnFirstError, "kind", kamaValidateNonZero(v.Kind), []string{"amount"}, v.Amount != nil), validation.Field(kamaValidateOneOf([]string{"const=\"\\\"percent\\\"\"", "regexp=\"^p\""}, kamaValidateConst(v.Kind, "percent"), kamaValidateRegexpString(kamaValidateRegexp_9a393f5966, v.Kind)), "kind")); err != nil {
+	if err := kamaValidateIf(validation.Field(kamaValidateConst(v.Kind, "fixed"), "kind"), kamaValidateRequires(stopOnFirstError, "kind", kamaValidateNonZero(v.Kind), []string{"amount"}, v.Amount != nil), validation.Field(kamaValidateOneOf([]string{"const=`\"percent\"`", "regexp=\"^p\""}, kamaValidateConst(v.Kind, "percent"), kamaValidateRegexpString(kamaValidateRegexp_9a393f5966, v.Kind)), "kind")); err != nil {
 		if stopOnFirstError {
 			return err
 		}

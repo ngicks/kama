@@ -353,10 +353,6 @@ func goTypeSeen(
 
 	switch {
 	case s.Bool.IsSome():
-		if !s.Bool.Value() {
-			return "", unsupported(r, "the false schema admits no value")
-		}
-
 		return q(jsontextPath, "Value")(c)
 	case nullableUnion(doc, r):
 		return goTypeSeen(c, doc, opts, valueMember(doc, r), seen)

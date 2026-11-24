@@ -88,7 +88,7 @@
 // # Shapes
 //
 // A schema declares a Go type of its own when it is an object, an enum of
-// strings, a union or an allOf of several members. A schema outside an
+// strings, a union or a product of allOf. A schema outside an
 // object property whose validation keywords apply to its value declares a
 // type defined over its built-in type, as type PetName string, whose
 // directive names their validators. Other schemas are spelled by built-in
@@ -104,26 +104,35 @@
 //	  additionalProperties T     map[string]T
 //	raw JSON text                jsontext.Value
 //
-// A schema without type takes the kind its keywords imply: properties,
-// required and additionalProperties an object, items an array, const and
-// enum the kind of their values. An integer decodes from any number with a
-// zero fraction, such as 1.0 or 1e2.
+// The type keyword gives the kind. A schema without type admits a value of
+// any kind, so whatever keywords it holds, it is raw JSON text, except a
+// union, a product of allOf, an enum or a const of one kind, and a $ref
+// alone. An integer decodes from any number with a zero fraction, such as
+// 1.0 or 1e2.
 //
-// A schema whose value is of no single kind is raw JSON text: the true
-// schema, a schema without type and applicator, a type naming several kinds
-// one of which is an object or an array, a type of null only, and an enum
-// or a const of values of several kinds, of objects or of arrays. Its Go
-// type is jsontext.Value, and a type it declares, as one under $defs or the
+// A schema whose value is of no single Go shape is raw JSON text: a boolean
+// schema, a schema without type, a type naming several kinds one of which
+// is an object or an array, a type of null only, an enum or a const of
+// values of several kinds, of objects or of arrays, an object that makes
+// neither a struct nor a map, an allOf, a oneOf or an anyOf next to another
+// keyword restricting the value, a $ref next to such a keyword, and a
+// schema holding a keyword only validators express: not, if, then, else,
+// prefixItems, contains, patternProperties, propertyNames,
+// dependentSchemas, unevaluatedProperties and unevaluatedItems. Its Go type
+// is jsontext.Value, and a type it declares, as one under $defs or the
 // root, is defined over jsontext.Value with the method RawJson, which tells
-// the validators to check it as raw JSON text. Its keywords become the
-// validators of raw JSON text, as Validation lists.
+// the validators to check it as raw JSON text, and carries a Validate. Its
+// keywords become the validators of raw JSON text, as Validation lists,
+// and the schemas under them become their operands. Such a schema under a
+// keyword of raw JSON text declares no type of its own; a schema under
+// $defs always may.
 //
 // A root that declares no type of its own still needs a name to decode a
 // document into. It declares a type defined over its Go type, such as
 // type Root []int64, or type Root opt.Option[string] for a nullable root.
-// The type encodes and decodes as its Go type. A schema that refers to the
-// root by $ref takes the Go type, not the name, so such a root holding
-// itself is an error.
+// The type encodes and decodes as its Go type. A schema that refers to a
+// root of raw JSON text by $ref takes its name. One that refers to another
+// root takes the Go type, so such a root holding itself is an error.
 //
 // A nullable value is a type naming null and one other kind, or a oneOf or
 // an anyOf of exactly a schema and a schema of type null. It is no union.
@@ -156,9 +165,7 @@
 // # Objects
 //
 // An object becomes a struct with a field per property, in source order.
-// The json tag holds the property name as it is. A name holding a comma,
-// a quote, a backslash or a control character is an error. For property p
-// of type T:
+// The json tag holds the property name as it is. For property p of type T:
 //
 //	required  nullable  field             tag            wire
 //	yes       no        T                 "p"            present, not null
@@ -168,6 +175,10 @@
 //
 // A T that holds null itself, jsontext.Value or a union with a member of
 // type null, is the field when required and an opt.Option otherwise.
+//
+// An object that does not fit a struct is raw JSON text: one requiring a
+// member it declares no property for, or declaring a property whose name
+// holds a comma, a quote, a backslash or a control character.
 //
 // The struct decodes through an unexported wire struct. It holds a
 // property as an und.Und, which keeps a missing member apart from null, or
@@ -202,7 +213,8 @@
 //
 // # Unions
 //
-// A oneOf, an anyOf and a type naming two or more kinds other than null
+// A oneOf or an anyOf without any other keyword restricting the value,
+// type included, and a type naming two or more kinds other than null
 // declare a holder, an interface and a wrapper per member:
 //
 //	type Pet struct{ Kind PetKind }
@@ -250,23 +262,25 @@
 //
 // # allOf
 //
-// An allOf of one member and no keyword other than type takes the type of
-// the member. The type must then name the kinds the member admits. An
-// allOf of more members declares a struct with a field per member, tagged
-// "-", followed by the fields of its own properties.
+// An allOf of one member and no other keyword restricting the value takes
+// the type of the member. An allOf of objects is a product: a struct with a
+// field per member, tagged "-", followed by the fields of its own
+// properties. Every member must be a struct, which takes members besides
+// its own and counts none, and the allOf must hold no keyword restricting
+// the value but type object, properties, required and additionalProperties
+// true. Any other allOf is raw JSON text checked by and.
 // Decoding decodes each member and the own properties from the same
 // object. The _x of the product holds the members that neither a member
 // nor an own property declares. The product clears the _x of each member
 // struct, which holds the members of the others, so a member value of an
 // additionalProperties schema of a member is checked on decoding only.
 // Marshaling writes one object holding the members of each, then those of
-// _x, the first to write a member name winning. A member must be an object. A
-// member rejecting other members by additionalProperties false, a member
-// holding the product itself, additionalProperties next to the allOf and
-// a property two members declare differently are errors. Two declarations
-// differing only in annotations, such as title, description, default or
-// an extension keyword, are not different. A required member held by a nil
-// pointer is an error on marshaling, as in a struct.
+// _x, the first to write a member name winning. A member holding the
+// product itself is an error. Two members declaring one property
+// differently make no product; declarations differing only in annotations,
+// such as title, description, default or an extension keyword, are not
+// different. A required member held by a nil pointer is an error on
+// marshaling, as in a struct.
 //
 // # Validation
 //
@@ -294,9 +308,38 @@
 // compare exactly, runes and regexp check strings, length counts the
 // elements of an array and members the members of an object, unique and
 // const compare JSON values, so 1 equals 1.0 and objects equal regardless
-// of member order, and dependentRequired becomes if(required=<key>,
-// required=<members>) for each key, joined by and. Each validator stands on
-// a //kama:validate line of its own.
+// of member order. The keywords holding subschemas become validators whose
+// operands are the validators of the subschemas, one operand per schema,
+// and(...) of them when it has several:
+//
+//	required                              required=<names>
+//	dependentRequired                     if(required=<key>, required=<names>)
+//	properties, patternProperties,
+//	additionalProperties                  props(field(<name>, ...),
+//	                                      match(<pattern>, ...), rest(...))
+//	items                                 items(...)
+//	prefixItems                           prefix(<schema>, ..., rest(<items>))
+//	contains, minContains, maxContains    contains(>=<min>, <=<max>, ...)
+//	propertyNames                         keys(...)
+//	dependentSchemas                      if(required=<key>, <schema>)
+//	allOf, anyOf, oneOf                   and, or, oneof of the members
+//	not                                   not(<schema>)
+//	if, then, else                        if(<if>, <then>, <else>), and()
+//	                                      for an absent then
+//	$ref                                  ref=<type>, decode=<type> or the
+//	                                      validators of the target
+//	unevaluatedProperties                 unevalprops(<the others>, ...)
+//	unevaluatedItems                      unevalitems(<the others>, ...)
+//	true, false                           no validator, or()
+//
+// A $ref names a type of raw JSON text by ref and a type whose decoder
+// validates by decode. A union, which validates on no decoding, and a
+// schema declaring no type are written out, and one reached again on a
+// cycle is an error. Under unevaluatedProperties or unevaluatedItems a
+// $ref applying to the same value is written out too, since ref and decode
+// report nothing evaluated. Validators named twice on one place join one
+// and. Each validator of the type or the field stands on a
+// //kama:validate line of its own.
 //
 // A keyword applies to one kind of value only, as minLength to strings, and
 // a value of another kind satisfies it. A typed value has one kind, so a
@@ -313,11 +356,10 @@
 // regexp is RE2, not ECMA-262.
 //
 // Generate warns with ErrUnenforced about a validation keyword the
-// generated code does not check: a keyword of a union or of a nullable
-// root, a pattern RE2 does not compile, a dependentRequired naming a member
-// without a property, an object keyword next to a $ref to a struct, and a
-// keyword of a schema outside an object property that declares no type,
-// such as one next to a $ref.
+// generated code does not check: a keyword of a nullable root, a pattern
+// RE2 does not compile, a dependentRequired of a struct naming a member
+// without a property, and a keyword of a typed schema outside an object
+// property that declares no type.
 //
 // Decoders call Validate through jsonschemart.Validate, since the
 // generated file compiles before the validator generator runs. A struct
@@ -339,25 +381,19 @@
 // These are errors wrapping ErrUnsupported that name the JSON pointer of
 // the schema or of the keyword:
 //
-//   - if, then, else, not, prefixItems, patternProperties,
-//     dependentSchemas, unevaluatedItems, unevaluatedProperties, contains,
-//     propertyNames and $dynamicRef;
-//   - a $ref leaving the document, a $ref next to a keyword that changes
-//     the type, a chain of references back to itself, and $id below the
-//     root;
-//   - a nil schema of a document built in Go, the false schema as a
-//     value, and a slice or a map holding itself with no declared type in
-//     between;
+//   - $dynamicRef, and a $schema other than the meta-schema of draft
+//     2020-12, whose vocabularies the generator cannot read;
+//   - a $ref leaving the document, a chain of references back to itself,
+//     $id below the root, and a $ref in the validators of raw JSON text
+//     reaching a union or a schema declaring no type again on a cycle;
+//   - a pattern of patternProperties RE2 does not compile;
+//   - a nil schema of a document built in Go, and a slice or a map holding
+//     itself with no declared type in between;
 //   - a const or an enum value that is no Go constant of the scalar type
 //     its type keyword gives;
 //   - a numeric keyword that is no number, a multipleOf not above zero, and
 //     a length or a count that is no non-negative integer;
-//   - a required member without a property;
-//   - a type next to a oneOf or an anyOf that narrows its members or
-//     admits null that no member admits, a type next to an allOf of one
-//     member naming other kinds than the member, an enum of strings next
-//     to a type other than string, and keywords of both an object and an
-//     array;
+//   - an enum of strings next to a type other than string;
 //   - a oneOf of members the generated code cannot tell apart, as told
 //     under Unions.
 package jsonschema

@@ -129,6 +129,26 @@
 // rejects a string in JSON Schema, and or(cmp=">=5", kind=string) holds on
 // it.
 //
+// # Reaching into raw JSON text
+//
+// A validator reaching into raw JSON text applies its operands to the
+// members or the elements of the value, as the keywords of JSON Schema
+// holding subschemas do: props, items, prefix, contains, keys, unevalprops
+// and unevalitems. Its operands check jsontext.Value, the type RawJson
+// returns, and the generated code passes them each member or element in a
+// function literal. ref and decode apply a type of the generated package
+// to the value, as $ref applies a schema.
+//
+// A validator reporting what it evaluated implements Annotator. unevalprops
+// and unevalitems run their first operand, the scope, through Annotate
+// with a record of their own, then check the members or the elements the
+// record lacks. and passes the record to every operand, or and oneof to
+// each operand in a call of rawjson.Branch, which keeps what an operand
+// evaluated only when it holds, and if runs only the branch taken through
+// rawjson.If. not records nothing, as JSON Schema drops the annotations of
+// not. A user validator reaching into raw JSON text implements Annotator to
+// take part.
+//
 // # Built-in validators
 //
 // The built-in validators report leaf errors created by validation.New with
@@ -156,6 +176,15 @@
 //	not(<v>)              validation.ErrNot
 //	oneof(<v>, ...)       validation.ErrOneOf
 //	if(<c>, <t>[, <e>])   the errors of the operand t or e
+//	ref=<type>            the errors of Validate of type
+//	decode=<type>         validation.ErrDecode
+//	props(<entry>, ...)   the errors of the operands, at their members
+//	items(<v>, ...)       the errors of the operands, at their elements
+//	prefix(<v>, ...)      the errors of the operands, at their elements
+//	contains(<n>, <v>...) validation.ErrContains
+//	keys(<v>, ...)        the errors of the operands, at their members
+//	unevalprops(<s>, ...) the errors of s and of the operands
+//	unevalitems(<s>, ...) the errors of s and of the operands
 //
 // required takes no arg, except member names on raw JSON text, as told
 // below. The value is not the zero value: an opt.Option
@@ -299,6 +328,26 @@
 // literal guarding a nil pointer. The spelling of
 // an operand in an error message quotes its value, as in
 // not(const=5) reporting want the value to fail const="5".
+//
+// ref takes the name of a type of the generated package defined over raw
+// JSON text, as in ref=Tree, and calls Validate of the value converted to
+// it. decode takes the name of a type whose decoder validates, as in
+// decode=Pet, and decodes the value into it. Both apply to raw JSON text
+// only and record nothing for unevalprops and unevalitems.
+//
+// props takes entries: field("<name>", <v>, ...) applies the operands to
+// the member name when present, match("<pattern>", <v>, ...) to each
+// member whose name the RE2 pattern matches, and rest(<v>, ...) to each
+// member neither names nor matches, as JSON Schema properties,
+// patternProperties and additionalProperties do. items applies its
+// operands to each element. prefix applies its operand i to the element i
+// and the operands of a last rest(...) to each later element. contains
+// takes leading comparisons with the arg of length, >=1 when there is
+// none, which the number of elements passing every operand satisfies, as
+// in contains(>=2, <=3, kind=string). keys applies its operands to the
+// name of each member as a JSON string. unevalprops and unevalitems take
+// the scope first. Each applies to raw JSON text only and passes a value
+// of another kind.
 //
 // A validator with several comparisons, as length, runes, cmp and members
 // take, checks them all. With stopOnFirstError true it returns the first

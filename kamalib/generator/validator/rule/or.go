@@ -45,6 +45,18 @@ func (o OrOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	return lang.Expr("%s(%s)", orName, lang.Join(", ", errs...)), nil
 }
 
+// Annotate is Emit recording into ev what each operand holding evaluated.
+func (o OrOptions) Annotate(e Emitter, t types.Type, v, ev Gen) (Gen, error) {
+	errs, err := branchOperands(e, o.Operands, t, v, ev)
+	if err != nil {
+		return nil, err
+	}
+
+	e.Declare(orName, orDecl)
+
+	return lang.Expr("%s(%s)", orName, lang.Join(", ", errs...)), nil
+}
+
 const orName = "kamaValidateOr"
 
 func orDecl(imp Importer) Step {

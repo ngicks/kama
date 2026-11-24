@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/ngicks/opiter"
 	"github.com/ngicks/option/opt"
@@ -29,6 +30,13 @@ var allKinds = []string{"null", "boolean", "object", "array", "number", "string"
 var shapeKeywords = []string{
 	"$ref", "type", "enum", "const", "properties", "required", "additionalProperties",
 	"items", "allOf", "anyOf", "oneOf",
+}
+
+// ruleKeywords hold subschemas that only the validators of raw JSON text
+// express, so that a schema holding one is raw JSON text.
+var ruleKeywords = []string{
+	"not", "if", "then", "else", "prefixItems", "patternProperties", "dependentSchemas",
+	"unevaluatedItems", "unevaluatedProperties", "contains", "propertyNames",
 }
 
 func unsupported(ptr, format string, args ...any) error {
@@ -56,8 +64,11 @@ func child(ptr string, keys ...string) string {
 
 // schemas yields every schema of doc the generator reads with its pointer:
 // the root and, depth first, the schemas under properties, the schema of
-// additionalProperties, items, the members of oneOf, anyOf and allOf, then
-// those under $defs. No reference is followed, so each schema comes once.
+// additionalProperties, those of items, contains, propertyNames, the
+// members of prefixItems, oneOf, anyOf and allOf, the schemas under
+// patternProperties and dependentSchemas, those of not, if, then, else,
+// unevaluatedProperties and unevaluatedItems, then those under $defs. No reference is followed, so
+// each schema comes once.
 // A nil schema comes as it is, with nothing under it.
 func schemas(doc *jsonschema.Schema) iter.Seq2[string, *jsonschema.Schema] {
 	return func(yield func(string, *jsonschema.Schema) bool) {
@@ -86,15 +97,33 @@ func visit(ptr string, s *jsonschema.Schema, yield func(string, *jsonschema.Sche
 		}
 	}
 
-	if s.Items != nil && !visit(child(ptr, "items"), s.Items, yield) {
-		return false
+	for _, kw := range []string{"items", "contains", "propertyNames"} {
+		if c := subschema(s, kw); c != nil && !visit(child(ptr, kw), c, yield) {
+			return false
+		}
 	}
 
-	for _, kw := range []string{"oneOf", "anyOf", "allOf"} {
+	for _, kw := range []string{"prefixItems", "oneOf", "anyOf", "allOf"} {
 		for i, m := range listOf(s, kw) {
 			if !visit(child(ptr, kw, strconv.Itoa(i)), m, yield) {
 				return false
 			}
+		}
+	}
+
+	for _, kw := range []string{"patternProperties", "dependentSchemas"} {
+		for _, n := range mapOf(s, kw) {
+			if !visit(child(ptr, kw, n.Name), n.Schema, yield) {
+				return false
+			}
+		}
+	}
+
+	for _, kw := range []string{
+		"not", "if", "then", "else", "unevaluatedProperties", "unevaluatedItems",
+	} {
+		if c := subschema(s, kw); c != nil && !visit(child(ptr, kw), c, yield) {
+			return false
 		}
 	}
 
@@ -109,12 +138,39 @@ func visit(ptr string, s *jsonschema.Schema, yield func(string, *jsonschema.Sche
 
 func listOf(s *jsonschema.Schema, keyword string) []*jsonschema.Schema {
 	switch keyword {
+	case "prefixItems":
+		return s.PrefixItems
 	case "oneOf":
 		return s.OneOf
 	case "anyOf":
 		return s.AnyOf
 	case "allOf":
 		return s.AllOf
+	}
+
+	return nil
+}
+
+// subschema returns the subschema of s that keyword holds, or nil.
+func subschema(s *jsonschema.Schema, keyword string) *jsonschema.Schema {
+	return map[string]*jsonschema.Schema{
+		"items": s.Items, "contains": s.Contains, "propertyNames": s.PropertyNames,
+		"not": s.Not, "if": s.If, "then": s.Then, "else": s.Else,
+		"unevaluatedProperties": s.UnevaluatedProperties, "unevaluatedItems": s.UnevaluatedItems,
+	}[keyword]
+}
+
+// mapOf returns the subschemas of s by name that keyword holds.
+func mapOf(s *jsonschema.Schema, keyword string) jsonschema.SchemaMap {
+	switch keyword {
+	case "patternProperties":
+		return s.PatternProperties
+	case "dependentSchemas":
+		return s.DependentSchemas
+	case "properties":
+		return s.Properties
+	case "$defs":
+		return s.Defs
 	}
 
 	return nil
@@ -148,11 +204,111 @@ func present(s *jsonschema.Schema, keywords []string) []string {
 		"$dynamicRef":           s.DynamicRef.IsSome(),
 		"minProperties":         s.MinProperties != nil,
 		"maxProperties":         s.MaxProperties != nil,
+		"minContains":           s.MinContains != nil,
+		"maxContains":           s.MaxContains != nil,
 	}
 
 	return opiter.WrapSeq(slices.Values(keywords)).
 		Filter(func(kw string) bool { return has[kw] }).
 		CollectSlice()
+}
+
+// constraining returns the keywords of s that restrict the values s
+// admits, in the order of shapeKeywords, ruleKeywords, $dynamicRef and
+// those of presentValidation.
+func constraining(s *jsonschema.Schema) []string {
+	return slices.Concat(
+		present(s, slices.Concat(shapeKeywords, ruleKeywords, []string{"$dynamicRef"})),
+		presentValidation(s),
+	)
+}
+
+// constrains reports whether s admits fewer values than the true schema.
+func constrains(s *jsonschema.Schema) bool {
+	if s.Bool.IsSome() {
+		return !s.Bool.Value()
+	}
+
+	return len(constraining(s)) > 0
+}
+
+// refAlone reports whether s is a $ref restricting values by nothing else,
+// which takes the type of its target. A $ref next to other keywords is raw
+// JSON text checked against both.
+func refAlone(s *jsonschema.Schema) bool {
+	return s.Ref.IsSome() && slices.Equal(constraining(s), []string{"$ref"})
+}
+
+// ruleOnly reports whether s holds a keyword of ruleKeywords or a $ref next
+// to other keywords, which make it raw JSON text.
+func ruleOnly(s *jsonschema.Schema) bool {
+	// present builds a map per call, which this hot predicate cannot afford.
+	return s.Not != nil || s.If != nil || s.Then != nil || s.Else != nil ||
+		s.PrefixItems != nil || s.PatternProperties != nil || s.DependentSchemas != nil ||
+		s.UnevaluatedItems != nil || s.UnevaluatedProperties != nil || s.Contains != nil ||
+		s.PropertyNames != nil || s.Ref.IsSome() && !refAlone(s)
+}
+
+// ruled reports whether the schema at ptr sits in the validators of
+// another schema: under a keyword of ruleKeywords or under a schema of raw
+// JSON text, through no $defs. Its keywords check the part of the value it
+// applies to, and it declares no Go type.
+//
+// The walk carries the schema of each step with it, since finding it again
+// by its pointer costs the length of the pointer, which made generating
+// deeply nested objects cubic in their depth.
+func ruled(doc *jsonschema.Schema, ptr string) bool {
+	in, start, cur := false, 0, doc
+
+	for _, end := range stepEnds(ptr) {
+		kw, key, _ := strings.Cut(ptr[start+1:end], "/")
+		kw, key = unescape(kw), unescape(key)
+
+		switch {
+		case kw == "$defs":
+			in = false
+		case !in:
+			in = slices.Contains(ruleKeywords, kw) || rawFrom(doc, ptr[:start], cur)
+		}
+
+		if cur = stepInto(cur, kw, key); cur == nil {
+			return in
+		}
+
+		start = end
+	}
+
+	return in
+}
+
+// stepInto returns the schema under s at the keyword kw and, for a keyword
+// holding a map or a list, the name or index key, or nil for none.
+func stepInto(s *jsonschema.Schema, kw, key string) *jsonschema.Schema {
+	if s == nil {
+		return nil
+	}
+
+	if c := subschema(s, kw); c != nil || kw != "additionalProperties" &&
+		!slices.Contains(twoTokenKeywords, kw) {
+		return c
+	}
+
+	if kw == "additionalProperties" {
+		return s.AdditionalProperties
+	}
+
+	if l := listOf(s, kw); l != nil {
+		n, err := strconv.Atoi(key)
+		if err != nil || n < 0 || n >= len(l) {
+			return nil
+		}
+
+		return l[n]
+	}
+
+	c, _ := mapOf(s, kw).Get(key)
+
+	return c
 }
 
 // shapesOtherThan returns the shape keywords of s outside allowed.
@@ -233,12 +389,13 @@ func yielded(doc *jsonschema.Schema, ptr string) bool {
 			cur = cur.AdditionalProperties
 
 			continue
-		case "items":
-			if cur.Items == nil {
+		case "items", "contains", "propertyNames", "not", "if", "then", "else",
+			"unevaluatedProperties", "unevaluatedItems":
+			if subschema(cur, kw) == nil {
 				return false
 			}
 
-			cur = cur.Items
+			cur = subschema(cur, kw)
 
 			continue
 		}
@@ -251,19 +408,14 @@ func yielded(doc *jsonschema.Schema, ptr string) bool {
 		key := unescape(toks[i])
 
 		switch kw {
-		case "properties", "$defs":
-			m := cur.Properties
-			if kw == "$defs" {
-				m = cur.Defs
-			}
-
-			c, ok := m.Get(key)
+		case "properties", "$defs", "patternProperties", "dependentSchemas":
+			c, ok := mapOf(cur, kw).Get(key)
 			if !ok {
 				return false
 			}
 
 			cur = c
-		case "oneOf", "anyOf", "allOf":
+		case "oneOf", "anyOf", "allOf", "prefixItems":
 			l := listOf(cur, kw)
 
 			n, err := strconv.Atoi(key)
@@ -301,8 +453,8 @@ func normalPointer(ptr string) (string, error) {
 }
 
 // resolved returns the pointer of the schema that gives the Go type of the
-// schema at ptr, and that schema: it follows $ref and an allOf of one
-// member.
+// schema at ptr, and that schema: it follows a $ref alone, as refAlone
+// tells, and an allOf of one member.
 func resolved(doc *jsonschema.Schema, ptr string) (string, *jsonschema.Schema, error) {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -331,7 +483,7 @@ func resolvedFrom(
 		var err error
 
 		switch {
-		case s.Ref.IsSome():
+		case refAlone(s):
 			ptr, err = refTarget(doc, ptr)
 		case transparentAllOf(s):
 			ptr = child(ptr, "allOf", "0")
@@ -351,10 +503,9 @@ func resolvedFrom(
 }
 
 // transparentAllOf reports whether s is an allOf of one member whose type
-// it keeps.
+// it keeps: no other keyword restricts the values.
 func transparentAllOf(s *jsonschema.Schema) bool {
-	return len(s.AllOf) == 1 && len(shapesOtherThan(s, "allOf", "type")) == 0 &&
-		!slices.Contains(s.Type.Names, "null")
+	return len(s.AllOf) == 1 && slices.Equal(constraining(s), []string{"allOf"})
 }
 
 // unionKeyword returns "oneOf" or "anyOf", whichever s holds, or "".
@@ -377,29 +528,49 @@ func typeKinds(s *jsonschema.Schema) []string {
 }
 
 // multiKind reports whether the type keyword of s names two or more kinds
-// other than null, all scalars, which make a union of those kinds. Several
-// kinds holding an object or an array make raw JSON text instead.
+// other than null, all scalars, which make a union of those kinds, and no
+// other keyword shapes s. Several kinds holding an object or an array, or
+// next to another such keyword, make raw JSON text instead.
 func multiKind(s *jsonschema.Schema) bool {
 	k := typeKinds(s)
 
-	return len(k) >= 2 && opiter.WrapSeq(slices.Values(k)).
-		Every(func(k string) bool { return slices.Contains(scalarKinds, k) })
+	return len(k) >= 2 && len(shapesOtherThan(s, "type")) == 0 && !ruleOnly(s) &&
+		opiter.WrapSeq(slices.Values(k)).
+			Every(func(k string) bool { return slices.Contains(scalarKinds, k) })
 }
 
 // raw reports whether the Go type of the schema at ptr is raw JSON text,
-// jsontext.Value: the true schema, a schema of every kind, of several kinds
-// that make no union or of null only, and an enum or a const of other than
-// one scalar kind. Its validation keywords apply to the value of each kind
-// they test, as validators of raw JSON text do.
+// jsontext.Value: a boolean schema, a schema holding a keyword only
+// validators express, as ruleOnly tells, a schema of every kind, of several
+// kinds that make no union or of null only, an object that makes neither a
+// struct nor a map, an allOf, a oneOf or an anyOf that makes no product or
+// union, and an enum or a const of other than one scalar kind.
+// A schema without type is of every kind, whatever keywords it holds. Its
+// keywords apply to the value of each kind they test, as validators of raw
+// JSON text do.
 func raw(doc *jsonschema.Schema, ptr string) bool {
-	r, s, err := resolved(doc, ptr)
+	s, err := at(doc, ptr)
+	if err != nil {
+		return false
+	}
+
+	return rawFrom(doc, ptr, s)
+}
+
+// rawFrom is raw for s, the schema at ptr, which a caller holding it passes
+// to spare walking ptr again.
+func rawFrom(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
+	r, s, err := resolvedFrom(doc, ptr, s)
 	switch {
 	case err != nil:
 		return false
-	case s.Bool.IsSome():
-		return s.Bool.Value()
-	case union(s) || structKind(s) || product(s) || stringEnum(s) || nullableUnion(doc, r):
+	case s.Bool.IsSome() || ruleOnly(s):
+		return true
+	case union(s) || structKind(s) || product(doc, r, s) || stringEnum(s) ||
+		nullableUnion(doc, r):
 		return false
+	case objectKind(s) && !mapOnly(s) || unionKeyword(s) != "" || s.AllOf != nil:
+		return true
 	}
 
 	k, err := kinds(doc, r)
@@ -516,14 +687,10 @@ func acceptsNull(doc *jsonschema.Schema, ptr string) bool {
 	return err == nil && !nullable(doc, ptr) && slices.Contains(k, "null")
 }
 
-// objectKind reports whether s describes an object by its type keyword or,
-// without one, by the keywords it holds.
+// objectKind reports whether the type keyword of s names object and no
+// other kind but null. A schema without type is of every kind.
 func objectKind(s *jsonschema.Schema) bool {
-	if !s.Type.IsZero() {
-		return slices.Equal(typeKinds(s), []string{"object"})
-	}
-
-	return s.Properties != nil || s.Required != nil || s.AdditionalProperties != nil
+	return slices.Equal(typeKinds(s), []string{"object"})
 }
 
 // mapOnly reports whether the object s describes is a map: it declares no
@@ -536,7 +703,7 @@ func mapOnly(s *jsonschema.Schema) bool {
 // stringEnum reports whether s is an enum of strings, which makes a named
 // string type.
 func stringEnum(s *jsonschema.Schema) bool {
-	return len(s.Enum) > 0 && opiter.WrapSeq(slices.Values(s.Enum)).
+	return len(s.Enum) > 0 && !ruleOnly(s) && opiter.WrapSeq(slices.Values(s.Enum)).
 		Every(func(v jsontext.Value) bool { return v.Kind() == '"' })
 }
 
@@ -544,29 +711,101 @@ func stringEnum(s *jsonschema.Schema) bool {
 // own: a struct, a union, a product of allOf, a string enum or a type
 // defined over a built-in type to validate its value. A
 // reference, an allOf of one member and a nullable union take the type of
-// another schema, and the other schemas are spelled by built-in types.
+// another schema, a schema ruled tells declares none, and the other schemas
+// are spelled by built-in types.
 func declares(doc *jsonschema.Schema, ptr string) bool {
 	s, err := at(doc, ptr)
-	if err != nil || s.Bool.IsSome() || s.Ref.IsSome() || transparentAllOf(s) ||
-		nullableUnion(doc, ptr) {
+	if err != nil || s.Bool.IsSome() || refAlone(s) || transparentAllOf(s) ||
+		nullableUnion(doc, ptr) || ruled(doc, ptr) {
 		return false
 	}
 
-	return union(s) || s.AllOf != nil || stringEnum(s) || structKind(s) || valueType(doc, ptr)
+	return union(s) || product(doc, ptr, s) || stringEnum(s) || structKind(s) ||
+		valueType(doc, ptr)
 }
 
 // union reports whether s holds a oneOf, an anyOf or a type of two or more
-// kinds. It does not tell a nullable union apart, which declares no union:
-// callers that need the difference ask nullableUnion, as declares does.
-func union(s *jsonschema.Schema) bool { return unionKeyword(s) != "" || multiKind(s) }
+// kinds, and no other keyword restricts the values, type included. It does not
+// tell a nullable union apart, which declares no union: callers that need
+// the difference ask nullableUnion, as declares does.
+func union(s *jsonschema.Schema) bool {
+	kw := unionKeyword(s)
+	if kw == "" {
+		return multiKind(s)
+	}
 
-// product reports whether s is an allOf of members that each give a field.
-func product(s *jsonschema.Schema) bool { return s.AllOf != nil && !transparentAllOf(s) }
+	return s.Type.IsZero() && len(shapesOtherThan(s, kw)) == 0 && !ruleOnly(s) &&
+		len(presentValidation(s)) == 0
+}
 
-// structKind reports whether s is an object that becomes a struct.
+// product reports whether the schema s at ptr is an allOf of objects that
+// each give a field, a struct holding them and its own properties: no
+// other keyword restricts the values but type naming object, properties,
+// required and additionalProperties true, every member is a struct taking
+// any member besides its own and counting none, and no two of the members
+// and s declare one member differently.
+func product(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
+	other := shapesOtherThan(s, "allOf", "type", "properties", "required", "additionalProperties")
+	if len(s.AllOf) == 0 || transparentAllOf(s) || len(other) > 0 || ruleOnly(s) ||
+		len(presentValidation(s)) > 0 ||
+		!s.Type.IsZero() && !slices.Equal(s.Type.Names, []string{"object"}) ||
+		s.AdditionalProperties != nil && s.AdditionalProperties.Bool != opt.Some(true) ||
+		!fitsTags(s) {
+		return false
+	}
+
+	owner := map[string]string{}
+	claim := func(name, at string) bool {
+		first, ok := owner[name]
+		if !ok {
+			owner[name] = at
+			return true
+		}
+
+		return sameSchema(doc, first, at)
+	}
+
+	for i := range s.AllOf {
+		r, rs, err := resolved(doc, child(ptr, "allOf", strconv.Itoa(i)))
+		if err != nil || !structKind(rs) || closed(rs) || len(present(rs, countKeywords)) > 0 {
+			return false
+		}
+
+		for _, n := range rs.Properties {
+			if !claim(n.Name, child(r, "properties", n.Name)) {
+				return false
+			}
+		}
+	}
+
+	for _, n := range s.Properties {
+		if !claim(n.Name, child(ptr, "properties", n.Name)) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// structKind reports whether s is an object that becomes a struct: its
+// type names object, no keyword makes it raw JSON text or a map, and every
+// member it requires has a property whose name fits a json tag.
 func structKind(s *jsonschema.Schema) bool {
-	return s.Enum == nil && s.Const == nil && s.AllOf == nil && !union(s) && objectKind(s) &&
-		!mapOnly(s)
+	return s.Enum == nil && s.Const == nil && s.AllOf == nil && unionKeyword(s) == "" &&
+		objectKind(s) &&
+		!mapOnly(s) && !ruleOnly(s) && fitsTags(s) &&
+		opiter.WrapSeq(slices.Values(s.Required)).
+			Every(func(n string) bool { _, ok := s.Properties.Get(n); return ok })
+}
+
+// fitsTags reports whether every property name of s fits a json tag.
+func fitsTags(s *jsonschema.Schema) bool {
+	return opiter.WrapSeq(slices.Values(s.Properties)).
+		Every(func(n jsonschema.NamedSchema) bool {
+			return !strings.ContainsFunc(n.Name, func(r rune) bool {
+				return strings.ContainsRune(",\\'\"`", r) || unicode.IsControl(r)
+			})
+		})
 }
 
 // kinds returns the JSON types the schema at ptr admits, in the order its
@@ -634,10 +873,8 @@ func kindsSeen(
 		done[r] = true
 
 		return slices.Collect(opiter.Unique(slices.Values(out))), nil
-	case s.AllOf != nil || objectKind(s):
+	case product(doc, r, s):
 		return []string{"object"}, nil
-	case s.Items != nil:
-		return []string{"array"}, nil
 	}
 
 	return allKinds, nil
@@ -701,7 +938,7 @@ func structOf(
 		switch {
 		case err != nil:
 			return "", nil, false
-		case structKind(rs) || product(rs):
+		case structKind(rs) || product(doc, r, rs):
 			return r, rs, true
 		// nullableUnion walks r again, which only a union needs.
 		case unionKeyword(rs) == "" || !nullableUnion(doc, r):

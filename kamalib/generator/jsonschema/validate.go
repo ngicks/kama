@@ -36,17 +36,17 @@ var ErrUnenforced = errors.New("jsonschema: keyword not enforced")
 // union. It is empty for a union, which no validator checks.
 func placeKind(doc *jsonschema.Schema, ptr string) string {
 	r, s, err := resolvedValue(doc, ptr)
-	if err != nil || s.Bool.IsSome() || union(s) && !nullableType(s) {
+	if err != nil || union(s) && !nullableType(s) {
 		return ""
 	}
 
 	switch {
-	case structKind(s) || product(s):
+	case structKind(s) || product(doc, r, s):
 		return "struct"
-	case objectKind(s) && mapOnly(s):
-		return "map"
 	case raw(doc, r):
 		return "raw"
+	case objectKind(s) && mapOnly(s):
+		return "map"
 	}
 
 	k, err := kinds(doc, r)
@@ -70,10 +70,20 @@ func placeKind(doc *jsonschema.Schema, ptr string) string {
 // keywords that apply to kind and that no arg checks. A keyword applying
 // to another kind of value holds for a value of kind, so it gives neither.
 // The args of a struct are those of the struct as a whole, which typeArgs
-// gives.
-func valueArgs(doc *jsonschema.Schema, ptr, kind string) ([]string, []string) {
+// gives. The args of raw JSON text are those rawRules gives, which check
+// every keyword but a pattern RE2 does not compile.
+func valueArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string, []string) {
 	s, err := at(doc, ptr)
-	if err != nil || s.Bool.IsSome() {
+	if err != nil {
+		return nil, nil
+	}
+
+	if kind == "raw" {
+		args, _ := rawRules(doc, opts, ptr)
+		return args, rawUnchecked(s)
+	}
+
+	if s.Bool.IsSome() {
 		return nil, nil
 	}
 
@@ -123,23 +133,8 @@ func valueArgs(doc *jsonschema.Schema, ptr, kind string) ([]string, []string) {
 		if s.DependentRequired != nil {
 			unchecked = append(unchecked, "dependentRequired")
 		}
-	case "raw":
-		var pattern bool
-
-		args, pattern = rawArgs(s, cmp, lengths)
-		if !pattern {
-			unchecked = append(unchecked, "pattern")
-		}
 	case "":
 		unchecked = append(unchecked, presentValidation(s)...)
-	}
-
-	if kind == "raw" {
-		if values := enumValues(s); values != nil {
-			args = append(args, "const="+quoteArg(rawValues(values)))
-		}
-
-		return args, unchecked
 	}
 
 	if allowed, err := allowedValues(doc, ptr); err == nil && allowed != nil {
@@ -152,58 +147,16 @@ func valueArgs(doc *jsonschema.Schema, ptr, kind string) ([]string, []string) {
 	return args, slices.Compact(slices.Sorted(slices.Values(unchecked)))
 }
 
-// rawArgs returns the args checking the validation keywords of s on raw
-// JSON text, each on the values of the kind it applies to, and whether RE2
-// compiles the pattern of s, if any. cmp holds the comparisons of the
-// numeric bounds, and lengths spells those of a pair of length keywords.
-func rawArgs(
-	s *jsonschema.Schema,
-	cmp string,
-	lengths func(min, max jsontext.Value) string,
-) ([]string, bool) {
-	var args []string
-
-	add := func(name, arg string) {
-		if arg != "" {
-			args = append(args, name+"="+quoteArg(arg))
-		}
-	}
-
-	if !s.Type.IsZero() {
-		add("kind", strings.Join(slices.Compact(slices.Clone(s.Type.Names)), " "))
-	}
-
-	add("cmp", cmp)
-
-	if s.MultipleOf != nil {
-		add("multipleof", string(s.MultipleOf))
-	}
-
-	add("runes", lengths(s.MinLength, s.MaxLength))
-
-	compiles := true
-
-	if s.Pattern.IsSome() {
+// rawUnchecked returns pattern when s holds a pattern RE2 does not compile,
+// which the args of raw JSON text leave out.
+func rawUnchecked(s *jsonschema.Schema) []string {
+	if s.Bool.IsNone() && s.Pattern.IsSome() {
 		if _, err := regexp.Compile(s.Pattern.Value()); err != nil {
-			compiles = false
-		} else {
-			add("regexp", s.Pattern.Value())
+			return []string{"pattern"}
 		}
 	}
 
-	add("length", lengths(s.MinItems, s.MaxItems))
-
-	if s.UniqueItems.Value() {
-		args = append(args, "unique")
-	}
-
-	add("members", lengths(s.MinProperties, s.MaxProperties))
-
-	if dep := rawDependents(s); dep != "" {
-		args = append(args, dep)
-	}
-
-	return args, compiles
+	return nil
 }
 
 // rawDependents returns the arg checking the dependentRequired of s on raw
@@ -211,17 +164,10 @@ func rawArgs(
 // joined by and when there are several, or "" when no key requires a
 // member.
 func rawDependents(s *jsonschema.Schema) string {
-	names := func(ns []string) string {
-		return dircmnt.SpellArgs(
-			opiter.WrapSeq(slices.Values(ns)).
-				Map(func(n string) dircmnt.KeyValue { return dircmnt.KeyValue{Key: n, KeyQuoted: true} }).
-				CollectSlice(),
-		)
-	}
 	required := func(ns []string) dircmnt.KeyValue {
 		return dircmnt.KeyValue{
 			Key:         "required",
-			Value:       names(ns),
+			Value:       spellNames(ns),
 			HasValue:    true,
 			ValueQuoted: true,
 		}
@@ -310,21 +256,21 @@ func presentValidation(s *jsonschema.Schema) []string {
 // checks. A struct or a product takes hook=off, its hooks being unwritten,
 // and the validators of the object as a whole. A union takes none, its
 // holder having a Validate of its own.
-func typeArgs(doc *jsonschema.Schema, ptr string) ([]string, []string) {
+func typeArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, []string) {
 	s, err := at(doc, ptr)
 	if err != nil {
 		return nil, nil
 	}
 
-	if !structKind(s) && !product(s) {
+	if !structKind(s) && !product(doc, ptr, s) {
 		if ptr == "" && nullable(doc, ptr) {
 			// The root is an opt.Option, a struct of another package, which
 			// takes no validator of its value.
-			_, unchecked := valueArgs(doc, ptr, "")
+			_, unchecked := valueArgs(doc, opts, ptr, "")
 			return nil, unchecked
 		}
 
-		return valueArgs(doc, ptr, placeKind(doc, ptr))
+		return valueArgs(doc, opts, ptr, placeKind(doc, ptr))
 	}
 
 	args := []string{"hook=off"}
@@ -356,8 +302,8 @@ func typeArgs(doc *jsonschema.Schema, ptr string) ([]string, []string) {
 
 // declArgs returns the args of //kama:validate on the type the schema at
 // ptr declares.
-func declArgs(doc *jsonschema.Schema, ptr string) []string {
-	args, _ := typeArgs(doc, ptr)
+func declArgs(doc *jsonschema.Schema, opts Options, ptr string) []string {
+	args, _ := typeArgs(doc, opts, ptr)
 	return args
 }
 
@@ -366,13 +312,13 @@ func declArgs(doc *jsonschema.Schema, ptr string) []string {
 // of the property schema itself, unless it declares a type of its own, and
 // what the dependentRequired of the object asks of the field. The keywords
 // of a schema the property refers to are those of the type it declares.
-func fieldArgs(doc *jsonschema.Schema, ptr, name string) []string {
+func fieldArgs(doc *jsonschema.Schema, opts Options, ptr, name string) []string {
 	pp := child(ptr, "properties", name)
 
 	var args []string
 
 	if kind := placeKind(doc, pp); !declares(doc, pp) && kind != "struct" {
-		args, _ = valueArgs(doc, pp, kind)
+		args, _ = valueArgs(doc, opts, pp, kind)
 	}
 
 	return append(args, dependentArgs(doc, ptr, name)...)
@@ -438,13 +384,19 @@ func unenforcedKeywords(doc *jsonschema.Schema) []error {
 }
 
 // uncheckedAt returns the validation keywords of the schema at ptr that no
-// directive checks: the keywords of a raw value or a union, those a
-// declared type or a field cannot take, and those of a schema that is
-// neither, such as one next to a $ref outside an object property.
+// directive checks: the keywords of a union, those a declared type or a
+// field cannot take, those of a schema that is neither, and a pattern RE2
+// does not compile in the validators of raw JSON text.
 func uncheckedAt(doc *jsonschema.Schema, ptr string) []string {
+	s, err := at(doc, ptr)
+
 	switch {
+	case err != nil:
+		return nil
+	case ruled(doc, ptr):
+		return rawUnchecked(s)
 	case declares(doc, ptr) || ptr == "":
-		_, unchecked := typeArgs(doc, ptr)
+		_, unchecked := typeArgs(doc, Options{}, ptr)
 		return unchecked
 	case isProperty(ptr):
 		kind := placeKind(doc, ptr)
@@ -452,12 +404,12 @@ func uncheckedAt(doc *jsonschema.Schema, ptr string) []string {
 			kind = ""
 		}
 
-		_, unchecked := valueArgs(doc, ptr, kind)
+		_, unchecked := valueArgs(doc, Options{}, ptr, kind)
 
 		return unchecked
 	}
 
-	_, unchecked := valueArgs(doc, ptr, "")
+	_, unchecked := valueArgs(doc, Options{}, ptr, "")
 
 	return unchecked
 }
@@ -465,21 +417,30 @@ func uncheckedAt(doc *jsonschema.Schema, ptr string) []string {
 // valueType reports whether the schema at ptr declares a type defined over
 // its built-in Go type, whose Validate checks its validation keywords: it
 // is no object property, whose field takes them, it declares no type of
-// another shape and takes no type from another schema, and a keyword
-// applies to its value.
+// another shape, takes no type from another schema and sits in the
+// validators of no other schema, and a keyword applies to its value.
 func valueType(doc *jsonschema.Schema, ptr string) bool {
 	if ptr == "" || isProperty(ptr) {
 		return false
 	}
 
 	s, err := at(doc, ptr)
-	if err != nil || s.Bool.IsSome() || s.Ref.IsSome() || transparentAllOf(s) || union(s) ||
-		s.AllOf != nil || stringEnum(s) || structKind(s) || nullableUnion(doc, ptr) ||
-		unionMember(ptr) && nullMember(doc, ptr) {
+	if err != nil || s.Bool.IsSome() || refAlone(s) || transparentAllOf(s) ||
+		nullableUnion(doc, ptr) || unionMember(ptr) && nullMember(doc, ptr) || ruled(doc, ptr) {
 		return false
 	}
 
-	args, _ := valueArgs(doc, ptr, placeKind(doc, ptr))
+	// The args of raw JSON text may name this very type through ref, so a
+	// keyword rather than an arg tells that it needs a Validate.
+	if raw(doc, ptr) {
+		return constrains(s)
+	}
+
+	if union(s) || s.AllOf != nil || stringEnum(s) || structKind(s) {
+		return false
+	}
+
+	args, _ := valueArgs(doc, Options{}, ptr, placeKind(doc, ptr))
 
 	return len(args) > 0
 }

@@ -435,6 +435,13 @@
 // and required with member names. A combinator holds when its operands do as
 // on any other type: not(cmp=">=5") fails on 7 and holds on "a". Validate
 // does not walk the bytes of raw JSON text as the elements of a slice.
+// props, items, prefix, contains, keys, unevalprops and unevalitems reach
+// into the members and the elements instead, and ref and decode apply
+// another type, as package rule describes:
+//
+//	//kama:validate kind=object
+//	//kama:validate props(field("next", ref=Tree), rest(kind=integer))
+//	type Tree jsontext.Value
 //
 // # Errors of Validate
 //

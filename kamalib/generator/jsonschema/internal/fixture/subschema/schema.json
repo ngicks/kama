@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tree",
+  "description": "Tree takes any JSON value. An object names itself and holds Trees as its children.",
+  "properties": {
+    "name": {"type": "string"},
+    "children": {"type": "array", "items": {"$ref": "#"}}
+  },
+  "required": ["name"],
+  "$defs": {
+    "Small": {"not": {"minimum": 5}},
+    "Address": {
+      "properties": {"country": {"enum": ["us", "ca"]}},
+      "if": {"properties": {"country": {"const": "us"}}},
+      "then": {"required": ["zip"]},
+      "else": {"required": ["postal"]},
+      "dependentRequired": {"zip": ["country"]}
+    },
+    "Labels": {
+      "type": "object",
+      "patternProperties": {"^x-": {"type": "string"}},
+      "additionalProperties": {"type": "integer"}
+    },
+    "Point": {
+      "type": "array",
+      "prefixItems": [{"type": "number"}, {"type": "number"}],
+      "items": {"type": "string"}
+    },
+    "Tags": {"type": "array", "contains": {"const": "go"}, "minContains": 1, "maxContains": 2},
+    "Keys": {"type": "object", "propertyNames": {"pattern": "^[a-z]+$"}},
+    "Payment": {"type": "object", "dependentSchemas": {"card": {"required": ["billing"]}}},
+    "Strict": {
+      "allOf": [{"properties": {"a": {"type": "integer"}}}],
+      "properties": {"b": true},
+      "unevaluatedProperties": false
+    },
+    "Mixed": {"enum": [1, "a", null, [1]]}
+  }
+}

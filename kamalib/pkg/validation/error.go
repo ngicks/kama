@@ -27,6 +27,8 @@ var (
 	ErrNot      = errors.New("not")
 	ErrClosed   = errors.New("closed")
 	ErrKind     = errors.New("kind")
+	ErrContains = errors.New("contains")
+	ErrDecode   = errors.New("decode")
 )
 
 // Error is an error located by a path of segments from the outermost value to the failing one.

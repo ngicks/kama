@@ -69,6 +69,27 @@ func (o IfOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	return lang.Expr("%s(%s)", ifName, lang.Join(", ", errs...)), nil
 }
 
+// Annotate calls rawjson.If, which runs only the branch taken, so that only
+// it records into ev, and cond records when it holds.
+func (o IfOptions) Annotate(e Emitter, t types.Type, v, ev Gen) (Gen, error) {
+	args := []Gen{ev}
+
+	for _, op := range o.operands() {
+		f, err := scopeFunc(e, []Operand{op}, t, v)
+		if err != nil {
+			return nil, err
+		}
+
+		args = append(args, f)
+	}
+
+	if o.Else == nil {
+		args = append(args, lang.Expr("nil"))
+	}
+
+	return lang.Expr("%s.If(%s)", e.Import(RawJsonPath), lang.Join(", ", args...)), nil
+}
+
 // operands returns cond, then and else when o has one.
 func (o IfOptions) operands() []Operand {
 	if o.Else == nil {

@@ -54,3 +54,13 @@ func (o AndOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 
 	return lang.Expr("%s(%s, %s)", allName, e.StopOnFirstError(), lang.Join(", ", errs...)), nil
 }
+
+// Annotate is Emit recording what every operand evaluated into ev.
+func (o AndOptions) Annotate(e Emitter, t types.Type, v, ev Gen) (Gen, error) {
+	errs, err := annotateOperands(e, o.Operands, t, v, ev)
+	if err != nil {
+		return nil, err
+	}
+
+	return joinErrors(e, errs), nil
+}

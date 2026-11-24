@@ -34,7 +34,9 @@ type KeyValue struct {
 
 // String spells kv as [ParseArgsKeyValue] reads it back: key, key=value or
 // key(arg, ...), with a token quoted when it was written quoted or when a
-// bare token cannot hold it. A comparison is spelled as written; quoting it
+// bare token cannot hold it. A token holding a double quote or a backslash
+// is quoted as a raw string literal when one can hold it. A comparison is spelled as written;
+// quoting it
 // would turn it into a key.
 func (kv KeyValue) String() string { return kv.spell(topLevel) }
 
@@ -336,10 +338,23 @@ func (kv KeyValue) isComparison() bool {
 // so that key= spells back as key=.
 func spellToken(s string, quoted bool, breaks string) string {
 	if quoted || strings.ContainsFunc(s, isBareBreak) || strings.ContainsAny(s, breaks) {
-		return strconv.Quote(s)
+		return quoteToken(s)
 	}
 
 	return s
+}
+
+// quoteToken quotes s as a raw string literal when s holds a double quote
+// or a backslash, which an interpreted literal escapes, and a raw literal
+// holds every character of s on one line. Otherwise it quotes s as an
+// interpreted literal. Quoting a quoted token again then adds no escapes.
+func quoteToken(s string) string {
+	if strings.ContainsAny(s, `"\`) && !strings.Contains(s, "`") &&
+		!strings.ContainsFunc(s, func(r rune) bool { return !unicode.IsPrint(r) }) {
+		return "`" + s + "`"
+	}
+
+	return strconv.Quote(s)
 }
 
 // isBareBreak reports whether a bare token cannot hold r anywhere.

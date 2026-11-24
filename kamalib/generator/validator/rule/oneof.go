@@ -53,6 +53,20 @@ func (o OneOfOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	return lang.Expr("%s(%s)", oneOfName, lang.Join(", ", args...)), nil
 }
 
+// Annotate is Emit recording into ev what each operand holding evaluated.
+func (o OneOfOptions) Annotate(e Emitter, t types.Type, v, ev Gen) (Gen, error) {
+	errs, err := branchOperands(e, o.Operands, t, v, ev)
+	if err != nil {
+		return nil, err
+	}
+
+	e.Declare(oneOfName, oneOfDecl)
+
+	args := append([]Gen{lang.Expr("[]string{%s}", strings.Join(texts(o.Operands), ", "))}, errs...)
+
+	return lang.Expr("%s(%s)", oneOfName, lang.Join(", ", args...)), nil
+}
+
 const oneOfName = "kamaValidateOneOf"
 
 func oneOfDecl(imp Importer) Step {

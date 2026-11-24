@@ -55,8 +55,8 @@ func TestGenerateDirectives(t *testing.T) {
 			[]string{
 				"//kama:validate cmp=\">=1\"\n//kama:validate runes=\"<=2\"\n" +
 					"//kama:validate unique\n//kama:validate members=\">=1\"\n",
-				`//kama:validate and(if(required="\"a\"", required="\"b\" \"c\""),` +
-					` if(required="\"d\"", required="\"e\""))` + "\n",
+				`//kama:validate and(if(required="a", required="b c"), if(required="d", required="e"))` +
+					"\n",
 				"type Root jsontext.Value\n",
 				"func (v Root) RawJson() jsontext.Value {",
 			},
@@ -69,7 +69,7 @@ func TestGenerateDirectives(t *testing.T) {
 			}}`,
 			[]string{
 				"\t//kama:validate kind=\"array object\"\n\t//kama:validate length=\"<=1\"\n\tK ",
-				"\t//kama:validate const=`1 \"\\\"a\\\"\" null \"{\\\"b\\\":[]}\"`\n\tE ",
+				"\t//kama:validate const=\"1 `\\\"a\\\"` null `{\\\"b\\\":[]}`\"\n\tE ",
 			},
 		},
 		{
@@ -133,7 +133,5 @@ func TestGenerateWarnsUnenforced(t *testing.T) {
 		"jsonschema: keyword not enforced: #/dependentRequired",
 		"jsonschema: keyword not enforced: #/properties/a/pattern",
 		"jsonschema: keyword not enforced: #/properties/b/pattern",
-		"jsonschema: keyword not enforced: #/properties/c/items/maximum",
-		"jsonschema: keyword not enforced: #/properties/u/minLength",
 	})
 }

@@ -9,7 +9,6 @@ import (
 	"unicode"
 
 	"github.com/ngicks/opiter"
-	"github.com/ngicks/option/opt"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
@@ -17,10 +16,10 @@ import (
 
 // unsupportedKeywords change the set of valid instances in a way the
 // generated code cannot express.
-var unsupportedKeywords = []string{
-	"if", "then", "else", "not", "prefixItems", "patternProperties", "dependentSchemas",
-	"unevaluatedItems", "unevaluatedProperties", "contains", "propertyNames", "$dynamicRef",
-}
+var unsupportedKeywords = []string{"$dynamicRef"}
+
+// metaSchema is the URI of the meta-schema of draft 2020-12.
+const metaSchema = "https://json-schema.org/draft/2020-12/schema"
 
 // countKeywords count the members of an object.
 var countKeywords = []string{"minProperties", "maxProperties"}
@@ -53,6 +52,19 @@ func check(doc *jsonschema.Schema, opts Options) error {
 
 	for ptr, s := range schemas(doc) {
 		errs = append(errs, checkSchema(doc, ptr, s)...)
+	}
+
+	if err := errors.Join(errs...); err != nil {
+		return err
+	}
+
+	// A $ref alone takes the type of its target, whose own check covers it.
+	for ptr, s := range schemas(doc) {
+		if s.Bool.IsNone() && !refAlone(s) && rawFrom(doc, ptr, s) && !ruled(doc, ptr) {
+			if _, err := rawRules(doc, opts, ptr); err != nil {
+				errs = append(errs, err)
+			}
+		}
 	}
 
 	if _, err := typeName(doc, opts, ""); err != nil {
@@ -123,18 +135,25 @@ func checkTypes(doc *jsonschema.Schema, opts Options) error {
 	return errors.Join(errs...)
 }
 
+// checkSchema reports what of the schema s at ptr the generator cannot
+// express. The shapes of a Go type are checked only where the schema has
+// one: raw JSON text and a schema in the validators of another take every
+// keyword as a validator.
 func checkSchema(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
 	if s.Bool.IsSome() {
-		if !s.Bool.Value() {
-			return []error{unsupported(ptr, "the false schema admits no value")}
-		}
-
 		return nil
 	}
 
 	errs := opiter.WrapSeq(slices.Values(present(s, unsupportedKeywords))).
 		Map(func(kw string) error { return unsupported(child(ptr, kw), "keyword is not supported") }).
 		CollectSlice()
+
+	// Another meta-schema may turn vocabularies off or give keywords the
+	// meaning of another draft, which only fetching it would tell.
+	if s.Schema.IsSome() && strings.TrimSuffix(s.Schema.Value(), "#") != metaSchema {
+		errs = append(errs, unsupported(child(ptr, "$schema"),
+			"meta-schema %q is not that of draft 2020-12", s.Schema.Value()))
+	}
 
 	if ptr != "" && s.Id.IsSome() {
 		errs = append(errs, unsupported(child(ptr, "$id"), "a schema resource other than the root"))
@@ -146,24 +165,26 @@ func checkSchema(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []err
 
 	errs = append(errs, checkKeywords(ptr, s)...)
 
-	switch {
-	case s.Ref.IsSome():
-		if other := shapesOtherThan(s, "$ref"); len(other) > 0 {
-			errs = append(errs, unsupported(child(ptr, other[0]), "keyword next to $ref"))
-		} else if _, err := refTarget(doc, ptr); err != nil {
+	if s.Ref.IsSome() {
+		if _, err := refTarget(doc, ptr); err != nil {
 			errs = append(errs, err)
 		}
-	case unionKeyword(s) != "":
-		errs = append(errs, checkUnion(doc, ptr, s)...)
-	case s.AllOf != nil:
-		errs = append(errs, checkAllOf(doc, ptr, s)...)
-	case s.Enum != nil || s.Const != nil:
-		errs = append(errs, checkEnum(doc, ptr, s)...)
-	default:
-		errs = append(errs, checkContainer(ptr, s)...)
 	}
 
-	if structKind(s) || product(s) {
+	if len(errs) > 0 || refAlone(s) || ruled(doc, ptr) || rawFrom(doc, ptr, s) {
+		return errs
+	}
+
+	switch {
+	case union(s) && unionKeyword(s) != "":
+		errs = append(errs, checkUnion(doc, ptr, s)...)
+	case product(doc, ptr, s):
+		errs = append(errs, checkProduct(doc, ptr, s)...)
+	case s.Enum != nil || s.Const != nil:
+		errs = append(errs, checkEnum(doc, ptr, s)...)
+	}
+
+	if structKind(s) || product(doc, ptr, s) {
 		errs = append(errs, checkProperties(ptr, s)...)
 	}
 
@@ -183,67 +204,21 @@ func checkType(ptr string, s *jsonschema.Schema) []error {
 		}
 	}
 
-	if !multiKind(s) {
-		return nil
-	}
-
-	if other := shapesOtherThan(s, "type"); len(other) > 0 {
-		return []error{unsupported(child(ptr, other[0]), "keyword next to a type of several kinds")}
-	}
-
 	return nil
 }
 
 func checkUnion(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
 	kw := unionKeyword(s)
 
-	if other := shapesOtherThan(s, kw, "type"); len(other) > 0 {
-		return []error{unsupported(child(ptr, other[0]), "keyword next to %s", kw)}
-	}
-
 	if len(listOf(s, kw)) == 0 {
 		return []error{unsupported(child(ptr, kw), "%s has no member", kw)}
 	}
 
-	var errs []error
 	if kw == "oneOf" {
-		errs = checkDistinct(doc, ptr, s)
+		return checkDistinct(doc, ptr, s)
 	}
 
-	if s.Type.IsZero() {
-		return errs
-	}
-
-	// A type next to the union narrows it unless every member already
-	// admits only kinds the type lists.
-	var admitted []string
-
-	for i := range listOf(s, kw) {
-		k, err := kinds(doc, child(ptr, kw, strconv.Itoa(i)))
-		if err != nil {
-			return append(errs, err)
-		}
-
-		admitted = append(admitted, k...)
-
-		for _, m := range k {
-			if !slices.Contains(s.Type.Names, m) &&
-				(m != "integer" || !slices.Contains(s.Type.Names, "number")) {
-				return append(errs,
-					unsupported(child(ptr, "type"), "type narrows the members of %s", kw),
-				)
-			}
-		}
-	}
-
-	// The type would make the holder nullable while no member decodes null.
-	if slices.Contains(s.Type.Names, "null") && !slices.Contains(admitted, "null") {
-		errs = append(errs, unsupported(
-			child(ptr, "type"), "type admits null, which no member of %s does", kw,
-		))
-	}
-
-	return errs
+	return nil
 }
 
 // checkDistinct reports the members of the oneOf at ptr that the generated
@@ -317,125 +292,14 @@ func allChecked(doc *jsonschema.Schema, ptr string) bool {
 		Any(func(p string, _ *jsonschema.Schema) bool { return len(uncheckedAt(doc, p)) > 0 })
 }
 
-func checkAllOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
-	if len(s.AllOf) == 0 {
-		return []error{unsupported(child(ptr, "allOf"), "allOf has no member")}
-	}
-
-	if transparentAllOf(s) {
-		return checkTransparentType(doc, ptr, s)
-	}
-
-	other := shapesOtherThan(s, "allOf", "type", "properties", "required", "additionalProperties")
-	if len(other) > 0 {
-		return []error{unsupported(child(ptr, other[0]), "keyword next to allOf")}
-	}
-
-	if !s.Type.IsZero() && !slices.Equal(s.Type.Names, []string{"object"}) {
-		return []error{
-			unsupported(child(ptr, "type"), "allOf of more than one member that is no object"),
-		}
-	}
-
-	if kw := present(s, countKeywords); len(kw) > 0 {
-		return []error{unsupported(
-			child(ptr, kw[0]), "%s next to allOf, whose own fields hold part of the members", kw[0],
-		)}
-	}
-
-	if s.AdditionalProperties != nil && s.AdditionalProperties.Bool != opt.Some(true) {
-		return []error{unsupported(
-			child(ptr, "additionalProperties"),
-			"additionalProperties next to allOf rejects the members of the other schemas",
-		)}
-	}
-
-	var errs []error
-
-	owner := map[string]string{}
-	claim := func(name, at string) {
-		first, ok := owner[name]
-		if !ok {
-			owner[name] = at
-			return
-		}
-
-		if !sameSchema(doc, first, at) {
-			errs = append(errs, fmt.Errorf(
-				"%w: #%s and #%s declare the member %q differently", ErrConflict, first, at, name,
-			))
-		}
-	}
-
-	for i := range s.AllOf {
-		mp := child(ptr, "allOf", strconv.Itoa(i))
-
-		k, err := kinds(doc, mp)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
-
-		if !slices.Equal(k, []string{"object"}) {
-			errs = append(errs, unsupported(mp, "allOf member is no object"))
-			continue
-		}
-
-		r, rs, err := resolved(doc, mp)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
-
-		if closed(rs) {
-			errs = append(
-				errs,
-				unsupported(mp, "allOf member rejects the members of the other schemas"),
-			)
-		}
-
-		// The product clears the members of the others from the _x of the
-		// member, which then counts fewer members than the object holds.
-		if kw := present(rs, countKeywords); len(kw) > 0 {
-			errs = append(errs, unsupported(child(r, kw[0]), "%s of an allOf member", kw[0]))
-		}
-
-		if onCycle(doc, ptr, mp) {
-			errs = append(errs, unsupported(mp, "allOf member holds the product itself"))
-		}
-
-		for _, n := range rs.Properties {
-			claim(n.Name, child(r, "properties", n.Name))
-		}
-	}
-
-	for _, n := range s.Properties {
-		claim(n.Name, child(ptr, "properties", n.Name))
-	}
-
-	return errs
-}
-
-// checkTransparentType reports a type next to the allOf of one member at
-// ptr that admits other kinds than the member. The allOf takes the type of
-// the member, which would drop the type.
-func checkTransparentType(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
-	if s.Type.IsZero() {
-		return nil
-	}
-
-	k, err := kinds(doc, child(ptr, "allOf", "0"))
-	if err != nil {
-		return []error{err}
-	}
-
-	if !slices.Equal(slices.Sorted(slices.Values(k)), slices.Sorted(slices.Values(s.Type.Names))) {
-		return []error{unsupported(
-			child(ptr, "type"), "type differs from the kinds %v of the only allOf member", k,
-		)}
-	}
-
-	return nil
+// checkProduct reports a member of the product at ptr that holds the
+// product itself by value, which Go cannot lay out.
+func checkProduct(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
+	return opiter.WrapSeq(opiter.Range(0, len(s.AllOf))).
+		Map(func(i int) string { return child(ptr, "allOf", strconv.Itoa(i)) }).
+		Filter(func(mp string) bool { return onCycle(doc, ptr, mp) }).
+		Map(func(mp string) error { return unsupported(mp, "allOf member holds the product itself") }).
+		CollectSlice()
 }
 
 // sameSchema reports whether the schemas at a and b admit the same values
@@ -488,26 +352,6 @@ func checkEnum(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error
 	_, err = allowedValues(doc, ptr)
 
 	return []error{err}
-}
-
-// checkContainer checks the keywords of an object or an array name the
-// kind its type keyword gives.
-func checkContainer(ptr string, s *jsonschema.Schema) []error {
-	object := s.Properties != nil || s.Required != nil || s.AdditionalProperties != nil
-	array := s.Items != nil
-
-	switch {
-	case object && array:
-		return []error{unsupported(ptr, "keywords of both an object and an array")}
-	case s.Type.IsZero():
-		return nil
-	case object && !slices.Equal(typeKinds(s), []string{"object"}):
-		return []error{unsupported(ptr, "keywords of an object next to type %v", s.Type.Names)}
-	case array && !slices.Equal(typeKinds(s), []string{"array"}):
-		return []error{unsupported(ptr, "keywords of an array next to type %v", s.Type.Names)}
-	}
-
-	return nil
 }
 
 // checkProperties checks the properties of a struct or a product give Go

@@ -28,41 +28,30 @@ func TestGenerateRejects(t *testing.T) {
 		at     string
 	}{
 		{
-			"if then else",
-			`{"type":"object","properties":{"a":{"if":{},"then":{},"else":{}}}}`,
-			ErrUnsupported,
-			"#/properties/a/if:",
-		},
-		{"not", `{"type":"object","not":{}}`, ErrUnsupported, "#/not:"},
-		{
-			"prefixItems",
-			`{"type":"object","properties":{"a":{"type":"array","prefixItems":[{}]}}}`,
-			ErrUnsupported,
-			"#/properties/a/prefixItems:",
-		},
-		{
-			"patternProperties",
-			`{"type":"object","patternProperties":{"^a":{}}}`,
-			ErrUnsupported,
-			"#/patternProperties:",
-		},
-		{
 			"remote ref",
 			`{"type":"object","properties":{"a":{"$ref":"https://example.com/a.json"}}}`,
 			ErrUnsupported,
 			"#/properties/a/$ref:",
 		},
 		{
+			"meta-schema of another draft",
+			`{"$schema":"http://json-schema.org/draft-07/schema#","type":"object"}`,
+			ErrUnsupported,
+			"#/$schema:",
+		},
+		{
+			"union on a cycle through a value of raw JSON text",
+			`{"properties":{"a":{"$ref":"#/$defs/u"}},"$defs":{"u":{"oneOf":[
+				{"type":"string"},{"type":"array","items":{"$ref":"#/$defs/u"}}
+			]}}}`,
+			ErrUnsupported,
+			"#/$defs/u/oneOf/1/items/$ref: reference closes a cycle through a union",
+		},
+		{
 			"dynamicRef",
 			`{"type":"object","properties":{"a":{"$dynamicRef":"#x"}}}`,
 			ErrUnsupported,
 			"#/properties/a/$dynamicRef:",
-		},
-		{
-			"keyword next to ref",
-			`{"type":"object","properties":{"a":{"$ref":"#","type":"object"}}}`,
-			ErrUnsupported,
-			"#/properties/a/type:",
 		},
 		{
 			"ref cycle",
@@ -77,22 +66,6 @@ func TestGenerateRejects(t *testing.T) {
 			"$defs":{"l":{"type":"array","items":{"$ref":"#/$defs/l"}}}}`,
 			ErrUnsupported,
 			"#/$defs/l:",
-		},
-		{
-			"closed allOf member",
-			`{"allOf":[{"$ref":"#/$defs/a"},{"$ref":"#/$defs/b"}],
-			"$defs":{"a":{"type":"object","additionalProperties":false},"b":{"type":"object"}}}`,
-			ErrUnsupported,
-			"#/allOf/0:",
-		},
-		{
-			"allOf member property declared twice",
-			`{"allOf":[
-				{"type":"object","properties":{"x":{"type":"string"}}},
-				{"type":"object","properties":{"x":{"type":"integer"}}}
-			]}`,
-			ErrConflict,
-			"#/allOf/0/properties/x and #/allOf/1/properties/x",
 		},
 		{
 			"type names collide",
@@ -143,40 +116,10 @@ func TestGenerateRejects(t *testing.T) {
 			"#/properties/1a:",
 		},
 		{
-			"property name a tag cannot hold",
-			`{"type":"object","properties":{"a,b":{}}}`,
-			ErrUnsupported,
-			"#/properties/a,b:",
-		},
-		{
-			"required member without property",
-			`{"type":"object","required":["a"]}`,
-			ErrUnsupported,
-			"#/required:",
-		},
-		{
-			"false property",
-			`{"type":"object","properties":{"a":false}}`,
-			ErrUnsupported,
-			"#/properties/a:",
-		},
-		{
 			"const that is no Go constant of its type",
 			`{"type":"object","properties":{"a":{"type":"integer","const":1.5}}}`,
 			ErrUnsupported,
 			"#/properties/a:",
-		},
-		{
-			"minProperties next to allOf",
-			`{"allOf":[{"type":"object"},{"type":"object"}],"minProperties":1}`,
-			ErrUnsupported,
-			"#/minProperties: minProperties next to allOf",
-		},
-		{
-			"maxProperties of an allOf member",
-			`{"allOf":[{"type":"object","maxProperties":1},{"type":"object"}]}`,
-			ErrUnsupported,
-			"#/allOf/0/maxProperties: maxProperties of an allOf member",
 		},
 		{
 			"minLength that is no integer",
@@ -195,27 +138,6 @@ func TestGenerateRejects(t *testing.T) {
 			`{"type":"number","minimum":"1"}`,
 			ErrUnsupported,
 			`#/minimum: "1" is no number`,
-		},
-		{
-			"type next to an allOf of one member of another kind",
-			`{"type":"object","properties":{"a":{"type":"integer","allOf":[{"type":"number"}]}}}`,
-			ErrUnsupported,
-			"#/properties/a/type:",
-		},
-		{
-			"type next to an allOf of one member of any kind",
-			`{"type":"object","properties":{"a":{"type":"string","allOf":[{}]}}}`,
-			ErrUnsupported,
-			"#/properties/a/type:",
-		},
-		{
-			"type admitting null next to a union of no null member",
-			`{"type":"object","properties":{"a":{"type":["object","null"],"oneOf":[
-				{"type":"object","required":["x"],"properties":{"x":{}}},
-				{"type":"object","required":["y"],"properties":{"y":{}}}
-			]}}}`,
-			ErrUnsupported,
-			"#/properties/a/type:",
 		},
 		{
 			"enum of strings next to another type",
@@ -296,11 +218,16 @@ func TestGenerateRootType(t *testing.T) {
 		want   []string
 	}{
 		{"string", `{"type":"string"}`, []string{"type Root string"}},
-		{"array", `{"items":{"type":"integer"}}`, []string{"type Root []int64"}},
+		{"array", `{"type":"array","items":{"type":"integer"}}`, []string{"type Root []int64"}},
 		{
 			"map",
-			`{"additionalProperties":{"type":"boolean"}}`,
+			`{"type":"object","additionalProperties":{"type":"boolean"}}`,
 			[]string{"type Root map[string]bool"},
+		},
+		{
+			"items without type",
+			`{"items":{"type":"integer"}}`,
+			[]string{"//kama:validate items(kind=\"integer\")\n", "type Root jsontext.Value"},
 		},
 		{"nullable", `{"type":["number","null"]}`, []string{"type Root opt.Option[float64]"}},
 		{"any", `{}`, []string{"type Root jsontext.Value"}},
@@ -311,7 +238,7 @@ func TestGenerateRootType(t *testing.T) {
 		},
 		{
 			"const of items",
-			`{"items":{"const":1}}`,
+			`{"type":"array","items":{"const":1}}`,
 			[]string{
 				"type Root []RootItem",
 				"//kama:validate const=\"1\"\n",
@@ -320,7 +247,7 @@ func TestGenerateRootType(t *testing.T) {
 		},
 		{
 			"const of a nullable union of items",
-			`{"items":{"anyOf":[{"const":1},{"type":"null"}]}}`,
+			`{"type":"array","items":{"anyOf":[{"const":1},{"type":"null"}]}}`,
 			[]string{"type Root []opt.Option[RootItem]", "type RootItem int64"},
 		},
 		{

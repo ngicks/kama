@@ -1,0 +1,70 @@
+package tests
+
+import (
+	"testing"
+
+	"gotest.tools/v3/assert"
+
+	"github.com/ngicks/kama/kamalib/generator/validator/internal/fixture/model"
+	"github.com/ngicks/kama/kamalib/pkg/validation"
+)
+
+func TestReachShape(t *testing.T) {
+	for _, ok := range []string{
+		`{"a": 1, "b c": [], "xy": "s"}`,
+		`["a", 1, 0]`,
+		`["a", 0, 0]`,
+		`"long text"`,
+	} {
+		assert.NilError(t, model.Shape(ok).Validate(false), ok)
+	}
+
+	cases := []struct {
+		text    string
+		pointer string
+		kind    error
+	}{
+		{`{"a": 1.5}`, "/a", validation.ErrKind},
+		{`{"xy": 1}`, "/xy", validation.ErrKind},
+		{`{"z": 1}`, "/z", validation.ErrOr},
+		{`{"abcd": "x"}`, "/abcd", validation.ErrLength},
+		{`[1]`, "/0", validation.ErrKind},
+		{`["a", -1]`, "/1", validation.ErrCompare},
+		{`["a", 1]`, "", validation.ErrContains},
+		{`["a", 0, 0, 0]`, "", validation.ErrContains},
+	}
+	for _, tc := range cases {
+		err := model.Shape(tc.text).Validate(false)
+		assert.ErrorIs(t, err, tc.kind, tc.text)
+		assert.Assert(t, len(validation.At(err, tc.pointer)) > 0, "%s: %v", tc.text, err)
+	}
+}
+
+func TestReachTree(t *testing.T) {
+	for _, ok := range []string{
+		`{"a": 1, "n": {"b": 2, "x": null}}`,
+		`{"b": 1, "n": {"a": {}}}`,
+		`["a", "b"]`,
+		`[null, null]`,
+		`1`,
+	} {
+		assert.NilError(t, model.Tree(ok).Validate(false), ok)
+	}
+
+	cases := []struct {
+		text    string
+		pointer string
+		kind    error
+	}{
+		// No branch of or evaluates x, which must then be null.
+		{`{"a": 1, "x": 1}`, "/x", validation.ErrKind},
+		{`{"n": {"a": 1, "x": 1}}`, "/n/x", validation.ErrKind},
+		{`["a", 1]`, "/1", validation.ErrKind},
+		{`[1, null]`, "/0", validation.ErrKind},
+	}
+	for _, tc := range cases {
+		err := model.Tree(tc.text).Validate(false)
+		assert.ErrorIs(t, err, tc.kind, tc.text)
+		assert.Assert(t, len(validation.At(err, tc.pointer)) > 0, "%s: %v", tc.text, err)
+	}
+}

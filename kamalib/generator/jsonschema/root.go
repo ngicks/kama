@@ -22,7 +22,7 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	underlying := definedType(doc, opts, ptr)
-	args, marked := definedArgs(doc, ptr)
+	args, marked := definedArgs(doc, opts, ptr)
 
 	decodeDoc := "UnmarshalJSONFrom decodes v as its underlying type."
 	decode := []genStep{
@@ -111,12 +111,13 @@ func rootUnion(doc *jsonschema.Schema, ptr string) bool {
 
 // definedArgs returns the args of //kama:validate on the defined type of
 // the schema at ptr, and whether the type carries the directive: it names
-// validators, or the type is a slice or a map, whose Validate walks the
-// elements. A defined type of a struct, such as the opt.Option of a
+// validators, the type is a slice or a map, whose Validate walks the
+// elements, or the type is raw JSON text, whose Validate ref may call. A defined type of a struct,
+// such as the opt.Option of a
 // nullable root, carries none. Its value has validated itself on decoding.
-func definedArgs(doc *jsonschema.Schema, ptr string) ([]string, bool) {
-	args := declArgs(doc, ptr)
-	if len(args) > 0 {
+func definedArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, bool) {
+	args := declArgs(doc, opts, ptr)
+	if len(args) > 0 || raw(doc, ptr) {
 		return args, true
 	}
 

@@ -138,8 +138,9 @@ func TestRequiredErrors(t *testing.T) {
 			is: ErrDirective,
 			msgs: []string{
 				"unknown validator //kama:validate requird on field N;" +
-					" known: and, closed, cmp, const, format, if, kind, length, members, multipleof," +
-					" nil, not, null, oneof, or, regexp, required, requires, runes, unique, zero",
+					" known: and, closed, cmp, const, contains, decode, format, if, items, keys," +
+					" kind, length, members, multipleof, nil, not, null, oneof, or, prefix, props," +
+					" ref, regexp, required, requires, runes, unevalitems, unevalprops, unique, zero",
 			},
 		},
 		{

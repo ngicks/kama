@@ -40,120 +40,67 @@ type suiteKey struct {
 	file, group, test string
 }
 
-// The reasons a decode of generated code may disagree with the verdict of
-// the suite. checkAllowed tells what each reason needs of the test.
-const (
-	// A schema without type takes the kind its keywords imply, where the
-	// suite accepts every other kind. The suite must call the instance
-	// valid.
-	reasonImpliedKind = "a schema without type takes the kind its keywords imply"
-)
-
-// suiteAllowed lists the tests the generated code disagrees with by
-// design, with the reason.
-var suiteAllowed = map[suiteKey]string{
-	{"items.json", "a schema given for items", "ignores non-arrays"}: reasonImpliedKind,
-	{
-		"items.json",
-		"a schema given for items",
-		"JavaScript pseudo-array is valid",
-	}: reasonImpliedKind,
-	{"properties.json", "object properties validation", "ignores arrays"}: reasonImpliedKind,
-	{
-		"properties.json",
-		"object properties validation",
-		"ignores other non-objects",
-	}: reasonImpliedKind,
-	{
-		"properties.json",
-		"properties whose names are Javascript object property names",
-		"ignores arrays",
-	}: reasonImpliedKind,
-	{
-		"properties.json",
-		"properties whose names are Javascript object property names",
-		"ignores other non-objects",
-	}: reasonImpliedKind,
-	{"ref.json", "root pointer ref", "match"}:                             reasonImpliedKind,
-	{"ref.json", "root pointer ref", "recursive match"}:                   reasonImpliedKind,
-	{"required.json", "required validation", "ignores arrays"}:            reasonImpliedKind,
-	{"required.json", "required validation", "ignores strings"}:           reasonImpliedKind,
-	{"required.json", "required validation", "ignores other non-objects"}: reasonImpliedKind,
-	{"required.json", "required validation", "ignores null"}:              reasonImpliedKind,
-	{"required.json", "required validation", "ignores boolean"}:           reasonImpliedKind,
-}
-
 // suiteGenerated is the least number of groups of each top-level file of
 // the suite that Generate accepts. A file generating fewer means Generate
 // rejects schemas it used to accept. A file missing here generates none.
 var suiteGenerated = map[string]int{
-	"additionalProperties.json":    4,
-	"allOf.json":                   4,
+	"additionalProperties.json":    9,
+	"allOf.json":                   12,
 	"anchor.json":                  1,
-	"anyOf.json":                   5,
-	"boolean_schema.json":          1,
+	"anyOf.json":                   8,
+	"boolean_schema.json":          2,
 	"const.json":                   17,
+	"contains.json":                7,
 	"content.json":                 4,
 	"default.json":                 3,
 	"dependentRequired.json":       4,
+	"dependentSchemas.json":        4,
 	"dynamicRef.json":              1,
-	"enum.json":                    14,
+	"enum.json":                    15,
 	"exclusiveMaximum.json":        1,
 	"exclusiveMinimum.json":        1,
 	"format.json":                  19,
+	"if-then-else.json":            12,
 	"infinite-loop-detection.json": 1,
-	"items.json":                   4,
-	"maxContains.json":             1,
+	"items.json":                   10,
+	"maxContains.json":             5,
 	"maxItems.json":                2,
 	"maxLength.json":               2,
 	"maxProperties.json":           3,
 	"maximum.json":                 2,
-	"minContains.json":             1,
+	"minContains.json":             8,
 	"minItems.json":                2,
 	"minLength.json":               2,
 	"minProperties.json":           2,
 	"minimum.json":                 2,
 	"multipleOf.json":              6,
-	"oneOf.json":                   6,
+	"not.json":                     9,
+	"oneOf.json":                   11,
 	"pattern.json":                 3,
-	"properties.json":              3,
-	"ref.json":                     16,
-	"required.json":                3,
+	"patternProperties.json":       6,
+	"prefixItems.json":             4,
+	"properties.json":              6,
+	"propertyNames.json":           6,
+	"ref.json":                     20,
+	"required.json":                5,
 	"type.json":                    11,
-	"uniqueItems.json":             2,
-	"vocabulary.json":              1,
+	"unevaluatedItems.json":        28,
+	"unevaluatedProperties.json":   43,
+	"uniqueItems.json":             6,
 }
 
 // suiteUnsupported is the number of groups of each top-level file of the
 // suite that Generate rejects. A file missing here rejects none.
 var suiteUnsupported = map[string]int{
-	"additionalProperties.json":  5,
-	"allOf.json":                 8,
 	"anchor.json":                3,
-	"anyOf.json":                 3,
-	"boolean_schema.json":        1,
-	"contains.json":              7,
 	"defs.json":                  1,
-	"dependentSchemas.json":      4,
 	"dynamicRef.json":            20,
-	"enum.json":                  2,
-	"if-then-else.json":          12,
-	"items.json":                 6,
-	"maxContains.json":           4,
-	"minContains.json":           7,
-	"not.json":                   9,
-	"oneOf.json":                 5,
-	"patternProperties.json":     6,
-	"prefixItems.json":           4,
-	"properties.json":            3,
-	"propertyNames.json":         6,
-	"ref.json":                   20,
+	"enum.json":                  1,
+	"ref.json":                   16,
 	"refRemote.json":             15,
-	"required.json":              2,
-	"unevaluatedItems.json":      29,
-	"unevaluatedProperties.json": 44,
-	"uniqueItems.json":           4,
-	"vocabulary.json":            1,
+	"unevaluatedItems.json":      1,
+	"unevaluatedProperties.json": 1,
+	"vocabulary.json":            2,
 }
 
 // suiteUnsupportedReasons lists every reason a group of the suite is
@@ -161,32 +108,10 @@ var suiteUnsupported = map[string]int{
 var suiteUnsupportedReasons = []string{
 	"name conflict: #/enum/0 and #/enum/1 both give the Go name RootFooBar",
 	"unsupported schema: a schema resource other than the root",
-	"unsupported schema: additionalProperties next to allOf rejects the members of the other schemas",
-	"unsupported schema: allOf member is no object",
-	"unsupported schema: enum lists no value",
 	"unsupported schema: keyword $dynamicRef is not supported",
-	"unsupported schema: keyword contains is not supported",
-	"unsupported schema: keyword dependentSchemas is not supported",
-	"unsupported schema: keyword else is not supported",
-	"unsupported schema: keyword if is not supported",
-	"unsupported schema: keyword next to $ref",
-	"unsupported schema: keyword next to allOf",
-	"unsupported schema: keyword next to anyOf",
-	"unsupported schema: keyword next to oneOf",
-	"unsupported schema: keyword not is not supported",
-	"unsupported schema: keyword patternProperties is not supported",
-	"unsupported schema: keyword prefixItems is not supported",
-	"unsupported schema: keyword propertyNames is not supported",
-	"unsupported schema: keyword then is not supported",
-	"unsupported schema: keyword unevaluatedItems is not supported",
-	"unsupported schema: keyword unevaluatedProperties is not supported",
-	"unsupported schema: property name %q does not fit a json tag",
+	"unsupported schema: meta-schema %q is not that of draft 2020-12",
 	"unsupported schema: reference %q leaves the document",
 	"unsupported schema: reference %q names no schema the generator reads",
-	"unsupported schema: required member %q has no property",
-	"unsupported schema: the false schema admits no value",
-	"unsupported schema: type narrows the members of anyOf",
-	"unsupported schema: type narrows the members of oneOf",
 }
 
 // suiteEnv names the environment variable that enables TestSuiteBehavior.
@@ -210,8 +135,7 @@ var suiteDir = filepath.Join("internal", "suite")
 //
 // A driver program in suiteDir decodes each instance of a group into the
 // root type of its package. A decode succeeds exactly when the suite calls
-// the instance valid, except for the tests of suiteAllowed, which must
-// disagree. Each file generates at least the groups suiteGenerated
+// the instance valid. Each file generates at least the groups suiteGenerated
 // records, and rejects exactly the groups suiteUnsupported records, each
 // for reasons of suiteUnsupportedReasons.
 //
@@ -237,10 +161,9 @@ func TestSuiteBehavior(t *testing.T) {
 	suiteModule(t)
 
 	var (
-		keys    []suiteKey
-		valid   []bool
-		schemas []jsontext.Value
-		driver  suiteDriver
+		keys   []suiteKey
+		valid  []bool
+		driver suiteDriver
 	)
 
 	generated, unsupported, reasons := map[string]int{}, map[string]int{}, map[string]int{}
@@ -276,7 +199,6 @@ func TestSuiteBehavior(t *testing.T) {
 			for _, c := range g.Tests {
 				keys = append(keys, suiteKey{file: file, group: g.Description, test: c.Description})
 				valid = append(valid, c.Valid)
-				schemas = append(schemas, g.Schema)
 
 				driver.add(file, gi, c.Data)
 			}
@@ -295,49 +217,28 @@ func TestSuiteBehavior(t *testing.T) {
 	results := runSuiteDriver(t)
 	assert.Equal(t, len(results), len(keys))
 
-	agree, allowed := 0, map[string]int{}
+	agree := 0
 
 	for i, k := range keys {
 		if msg, ok := strings.CutPrefix(results[i], "E "); ok {
 			t.Errorf("%s: %s: %s: round trip: %s", k.file, k.group, k.test, msg)
 		}
 
-		got := results[i] != "0"
-		reason, ok := suiteAllowed[k]
-
-		switch {
-		case got == valid[i] && ok:
-			t.Errorf("%s: %s: %s: agrees but is allowed to disagree: %s",
-				k.file, k.group, k.test, reason)
-		case got == valid[i]:
-			agree++
-		case ok:
-			allowed[reason]++
-
-			if err := checkAllowed(reason, schemas[i], valid[i]); err != nil {
-				t.Errorf("%s: %s: %s: %v", k.file, k.group, k.test, err)
-			}
-		default:
+		if got := results[i] != "0"; got != valid[i] {
 			t.Errorf("%s: %s: %s: valid is %t, decoding succeeded is %t",
 				k.file, k.group, k.test, valid[i], got)
+
+			continue
 		}
+
+		agree++
 	}
 
 	assert.Equal(t, len(slices.Compact(slices.SortedFunc(slices.Values(keys), compareSuiteKeys))),
 		len(keys), "a test of the suite is located twice")
 
-	for k := range suiteAllowed {
-		if !slices.Contains(keys, k) {
-			t.Errorf("%s: %s: %s: allowed but not checked", k.file, k.group, k.test)
-		}
-	}
-
 	t.Logf("%d groups generated, %d unsupported; %d instances checked, %d agree",
 		sumValues(generated), sumValues(unsupported), len(keys), agree)
-
-	for _, reason := range slices.Sorted(maps.Keys(allowed)) {
-		t.Logf("allowed: %d: %s", allowed[reason], reason)
-	}
 
 	for _, reason := range slices.Sorted(maps.Keys(reasons)) {
 		t.Logf("unsupported: %d groups: %s", reasons[reason], reason)
@@ -444,21 +345,6 @@ func sumValues(m map[string]int) int {
 func compareSuiteKeys(a, b suiteKey) int {
 	return cmp.Or(cmp.Compare(a.file, b.file), cmp.Compare(a.group, b.group),
 		cmp.Compare(a.test, b.test))
-}
-
-// checkAllowed reports a test that does not fit the reason it is allowed
-// to disagree for.
-func checkAllowed(reason string, schema jsontext.Value, valid bool) error {
-	switch reason {
-	case reasonImpliedKind:
-		if !valid {
-			return errors.New("the suite calls the instance invalid")
-		}
-	default:
-		return fmt.Errorf("unknown reason %q", reason)
-	}
-
-	return nil
 }
 
 // suiteStem returns the directory of the packages of file under suiteDir.

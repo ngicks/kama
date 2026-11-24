@@ -28,7 +28,7 @@ import (
 var fixtures = []string{
 	"object", "nullable", "recursive", "oneof", "anyof", "allof",
 	"prefilter", "nullablecycle", "multikind", "nullableenum", "nullableroot", "productcycle",
-	"oneofoverlap", "nestedunion", "validation", "rootscalar", "rawroot",
+	"oneofoverlap", "nestedunion", "validation", "rootscalar", "rawroot", "subschema",
 }
 
 func TestFixtureSpecBuild(t *testing.T) {
