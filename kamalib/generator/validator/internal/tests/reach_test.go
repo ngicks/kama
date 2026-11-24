@@ -40,6 +40,14 @@ func TestReachShape(t *testing.T) {
 	}
 }
 
+func TestReachDecode(t *testing.T) {
+	assert.NilError(t, model.Holder(`{"bag": {"mixed": 1}}`).Validate(false))
+
+	err := model.Holder(`{"bag": 1}`).Validate(false)
+	assert.ErrorIs(t, err, validation.ErrDecode)
+	assert.Assert(t, len(validation.At(err, "/bag")) > 0, "%v", err)
+}
+
 func TestReachTree(t *testing.T) {
 	for _, ok := range []string{
 		`{"a": 1, "n": {"b": 2, "x": null}}`,

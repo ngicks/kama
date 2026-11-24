@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T14:32:19Z
+// generated: 2026-11-24T14:57:03Z
 
 package model
 
@@ -54,6 +54,23 @@ func (v Shape) Validate(stopOnFirstError bool) error {
 	if err := rawjson.Keys(v, stopOnFirstError, func(m jsontext.Value) error {
 		return rawjson.Runes(m, "<=", 3)
 	}); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v Holder) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, nil, rawjson.Property("bag", func(m jsontext.Value) error {
+		return rawjson.Decode[RawBag](m)
+	})); err != nil {
 		if stopOnFirstError {
 			return err
 		}

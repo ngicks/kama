@@ -111,6 +111,18 @@ func TestStrict(t *testing.T) {
 	)
 }
 
+func TestHolder(t *testing.T) {
+	check[Holder](t,
+		[]string{`{}`, `{"node": {"v": 1, "kids": [{"kids": []}]}}`, `{"node": {"up": 1}}`},
+		map[string]error{
+			`{"node": 1}`:                         validation.ErrDecode,
+			`{"node": {"kids": [{"v": "x"}]}}`:    validation.ErrDecode,
+			`{"node": {"up": {"name": 1}}}`:       validation.ErrDecode,
+			`{"node": {"up": {"children": [1]}}}`: validation.ErrDecode,
+		},
+	)
+}
+
 func TestMixed(t *testing.T) {
 	check[Mixed](t,
 		[]string{`1.0`, `"a"`, `null`, `[1]`},

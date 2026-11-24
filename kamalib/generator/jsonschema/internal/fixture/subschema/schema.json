@@ -34,6 +34,15 @@
       "properties": {"b": true},
       "unevaluatedProperties": false
     },
-    "Mixed": {"enum": [1, "a", null, [1]]}
+    "Mixed": {"enum": [1, "a", null, [1]]},
+    "Node": {
+      "type": "object",
+      "properties": {
+        "v": {"type": "integer"},
+        "kids": {"type": "array", "items": {"$ref": "#/$defs/Node"}},
+        "up": {"$ref": "#"}
+      }
+    },
+    "Holder": {"properties": {"node": {"$ref": "#/$defs/Node"}}}
   }
 }

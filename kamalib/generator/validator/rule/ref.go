@@ -10,9 +10,9 @@ import (
 // type, a type of the generated package defined over raw JSON text, passes
 // the Validate of type, as JSON Schema $ref applies the schema it names.
 // type names a type declaring Validate(bool) error, as one whose doc
-// comment names validators does. A type may refer to itself, as
-// ref=Tree in the doc comment of Tree does, since the conversion happens
-// only for a value that holds the value it validates.
+// comment names validators does. A type may name itself, as ref=Tree
+// inside props in the doc comment of Tree does: each call validates a
+// member or an element, so the recursion ends with the value.
 //
 // It applies to raw JSON text only, as IsRawJson tells. It returns the
 // errors of that Validate. It records no annotation, so a scope of

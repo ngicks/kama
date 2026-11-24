@@ -317,11 +317,39 @@ func fieldArgs(doc *jsonschema.Schema, opts Options, ptr, name string) []string 
 
 	var args []string
 
-	if kind := placeKind(doc, pp); !declares(doc, pp) && kind != "struct" {
+	if kind := placeKind(doc, pp); !declares(doc, pp) && kind != "struct" && !named(doc, pp) {
 		args, _ = valueArgs(doc, opts, pp, kind)
 	}
 
-	return append(args, dependentArgs(doc, ptr, name)...)
+	deps := dependentArgs(doc, ptr, name)
+
+	// A validator named by both would be given twice. The args of the value
+	// in one and apply to the value the field holds, as each of them does.
+	clash := opiter.WrapSeq(slices.Values(deps)).
+		Map(argName).
+		Any(func(n string) bool {
+			return slices.ContainsFunc(args, func(a string) bool { return argName(a) == n })
+		})
+	if clash {
+		args = []string{callArg("and", args...)}
+	}
+
+	return append(args, deps...)
+}
+
+// named reports whether the schema at ptr is a $ref alone to a schema
+// whose Go type is named: a type it declares, or a root of raw JSON text.
+// The Validate of that type checks the value, so the place names no
+// validator of the target again.
+func named(doc *jsonschema.Schema, ptr string) bool {
+	s, err := at(doc, ptr)
+	if err != nil || !refAlone(s) {
+		return false
+	}
+
+	r, _, err := resolved(doc, ptr)
+
+	return err == nil && (declares(doc, r) || r == "" && raw(doc, r))
 }
 
 // dependentArgs returns the args the dependentRequired of the object at

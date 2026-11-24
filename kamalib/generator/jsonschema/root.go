@@ -133,7 +133,8 @@ func definedArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, bo
 // at ptr: its built-in Go type, in an opt.Option for a nullable root.
 func definedType(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	return func(c genCtx) (string, error) {
-		if ptr != "" {
+		// goType names a root of raw JSON text after the type defined here.
+		if ptr != "" || raw(doc, ptr) {
 			return builtinType(c, doc, opts, ptr)
 		}
 

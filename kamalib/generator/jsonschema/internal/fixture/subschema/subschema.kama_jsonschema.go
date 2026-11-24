@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T14:37:24Z
+// generated: 2026-11-24T14:57:54Z
 
 package subschema
 
@@ -12,6 +12,9 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
+	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/option/opt"
+	"github.com/ngicks/option/und"
 )
 
 // Tree is generated from the schema at #.
@@ -431,5 +434,122 @@ func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:generated kama:jsonschema
 func (v Mixed) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// Node is generated from the schema at #/$defs/Node.
+//
+//kama:validate hook=off
+//kama:generated kama:jsonschema
+type Node struct {
+	V    opt.Option[int64]         `json:"v,omitzero"`
+	Kids opt.Option[[]Node]        `json:"kids,omitzero"`
+	Up   opt.Option[Tree]          `json:"up,omitzero"`
+	_x   map[string]jsontext.Value `json:",embed"`
+}
+
+// AdditionalProperties returns the members of the object that Node declares
+// no field for.
+//
+//kama:generated kama:jsonschema
+func (v Node) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
+//
+//kama:generated kama:jsonschema
+func (v Node) MarshalJSONTo(enc *jsontext.Encoder) error {
+	type plain struct {
+		V                    opt.Option[int64]         `json:"v,omitzero"`
+		Kids                 opt.Option[[]Node]        `json:"kids,omitzero"`
+		Up                   opt.Option[Tree]          `json:"up,omitzero"`
+		AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{V: v.V, Kids: v.Kids, Up: v.Up, AdditionalProperties: v._x})
+}
+
+// nodeWire keeps a missing member of Node apart from null.
+//
+//kama:generated kama:jsonschema
+type nodeWire struct {
+	V                    und.Und[int64]            `json:"v,omitzero"`
+	Kids                 und.Und[[]Node]           `json:"kids,omitzero"`
+	Up                   jsontext.Value            `json:"up,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
+//
+//kama:generated kama:jsonschema
+func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	raw, err := jsonschemart.ReadValue(dec)
+	if err != nil {
+		return err
+	}
+	var w nodeWire
+	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+		return err
+	}
+	var out Node
+	var errs []error
+	out.V, err = jsonschemart.Optional(w.V)
+	errs = append(errs, validation.Field(err, "v"))
+	out.Kids, err = jsonschemart.Optional(w.Kids)
+	errs = append(errs, validation.Field(err, "kids"))
+	out.Up, err = jsonschemart.DecodeOptional[Tree](w.Up)
+	errs = append(errs, validation.Field(err, "up"))
+	out._x = w.AdditionalProperties
+	if err := validation.Join(errs...); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(out, false); err != nil {
+		return err
+	}
+	*v = out
+	return nil
+}
+
+// Holder is generated from the schema at #/$defs/Holder.
+//
+//kama:validate props(field("node", decode=Node))
+//kama:generated kama:jsonschema
+type Holder jsontext.Value
+
+// MarshalJSONTo encodes v as its underlying type.
+//
+//kama:generated kama:jsonschema
+func (v Holder) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, jsontext.Value(v))
+}
+
+// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
+// Validate.
+//
+//kama:generated kama:jsonschema
+func (v *Holder) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	raw, err := jsonschemart.ReadValue(dec)
+	if err != nil {
+		return err
+	}
+	var out jsontext.Value
+	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+		return err
+	}
+	if err := jsonschemart.Validate(Holder(out), false); err != nil {
+		return err
+	}
+	*v = Holder(out)
+	return nil
+}
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v Holder) RawJson() jsontext.Value {
 	return jsontext.Value(v)
 }

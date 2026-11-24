@@ -328,7 +328,8 @@ func listText(names []string) string {
 }
 
 // goType spells the Go type of the schema at ptr, without the option of a
-// nullable value: the name of the type it declares, else a built-in type.
+// nullable value: the name of the type it declares or of a root of raw JSON
+// text, else a built-in type.
 func goType(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	return func(c genCtx) (string, error) { return goTypeSeen(c, doc, opts, ptr, nil) }
 }
@@ -356,7 +357,7 @@ func goTypeSeen(
 		return q(jsontextPath, "Value")(c)
 	case nullableUnion(doc, r):
 		return goTypeSeen(c, doc, opts, valueMember(doc, r), seen)
-	case declares(doc, r):
+	case declares(doc, r) || r == "" && raw(doc, r):
 		return typeName(doc, opts, r)
 	}
 

@@ -14,6 +14,14 @@ type Shape jsontext.Value
 // RawJson marks Shape as raw JSON text.
 func (v Shape) RawJson() jsontext.Value { return jsontext.Value(v) }
 
+// Holder is raw JSON text whose member bag decodes into a RawBag.
+//
+//kama:validate props(field("bag", decode=RawBag))
+type Holder jsontext.Value
+
+// RawJson marks Holder as raw JSON text.
+func (v Holder) RawJson() jsontext.Value { return jsontext.Value(v) }
+
 // Tree is raw JSON text whose member n is a Tree. An object holds a or b,
 // and its other members are null. An array starting with a string holds
 // strings only, and the elements of another array are null.

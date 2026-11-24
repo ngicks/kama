@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T14:37:25Z
+// generated: 2026-11-24T14:57:55Z
 
 package subschema
 
@@ -229,6 +229,50 @@ func (v Strict) Validate(stopOnFirstError bool) error {
 func (v Mixed) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := rawjson.Const(v, "1", "\"a\"", "null", "[1]"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v Node) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if v.Kids.IsSome() {
+		for i, e := range v.Kids.Value() {
+			if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "kids"); err != nil {
+				if stopOnFirstError {
+					return err
+				}
+				errs = append(errs, err)
+			}
+		}
+	}
+	if v.Up.IsSome() {
+		if err := validation.Field(v.Up.Value().Validate(stopOnFirstError), "up"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v Holder) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, nil, rawjson.Property("node", func(m jsontext.Value) error {
+		return rawjson.Decode[Node](m)
+	})); err != nil {
 		if stopOnFirstError {
 			return err
 		}

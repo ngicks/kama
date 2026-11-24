@@ -49,6 +49,12 @@ func TestGenerateDirectives(t *testing.T) {
 			[]string{"//kama:validate regexp=\"" + long + "\"\n"},
 		},
 		{
+			"raw property required by a key and requiring a member",
+			`{"type":"object","required":["a"],"dependentRequired":{"a":["b"]},
+			"properties":{"a":{"type":"object"},"b":{"required":["x"]}}}`,
+			[]string{"\t//kama:validate and(required=\"x\")\n\t//kama:validate required\n"},
+		},
+		{
 			"raw JSON text of a schema of every kind",
 			`{"minimum":1,"maxLength":2,"minProperties":1,"uniqueItems":true,
 			"dependentRequired":{"a":["b","c"],"d":["e"]}}`,
