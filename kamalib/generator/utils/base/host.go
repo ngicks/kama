@@ -31,11 +31,11 @@ func (c Caller) constrained(shared string) bool {
 
 	src, test := strings.CutSuffix(c.Src, "_test.go")
 	if !test {
-		return Constrained(c.Src)
+		return constrained(c.Src)
 	}
 
 	// Constrained takes the _test suffix for a constraint of its own.
-	return Constrained(src+".go") || !isTestFile(shared)
+	return constrained(src+".go") || !isTestFile(shared)
 }
 
 // isTestFile reports whether the file at path is a _test.go file.

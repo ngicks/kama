@@ -30,6 +30,8 @@ import (
 
 var driveId = base.Id{Namespace: "acme", Name: "drive"}
 
+func init() { base.MustRegister(driveId) }
+
 // yielding returns a generator yielding outs and errs in order, outs first.
 func yielding(outs []base.Output, errs ...error) base.Generator[struct{}] {
 	return base.Generator[struct{}]{

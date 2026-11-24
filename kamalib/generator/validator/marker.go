@@ -199,6 +199,6 @@ func (s *selection) generated(obj types.Object) bool {
 
 	return slices.ContainsFunc(base.DeclDocs(pkg, obj), func(doc *ast.CommentGroup) bool {
 		name, ok := s.markers.Generated(doc)
-		return ok && name == GeneratorId.String()
+		return ok && name == GeneratorId().String()
 	})
 }

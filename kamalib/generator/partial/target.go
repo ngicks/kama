@@ -272,10 +272,19 @@ func noPartialError(k fieldKey, src optionSource) error {
 func (s *selection) checkNames(sorted []*typegraph.Node) error {
 	var errs []error
 
-	conflict := func(fset *token.FileSet, pos token.Pos, format string, args ...any) {
-		errs = append(errs, fmt.Errorf(
-			"%w: %s: "+format,
-			append([]any{ErrConflict, fset.Position(pos)}, args...)...,
+	conflict := func(
+		docs []*ast.CommentGroup,
+		fset *token.FileSet,
+		pos token.Pos,
+		format string,
+		args ...any,
+	) {
+		errs = append(errs, base.ExplainConflict(
+			fmt.Errorf(
+				"%w: %s: "+format,
+				append([]any{ErrConflict, fset.Position(pos)}, args...)...),
+			s.reg,
+			docs...,
 		))
 	}
 
@@ -292,7 +301,7 @@ func (s *selection) checkNames(sorted []*typegraph.Node) error {
 		}
 
 		if !s.generated(obj) {
-			conflict(pkg.Fset, obj.Pos(),
+			conflict(base.DeclDocs(pkg, obj), pkg.Fset, obj.Pos(),
 				"%s.%s is already declared for the partial variant of %s",
 				n.Id.PackagePath, name, n.Id.TypeName,
 			)
@@ -307,7 +316,7 @@ func (s *selection) checkNames(sorted []*typegraph.Node) error {
 
 		for m := range named.Methods() {
 			if slices.Contains(s.partialMethodNames(n), m.Name()) && !s.generated(m) {
-				conflict(pkg.Fset, m.Pos(),
+				conflict(base.DeclDocs(pkg, m), pkg.Fset, m.Pos(),
 					"method %s of %s.%s is declared by something other than the generator",
 					m.Name(), n.Id.PackagePath, name,
 				)
@@ -318,7 +327,7 @@ func (s *selection) checkNames(sorted []*typegraph.Node) error {
 	for _, pkgPath := range slices.Sorted(maps.Keys(targetPkgs)) {
 		pkg := targetPkgs[pkgPath]
 		if obj := pkg.Types.Scope().Lookup(flagSetName); obj != nil && !s.generated(obj) {
-			conflict(pkg.Fset, obj.Pos(),
+			conflict(base.DeclDocs(pkg, obj), pkg.Fset, obj.Pos(),
 				"%s.%s is already declared for the flag set of the generated methods",
 				pkgPath, flagSetName,
 			)
@@ -337,7 +346,7 @@ func (s *selection) checkNames(sorted []*typegraph.Node) error {
 					continue
 				}
 
-				conflict(pkg.Fset, decl.Pos(),
+				conflict(base.AstDeclDocs(decl), pkg.Fset, decl.Pos(),
 					"%s holds a declaration the generator did not write", name,
 				)
 			}

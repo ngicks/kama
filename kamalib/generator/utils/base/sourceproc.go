@@ -102,7 +102,7 @@ type SourceProc[Partial ParamPartial[Partial, Param], Param, O, P, T, F any] str
 	// Now returns the time of a run. Nil means time.Now.
 	Now func() time.Time
 	// Registry tells the generators that generated marks name. Nil means
-	// DefaultRegistry.
+	// DefaultRegistry().
 	Registry *genmark.Registry
 }
 

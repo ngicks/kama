@@ -28,7 +28,7 @@ func (o optionSource) origin() string { return o.src.Origin(o.arg, o.keys) }
 
 // spelling names the option o sets as its source spells it.
 func (o optionSource) spelling() string {
-	return o.src.Spelling(GeneratorId.Namespace, GeneratorId.Name, " ", o.arg)
+	return o.src.Spelling(GeneratorId().Namespace, GeneratorId().Name, " ", o.arg)
 }
 
 // subDirectiveError reports //kama:validate:<sub>, and shows the arg of
@@ -51,8 +51,8 @@ func subDirectiveError(src genopt.Source, sub string, kv []dircmnt.KeyValue) err
 
 	return fmt.Errorf(
 		"%w: %s: %s:%s; validators and hook are args of %s, as in %s %s",
-		ErrDirective, src.Pos, GeneratorId.Directive(), sub,
-		GeneratorId.Directive(), GeneratorId.Directive(), want,
+		ErrDirective, src.Pos, GeneratorId().Directive(), sub,
+		GeneratorId().Directive(), GeneratorId().Directive(), want,
 	)
 }
 

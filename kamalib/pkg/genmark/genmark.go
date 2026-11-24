@@ -74,6 +74,33 @@ func (r *Registry) Generated(cg *ast.CommentGroup) (name string, ok bool) {
 	return r.find(dircmnt.Ast(cg))
 }
 
+// Registered reports whether name is registered in r.
+func (r *Registry) Registered(name string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	_, ok := r.names[name]
+
+	return ok
+}
+
+// Unregistered reports the first marker of the tool of r in cg naming a
+// generator r does not register, such as a marker written before a
+// generator was renamed. A marker without a name counts as one naming the
+// empty name.
+func (r *Registry) Unregistered(cg *ast.CommentGroup) (name string, ok bool) {
+	return opiter.WrapSeq(slices.Values(dircmnt.Ast(cg))).
+		Filter(r.isMarker).
+		Map(markerName).
+		Filter(func(name string) bool { return !r.Registered(name) }).
+		First().
+		Unpack()
+}
+
+func (r *Registry) isMarker(c dircmnt.Comment) bool {
+	return c.ToolName == r.toolName && c.Directive == directive
+}
+
 func (r *Registry) find(comments []dircmnt.Comment) (string, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -86,9 +113,7 @@ func (r *Registry) find(comments []dircmnt.Comment) (string, bool) {
 	}
 
 	return opiter.WrapSeq(slices.Values(comments)).
-		Filter(
-			func(c dircmnt.Comment) bool { return c.ToolName == r.toolName && c.Directive == directive },
-		).
+		Filter(r.isMarker).
 		Map(markerName).
 		Filter(isRegistered).
 		First().

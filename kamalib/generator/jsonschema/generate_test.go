@@ -17,7 +17,7 @@ type File = base.File
 // formatter of an overlay formats it on staging.
 func generateFiles(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 	r := &gentest.RecordReporter{}
-	g := Generator
+	g := Generator()
 	generate := g.Generate
 	// The reporter of gentest.Prepare drops the warnings, which the tests
 	// read.
@@ -27,7 +27,7 @@ func generateFiles(doc *jsonschema.Schema, opts Options) ([]File, []error, error
 	}
 
 	files, err := gentest.Prepare(
-		context.Background(), g, base.DefaultRegistry, Input{Doc: doc, Options: opts},
+		context.Background(), g, base.DefaultRegistry(), Input{Doc: doc, Options: opts},
 	)
 	if err != nil {
 		return nil, nil, err

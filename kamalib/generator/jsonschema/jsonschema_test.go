@@ -448,7 +448,7 @@ func TestGenerateHostileAnnotations(t *testing.T) {
 
 	assert.NilError(t, generateSuite(jsontext.Value(schema), false))
 
-	marker := GeneratorId.Marker()
+	marker := GeneratorId().Marker()
 	markers := 0
 
 	var s scanner.Scanner

@@ -17,11 +17,11 @@ import (
 )
 
 // GeneratorId identifies the generator. Its name is the directive
-// //kama:validate, and init registers it in base.DefaultRegistry.
-var GeneratorId = base.Id{Namespace: "kama", Name: "validate"}
+// //kama:validate, and init registers it with base.MustRegister.
+func GeneratorId() base.Id { return base.Id{Namespace: "kama", Name: "validate"} }
 
 // naming names the files the generator writes.
-var naming = GeneratorId.Naming()
+var naming = GeneratorId().Naming()
 
 // HelpersFile is the name of the file declaring the helpers the generated
 // files of a package call. An external test package takes the name with
@@ -32,7 +32,7 @@ const HelpersFile = "zz_gen.helper.kama_validate.go"
 // spell it.
 const helperKind = "helper"
 
-func init() { base.MustRegister(GeneratorId) }
+func init() { base.MustRegister(GeneratorId()) }
 
 var (
 	// ErrDirective reports a //kama:validate directive or an option file
@@ -76,7 +76,9 @@ func (o Options) WithDefaults() Options {
 
 // Generator generates the Validate methods of the targets of the packages
 // of its Input.
-var Generator = base.Generator[Input]{Id: GeneratorId, Generate: Generate}
+func Generator() base.Generator[Input] {
+	return base.Generator[Input]{Id: GeneratorId(), Generate: Generate}
+}
 
 // Input is the input of a run of Generator.
 type Input = base.Input[Options, PackageOptions, TypeOptions, FieldOptions]

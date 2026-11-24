@@ -61,7 +61,8 @@ type Plan struct {
 // Prepare runs g on in and returns what [Drive] stages into out, staging
 // nothing itself.
 //
-// Prepare takes every output and every error g yields, and recovers a
+// Prepare returns an error for an Id that is not valid or that
+// env.Registry does not register. It takes every output and every error g yields, and recovers a
 // panic of g as an error. It assembles each output as [Composed]
 // describes and checks it: its path is valid and is not yielded twice, a
 // Composed is a Go file, a Decl is not empty. It formats each file once,
@@ -81,6 +82,20 @@ func Prepare[I any](
 	scope Scope,
 	out *overlayfs.Fs,
 ) (Plan, error) {
+	if err := g.Id.Validate(); err != nil {
+		return Plan{}, err
+	}
+
+	// An Id the registry does not know would disable the stale check and
+	// the replace check silently, since both find the marks of registered
+	// generators only.
+	if env.Registry == nil || !env.Registry.Registered(g.Id.String()) {
+		return Plan{}, fmt.Errorf(
+			"%s: the generator is not registered in env.Registry; register it with base.MustRegister",
+			g.Id,
+		)
+	}
+
 	if g.Generate == nil {
 		return Plan{}, fmt.Errorf("%s: Generate is nil", g.Id)
 	}

@@ -16,7 +16,7 @@
 // no error. Generate warns, wrapping ErrUnknownKey, about each of them with
 // the path of the file and the key path, as in entries.0.default.
 //
-// Proc keeps a file that would change in the generated: line only, and
+// The proc keeps a file that would change in the generated: line only, and
 // warns, wrapping base.ErrStale, about each file of its
 // output directory that carries the marker of the generator and that the
 // run did not produce. Every generated file of a directory must therefore
@@ -47,12 +47,14 @@ import (
 )
 
 // GeneratorId identifies the generator.
-var GeneratorId = base.Id{Namespace: "kama", Name: "contextkey"}
+func GeneratorId() base.Id { return base.Id{Namespace: "kama", Name: "contextkey"} }
 
-func init() { base.MustRegister(GeneratorId) }
+func init() { base.MustRegister(GeneratorId()) }
 
 // Generator generates the files of the entries of an Input.
-var Generator = base.Generator[Input]{Id: GeneratorId, Generate: Generate}
+func Generator() base.Generator[Input] {
+	return base.Generator[Input]{Id: GeneratorId(), Generate: Generate}
+}
 
 var (
 	ErrInvalidEntry = errors.New("contextkey: invalid entry")
@@ -63,7 +65,7 @@ var (
 )
 
 // naming names the files the generator writes.
-var naming = GeneratorId.Naming()
+var naming = GeneratorId().Naming()
 
 // FileName returns the name of the file generated for an Entry whose
 // FileName is name.

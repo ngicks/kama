@@ -12,7 +12,7 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register(GeneratorId.ProcKind(), NewProc) }
+func init() { workflow.Register(GeneratorId().ProcKind(), NewProc) }
 
 // ProcParam configures the proc of NewProc. See Options for the modes. A
 // spec decodes into ProcParamPartial, which the proc merges onto
@@ -68,7 +68,7 @@ func NewProc() workflow.Proc { return proc }
 var proc = base.SourceProc[
 	ProcParamPartial, ProcParam, Options, PackageOptions, TypeOptions, FieldOptions,
 ]{
-	Generator: Generator,
+	Generator: Generator(),
 	Default:   DefaultProcParam,
 	Options:   procOptions,
 	Loader:    NewLoader(nil),

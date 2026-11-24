@@ -54,9 +54,9 @@ func (n Naming) IsShared(kind, base string) bool {
 	return strings.HasPrefix(base, sharedPrefix+kind+".") && suffix.IsSuffixed(base, n.Suffix())
 }
 
-// Constrained reports whether the name of the source file src carries a
+// constrained reports whether the name of the source file src carries a
 // build constraint suffix.
-func Constrained(src string) bool {
+func constrained(src string) bool {
 	base := filepath.Base(src)
 	return suffix.SuffixFilename(base, ".x") != strings.TrimSuffix(base, ".go")+".x.go"
 }

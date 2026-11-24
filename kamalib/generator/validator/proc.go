@@ -12,7 +12,7 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register(GeneratorId.ProcKind(), NewProc) }
+func init() { workflow.Register(GeneratorId().ProcKind(), NewProc) }
 
 // ProcParam configures the proc of NewProc. A spec decodes into
 // ProcParamPartial, which the proc merges onto DefaultProcParam.
@@ -70,7 +70,7 @@ func procWith(reg *rule.Registry) base.SourceProc[
 	return base.SourceProc[
 		ProcParamPartial, ProcParam, Options, PackageOptions, TypeOptions, FieldOptions,
 	]{
-		Generator: Generator,
+		Generator: Generator(),
 		Default:   DefaultProcParam,
 		Options: func(p ProcParam) (Options, opt.Option[fileloader.PathInput], error) {
 			return Options{Registry: reg}, p.OptionFile, nil

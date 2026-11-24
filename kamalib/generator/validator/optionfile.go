@@ -28,7 +28,7 @@ func NewLoader(
 	optionFile fileloader.Input,
 ) genopt.Loader[PackageOptions, TypeOptions, FieldOptions] {
 	return genopt.NewLoader[PackageOptions, TypeOptions, FieldOptions](
-		GeneratorId.Namespace, GeneratorId.Name, OptionFileVersion, optionFile,
+		GeneratorId().Namespace, GeneratorId().Name, OptionFileVersion, optionFile,
 	)
 }
 

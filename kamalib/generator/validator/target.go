@@ -333,11 +333,17 @@ func (s *selection) checkConflicts() error {
 				continue
 			}
 
+			docs := base.DeclDocs(n.Detail.Pkg, m)
+
 			if written[m.Name()] {
-				errs = append(errs, fmt.Errorf(
-					"%w: %s: %s declares %s, which the generator writes;"+
-						" remove it, or ignore the type with //kama:validate ignore",
-					ErrConflict, pos(m.Pos()), n.Id, m.Name(),
+				errs = append(errs, base.ExplainConflict(
+					fmt.Errorf(
+						"%w: %s: %s declares %s, which the generator writes;"+
+							" remove it, or ignore the type with //kama:validate ignore",
+						ErrConflict, pos(m.Pos()), n.Id, m.Name(),
+					),
+					s.markers,
+					docs...,
 				))
 			}
 
@@ -350,10 +356,14 @@ func (s *selection) checkConflicts() error {
 				recv = "pointer"
 			}
 
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s declares Validate on its %s receiver with signature %s;"+
-					" want %s on the value receiver, or ignore the type with //kama:validate ignore",
-				ErrConflict, pos(m.Pos()), n.Id, recv, m.Type(), wantValidate(named),
+			errs = append(errs, base.ExplainConflict(
+				fmt.Errorf(
+					"%w: %s: %s declares Validate on its %s receiver with signature %s;"+
+						" want %s on the value receiver, or ignore the type with //kama:validate ignore",
+					ErrConflict, pos(m.Pos()), n.Id, recv, m.Type(), wantValidate(named),
+				),
+				s.markers,
+				docs...,
 			))
 		}
 

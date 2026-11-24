@@ -17,7 +17,7 @@ import (
 // wrote counts as written by hand.
 func TestGeneratedModels(t *testing.T) {
 	reg := genmark.NewRegistry(base.ToolName)
-	assert.NilError(t, reg.Register(GeneratorId.String()))
+	assert.NilError(t, reg.Register(GeneratorId().String()))
 	assert.NilError(t, reg.Register("x:models"))
 
 	out, err := generate(t, map[string]string{"a.go": `package x

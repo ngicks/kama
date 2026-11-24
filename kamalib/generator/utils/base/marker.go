@@ -1,10 +1,13 @@
 package base
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
+	"iter"
 	"slices"
+	"strings"
 
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
@@ -24,6 +27,79 @@ func Generated(pkgs []*packages.Package, reg *genmark.Registry, obj types.Object
 		_, ok := reg.Generated(doc)
 		return ok
 	})
+}
+
+// ExplainConflict returns err, an error reporting that a declaration
+// stands where the generator writes one, with the reason added when one of
+// docs, the doc comments of that declaration, carries a generated mark
+// naming no generator reg registers. Such a mark makes the declaration
+// look written by hand. A file generated before the marks took the form
+// //kama:generated <namespace>:<name>, as with //kama:generated
+// kama-partial, carries one, and the added reason tells to delete the
+// file. Otherwise ExplainConflict returns err as it is.
+func ExplainConflict(err error, reg *genmark.Registry, docs ...*ast.CommentGroup) error {
+	for _, doc := range docs {
+		if name, ok := reg.Unregistered(doc); ok {
+			return fmt.Errorf("%w; %s", err, unknownMark(reg, name))
+		}
+	}
+
+	return err
+}
+
+// unknownMark explains the generated mark naming name, which reg does not
+// register.
+func unknownMark(reg *genmark.Registry, name string) string {
+	marker := genmark.Marker(ToolName, name)
+
+	if gen, ok := strings.CutPrefix(name, ToolName+"-"); ok {
+		renamed := Id{Namespace: ToolName, Name: gen}
+		if reg.Registered(renamed.String()) {
+			return fmt.Sprintf(
+				"it carries %s, generated before the mark was renamed to %s;"+
+					" delete the file holding it and run again",
+				marker, renamed.Marker(),
+			)
+		}
+	}
+
+	return fmt.Sprintf(
+		"it carries %s, which names no registered generator;"+
+			" delete the file holding it if a generator no longer in use wrote it, and run again",
+		marker,
+	)
+}
+
+// fileDocs returns the doc comments of every top-level declaration of f
+// and of their specs.
+func fileDocs(f *ast.File) []*ast.CommentGroup {
+	return opiter.WrapSeq(slices.Values(f.Decls)).
+		FlatMap(func(d ast.Decl) iter.Seq[*ast.CommentGroup] { return slices.Values(AstDeclDocs(d)) }).
+		CollectSlice()
+}
+
+// AstDeclDocs returns the doc comments of d, a top-level declaration: the
+// doc of d and the docs of its specs.
+func AstDeclDocs(d ast.Decl) []*ast.CommentGroup {
+	switch d := d.(type) {
+	case *ast.FuncDecl:
+		return []*ast.CommentGroup{d.Doc}
+	case *ast.GenDecl:
+		docs := []*ast.CommentGroup{d.Doc}
+
+		for _, spec := range d.Specs {
+			switch sp := spec.(type) {
+			case *ast.TypeSpec:
+				docs = append(docs, sp.Doc)
+			case *ast.ValueSpec:
+				docs = append(docs, sp.Doc)
+			}
+		}
+
+		return docs
+	}
+
+	return nil
 }
 
 // UnownedDecls returns the package-level objects of pkg named by names

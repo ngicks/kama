@@ -29,15 +29,15 @@ import (
 )
 
 // GeneratorId identifies the generator. Its name is the directive
-// //kama:partial, and init registers it in base.DefaultRegistry.
-var GeneratorId = base.Id{Namespace: "kama", Name: "partial"}
+// //kama:partial, and init registers it with base.MustRegister.
+func GeneratorId() base.Id { return base.Id{Namespace: "kama", Name: "partial"} }
 
 // FileSuffix is inserted into the name of a source file to name the file
 // generated from it.
 const FileSuffix = ".kama_partial"
 
 // naming names the files the generator writes.
-var naming = GeneratorId.Naming()
+var naming = GeneratorId().Naming()
 
 // HelpersFile is the name of the file declaring the helpers the partial
 // files of a package call. The zz_gen. prefix marks a generated file no
@@ -53,7 +53,7 @@ const helperKind = "helper"
 // isHelpersFile reports whether base names a helpers file.
 func isHelpersFile(base string) bool { return naming.IsShared(helperKind, base) }
 
-func init() { base.MustRegister(GeneratorId) }
+func init() { base.MustRegister(GeneratorId()) }
 
 var (
 	// ErrDirective reports a //kama:partial directive with unknown args or
@@ -153,7 +153,9 @@ func (o Options) Validate() error {
 
 // Generator generates the partial types of the targets of the packages of
 // its Input.
-var Generator = base.Generator[Input]{Id: GeneratorId, Generate: Generate}
+func Generator() base.Generator[Input] {
+	return base.Generator[Input]{Id: GeneratorId(), Generate: Generate}
+}
 
 // Input is the input of a run of Generator.
 type Input = base.Input[Options, PackageOptions, TypeOptions, FieldOptions]
@@ -518,9 +520,13 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 	}
 
 	declaredErr := func(obj types.Object) error {
-		return fmt.Errorf(
-			"%w: %s: %s.%s is already declared for a helper of the generated methods",
-			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(),
+		return base.ExplainConflict(
+			fmt.Errorf(
+				"%w: %s: %s.%s is already declared for a helper of the generated methods",
+				ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(),
+			),
+			sel.reg,
+			base.DeclDocs(pkg, obj)...,
 		)
 	}
 

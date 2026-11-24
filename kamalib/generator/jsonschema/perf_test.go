@@ -24,8 +24,8 @@ func assembleRoot(doc *jsonschema.Schema) ([]File, error) {
 
 	return gentest.Prepare(
 		context.Background(),
-		Generator,
-		base.DefaultRegistry,
+		Generator(),
+		base.DefaultRegistry(),
 		in,
 		overlayfs.WithFormatter(gentest.AsIs{}),
 	)

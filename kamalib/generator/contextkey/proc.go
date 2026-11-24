@@ -15,10 +15,10 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register(GeneratorId.ProcKind(), NewProc) }
+func init() { workflow.Register(GeneratorId().ProcKind(), NewProc) }
 
-// ProcParam configures Proc. A spec decodes into ProcParamPartial, which
-// Proc merges onto DefaultProcParam.
+// ProcParam configures the proc. A spec decodes into ProcParamPartial, which
+// the proc merges onto DefaultProcParam.
 //
 //kama:partial
 type ProcParam struct {
@@ -42,23 +42,23 @@ func DefaultProcParam() ProcParamPartial {
 // UnknownKeys implements workflow.UnknownKeyer.
 func (p *ProcParamPartial) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
-// Proc runs Generator on the Template its in decodes to and stages the
+// proc runs Generator on the Template its in decodes to and stages the
 // files in its out, as base.Proc does. Its stale check covers the Go files
 // of its output directory.
 //
 //	Param(ProcParamPartial) error
 //	In(*fileloader.Document)
 //	Out(*overlayfs.Fs)
-var Proc = base.Proc[ProcParamPartial, ProcParam, *fileloader.Document, Input]{
-	Generator: Generator,
+var proc = base.Proc[ProcParamPartial, ProcParam, *fileloader.Document, Input]{
+	Generator: Generator(),
 	Default:   DefaultProcParam,
 	Check:     checkParam,
 	Input:     procInput,
 }
 
-// NewProc returns Proc. It is the constructor of the kind
+// NewProc returns the proc of the generator. It is the constructor of the kind
 // contextkey.generate in workflow.DefaultRegistry.
-func NewProc() workflow.Proc { return Proc }
+func NewProc() workflow.Proc { return proc }
 
 func checkParam(p ProcParam) error {
 	if !fs.ValidPath(p.Dir) {

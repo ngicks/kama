@@ -14,12 +14,12 @@
 // JSON path of the offending member. The generated code imports package
 // github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart. Generator
 // is the generator of Generate in the framework of package
-// github.com/ngicks/kama/kamalib/generator/utils/base, and Proc runs it
+// github.com/ngicks/kama/kamalib/generator/utils/base, and the proc runs it
 // as the workflow step kind jsonschema.generate.
 //
 // # Proc
 //
-// Proc reads the schema file from the overlay of its out and stages the
+// The proc reads the schema file from the overlay of its out and stages the
 // generated file in it. It takes no in. Its param has these keys:
 //
 //	schema     the path of the schema file, slash-separated and relative
@@ -45,7 +45,7 @@
 // fragment points to as the schema document. The fragment is
 // percent-decoded first, as the fragment of a $ref is. The value must be
 // an object or a boolean, and it is the root that "#" refers to in a $ref.
-// Proc reads it from the raw bytes of the file, so the order of its members
+// The proc reads it from the raw bytes of the file, so the order of its members
 // and the text of its numbers survive. A spec generating the types of
 // api/schema.json into api/api.kama_jsonschema.go of package api, then
 // their Validate methods:
@@ -73,7 +73,7 @@
 //	    in: root
 //	    after: validate
 //
-// A spec running Proc with validate true needs the validate.generate step.
+// A spec running the proc with validate true needs the validate.generate step.
 // Without it the decoders fail with an error wrapping
 // jsonschemart.ErrNoValidate. With validate false the directives are still
 // written, the decoders call no Validate, and decoding checks no
@@ -81,10 +81,10 @@
 // value, even one holding a nested union that matches none of its members.
 //
 // The header of the generated file names the schema, type_name and
-// validate params and the time of the run. Proc keeps a file that differs from the
+// validate params and the time of the run. The proc keeps a file that differs from the
 // existing one in the generated: line only. A Go file of the output
 // directory that holds a declaration marked by the generator and that the
-// run does not produce is stale. Proc reports a warning wrapping ErrStale
+// run does not produce is stale. The proc reports a warning wrapping ErrStale
 // of package github.com/ngicks/kama/kamalib/generator/utils/base for it
 // and leaves it in place. Every file the generator marks in one directory
 // must therefore come from one run.
@@ -265,7 +265,7 @@
 //
 // A reference whose URI names no resource of the document names another
 // document. Generate calls Options.Load with the URI without its fragment,
-// and Proc loads the file its remotes param maps the URI to: the remote
+// and the proc loads the file its remotes param maps the URI to: the remote
 // with file whose uri is the URI, or the remote with dir whose uri is the
 // longest prefix of the URI, the rest of the URI taken as a path under dir.
 // The generator never fetches a document from the network. A URI no remote

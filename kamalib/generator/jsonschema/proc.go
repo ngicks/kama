@@ -22,20 +22,20 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register(GeneratorId.ProcKind(), NewProc) }
+func init() { workflow.Register(GeneratorId().ProcKind(), NewProc) }
 
-// ProcParam configures Proc. A spec decodes into ProcParamPartial, which
-// Proc merges onto DefaultProcParam.
+// ProcParam configures the proc. A spec decodes into ProcParamPartial, which
+// the proc merges onto DefaultProcParam.
 //
 //kama:partial
 type ProcParam struct {
 	// Schema is the path of the schema file, slash-separated and relative
-	// to the root of the out of Proc. The file holds JSON. The path may be
+	// to the root of the out of the proc. The file holds JSON. The path may be
 	// followed by # and a JSON pointer, as in a.json#/0/schema, to take
 	// the value it points to in the file as the schema document.
 	Schema string `json:"schema"`
 	// Dir is the output directory, slash-separated and relative to the
-	// root of the out of Proc. Empty means the directory of Schema.
+	// root of the out of the proc. Empty means the directory of Schema.
 	Dir string `json:"dir"`
 	// Package is the package clause of the generated file. Empty means the
 	// base name of Dir.
@@ -45,7 +45,7 @@ type ProcParam struct {
 	// schema.
 	TypeName string `json:"type_name"`
 	// Remotes map the URIs of other documents a reference may name to the
-	// files of the out of Proc holding them. The generator never fetches a
+	// files of the out of the proc holding them. The generator never fetches a
 	// document from the network.
 	Remotes []Remote `json:"remotes"`
 	// AssertFormats makes the format keyword assert the formats the
@@ -53,15 +53,15 @@ type ProcParam struct {
 	// annotation.
 	AssertFormats bool `json:"assert_formats"`
 	// Validate makes the generated decoders call the Validate methods the
-	// validator generator writes. A spec running Proc with it chains
-	// packages.load and validate.generate after Proc. False leaves the calls
+	// validator generator writes. A spec running the proc with it chains
+	// packages.load and validate.generate after the proc. False leaves the calls
 	// out, and decoding then checks no validation keyword.
 	Validate bool `json:"validate"`
 	// Unknown captures the keys of a param that name no field.
 	Unknown map[string]any `json:",embed"`
 }
 
-// Remote maps a URI to a file of the out of Proc. With File, the URI
+// Remote maps a URI to a file of the out of the proc. With File, the URI
 // names that file. With Dir, the URI is a prefix: a URI starting with it
 // names the file of Dir at the rest of the URI, as
 // http://example.com/schemas/ with schemas names
@@ -92,7 +92,7 @@ func (p *ProcParamPartial) UnknownKeys() [][]string {
 	return paths
 }
 
-// Proc runs Generator on the schema file its param names and stages the
+// proc runs Generator on the schema file its param names and stages the
 // file in its out, as base.Proc does. The schema file is read from its
 // out, so a file staged by an earlier step is read too. Its stale check
 // covers the Go files of the output directory.
@@ -100,8 +100,8 @@ func (p *ProcParamPartial) UnknownKeys() [][]string {
 //	Param(ProcParamPartial) error
 //	In()
 //	Out(*overlayfs.Fs)
-var Proc = base.Proc[ProcParamPartial, ProcParam, base.None, Input]{
-	Generator: Generator,
+var proc = base.Proc[ProcParamPartial, ProcParam, base.None, Input]{
+	Generator: Generator(),
 	Default:   DefaultProcParam,
 	Check: func(p ProcParam) error {
 		_, err := procOptions(p)
@@ -110,9 +110,9 @@ var Proc = base.Proc[ProcParamPartial, ProcParam, base.None, Input]{
 	Input: procInput,
 }
 
-// NewProc returns Proc. It is the constructor of the kind
+// NewProc returns the proc of the generator. It is the constructor of the kind
 // jsonschema.generate in workflow.DefaultRegistry.
-func NewProc() workflow.Proc { return Proc }
+func NewProc() workflow.Proc { return proc }
 
 // procOptions returns the options of p, with Schema and Dir set. Its
 // Package is empty when the base name of the root of the out gives it,

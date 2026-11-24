@@ -29,7 +29,7 @@ func NewLoader(
 	optionFile fileloader.Input,
 ) genopt.Loader[PackageOptions, TypeOptions, FieldOptions] {
 	return genopt.NewLoader[PackageOptions, TypeOptions, FieldOptions](
-		GeneratorId.Namespace, GeneratorId.Name, OptionFileVersion, optionFile,
+		GeneratorId().Namespace, GeneratorId().Name, OptionFileVersion, optionFile,
 	)
 }
 
@@ -377,12 +377,12 @@ func (o optionSource) origin() string { return o.src.Origin(o.sub, o.keys) }
 
 // spelling names the option o sets as its source spells it.
 func (o optionSource) spelling() string {
-	return o.src.Spelling(GeneratorId.Namespace, GeneratorId.Name, ":", o.sub)
+	return o.src.Spelling(GeneratorId().Namespace, GeneratorId().Name, ":", o.sub)
 }
 
 func unknownDirective(src genopt.Source, sub string) error {
 	return fmt.Errorf(
-		"%w: %s: unknown directive %s:%s", ErrDirective, src.Pos, GeneratorId.Directive(), sub,
+		"%w: %s: unknown directive %s:%s", ErrDirective, src.Pos, GeneratorId().Directive(), sub,
 	)
 }
 

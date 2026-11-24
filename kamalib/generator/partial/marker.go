@@ -56,7 +56,7 @@ func (s *selection) implementor(t types.Type) (*types.Named, bool) {
 
 		found = slices.ContainsFunc(base.DeclDocs(pkg, partial), func(doc *ast.CommentGroup) bool {
 			name, ok := s.reg.Generated(doc)
-			return ok && name == GeneratorId.String()
+			return ok && name == GeneratorId().String()
 		})
 	})
 

@@ -27,6 +27,8 @@ import (
 
 var fakeId = base.Id{Namespace: "acme", Name: "fake"}
 
+func init() { base.MustRegister(fakeId) }
+
 // fakeParam is the param of a fake generator writing one file.
 type fakeParam struct {
 	Greeting   string
@@ -164,7 +166,7 @@ func TestSourceProc(t *testing.T) {
 
 	p := fakeProc(&loaded, nil)
 	assert.Equal(t, p.ParamType(), reflect.TypeFor[fakeParamPartial]())
-	assert.Equal(t, fakeId.ProcKind(), "fake.generate")
+	assert.Equal(t, fakeId.ProcKind(), "acme.fake.generate")
 
 	i := instantiate(t, p)
 	assert.NilError(t, i.Param(fakeParamPartial{

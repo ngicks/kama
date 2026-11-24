@@ -515,7 +515,7 @@ func procParam(schema, dir, pkg, typeName string) ProcParamPartial {
 	}
 }
 
-// procInstance is an instance of Proc.
+// procInstance is an instance of the proc of NewProc.
 type procInstance interface {
 	Param(p ProcParamPartial) error
 	In()
@@ -523,11 +523,11 @@ type procInstance interface {
 	Run(ctx context.Context, r workflow.Reporter) error
 }
 
-// newInstance returns an instance of Proc whose runs take place at now.
+// newInstance returns an instance of the proc whose runs take place at now.
 func newInstance(t *testing.T, now time.Time) procInstance {
 	t.Helper()
 
-	p := Proc
+	p := proc
 	p.Now = func() time.Time { return now }
 
 	inst, err := p.Instantiate(context.Background(), false)

@@ -18,15 +18,17 @@ import (
 )
 
 // GeneratorId identifies the generator.
-var GeneratorId = base.Id{Namespace: "kama", Name: "jsonschema"}
+func GeneratorId() base.Id { return base.Id{Namespace: "kama", Name: "jsonschema"} }
 
 // naming names the files the generator writes.
-var naming = GeneratorId.Naming()
+var naming = GeneratorId().Naming()
 
-func init() { base.MustRegister(GeneratorId) }
+func init() { base.MustRegister(GeneratorId()) }
 
 // Generator generates the Go types of the schema of an Input.
-var Generator = base.Generator[Input]{Id: GeneratorId, Generate: Generate}
+func Generator() base.Generator[Input] {
+	return base.Generator[Input]{Id: GeneratorId(), Generate: Generate}
+}
 
 // Input is the input of a run of Generator.
 type Input struct {

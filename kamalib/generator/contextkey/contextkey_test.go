@@ -38,7 +38,7 @@ func render(t *testing.T, entries []Entry, opts Options) (map[string][]byte, err
 
 	in := Input{Path: "t.yaml", Template: Template{Entries: entries}, Options: opts}
 
-	files, err := gentest.Assemble(t, Generator, base.DefaultRegistry, in)
+	files, err := gentest.Assemble(t, Generator(), base.DefaultRegistry(), in)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func render(t *testing.T, entries []Entry, opts Options) (map[string][]byte, err
 	return out, nil
 }
 
-// procInstance is an instance of Proc.
+// procInstance is an instance of the proc of NewProc.
 type procInstance interface {
 	Param(p ProcParamPartial) error
 	In(doc *fileloader.Document)
@@ -59,11 +59,11 @@ type procInstance interface {
 	Run(ctx context.Context, r workflow.Reporter) error
 }
 
-// newInstance returns an instance of Proc whose runs take place at now.
+// newInstance returns an instance of the proc whose runs take place at now.
 func newInstance(t *testing.T, now time.Time) procInstance {
 	t.Helper()
 
-	p := Proc
+	p := proc
 	p.Now = func() time.Time { return now }
 
 	inst, err := p.Instantiate(context.Background(), false)
@@ -166,9 +166,9 @@ func TestRenderMarksDeclarations(t *testing.T) {
 		names = append(names, name)
 
 		assert.Assert(t, doc != nil, "%s has no doc comment", name)
-		gen, ok := base.DefaultRegistry.Generated(doc)
+		gen, ok := base.DefaultRegistry().Generated(doc)
 		assert.Assert(t, ok, name)
-		assert.Equal(t, gen, GeneratorId.String(), name)
+		assert.Equal(t, gen, GeneratorId().String(), name)
 	}
 
 	assert.DeepEqual(t, names, []string{
@@ -328,7 +328,7 @@ func TestDecodeTemplate(t *testing.T) {
 }
 
 // TestFixtureTemplatesHaveNoUnknownKeys keeps the fixture template files
-// free of the warnings Proc reports about unknown keys.
+// free of the warnings the proc reports about unknown keys.
 func TestFixtureTemplatesHaveNoUnknownKeys(t *testing.T) {
 	fsys := os.DirFS("internal/fixture")
 	names, err := fs.Glob(fsys, "templates/*")

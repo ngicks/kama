@@ -138,3 +138,34 @@ func TestRegistryConcurrent(t *testing.T) {
 	assert.Assert(t, ok)
 	assert.Equal(t, name, "gen-0")
 }
+
+func TestRegistered(t *testing.T) {
+	r := newRegistry(t, "tool:partial")
+	assert.Assert(t, r.Registered("tool:partial"))
+	assert.Assert(t, !r.Registered("tool-partial"))
+}
+
+func TestUnregistered(t *testing.T) {
+	r := newRegistry(t, "tool:partial")
+
+	cases := []struct {
+		doc  string
+		name string
+		ok   bool
+	}{
+		{"//tool:generated tool-partial", "tool-partial", true},
+		{"//tool:generated tool:partial\n//tool:generated gone", "gone", true},
+		{"//tool:generated", "", true},
+		{"//tool:generated tool:partial", "", false},
+		{"//other:generated tool-partial", "", false},
+		{"// Foo is plain.", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.doc, func(t *testing.T) {
+			_, f := parse(t, "package x\n\n"+tc.doc+"\ntype Foo int\n")
+			name, ok := r.Unregistered(f.Decls[0].(*ast.GenDecl).Doc)
+			assert.Equal(t, ok, tc.ok)
+			assert.Equal(t, name, tc.name)
+		})
+	}
+}

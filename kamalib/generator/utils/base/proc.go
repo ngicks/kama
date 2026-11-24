@@ -44,7 +44,7 @@ type Proc[Pp ParamPartial[Pp, P], P, X, I any] struct {
 	// Now returns the time of a run. Nil means time.Now.
 	Now func() time.Time
 	// Registry tells the generators that generated marks name. Nil means
-	// DefaultRegistry.
+	// DefaultRegistry().
 	Registry *genmark.Registry
 }
 
@@ -158,7 +158,7 @@ func (r *procRun[Pp, P, X, I]) Files(ctx context.Context, rep workflow.Reporter)
 }
 
 func (r *procRun[Pp, P, X, I]) env(rep workflow.Reporter) Env {
-	now, reg := time.Now, DefaultRegistry
+	now, reg := time.Now, defaultRegistry
 	if r.proc.Now != nil {
 		now = r.proc.Now
 	}

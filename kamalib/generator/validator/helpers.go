@@ -190,9 +190,13 @@ func checkHelperNames(sel *selection, pkg *packages.Package, names []string) err
 	var errs []error
 
 	for _, obj := range base.UnownedDecls(pkg, sel.markers, names) {
-		errs = append(errs, fmt.Errorf(
-			"%w: %s: %s.%s is already declared for a helper of the generated Validate methods",
-			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(),
+		errs = append(errs, base.ExplainConflict(
+			fmt.Errorf(
+				"%w: %s: %s.%s is already declared for a helper of the generated Validate methods",
+				ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(),
+			),
+			sel.markers,
+			base.DeclDocs(pkg, obj)...,
 		))
 	}
 
@@ -204,9 +208,13 @@ func checkHelperNames(sel *selection, pkg *packages.Package, names []string) err
 
 		for _, d := range f.Decls {
 			if !sel.ownHelperDecl(d) {
-				errs = append(errs, fmt.Errorf(
-					"%w: %s: %s holds a declaration the generator did not write",
-					ErrConflict, pkg.Fset.Position(d.Pos()), name,
+				errs = append(errs, base.ExplainConflict(
+					fmt.Errorf(
+						"%w: %s: %s holds a declaration the generator did not write",
+						ErrConflict, pkg.Fset.Position(d.Pos()), name,
+					),
+					sel.markers,
+					base.AstDeclDocs(d)...,
 				))
 			}
 		}

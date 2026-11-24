@@ -34,13 +34,13 @@ func registry(t *testing.T) *genmark.Registry {
 	t.Helper()
 
 	r := genmark.NewRegistry(base.ToolName)
-	assert.NilError(t, r.Register(GeneratorId.String()))
+	assert.NilError(t, r.Register(GeneratorId().String()))
 
 	return r
 }
 
 // header is the first line of every generated file.
-var header = genheader.GeneratedComment(GeneratorId.String())
+var header = genheader.GeneratedComment(GeneratorId().String())
 
 // testHeader is the header of the files generate gives with default options.
 var testHeader = header + `
@@ -110,7 +110,7 @@ func runGenerate(
 	}
 
 	files, warnings, err := gentest.Run(
-		t.Context(), Generator, r.Registry, r.Now(), in, in.Scope(), f,
+		t.Context(), Generator(), r.Registry, r.Now(), in, in.Scope(), f,
 	)
 
 	return files, slices.Concat(in.Loaded.Warnings, warnings), err

@@ -119,7 +119,7 @@ func generateSuite(raw jsontext.Value, assertFormats bool) (err error) {
 		return fmt.Errorf("decode: %w", err)
 	}
 
-	files, err := gentest.Prepare(context.Background(), Generator, base.DefaultRegistry, Input{
+	files, err := gentest.Prepare(context.Background(), Generator(), base.DefaultRegistry(), Input{
 		Doc: &doc,
 		Options: Options{
 			Package:       "suite",

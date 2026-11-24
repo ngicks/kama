@@ -25,7 +25,7 @@ func funcs(t *testing.T, src string) map[string]string {
 
 	_, decls := gentest.FuncDecls(t, src)
 	for name, fd := range decls {
-		_, marked := base.DefaultRegistry.Generated(fd.Doc)
+		_, marked := base.DefaultRegistry().Generated(fd.Doc)
 		assert.Assert(t, marked, "%s has no marker", name)
 	}
 
@@ -316,10 +316,10 @@ func TestRegistry(t *testing.T) {
 	_, err := generate(t, files, testRun{})
 	assert.NilError(t, err)
 
-	// A registry without the generator does not tell its declarations.
+	// The framework drives no generator its registry does not know, since
+	// the registry could not tell the declarations of the generator.
 	_, err = generate(t, files, testRun{Registry: genmark.NewRegistry(base.ToolName)})
-	assert.ErrorIs(t, err, ErrConflict)
-	assert.ErrorContains(t, err, "APartial is already declared")
+	assert.ErrorContains(t, err, "kama:partial: the generator is not registered in env.Registry")
 }
 
 func TestMethodConflicts(t *testing.T) {
