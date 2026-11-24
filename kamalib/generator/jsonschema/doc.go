@@ -16,15 +16,22 @@
 // generated file in it. It takes no in. Its param has these keys:
 //
 //	schema     the path of the schema file, slash-separated and relative
-//	           to the root of the out; required
+//	           to the root of the out, optionally followed by # and a
+//	           JSON pointer; required
 //	dir        the output directory, relative to the root of the out;
-//	           the directory of schema when left out
+//	           the directory of the schema file when left out
 //	package    the package clause; the base name of dir when left out
 //	type_name  the name of the root type, an exported Go identifier
 //	           used as written; the title of the root schema when left
 //	           out
 //
-// The schema file holds JSON. A spec generating the types of
+// The schema file holds JSON. A schema param with a fragment, such as
+// tests/minimum.json#/0/schema, takes the value the RFC 6901 pointer of the
+// fragment points to as the schema document. The fragment is
+// percent-decoded first, as the fragment of a $ref is. The value must be
+// an object or a boolean, and it is the root that "#" refers to in a $ref.
+// Proc reads it from the raw bytes of the file, so the order of its members
+// and the text of its numbers survive. A spec generating the types of
 // api/schema.json into api/api.kama_jsonschema.go of package api:
 //
 //	version: 1

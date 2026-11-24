@@ -1,2 +1,7 @@
 go.work
 go.work.sum
+
+# Suite fixtures that TestSuiteBehavior of kamalib/generator/jsonschema
+# generates when KAMA_JSONSCHEMA_SUITE=1. They are kept for inspection and
+# never committed.
+/kamalib/generator/jsonschema/internal/suite/

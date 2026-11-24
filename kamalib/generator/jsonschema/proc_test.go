@@ -53,7 +53,33 @@ func TestProcParam(t *testing.T) {
 			param: procParam("a.json", "gen/types", "", ""),
 			want:  Options{Package: "types", Schema: "a.json", Dir: "gen/types"},
 		},
+		{
+			name:  "schema with a pointer",
+			param: procParam("tests/a.json#/0/schema", "", "", ""),
+			want:  Options{Package: "tests", Schema: "tests/a.json#/0/schema", Dir: "tests"},
+		},
+		{
+			name:  "schema with an empty pointer",
+			param: procParam("api/a.json#", "", "", ""),
+			want:  Options{Package: "api", Schema: "api/a.json#", Dir: "api"},
+		},
 		{name: "no schema", param: procParam("", "", "", ""), err: `invalid schema ""`},
+		{name: "pointer only", param: procParam("#/0", "", "", ""), err: `invalid schema "#/0"`},
+		{
+			name:  "pointer without a slash",
+			param: procParam("a.json#0", "", "", ""),
+			err:   `invalid schema "a.json#0": invalid JSON pointer "0"`,
+		},
+		{
+			name:  "pointer with a bad escape",
+			param: procParam("a.json#/~2", "", "", ""),
+			err:   `invalid JSON pointer "/~2"`,
+		},
+		{
+			name:  "pointer with a bad percent escape",
+			param: procParam("a.json#/%zz", "", "", ""),
+			err:   `invalid schema "a.json#/%zz"`,
+		},
 		{name: "schema outside", param: procParam("../a.json", "", "", ""), err: "invalid schema"},
 		{
 			name:  "dir outside",
@@ -155,6 +181,48 @@ func TestProcRun(t *testing.T) {
 	assert.Equal(t, string(got), string(want[0].Content))
 }
 
+// TestProcRunPointer generates from the schema a pointer names inside a
+// larger document. The header records the param as given.
+func TestProcRunPointer(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"tests/doc.json": `[{"description": "x", "schemas": {"a/b": {"~c d": ` + procSchema + `}}}]`,
+	})
+
+	const schema = "tests/doc.json#/0/schemas/a~1b/~0c%20d"
+
+	r := runProc(t, f, procParam(schema, "", "", ""), gentest.Now())
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+
+	var doc jsonschema.Schema
+	assert.NilError(t, jsonv2.Unmarshal([]byte(procSchema), &doc))
+
+	want, _, err := Generate(&doc, Options{Package: "tests", Schema: schema, Now: gentest.Now})
+	assert.NilError(t, err)
+
+	assert.Equal(t, want[0].Path, "tests/tests.kama_jsonschema.go")
+
+	got, err := fs.ReadFile(f.FS(), "tests/tests.kama_jsonschema.go")
+	assert.NilError(t, err)
+	assert.Equal(t, string(got), string(want[0].Content))
+	assert.Assert(t, strings.Contains(string(got), `schema: "`+schema+`"`))
+}
+
+// TestSchemaValueKeepsText takes the value a pointer names from the raw
+// file, so the order of members and the text of numbers survive.
+func TestSchemaValueKeepsText(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"a.json": `{"s": {"type": "number", "minimum": 1.0, "$comment": "x"}, "t": true}`,
+	})
+
+	got, err := schemaValue(f.FS(), "a.json#/s")
+	assert.NilError(t, err)
+	assert.Equal(t, string(got), `{"type": "number", "minimum": 1.0, "$comment": "x"}`)
+
+	got, err = schemaValue(f.FS(), "a.json#/t")
+	assert.NilError(t, err)
+	assert.Equal(t, string(got), "true")
+}
+
 // TestProcRunWarnsUnknownKeywords passes the warnings of Generate to the
 // reporter.
 func TestProcRunWarnsUnknownKeywords(t *testing.T) {
@@ -214,10 +282,11 @@ func TestProcRunStale(t *testing.T) {
 
 func TestProcRunFails(t *testing.T) {
 	cases := []struct {
-		name   string
-		schema string
-		is     error
-		msg    string
+		name    string
+		schema  string
+		pointer string
+		is      error
+		msg     string
 	}{
 		{
 			name:   "unsupported",
@@ -227,6 +296,54 @@ func TestProcRunFails(t *testing.T) {
 		},
 		{name: "invalid json", schema: `{"title": `, msg: "jsonschema: api/schema.json: "},
 		{name: "missing", is: fs.ErrNotExist, msg: "api/schema.json"},
+		{
+			name:    "missing with a pointer",
+			pointer: "/0",
+			is:      fs.ErrNotExist,
+			msg:     "api/schema.json",
+		},
+		{
+			name:    "no member",
+			schema:  `{"a": {}}`,
+			pointer: "/b",
+			msg:     `jsonschema: api/schema.json#/b: no member "b"`,
+		},
+		{
+			name:    "index out of range",
+			schema:  `[{}]`,
+			pointer: "/1",
+			msg:     "api/schema.json#/1: index 1 out of range of 1 elements",
+		},
+		{
+			name:    "index with a leading zero",
+			schema:  `[{}]`,
+			pointer: "/00",
+			msg:     `api/schema.json#/00: "00" is no array index`,
+		},
+		{
+			name:    "name into an array",
+			schema:  `[{}]`,
+			pointer: "/a",
+			msg:     `api/schema.json#/a: "a" is no array index`,
+		},
+		{
+			name:    "step into a scalar",
+			schema:  `{"a": 1}`,
+			pointer: "/a/b",
+			msg:     `api/schema.json#/a/b: token "b" steps into a value of kind number`,
+		},
+		{
+			name:    "no schema",
+			schema:  `[{"description": "x"}]`,
+			pointer: "/0/description",
+			msg:     "api/schema.json#/0/description: points to a value of kind string, not to a schema",
+		},
+		{
+			name:    "invalid json under a pointer",
+			schema:  `{"a": `,
+			pointer: "/a",
+			msg:     "jsonschema: api/schema.json#/a: ",
+		},
 	}
 
 	for _, tc := range cases {
@@ -238,8 +355,13 @@ func TestProcRunFails(t *testing.T) {
 
 			f := procFs(t, files)
 
+			schema := "api/schema.json"
+			if tc.pointer != "" {
+				schema += "#" + tc.pointer
+			}
+
 			i := &instance{}
-			assert.NilError(t, i.Param(procParam("api/schema.json", "", "", "")))
+			assert.NilError(t, i.Param(procParam(schema, "", "", "")))
 			i.Out(f)
 
 			err := i.Run(context.Background(), gentest.NopReporter{})

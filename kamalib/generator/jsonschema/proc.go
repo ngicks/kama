@@ -2,13 +2,17 @@ package jsonschema
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"path"
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/ngicks/opiter"
 
@@ -27,7 +31,9 @@ func init() { workflow.Register("jsonschema.generate", NewProc) }
 //kama:partial
 type ProcParam struct {
 	// Schema is the path of the schema file, slash-separated and relative
-	// to the root of the out of Proc. The file holds JSON.
+	// to the root of the out of Proc. The file holds JSON. The path may be
+	// followed by # and a JSON pointer, as in a.json#/0/schema, to take
+	// the value it points to in the file as the schema document.
 	Schema string `json:"schema"`
 	// Dir is the output directory, slash-separated and relative to the
 	// root of the out of Proc. Empty means the directory of Schema.
@@ -94,13 +100,18 @@ type instance struct {
 func (i *instance) Param(partial ProcParamPartial) error {
 	p := DefaultProcParam().Merge(partial).ToValue()
 
-	if p.Schema == "" || !fs.ValidPath(p.Schema) {
+	file, _, err := splitSchema(p.Schema)
+	if err != nil {
+		return fmt.Errorf("%w: invalid schema %q: %w", ErrOptions, p.Schema, err)
+	}
+
+	if file == "" || !fs.ValidPath(file) {
 		return fmt.Errorf("%w: invalid schema %q", ErrOptions, p.Schema)
 	}
 
 	dir := p.Dir
 	if dir == "" {
-		dir = path.Dir(p.Schema)
+		dir = path.Dir(file)
 	}
 
 	if !fs.ValidPath(dir) {
@@ -150,11 +161,11 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 	return base.StageWithWarnings(ctx, i.fs, files, slices.Concat(warnings, staleWarnings), r)
 }
 
-// generate decodes the schema file of i from its out and returns the files
-// and the warnings Generate gives, with slash-separated paths relative to
-// the root of the out.
+// generate decodes the schema of i from its out and returns the files and
+// the warnings Generate gives, with slash-separated paths relative to the
+// root of the out.
 func (i *instance) generate() ([]File, []error, error) {
-	src, err := fs.ReadFile(i.fs.FS(), i.opts.Schema)
+	src, err := schemaValue(i.fs.FS(), i.opts.Schema)
 	if err != nil {
 		return nil, nil, fmt.Errorf("jsonschema: %w", err)
 	}
@@ -185,4 +196,94 @@ func (i *instance) generate() ([]File, []error, error) {
 		CollectSlice()
 
 	return slashed, warnings, nil
+}
+
+// splitSchema splits a schema param at its first # into the path of the
+// file and the JSON pointer of its fragment. The fragment is
+// percent-decoded, as the fragment of a $ref is. A param without # points
+// to the whole file.
+func splitSchema(schema string) (string, jsontext.Pointer, error) {
+	file, frag, _ := strings.Cut(schema, "#")
+
+	frag, err := url.PathUnescape(frag)
+	if err != nil {
+		return "", "", err
+	}
+
+	ptr := jsontext.Pointer(frag)
+	if !ptr.IsValid() {
+		return "", "", fmt.Errorf("invalid JSON pointer %q", frag)
+	}
+
+	return file, ptr, nil
+}
+
+// schemaValue reads the file of a schema param from fsys and returns the
+// raw value its pointer points to. The value is a slice of the file, so the
+// order of members and the text of numbers survive.
+func schemaValue(fsys fs.FS, schema string) (jsontext.Value, error) {
+	file, ptr, err := splitSchema(schema)
+	if err != nil {
+		return nil, err
+	}
+
+	src, err := fs.ReadFile(fsys, file)
+	if err != nil {
+		return nil, err
+	}
+
+	v := jsontext.Value(src)
+
+	for tok := range ptr.Tokens() {
+		v, err = pointee(v, tok)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", schema, err)
+		}
+	}
+
+	// A whole file is left for the decoder to report, as it may not even
+	// be JSON.
+	if k := v.Kind(); ptr != "" && k != '{' && k != 't' && k != 'f' {
+		return nil, fmt.Errorf("%s: points to a value of kind %s, not to a schema", schema, k)
+	}
+
+	return v, nil
+}
+
+// pointee returns the member of v that the token of a JSON pointer names:
+// an object member by name, or an array element by index.
+func pointee(v jsontext.Value, tok string) (jsontext.Value, error) {
+	switch v.Kind() {
+	case '{':
+		var members map[string]jsontext.Value
+		if err := jsonv2.Unmarshal(v, &members); err != nil {
+			return nil, err
+		}
+
+		m, ok := members[tok]
+		if !ok {
+			return nil, fmt.Errorf("no member %q", tok)
+		}
+
+		return m, nil
+	case '[':
+		var elems []jsontext.Value
+		if err := jsonv2.Unmarshal(v, &elems); err != nil {
+			return nil, err
+		}
+
+		// RFC 6901 spells an index in decimal without leading zeros.
+		i, err := strconv.Atoi(tok)
+		if err != nil || i < 0 || strconv.Itoa(i) != tok {
+			return nil, fmt.Errorf("%q is no array index", tok)
+		}
+
+		if i >= len(elems) {
+			return nil, fmt.Errorf("index %d out of range of %d elements", i, len(elems))
+		}
+
+		return elems[i], nil
+	default:
+		return nil, fmt.Errorf("token %q steps into a value of kind %s", tok, v.Kind())
+	}
 }

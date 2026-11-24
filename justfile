@@ -38,6 +38,10 @@ vet:
 
 check: fmt lint vet test
 
+# Generate the JSON-Schema-Test-Suite groups as ignored fixtures and check them.
+test-jsonschema-suite:
+    cd kamalib && KAMA_JSONSCHEMA_SUITE=1 go test -count=1 -run TestSuiteBehavior ./generator/jsonschema/
+
 # Refresh the vendored JSON-Schema-Test-Suite from a commit of upstream.
 # Upstream replaced tests/draft2020-12 and remotes with validation/tests after
 # 245a45abc90190c0bff04d97e6d2b541b4bb9f12, so later refs fail the layout check.

@@ -3,14 +3,18 @@ package jsonschema
 import (
 	"bytes"
 	"cmp"
+	"context"
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
+	"iter"
 	"maps"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,8 +24,8 @@ import (
 	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
+	"github.com/ngicks/kama/kamalib/workflow"
 )
 
 // suiteCase is a test of a group of the suite: an instance and whether
@@ -320,13 +324,104 @@ var suiteGenerated = map[string]int{
 	"vocabulary.json":              1,
 }
 
-// TestSuiteBehavior generates a package from every group of the top-level
-// files of the draft 2020-12 suite that Generate accepts, builds them with
-// a driver into one program and runs it. The driver decodes each instance
-// of a group into the root type of its package. A decode succeeds exactly
-// when the suite calls the instance valid, except for the tests of
-// suiteAllowed, which must disagree. Each file generates at least the
-// groups suiteGenerated records.
+// suiteUnsupported is the number of groups of each top-level file of the
+// suite that Generate rejects. A file missing here rejects none.
+var suiteUnsupported = map[string]int{
+	"additionalProperties.json":  6,
+	"allOf.json":                 10,
+	"anchor.json":                3,
+	"anyOf.json":                 3,
+	"boolean_schema.json":        1,
+	"const.json":                 7,
+	"contains.json":              7,
+	"defs.json":                  1,
+	"dependentSchemas.json":      4,
+	"dynamicRef.json":            20,
+	"enum.json":                  8,
+	"if-then-else.json":          12,
+	"items.json":                 7,
+	"maxContains.json":           4,
+	"minContains.json":           7,
+	"not.json":                   9,
+	"oneOf.json":                 6,
+	"patternProperties.json":     6,
+	"prefixItems.json":           4,
+	"properties.json":            4,
+	"propertyNames.json":         6,
+	"ref.json":                   21,
+	"refRemote.json":             15,
+	"required.json":              2,
+	"type.json":                  3,
+	"unevaluatedItems.json":      29,
+	"unevaluatedProperties.json": 44,
+	"uniqueItems.json":           4,
+	"vocabulary.json":            1,
+}
+
+// suiteUnsupportedReasons lists every reason a group of the suite is
+// rejected for, as rejectReasons spells it.
+var suiteUnsupportedReasons = []string{
+	"name conflict: #/enum/0 and #/enum/1 both give the Go name RootFooBar",
+	"unsupported schema: a schema resource other than the root",
+	"unsupported schema: additionalProperties next to allOf rejects the members of the other schemas",
+	"unsupported schema: admits no kind other than null",
+	"unsupported schema: allOf member is no object",
+	"unsupported schema: enum lists no value",
+	"unsupported schema: enum or const of other than one scalar kind",
+	"unsupported schema: keyword $dynamicRef is not supported",
+	"unsupported schema: keyword contains is not supported",
+	"unsupported schema: keyword dependentSchemas is not supported",
+	"unsupported schema: keyword else is not supported",
+	"unsupported schema: keyword if is not supported",
+	"unsupported schema: keyword next to $ref",
+	"unsupported schema: keyword next to allOf",
+	"unsupported schema: keyword next to anyOf",
+	"unsupported schema: keyword next to oneOf",
+	"unsupported schema: keyword not is not supported",
+	"unsupported schema: keyword patternProperties is not supported",
+	"unsupported schema: keyword prefixItems is not supported",
+	"unsupported schema: keyword propertyNames is not supported",
+	"unsupported schema: keyword then is not supported",
+	"unsupported schema: keyword unevaluatedItems is not supported",
+	"unsupported schema: keyword unevaluatedProperties is not supported",
+	"unsupported schema: kind %q in a type of several kinds",
+	"unsupported schema: members 0 and 1 differ only in keywords the generated code does not check",
+	"unsupported schema: oneOf member holds only keywords the generated code does not check, " +
+		"so it matches every value",
+	"unsupported schema: property name %q does not fit a json tag",
+	"unsupported schema: reference %q leaves the document",
+	"unsupported schema: reference %q names no schema the generator reads",
+	"unsupported schema: required member %q has no property",
+	"unsupported schema: the false schema admits no value",
+	"unsupported schema: type narrows the members of anyOf",
+	"unsupported schema: type narrows the members of oneOf",
+}
+
+// suiteEnv names the environment variable that enables TestSuiteBehavior.
+const suiteEnv = "KAMA_JSONSCHEMA_SUITE"
+
+// suiteDir holds the generated suite fixtures. The repository ignores it,
+// and its go.mod keeps it out of the patterns of this module, so a fixture
+// that no longer compiles breaks no build but the suite run.
+var suiteDir = filepath.Join("internal", "suite")
+
+// TestSuiteBehavior generates every group of the top-level files of the
+// draft 2020-12 suite that Generate accepts as a fixture under suiteDir,
+// through the proc as a workflow spec runs it, and checks the instances
+// of the suite against them. Run it with
+//
+//	KAMA_JSONSCHEMA_SUITE=1 go test ./generator/jsonschema/ -run TestSuite
+//
+// The fixtures stay on disk for inspection. Group gi of file f.json is the
+// package <f>/g<gi> of the module in suiteDir, generated from the schema
+// f.json#/<gi>/schema with the root type Root.
+//
+// A driver program in suiteDir decodes each instance of a group into the
+// root type of its package. A decode succeeds exactly when the suite calls
+// the instance valid, except for the tests of suiteAllowed, which must
+// disagree. Each file generates at least the groups suiteGenerated
+// records, and rejects exactly the groups suiteUnsupported records, each
+// for reasons of suiteUnsupportedReasons.
 //
 // The driver encodes every value that decodes, decodes the result and
 // encodes it again. The second decode must succeed and both encodings must
@@ -334,8 +429,12 @@ var suiteGenerated = map[string]int{
 // change by design: it drops unknown members, an anyOf keeps the first
 // member that matches, and 1.0 encodes as 1.
 func TestSuiteBehavior(t *testing.T) {
+	if os.Getenv(suiteEnv) != "1" {
+		t.Skipf("set %s=1 to generate and check the suite fixtures", suiteEnv)
+	}
+
 	if testing.Short() {
-		t.Skip("builds a program from the generated packages")
+		t.Skip("builds a program from the generated suite fixtures")
 	}
 
 	root := filepath.FromSlash("../../pkg/jsonschema/testdata/suite/tests/draft2020-12")
@@ -343,18 +442,16 @@ func TestSuiteBehavior(t *testing.T) {
 	files, err := filepath.Glob(filepath.Join(root, "*.json"))
 	assert.NilError(t, err)
 
-	mod := suiteModule(t)
+	suiteModule(t)
 
 	var (
 		keys    []suiteKey
 		valid   []bool
 		schemas []jsontext.Value
 		driver  suiteDriver
-		groups  int
-		skipped int
 	)
 
-	generated := map[string]int{}
+	generated, unsupported, reasons := map[string]int{}, map[string]int{}, map[string]int{}
 
 	for _, path := range files {
 		b, err := os.ReadFile(path)
@@ -365,37 +462,43 @@ func TestSuiteBehavior(t *testing.T) {
 
 		file := filepath.Base(path)
 
-		for gi, g := range gs {
-			pkg := suitePackage(file, gi)
+		var accepted []int
 
-			src, err := generateSuitePackage(g.Schema, pkg)
+		for gi, g := range gs {
+			err := generateSuite(g.Schema)
 			if errors.Is(err, ErrUnsupported) || errors.Is(err, ErrConflict) {
-				skipped++
+				unsupported[file]++
+
+				for _, r := range slices.Compact(slices.Sorted(slices.Values(rejectReasons(err)))) {
+					reasons[r]++
+				}
+
 				continue
 			}
 
 			assert.NilError(t, err, "%s: %s", file, g.Description)
 
-			groups++
+			accepted = append(accepted, gi)
 			generated[file]++
-
-			writeFile(t, filepath.Join(mod, pkg, pkg+".kama_jsonschema.go"), src)
 
 			for _, c := range g.Tests {
 				keys = append(keys, suiteKey{file: file, group: g.Description, test: c.Description})
 				valid = append(valid, c.Valid)
 				schemas = append(schemas, g.Schema)
 
-				driver.add(pkg, c.Data)
+				driver.add(file, gi, c.Data)
 			}
 		}
+
+		runSuiteSpec(t, file, accepted)
 	}
 
 	checkGenerated(t, generated)
+	checkUnsupported(t, unsupported, reasons)
 
-	writeFile(t, filepath.Join(mod, "main.go"), driver.source())
+	writeFile(t, filepath.Join(suiteDir, "main.go"), driver.source())
 
-	results := runSuiteDriver(t, mod)
+	results := runSuiteDriver(t)
 	assert.Equal(t, len(results), len(keys))
 
 	agree, allowed := 0, map[string]int{}
@@ -436,10 +539,14 @@ func TestSuiteBehavior(t *testing.T) {
 	}
 
 	t.Logf("%d groups generated, %d unsupported; %d instances checked, %d agree",
-		groups, skipped, len(keys), agree)
+		sumValues(generated), sumValues(unsupported), len(keys), agree)
 
 	for _, reason := range slices.Sorted(maps.Keys(allowed)) {
 		t.Logf("allowed: %d: %s", allowed[reason], reason)
+	}
+
+	for _, reason := range slices.Sorted(maps.Keys(reasons)) {
+		t.Logf("unsupported: %d groups: %s", reasons[reason], reason)
 	}
 }
 
@@ -461,6 +568,83 @@ func checkGenerated(t *testing.T, generated map[string]int) {
 				file, generated[file], suiteGenerated[file])
 		}
 	}
+}
+
+// checkUnsupported reports a file of the suite that rejects another number
+// of groups than suiteUnsupported records, a reason of a rejection that
+// suiteUnsupportedReasons does not list and a listed reason no rejection
+// has.
+func checkUnsupported(t *testing.T, unsupported, reasons map[string]int) {
+	t.Helper()
+
+	files := slices.Compact(
+		opiter.WrapSeq(maps.Keys(suiteUnsupported)).
+			Concat(maps.Keys(unsupported)).
+			Collect(slices.Sorted),
+	)
+
+	for _, file := range files {
+		if unsupported[file] != suiteUnsupported[file] {
+			t.Errorf("%s: %d groups unsupported, suiteUnsupported records %d",
+				file, unsupported[file], suiteUnsupported[file])
+		}
+	}
+
+	for _, r := range slices.Sorted(maps.Keys(reasons)) {
+		if !slices.Contains(suiteUnsupportedReasons, r) {
+			t.Errorf("unsupported for a reason suiteUnsupportedReasons does not list: %s", r)
+		}
+	}
+
+	for _, r := range suiteUnsupportedReasons {
+		if reasons[r] == 0 {
+			t.Errorf("no group is unsupported for the listed reason: %s", r)
+		}
+	}
+}
+
+// rejectReasons returns the reason of each error err joins. A reason is
+// the message of the error without the pointer it names and with every
+// quoted string replaced by %q, so groups rejected alike share it. An
+// unsupported keyword is named in the reason.
+func rejectReasons(err error) []string {
+	if j, ok := err.(interface{ Unwrap() []error }); ok {
+		return opiter.WrapSeq(slices.Values(j.Unwrap())).
+			FlatMap(func(e error) iter.Seq[string] { return slices.Values(rejectReasons(e)) }).
+			CollectSlice()
+	}
+
+	msg := err.Error()
+
+	for _, sentinel := range []error{ErrUnsupported, ErrConflict} {
+		rest, ok := strings.CutPrefix(msg, sentinel.Error()+": ")
+		if !ok {
+			continue
+		}
+
+		// A conflict names two pointers in its message and none before it.
+		ptr, text, ok := strings.Cut(rest, ": ")
+		if !ok {
+			ptr, text = "", rest
+		}
+
+		text = quotedString.ReplaceAllString(text, "%q")
+
+		if text == "keyword is not supported" {
+			text = "keyword " + ptr[strings.LastIndex(ptr, "/")+1:] + " is not supported"
+		}
+
+		return []string{strings.TrimPrefix(sentinel.Error(), "jsonschema: ") + ": " + text}
+	}
+
+	return []string{msg}
+}
+
+var quotedString = regexp.MustCompile(`"(?:[^"\\]|\\.)*"`)
+
+func sumValues(m map[string]int) int {
+	return opiter.WrapSeq(maps.Values(m)).
+		Reduce(func(sum, n int) int { return sum + n }, 0)
 }
 
 func compareSuiteKeys(a, b suiteKey) int {
@@ -525,55 +709,86 @@ func holdsKeyword(raw jsontext.Value, keywords []string) (bool, error) {
 	return false, nil
 }
 
-// suitePackage names the package of group gi of file after both, so a
-// failing build points to the group.
-func suitePackage(file string, gi int) string {
-	name := strings.Map(func(r rune) rune {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			return unicode.ToLower(r)
+// suiteStem returns the directory of the packages of file under suiteDir.
+func suiteStem(file string) string { return strings.TrimSuffix(file, ".json") }
+
+// suiteGroupDir returns the name of the directory and package of group gi.
+func suiteGroupDir(gi int) string { return fmt.Sprintf("g%03d", gi) }
+
+// runSuiteSpec generates the groups accepted of file into suiteDir with a
+// workflow running one jsonschema.generate step per group. The overlay is
+// rooted at this module, which holds both the suite and suiteDir. The
+// copy down skips its compile check: the packages under suiteDir belong
+// to another module, and building the driver checks them.
+func runSuiteSpec(t *testing.T, file string, accepted []int) {
+	t.Helper()
+
+	if len(accepted) == 0 {
+		return
+	}
+
+	ctx := context.Background()
+
+	module, err := filepath.Abs("../..")
+	assert.NilError(t, err)
+
+	out := path.Join("generator/jsonschema", filepath.ToSlash(suiteDir), suiteStem(file))
+	schema := "pkg/jsonschema/testdata/suite/tests/draft2020-12/" + file
+
+	steps := map[string]workflow.Step{
+		"root": {Proc: "overlayfs.open", Param: map[string]any{"root": module}},
+	}
+
+	var names workflow.Names
+
+	for _, gi := range accepted {
+		name := suiteGroupDir(gi)
+		names = append(names, name)
+
+		steps[name] = workflow.Step{
+			Proc: "jsonschema.generate",
+			Out:  workflow.Names{"root"},
+			Param: map[string]any{
+				"schema":    fmt.Sprintf("%s#/%d/schema", schema, gi),
+				"dir":       path.Join(out, name),
+				"type_name": "Root",
+			},
 		}
-
-		return '_'
-	}, strings.TrimSuffix(file, ".json"))
-
-	return name + "_" + strconv.Itoa(gi)
-}
-
-// generateSuitePackage returns the file Generate gives for raw as the
-// package pkg with the root type Root.
-func generateSuitePackage(raw jsontext.Value, pkg string) ([]byte, error) {
-	var doc jsonschema.Schema
-	if err := jsonv2.Unmarshal(raw, &doc); err != nil {
-		return nil, err
 	}
 
-	files, _, err := Generate(&doc, Options{
-		Package:  pkg,
-		TypeName: "Root",
-		Schema:   "schema.json",
-		Now:      gentest.Now,
-	})
-	if err != nil {
-		return nil, err
+	steps["final"] = workflow.Step{
+		Proc:  "overlayfs.copy_down",
+		In:    workflow.Names{"root"},
+		After: names,
+		Param: map[string]any{"fast_ignore_compile_errors": true},
 	}
 
-	return files[0].Content, nil
+	spec := workflow.Spec{Version: workflow.SpecVersion, Steps: steps}
+
+	g, err := spec.Build(ctx, workflow.DefaultRegistry)
+	assert.NilError(t, err, file)
+	assert.Equal(t, len(g.Warnings()), 0, "%s: %v", file, g.Warnings())
+	assert.NilError(t, g.Run(ctx, workflow.ProgressControl{}), file)
 }
 
 // suiteDriver collects the decodes the driver program runs.
 type suiteDriver struct {
-	pkgs  []string
-	cases []string
+	imports []string
+	cases   []string
 }
 
-func (d *suiteDriver) add(pkg string, data jsontext.Value) {
-	if !slices.Contains(d.pkgs, pkg) {
-		d.pkgs = append(d.pkgs, pkg)
+func (d *suiteDriver) add(file string, gi int, data jsontext.Value) {
+	alias := suitePackage(file, gi)
+
+	imp := fmt.Sprintf("\t%s %q\n", alias,
+		suiteModulePath+"/"+suiteStem(file)+"/"+suiteGroupDir(gi))
+	if !slices.Contains(d.imports, imp) {
+		d.imports = append(d.imports, imp)
 	}
 
 	d.cases = append(
 		d.cases,
-		fmt.Sprintf("\t{check[%s.Root], %s},\n", pkg, strconv.Quote(string(data))),
+		fmt.Sprintf("\t{check[%s.Root], %s},\n", alias, strconv.Quote(string(data))),
 	)
 }
 
@@ -587,8 +802,8 @@ func (d *suiteDriver) source() []byte {
 	b.WriteString("package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json/v2\"\n" +
 		"\t\"fmt\"\n\t\"strconv\"\n\n")
 
-	for _, pkg := range d.pkgs {
-		fmt.Fprintf(&b, "\t%q\n", suiteModulePath+"/"+pkg)
+	for _, imp := range d.imports {
+		b.WriteString(imp)
 	}
 
 	b.WriteString(")\n\n")
@@ -604,6 +819,20 @@ func (d *suiteDriver) source() []byte {
 		"\t\tfmt.Println(c.check([]byte(c.data)))\n\t}\n}\n")
 
 	return b.Bytes()
+}
+
+// suitePackage names the import of group gi of file in the driver after
+// both, so a failing build points to the group.
+func suitePackage(file string, gi int) string {
+	name := strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return unicode.ToLower(r)
+		}
+
+		return '_'
+	}, suiteStem(file))
+
+	return name + "_" + strconv.Itoa(gi)
 }
 
 // driverCheck is the function of the driver deciding the line of a case.
@@ -641,15 +870,13 @@ const driverCheck = `func check[T any](b []byte) string {
 
 const suiteModulePath = "example.invalid/suite"
 
-// suiteModule creates a module that resolves this module from its
-// directory and returns its root.
-func suiteModule(t *testing.T) string {
+// suiteModule makes suiteDir an empty module that resolves this module
+// from its directory. It writes go.mod before it removes the fixtures of an
+// earlier run, so an interrupted run leaves no fixture inside this module.
+func suiteModule(t *testing.T) {
 	t.Helper()
 
-	kamalib, err := filepath.Abs("../..")
-	assert.NilError(t, err)
-
-	gomod, err := os.ReadFile(filepath.Join(kamalib, "go.mod"))
+	gomod, err := os.ReadFile(filepath.FromSlash("../../go.mod"))
 	assert.NilError(t, err)
 
 	// A go line below that of this module would need go mod tidy.
@@ -660,27 +887,34 @@ func suiteModule(t *testing.T) string {
 
 	// The sums of this module cover every module the generated code
 	// reaches through it.
-	gosum, err := os.ReadFile(filepath.Join(kamalib, "go.sum"))
+	gosum, err := os.ReadFile(filepath.FromSlash("../../go.sum"))
 	assert.NilError(t, err)
 
-	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "go.mod"), []byte("module "+suiteModulePath+"\n\n"+
+	writeFile(t, filepath.Join(suiteDir, "go.mod"), []byte("module "+suiteModulePath+"\n\n"+
 		goLine.Value()+"\n"+
 		"require github.com/ngicks/kama/kamalib v0.0.0\n\n"+
-		"replace github.com/ngicks/kama/kamalib => "+kamalib+"\n"))
-	writeFile(t, filepath.Join(root, "go.sum"), gosum)
+		"replace github.com/ngicks/kama/kamalib => ../../../..\n"))
+	writeFile(t, filepath.Join(suiteDir, "go.sum"), gosum)
 
-	return root
+	entries, err := os.ReadDir(suiteDir)
+	assert.NilError(t, err)
+
+	for _, e := range entries {
+		if e.Name() != "go.mod" && e.Name() != "go.sum" {
+			assert.NilError(t, os.RemoveAll(filepath.Join(suiteDir, e.Name())))
+		}
+	}
 }
 
-// runSuiteDriver runs the driver of the module at root and returns its
+// runSuiteDriver runs the driver of the module in suiteDir and returns its
 // line per case.
-func runSuiteDriver(t *testing.T, root string) []string {
+func runSuiteDriver(t *testing.T) []string {
 	t.Helper()
 
 	cmd := exec.Command("go", "run", ".")
-	cmd.Dir = root
+	cmd.Dir = suiteDir
 
+	// The go.work of the repository does not list the module.
 	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod", "GOPROXY=off")
 
 	var stderr bytes.Buffer

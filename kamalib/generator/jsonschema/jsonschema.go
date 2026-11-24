@@ -49,11 +49,12 @@ type Options struct {
 	// TypeName names the Go type of the root schema as it is, so it must be
 	// an exported Go identifier. Empty takes the title of the root schema.
 	TypeName string
-	// Schema is the path of the schema file. The header of the generated
-	// file records it as it is.
+	// Schema is the path of the schema file, optionally followed by # and
+	// the JSON pointer of the schema document in the file. The header of
+	// the generated file records it as it is.
 	Schema string
 	// Dir is the directory the generated file lands in. Empty means the
-	// directory of Schema.
+	// directory of the file of Schema.
 	Dir string
 	// Now gives the time the header of the generated file records. It is
 	// time.Now when nil.
@@ -101,7 +102,8 @@ func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 
 	dir := opts.Dir
 	if dir == "" {
-		dir = filepath.Dir(opts.Schema)
+		file, _, _ := strings.Cut(opts.Schema, "#")
+		dir = filepath.Dir(file)
 	}
 
 	path := naming.SourceFile(filepath.Join(dir, opts.Package+".go"))
