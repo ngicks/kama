@@ -113,7 +113,10 @@ func (l Loader[P, T, F]) fromFiles(fsys fs.FS, root string, ws []walked) (*Loade
 				po.Package = fp.p
 			}
 
-			loaded.Warnings = append(loaded.Warnings, overlayTypes(&po, pkgPath, fp.types)...)
+			types, dropped := overlayTypes(po.Types, pkgPath, fp.types)
+			po.Types = types
+
+			loaded.Warnings = append(loaded.Warnings, dropped...)
 			loaded.Option.Packages[pkgPath] = po
 		}
 	}

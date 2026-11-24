@@ -169,10 +169,14 @@ func (l Loader[P, T, F]) LoadOption(
 		return nil, err
 	}
 
-	files.Warnings = append(files.Warnings, overlay(&dirs, files.Option)...)
-	files.Option = dirs
+	option, dropped := overlay(dirs, files.Option)
 
-	return files, nil
+	return &Loaded[P, T, F]{
+		Option:       option,
+		Files:        files.Files,
+		PackageFiles: files.PackageFiles,
+		Warnings:     slices.Concat(files.Warnings, dropped),
+	}, nil
 }
 
 // LoadPackages loads the directive comments of pkgs only. It reads no file.
@@ -476,50 +480,63 @@ func uniquePackages(pkgs []*packages.Package) []*packages.Package {
 		CollectSlice()
 }
 
-// overlay sets the package entries and the types of upper on lower,
-// dropping the types of lower with a warning.
-func overlay[P, T, F any](lower *Option[P, T, F], upper Option[P, T, F]) []error {
-	if lower.Packages == nil {
-		lower.Packages = map[string]PackageOption[P, T, F]{}
+// overlay returns lower with the package entries and the types of upper set
+// on it, and a warning for each type of lower that upper drops. It writes to
+// neither lower nor upper. The result shares the options of the packages,
+// types and fields with them.
+func overlay[P, T, F any](lower, upper Option[P, T, F]) (Option[P, T, F], []error) {
+	out := Option[P, T, F]{Packages: maps.Clone(lower.Packages)}
+	if out.Packages == nil {
+		out.Packages = map[string]PackageOption[P, T, F]{}
 	}
 
 	var warnings []error
 
 	for _, pkgPath := range slices.Sorted(maps.Keys(upper.Packages)) {
 		up := upper.Packages[pkgPath]
-		lp := lower.Packages[pkgPath]
-		lp.Package = up.Package
-		warnings = append(warnings, overlayTypes(&lp, pkgPath, up.Types)...)
-		lower.Packages[pkgPath] = lp
+		po := out.Packages[pkgPath]
+		po.Package = up.Package
+
+		types, dropped := overlayTypes(po.Types, pkgPath, up.Types)
+		po.Types = types
+
+		warnings = append(warnings, dropped...)
+		out.Packages[pkgPath] = po
 	}
 
-	return warnings
+	return out, warnings
 }
 
-// overlayTypes sets types on po, the options of the package at pkgPath,
-// dropping those of po with a warning.
-func overlayTypes[P, T, F any](
-	po *PackageOption[P, T, F],
+// overlayTypes returns lower, the types of the package at pkgPath, with
+// upper set on it, and a warning for each type of lower that upper drops.
+// It writes to neither.
+func overlayTypes[T, F any](
+	lower map[string]TypeOption[T, F],
 	pkgPath string,
-	types map[string]TypeOption[T, F],
-) []error {
+	upper map[string]TypeOption[T, F],
+) (map[string]TypeOption[T, F], []error) {
+	if len(upper) == 0 {
+		return lower, nil
+	}
+
+	out := maps.Clone(lower)
+	if out == nil {
+		out = map[string]TypeOption[T, F]{}
+	}
+
 	var warnings []error
 
-	for _, name := range slices.Sorted(maps.Keys(types)) {
-		if po.Types == nil {
-			po.Types = map[string]TypeOption[T, F]{}
-		}
-
-		if prev, ok := po.Types[name]; ok {
+	for _, name := range slices.Sorted(maps.Keys(upper)) {
+		if prev, ok := out[name]; ok {
 			warnings = append(warnings, overridden(
-				"type "+pkgPath+"."+name, types[name].Source, prev.Source,
+				"type "+pkgPath+"."+name, upper[name].Source, prev.Source,
 			))
 		}
 
-		po.Types[name] = types[name]
+		out[name] = upper[name]
 	}
 
-	return warnings
+	return out, warnings
 }
 
 func overridden(what string, winner, loser Source) error {
