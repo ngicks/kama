@@ -1,7 +1,6 @@
 package base
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -9,18 +8,16 @@ import (
 	"go/token"
 	"io/fs"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/ngicks/opiter"
-	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
 
-// ErrStale reports a file of a loaded package that carries the marker of a
-// generator and that the run of the generator did not produce.
+// ErrStale reports a file of the scope of a run that carries the generated
+// mark of a generator and that the run of the generator did not produce.
 var ErrStale = errors.New("generator: stale generated file")
 
 // StaleCheck finds the files a generator wrote earlier and no longer
@@ -30,52 +27,6 @@ type StaleCheck struct {
 	Registry *genmark.Registry
 	// Generator is the generator whose marked files the check finds.
 	Generator Id
-	// Keep reports whether the file at path of pkg is left out although the
-	// run did not produce it. Nil keeps none.
-	Keep func(pkg *packages.Package, path string) bool
-}
-
-// Files returns a warning wrapping ErrStale for each file of pkgs holding a
-// declaration marked by the generator that is not among produced, whose
-// paths are absolute, sorted by path. A warning names the path relative to
-// the module root where it lies under it.
-func (c StaleCheck) Files(pkgs []*packages.Package, produced []File) []error {
-	made := map[string]bool{}
-	for _, f := range produced {
-		made[filepath.Clean(f.Path)] = true
-	}
-
-	type stale struct{ path, name string }
-
-	var found []stale
-
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Syntax {
-			tf := pkg.Fset.File(f.Pos())
-			if tf == nil || made[filepath.Clean(tf.Name())] || !c.marked(f) {
-				continue
-			}
-
-			if c.Keep != nil && c.Keep(pkg, tf.Name()) {
-				continue
-			}
-
-			shown := tf.Name()
-			if pkg.Module != nil && pkg.Module.Dir != "" {
-				if rel, err := filepath.Rel(pkg.Module.Dir, shown); err == nil && inside(rel) {
-					shown = rel
-				}
-			}
-
-			found = append(found, stale{path: tf.Name(), name: shown})
-		}
-	}
-
-	slices.SortFunc(found, func(a, b stale) int { return cmp.Compare(a.path, b.path) })
-
-	return opiter.WrapSeq(slices.Values(found)).
-		Map(func(s stale) error { return c.warning(s.name) }).
-		CollectSlice()
 }
 
 // Scope is where the stale check of a run looks for files carrying the
@@ -94,7 +45,7 @@ type Scope struct {
 // fsys holding a declaration marked by the generator that is not among
 // produced, sorted by path. The paths of produced are slash-separated and
 // relative to the root of fsys. A file or a directory of scope that does
-// not exist holds no stale file. Keep is not consulted.
+// not exist holds no stale file.
 //
 // The check works from the generated mark, so a file the generator edited
 // in place in an earlier run counts as well as a file of its own. It looks

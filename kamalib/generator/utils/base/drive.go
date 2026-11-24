@@ -56,7 +56,11 @@ func Drive[I any](
 		return err
 	}
 
-	return StageWithWarnings(ctx, out, files, stale, env.Reporter)
+	for _, w := range stale {
+		env.Reporter.Warn(w)
+	}
+
+	return Stage(ctx, out, files, env.Reporter)
 }
 
 // Assemble runs g on in and returns the files of its outputs: a Whole as

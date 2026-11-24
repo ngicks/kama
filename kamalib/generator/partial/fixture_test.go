@@ -18,6 +18,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	pkggopackages "github.com/ngicks/kama/kamalib/pkg/gopackages"
@@ -93,9 +94,9 @@ func TestFixtureUpToDate(t *testing.T) {
 			assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
 
 			produced := opiter.WrapSeq(slices.Values(files)).
-				Map(
-					func(file File) string { return filepath.Join(f.Root(), filepath.FromSlash(file.Path)) },
-				).
+				Map(func(file base.File) string {
+					return filepath.Join(f.Root(), filepath.FromSlash(file.Path))
+				}).
 				Collect(slices.Sorted)
 
 			assert.DeepEqual(t, produced, generatedFiles(t, f.Root()))

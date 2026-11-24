@@ -17,6 +17,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -27,6 +28,10 @@ import (
 // options where it is needed.
 type selection struct {
 	opts Options
+	// reg tells the declarations emitted by generators.
+	reg *genmark.Registry
+	// loaded holds the options of the directives and the option files.
+	loaded *LoadedOptions
 	// pkgs are the loaded packages the run generates into.
 	pkgs []*packages.Package
 }
@@ -89,7 +94,7 @@ func (s *selection) partialOf(t types.Type, pkgPath string) (*types.Named, bool)
 // targets returns the targets keyed by id, read off a type graph built
 // again from the packages.
 func (s *selection) targets() map[typegraph.QualifiedType]*typegraph.Node {
-	g, err := base.TypeGraph(s.pkgs, s.opts.Registry)
+	g, err := base.TypeGraph(s.pkgs, s.reg)
 	if err != nil {
 		// selectTargets built the same graph from the same packages and
 		// stopped the run on its error.
@@ -115,10 +120,15 @@ func followed(r *typegraph.EdgeRoute) bool {
 		Every(func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 })
 }
 
-func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
-	sel := &selection{opts: opts, pkgs: pkgs}
+func selectTargets(
+	pkgs []*packages.Package,
+	opts Options,
+	reg *genmark.Registry,
+	loaded *LoadedOptions,
+) (*selection, error) {
+	sel := &selection{opts: opts, reg: reg, loaded: loaded, pkgs: pkgs}
 
-	g, err := base.TypeGraph(pkgs, opts.Registry)
+	g, err := base.TypeGraph(pkgs, reg)
 	if err != nil {
 		return nil, fmt.Errorf("partial: %w", err)
 	}
@@ -198,10 +208,10 @@ func (s *selection) targetsOf(g *typegraph.Graph) map[typegraph.QualifiedType]*t
 func (s *selection) checkMarks(g *typegraph.Graph) error {
 	var errs []error
 
-	for id, to := range s.opts.Loaded.Option.Types() {
+	for id, to := range s.loaded.Option.Types() {
 		if mark, ok := explicitMark(to); ok {
 			errs = append(errs, base.MarkedTypeError(
-				s.pkgs, s.opts.Registry, g, id, mark.origin(), ErrUnsupported,
+				s.pkgs, s.reg, g, id, mark.origin(), ErrUnsupported,
 			))
 		}
 	}
@@ -347,11 +357,11 @@ func (s *selection) ownDecl(flagSet bool, decl ast.Decl) bool {
 			return true
 		}
 
-		_, ok := s.opts.Registry.Generated(d.Doc)
+		_, ok := s.reg.Generated(d.Doc)
 
 		return ok && d.Tok == token.TYPE && flagSet
 	case *ast.FuncDecl:
-		_, ok := s.opts.Registry.Generated(d.Doc)
+		_, ok := s.reg.Generated(d.Doc)
 		return ok && d.Recv == nil && !flagSet
 	}
 

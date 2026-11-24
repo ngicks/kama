@@ -19,7 +19,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 )
 
 // helperSet holds the declarations validators declared for the files of a
@@ -94,23 +94,22 @@ func (e *emitter) missing(require []string) bool {
 		Any(func(p string) bool { return !slices.Contains(require, p) })
 }
 
-// renderHelpers prints hf, declaring the helpers of helpers it hosts.
+// renderHelpers returns hf, declaring the helpers of helpers it hosts.
 func renderHelpers(
-	hdr dst.Decorations,
 	pkg *packages.Package,
 	hf base.Host,
 	helpers *helperSet,
-) ([]byte, error) {
+) (base.Composed, error) {
 	var require []string
 
 	for {
-		content, e, err := renderHelpersWith(hdr, pkg, hf, helpers, require)
+		c, e, err := renderHelpersWith(pkg, hf, helpers, require)
 		if err != nil {
-			return nil, err
+			return base.Composed{}, err
 		}
 
 		if !e.missing(require) {
-			return content, nil
+			return c, nil
 		}
 
 		require = slices.Sorted(maps.Keys(e.imports))
@@ -118,15 +117,14 @@ func renderHelpers(
 }
 
 func renderHelpersWith(
-	hdr dst.Decorations,
 	pkg *packages.Package,
 	hf base.Host,
 	helpers *helperSet,
 	require []string,
-) ([]byte, *emitter, error) {
+) (base.Composed, *emitter, error) {
 	scope, err := filescope.New(pkg, helperLocals, require)
 	if err != nil {
-		return nil, nil, err
+		return base.Composed{}, nil, err
 	}
 
 	e := newEmitter(scope, helpers)
@@ -136,21 +134,23 @@ func renderHelpersWith(
 	for _, name := range hf.Names {
 		_, text, err := helpers.decls[name](e).Render(scope.FuncContext(nil), nil)
 		if err != nil {
-			return nil, nil, fmt.Errorf("validator: helper %s: %w", name, err)
+			return base.Composed{}, nil, fmt.Errorf("validator: helper %s: %w", name, err)
 		}
 
 		src.Write(text)
 		src.WriteString("\n")
 	}
 
-	decls, err := genhelper.ParseDecls([]byte(src.String()))
+	decls, err := gofragment.ParseDstDecls([]byte(src.String()))
 	if err != nil {
-		return nil, nil, fmt.Errorf("validator: parse helpers of %s: %w", hf.Path, err)
+		return base.Composed{}, nil, fmt.Errorf(
+			"validator: parse helpers of %s: %w", hf.Path, err,
+		)
 	}
 
 	// Each declaration gets the doc comment naming its helper.
 	if len(decls) != len(hf.Names) {
-		return nil, nil, fmt.Errorf(
+		return base.Composed{}, nil, fmt.Errorf(
 			"validator: helpers %v of %s give %d declarations; want one each",
 			hf.Names, hf.Path, len(decls),
 		)
@@ -159,17 +159,21 @@ func renderHelpersWith(
 	for i, d := range decls {
 		d.Decorations().Start = dst.Decorations{
 			"// " + hf.Names[i] + " is a helper of the generated Validate methods.",
-			"//",
-			GeneratorId.Marker(),
 		}
 	}
 
-	content, err := genhelper.PrintDstFile(pkg.Name, hdr, hf.BuildLine, decls, scope.Imports)
+	parts, err := filescope.Parts(decls)
 	if err != nil {
-		return nil, nil, fmt.Errorf("validator: print %s: %w", hf.Path, err)
+		return base.Composed{}, nil, fmt.Errorf("validator: print %s: %w", hf.Path, err)
 	}
 
-	return content, e, nil
+	return base.Composed{
+		Path:            hf.Path,
+		BuildConstraint: hf.BuildLine,
+		Package:         pkg.Name,
+		Imports:         scope.Imports,
+		Parts:           parts,
+	}, e, nil
 }
 
 // helperLocals mirror the locals the helper declarations of package rule
@@ -185,7 +189,7 @@ var helperLocals = []string{
 func checkHelperNames(sel *selection, pkg *packages.Package, names []string) error {
 	var errs []error
 
-	for _, obj := range base.UnownedDecls(pkg, sel.opts.Markers, names) {
+	for _, obj := range base.UnownedDecls(pkg, sel.markers, names) {
 		errs = append(errs, fmt.Errorf(
 			"%w: %s: %s.%s is already declared for a helper of the generated Validate methods",
 			ErrConflict, pkg.Fset.Position(obj.Pos()), pkg.PkgPath, obj.Name(),
@@ -249,11 +253,11 @@ func (s *selection) ownHelperDecl(d ast.Decl) bool {
 			return true
 		}
 
-		_, ok := s.opts.Markers.Generated(d.Doc)
+		_, ok := s.markers.Generated(d.Doc)
 
 		return ok && d.Tok != token.TYPE
 	case *ast.FuncDecl:
-		_, ok := s.opts.Markers.Generated(d.Doc)
+		_, ok := s.markers.Generated(d.Doc)
 		return ok && d.Recv == nil
 	}
 

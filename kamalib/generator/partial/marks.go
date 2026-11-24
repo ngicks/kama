@@ -18,7 +18,7 @@ type typeOptions = genopt.TypeOption[TypeOptions, FieldOptions]
 
 // fieldOption returns the options of the field k.
 func (s *selection) fieldOption(k fieldKey) FieldOptions {
-	return s.opts.Loaded.Option.Field(typegraph.NewQualifiedType(k.pkgPath, k.typeName), k.field)
+	return s.loaded.Option.Field(typegraph.NewQualifiedType(k.pkgPath, k.typeName), k.field)
 }
 
 // explicitMark returns the source of //kama:partial on the type group of to
@@ -58,7 +58,7 @@ func maskMark(to typeOptions) (optionSource, bool) {
 }
 
 func (s *selection) ignored(id typegraph.QualifiedType) bool {
-	to, _ := s.opts.Loaded.Option.Type(id)
+	to, _ := s.loaded.Option.Type(id)
 	_, ok := ignoreMark(to)
 
 	return ok
@@ -72,12 +72,12 @@ func (s *selection) marked(n *typegraph.Node) bool {
 		return false
 	}
 
-	to, _ := s.opts.Loaded.Option.Type(n.Id)
+	to, _ := s.loaded.Option.Type(n.Id)
 	if _, ok := explicitMark(to); ok {
 		return true
 	}
 
-	po := s.opts.Loaded.Option.Packages[n.Id.PackagePath]
+	po := s.loaded.Option.Packages[n.Id.PackagePath]
 	allTypes := opiter.WrapSeq(maps.Values(po.Files)).
 		Any(func(p PackageOptions) bool { return p.AllTypes })
 
@@ -86,7 +86,7 @@ func (s *selection) marked(n *typegraph.Node) bool {
 
 // fieldMasked reports whether the target id has field masks enabled.
 func (s *selection) fieldMasked(id typegraph.QualifiedType) bool {
-	to, _ := s.opts.Loaded.Option.Type(id)
+	to, _ := s.loaded.Option.Type(id)
 	_, ok := maskMark(to)
 
 	return ok
@@ -128,7 +128,7 @@ func (s *selection) maskNameOf(k fieldKey) (maskName, bool) {
 func (s *selection) checkOptions() error {
 	var errs []error
 
-	for id, to := range s.opts.Loaded.Option.Types() {
+	for id, to := range s.loaded.Option.Types() {
 		mark, isMarked := explicitMark(to)
 		if ignore, isIgnored := ignoreMark(to); isMarked && isIgnored {
 			errs = append(errs, fmt.Errorf(
@@ -184,7 +184,7 @@ func fieldOptionErrors(k fieldKey, o FieldOptions) []error {
 // path, type name and field name.
 func (s *selection) allFieldOptions() iter.Seq2[fieldKey, FieldOptions] {
 	return func(yield func(fieldKey, FieldOptions) bool) {
-		for id, to := range s.opts.Loaded.Option.Types() {
+		for id, to := range s.loaded.Option.Types() {
 			fields, _ := to.Fields.Unpack()
 			for name, o := range opiter.MapsSorted(fields) {
 				if !yield(fieldKeyOf(id, name), o) {

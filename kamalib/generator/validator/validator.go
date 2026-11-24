@@ -1,20 +1,19 @@
 package validator
 
 import (
-	"cmp"
+	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"maps"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
-	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
 
 // GeneratorId identifies the generator. Its name is the directive
@@ -32,10 +31,6 @@ const HelpersFile = "zz_gen.helper.kama_validate.go"
 // helperKind is the kind of the files declaring helpers, as their names
 // spell it.
 const helperKind = "helper"
-
-// generatorPath is the import path of the generator, named by the first
-// line of the header of every generated file.
-const generatorPath = "github.com/ngicks/kama/kamalib/generator/validator"
 
 func init() { base.MustRegister(GeneratorId) }
 
@@ -68,17 +63,6 @@ type Options struct {
 	// Registry holds the validators directives name. It is
 	// rule.DefaultRegistry() when nil.
 	Registry *rule.Registry
-	// Markers tells the declarations emitted by generators. It is
-	// base.DefaultRegistry when nil.
-	Markers *genmark.Registry
-	// Loaded holds the options of the directives and the option files of
-	// the packages Generate is given. The Loader of NewLoader loads them.
-	// When Loaded is nil, Generate loads the directives itself with
-	// LoadPackages and reads no option file.
-	Loaded *LoadedOptions
-	// Now gives the time the header of the generated files records. It is
-	// time.Now when nil.
-	Now func() time.Time
 }
 
 // WithDefaults returns o with empty fields set to their defaults.
@@ -87,101 +71,76 @@ func (o Options) WithDefaults() Options {
 		o.Registry = rule.DefaultRegistry()
 	}
 
-	if o.Markers == nil {
-		o.Markers = base.DefaultRegistry
-	}
-
-	if o.Now == nil {
-		o.Now = time.Now
-	}
-
 	return o
 }
 
-// File is a generated file. Its Path is absolute, next to the source file
-// the file derives from.
-type File = base.File
+// Generator generates the Validate methods of the targets of the packages
+// of its Input.
+var Generator = base.Generator[Input]{Id: GeneratorId, Generate: Generate}
 
-// Generate returns the Validate methods of the targets in pkgs, one file per
-// source file declaring targets, and the helpers files of each package
-// holding targets, sorted by path.
+// Input is the input of a run of Generator.
+type Input = base.Input[Options, PackageOptions, TypeOptions, FieldOptions]
+
+// Generate yields the Validate methods of the targets in the packages of
+// in, one file per source file declaring targets, and the helpers files of
+// each package holding targets.
 //
-// The warnings are those of Options.Loaded, followed by one wrapping
-// ErrStale for each file of pkgs carrying the marker of the generator that
-// is not among the returned files.
-//
-// pkgs must be loaded as gopackages.Load does. base.SourcePackages picks
-// the packages read, test variants and external test packages included.
-func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
-	opts = opts.WithDefaults()
-	now := opts.Now()
+// An error in the files of one package does not stop the files of the
+// other packages.
+func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, error] {
+	return func(yield func(base.Output, error) bool) {
+		opts := in.Options.WithDefaults()
 
-	if err := reservedNames(opts.Registry); err != nil {
-		return nil, nil, err
-	}
+		if err := reservedNames(opts.Registry); err != nil {
+			yield(nil, err)
+			return
+		}
 
-	srcPkgs := base.SourcePackages(pkgs)
-
-	if opts.Loaded == nil {
-		loaded, err := NewLoader(nil).LoadPackages(srcPkgs)
+		sel, err := selectTargets(in.Packages, opts, env.Registry, in.Loaded)
 		if err != nil {
-			return nil, nil, loadError(err)
+			yield(nil, err)
+			return
 		}
 
-		opts.Loaded = loaded
-	}
+		byPkg := map[string][]string{}
+		pkgOf := map[string]*packages.Package{}
 
-	sel, err := selectTargets(srcPkgs, opts)
-	if err != nil {
-		return nil, nil, err
-	}
+		for n := range sel.targets() {
+			name := n.Filename()
+			if !slices.Contains(byPkg[n.Id.PackagePath], name) {
+				byPkg[n.Id.PackagePath] = append(byPkg[n.Id.PackagePath], name)
+			}
 
-	byPkg := map[string][]string{}
-	pkgOf := map[string]*packages.Package{}
-
-	for n := range sel.targets() {
-		name := n.Filename()
-		if !slices.Contains(byPkg[n.Id.PackagePath], name) {
-			byPkg[n.Id.PackagePath] = append(byPkg[n.Id.PackagePath], name)
+			pkgOf[n.Id.PackagePath] = n.Detail.Pkg
 		}
 
-		pkgOf[n.Id.PackagePath] = n.Detail.Pkg
-	}
+		for _, pkgPath := range slices.Sorted(maps.Keys(byPkg)) {
+			files, err := renderPackage(
+				sel,
+				pkgOf[pkgPath],
+				slices.Sorted(slices.Values(byPkg[pkgPath])),
+			)
+			if err != nil {
+				if !yield(nil, err) {
+					return
+				}
 
-	var (
-		files []File
-		errs  []error
-	)
+				continue
+			}
 
-	for _, pkgPath := range slices.Sorted(maps.Keys(byPkg)) {
-		hdr, err := fileHeader(opts, pkgPath, now)
-		if err != nil {
-			return nil, nil, err
+			for _, c := range files {
+				rel, err := in.Rel(c.Path)
+				if err != nil {
+					err = fmt.Errorf("validator: %w", err)
+				}
+
+				c.Path, c.Params = rel, in.Loaded.HeaderParams(pkgPath)
+				if !yield(c, err) {
+					return
+				}
+			}
 		}
-
-		out, err := renderPackage(
-			sel,
-			hdr,
-			pkgOf[pkgPath],
-			slices.Sorted(slices.Values(byPkg[pkgPath])),
-		)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
-
-		files = append(files, out...)
 	}
-
-	if err := errors.Join(errs...); err != nil {
-		return nil, nil, err
-	}
-
-	slices.SortFunc(files, func(a, b File) int { return cmp.Compare(a.Path, b.Path) })
-
-	stale := base.StaleCheck{Registry: opts.Markers, Generator: GeneratorId}
-
-	return files, slices.Concat(opts.Loaded.Warnings, stale.Files(srcPkgs, files)), nil
 }
 
 // reservedNames reports the validators of reg named by a word of

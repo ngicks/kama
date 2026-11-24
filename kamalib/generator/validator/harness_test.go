@@ -39,12 +39,6 @@ func stage(t *testing.T, files map[string]string) (*overlayfs.Fs, gopackages.Opt
 	return gentest.Stage(t, files, overlayfs.WithFormatter(gofmtOnly{}))
 }
 
-// load is gentest.Load staging files as stage does.
-func load(t *testing.T, files map[string]string) []*packages.Package {
-	t.Helper()
-	return gentest.Load(t, files, overlayfs.WithFormatter(gofmtOnly{}))
-}
-
 // modulePath returns the import path of the inline test directory of t.
 func modulePath(t *testing.T) string {
 	return "github.com/ngicks/kama/kamalib/generator/validator/" + gentest.InlineDir(t)
@@ -60,27 +54,59 @@ func markers(t *testing.T) *genmark.Registry {
 	return r
 }
 
-// testOptions returns opts with the markers of this generator only and
-// gentest.Now.
-func testOptions(t *testing.T, opts Options) Options {
-	t.Helper()
-
-	if opts.Markers == nil {
-		opts.Markers = markers(t)
-	}
-
-	if opts.Now == nil {
-		opts.Now = gentest.Now
-	}
-
-	return opts
+// testRun configures a run of Generator in a test. Markers is a registry
+// of this generator only when nil, and Loaded holds the directives of the
+// packages only when nil. The run takes gentest.Now as its time.
+type testRun struct {
+	Options
+	Markers *genmark.Registry
+	Loaded  *LoadedOptions
 }
 
-// generate runs Generate on files with opts and fails on a warning.
-func generate(t *testing.T, files map[string]string, opts Options) ([]File, error) {
+// runGenerate runs Generator with r on pkgs, loaded from f, as a run of the
+// proc does without staging. It returns the files, with absolute paths, the
+// warnings of the loaded options followed by those of the run, and the
+// error.
+func runGenerate(
+	t *testing.T,
+	f *overlayfs.Fs,
+	pkgs []*packages.Package,
+	r testRun,
+) ([]base.File, []error, error) {
 	t.Helper()
 
-	out, warnings, err := Generate(load(t, files), testOptions(t, opts))
+	if r.Markers == nil {
+		r.Markers = markers(t)
+	}
+
+	in := Input{Packages: base.SourcePackages(pkgs), Options: r.Options, Root: f.Root()}
+
+	in.Loaded = r.Loaded
+	if in.Loaded == nil {
+		loaded, err := NewLoader(nil).LoadPackages(in.Packages)
+		if err != nil {
+			return nil, nil, loadError(err)
+		}
+
+		in.Loaded = loaded
+	}
+
+	files, warnings, err := gentest.Run(
+		t.Context(), Generator, r.Markers, gentest.Now(), in, in.Scope(), f,
+	)
+
+	return files, slices.Concat(in.Loaded.Warnings, warnings), err
+}
+
+// generate runs Generator on files with r and fails on a warning.
+func generate(t *testing.T, files map[string]string, r testRun) ([]base.File, error) {
+	t.Helper()
+
+	f, opts := stage(t, files)
+	pkgs, err := gopackages.Load(context.Background(), f, opts)
+	assert.NilError(t, err)
+
+	out, warnings, err := runGenerate(t, f, pkgs, r)
 	assert.Assert(t, len(warnings) == 0, "%v", warnings)
 
 	return out, err
@@ -99,7 +125,7 @@ func generateInto(
 	pkgs, err := gopackages.Load(context.Background(), f, opts)
 	assert.NilError(t, err)
 
-	out, warnings, err := Generate(pkgs, testOptions(t, genOpts))
+	out, warnings, err := runGenerate(t, f, pkgs, testRun{Options: genOpts})
 	if err != nil {
 		return nil, err
 	}

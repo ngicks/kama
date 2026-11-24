@@ -77,7 +77,7 @@ func TestRequiresErrors(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{"a.go": "package x\n\n" + tc.src}, Options{})
+			_, err := generate(t, map[string]string{"a.go": "package x\n\n" + tc.src}, testRun{})
 			assert.ErrorIs(t, err, tc.is)
 
 			for _, msg := range tc.msgs {

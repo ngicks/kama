@@ -15,6 +15,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -25,12 +26,22 @@ import (
 // options where it is needed.
 type selection struct {
 	opts Options
+	// markers tells the declarations emitted by generators.
+	markers *genmark.Registry
+	// loadedOptions holds the options of the directives and the option
+	// files.
+	loadedOptions *LoadedOptions
 	// pkgs are the loaded packages the run generates into.
 	pkgs []*packages.Package
 }
 
-func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
-	sel := &selection{opts: opts, pkgs: pkgs}
+func selectTargets(
+	pkgs []*packages.Package,
+	opts Options,
+	markers *genmark.Registry,
+	loaded *LoadedOptions,
+) (*selection, error) {
+	sel := &selection{opts: opts, markers: markers, loadedOptions: loaded, pkgs: pkgs}
 
 	g, err := sel.typeGraph()
 	if err != nil {
@@ -63,11 +74,11 @@ func selectTargets(pkgs []*packages.Package, opts Options) (*selection, error) {
 // //kama:validate on the types it hands on to this generator.
 func (s *selection) typeGraph() (*typegraph.Graph, error) {
 	return typegraph.New(s.pkgs, nil, func(_ *ast.TypeSpec, obj types.Object) (bool, error) {
-		if !base.Generated(s.pkgs, s.opts.Markers, obj) {
+		if !base.Generated(s.pkgs, s.markers, obj) {
 			return true, nil
 		}
 
-		to, _ := s.opts.Loaded.Option.Type(typegraph.QualifiedTypeFromObject(obj))
+		to, _ := s.loadedOptions.Option.Type(typegraph.QualifiedTypeFromObject(obj))
 		_, marked := explicitMark(to)
 
 		return marked, nil

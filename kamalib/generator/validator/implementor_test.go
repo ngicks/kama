@@ -61,7 +61,7 @@ func TestImplementorPointerReceiver(t *testing.T) {
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\n" +
 			"type A struct{ P []P }\n\ntype P struct{}\n\n" +
 			"func (*P) Validate(bool) error { return nil }\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, "declares Validate on its pointer receiver")
 }

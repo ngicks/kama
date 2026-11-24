@@ -453,7 +453,7 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 				"//kama:validate\n//kama:validate hook=off\ntype V[P any] struct {\n\t" +
 				strings.Replace(tc.field, "\n\tN ", "\n\tV ", 1) + "\n}\n"
 
-			_, err := generate(t, map[string]string{"a.go": src}, Options{})
+			_, err := generate(t, map[string]string{"a.go": src}, testRun{})
 			assert.ErrorIs(t, err, tc.is)
 
 			for _, msg := range tc.msgs {
@@ -469,7 +469,7 @@ func TestHeldValueError(t *testing.T) {
 	_, err := generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
 			"\t//kama:validate cmp=\">1\"\n\tP *struct{}\n}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err,
 		"*struct{} is not an integer, float, string or bool type;"+
@@ -482,7 +482,7 @@ func TestArgsErrorOnHeldValue(t *testing.T) {
 	_, err := generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
 			"\t//kama:validate length=\">=1.5\"\n\tP *string\n}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorIs(t, err, rule.ErrArgs)
 	assert.Equal(t, strings.Count(err.Error(), "1.5 is no value of int"), 1, err.Error())
@@ -552,7 +552,7 @@ func TestReplaceBuiltin(t *testing.T) {
 	assertNotContains(t, out[HelpersFile], "kamaValidateCompare")
 
 	// The default registry keeps the built-in, which wants comparisons.
-	_, err = generate(t, files, Options{})
+	_, err = generate(t, files, testRun{})
 	assert.ErrorContains(t, err, "want one or more comparisons")
 }
 
@@ -631,13 +631,13 @@ func TestDocExample(t *testing.T) {
 	_, err = generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
 			"\t//kama:validate multiple=0\n\tN int\n}\n",
-	}, Options{Registry: reg})
+	}, testRun{Registry: reg})
 	assert.ErrorIs(t, err, rule.ErrArgs)
 
 	_, err = generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
 			"\t//kama:validate multiple=3\n\tS string\n}\n",
-	}, Options{Registry: reg})
+	}, testRun{Registry: reg})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, "string is not an integer type")
 }
@@ -683,7 +683,7 @@ func TestFormatExtra(t *testing.T) {
 		`kamaValidateFormatLower(v.S)`, `kamaValidateFormatDate(v.D)`)
 	assertContains(t, out[HelpersFile], "func kamaValidateFormatLower(got string) error {")
 
-	_, err = generate(t, files, Options{})
+	_, err = generate(t, files, testRun{})
 	assert.ErrorContains(
 		t,
 		err,

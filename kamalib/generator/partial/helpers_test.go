@@ -440,7 +440,7 @@ func TestAllUndefined(t *testing.T) {
 		"a.go": "package x\n\n//kama:partial\ntype A struct {\n\t*B\n}\n\n" +
 			"type B struct {\n\tC\n\tY string\n}\n\ntype C struct {\n\t_ int\n\tX int\n}\n",
 	}
-	out := generatedWith(t, files, Options{MergeNested: MergeNestedOverwrite})
+	out := generatedWith(t, files, testRun{MergeNested: MergeNestedOverwrite})
 	src, helpers := out["a.kama_partial.go"], out[HelpersFile]
 	assert.Assert(t, !strings.Contains(src+helpers, "reflect"), src+helpers)
 
@@ -470,7 +470,7 @@ func TestAllUndefinedForeignUnexported(t *testing.T) {
 		"a.go": "package x\n\nimport \"" + modulePath(t) + "/sub\"\n\n" +
 			"//kama:partial\ntype A struct{ *sub.S }\n",
 		"sub/sub.go": "package sub\n\ntype S struct {\n\tX int\n\ty int\n}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, "unexported field y")
 }
@@ -481,7 +481,7 @@ func TestHelpersFileConflict(t *testing.T) {
 	_, err := generate(t, map[string]string{
 		"a.go":      "package x\n\n//kama:partial\ntype A struct{ N *N }\n\ntype N struct{ I int }\n",
 		HelpersFile: "package x\n\nfunc stray() {}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, HelpersFile+" holds a declaration")
 
@@ -489,7 +489,7 @@ func TestHelpersFileConflict(t *testing.T) {
 	_, err = generate(t, map[string]string{
 		"a_linux.go": "package x\n\n//kama:partial\ntype A struct{ N *N }\n\ntype N struct{ I int }\n",
 		own:          "package x\n\nfunc stray() {}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, own+" holds a declaration")
 }

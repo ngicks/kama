@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"path/filepath"
+	"iter"
 	"reflect"
 	"strings"
 	"testing"
@@ -15,6 +15,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -57,7 +58,15 @@ func (p fakeParamPartial) ToValue() fakeParam {
 
 func (p *fakeParamPartial) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
-// fakeLoader records the option file it is asked to load.
+// fakeOptions are the package, type and field options of the fake
+// generator, which takes none.
+type fakeOptions struct{}
+
+// fakeInput is the input of the fake generator.
+type fakeInput = base.Input[string, fakeOptions, fakeOptions, fakeOptions]
+
+// fakeLoader records the option file it is asked to load, and loads the
+// option file "loaded.yaml" with a warning.
 type fakeLoader struct {
 	optionFile **fileloader.PathInput
 	err        error
@@ -68,27 +77,49 @@ func (l fakeLoader) LoadOptionNamed(
 	_ string,
 	_ []*packages.Package,
 	optionFile *fileloader.PathInput,
-) (string, error) {
+) (*genopt.Loaded[fakeOptions, fakeOptions, fakeOptions], error) {
 	*l.optionFile = optionFile
-	return "loaded", l.err
+
+	return &genopt.Loaded[fakeOptions, fakeOptions, fakeOptions]{
+		Files:    []string{"loaded.yaml"},
+		Warnings: []error{errors.New("fake: warning")},
+	}, l.err
 }
 
 var errFakeLoad = errors.New("fake: load")
 
-// fakeProc returns the proc of the fake generator staging into the root of
-// f. loaded receives the option file the loader is asked for.
+// fakeProc returns the proc of the fake generator, which writes gen.go
+// into the root of its out. loaded receives the option file the loader is
+// asked for.
 func fakeProc(
-	t *testing.T,
-	f *overlayfs.Fs,
 	loaded **fileloader.PathInput,
 	loadErr error,
-) base.SourceProc[fakeParamPartial, fakeParam, string, string] {
-	t.Helper()
-
+) base.SourceProc[fakeParamPartial, fakeParam, string, fakeOptions, fakeOptions, fakeOptions] {
 	hello := "hello"
 
-	return base.SourceProc[fakeParamPartial, fakeParam, string, string]{
-		Id:      fakeId,
+	return base.SourceProc[
+		fakeParamPartial, fakeParam, string, fakeOptions, fakeOptions, fakeOptions,
+	]{
+		Generator: base.Generator[fakeInput]{
+			Id: fakeId,
+			Generate: func(
+				_ context.Context,
+				_ base.Env,
+				in fakeInput,
+			) iter.Seq2[base.Output, error] {
+				return func(yield func(base.Output, error) bool) {
+					yield(base.Composed{
+						Path:    "gen.go",
+						Package: "p",
+						Parts: []base.Part{base.Decl(fmt.Sprintf(
+							"var Greeting = %q\n\nvar Loaded = %q\n",
+							in.Options,
+							in.Loaded.Files[0],
+						))},
+					}, nil)
+				}
+			},
+		},
 		Default: func() fakeParamPartial { return fakeParamPartial{Greeting: &hello} },
 		Options: func(p fakeParam) (string, opt.Option[fileloader.PathInput], error) {
 			if p.Greeting == "" {
@@ -99,14 +130,6 @@ func fakeProc(
 		},
 		Loader:    fakeLoader{optionFile: loaded, err: loadErr},
 		LoadError: func(err error) error { return fmt.Errorf("wrapped: %w", err) },
-		Generate: func(_ []*packages.Package, greeting, loaded string) ([]base.File, []error, error) {
-			body := fmt.Sprintf("var Greeting = %q\n\nvar Loaded = %q", greeting, loaded)
-
-			return []base.File{{
-				Path:    filepath.Join(f.Root(), "gen.go"),
-				Content: source(t, gentest.Now(), body),
-			}}, []error{errors.New("fake: warning")}, nil
-		},
 	}
 }
 
@@ -139,7 +162,7 @@ func TestSourceProc(t *testing.T) {
 
 	var loaded *fileloader.PathInput
 
-	p := fakeProc(t, f, &loaded, nil)
+	p := fakeProc(&loaded, nil)
 	assert.Equal(t, p.ParamType(), reflect.TypeFor[fakeParamPartial]())
 	assert.Equal(t, fakeId.ProcKind(), "fake.generate")
 
@@ -167,13 +190,13 @@ func TestSourceProc(t *testing.T) {
 	gen, err := fs.ReadFile(f.FS(), "gen.go")
 	assert.NilError(t, err)
 	assert.Assert(t, strings.Contains(string(gen), `var Greeting = "hello"`), string(gen))
-	assert.Assert(t, strings.Contains(string(gen), `var Loaded = "loaded"`), string(gen))
+	assert.Assert(t, strings.Contains(string(gen), `var Loaded = "loaded.yaml"`), string(gen))
 }
 
 func TestSourceProcParam(t *testing.T) {
 	var loaded *fileloader.PathInput
 
-	i := instantiate(t, fakeProc(t, nil, &loaded, nil))
+	i := instantiate(t, fakeProc(&loaded, nil))
 
 	empty := ""
 	assert.Error(t, i.Param(fakeParamPartial{Greeting: &empty}), "fake: empty greeting")
@@ -195,7 +218,7 @@ func TestSourceProcLoadError(t *testing.T) {
 
 	var loaded *fileloader.PathInput
 
-	i := instantiate(t, fakeProc(t, f, &loaded, errFakeLoad))
+	i := instantiate(t, fakeProc(&loaded, errFakeLoad))
 	assert.NilError(t, i.Param(fakeParamPartial{}))
 	i.In(&procgopackages.Packages{})
 	i.Out(f)
@@ -219,7 +242,7 @@ func TestSourceProcWorkflow(t *testing.T) {
 		"overlayfs.open": procoverlayfs.NewOpenProc,
 		"packages.load":  procgopackages.NewProc,
 		fakeId.ProcKind(): func() workflow.Proc {
-			return fakeProc(t, nil, &loaded, nil)
+			return fakeProc(&loaded, nil)
 		},
 	} {
 		assert.NilError(t, reg.Register(kind, newProc))

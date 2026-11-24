@@ -14,7 +14,7 @@ import (
 // package, carries the marker of a registered generator. Such a
 // declaration is dropped and generated again.
 func (s *selection) generated(obj types.Object) bool {
-	return base.Generated(s.pkgs, s.opts.Registry, obj)
+	return base.Generated(s.pkgs, s.reg, obj)
 }
 
 // implementor reports the implementor named type t refers to, through
@@ -55,7 +55,7 @@ func (s *selection) implementor(t types.Type) (*types.Named, bool) {
 		}
 
 		found = slices.ContainsFunc(base.DeclDocs(pkg, partial), func(doc *ast.CommentGroup) bool {
-			name, ok := s.opts.Registry.Generated(doc)
+			name, ok := s.reg.Generated(doc)
 			return ok && name == GeneratorId.String()
 		})
 	})

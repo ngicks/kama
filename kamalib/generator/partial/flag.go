@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"go/types"
 	"maps"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/ngicks/opiter"
 
-	"github.com/dave/dst"
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
@@ -470,8 +472,8 @@ func (p *mapper) checkFlags(n *typegraph.Node, st *types.Struct) error {
 	return nil
 }
 
-// renderFlagSet prints FlagSetFile of pkg declaring flagSetName.
-func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
+// renderFlagSet returns FlagSetFile of pkg in dir, declaring flagSetName.
+func renderFlagSet(pkg *packages.Package, dir string) (base.Composed, error) {
 	sigs := flagSetSignatures()
 	parser := importdecl.NewParser(pkg.Types)
 	parser.Reserve(types.Universe.Names()...)
@@ -486,13 +488,13 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 			importdecl.Import{Package: importdecl.Package{Path: "time", Name: "time"}},
 		)
 		if err != nil {
-			return nil, err
+			return base.Composed{}, err
 		}
 	}
 
-	m, err := parser.ParseDst(nil)
+	m, err := parser.ParseAst(nil)
 	if err != nil {
-		return nil, err
+		return base.Composed{}, err
 	}
 
 	var pairs []string
@@ -500,7 +502,7 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 	if usesTime {
 		ident, ok := m.Ident("time")
 		if !ok {
-			return nil, fmt.Errorf("partial: unknown package %q", "time")
+			return base.Composed{}, fmt.Errorf("partial: unknown package %q", "time")
 		}
 
 		pairs = append(pairs, "$time.", ident+".")
@@ -526,20 +528,20 @@ func renderFlagSet(pkg *packages.Package, hdr dst.Decorations) ([]byte, error) {
 
 	_, src, err := body.Render(genhelper.NewBaseContext(genhelper.NewScope(), gpkg), nil)
 	if err != nil {
-		return nil, fmt.Errorf("partial: flag set of %s: %w", pkg.PkgPath, err)
+		return base.Composed{}, fmt.Errorf("partial: flag set of %s: %w", pkg.PkgPath, err)
 	}
 
-	decls, err := genhelper.ParseDecls(src)
+	parts, err := filescope.ParseParts(src)
 	if err != nil {
-		return nil, fmt.Errorf("partial: parse flag set of %s: %w", pkg.PkgPath, err)
+		return base.Composed{}, fmt.Errorf("partial: flag set of %s: %w", pkg.PkgPath, err)
 	}
 
-	content, err := genhelper.PrintDstFile(pkg.Name, hdr, "", decls, m)
-	if err != nil {
-		return nil, fmt.Errorf("partial: print flag set of %s: %w", pkg.PkgPath, err)
-	}
-
-	return content, nil
+	return base.Composed{
+		Path:    filepath.Join(dir, base.PackageFile(pkg, FlagSetFile)),
+		Package: pkg.Name,
+		Imports: m,
+		Parts:   parts,
+	}, nil
 }
 
 // checkNoFlags reports a flag option on a field of a target of the package

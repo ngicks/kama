@@ -276,19 +276,19 @@ type A struct {
 }
 `,
 	}
-	pkgs := gentest.Load(t, files)
-	opts := Options{Registry: registry(t), Now: gentest.Now}
-	first, _, err := Generate(pkgs, opts)
+	fsys, pkgs := gentest.LoadFs(t, files)
+	first, _, err := runGenerate(t, fsys, pkgs, testRun{})
 	assert.NilError(t, err)
-	second, _, err := Generate(pkgs, opts)
+	second, _, err := runGenerate(t, fsys, pkgs, testRun{})
 	assert.NilError(t, err)
 	assert.DeepEqual(t, second, first)
 
-	opts = opts.WithDefaults()
-	opts.Loaded, err = NewLoader(nil).LoadPackages(base.SourcePackages(pkgs))
+	loaded, err := NewLoader(nil).LoadPackages(base.SourcePackages(pkgs))
 	assert.NilError(t, err)
 
-	sel, err := selectTargets(base.SourcePackages(pkgs), opts)
+	sel, err := selectTargets(
+		base.SourcePackages(pkgs), Options{}.WithDefaults(), registry(t), loaded,
+	)
 	assert.NilError(t, err)
 
 	n := opiter.WrapSeq(maps.Values(sel.targets())).
@@ -297,13 +297,10 @@ type A struct {
 
 	assert.Assert(t, n != nil)
 
-	hdr, err := fileHeader(opts, n.Id.PackagePath, gentest.Now())
-	assert.NilError(t, err)
-
 	f := &partialFile{src: n.Filename()}
 	for range 2 {
 		_, _, err := renderFileWith(
-			sel, hdr, n.Detail.Pkg, f, []*typegraph.Node{n}, supportPaths, newHelperSet(),
+			sel, n.Detail.Pkg, f, []*typegraph.Node{n}, supportPaths, newHelperSet(),
 		)
 		assert.NilError(t, err)
 	}

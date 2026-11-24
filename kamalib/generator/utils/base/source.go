@@ -1,6 +1,7 @@
 package base
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -76,6 +77,29 @@ func PackageFile(pkg *packages.Package, name string) string {
 
 func pkgPathOf(p *packages.Package) string { return p.PkgPath }
 
+// source returns the package clause and the parts of c, the source of the
+// declarations of c without the imports and the marks.
+func (c Composed) source() []byte {
+	var b bytes.Buffer
+
+	b.WriteString("package " + c.Package + "\n")
+
+	for _, part := range c.Parts {
+		b.WriteString("\n")
+
+		switch p := part.(type) {
+		case Decl:
+			b.Write(p)
+		case Text:
+			b.Write(p)
+		}
+
+		b.WriteString("\n")
+	}
+
+	return b.Bytes()
+}
+
 // BuildConstraint returns the //go:build line of f.
 func BuildConstraint(f *ast.File) (string, bool) {
 	return opiter.WrapSeq(slices.Values(f.Comments)).
@@ -88,14 +112,14 @@ func BuildConstraint(f *ast.File) (string, bool) {
 }
 
 // CheckPredeclared reports package-level declarations of pkg named like a
-// predeclared identifier the generated files spell, which the declaration
+// predeclared identifier the parts of files spell, which the declaration
 // would shadow there. Each error wraps conflict. See [ShadowedPredeclared]
 // for what counts as spelled.
-func CheckPredeclared(pkg *packages.Package, files []File, conflict error) error {
+func CheckPredeclared(pkg *packages.Package, files []Composed, conflict error) error {
 	objs, err := ShadowedPredeclared(
 		pkg,
 		opiter.WrapSeq(slices.Values(files)).
-			Map(func(f File) []byte { return f.Content }).
+			Map(Composed.source).
 			CollectSlice(),
 	)
 	if err != nil {

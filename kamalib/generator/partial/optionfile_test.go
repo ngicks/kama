@@ -35,16 +35,16 @@ type optionDocs struct {
 	pkg string
 }
 
-// loadOptions loads files as gentest.Load does, and the options of their
+// loadOptions loads files as gentest.LoadFs does, and the options of their
 // packages from the directives and from docs.
 func loadOptions(
 	t *testing.T,
 	files map[string]string,
 	docs optionDocs,
-) ([]*packages.Package, *LoadedOptions, error) {
+) (*overlayfs.Fs, []*packages.Package, *LoadedOptions, error) {
 	t.Helper()
 
-	pkgs := gentest.Load(t, files)
+	f, pkgs := gentest.LoadFs(t, files)
 	expand := func(doc string) *fstest.MapFile {
 		return &fstest.MapFile{
 			Data: []byte(strings.ReplaceAll(doc, "$pkg", strconv.Quote(modulePath(t)))),
@@ -77,23 +77,23 @@ func loadOptions(
 
 	loaded, err := NewLoader(central).LoadOption(fsys, root, base.SourcePackages(pkgs))
 
-	return pkgs, loaded, loadError(err)
+	return f, pkgs, loaded, loadError(err)
 }
 
 // generateWithOptions runs Generate on files with the options of their
 // directives and of docs, a registry of this generator only and
 // gentest.Now.
 func generateWithOptions(t *testing.T, files map[string]string, docs optionDocs) (
-	[]File, []error, error,
+	[]base.File, []error, error,
 ) {
 	t.Helper()
 
-	pkgs, loaded, err := loadOptions(t, files, docs)
+	f, pkgs, loaded, err := loadOptions(t, files, docs)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return Generate(pkgs, Options{Registry: registry(t), Now: gentest.Now, Loaded: loaded})
+	return runGenerate(t, f, pkgs, testRun{Loaded: loaded})
 }
 
 // generatedWithOptions returns the files generateWithOptions gives keyed by
@@ -217,7 +217,7 @@ ignore = true
 
 	for ext, doc := range docs {
 		t.Run(ext, func(t *testing.T) {
-			_, loaded, err := loadOptions(
+			_, _, loaded, err := loadOptions(
 				t,
 				map[string]string{"x.go": src},
 				optionDocs{central: doc, ext: ext},
@@ -293,7 +293,7 @@ func TestOptionFileDecodeErrors(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, _, err := loadOptions(t, map[string]string{"x.go": src}, optionDocs{
+			_, _, _, err := loadOptions(t, map[string]string{"x.go": src}, optionDocs{
 				central: "version: 1\npackages:\n  $pkg:\n" + c.doc,
 			})
 			assert.ErrorIs(t, err, ErrOptionFile)
@@ -309,7 +309,7 @@ func TestOptionFileDecodeErrors(t *testing.T) {
 func TestOptionFileUnknownKeys(t *testing.T) {
 	const src = "package x\n\ntype S struct{ F int }\n"
 
-	_, loaded, err := loadOptions(t, map[string]string{"x.go": src}, optionDocs{central: `
+	_, _, loaded, err := loadOptions(t, map[string]string{"x.go": src}, optionDocs{central: `
 version: 1
 packages:
   $pkg:

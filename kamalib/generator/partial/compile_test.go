@@ -22,7 +22,7 @@ func generateInto(t *testing.T, f *overlayfs.Fs, opts gopackages.Options) {
 
 	pkgs, err := gopackages.Load(context.Background(), f, opts)
 	assert.NilError(t, err)
-	out, warnings, err := Generate(pkgs, Options{Registry: registry(t)})
+	out, warnings, err := runGenerate(t, f, pkgs, testRun{})
 	assert.NilError(t, err)
 	// A partial file of a build variant not loaded is not stale.
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
@@ -109,7 +109,7 @@ func TestForeignUnexportedFields(t *testing.T) {
 		"a.go": "package x\n\nimport \"" + modulePath(t) + "/sub\"\n\n" +
 			"//kama:partial\ntype A sub.Exported\n",
 		"sub/sub.go": "package sub\n\ntype Exported struct {\n\tPublic int\n\tprivate int\n}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 
 	for _, s := range []string{"Fields.A (", "field private", "sub.go:5:2", "unexported"} {
@@ -121,7 +121,7 @@ func TestForeignUnexportedFields(t *testing.T) {
 			"//kama:partial\ntype A sub.Exported\n",
 		"sub/sub.go": "package sub\n\ntype Exported struct {\n\tPublic int\n\thidden\n}\n\n" +
 			"type hidden struct{ N int }\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, "field hidden")
 }
@@ -166,12 +166,27 @@ func TestPredeclaredShadowed(t *testing.T) {
 
 	for _, name := range []string{"make", "len", "append", "new", "nil"} {
 		t.Run(name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{"a.go": src + name + " int\n"}, Options{})
+			_, err := generate(t, map[string]string{"a.go": src + name + " int\n"}, testRun{})
 			assert.ErrorIs(t, err, ErrConflict)
 			assert.ErrorContains(t, err, "a.go:16:6")
 			assert.ErrorContains(t, err, "predeclared "+name)
 		})
 	}
+}
+
+// TestErrorsOfEveryPackage reports the error of each package: an error in
+// the files of one package does not stop the files of the next.
+func TestErrorsOfEveryPackage(t *testing.T) {
+	const src = "//kama:partial\ntype A struct {\n\t//kama:partial:merge append\n\tN []int\n}\n\n" +
+		"type append int\n"
+
+	_, err := generate(t, map[string]string{
+		"a.go":   "package x\n\n" + src,
+		"y/y.go": "package y\n\n" + src,
+	}, testRun{})
+	assert.ErrorIs(t, err, ErrConflict)
+	assert.ErrorContains(t, err, modulePath(t)+".append shadows the predeclared append")
+	assert.ErrorContains(t, err, modulePath(t)+"/y.append shadows the predeclared append")
 }
 
 func TestTypeParamNamedLikePredeclared(t *testing.T) {
@@ -180,7 +195,7 @@ func TestTypeParamNamedLikePredeclared(t *testing.T) {
 			_, err := generate(t, map[string]string{
 				"a.go": "package x\n\n//kama:partial\ntype A[" + name + " any] struct {\n" +
 					"\t//kama:partial:flag name=b\n\tB bool\n\tV " + name + "\n}\n",
-			}, Options{})
+			}, testRun{})
 			assert.ErrorIs(t, err, ErrConflict)
 			assert.ErrorContains(t, err, "a.go:4:8")
 			assert.ErrorContains(t, err, "type parameter "+name+" of A")
@@ -334,8 +349,7 @@ type EmbP[T any] struct{ F T }
 			f, load := gentest.Stage(t, files)
 			pkgs, err := gopackages.Load(t.Context(), f, load)
 			assert.NilError(t, err)
-			opts.Registry = registry(t)
-			out, _, err := Generate(pkgs, opts)
+			out, _, err := runGenerate(t, f, pkgs, testRun{Options: opts})
 			assert.NilError(t, err)
 
 			gentest.Write(t, f, out)

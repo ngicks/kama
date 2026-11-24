@@ -4,7 +4,6 @@ import (
 	"slices"
 
 	"github.com/ngicks/option/opt"
-	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
@@ -65,28 +64,18 @@ func NewProcWith(reg *rule.Registry) func() workflow.Proc {
 	return func() workflow.Proc { return procWith(reg) }
 }
 
-func procWith(
-	reg *rule.Registry,
-) base.SourceProc[ProcParamPartial, ProcParam, Options, *LoadedOptions] {
-	return base.SourceProc[ProcParamPartial, ProcParam, Options, *LoadedOptions]{
-		Id:      GeneratorId,
-		Default: DefaultProcParam,
+func procWith(reg *rule.Registry) base.SourceProc[
+	ProcParamPartial, ProcParam, Options, PackageOptions, TypeOptions, FieldOptions,
+] {
+	return base.SourceProc[
+		ProcParamPartial, ProcParam, Options, PackageOptions, TypeOptions, FieldOptions,
+	]{
+		Generator: Generator,
+		Default:   DefaultProcParam,
 		Options: func(p ProcParam) (Options, opt.Option[fileloader.PathInput], error) {
 			return Options{Registry: reg}, p.OptionFile, nil
 		},
 		Loader:    NewLoader(nil),
 		LoadError: loadError,
-		Generate:  generateLoaded,
 	}
-}
-
-// generateLoaded runs Generate with loaded as the loaded options.
-func generateLoaded(
-	pkgs []*packages.Package,
-	opts Options,
-	loaded *LoadedOptions,
-) ([]File, []error, error) {
-	opts.Loaded = loaded
-
-	return Generate(pkgs, opts)
 }

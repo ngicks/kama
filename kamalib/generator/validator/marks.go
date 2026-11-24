@@ -42,7 +42,7 @@ func ignoreMark(to typeOptions) (optionSource, bool) {
 }
 
 func (s *selection) ignored(id typegraph.QualifiedType) bool {
-	to, _ := s.opts.Loaded.Option.Type(id)
+	to, _ := s.loadedOptions.Option.Type(id)
 	_, ok := ignoreMark(to)
 
 	return ok
@@ -52,7 +52,7 @@ func (s *selection) ignored(id typegraph.QualifiedType) bool {
 // entry of the type id name for the value of the type, those of its type
 // group first.
 func (s *selection) typeValidators(id typegraph.QualifiedType) []ValidatorOptions {
-	to, _ := s.opts.Loaded.Option.Type(id)
+	to, _ := s.loadedOptions.Option.Type(id)
 	return slices.Concat(to.Group.Validators, to.Type.Validators)
 }
 
@@ -64,12 +64,12 @@ func (s *selection) marked(n *typegraph.Node) bool {
 		return false
 	}
 
-	to, _ := s.opts.Loaded.Option.Type(n.Id)
+	to, _ := s.loadedOptions.Option.Type(n.Id)
 	if _, ok := explicitMark(to); ok {
 		return true
 	}
 
-	po := s.opts.Loaded.Option.Packages[n.Id.PackagePath]
+	po := s.loadedOptions.Option.Packages[n.Id.PackagePath]
 	allTypes := opiter.WrapSeq(maps.Values(po.Files)).
 		Any(func(p PackageOptions) bool { return p.AllTypes })
 
@@ -79,11 +79,11 @@ func (s *selection) marked(n *typegraph.Node) bool {
 // hookOn reports whether Validate of n calls the hook of the field v: as
 // the field says, else as the type says, else when n is marked.
 func (s *selection) hookOn(n *typegraph.Node, v *types.Var) bool {
-	if on := s.opts.Loaded.Option.Field(n.Id, v.Name()).Hook; on != nil {
+	if on := s.loadedOptions.Option.Field(n.Id, v.Name()).Hook; on != nil {
 		return *on
 	}
 
-	to, _ := s.opts.Loaded.Option.Type(n.Id)
+	to, _ := s.loadedOptions.Option.Type(n.Id)
 	for _, o := range []TypeOptions{to.Type, to.Group} {
 		if o.Hook != nil {
 			return *o.Hook
@@ -99,7 +99,7 @@ func (s *selection) hookOn(n *typegraph.Node, v *types.Var) bool {
 func (s *selection) checkMarks(g *typegraph.Graph) error {
 	var errs []error
 
-	for id, to := range s.opts.Loaded.Option.Types() {
+	for id, to := range s.loadedOptions.Option.Types() {
 		mark, isMarked := explicitMark(to)
 		ignore, isIgnored := ignoreMark(to)
 
@@ -119,7 +119,7 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 		if !ok || !s.validatesValue(n) {
 			err := base.MarkedTypeError(
 				s.pkgs,
-				s.opts.Markers,
+				s.markers,
 				g,
 				id,
 				mark.origin(),
@@ -148,7 +148,7 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 func (s *selection) checkFieldOptions() error {
 	var errs []error
 
-	for id, to := range s.opts.Loaded.Option.Types() {
+	for id, to := range s.loadedOptions.Option.Types() {
 		isTarget := s.isTargetId(id)
 
 		for _, o := range []TypeOptions{to.Type, to.Group} {

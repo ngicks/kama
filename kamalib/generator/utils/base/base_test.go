@@ -147,15 +147,15 @@ func TestHostShared(t *testing.T) {
 	})
 }
 
-func TestRelFiles(t *testing.T) {
+func TestInputRel(t *testing.T) {
 	root := t.TempDir()
-	files, err := RelFiles(root, []File{
-		{Path: filepath.Join(root, "a", "b.go"), Content: []byte("x")},
-	})
-	assert.NilError(t, err)
-	assert.DeepEqual(t, files, []File{{Path: "a/b.go", Content: []byte("x")}})
+	in := Input[struct{}, struct{}, struct{}, struct{}]{Root: root}
 
-	_, err = RelFiles(root, []File{{Path: filepath.Join(filepath.Dir(root), "b.go")}})
+	rel, err := in.Rel(filepath.Join(root, "a", "b.go"))
+	assert.NilError(t, err)
+	assert.Equal(t, rel, "a/b.go")
+
+	_, err = in.Rel(filepath.Join(filepath.Dir(root), "b.go"))
 	assert.ErrorContains(t, err, "is outside")
 }
 

@@ -33,7 +33,7 @@ func generateDependent(
 	pkgs, err := gopackages.Load(ctx, f, gopackages.Options{Patterns: []string{top}})
 	assert.NilError(t, err)
 
-	produced, warnings, genErr := Generate(pkgs, Options{Registry: registry(t), Now: gentest.Now})
+	produced, warnings, genErr := runGenerate(t, f, pkgs, testRun{})
 	if genErr != nil {
 		return nil, genErr, nil
 	}
@@ -126,10 +126,8 @@ func TestImplementorOfTheRun(t *testing.T) {
 			"//kama:generated kama:partial\ntype IPartial struct{}\n",
 	}
 
-	out, _, err := Generate(
-		gentest.Load(t, files),
-		Options{Registry: registry(t), Now: gentest.Now},
-	)
+	f, pkgs := gentest.LoadFs(t, files)
+	out, _, err := runGenerate(t, f, pkgs, testRun{})
 	assert.NilError(t, err)
 
 	for _, o := range out {
@@ -226,7 +224,7 @@ func TestImplementorHoldingLoadedType(t *testing.T) {
 	)
 	assert.NilError(t, err)
 
-	out, _, err := Generate(pkgs, Options{Registry: registry(t), Now: gentest.Now})
+	out, _, err := runGenerate(t, f, pkgs, testRun{})
 	assert.NilError(t, err)
 
 	gentest.Write(t, f, out)

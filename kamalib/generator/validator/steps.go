@@ -19,9 +19,8 @@ type decl = genhelper.Decl
 // state.
 var lang genhelper.Lang[genCtx]
 
-// docComment returns the doc comment of a generated declaration as one
-// comment group: the text of format and args, an empty comment line and the
-// marker of the generator.
+// docComment returns the doc comment of a generated declaration, the text
+// of format and args.
 func docComment(format string, args ...any) genExpr {
-	return lang.DocComment(GeneratorId.Marker(), format, args...)
+	return lang.Comment(lang.Expr(format, args...))
 }

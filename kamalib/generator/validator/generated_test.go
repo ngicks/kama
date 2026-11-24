@@ -46,7 +46,7 @@ func (Union) Validate(bool) error { return nil }
 //
 //kama:generated x:models
 type wire struct{ M Model }
-`}, Options{Markers: reg})
+`}, testRun{Markers: reg})
 	assert.NilError(t, err)
 
 	files := gentest.ByBase(out)

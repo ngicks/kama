@@ -40,14 +40,14 @@ func testFiles(t *testing.T) map[string]string {
 
 // generateTests generates from the packages opts loads from f with their
 // tests when tests is set, and fails on a warning.
-func generateTests(t *testing.T, f *overlayfs.Fs, opts gopackages.Options, tests bool) []File {
+func generateTests(t *testing.T, f *overlayfs.Fs, opts gopackages.Options, tests bool) []base.File {
 	t.Helper()
 
 	opts.Tests = tests
 	pkgs, err := gopackages.Load(context.Background(), f, opts)
 	assert.NilError(t, err)
 
-	out, warnings, err := Generate(pkgs, Options{Registry: registry(t), Now: gentest.Now})
+	out, warnings, err := runGenerate(t, f, pkgs, testRun{})
 	assert.NilError(t, err)
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
 
@@ -56,11 +56,11 @@ func generateTests(t *testing.T, f *overlayfs.Fs, opts gopackages.Options, tests
 
 // relPaths returns the paths of files relative to the inline directory of
 // t, sorted.
-func relPaths(t *testing.T, f *overlayfs.Fs, files []File) []string {
+func relPaths(t *testing.T, f *overlayfs.Fs, files []base.File) []string {
 	t.Helper()
 
 	return opiter.WrapSeq(slices.Values(files)).
-		Map(func(file File) string {
+		Map(func(file base.File) string {
 			rel, err := filepath.Rel(filepath.Join(f.Root(), gentest.InlineDir(t)), file.Path)
 			assert.NilError(t, err)
 
@@ -144,7 +144,7 @@ func TestTestFilesWithoutTests(t *testing.T) {
 	})
 
 	want := opiter.WrapSeq(slices.Values(withTests)).
-		Filter(func(file File) bool { return !strings.HasSuffix(file.Path, "_test.go") }).
+		Filter(func(file base.File) bool { return !strings.HasSuffix(file.Path, "_test.go") }).
 		CollectSlice()
 
 	assert.DeepEqual(t, without, want)
@@ -184,10 +184,7 @@ func TestTestFilesOptionFiles(t *testing.T) {
 		x: gentest.InlineDir(t) + "/kama_partial.yaml",
 	})
 
-	out, warnings, err := Generate(
-		pkgs,
-		Options{Registry: registry(t), Now: gentest.Now, Loaded: loaded},
-	)
+	out, warnings, err := runGenerate(t, f, pkgs, testRun{Loaded: loaded})
 	assert.NilError(t, err)
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
 
@@ -211,7 +208,7 @@ func TestTestFilesOptionFiles(t *testing.T) {
 
 // TestTestFilesOnly checks a package whose targets all lie in its test
 // files. Its flag set file is the one of the package, and a run without
-// the tests keeps it and finds nothing stale.
+// the tests keeps it, generating it again, and finds nothing stale.
 func TestTestFilesOnly(t *testing.T) {
 	f, opts := gentest.Stage(t, map[string]string{
 		"a.go":      "package x\n",
@@ -226,7 +223,11 @@ func TestTestFilesOnly(t *testing.T) {
 
 	gentest.Write(t, f, out)
 
-	assert.Equal(t, len(generateTests(t, f, opts, false)), 0)
+	assert.DeepEqual(
+		t,
+		relPaths(t, f, generateTests(t, f, opts, false)),
+		[]string{"zz_gen.flagset.kama_partial.go"},
+	)
 }
 
 // TestTestFilesReach checks that a target of a test file reaches the types
@@ -255,9 +256,9 @@ func TestTestFilesReach(t *testing.T) {
 	pkgs, err := gopackages.Load(context.Background(), f, opts)
 	assert.NilError(t, err)
 
-	files, warnings, err := Generate(pkgs, Options{Registry: registry(t), Now: gentest.Now})
+	files, warnings, err := runGenerate(t, f, pkgs, testRun{})
 	assert.NilError(t, err)
-	assert.Equal(t, len(files), 0)
+	assert.DeepEqual(t, relPaths(t, f, files), []string{"zz_gen.flagset.kama_partial.go"})
 	assert.Equal(t, len(warnings), 1)
 	assert.ErrorIs(t, warnings[0], ErrStale)
 	assert.ErrorContains(t, warnings[0], "a.kama_partial.go")

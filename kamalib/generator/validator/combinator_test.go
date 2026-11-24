@@ -74,7 +74,7 @@ func TestCombinatorHeldValue(t *testing.T) {
 	_, err := generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
 			"\t//kama:validate or(nil, cmp=\">=1\")\n\tQ *int\n}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, `operand cmp=">=1": *int is not an integer, float, string`)
 	assert.ErrorContains(t, err, "for the value it holds: operand nil: int is not nillable")
@@ -105,7 +105,7 @@ func TestCombinatorOperandRegistry(t *testing.T) {
 		check(`validation.Field(kamaValidateLengthOne(len(v.S)), "S")`),
 	)
 
-	_, err = generate(t, files, Options{})
+	_, err = generate(t, files, testRun{})
 	assert.ErrorIs(t, err, ErrDirective)
 	assert.ErrorIs(t, err, rule.ErrUnknown)
 	assert.ErrorContains(
@@ -248,7 +248,7 @@ func TestCombinatorErrors(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{"a.go": "package x\n\n" + tc.src}, Options{})
+			_, err := generate(t, map[string]string{"a.go": "package x\n\n" + tc.src}, testRun{})
 			for _, is := range tc.is {
 				assert.ErrorIs(t, err, is)
 			}

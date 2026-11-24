@@ -49,7 +49,7 @@ func generateWithWarnings(
 		return nil, nil, loadError(err)
 	}
 
-	out, warnings, err := Generate(pkgs, testOptions(t, Options{Loaded: loaded}))
+	out, warnings, err := runGenerate(t, f, pkgs, testRun{Loaded: loaded})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -247,7 +247,7 @@ func TestSubDirective(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{"a.go": "package x\n\n" + tc.src}, Options{})
+			_, err := generate(t, map[string]string{"a.go": "package x\n\n" + tc.src}, testRun{})
 			assert.ErrorIs(t, err, ErrDirective)
 			assert.ErrorContains(t, err, tc.want)
 		})

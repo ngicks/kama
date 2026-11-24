@@ -4,6 +4,7 @@
 package gentest
 
 import (
+	"cmp"
 	"context"
 	"go/ast"
 	"go/parser"
@@ -22,6 +23,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -80,11 +82,69 @@ func Stage(
 func Load(t *testing.T, files map[string]string, opts ...overlayfs.Option) []*packages.Package {
 	t.Helper()
 
+	_, pkgs := LoadFs(t, files, opts...)
+
+	return pkgs
+}
+
+// LoadFs is Load returning the overlay the files are staged into too.
+func LoadFs(
+	t *testing.T,
+	files map[string]string,
+	opts ...overlayfs.Option,
+) (*overlayfs.Fs, []*packages.Package) {
+	t.Helper()
+
 	f, loadOpts := Stage(t, files, opts...)
 	pkgs, err := gopackages.Load(context.Background(), f, loadOpts)
 	assert.NilError(t, err)
 
-	return pkgs
+	return f, pkgs
+}
+
+// Run runs g on in as base.Drive does with out, a registry and the time
+// now, and stages nothing. It returns the files formatted by out, with
+// absolute paths under the root of out and sorted by path, the warnings g
+// reported followed by those of the stale check of scope, and the errors.
+func Run[I any](
+	ctx context.Context,
+	g base.Generator[I],
+	reg *genmark.Registry,
+	now time.Time,
+	in I,
+	scope base.Scope,
+	out *overlayfs.Fs,
+) ([]base.File, []error, error) {
+	r := &RecordReporter{}
+	env := base.Env{Reporter: r, Now: now, Registry: reg, Out: out.FS()}
+
+	files, err := base.Assemble(ctx, g, env, in)
+	if err != nil {
+		return nil, r.Warnings, err
+	}
+
+	stale, err := base.StaleCheck{Registry: reg, Generator: g.Id}.InScope(out.FS(), scope, files)
+	if err != nil {
+		return nil, r.Warnings, err
+	}
+
+	formatted := make([]base.File, 0, len(files))
+
+	for _, f := range files {
+		content, err := out.Format(ctx, f.Path, f.Content)
+		if err != nil {
+			return nil, r.Warnings, err
+		}
+
+		formatted = append(formatted, base.File{
+			Path:    filepath.Join(out.Root(), filepath.FromSlash(f.Path)),
+			Content: content,
+		})
+	}
+
+	slices.SortFunc(formatted, func(a, b base.File) int { return cmp.Compare(a.Path, b.Path) })
+
+	return formatted, slices.Concat(r.Warnings, stale), nil
 }
 
 // Write writes files, generated under the root of f, into f.

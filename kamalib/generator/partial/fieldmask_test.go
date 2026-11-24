@@ -243,7 +243,7 @@ func TestFieldMaskErrors(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{"x.go": c.src}, Options{})
+			_, err := generate(t, map[string]string{"x.go": c.src}, testRun{})
 			assert.ErrorIs(t, err, c.is)
 
 			for _, s := range c.contains {

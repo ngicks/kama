@@ -22,26 +22,6 @@ type File struct {
 	Content []byte
 }
 
-// RelFiles returns files with their absolute paths made slash-separated and
-// relative to root. A path outside root is an error.
-func RelFiles(root string, files []File) ([]File, error) {
-	out := make([]File, 0, len(files))
-	for _, f := range files {
-		rel, err := filepath.Rel(root, f.Path)
-		if err != nil {
-			return nil, fmt.Errorf("base: %w", err)
-		}
-
-		if !inside(rel) {
-			return nil, fmt.Errorf("base: %q is outside %q", f.Path, root)
-		}
-
-		out = append(out, File{Path: filepath.ToSlash(rel), Content: f.Content})
-	}
-
-	return out, nil
-}
-
 // inside reports whether rel, a path relative to a directory, stays in it.
 func inside(rel string) bool {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
@@ -72,22 +52,6 @@ func Stage(ctx context.Context, fsys *overlayfs.Fs, files []File, r workflow.Rep
 	r.Progress(fmt.Sprintf("%s written, %s unchanged", fileCount(written), fileCount(kept)))
 
 	return nil
-}
-
-// StageWithWarnings reports each of warnings to r and then calls [Stage]
-// with fsys, files and r.
-func StageWithWarnings(
-	ctx context.Context,
-	fsys *overlayfs.Fs,
-	files []File,
-	warnings []error,
-	r workflow.Reporter,
-) error {
-	for _, w := range warnings {
-		r.Warn(w)
-	}
-
-	return Stage(ctx, fsys, files, r)
 }
 
 func fileCount(n int) string {

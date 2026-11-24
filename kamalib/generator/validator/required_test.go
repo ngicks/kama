@@ -154,7 +154,7 @@ func TestRequiredErrors(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{"a.go": "package x\n\n" + tc.src}, Options{})
+			_, err := generate(t, map[string]string{"a.go": "package x\n\n" + tc.src}, testRun{})
 			assert.ErrorIs(t, err, tc.is)
 
 			for _, msg := range tc.msgs {
@@ -171,7 +171,7 @@ func TestHelperFileForeignDecl(t *testing.T) {
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
 			"\t//kama:validate required\n\tN int\n}\n",
 		HelpersFile: "package x\n\nvar mine = 1\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, HelpersFile+" holds a declaration the generator did not write")
 }
@@ -308,7 +308,7 @@ type A struct {
 	_, err = generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
 			"\t//kama:validate positive\n\tS *string\n}\n",
-	}, Options{Registry: reg})
+	}, testRun{Registry: reg})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	// The error names the type of the field.
 	assert.ErrorContains(t, err, "*string is not an integer")
@@ -333,7 +333,7 @@ func TestReservedNames(t *testing.T) {
 
 			_, err := generate(t, map[string]string{
 				"a.go": "package x\n\n//kama:validate hook=off\ntype A struct{ N int }\n",
-			}, Options{Registry: reg})
+			}, testRun{Registry: reg})
 			assert.ErrorIs(t, err, ErrConflict)
 			assert.ErrorContains(t, err, "validators registered as "+name+";")
 		})

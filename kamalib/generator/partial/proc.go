@@ -5,7 +5,6 @@ import (
 
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
-	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
@@ -66,13 +65,14 @@ func (p *ProcParamPartial) UnknownKeys() [][]string {
 // present.
 func NewProc() workflow.Proc { return proc }
 
-var proc = base.SourceProc[ProcParamPartial, ProcParam, Options, *LoadedOptions]{
-	Id:        GeneratorId,
+var proc = base.SourceProc[
+	ProcParamPartial, ProcParam, Options, PackageOptions, TypeOptions, FieldOptions,
+]{
+	Generator: Generator,
 	Default:   DefaultProcParam,
 	Options:   procOptions,
 	Loader:    NewLoader(nil),
 	LoadError: loadError,
-	Generate:  generateLoaded,
 }
 
 // procOptions returns the options of p and the option file it names.
@@ -87,15 +87,4 @@ func procOptions(p ProcParam) (Options, opt.Option[fileloader.PathInput], error)
 	}
 
 	return opts.WithDefaults(), p.OptionFile, nil
-}
-
-// generateLoaded runs Generate with loaded as the loaded options.
-func generateLoaded(
-	pkgs []*packages.Package,
-	opts Options,
-	loaded *LoadedOptions,
-) ([]File, []error, error) {
-	opts.Loaded = loaded
-
-	return Generate(pkgs, opts)
 }

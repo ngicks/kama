@@ -313,11 +313,11 @@ func TestRegistry(t *testing.T) {
 		"a.kama_partial.go": "package x\n\n//kama:generated kama:partial\n" +
 			"type APartial struct{}\n",
 	}
-	_, err := generate(t, files, Options{})
+	_, err := generate(t, files, testRun{})
 	assert.NilError(t, err)
 
 	// A registry without the generator does not tell its declarations.
-	_, err = generate(t, files, Options{Registry: genmark.NewRegistry(base.ToolName)})
+	_, err = generate(t, files, testRun{Registry: genmark.NewRegistry(base.ToolName)})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, "APartial is already declared")
 }
@@ -327,7 +327,7 @@ func TestMethodConflicts(t *testing.T) {
 		"a.go": "package x\n\n//kama:partial\ntype A struct{}\n",
 		"a.kama_partial.go": "package x\n\n//kama:generated kama:partial\n" +
 			"type APartial struct{}\n\nfunc (APartial) Merge() {}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, "a.kama_partial.go:6:17")
 	assert.ErrorContains(t, err, "method Merge of")
@@ -335,7 +335,7 @@ func TestMethodConflicts(t *testing.T) {
 	_, err = generate(t, map[string]string{
 		"a.go":      "package x\n\n//kama:partial\ntype A struct{}\n",
 		FlagSetFile: "package x\n\nfunc mine() {}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, FlagSetFile+":3:1")
 }
@@ -435,7 +435,7 @@ type L []int
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			files := generatedWith(t, src, c.opts)
+			files := generatedWith(t, src, testRun{Options: c.opts})
 
 			fs := funcs(t, files["a.kama_partial.go"])
 			for _, w := range c.want(helperIn(t, files[HelpersFile])) {
@@ -526,7 +526,7 @@ func TestHelperDeclared(t *testing.T) {
 	_, err := generate(t, map[string]string{
 		"x.go": "package x\n\n//kama:partial\ntype A struct{ X M }\n\n" +
 			"type M struct{}\n\nfunc " + name + "() {}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, "x.go:8:6")
 	assert.ErrorContains(t, err, name)

@@ -8,8 +8,9 @@
 // and on the fields of T, validates the values the fields hold through
 // their own Validate, and calls a hook method per field. It returns errors of
 // package github.com/ngicks/kama/kamalib/pkg/validation, located by the
-// json names of the fields. The proc of NewProc runs Generate as the
-// workflow step kind validate.generate. Shallow validation and Raw JSON
+// json names of the fields. Generator is the generator of the framework
+// of package base, and the proc of NewProc runs it as the workflow step
+// kind validate.generate. Shallow validation and Raw JSON
 // text describe the methods ValidateShallow and ValidateEvaluated that
 // some targets get besides.
 //
@@ -159,7 +160,7 @@
 // //kama:validate in its doc comment or an option file entry marks it
 // explicitly. A generator of data models, such as the one of package
 // github.com/ngicks/kama/kamalib/generator/jsonschema, hands its types on
-// that way. Options.Markers tells the registered generators.
+// that way. The registry of base.Env tells the registered generators.
 //
 // # Implementors
 //
@@ -551,7 +552,7 @@
 //
 // An option file gives the options of the directives for types that cannot
 // carry them, such as generated code. ProcParam.OptionFile names the file
-// the proc reads, and Options.Loaded holds the loaded options. The Loader of
+// the proc reads, and Input.Loaded holds the loaded options. The Loader of
 // NewLoader loads them. The file is JSON, YAML or TOML:
 //
 //	version: 1
@@ -590,8 +591,8 @@
 // genopt.ErrUnknownKey that names the file and the key path. An entry
 // holding unknown keys only does not list its type or field, so a
 // misspelt ignore leaves the directives in effect. The entry of a
-// type replaces every directive on the type and its fields, and Generate
-// returns a warning wrapping genopt.ErrOverridden for a type whose
+// type replaces every directive on the type and its fields, and the proc
+// reports a warning wrapping genopt.ErrOverridden for a type whose
 // directives are replaced. The free-floating directives stay in effect
 // beside the file.
 //
@@ -625,15 +626,16 @@
 // and a declaration in a helpers file that the generator did not write, are
 // errors wrapping ErrConflict.
 //
-// Every generated file starts with a header naming the generator, the
-// option_file and package_option_file it read, and the time of the run.
+// Every generated file starts with a header naming the generator
+// kama:validate, the option_file and package_option_file it read, and the
+// time of the run.
 // The proc keeps a file that differs from the existing one in the generated:
 // line only. A run without changes therefore leaves every file as it was.
 //
 // A file of the loaded packages is stale when it holds a declaration with
-// the marker of the generator and the run does not produce it. Generate
-// returns a warning wrapping ErrStale for a stale file, and the proc reports
-// it. The file is left in place; delete it if it is no longer needed.
+// the marker of the generator and the run does not produce it. The proc
+// reports a warning wrapping ErrStale for a stale file. The file is left in
+// place; delete it if it is no longer needed.
 //
 // # Test files
 //

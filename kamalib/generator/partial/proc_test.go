@@ -6,6 +6,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	procgopackages "github.com/ngicks/kama/kamalib/proc/gopackages"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -17,7 +18,7 @@ type procInstance interface {
 	In(pkgs *procgopackages.Packages)
 	Out(f *overlayfs.Fs)
 	Run(ctx context.Context, r workflow.Reporter) error
-	Files(ctx context.Context, r workflow.Reporter) ([]File, error)
+	Files(ctx context.Context, r workflow.Reporter) ([]base.File, error)
 }
 
 func newInstance(t *testing.T, p workflow.Proc) procInstance {

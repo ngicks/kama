@@ -195,7 +195,7 @@ func TestFlagErrors(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{"x.go": c.src}, Options{})
+			_, err := generate(t, map[string]string{"x.go": c.src}, testRun{})
 			assert.ErrorIs(t, err, c.is)
 
 			for _, s := range c.contains {
@@ -275,7 +275,7 @@ func TestFlagSetFileConflict(t *testing.T) {
 		"a.go": "package x\n\n//kama:partial\ntype A struct {\n" +
 			"\t//kama:partial:flag name=b\n\tB string\n}\n",
 		FlagSetFile: "package x\n\nfunc stray() {}\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, FlagSetFile+" holds a declaration")
 }
@@ -285,15 +285,16 @@ func TestFlagSetFileConflict(t *testing.T) {
 func TestFlagSetMarkedVar(t *testing.T) {
 	// The marked variable makes a.go look like a stale generated file, which
 	// only warns.
-	_, _, err := Generate(gentest.Load(t, map[string]string{
+	f, pkgs := gentest.LoadFs(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n\n" +
 			"// PartialFlagSet is stale.\n//\n//kama:generated kama:partial\nvar PartialFlagSet int\n",
-	}), Options{Registry: registry(t), Now: gentest.Now})
+	})
+	_, _, err := runGenerate(t, f, pkgs, testRun{})
 	assert.NilError(t, err)
 
 	_, err = generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n\nvar PartialFlagSet int\n",
-	}, Options{})
+	}, testRun{})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, "PartialFlagSet is already declared for the flag set")
 }
@@ -303,13 +304,13 @@ func TestFlagSetMarkedVar(t *testing.T) {
 func TestFlagSetOmitted(t *testing.T) {
 	files := generatedWith(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ N int }\n",
-	}, Options{OmitFlagSet: true})
+	}, testRun{OmitFlagSet: true})
 	assert.DeepEqual(t, slices.Sorted(maps.Keys(files)), []string{"a.kama_partial.go"})
 
 	_, err := generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct {\n" +
 			"\t//kama:partial:flag name=n\n\tN int\n}\n",
-	}, Options{OmitFlagSet: true})
+	}, testRun{OmitFlagSet: true})
 	assert.ErrorIs(t, err, ErrOption)
 	assert.ErrorContains(t, err, "TestFlagSetOmitted.A.N")
 	assert.ErrorContains(t, err, "flag_set")

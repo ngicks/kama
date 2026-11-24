@@ -12,6 +12,7 @@ import (
 	"github.com/dave/dst"
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
@@ -115,4 +116,32 @@ func (s *Scope) FuncContext(tparams []string) genhelper.BaseContext {
 	sc.Reserve(tparams...)
 
 	return genhelper.NewBaseContext(sc, &genhelper.Package{Imports: s.Imports, Path: s.Pkg.PkgPath})
+}
+
+// Parts prints each of decls as a [base.Decl] of its own, so that the
+// framework marks each declaration.
+func Parts(decls []dst.Decl) ([]base.Part, error) {
+	parts := make([]base.Part, 0, len(decls))
+
+	for _, d := range decls {
+		b, err := gofragment.PrintDstDecls([]dst.Decl{d})
+		if err != nil {
+			return nil, fmt.Errorf("filescope: %w", err)
+		}
+
+		parts = append(parts, base.Decl(b))
+	}
+
+	return parts, nil
+}
+
+// ParseParts parses src, holding top-level declarations only, and returns
+// them as [Parts] does.
+func ParseParts(src []byte) ([]base.Part, error) {
+	decls, err := gofragment.ParseDstDecls(src)
+	if err != nil {
+		return nil, fmt.Errorf("filescope: %w", err)
+	}
+
+	return Parts(decls)
 }

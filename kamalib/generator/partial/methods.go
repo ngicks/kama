@@ -42,7 +42,7 @@ func (s *selection) partialMethodNames(n *typegraph.Node) []string {
 
 // flagged reports whether a field of the target id holds a flag option.
 func (s *selection) flagged(id typegraph.QualifiedType) bool {
-	to, _ := s.opts.Loaded.Option.Type(id)
+	to, _ := s.loaded.Option.Type(id)
 	fields, _ := to.Fields.Unpack()
 
 	return opiter.WrapSeq(maps.Values(fields)).

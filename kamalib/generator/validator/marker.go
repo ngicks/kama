@@ -59,7 +59,7 @@ func hasEvaluated(named *types.Named) bool {
 // decoded reports whether //kama:validate decoded, or its option file
 // counterpart, tells that decoding a value of named validates it.
 func (s *selection) decoded(named *types.Named) bool {
-	to, _ := s.opts.Loaded.Option.Type(originId(named))
+	to, _ := s.loadedOptions.Option.Type(originId(named))
 	return to.Type.Decoded || to.Group.Decoded
 }
 
@@ -198,7 +198,7 @@ func (s *selection) generated(obj types.Object) bool {
 	}
 
 	return slices.ContainsFunc(base.DeclDocs(pkg, obj), func(doc *ast.CommentGroup) bool {
-		name, ok := s.opts.Markers.Generated(doc)
+		name, ok := s.markers.Generated(doc)
 		return ok && name == GeneratorId.String()
 	})
 }

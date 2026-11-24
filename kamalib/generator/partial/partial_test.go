@@ -12,9 +12,11 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ngicks/opiter"
 	"github.com/ngicks/option/und"
+	"golang.org/x/tools/go/packages"
 
 	"gotest.tools/v3/assert"
 
@@ -24,6 +26,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
 // registry returns a registry of this generator only.
@@ -37,7 +40,7 @@ func registry(t *testing.T) *genmark.Registry {
 }
 
 // header is the first line of every generated file.
-var header = genhelper.GeneratedComment(generatorPath)
+var header = genhelper.GeneratedComment(GeneratorId.String())
 
 // testHeader is the header of the files generate gives with default options.
 var testHeader = header + `
@@ -64,30 +67,71 @@ func withoutRunParams(src string) string {
 	return optionFileParam.ReplaceAllString(src, "${1}null")
 }
 
-// generate runs Generate on files with opts, a registry of this generator
-// only and gentest.Now, and fails on a warning.
-func generate(t *testing.T, files map[string]string, opts Options) ([]File, error) {
+// testRun configures a run of Generator in a test. Registry is a registry
+// of this generator only when nil, Now is gentest.Now when nil, and Loaded
+// holds the directives of the packages only when nil.
+type testRun struct {
+	Options
+	Registry *genmark.Registry
+	Now      func() time.Time
+	Loaded   *LoadedOptions
+}
+
+// runGenerate runs Generator with r on pkgs, loaded from f, as a run of the
+// proc does without staging. It returns the files, with absolute paths, the
+// warnings of the loaded options followed by those of the run, and the
+// error.
+func runGenerate(
+	t *testing.T,
+	f *overlayfs.Fs,
+	pkgs []*packages.Package,
+	r testRun,
+) ([]base.File, []error, error) {
 	t.Helper()
 
-	if opts.Registry == nil {
-		opts.Registry = registry(t)
+	if r.Registry == nil {
+		r.Registry = registry(t)
 	}
 
-	if opts.Now == nil {
-		opts.Now = gentest.Now
+	if r.Now == nil {
+		r.Now = gentest.Now
 	}
 
-	out, warnings, err := Generate(gentest.Load(t, files), opts)
+	in := Input{Packages: base.SourcePackages(pkgs), Options: r.Options, Root: f.Root()}
+
+	in.Loaded = r.Loaded
+	if in.Loaded == nil {
+		loaded, err := NewLoader(nil).LoadPackages(in.Packages)
+		if err != nil {
+			return nil, nil, loadError(err)
+		}
+
+		in.Loaded = loaded
+	}
+
+	files, warnings, err := gentest.Run(
+		t.Context(), Generator, r.Registry, r.Now(), in, in.Scope(), f,
+	)
+
+	return files, slices.Concat(in.Loaded.Warnings, warnings), err
+}
+
+// generate runs Generator on files with r and fails on a warning.
+func generate(t *testing.T, files map[string]string, r testRun) ([]base.File, error) {
+	t.Helper()
+
+	f, pkgs := gentest.LoadFs(t, files)
+	out, warnings, err := runGenerate(t, f, pkgs, r)
 	assert.Assert(t, len(warnings) == 0, "%v", warnings)
 
 	return out, err
 }
 
-// generatedWith returns the files generated with opts keyed by base name.
-func generatedWith(t *testing.T, files map[string]string, opts Options) map[string]string {
+// generatedWith returns the files generated with r keyed by base name.
+func generatedWith(t *testing.T, files map[string]string, r testRun) map[string]string {
 	t.Helper()
 
-	out, err := generate(t, files, opts)
+	out, err := generate(t, files, r)
 	assert.NilError(t, err)
 
 	return gentest.ByBase(out)
@@ -96,7 +140,7 @@ func generatedWith(t *testing.T, files map[string]string, opts Options) map[stri
 // generated returns the generated files keyed by base name.
 func generated(t *testing.T, files map[string]string) map[string]string {
 	t.Helper()
-	return generatedWith(t, files, Options{})
+	return generatedWith(t, files, testRun{})
 }
 
 // partialTypes returns the type names declared in src.
@@ -130,10 +174,6 @@ func TestOptions(t *testing.T) {
 	def := Options{}.WithDefaults()
 	assert.Equal(t, def.Merge, MergeOverwrite)
 	assert.Equal(t, def.MergeNested, MergeNestedRecursive)
-	assert.Equal(t, def.Registry, base.DefaultRegistry)
-
-	r := genmark.NewRegistry(base.ToolName)
-	assert.Equal(t, Options{Registry: r}.WithDefaults().Registry, r)
 
 	i := newInstance(t, proc)
 	assert.ErrorContains(
@@ -151,7 +191,6 @@ func TestOptions(t *testing.T) {
 	opts := paramOptions(t, ProcParamPartial{MergeStrategy: und.Defined("append")})
 	assert.Equal(t, opts.Merge, MergeAppend)
 	assert.Equal(t, opts.MergeNested, MergeNestedRecursive)
-	assert.Equal(t, opts.Registry, base.DefaultRegistry)
 }
 
 func TestTargetErrors(t *testing.T) {
@@ -394,7 +433,7 @@ func TestTargetErrors(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := generate(t, map[string]string{"x.go": c.src}, Options{})
+			_, err := generate(t, map[string]string{"x.go": c.src}, testRun{})
 			assert.ErrorIs(t, err, c.is)
 
 			if errors.Is(err, genopt.ErrDirective) {

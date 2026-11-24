@@ -23,7 +23,7 @@ import (
 func TestPackageOptionFileDecode(t *testing.T) {
 	const src = "package x\n\ntype Server struct{ Addr string }\n\ntype Client struct{ C int }\n"
 
-	_, loaded, err := loadOptions(t, map[string]string{"x.go": src}, optionDocs{pkg: `
+	_, _, loaded, err := loadOptions(t, map[string]string{"x.go": src}, optionDocs{pkg: `
 version: 1
 all_types: true
 types:
@@ -82,7 +82,7 @@ func TestPackageOptionFileDecodeErrors(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, _, err := loadOptions(
+			_, _, _, err := loadOptions(
 				t,
 				map[string]string{"x.go": "package x\n\ntype S struct{ F int }\n"},
 				optionDocs{pkg: c.doc},

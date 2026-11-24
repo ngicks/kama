@@ -96,7 +96,7 @@ func TestStale(t *testing.T) {
 	pkgs, err := gopackages.Load(ctx, f, opts)
 	assert.NilError(t, err)
 
-	files, warnings, err := Generate(pkgs, testOptions(t, Options{}))
+	files, warnings, err := runGenerate(t, f, pkgs, testRun{})
 	assert.NilError(t, err)
 	assert.Equal(t, len(files), 1)
 	assert.Equal(t, len(warnings), 1)
