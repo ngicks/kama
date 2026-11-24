@@ -42,7 +42,7 @@ func ReadValue(dec *jsontext.Decoder) (jsontext.Value, error) {
 // Unmarshal decodes raw into v. It rejects null for a string, a number, a boolean, a slice and a
 // map. A json.SemanticError becomes a validation error located by its JSON pointer.
 func Unmarshal(raw jsontext.Value, v any) error {
-	err := json.Unmarshal(raw, v, rejectNull)
+	err := json.Unmarshal(raw, v, decodeOptions)
 
 	se, ok := err.(*json.SemanticError)
 	if !ok {
@@ -314,26 +314,97 @@ func MarshalObjects(enc *jsontext.Encoder, values ...any) error {
 	return enc.WriteToken(jsontext.EndObject)
 }
 
+// decodeOptions are the options of [Unmarshal].
+var decodeOptions = json.WithUnmarshalers(json.JoinUnmarshalers(rejectNull, integerNumber))
+
 // rejectNull leaves jsontext.Value alone, since a raw value carries null as data.
-var rejectNull = json.WithUnmarshalers(
-	json.UnmarshalFromFunc(func(dec *jsontext.Decoder, v any) error {
-		if _, ok := v.(*jsontext.Value); ok || dec.PeekKind() != 'n' {
-			return errors.ErrUnsupported
+var rejectNull = json.UnmarshalFromFunc(func(dec *jsontext.Decoder, v any) error {
+	if _, ok := v.(*jsontext.Value); ok || dec.PeekKind() != 'n' {
+		return errors.ErrUnsupported
+	}
+
+	switch reflect.TypeOf(v).Elem().Kind() {
+	case reflect.String,
+		reflect.Int64,
+		reflect.Float64,
+		reflect.Bool,
+		reflect.Slice,
+		reflect.Map:
+		return validation.New(validation.ErrNull, "value is null")
+	default:
+		return errors.ErrUnsupported
+	}
+})
+
+// integerNumber decodes a number with a zero fraction, such as 1.0 or 1e2, into an int64, since
+// JSON Schema calls such a number an integer. It converts the text exactly, never through
+// float64, so 9007199254740993.0 stays 9007199254740993.
+var integerNumber = json.UnmarshalFromFunc(func(dec *jsontext.Decoder, v *int64) error {
+	if dec.PeekKind() != '0' {
+		return errors.ErrUnsupported
+	}
+
+	raw, err := dec.ReadValue()
+	if err != nil {
+		return err
+	}
+
+	text, ok := integerText(string(raw))
+	if !ok {
+		return validation.New(ErrType, "want integer in the range of int64, got %s", raw)
+	}
+
+	n, err := strconv.ParseInt(text, 10, 64)
+	if err != nil {
+		return validation.New(ErrType, "want integer in the range of int64, got %s", raw)
+	}
+
+	*v = n
+
+	return nil
+})
+
+// integerText returns num, the text of a JSON number, as the decimal digits of an integer with an
+// optional sign. ok is false when num has a non-zero fraction or has more than 20 digits before
+// its decimal point, which no int64 holds.
+func integerText(num string) (string, bool) {
+	mantissa, expText, hasExp := strings.Cut(strings.ToLower(num), "e")
+
+	exp := 0
+
+	if hasExp {
+		var err error
+		if exp, err = strconv.Atoi(expText); err != nil {
+			return "", false
+		}
+	}
+
+	sign := ""
+	if rest, ok := strings.CutPrefix(mantissa, "-"); ok {
+		sign, mantissa = "-", rest
+	}
+
+	whole, frac, _ := strings.Cut(mantissa, ".")
+	digits := strings.TrimLeft(whole+frac, "0")
+	// point is the number of digits before the decimal point once leading zeros are gone.
+	point := len(whole) + exp - (len(whole+frac) - len(digits))
+
+	switch {
+	case digits == "":
+		return "0", true
+	case point < len(digits):
+		if point < 0 || strings.Trim(digits[point:], "0") != "" {
+			return "", false
 		}
 
-		switch reflect.TypeOf(v).Elem().Kind() {
-		case reflect.String,
-			reflect.Int64,
-			reflect.Float64,
-			reflect.Bool,
-			reflect.Slice,
-			reflect.Map:
-			return validation.New(validation.ErrNull, "value is null")
-		default:
-			return errors.ErrUnsupported
-		}
-	}),
-)
+		return sign + digits[:point], true
+	// 19 digits hold every int64, so a longer integer needs no zeros written out.
+	case point > 20:
+		return "", false
+	}
+
+	return sign + digits + strings.Repeat("0", point-len(digits)), true
+}
 
 // locate cannot tell an array index from an object member named by digits, so it takes a
 // token of digits as an index. Both give the same JSON pointer.

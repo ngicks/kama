@@ -43,7 +43,8 @@ const (
 const commentWidth = 76
 
 // render prints the file holding the declarations of every schema of doc
-// that declares a Go type, in the order schemas yields them.
+// that declares a Go type, in the order schemas yields them, after the
+// type of a root that declares none.
 //
 // The bodies spell their locals by fixed names rather than through the
 // roles of genhelper.Scope. No identifier of the file can collide with
@@ -61,6 +62,10 @@ func render(doc *jsonschema.Schema, opts Options) ([]byte, error) {
 	)
 
 	var steps []genStep
+
+	if !declares(doc, "") {
+		steps = rootSteps(doc, opts)
+	}
 
 	for ptr := range schemas(doc) {
 		if declares(doc, ptr) {
@@ -326,7 +331,8 @@ func elemTypeSeen(
 		return "", err
 	}
 
-	// Only an object property has a place to check a value against them.
+	// Only an object property and the root have a place to check a value
+	// against them, and the root does not come here.
 	if s.Const != nil || (s.Enum != nil && !stringEnum(s)) {
 		return "", unsupported(r, "enum or const outside an object property")
 	}

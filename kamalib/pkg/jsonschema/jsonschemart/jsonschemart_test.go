@@ -104,6 +104,49 @@ func TestUnmarshalRejectsNull(t *testing.T) {
 	assert.Assert(t, u.IsNull())
 }
 
+func TestUnmarshalIntegerNumber(t *testing.T) {
+	cases := []struct {
+		in   string
+		want int64
+	}{
+		{"1", 1},
+		{"1.0", 1},
+		{"-0.0", 0},
+		{"1e2", 100},
+		{"1.5E+1", 15},
+		{"0.001e3", 1},
+		{"-12.000", -12},
+		{"9007199254740993.0", 9007199254740993},
+		{"9223372036854775807.0", 9223372036854775807},
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			var v int64
+			assert.NilError(t, Unmarshal(jsontext.Value(tc.in), &v))
+			assert.Equal(t, v, tc.want)
+		})
+	}
+
+	for _, in := range []string{"1.5", "1e-1", "0.5e0", "1e400", "9223372036854775808"} {
+		t.Run(in, func(t *testing.T) {
+			var v int64
+			assert.ErrorIs(t, Unmarshal(jsontext.Value(in), &v), ErrType)
+		})
+	}
+
+	var w struct {
+		A und.Und[int64] `json:"a"`
+		B []int64        `json:"b"`
+	}
+	assert.NilError(t, Unmarshal(jsontext.Value(`{"a":2.0,"b":[1.0,3e0]}`), &w))
+	assert.Equal(t, w.A.Value(), int64(2))
+	assert.DeepEqual(t, w.B, []int64{1, 3})
+
+	err := Unmarshal(jsontext.Value(`{"a":2.5}`), &w)
+	assert.ErrorIs(t, err, ErrType)
+	assert.ErrorContains(t, err, ".a")
+}
+
 func TestUnmarshalObject(t *testing.T) {
 	var m map[string]int64
 

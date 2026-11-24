@@ -42,9 +42,6 @@ func check(doc *jsonschema.Schema, opts Options) error {
 
 	if _, err := typeName(doc, opts, ""); err != nil {
 		errs = append(errs, err)
-	} else if !declares(doc, "") {
-		errs = append(errs, unsupported("", "the root schema declares no Go type;"+
-			" it must be an object, an enum of strings, a oneOf, an anyOf or an allOf"))
 	}
 
 	if err := errors.Join(errs...); err != nil {
@@ -74,6 +71,10 @@ func checkTypes(doc *jsonschema.Schema, opts Options) error {
 		if _, err := t(c); err != nil {
 			errs = append(errs, err)
 		}
+	}
+
+	if !declares(doc, "") {
+		spell(rootType(doc, opts))
 	}
 
 	for ptr, s := range schemas(doc) {
@@ -419,6 +420,12 @@ func checkNames(doc *jsonschema.Schema, opts Options) error {
 		}
 
 		declared[name] = at
+	}
+
+	if !declares(doc, "") {
+		if name, err := typeName(doc, opts, ""); err == nil {
+			declare(name, "")
+		}
 	}
 
 	for ptr, s := range schemas(doc) {

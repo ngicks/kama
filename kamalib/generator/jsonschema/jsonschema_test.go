@@ -169,7 +169,12 @@ func TestGenerateRejects(t *testing.T) {
 			ErrUnsupported,
 			"#/properties/a/type:",
 		},
-		{"root without a type", `{"title":"T","type":"string"}`, ErrUnsupported, "#:"},
+		{
+			"root holding itself through no declared type",
+			`{"type":"array","items":{"$ref":"#"}}`,
+			ErrUnsupported,
+			"#:",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -179,6 +184,45 @@ func TestGenerateRejects(t *testing.T) {
 			_, _, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
 			assert.ErrorIs(t, err, tc.err)
 			assert.Assert(t, strings.Contains(err.Error(), tc.at), "%v", err)
+		})
+	}
+}
+
+// TestGenerateRootType checks the type a root declaring no type of its own
+// is defined over, and that it checks the const or the enum of the root.
+func TestGenerateRootType(t *testing.T) {
+	cases := []struct {
+		name   string
+		schema string
+		want   []string
+	}{
+		{"string", `{"type":"string"}`, []string{"type Root string"}},
+		{"array", `{"items":{"type":"integer"}}`, []string{"type Root []int64"}},
+		{
+			"map",
+			`{"additionalProperties":{"type":"boolean"}}`,
+			[]string{"type Root map[string]bool"},
+		},
+		{"nullable", `{"type":["number","null"]}`, []string{"type Root opt.Option[float64]"}},
+		{"any", `{}`, []string{"type Root jsontext.Value"}},
+		{
+			"enum",
+			`{"enum":[1,2]}`,
+			[]string{"type Root int64", "jsonschemart.Enum(out, 1, 2)"},
+		},
+		{"ref", `{"$ref":"#/$defs/a","$defs":{"a":{"type":"object"}}}`, []string{"type Root A"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var doc jsonschema.Schema
+			assert.NilError(t, jsonv2.Unmarshal([]byte(tc.schema), &doc))
+
+			files, _, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
+			assert.NilError(t, err)
+
+			for _, want := range tc.want {
+				assert.Assert(t, strings.Contains(string(files[0].Content), want), want)
+			}
 		})
 	}
 }

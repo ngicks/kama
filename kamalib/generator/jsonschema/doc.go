@@ -53,9 +53,8 @@
 // # Shapes
 //
 // A schema declares a Go type of its own when it is an object, an enum of
-// strings, a union or an allOf of several members. The root schema must be
-// one of them. Other schemas are spelled by built-in types where they are
-// used:
+// strings, a union or an allOf of several members. Other schemas are
+// spelled by built-in types where they are used:
 //
 //	string                       string
 //	integer                      int64
@@ -69,7 +68,15 @@
 //
 // A schema without type takes the kind its keywords imply: properties,
 // required and additionalProperties an object, items an array, const and
-// enum the kind of their values.
+// enum the kind of their values. An integer decodes from any number with a
+// zero fraction, such as 1.0 or 1e2.
+//
+// A root that declares no type of its own still needs a name to decode a
+// document into. It declares a type defined over its Go type, such as
+// type Root []int64, or type Root opt.Option[string] for a nullable root.
+// The type encodes and decodes as its Go type and checks the const or the
+// enum of the root. A schema that refers to the root by $ref takes the Go
+// type, not the name, so such a root holding itself is an error.
 //
 // A nullable value is a type naming null and one other kind, or a oneOf or
 // an anyOf of exactly a schema and a schema of type null. It is no union.
@@ -193,9 +200,9 @@
 //   - the false schema as a value, a schema admitting null only outside a
 //     union, and a slice or a map holding itself with no declared type in
 //     between;
-//   - a const or an enum outside an object property other than an enum of
-//     strings, one mixing kinds, and a value that is no Go constant of its
-//     type;
+//   - a const or an enum outside an object property and the root other
+//     than an enum of strings, one mixing kinds, and a value that is no Go
+//     constant of its type;
 //   - a required member without a property;
 //   - a type next to a oneOf or an anyOf that narrows its members, and
 //     keywords of both an object and an array.

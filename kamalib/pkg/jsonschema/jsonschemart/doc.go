@@ -16,6 +16,8 @@
 // [Unmarshal] rejects JSON null for a string, a number, a boolean, a slice and a map. Schema
 // nullability is expressed by github.com/ngicks/option types and by [encoding/json/jsontext.Value],
 // so a null that reaches any other Go type is invalid.
+// It decodes a number with a zero fraction, such as 1.0 or 1e2, into an int64, since JSON Schema
+// calls such a number an integer.
 //
 // Union holders select their member with [IsKind], [HasMembers], [OnlyMembers] and
 // [MemberEquals], then pick the result with [OneOf] or [AnyOf]. Product structs of allOf marshal

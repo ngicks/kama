@@ -22,6 +22,7 @@ import (
 type suiteGroup struct {
 	Description string         `json:"description"`
 	Schema      jsontext.Value `json:"schema"`
+	Tests       []suiteCase    `json:"tests"`
 }
 
 // TestSuiteNeverPanics runs Generate over every schema of the draft 2020-12
