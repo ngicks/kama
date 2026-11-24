@@ -235,7 +235,9 @@
 // A $ref resolves against the base URI of the schema holding it, which the
 // $id of that schema and of the schemas above it give, as package
 // github.com/ngicks/kama/kamalib/pkg/jsonschema resolves it. A root without
-// $id has an empty base URI. A schema declaring $id below the root is a
+// $id has an empty base URI, against which a relative reference stays
+// relative: Options.Load and the remotes param see pet.json for a $ref
+// pet.json. A schema declaring $id below the root is a
 // schema resource of its own: a reference names it by its URI, a fragment
 // pointer in a reference starts at the resource, and an $anchor is looked
 // up in the resource holding the reference. A schema of an embedded
@@ -270,6 +272,17 @@
 // its own, as MoneyCurrency. Two documents giving one name is an error
 // wrapping ErrConflict naming both. The JSON pointers in comments, warnings
 // and errors run from the root through the key of the document.
+//
+// # Meta-schemas
+//
+// A $schema of the root naming a meta-schema other than that of draft
+// 2020-12 is loaded as another document is, through Options.Load. The
+// meta-schema must declare $vocabulary. A vocabulary it requires must be
+// one of draft 2020-12 other than format-assertion, which the generated
+// code does not implement, and an optional vocabulary the generator does
+// not know is ignored. A meta-schema leaving out the validation, the
+// applicator or the unevaluated vocabulary turns their keywords off: the
+// generator reads the document as if no schema held them.
 //
 // # Dynamic references
 //
@@ -515,8 +528,10 @@
 // These are errors wrapping ErrUnsupported that name the JSON pointer of
 // the schema or of the keyword:
 //
-//   - a $schema other than the meta-schema of draft 2020-12, whose
-//     vocabularies the generator cannot read;
+//   - a $schema of the root naming a meta-schema that Options.Load does
+//     not give, that declares no $vocabulary or that requires a
+//     vocabulary other than those of draft 2020-12, and a $schema below
+//     the root other than the meta-schema of draft 2020-12;
 //   - a $ref naming no schema of the documents, a chain of references back
 //     to itself, and a $ref or a $dynamicRef in the validators of raw JSON
 //     text reaching a union, a schema declaring no type or a type the

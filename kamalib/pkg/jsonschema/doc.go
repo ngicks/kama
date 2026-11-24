@@ -20,7 +20,11 @@
 // fragment names a resource, and the fragment is a JSON pointer from the resource or a plain
 // name an $anchor or a $dynamicAnchor of the resource declares. An anchor belongs to the
 // resource that holds it, not to the resources around that one. [ResolveRef] combines RefUri
-// and Locate. [ResolvePointer] returns the schema at a pointer from the root. A URI naming no
+// and Locate. [ResolvePointer] returns the schema at a pointer from the root. [ResourcesAlong]
+// returns the resources holding a schema, from the root down, and [DynamicAnchor] the schema of
+// a resource declaring a $dynamicAnchor, which a caller resolving $dynamicRef in a dynamic scope
+// asks for each resource of the scope. An empty retrieval URI leaves a relative URI relative. A
+// URI naming no
 // resource of the document fails with [ErrNonLocalRef], and a fragment that names no schema
 // fails with [ErrUnresolved].
 package jsonschema

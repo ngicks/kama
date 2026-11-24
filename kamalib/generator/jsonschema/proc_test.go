@@ -254,7 +254,8 @@ func TestProcRunRemoteMissing(t *testing.T) {
 	err := i.Run(context.Background(), &gentest.RecordReporter{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err,
-		`#/properties/a/$ref: reference "http://z.test/a.json": no remote covers the URI`)
+		`#/properties/a/$ref: reference "http://z.test/a.json" to "http://z.test/a.json": `+
+			"no remote covers the URI")
 }
 
 const procSchema = `{

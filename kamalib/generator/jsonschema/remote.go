@@ -43,7 +43,7 @@ func bundle(doc *jsonschema.Schema, opts Options) (*jsonschema.Schema, error) {
 
 		loaded, err := opts.Load(uri)
 		if err != nil {
-			return nil, unsupported(child(ptr, kw), "reference %q: %v", ref, err)
+			return nil, unsupported(child(ptr, kw), "reference %q to %q: %v", ref, uri, err)
 		}
 
 		if doc.Bool.IsSome() || loaded.Bool.IsSome() {
@@ -125,9 +125,10 @@ func isResource(doc *jsonschema.Schema, uri string) bool {
 
 // embeddedDocument returns the retrieval URI of the document bundle
 // embedded at ptr, a schema under $defs of the root, or "" when ptr is no
-// such schema. A key of $defs of the root that is an absolute URI names an
-// embedded document, as bundle keys them.
-func embeddedDocument(ptr string) string {
+// such schema. A key of $defs of the root names an embedded document when
+// its schema declares $id and the key is an absolute URI or that $id, as
+// bundle keys and marks them.
+func embeddedDocument(doc *jsonschema.Schema, ptr string) string {
 	rest, ok := strings.CutPrefix(ptr, "/$defs/")
 	if !ok || strings.Contains(rest, "/") {
 		return ""
@@ -136,7 +137,12 @@ func embeddedDocument(ptr string) string {
 	key := unescape(rest)
 
 	u, err := url.Parse(key)
-	if err != nil || !u.IsAbs() {
+	if err != nil {
+		return ""
+	}
+
+	s, ok := doc.Defs.Get(key)
+	if !ok || s == nil || s.Id.IsNone() || !u.IsAbs() && s.Id.Value() != key {
 		return ""
 	}
 

@@ -151,8 +151,9 @@ func checkSchema(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []err
 	var errs []error
 
 	// Another meta-schema may turn vocabularies off or give keywords the
-	// meaning of another draft, which only fetching it would tell.
-	if s.Schema.IsSome() && strings.TrimSuffix(s.Schema.Value(), "#") != metaSchema {
+	// meaning of another draft. withVocabularies reads that of the root
+	// only, and the root of an embedded document is none.
+	if ptr != "" && s.Schema.IsSome() && strings.TrimSuffix(s.Schema.Value(), "#") != metaSchema {
 		errs = append(errs, unsupported(child(ptr, "$schema"),
 			"meta-schema %q is not that of draft 2020-12", s.Schema.Value()))
 	}

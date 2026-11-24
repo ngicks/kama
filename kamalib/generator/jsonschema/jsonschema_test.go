@@ -604,8 +604,44 @@ func TestGenerateDocuments(t *testing.T) {
 		{
 			name:   "no such document",
 			schema: `{"type":"object","properties":{"a":{"$ref":"http://x.test/a.json#/$defs/x"}}}`,
-			err: `#/properties/a/$ref: reference "http://x.test/a.json#/$defs/x": ` +
-				"no such document",
+			err: `#/properties/a/$ref: reference "http://x.test/a.json#/$defs/x" ` +
+				`to "http://x.test/a.json": no such document`,
+		},
+		{
+			name:   "relative reference of a root without $id",
+			schema: `{"type":"object","properties":{"a":{"$ref":"pet.json"}}}`,
+			docs:   map[string]string{"pet.json": `{"type":"object"}`},
+			want:   []string{"type Pet struct", "A opt.Option[Pet]"},
+		},
+		{
+			name: "definition keyed by an absolute URI without $id",
+			schema: `{"type":"object","properties":{"a":{"$ref":"#/$defs/ns:Type"}},
+				"$defs":{"ns:Type":{"type":"object"}}}`,
+			want: []string{"type NsType struct"},
+		},
+		{
+			// The lexical scope of list holds the root, which declares items.
+			name: "type of a target resolving in its lexical scope",
+			schema: `{"$id":"http://x.test/root","$ref":"list","$defs":{
+				"foo":{"$dynamicAnchor":"items","type":"string"},
+				"list":{"$id":"list","type":"array","items":{"$dynamicRef":"#items"},
+					"$defs":{"items":{"$dynamicAnchor":"items"}}}}}`,
+			want: []string{"type Root []ListItem", `//kama:validate kind="string"`},
+		},
+		{
+			// names is outside the lexical scope of list, so Names writes out
+			// the validators of list, whose items resolve to NamesItem.
+			name: "reference alone written out in another dynamic scope",
+			schema: `{"$id":"http://x.test/root","$ref":"names","$defs":{
+				"Names":{"$id":"names","$ref":"list",
+					"$defs":{"Item":{"$dynamicAnchor":"item","$ref":"list"}}},
+				"List":{"$id":"list","type":"array","items":{"$dynamicRef":"#item"},
+					"$defs":{"Item":{"$dynamicAnchor":"item"}}}}}`,
+			want: []string{
+				"//kama:validate ref=Names",
+				"//kama:validate items(ref=NamesItem)",
+				"type Names jsontext.Value",
+			},
 		},
 	}
 
@@ -637,4 +673,64 @@ func TestGenerateDocuments(t *testing.T) {
 	_, _, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, `reference "http://x.test/a.json" names another document`)
+}
+
+func TestGenerateVocabularies(t *testing.T) {
+	const vocab = "https://json-schema.org/draft/2020-12/vocab/"
+
+	docs := map[string]string{
+		"http://x.test/no-validation": `{"$vocabulary": {"` + vocab + `core": true, "` +
+			vocab + `applicator": true}}`,
+		"http://x.test/custom": `{"$vocabulary": {"` + vocab + `core": true, ` +
+			`"http://x.test/v": true}}`,
+		"http://x.test/optional": `{"$vocabulary": {"` + vocab + `validation": true, "` +
+			vocab + `applicator": true, ` +
+			`"http://x.test/v": false}}`,
+		"http://x.test/no-vocabs": `{}`,
+		"http://x.test/formats":   `{"$vocabulary": {"` + vocab + `format-assertion": true}}`,
+		"http://x.test/no-applicator": `{"$vocabulary": {"` + vocab + `core": true, "` +
+			vocab + `validation": true}}`,
+	}
+
+	cases := []struct {
+		meta, want, err string
+	}{
+		// Without type the root is raw JSON text, and minimum checks nothing.
+		{meta: "http://x.test/no-validation", want: "type Root jsontext.Value"},
+		{meta: "http://x.test/optional", want: "Count opt.Option[int64]"},
+		{meta: "http://x.test/custom", err: `requires vocabulary "http://x.test/v"`},
+		{meta: "http://x.test/no-vocabs", err: "declares no $vocabulary"},
+		{meta: "http://x.test/missing", err: "no such document"},
+		{meta: "http://x.test/formats", err: "format-assertion"},
+		// Without the applicator vocabulary properties is an unknown keyword.
+		{meta: "http://x.test/no-applicator", want: "type Root struct"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.meta, func(t *testing.T) {
+			var doc jsonschema.Schema
+			assert.NilError(t, jsonv2.Unmarshal([]byte(`{"$schema": "`+tc.meta+`",
+				"type": "object", "properties": {"count": {"type": "integer", "minimum": 1}}}`), &doc))
+
+			files, _, err := Generate(&doc, Options{
+				Package: "p", TypeName: "Root", Load: mapLoader(t, docs),
+			})
+			if tc.err != "" {
+				assert.ErrorIs(t, err, ErrUnsupported)
+				assert.ErrorContains(t, err, tc.err)
+
+				return
+			}
+
+			assert.NilError(t, err)
+
+			content := regexp.MustCompile(`[ \t]+`).ReplaceAllString(string(files[0].Content), " ")
+			assert.Assert(t, strings.Contains(content, tc.want), "%s", files[0].Content)
+			assert.Equal(
+				t,
+				strings.Contains(content, "cmp="),
+				tc.meta == "http://x.test/optional",
+			)
+		})
+	}
 }

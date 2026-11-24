@@ -103,7 +103,12 @@ func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 		return nil, nil, err
 	}
 
-	doc, err := bundle(doc, opts)
+	doc, err := withVocabularies(doc, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	doc, err = bundle(doc, opts)
 	if err != nil {
 		return nil, nil, err
 	}

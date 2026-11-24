@@ -114,7 +114,7 @@ func definitionName(
 	ptr, parent, key string,
 	seen []string,
 ) (string, error) {
-	if uri := embeddedDocument(ptr); uri != "" {
+	if uri := embeddedDocument(doc, ptr); uri != "" {
 		return documentName(ptr, uri)
 	}
 

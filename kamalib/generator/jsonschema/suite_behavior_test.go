@@ -89,19 +89,16 @@ var suiteGenerated = map[string]int{
 	"unevaluatedItems.json":        29,
 	"unevaluatedProperties.json":   44,
 	"uniqueItems.json":             6,
+	"vocabulary.json":              2,
 }
 
 // suiteUnsupported is the number of groups of each top-level file of the
 // suite that Generate rejects. A file missing here rejects none.
-var suiteUnsupported = map[string]int{
-	"vocabulary.json": 2,
-}
+var suiteUnsupported = map[string]int{}
 
 // suiteUnsupportedReasons lists every reason a group of the suite is
 // rejected for, as rejectReasons spells it.
-var suiteUnsupportedReasons = []string{
-	"unsupported schema: meta-schema %q is not that of draft 2020-12",
-}
+var suiteUnsupportedReasons = []string{}
 
 // suiteEnv names the environment variable that enables TestSuiteBehavior.
 const suiteEnv = "KAMA_JSONSCHEMA_SUITE"
