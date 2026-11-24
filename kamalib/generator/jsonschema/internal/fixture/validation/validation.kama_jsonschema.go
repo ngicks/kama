@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:46:31Z
+// generated: 2026-11-24T13:35:54Z
 
 package validation
 
@@ -21,16 +21,20 @@ import (
 //
 // Order exercises the validation keywords the validators check.
 //
-//kama:validate hook=off members=">=2 <=11"
+//kama:validate hook=off
+//kama:validate members=">=2 <=11"
 //kama:generated kama:jsonschema
 type Order struct {
-	//kama:validate runes=">=3 <=8" regexp="^[A-Z]+[0-9]*$"
+	//kama:validate runes=">=3 <=8"
+	//kama:validate regexp="^[A-Z]+[0-9]*$"
 	Id string `json:"id"`
-	//kama:validate cmp=">=1.5 <100" multipleof="2"
+	//kama:validate cmp=">=1.5 <100"
+	//kama:validate multipleof="2"
 	Count opt.Option[int64] `json:"count,omitzero"`
 	//kama:validate cmp=">0 <=1.0"
 	Ratio opt.Option[float64] `json:"ratio,omitzero"`
-	//kama:validate length=">=1 <=3" unique
+	//kama:validate length=">=1 <=3"
+	//kama:validate unique
 	Items []Sku `json:"items"`
 	//kama:validate length="<=2"
 	Labels opt.Option[map[string]OrderLabelsValue] `json:"labels,omitzero"`
@@ -178,7 +182,8 @@ func (v *OrderLabelsValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // OrderClosed is generated from the schema at #/properties/closed.
 //
-//kama:validate hook=off closed
+//kama:validate hook=off
+//kama:validate closed
 //kama:generated kama:jsonschema
 type OrderClosed struct {
 	A  opt.Option[bool]          `json:"a,omitzero"`

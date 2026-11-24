@@ -11,11 +11,17 @@ import (
 func TestRequiredParse(t *testing.T) {
 	o, err := Required{}.Parse("", nil)
 	assert.NilError(t, err)
-	assert.Equal(t, o, RequiredOptions{})
+	assert.DeepEqual(t, o, Rule(RequiredOptions{}))
 
-	_, err = Required{}.Parse("yes", nil)
+	o, err = Required{}.Parse(`a "b c"`, nil)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, o, Rule(RequiredOptions{Names: []string{"a", "b c"}}))
+	assert.ErrorContains(t, o.Check(types.Typ[types.Int]),
+		"int is no raw JSON text, which the member names of required apply to")
+
+	_, err = Required{}.Parse("a=1", nil)
 	assert.ErrorIs(t, err, ErrArgs)
-	assert.ErrorContains(t, err, `unexpected arg "yes"; want none`)
+	assert.ErrorContains(t, err, `arg "a=1" is no member name`)
 }
 
 // TestRegexpVarName names the variable of a pattern after the first 5

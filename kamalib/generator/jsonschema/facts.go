@@ -377,8 +377,46 @@ func typeKinds(s *jsonschema.Schema) []string {
 }
 
 // multiKind reports whether the type keyword of s names two or more kinds
-// other than null, which make a union of those kinds.
-func multiKind(s *jsonschema.Schema) bool { return len(typeKinds(s)) >= 2 }
+// other than null, all scalars, which make a union of those kinds. Several
+// kinds holding an object or an array make raw JSON text instead.
+func multiKind(s *jsonschema.Schema) bool {
+	k := typeKinds(s)
+
+	return len(k) >= 2 && opiter.WrapSeq(slices.Values(k)).
+		Every(func(k string) bool { return slices.Contains(scalarKinds, k) })
+}
+
+// raw reports whether the Go type of the schema at ptr is raw JSON text,
+// jsontext.Value: the true schema, a schema of every kind, of several kinds
+// that make no union or of null only, and an enum or a const of other than
+// one scalar kind. Its validation keywords apply to the value of each kind
+// they test, as validators of raw JSON text do.
+func raw(doc *jsonschema.Schema, ptr string) bool {
+	r, s, err := resolved(doc, ptr)
+	switch {
+	case err != nil:
+		return false
+	case s.Bool.IsSome():
+		return s.Bool.Value()
+	case union(s) || structKind(s) || product(s) || stringEnum(s) || nullableUnion(doc, r):
+		return false
+	}
+
+	k, err := kinds(doc, r)
+	if err != nil {
+		return false
+	}
+
+	if s.Enum != nil || s.Const != nil {
+		return len(k) != 1 || !slices.Contains(scalarKinds, k[0])
+	}
+
+	nonNull := opiter.WrapSeq(slices.Values(k)).
+		Filter(func(k string) bool { return k != "null" }).
+		CollectSlice()
+
+	return slices.Equal(k, allKinds) || len(nonNull) != 1
+}
 
 // nullableType reports whether the type keyword of s names null and one
 // other kind.

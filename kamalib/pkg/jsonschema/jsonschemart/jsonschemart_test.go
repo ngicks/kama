@@ -116,7 +116,15 @@ func TestUnmarshalRejectsNull(t *testing.T) {
 	var u und.Und[int64]
 	assert.NilError(t, Unmarshal(jsontext.Value(`null`), &u))
 	assert.Assert(t, u.IsNull())
+
+	var m marked
+	assert.NilError(t, Unmarshal(jsontext.Value(`null`), &m))
 }
+
+// marked is raw JSON text by its method RawJson.
+type marked jsontext.Value
+
+func (v marked) RawJson() jsontext.Value { return jsontext.Value(v) }
 
 func TestUnmarshalIntegerNumber(t *testing.T) {
 	cases := []struct {

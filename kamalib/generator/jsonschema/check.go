@@ -191,12 +191,6 @@ func checkType(ptr string, s *jsonschema.Schema) []error {
 		return []error{unsupported(child(ptr, other[0]), "keyword next to a type of several kinds")}
 	}
 
-	for _, k := range typeKinds(s) {
-		if !slices.Contains(scalarKinds, k) {
-			return []error{unsupported(kw, "kind %q in a type of several kinds", k)}
-		}
-	}
-
 	return nil
 }
 
@@ -479,8 +473,8 @@ func checkEnum(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error
 		return []error{err}
 	}
 
-	if len(k) != 1 || !slices.Contains(scalarKinds, k[0]) {
-		return []error{unsupported(ptr, "enum or const of other than one scalar kind")}
+	if raw(doc, ptr) {
+		return nil
 	}
 
 	if stringEnum(s) {

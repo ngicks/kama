@@ -112,6 +112,23 @@
 // SiblingRule when an operand is one. A user combinator taking such
 // operands implements StructRule or SiblingRule itself.
 //
+// # Raw JSON text
+//
+// IsRawJson tells a type whose values are raw JSON text: jsontext.Value, or
+// a type of the underlying type []byte declaring the method
+// RawJson() jsontext.Value. A validator applying to such a value accepts
+// the type in Check and tests the value with the semantics of JSON Schema:
+// it tests the values of the JSON kinds it applies to and passes any
+// other, as minimum passes a string. A user validator implements the same
+// capability by the same means. The built-in validators call the
+// functions of the package at RawJsonPath, which compare numbers exactly
+// and JSON values as JSON values.
+//
+// A combinator needs no mode of its own for raw JSON text: an operand of
+// another kind holds, so not(cmp=">=5") fails on "a", as not with minimum
+// rejects a string in JSON Schema, and or(cmp=">=5", kind=string) holds on
+// it.
+//
 // # Built-in validators
 //
 // The built-in validators report leaf errors created by validation.New with
@@ -133,13 +150,15 @@
 //	requires="<name> ..." validation.ErrRequired
 //	members="<op><n> ..." validation.ErrLength
 //	closed                validation.ErrClosed
+//	kind="<kind> ..."     validation.ErrKind
 //	and(<v>, ...)         the errors of the operands
 //	or(<v>, ...)          validation.ErrOr
 //	not(<v>)              validation.ErrNot
 //	oneof(<v>, ...)       validation.ErrOneOf
 //	if(<c>, <t>[, <e>])   the errors of the operand t or e
 //
-// required takes no arg. The value is not the zero value: an opt.Option
+// required takes no arg, except member names on raw JSON text, as told
+// below. The value is not the zero value: an opt.Option
 // is some, an und.Und or an elastic.Elastic is not undefined, so null
 // counts as a value, as a JSON member holding null is present, a pointer, slice,
 // map, channel, function or interface is not nil, a type with a method
@@ -243,6 +262,20 @@
 // the embedded fallback map is empty. Each entry is an error located at
 // its member, in the order of the keys. A fallback of another type than a
 // map keyed by strings is an error. A struct without one always passes.
+//
+// kind takes one or more JSON kinds, as in kind="integer null": null,
+// boolean, object, array, number, string and integer, a number with a zero
+// fraction such as 1.0. It applies to raw JSON text only, whose kind is one
+// of them, as JSON Schema type tests.
+//
+// On raw JSON text cmp and multipleof take JSON numbers and test numbers,
+// runes and regexp test strings, length counts the elements of an array,
+// members applies outside a struct and counts the members of an object,
+// unique and const compare JSON values, so 1 equals 1.0 and objects equal
+// regardless of member order, and required takes member names, as in
+// required="a b", which an object holds. Each passes a value of another
+// kind. A const token on raw JSON text is the text of a JSON value, quoted
+// or not, as in const="1 null `\"a\"`".
 //
 // and, or, not, oneof and if take operands: validators written as the args
 // of //kama:validate are, separated by commas, as in or(cmp=">=10",

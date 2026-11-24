@@ -17,6 +17,10 @@ import (
 // reflect.DeepEqual in quadratic time, which follows pointers. A map would
 // compare pointers by address, and it would panic on an interface holding
 // an incomparable value, as an element of []any may.
+//
+// On raw JSON text, as IsRawJson tells, it compares the elements of an
+// array as JSON values, so 1 equals 1.0 and objects equal regardless of
+// member order, and passes a value of another kind.
 type Unique struct{}
 
 // Name returns "unique".
@@ -42,6 +46,10 @@ func (UniqueOptions) Check(t types.Type) error {
 // Emit calls kamaValidateUnique or kamaValidateUniqueDeep with the
 // elements.
 func (UniqueOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+	if IsRawJson(t) {
+		return rawCall(e, "Unique", v), nil
+	}
+
 	helper, ok := uniqueHelper(t)
 	if !ok {
 		return nil, fmt.Errorf("unique: unsupported type %s", t)

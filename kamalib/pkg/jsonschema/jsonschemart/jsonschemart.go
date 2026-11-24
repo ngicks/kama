@@ -329,9 +329,13 @@ func MarshalObjects(enc *jsontext.Encoder, values ...any) error {
 // decodeOptions are the options of [Unmarshal].
 var decodeOptions = json.WithUnmarshalers(json.JoinUnmarshalers(rejectNull, integerNumber))
 
-// rejectNull leaves jsontext.Value alone, since a raw value carries null as data.
+// rejectNull leaves jsontext.Value and a type marking itself as raw JSON
+// text by a method RawJson alone, since a raw value carries null as data.
 var rejectNull = json.UnmarshalFromFunc(func(dec *jsontext.Decoder, v any) error {
-	if _, ok := v.(*jsontext.Value); ok || dec.PeekKind() != 'n' {
+	_, isValue := v.(*jsontext.Value)
+	_, isRaw := v.(interface{ RawJson() jsontext.Value })
+
+	if isValue || isRaw || dec.PeekKind() != 'n' {
 		return errors.ErrUnsupported
 	}
 

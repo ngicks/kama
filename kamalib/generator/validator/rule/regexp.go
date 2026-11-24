@@ -17,6 +17,9 @@ import (
 // It applies to types of a string underlying type and to types of the
 // underlying type []byte. The pattern is compiled once, into a
 // package-level variable of the generated package.
+//
+// On raw JSON text, as IsRawJson tells, it matches strings and passes a
+// value of another kind.
 type Regexp struct{}
 
 // Name returns "regexp".
@@ -58,6 +61,10 @@ func (o RegexpOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 		return lang.Stmt("var %s = %s.MustCompile(%s)",
 			re, imp.Import("regexp"), strconv.Quote(o.Pattern))
 	})
+
+	if IsRawJson(t) {
+		return rawCall(e, "Pattern", v, lang.Expr("%s", re)), nil
+	}
 
 	if isStringType(t) {
 		e.Declare(regexpStringName, regexpStringDecl)

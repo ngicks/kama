@@ -102,12 +102,21 @@
 //	array without items          []jsontext.Value
 //	object with only
 //	  additionalProperties T     map[string]T
-//	no type and no applicator    jsontext.Value
+//	raw JSON text                jsontext.Value
 //
 // A schema without type takes the kind its keywords imply: properties,
 // required and additionalProperties an object, items an array, const and
 // enum the kind of their values. An integer decodes from any number with a
 // zero fraction, such as 1.0 or 1e2.
+//
+// A schema whose value is of no single kind is raw JSON text: the true
+// schema, a schema without type and applicator, a type naming several kinds
+// one of which is an object or an array, a type of null only, and an enum
+// or a const of values of several kinds, of objects or of arrays. Its Go
+// type is jsontext.Value, and a type it declares, as one under $defs or the
+// root, is defined over jsontext.Value with the method RawJson, which tells
+// the validators to check it as raw JSON text. Its keywords become the
+// validators of raw JSON text, as Validation lists.
 //
 // A root that declares no type of its own still needs a name to decode a
 // document into. It declares a type defined over its Go type, such as
@@ -204,8 +213,9 @@
 // A member is named by the schema its $ref names, else by its title, else
 // by its kind, such as String or Object, when no other member without a
 // $ref or a title has that kind, else Option followed by its 1-based
-// index. A member of type null is a wrapper without a field. The kinds of
-// a type of several kinds must be scalars and null.
+// index. A member of type null is a wrapper without a field. A type of
+// several kinds is a union when they are scalars and null, and raw JSON
+// text otherwise.
 //
 // Decoding drops a member whose kinds exclude the value. For a member that
 // is an object it also drops it when a required property with a const or
@@ -277,23 +287,34 @@
 //	                                      key depends on
 //	enum, const                           const on scalars
 //	additionalProperties false            closed on a struct
+//	type                                  kind on raw JSON text
+//
+// On raw JSON text each keyword checks the values of its own kind and the
+// validators compare as JSON does: cmp and multipleof take JSON numbers and
+// compare exactly, runes and regexp check strings, length counts the
+// elements of an array and members the members of an object, unique and
+// const compare JSON values, so 1 equals 1.0 and objects equal regardless
+// of member order, and dependentRequired becomes if(required=<key>,
+// required=<members>) for each key, joined by and. Each validator stands on
+// a //kama:validate line of its own.
 //
 // A keyword applies to one kind of value only, as minLength to strings, and
-// a value of another kind satisfies it. A struct and every union wrapper
+// a value of another kind satisfies it. A typed value has one kind, so a
+// keyword of another kind gives no validator. A struct and every union wrapper
 // carry hook=off, since the generator writes no hook. A property takes the
 // keywords of its own schema. A schema it refers to declares a type with
 // its own. A number compares as the Go value, so an enum of numbers cannot
-// tell apart two numbers one float64 holds. unique compares raw JSON text
-// byte by byte, so 1 and 1.0 differ. requires, required and members count
+// tell apart two numbers one float64 holds. unique on a slice compares its
+// elements as Go values, so the raw JSON elements 1 and 1.0 of a slice
+// differ. requires, required and members count
 // an und.Und holding null as present, as JSON Schema counts a member
 // holding null. An optional nullable property on a cycle is a pointer,
 // which is nil for null and absent alike, so it counts as absent.
 // regexp is RE2, not ECMA-262.
 //
 // Generate warns with ErrUnenforced about a validation keyword the
-// generated code does not check: a keyword of a schema of no single kind,
-// whose Go type is jsontext.Value, of a union or of a nullable root, a
-// pattern RE2 does not compile, a dependentRequired naming a member
+// generated code does not check: a keyword of a union or of a nullable
+// root, a pattern RE2 does not compile, a dependentRequired naming a member
 // without a property, an object keyword next to a $ref to a struct, and a
 // keyword of a schema outside an object property that declares no type,
 // such as one next to a $ref.
@@ -325,10 +346,10 @@
 //     the type, a chain of references back to itself, and $id below the
 //     root;
 //   - a nil schema of a document built in Go, the false schema as a
-//     value, a schema admitting null only outside a union, and a slice or
-//     a map holding itself with no declared type in between;
-//   - a const or an enum mixing kinds, and a value that is no Go constant
-//     of its type;
+//     value, and a slice or a map holding itself with no declared type in
+//     between;
+//   - a const or an enum value that is no Go constant of the scalar type
+//     its type keyword gives;
 //   - a numeric keyword that is no number, a multipleOf not above zero, and
 //     a length or a count that is no non-negative integer;
 //   - a required member without a property;

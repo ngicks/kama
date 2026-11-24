@@ -16,6 +16,9 @@ import (
 // string counts its length in code points the same way, while length
 // counts bytes. A []byte encodes to a JSON string of another length, so
 // runes does not apply to it.
+//
+// On raw JSON text, as IsRawJson tells, it counts the code points of a
+// string and passes a value of another kind.
 type Runes struct{}
 
 // Name returns "runes".
@@ -40,7 +43,7 @@ func (Runes) Parse(arg string, _ Resolver) (Rule, error) {
 
 // Check accepts the types the doc comment of Runes lists.
 func (RunesOptions) Check(t types.Type) error {
-	if !isStringType(t) {
+	if !isStringType(t) && !IsRawJson(t) {
 		return fmt.Errorf("%s is not a string type", t)
 	}
 
@@ -49,6 +52,10 @@ func (RunesOptions) Check(t types.Type) error {
 
 // Emit calls kamaValidateRunes once per comparison.
 func (o RunesOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+	if IsRawJson(t) {
+		return rawComparisons(e, "Runes", v, o.Comparisons, false), nil
+	}
+
 	e.Declare(compareName, compareDecl)
 	e.Declare(runesName, runesDecl)
 

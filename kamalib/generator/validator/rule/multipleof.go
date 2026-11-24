@@ -24,6 +24,9 @@ import (
 // shortest decimal that reads back as the value: float64(0.0075) is a
 // multiple of 0.0001 although its binary value is not. NaN and the
 // infinities are multiples of nothing.
+//
+// On raw JSON text, as IsRawJson tells, n must be a JSON number. It tests a
+// number exactly and passes a value of another kind.
 type MultipleOf struct{}
 
 // Name returns "multipleof".
@@ -46,6 +49,10 @@ func (MultipleOf) Parse(arg string, _ Resolver) (Rule, error) {
 
 // Check accepts the types the doc comment of MultipleOf lists.
 func (o MultipleOfOptions) Check(t types.Type) error {
+	if IsRawJson(t) {
+		return checkRawNumbers([]Comparison{{Operand: o.Divisor}})
+	}
+
 	info := typequery.BasicInfo(t)
 
 	switch {
@@ -68,6 +75,10 @@ func (o MultipleOfOptions) Check(t types.Type) error {
 
 // Emit calls kamaValidateMultipleInt or kamaValidateMultipleFloat.
 func (o MultipleOfOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+	if IsRawJson(t) {
+		return rawCall(e, "MultipleOf", v, lang.Expr("%s", strconv.Quote(o.Divisor))), nil
+	}
+
 	d, err := divisorValue(o.Divisor)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package rule
 
 import (
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"go/types"
@@ -21,6 +22,11 @@ import (
 // token of the argument is a Go literal of the type. A string type takes
 // quoted strings only, and any other type takes bare literals only, so
 // that const=`"1"` and const=1 do not mean the same.
+//
+// On raw JSON text, as IsRawJson tells, each token is the text of a JSON
+// value, quoted or not, as in const="1 null `\"a\"` `{\"b\":[]}`". The value
+// equals one of them as JSON values do: 1 equals 1.0, and objects equal
+// regardless of member order.
 type Const struct{}
 
 // Name returns "const".
@@ -80,6 +86,16 @@ func (Const) Parse(arg string, _ Resolver) (Rule, error) {
 
 // Check accepts values of t, on the types the doc comment of Const lists.
 func (o ConstOptions) Check(t types.Type) error {
+	if IsRawJson(t) {
+		for _, c := range o.Values {
+			if !jsontext.Value(c.Text).IsValid() {
+				return fmt.Errorf("%s is no JSON value, which raw JSON text compares with", c.Text)
+			}
+		}
+
+		return nil
+	}
+
 	info := typequery.BasicInfo(t)
 	if info&(types.IsBoolean|types.IsNumeric|types.IsString) == 0 {
 		return fmt.Errorf("%s is not a bool, numeric or string type", t)
@@ -101,7 +117,15 @@ func (o ConstOptions) Check(t types.Type) error {
 }
 
 // Emit calls kamaValidateConst with the values.
-func (o ConstOptions) Emit(e Emitter, _ types.Type, v Gen) (Gen, error) {
+func (o ConstOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+	if IsRawJson(t) {
+		texts := opiter.WrapSeq(slices.Values(o.Values)).
+			Map(func(c ConstValue) Gen { return lang.Expr("%s", strconv.Quote(c.Text)) }).
+			CollectSlice()
+
+		return rawCall(e, "Const", v, texts...), nil
+	}
+
 	e.Declare(constName, constDecl)
 	e.Declare(spellName, spellDecl)
 

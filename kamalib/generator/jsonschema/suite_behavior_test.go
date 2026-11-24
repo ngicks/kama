@@ -24,7 +24,6 @@ import (
 	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
@@ -44,10 +43,6 @@ type suiteKey struct {
 // The reasons a decode of generated code may disagree with the verdict of
 // the suite. checkAllowed tells what each reason needs of the test.
 const (
-	// A validation keyword sits on a schema of no single kind, whose Go
-	// value is raw JSON text that no validator checks. Generate must warn
-	// with ErrUnenforced about a keyword of such a schema.
-	reasonUnenforced = "a validation keyword of a schema of raw JSON text is not enforced"
 	// A schema without type takes the kind its keywords imply, where the
 	// suite accepts every other kind. The suite must call the instance
 	// valid.
@@ -57,132 +52,13 @@ const (
 // suiteAllowed lists the tests the generated code disagrees with by
 // design, with the reason.
 var suiteAllowed = map[suiteKey]string{
-	{"anyOf.json", "anyOf", "neither anyOf valid"}:                        reasonUnenforced,
-	{"dependentRequired.json", "single dependency", "missing dependency"}: reasonUnenforced,
-	{
-		"dependentRequired.json",
-		"multiple dependents required",
-		"missing dependency",
-	}: reasonUnenforced,
-	{
-		"dependentRequired.json",
-		"multiple dependents required",
-		"missing other dependency",
-	}: reasonUnenforced,
-	{
-		"dependentRequired.json",
-		"multiple dependents required",
-		"missing both dependencies",
-	}: reasonUnenforced,
-	{
-		"dependentRequired.json",
-		"dependencies with escaped characters",
-		"CRLF missing dependent",
-	}: reasonUnenforced,
-	{
-		"dependentRequired.json",
-		"dependencies with escaped characters",
-		"quoted quotes missing dependent",
-	}: reasonUnenforced,
-	{
-		"exclusiveMaximum.json",
-		"exclusiveMaximum validation",
-		"boundary point is invalid",
-	}: reasonUnenforced,
-	{
-		"exclusiveMaximum.json",
-		"exclusiveMaximum validation",
-		"above the exclusiveMaximum is invalid",
-	}: reasonUnenforced,
-	{
-		"exclusiveMinimum.json",
-		"exclusiveMinimum validation",
-		"boundary point is invalid",
-	}: reasonUnenforced,
-	{
-		"exclusiveMinimum.json",
-		"exclusiveMinimum validation",
-		"below the exclusiveMinimum is invalid",
-	}: reasonUnenforced,
 	{"items.json", "a schema given for items", "ignores non-arrays"}: reasonImpliedKind,
 	{
 		"items.json",
 		"a schema given for items",
 		"JavaScript pseudo-array is valid",
 	}: reasonImpliedKind,
-	{"maxItems.json", "maxItems validation", "too long is invalid"}: reasonUnenforced,
-	{
-		"maxItems.json",
-		"maxItems validation with a decimal",
-		"too long is invalid",
-	}: reasonUnenforced,
-	{"maxLength.json", "maxLength validation", "too long is invalid"}: reasonUnenforced,
-	{
-		"maxLength.json",
-		"maxLength validation with a decimal",
-		"too long is invalid",
-	}: reasonUnenforced,
-	{"maxProperties.json", "maxProperties validation", "too long is invalid"}: reasonUnenforced,
-	{
-		"maxProperties.json",
-		"maxProperties validation with a decimal",
-		"too long is invalid",
-	}: reasonUnenforced,
-	{
-		"maxProperties.json",
-		"maxProperties = 0 means the object is empty",
-		"one property is invalid",
-	}: reasonUnenforced,
-	{"maximum.json", "maximum validation", "above the maximum is invalid"}: reasonUnenforced,
-	{
-		"maximum.json",
-		"maximum validation with unsigned integer",
-		"above the maximum is invalid",
-	}: reasonUnenforced,
-	{"minItems.json", "minItems validation", "too short is invalid"}: reasonUnenforced,
-	{
-		"minItems.json",
-		"minItems validation with a decimal",
-		"too short is invalid",
-	}: reasonUnenforced,
-	{"minLength.json", "minLength validation", "too short is invalid"}: reasonUnenforced,
-	{
-		"minLength.json",
-		"minLength validation",
-		"one grapheme is not long enough",
-	}: reasonUnenforced,
-	{
-		"minLength.json",
-		"minLength validation with a decimal",
-		"too short is invalid",
-	}: reasonUnenforced,
-	{"minProperties.json", "minProperties validation", "too short is invalid"}: reasonUnenforced,
-	{
-		"minProperties.json",
-		"minProperties validation with a decimal",
-		"too short is invalid",
-	}: reasonUnenforced,
-	{"minimum.json", "minimum validation", "below the minimum is invalid"}: reasonUnenforced,
-	{
-		"minimum.json",
-		"minimum validation with signed integer",
-		"float below the minimum is invalid",
-	}: reasonUnenforced,
-	{
-		"minimum.json",
-		"minimum validation with signed integer",
-		"int below the minimum is invalid",
-	}: reasonUnenforced,
-	{"multipleOf.json", "by int", "int by int fail"}:                            reasonUnenforced,
-	{"multipleOf.json", "by number", "35 is not multiple of 1.5"}:               reasonUnenforced,
-	{"multipleOf.json", "by small number", "0.00751 is not multiple of 0.0001"}: reasonUnenforced,
-	{
-		"multipleOf.json",
-		"by very small number",
-		"1.5e-8 is not multiple of 1e-8",
-	}: reasonUnenforced,
-	{"pattern.json", "pattern validation", "a non-matching pattern is invalid"}: reasonUnenforced,
-	{"properties.json", "object properties validation", "ignores arrays"}:       reasonImpliedKind,
+	{"properties.json", "object properties validation", "ignores arrays"}: reasonImpliedKind,
 	{
 		"properties.json",
 		"object properties validation",
@@ -205,83 +81,28 @@ var suiteAllowed = map[suiteKey]string{
 	{"required.json", "required validation", "ignores other non-objects"}: reasonImpliedKind,
 	{"required.json", "required validation", "ignores null"}:              reasonImpliedKind,
 	{"required.json", "required validation", "ignores boolean"}:           reasonImpliedKind,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"non-unique array of integers is invalid",
-	}: reasonUnenforced,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"non-unique array of more than two integers is invalid",
-	}: reasonUnenforced,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"numbers are unique if mathematically unequal",
-	}: reasonUnenforced,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"non-unique array of strings is invalid",
-	}: reasonUnenforced,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"non-unique array of objects is invalid",
-	}: reasonUnenforced,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"property order of array of objects is ignored",
-	}: reasonUnenforced,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"non-unique array of nested objects is invalid",
-	}: reasonUnenforced,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"non-unique array of arrays is invalid",
-	}: reasonUnenforced,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"non-unique array of more than two arrays is invalid",
-	}: reasonUnenforced,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"non-unique heterogeneous types are invalid",
-	}: reasonUnenforced,
-	{
-		"uniqueItems.json",
-		"uniqueItems validation",
-		"objects are non-unique despite key order",
-	}: reasonUnenforced,
 }
 
 // suiteGenerated is the least number of groups of each top-level file of
 // the suite that Generate accepts. A file generating fewer means Generate
 // rejects schemas it used to accept. A file missing here generates none.
 var suiteGenerated = map[string]int{
-	"additionalProperties.json":    3,
-	"allOf.json":                   2,
+	"additionalProperties.json":    4,
+	"allOf.json":                   4,
 	"anchor.json":                  1,
 	"anyOf.json":                   5,
 	"boolean_schema.json":          1,
-	"const.json":                   10,
+	"const.json":                   17,
 	"content.json":                 4,
 	"default.json":                 3,
 	"dependentRequired.json":       4,
 	"dynamicRef.json":              1,
-	"enum.json":                    8,
+	"enum.json":                    14,
 	"exclusiveMaximum.json":        1,
 	"exclusiveMinimum.json":        1,
 	"format.json":                  19,
 	"infinite-loop-detection.json": 1,
-	"items.json":                   3,
+	"items.json":                   4,
 	"maxContains.json":             1,
 	"maxItems.json":                2,
 	"maxLength.json":               2,
@@ -293,12 +114,12 @@ var suiteGenerated = map[string]int{
 	"minProperties.json":           2,
 	"minimum.json":                 2,
 	"multipleOf.json":              6,
-	"oneOf.json":                   5,
+	"oneOf.json":                   6,
 	"pattern.json":                 3,
-	"properties.json":              2,
-	"ref.json":                     15,
+	"properties.json":              3,
+	"ref.json":                     16,
 	"required.json":                3,
-	"type.json":                    8,
+	"type.json":                    11,
 	"uniqueItems.json":             2,
 	"vocabulary.json":              1,
 }
@@ -306,31 +127,29 @@ var suiteGenerated = map[string]int{
 // suiteUnsupported is the number of groups of each top-level file of the
 // suite that Generate rejects. A file missing here rejects none.
 var suiteUnsupported = map[string]int{
-	"additionalProperties.json":  6,
-	"allOf.json":                 10,
+	"additionalProperties.json":  5,
+	"allOf.json":                 8,
 	"anchor.json":                3,
 	"anyOf.json":                 3,
 	"boolean_schema.json":        1,
-	"const.json":                 7,
 	"contains.json":              7,
 	"defs.json":                  1,
 	"dependentSchemas.json":      4,
 	"dynamicRef.json":            20,
-	"enum.json":                  8,
+	"enum.json":                  2,
 	"if-then-else.json":          12,
-	"items.json":                 7,
+	"items.json":                 6,
 	"maxContains.json":           4,
 	"minContains.json":           7,
 	"not.json":                   9,
-	"oneOf.json":                 6,
+	"oneOf.json":                 5,
 	"patternProperties.json":     6,
 	"prefixItems.json":           4,
-	"properties.json":            4,
+	"properties.json":            3,
 	"propertyNames.json":         6,
-	"ref.json":                   21,
+	"ref.json":                   20,
 	"refRemote.json":             15,
 	"required.json":              2,
-	"type.json":                  3,
 	"unevaluatedItems.json":      29,
 	"unevaluatedProperties.json": 44,
 	"uniqueItems.json":           4,
@@ -343,10 +162,8 @@ var suiteUnsupportedReasons = []string{
 	"name conflict: #/enum/0 and #/enum/1 both give the Go name RootFooBar",
 	"unsupported schema: a schema resource other than the root",
 	"unsupported schema: additionalProperties next to allOf rejects the members of the other schemas",
-	"unsupported schema: admits no kind other than null",
 	"unsupported schema: allOf member is no object",
 	"unsupported schema: enum lists no value",
-	"unsupported schema: enum or const of other than one scalar kind",
 	"unsupported schema: keyword $dynamicRef is not supported",
 	"unsupported schema: keyword contains is not supported",
 	"unsupported schema: keyword dependentSchemas is not supported",
@@ -363,10 +180,6 @@ var suiteUnsupportedReasons = []string{
 	"unsupported schema: keyword then is not supported",
 	"unsupported schema: keyword unevaluatedItems is not supported",
 	"unsupported schema: keyword unevaluatedProperties is not supported",
-	"unsupported schema: kind %q in a type of several kinds",
-	"unsupported schema: members 0 and 1 differ only in keywords the generated code does not check",
-	"unsupported schema: oneOf member holds only keywords the generated code does not check, " +
-		"so it matches every value",
 	"unsupported schema: property name %q does not fit a json tag",
 	"unsupported schema: reference %q leaves the document",
 	"unsupported schema: reference %q names no schema the generator reads",
@@ -637,29 +450,6 @@ func compareSuiteKeys(a, b suiteKey) int {
 // to disagree for.
 func checkAllowed(reason string, schema jsontext.Value, valid bool) error {
 	switch reason {
-	case reasonUnenforced:
-		var doc jsonschema.Schema
-		if err := jsonv2.Unmarshal(schema, &doc); err != nil {
-			return err
-		}
-
-		_, warnings, err := Generate(&doc, Options{Package: "suite", TypeName: "Root"})
-		if err != nil {
-			return err
-		}
-
-		raw := func(w error) bool {
-			ptr, ok := strings.CutPrefix(w.Error(), ErrUnenforced.Error()+": #")
-			if !errors.Is(w, ErrUnenforced) || !ok {
-				return false
-			}
-
-			return placeKind(&doc, ptr[:strings.LastIndex(ptr, "/")]) == ""
-		}
-
-		if !slices.ContainsFunc(warnings, raw) {
-			return errors.New("Generate warns about no keyword of a schema of raw JSON text")
-		}
 	case reasonImpliedKind:
 		if !valid {
 			return errors.New("the suite calls the instance invalid")

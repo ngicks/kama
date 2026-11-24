@@ -12,7 +12,9 @@ import (
 // n may carry a unary plus.
 //
 // It applies to types of a string, slice, array, map or channel underlying
-// type. The length of a string is its number of bytes.
+// type. The length of a string is its number of bytes. On raw JSON text,
+// as IsRawJson tells, it counts the elements of an array and passes a
+// value of another kind.
 type Length struct{}
 
 // Name returns "length".
@@ -44,7 +46,11 @@ func (LengthOptions) Check(t types.Type) error {
 }
 
 // Emit calls kamaValidateLength once per comparison.
-func (o LengthOptions) Emit(e Emitter, _ types.Type, v Gen) (Gen, error) {
+func (o LengthOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+	if IsRawJson(t) {
+		return rawComparisons(e, "Items", v, o.Comparisons, false), nil
+	}
+
 	e.Declare(compareName, compareDecl)
 	e.Declare(lengthName, lengthDecl)
 

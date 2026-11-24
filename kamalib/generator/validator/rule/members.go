@@ -24,6 +24,10 @@ import (
 // fallback field, tagged json:",embed", counts its entries and must be a
 // map. A struct inlining an embedded struct is an error, since Members
 // does not count the members such a struct adds.
+//
+// On raw JSON text, as IsRawJson tells, it applies outside the doc comment
+// of a struct type too. It counts the members of an object and passes a
+// value of another kind.
 type Members struct{}
 
 // Name returns "members".
@@ -46,13 +50,23 @@ func (Members) Parse(arg string, _ Resolver) (Rule, error) {
 	return MembersOptions{Comparisons: cs}, nil
 }
 
-// Check rejects every type: members counts the fields of a struct, which
-// Struct gives.
-func (MembersOptions) Check(types.Type) error { return errMembersStruct }
+// Check accepts raw JSON text only. members counts the fields of a struct
+// through Struct.
+func (MembersOptions) Check(t types.Type) error {
+	if !IsRawJson(t) {
+		return errMembersStruct
+	}
 
-// Emit fails as Check does.
-func (MembersOptions) Emit(Emitter, types.Type, Gen) (Gen, error) {
-	return nil, errMembersStruct
+	return nil
+}
+
+// Emit calls rawjson.Members once per comparison.
+func (o MembersOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+	if !IsRawJson(t) {
+		return nil, errMembersStruct
+	}
+
+	return rawComparisons(e, "Members", v, o.Comparisons, false), nil
 }
 
 // Struct returns the rule counting the members of s. The members of s must

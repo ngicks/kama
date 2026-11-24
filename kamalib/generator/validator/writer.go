@@ -270,7 +270,7 @@ func (w *writer) validator(
 		return s, nil
 	}
 
-	if _, ok := r.(rule.StructRule); ok {
+	if _, ok := r.(rule.StructRule); ok && !acceptsHeld(r, v.Type()) {
 		return nil, fmt.Errorf(
 			"%w: %s: %s on %s validates a struct as a whole;"+
 				" write it in the doc comment of a struct type",
@@ -339,7 +339,7 @@ func (w *writer) typeValidator(u types.Type, vo ValidatorOptions) (genStep, erro
 				" as a whole, so write it on a field",
 			ErrDirective, vo.src.origin(), vo.src.spelling(), place,
 		)
-	case isStructRule:
+	case isStructRule && r.Check(named) != nil:
 		return nil, fmt.Errorf(
 			"%w: %s: %s on %s validates a struct as a whole, and %s is no struct",
 			ErrDirective, vo.src.origin(), vo.src.spelling(), place, named.Obj().Name(),
@@ -416,6 +416,24 @@ func (w *writer) apply(r rule.Rule, t types.Type, x genExpr, wrap wrapFunc) (gen
 	}
 
 	return lang.If(guard, s, nil), nil
+}
+
+// acceptsHeld reports whether r applies to t or to the value t holds, as
+// apply tries them. A rule.StructRule applies outside a struct type this
+// way, as members does to raw JSON text.
+func acceptsHeld(r rule.Rule, t types.Type) bool {
+	for {
+		if r.Check(t) == nil {
+			return true
+		}
+
+		held, _, _, ok := rule.HeldValue(t, nil)
+		if !ok {
+			return false
+		}
+
+		t = held
+	}
 }
 
 // emit returns the step running r, which accepted t, on the value x of

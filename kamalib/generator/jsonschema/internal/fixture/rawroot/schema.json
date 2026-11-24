@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Loose",
+  "description": "Loose takes any JSON value. Each keyword checks the values of its own kind.",
+  "minimum": 1,
+  "maxLength": 3,
+  "minItems": 1,
+  "uniqueItems": true,
+  "maxProperties": 2,
+  "dependentRequired": {"a": ["b"]},
+  "$defs": {
+    "Mixed": {"enum": [1, "a", null, {"b": []}]},
+    "Pair": {"type": ["array", "object"], "maxItems": 2}
+  }
+}

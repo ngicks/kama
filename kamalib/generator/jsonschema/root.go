@@ -65,7 +65,7 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		}
 	}
 
-	return []genStep{
+	steps := []genStep{
 		lang.Line(declDoc),
 		lang.Stmt("type %s %s", name, underlying),
 		lang.DocFunc(
@@ -83,6 +83,17 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 			append(decode, lang.Stmt("*v = %s(out)", name), lang.Stmt("return nil"))...,
 		),
 	}
+
+	if raw(doc, ptr) {
+		steps = append(steps, lang.DocFunc(
+			docComment("RawJson returns v as raw JSON text, which tells the validators to check "+
+				"v as JSON Schema does."),
+			lang.Expr("func (v %s) RawJson() %s", name, q(jsontextPath, "Value")),
+			lang.Stmt("return %s(v)", q(jsontextPath, "Value")),
+		))
+	}
+
+	return steps
 }
 
 // rootUnion reports whether ptr is the root, defined over a union holder or

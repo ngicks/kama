@@ -25,15 +25,15 @@ import (
 // placeKind.
 
 // ErrUnenforced is the warning of a validation keyword the generated code
-// does not check, such as minimum on a schema of no type, whose Go type is
-// jsontext.Value. The warning names the JSON pointer of the keyword.
+// does not check, such as minLength next to a oneOf or a pattern RE2 does
+// not compile. The warning names the JSON pointer of the keyword.
 var ErrUnenforced = errors.New("jsonschema: keyword not enforced")
 
 // placeKind returns the kind of the Go value of the schema at ptr, as
-// validators see it: string, integer, number, boolean, array (a slice), map
-// or struct (a struct or a product). It follows references, an allOf of one
-// member and the value of a nullable union. It is empty for a union and
-// for raw JSON text, which no validator checks.
+// validators see it: string, integer, number, boolean, array (a slice), map,
+// struct (a struct or a product) or raw (raw JSON text, as raw tells). It
+// follows references, an allOf of one member and the value of a nullable
+// union. It is empty for a union, which no validator checks.
 func placeKind(doc *jsonschema.Schema, ptr string) string {
 	r, s, err := resolvedValue(doc, ptr)
 	if err != nil || s.Bool.IsSome() || union(s) && !nullableType(s) {
@@ -45,6 +45,8 @@ func placeKind(doc *jsonschema.Schema, ptr string) string {
 		return "struct"
 	case objectKind(s) && mapOnly(s):
 		return "map"
+	case raw(doc, r):
+		return "raw"
 	}
 
 	k, err := kinds(doc, r)
@@ -121,8 +123,23 @@ func valueArgs(doc *jsonschema.Schema, ptr, kind string) ([]string, []string) {
 		if s.DependentRequired != nil {
 			unchecked = append(unchecked, "dependentRequired")
 		}
+	case "raw":
+		var pattern bool
+
+		args, pattern = rawArgs(s, cmp, lengths)
+		if !pattern {
+			unchecked = append(unchecked, "pattern")
+		}
 	case "":
 		unchecked = append(unchecked, presentValidation(s)...)
+	}
+
+	if kind == "raw" {
+		if values := enumValues(s); values != nil {
+			args = append(args, "const="+quoteArg(rawValues(values)))
+		}
+
+		return args, unchecked
 	}
 
 	if allowed, err := allowedValues(doc, ptr); err == nil && allowed != nil {
@@ -133,6 +150,133 @@ func valueArgs(doc *jsonschema.Schema, ptr, kind string) ([]string, []string) {
 	}
 
 	return args, slices.Compact(slices.Sorted(slices.Values(unchecked)))
+}
+
+// rawArgs returns the args checking the validation keywords of s on raw
+// JSON text, each on the values of the kind it applies to, and whether RE2
+// compiles the pattern of s, if any. cmp holds the comparisons of the
+// numeric bounds, and lengths spells those of a pair of length keywords.
+func rawArgs(
+	s *jsonschema.Schema,
+	cmp string,
+	lengths func(min, max jsontext.Value) string,
+) ([]string, bool) {
+	var args []string
+
+	add := func(name, arg string) {
+		if arg != "" {
+			args = append(args, name+"="+quoteArg(arg))
+		}
+	}
+
+	if !s.Type.IsZero() {
+		add("kind", strings.Join(slices.Compact(slices.Clone(s.Type.Names)), " "))
+	}
+
+	add("cmp", cmp)
+
+	if s.MultipleOf != nil {
+		add("multipleof", string(s.MultipleOf))
+	}
+
+	add("runes", lengths(s.MinLength, s.MaxLength))
+
+	compiles := true
+
+	if s.Pattern.IsSome() {
+		if _, err := regexp.Compile(s.Pattern.Value()); err != nil {
+			compiles = false
+		} else {
+			add("regexp", s.Pattern.Value())
+		}
+	}
+
+	add("length", lengths(s.MinItems, s.MaxItems))
+
+	if s.UniqueItems.Value() {
+		args = append(args, "unique")
+	}
+
+	add("members", lengths(s.MinProperties, s.MaxProperties))
+
+	if dep := rawDependents(s); dep != "" {
+		args = append(args, dep)
+	}
+
+	return args, compiles
+}
+
+// rawDependents returns the arg checking the dependentRequired of s on raw
+// JSON text: for each key, if(required=<key>, required="<members>"), all
+// joined by and when there are several, or "" when no key requires a
+// member.
+func rawDependents(s *jsonschema.Schema) string {
+	names := func(ns []string) string {
+		return dircmnt.SpellArgs(
+			opiter.WrapSeq(slices.Values(ns)).
+				Map(func(n string) dircmnt.KeyValue { return dircmnt.KeyValue{Key: n, KeyQuoted: true} }).
+				CollectSlice(),
+		)
+	}
+	required := func(ns []string) dircmnt.KeyValue {
+		return dircmnt.KeyValue{
+			Key:         "required",
+			Value:       names(ns),
+			HasValue:    true,
+			ValueQuoted: true,
+		}
+	}
+
+	var conds []dircmnt.KeyValue
+
+	for key, deps := range opiter.MapsSorted(s.DependentRequired) {
+		if len(deps) > 0 {
+			conds = append(conds, dircmnt.KeyValue{
+				Key:  "if",
+				Call: true,
+				Args: []dircmnt.KeyValue{required([]string{key}), required(deps)},
+			})
+		}
+	}
+
+	switch len(conds) {
+	case 0:
+		return ""
+	case 1:
+		return conds[0].String()
+	}
+
+	return dircmnt.KeyValue{Key: "and", Call: true, Args: conds}.String()
+}
+
+// enumValues returns the values of the const or the enum of s, or nil when
+// it has neither.
+func enumValues(s *jsonschema.Schema) []jsontext.Value {
+	if s.Const != nil {
+		return []jsontext.Value{s.Const}
+	}
+
+	return s.Enum
+}
+
+// rawValues spells values as the arg of const on raw JSON text: the text
+// of each value, bare for a number, true, false and null, else quoted.
+func rawValues(values []jsontext.Value) string {
+	return dircmnt.SpellArgs(
+		opiter.WrapSeq(slices.Values(values)).
+			Map(func(v jsontext.Value) dircmnt.KeyValue {
+				text := v.Clone()
+				if err := text.Compact(); err != nil {
+					text = v
+				}
+
+				return dircmnt.KeyValue{
+					Key:       string(text),
+					KeyQuoted: !strings.ContainsRune("ntf0", rune(v.Kind())),
+				}
+			}).
+			CollectSlice(),
+	)
 }
 
 // presentValidation returns the validation keywords of s that some kind
@@ -330,13 +474,31 @@ func valueType(doc *jsonschema.Schema, ptr string) bool {
 
 	s, err := at(doc, ptr)
 	if err != nil || s.Bool.IsSome() || s.Ref.IsSome() || transparentAllOf(s) || union(s) ||
-		s.AllOf != nil || stringEnum(s) || structKind(s) || nullableUnion(doc, ptr) {
+		s.AllOf != nil || stringEnum(s) || structKind(s) || nullableUnion(doc, ptr) ||
+		unionMember(ptr) && nullMember(doc, ptr) {
 		return false
 	}
 
 	args, _ := valueArgs(doc, ptr, placeKind(doc, ptr))
 
 	return len(args) > 0
+}
+
+// unionMember reports whether ptr is the schema of a member of a oneOf or
+// an anyOf. A member admitting null only declares no type, its wrapper
+// standing for it.
+func unionMember(ptr string) bool {
+	ends := stepEnds(ptr)
+	if len(ends) == 0 {
+		return false
+	}
+
+	start := 0
+	if len(ends) > 1 {
+		start = ends[len(ends)-2]
+	}
+
+	return strings.HasPrefix(ptr[start:], "/oneOf/") || strings.HasPrefix(ptr[start:], "/anyOf/")
 }
 
 // isProperty reports whether ptr is the schema of an object property.

@@ -49,6 +49,37 @@ func TestGenerateDirectives(t *testing.T) {
 			[]string{"//kama:validate regexp=\"" + long + "\"\n"},
 		},
 		{
+			"raw JSON text of a schema of every kind",
+			`{"minimum":1,"maxLength":2,"minProperties":1,"uniqueItems":true,
+			"dependentRequired":{"a":["b","c"],"d":["e"]}}`,
+			[]string{
+				"//kama:validate cmp=\">=1\"\n//kama:validate runes=\"<=2\"\n" +
+					"//kama:validate unique\n//kama:validate members=\">=1\"\n",
+				`//kama:validate and(if(required="\"a\"", required="\"b\" \"c\""),` +
+					` if(required="\"d\"", required="\"e\""))` + "\n",
+				"type Root jsontext.Value\n",
+				"func (v Root) RawJson() jsontext.Value {",
+			},
+		},
+		{
+			"raw JSON text of several kinds and of mixed values",
+			`{"type":"object","properties":{
+				"k":{"type":["array","object"],"maxItems":1},
+				"e":{"enum":[1,"a",null,{"b":[]}]}
+			}}`,
+			[]string{
+				"\t//kama:validate kind=\"array object\"\n\t//kama:validate length=\"<=1\"\n\tK ",
+				"\t//kama:validate const=`1 \"\\\"a\\\"\" null \"{\\\"b\\\":[]}\"`\n\tE ",
+			},
+		},
+		{
+			"null-only schema of a property named like a union keyword",
+			`{"type":"object","properties":{"oneOf":{"type":"array","items":{"type":"null"}}}}`,
+			[]string{
+				"//kama:validate kind=\"null\"\n//kama:generated kama:jsonschema\ntype RootOneOfItem ",
+			},
+		},
+		{
 			"root over a union",
 			`{"$ref":"#/$defs/u","$defs":{"u":{"oneOf":[{"type":"string"},{"type":"integer"}]}}}`,
 			[]string{"type Root U\n", "if err := jsonschemart.Validate(out, false); err != nil {"},
@@ -80,7 +111,7 @@ func TestGenerateWarnsUnenforced(t *testing.T) {
 		"type":"object",
 		"dependentRequired":{"a":["zz"]},
 		"properties":{
-			"a":{"minimum":1},
+			"a":{"minimum":1,"pattern":"(?<=y)"},
 			"b":{"type":"string","pattern":"(?<=x)","minLength":1},
 			"c":{"type":"array","items":{"$ref":"#/$defs/n","maximum":3}},
 			"u":{"oneOf":[{"type":"string"},{"type":"integer"}],"minLength":2}
@@ -100,7 +131,7 @@ func TestGenerateWarnsUnenforced(t *testing.T) {
 
 	assert.DeepEqual(t, got, []string{
 		"jsonschema: keyword not enforced: #/dependentRequired",
-		"jsonschema: keyword not enforced: #/properties/a/minimum",
+		"jsonschema: keyword not enforced: #/properties/a/pattern",
 		"jsonschema: keyword not enforced: #/properties/b/pattern",
 		"jsonschema: keyword not enforced: #/properties/c/items/maximum",
 		"jsonschema: keyword not enforced: #/properties/u/minLength",

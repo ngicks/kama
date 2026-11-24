@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:14Z
+// generated: 2026-11-24T13:35:44Z
 
 package object
 
@@ -262,7 +262,8 @@ func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // ObjectClosed is generated from the schema at #/properties/closed.
 //
-//kama:validate hook=off closed
+//kama:validate hook=off
+//kama:validate closed
 //kama:generated kama:jsonschema
 type ObjectClosed struct {
 	A  opt.Option[bool]          `json:"a,omitzero"`

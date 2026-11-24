@@ -3,7 +3,10 @@ package rule
 import (
 	"fmt"
 	"go/types"
+	"slices"
 	"strconv"
+
+	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -18,21 +21,56 @@ import (
 // Any other comparable type must not equal its zero value. IsZero counts
 // when the type declares it or embedded fields promote it without a
 // pointer or an interface on the way.
+//
+// On raw JSON text, as IsRawJson tells, it takes the names of members as
+// its arg, as in required="a b", and tests an object holds each of them,
+// as JSON Schema required does, passing a value of another kind. Without
+// names it tests the text is not nil. Names apply to raw JSON text only.
 type Required struct{}
 
 // Name returns "required".
 func (Required) Name() string { return "required" }
 
-// RequiredOptions are the options of //kama:validate required. Required takes no arg.
-type RequiredOptions struct{}
+// RequiredOptions are the options of //kama:validate required.
+type RequiredOptions struct {
+	// Names are the member names of the arg, in order, for raw JSON text.
+	Names []string
+}
 
-// Parse accepts only the empty arg.
+// Parse decodes arg into member names separated by spaces, none for the
+// empty arg.
 func (Required) Parse(arg string, _ Resolver) (Rule, error) {
-	return RequiredOptions{}, noArg(arg)
+	args, err := argTokens(arg)
+	if err != nil {
+		return nil, err
+	}
+
+	var names []string
+
+	for _, kv := range args {
+		if kv.HasValue {
+			return nil, argsError(fmt.Errorf("arg %q is no member name", kv.String()))
+		}
+
+		names = append(names, kv.Key)
+	}
+
+	return RequiredOptions{Names: names}, nil
 }
 
 // Check accepts the types the doc comment of Required lists.
-func (RequiredOptions) Check(t types.Type) error {
+func (o RequiredOptions) Check(t types.Type) error {
+	if len(o.Names) > 0 {
+		if !IsRawJson(t) {
+			return fmt.Errorf(
+				"%s is no raw JSON text, which the member names of required apply to",
+				t,
+			)
+		}
+
+		return nil
+	}
+
 	if _, _, ok := requiredCall(t, nil); !ok {
 		return fmt.Errorf(
 			"%s is not an option type, not nillable, has no method IsZero() bool declared"+
@@ -44,8 +82,16 @@ func (RequiredOptions) Check(t types.Type) error {
 	return nil
 }
 
-// Emit calls the helper the test of t needs.
-func (RequiredOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+// Emit calls the helper the test of t needs, rawjson.Required for names.
+func (o RequiredOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+	if len(o.Names) > 0 {
+		names := opiter.WrapSeq(slices.Values(o.Names)).
+			Map(func(n string) Gen { return lang.Expr("%s", strconv.Quote(n)) }).
+			CollectSlice()
+
+		return rawCall(e, "Required", v, append([]Gen{e.StopOnFirstError()}, names...)...), nil
+	}
+
 	helper, call, ok := requiredCall(t, v)
 	if !ok {
 		return nil, fmt.Errorf("required: unsupported type %s", t)

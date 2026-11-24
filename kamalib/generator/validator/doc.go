@@ -321,8 +321,9 @@
 //   - a validator name in a free-floating comment.
 //   - a validator other than a rule.StructRule in the doc comment of a
 //     struct type, a rule.StructRule on a field or in the doc comment of a
-//     type of another kind, and a rule.SiblingRule in the doc comment of
-//     any type.
+//     type of another kind whose type its Check rejects, and a
+//     rule.SiblingRule in the doc comment of any type. members accepts raw
+//     JSON text, as Raw JSON text describes.
 //
 // A validator applied to a type it cannot handle, or with an arg it does
 // not accept, is an error wrapping ErrUnsupported. The error names the
@@ -415,6 +416,25 @@
 // implement rule.StructRule, such as members. The rule reads the fields through rule.Struct,
 // which names them by the JSON members they encode as. A field takes no
 // rule.StructRule.
+//
+// # Raw JSON text
+//
+// A value of jsontext.Value, or of a type of the underlying type []byte
+// declaring the method RawJson() jsontext.Value, is raw JSON text, as
+// rule.IsRawJson tells. Its validators test it with the semantics of JSON
+// Schema: each tests the values of the JSON kinds it applies to and passes
+// any other, as minimum passes a string:
+//
+//	//kama:validate kind="number string" cmp=">=1" runes="<=3"
+//	type Loose jsontext.Value
+//
+//	func (v Loose) RawJson() jsontext.Value { return jsontext.Value(v) }
+//
+// The built-in validators on raw JSON text are kind, cmp, multipleof, runes,
+// regexp, length on arrays, members on objects, unique, const on JSON values,
+// and required with member names. A combinator holds when its operands do as
+// on any other type: not(cmp=">=5") fails on 7 and holds on "a". Validate
+// does not walk the bytes of raw JSON text as the elements of a slice.
 //
 // # Errors of Validate
 //

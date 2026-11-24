@@ -212,13 +212,20 @@ type structCombinator struct {
 	build func(ops []Operand) Rule
 }
 
-// Check rejects every type: an operand needs the struct, which Struct
-// gives.
-func (structCombinator) Check(types.Type) error { return errCombinatorStruct }
+// Check accepts a type every operand accepts, as raw JSON text, which
+// members counts the members of. Any other type needs the struct, which
+// Struct gives.
+func (c structCombinator) Check(t types.Type) error {
+	if err := checkOperands(c.ops, t); err != nil {
+		return fmt.Errorf("%w: %w", errCombinatorStruct, err)
+	}
 
-// Emit fails as Check does.
-func (structCombinator) Emit(Emitter, types.Type, Gen) (Gen, error) {
-	return nil, errCombinatorStruct
+	return nil
+}
+
+// Emit emits the combinator of the operands unbound.
+func (c structCombinator) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+	return c.build(c.ops).Emit(e, t, v)
 }
 
 // Struct binds each StructRule operand to s.

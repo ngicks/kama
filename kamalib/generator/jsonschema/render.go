@@ -211,7 +211,7 @@ func validatedDoc(text string, args []string) genExpr {
 	return lang.Comment(
 		lang.Expr("%s", commentLines(text)),
 		lang.Expr(""),
-		lang.Expr("%s", strings.Join(append([]string{validateDirective}, args...), " ")),
+		lang.Expr("%s", directiveLines(args)),
 		lang.Expr("%s", GeneratorId.Marker()),
 	)
 }
@@ -232,6 +232,23 @@ func validateStep(opts Options, v genExpr) genStep {
 
 // validateDirective is the directive of the validator generator.
 const validateDirective = "//kama:validate"
+
+// directiveLines returns the //kama:validate lines of args, one arg per
+// line so that a long combinator reads on a line of its own. The validator
+// generator joins the lines of one type or field. No args give one line
+// without args.
+func directiveLines(args []string) string {
+	if len(args) == 0 {
+		return validateDirective
+	}
+
+	return strings.Join(
+		opiter.WrapSeq(slices.Values(args)).
+			Map(func(a string) string { return validateDirective + " " + a }).
+			CollectSlice(),
+		"\n",
+	)
+}
 
 // commentLines returns text as Go line comments: each line of text, as
 // "\r\n", "\r" and "\n" end them, wrapped at commentWidth, every line
@@ -376,7 +393,7 @@ func builtinTypeSeen(
 		return "", err
 	}
 
-	if slices.Equal(k, allKinds) {
+	if raw(doc, r) {
 		return q(jsontextPath, "Value")(c)
 	}
 
@@ -384,7 +401,7 @@ func builtinTypeSeen(
 		Filter(func(k string) bool { return k != "null" }).
 		CollectSlice()
 	if len(nonNull) != 1 {
-		return "", unsupported(r, "admits no kind other than null")
+		return "", unsupported(r, "admits no single kind")
 	}
 
 	switch nonNull[0] {

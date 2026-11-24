@@ -59,9 +59,7 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		}
 
 		if args := fieldArgs(doc, ptr, n.Name); len(args) > 0 {
-			comment = append(comment, lang.Expr(
-				"%s", strings.Join(append([]string{validateDirective}, args...), " "),
-			))
+			comment = append(comment, lang.Expr("%s", directiveLines(args)))
 		}
 
 		if comment != nil {

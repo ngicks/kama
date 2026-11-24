@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:18Z
+// generated: 2026-11-24T13:35:49Z
 
 package prefilter
 
@@ -267,7 +267,8 @@ func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Square is generated from the schema at #/$defs/Square.
 //
-//kama:validate hook=off closed
+//kama:validate hook=off
+//kama:validate closed
 //kama:generated kama:jsonschema
 type Square struct {
 	Side opt.Option[float64]       `json:"side,omitzero"`

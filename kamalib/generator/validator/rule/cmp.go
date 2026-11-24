@@ -19,7 +19,9 @@ import (
 // value: a number, a quoted string, true or false.
 //
 // It applies to types of an integer, float or string underlying type, and
-// with == and != only to types of a bool underlying type. On an integer
+// with == and != only to types of a bool underlying type. On raw JSON text,
+// as IsRawJson tells, it takes JSON numbers only and compares numbers
+// exactly, passing a value of another kind. On an integer
 // type a number literal the type cannot represent, such as 1.5 or 1e30,
 // compares exactly: >=1.5 holds for the values >=2, ==1.5 for none and
 // <=1e30 for every value of int64.
@@ -48,6 +50,10 @@ func (Cmp) Parse(arg string, _ Resolver) (Rule, error) {
 // Check accepts comparisons with literals of t, on the types the doc
 // comment of Cmp lists.
 func (o CmpOptions) Check(t types.Type) error {
+	if IsRawJson(t) {
+		return checkRawNumbers(o.Comparisons)
+	}
+
 	info := typequery.BasicInfo(t)
 
 	switch {
@@ -74,6 +80,10 @@ func (o CmpOptions) Check(t types.Type) error {
 // Emit calls kamaValidateCmp, or kamaValidateEqual for a bool, once per
 // comparison.
 func (o CmpOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
+	if IsRawJson(t) {
+		return rawComparisons(e, "Compare", v, o.Comparisons, true), nil
+	}
+
 	helper := cmpName
 	if typequery.BasicInfo(t)&types.IsBoolean != 0 {
 		helper = equalName

@@ -167,12 +167,6 @@ func TestGenerateRejects(t *testing.T) {
 			"#/properties/a:",
 		},
 		{
-			"object type of several kinds",
-			`{"type":"object","properties":{"a":{"type":["object","string"]}}}`,
-			ErrUnsupported,
-			"#/properties/a/type:",
-		},
-		{
 			"minProperties next to allOf",
 			`{"allOf":[{"type":"object"},{"type":"object"}],"minProperties":1}`,
 			ErrUnsupported,
@@ -232,23 +226,14 @@ func TestGenerateRejects(t *testing.T) {
 		{
 			"oneOf members differing in unchecked keywords only",
 			`{"type":"object","properties":{"s":{"oneOf":[
-				{"type":"array","items":{"minimum":1}},{"type":"array","items":{"minimum":2}}
+				{"type":"string","pattern":"(?<=a)"},{"type":"string","pattern":"(?<=b)"}
 			]}}}`,
 			ErrUnsupported,
 			"#/properties/s/oneOf:",
 		},
 		{
-			"oneOf members differing in unchecked keywords of a property only",
-			`{"oneOf":[
-				{"type":"object","properties":{"a":{"maxLength":1}}},
-				{"type":"object","properties":{"a":{"maxLength":2}}}
-			]}`,
-			ErrUnsupported,
-			"#/oneOf:",
-		},
-		{
 			"oneOf member of unchecked keywords only",
-			`{"oneOf":[{"type":"integer"},{"minimum":2}]}`,
+			`{"oneOf":[{"type":"integer"},{"pattern":"(?<=a)"}]}`,
 			ErrUnsupported,
 			"#/oneOf/1:",
 		},
@@ -341,7 +326,7 @@ func TestGenerateRootType(t *testing.T) {
 		{
 			"keywords of a string",
 			`{"type":"string","minLength":2.0,"maxLength":1e1,"pattern":"^a\""}`,
-			[]string{"//kama:validate runes=\">=2 <=10\" regexp=`^a\"`\n"},
+			[]string{"//kama:validate runes=\">=2 <=10\"\n//kama:validate regexp=`^a\"`\n"},
 		},
 		{"ref", `{"$ref":"#/$defs/a","$defs":{"a":{"type":"object"}}}`, []string{"type Root A"}},
 	}

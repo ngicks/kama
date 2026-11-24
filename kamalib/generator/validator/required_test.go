@@ -129,7 +129,7 @@ func TestRequiredErrors(t *testing.T) {
 			src: "//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
 				"\t//kama:validate required=yes\n\tN int\n}\n",
 			is:   ErrUnsupported,
-			msgs: []string{`unexpected arg "yes"; want none`},
+			msgs: []string{"int is no raw JSON text, which the member names of required apply to"},
 		},
 		{
 			name: "unknown validator",
@@ -138,8 +138,8 @@ func TestRequiredErrors(t *testing.T) {
 			is: ErrDirective,
 			msgs: []string{
 				"unknown validator //kama:validate requird on field N;" +
-					" known: and, closed, cmp, const, format, if, length, members, multipleof, nil, not," +
-					" null, oneof, or, regexp, required, requires, runes, unique, zero",
+					" known: and, closed, cmp, const, format, if, kind, length, members, multipleof," +
+					" nil, not, null, oneof, or, regexp, required, requires, runes, unique, zero",
 			},
 		},
 		{
