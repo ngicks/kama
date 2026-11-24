@@ -4,14 +4,19 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"reflect"
 	"testing"
 
+	gocmp "github.com/google/go-cmp/cmp"
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
+
+// allFields compares the unexported field _x of the generated structs too.
+var allFields = gocmp.Exporter(func(reflect.Type) bool { return true })
 
 func TestDecode(t *testing.T) {
 	cases := []struct {
@@ -21,13 +26,16 @@ func TestDecode(t *testing.T) {
 		out  string
 	}{
 		{
-			"first member wins",
+			"first member wins and keeps the members of the others",
 			`{"label":{"name":"a","tag":"b"},"value":"s"}`,
 			Doc{
-				Label: Label{Kind: LabelNamed{Named: Named{Name: "a"}}},
+				Label: Label{Kind: LabelNamed{Named: Named{
+					Name: "a",
+					_x:   map[string]jsontext.Value{"tag": jsontext.Value(`"b"`)},
+				}}},
 				Value: DocValue{Kind: DocValueString{String: "s"}},
 			},
-			`{"label":{"name":"a"},"value":"s"}`,
+			`{"label":{"name":"a","tag":"b"},"value":"s"}`,
 		},
 		{
 			"second member",
@@ -63,7 +71,7 @@ func TestDecode(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var v Doc
 			assert.NilError(t, json.Unmarshal([]byte(tc.in), &v))
-			assert.Equal(t, v, tc.want)
+			assert.DeepEqual(t, v, tc.want, allFields)
 
 			out, err := json.Marshal(v)
 			assert.NilError(t, err)

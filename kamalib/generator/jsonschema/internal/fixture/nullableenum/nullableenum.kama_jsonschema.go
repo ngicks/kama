@@ -2,12 +2,13 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T02:28:12Z
+// generated: 2026-11-24T11:53:44Z
 
 package nullableenum
 
 import (
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamalib/pkg/validation"
@@ -19,20 +20,45 @@ import (
 //
 //kama:generated kama:jsonschema
 type Levels struct {
-	Ref    und.Und[int64]      `json:"ref,omitzero"`
-	Const  und.Und[string]     `json:"const,omitzero"`
-	Big    und.Und[float64]    `json:"big,omitzero"`
-	Number opt.Option[float64] `json:"number,omitzero"`
+	Ref    und.Und[int64]            `json:"ref,omitzero"`
+	Const  und.Und[string]           `json:"const,omitzero"`
+	Big    und.Und[float64]          `json:"big,omitzero"`
+	Number opt.Option[float64]       `json:"number,omitzero"`
+	_x     map[string]jsontext.Value `json:",embed"`
+}
+
+// AdditionalProperties returns the members of the object that Levels
+// declares no field for.
+//
+//kama:generated kama:jsonschema
+func (v Levels) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
+//
+//kama:generated kama:jsonschema
+func (v Levels) MarshalJSONTo(enc *jsontext.Encoder) error {
+	type plain struct {
+		Ref                  und.Und[int64]            `json:"ref,omitzero"`
+		Const                und.Und[string]           `json:"const,omitzero"`
+		Big                  und.Und[float64]          `json:"big,omitzero"`
+		Number               opt.Option[float64]       `json:"number,omitzero"`
+		AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{Ref: v.Ref, Const: v.Const, Big: v.Big, Number: v.Number, AdditionalProperties: v._x})
 }
 
 // levelsWire keeps a missing member of Levels apart from null.
 //
 //kama:generated kama:jsonschema
 type levelsWire struct {
-	Ref    und.Und[int64]   `json:"ref,omitzero"`
-	Const  und.Und[string]  `json:"const,omitzero"`
-	Big    und.Und[float64] `json:"big,omitzero"`
-	Number und.Und[float64] `json:"number,omitzero"`
+	Ref                  und.Und[int64]            `json:"ref,omitzero"`
+	Const                und.Und[string]           `json:"const,omitzero"`
+	Big                  und.Und[float64]          `json:"big,omitzero"`
+	Number               und.Und[float64]          `json:"number,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -67,6 +93,7 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if w.Number.IsDefined() {
 		errs = append(errs, validation.Field(jsonschemart.NumberEnum(jsonschemart.Member(raw, "number"), "1.5", "18446744073709551616"), "number"))
 	}
+	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

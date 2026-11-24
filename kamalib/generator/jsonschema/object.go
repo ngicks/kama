@@ -64,18 +64,38 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		))
 	}
 
-	if extraMembers(s) {
-		steps = append(steps, lang.Stmt(
-			"AdditionalProperties map[string]%s `json:\",embed\"`",
-			elemType(doc, opts, child(ptr, "additionalProperties")),
-		))
-	}
-
-	steps = append(steps, lang.Stmt("}"))
+	steps = append(steps,
+		lang.Stmt("_x map[string]%s `json:\",embed\"`", extraType(doc, opts, ptr)),
+		lang.Stmt("}"),
+		lang.DocFunc(
+			docComment("AdditionalProperties returns the members of the object that "+name+
+				" declares no field for."),
+			lang.Expr(
+				"func (v %s) AdditionalProperties() map[string]%s", name, extraType(doc, opts, ptr),
+			),
+			lang.Stmt("return v._x"),
+		),
+	)
 	steps = append(steps, marshalSteps(doc, opts, ptr)...)
 	steps = append(steps, wireSteps(doc, opts, ptr)...)
 
 	return append(steps, unmarshalSteps(doc, opts, ptr)...)
+}
+
+// extraType spells the Go type of the values of the members the struct or
+// product at ptr declares no field for: the type of its additionalProperties
+// schema, else raw JSON text.
+func extraType(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
+	s, err := at(doc, ptr)
+	if err != nil {
+		return lang.FailGen(err)
+	}
+
+	if extraMembers(s) {
+		return elemType(doc, opts, child(ptr, "additionalProperties"))
+	}
+
+	return q(jsontextPath, "Value")
 }
 
 // productParts names what the product at ptr is made of: its members
@@ -103,10 +123,10 @@ func productParts(doc *jsonschema.Schema, opts Options, ptr string) (string, err
 	return text, nil
 }
 
-// marshalSteps returns MarshalJSONTo of the struct or product at ptr. A
-// product writes its members and own properties into one object. A struct
-// needs one only to reject a nil pointer of a required member, which a
-// product rejects too.
+// marshalSteps returns MarshalJSONTo of the struct or product at ptr. It
+// copies the fields into a local struct whose additional members are an
+// exported field, since encoding/json/v2 refuses the tagged unexported
+// field _x. A product writes its members and that struct into one object.
 func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -119,8 +139,10 @@ func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	sig := lang.Expr("func (v %s) MarshalJSONTo(enc *%s) error", name, q(jsontextPath, "Encoder"))
-	nilText := "A nil pointer of a required member is an error."
 	body := nilChecks(doc, ptr)
+
+	text := "MarshalJSONTo encodes v as one JSON object, the members AdditionalProperties " +
+		"returns included."
 
 	if s.AllOf != nil {
 		parts, err := productParts(doc, opts, ptr)
@@ -128,42 +150,55 @@ func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 			return []genStep{lang.Fail(err)}
 		}
 
-		text := "MarshalJSONTo encodes v as one JSON object holding the members of " + parts +
-			". The first of them to hold a member name writes it."
-		if body != nil {
-			text += " " + nilText
-		}
+		text = "MarshalJSONTo encodes v as one JSON object holding the members of " + parts +
+			" and those AdditionalProperties returns. The first of them to hold a member name " +
+			"writes it."
+	}
 
-		values := opiter.WrapSeq(opiter.Range(0, len(s.AllOf))).
-			Map(func(i int) genExpr { return lang.Expr("v.%s", memberField(doc, opts, ptr, i)) }).
-			CollectSlice()
+	if body != nil {
+		text += " A nil pointer of a required member is an error."
+	}
 
-		if s.Properties != nil {
-			body = append(body, lang.Stmt("type plain %s", name))
-			values = append(values, lang.Expr("plain(v)"))
-		}
+	body = append(body, lang.Stmt("type plain struct {"))
+
+	inits := make([]genExpr, 0, len(s.Properties)+1)
+
+	for _, n := range s.Properties {
+		f := fieldName(child(ptr, "properties", n.Name), n.Name)
 
 		body = append(body, lang.Stmt(
-			"return %s(enc, %s)", q(runtimePath, "MarshalObjects"), lang.Join(", ", values...),
+			"%s %s `json:%s`", f, fieldType(doc, opts, ptr, n.Name), tagFor(doc, ptr, n.Name),
 		))
+		inits = append(inits, lang.Expr("%s: v.%s", f, f))
+	}
+
+	body = append(body,
+		lang.Stmt(
+			"AdditionalProperties map[string]%s `json:\",embed\"`", extraType(doc, opts, ptr),
+		),
+		lang.Stmt("}"),
+	)
+
+	inits = append(inits, lang.Expr("AdditionalProperties: v._x"))
+	value := lang.Expr("plain{%s}", lang.Join(", ", inits...))
+
+	if s.AllOf == nil {
+		body = append(body, lang.Stmt("return %s(enc, %s)", q(jsonPath, "MarshalEncode"), value))
 
 		return []genStep{lang.DocFunc(docComment(text), sig, body...)}
 	}
 
-	if body == nil {
-		return nil
-	}
+	values := opiter.WrapSeq(opiter.Range(0, len(s.AllOf))).
+		Map(func(i int) genExpr { return lang.Expr("v.%s", memberField(doc, opts, ptr, i)) }).
+		CollectSlice()
 
-	body = append(body,
-		lang.Stmt("type plain %s", name),
-		lang.Stmt("return %s(enc, plain(v))", q(jsonPath, "MarshalEncode")),
-	)
+	body = append(body, lang.Stmt(
+		"return %s(enc, %s)",
+		q(runtimePath, "MarshalObjects"),
+		lang.Join(", ", append(values, value)...),
+	))
 
-	return []genStep{lang.DocFunc(
-		docComment("MarshalJSONTo encodes v as one JSON object. "+nilText),
-		sig,
-		body...,
-	)}
+	return []genStep{lang.DocFunc(docComment(text), sig, body...)}
 }
 
 // nilChecks returns the statements of MarshalJSONTo of the struct or
@@ -230,19 +265,12 @@ func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		))
 	}
 
-	switch {
-	case closed(s):
-		steps = append(steps, lang.Stmt(
-			"Unknown map[string]%s `json:\",embed\"`", q(jsontextPath, "Value"),
-		))
-	case extraMembers(s):
-		steps = append(steps, lang.Stmt(
-			"AdditionalProperties map[string]%s `json:\",embed\"`",
-			elemType(doc, opts, child(ptr, "additionalProperties")),
-		))
-	}
-
-	return append(steps, lang.Stmt("}"))
+	return append(steps,
+		lang.Stmt(
+			"AdditionalProperties map[string]%s `json:\",embed\"`", extraType(doc, opts, ptr),
+		),
+		lang.Stmt("}"),
+	)
 }
 
 // unmarshalSteps returns UnmarshalJSONFrom of the struct or product at ptr.
@@ -295,14 +323,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 		body = append(body, decodeSteps(doc, opts, ptr, n.Name)...)
 	}
 
-	switch {
-	case closed(s):
-		body = append(body, lang.Stmt(
-			"errs = append(errs, %s(w.Unknown))", q(runtimePath, "RejectUnknown"),
-		))
-	case extraMembers(s):
-		body = append(body, lang.Stmt("out.AdditionalProperties = w.AdditionalProperties"))
-	}
+	body = append(body, extraSteps(doc, opts, ptr)...)
 
 	body = append(body,
 		lang.If(
@@ -325,6 +346,62 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 			body...,
 		),
 	}
+}
+
+// extraSteps returns the statements setting _x of the struct or product at
+// ptr from the wire struct. Every member of a product decodes the whole
+// object, so the _x of a member struct holds the members of the others.
+// The product keeps in its own _x the members none of them declares and
+// clears the _x of its members, so that encoding writes each member once.
+func extraSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
+	s, err := at(doc, ptr)
+	if err != nil {
+		return []genStep{lang.Fail(err)}
+	}
+
+	if s.AllOf == nil {
+		return []genStep{lang.Stmt("out._x = w.AdditionalProperties")}
+	}
+
+	args := append([]string{"w.AdditionalProperties"}, quoteAll(declaredMembers(doc, ptr, nil))...)
+	steps := []genStep{lang.Stmt("out._x = %s(%s)", q(runtimePath, "Omit"), joinComma(args))}
+
+	for i := range s.AllOf {
+		if _, rs, err := resolved(doc, child(ptr, "allOf", strconv.Itoa(i))); err == nil &&
+			(structKind(rs) || product(rs)) {
+			steps = append(steps, lang.Stmt("out.%s._x = nil", memberField(doc, opts, ptr, i)))
+		}
+	}
+
+	return steps
+}
+
+// declaredMembers returns the names of the members the object at ptr
+// declares a field for, once each in the order of the fields: the
+// properties of a struct and, for a product, those of its members and its
+// own. A union of objects declares the members any of its members does.
+// seen holds the schemas on the way to ptr, which a cycle reaches again.
+func declaredMembers(doc *jsonschema.Schema, ptr string, seen []string) []string {
+	r, s, err := resolved(doc, ptr)
+	if err != nil || slices.Contains(seen, r) {
+		return nil
+	}
+
+	seen = append(seen, r)
+
+	var names []string
+
+	for _, kw := range []string{"allOf", "oneOf", "anyOf"} {
+		for i := range listOf(s, kw) {
+			names = append(names, declaredMembers(doc, child(r, kw, strconv.Itoa(i)), seen)...)
+		}
+	}
+
+	for _, n := range s.Properties {
+		names = append(names, n.Name)
+	}
+
+	return slices.Collect(opiter.Unique(slices.Values(names)))
 }
 
 // decodeSteps returns the statements converting the wire field of the

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"maps"
 	"math/big"
 	"reflect"
 	"slices"
@@ -203,17 +202,23 @@ func Member(raw jsontext.Value, name string) jsontext.Value {
 	return v
 }
 
-// RejectUnknown reports an error for every member of unknown, in name order.
-func RejectUnknown(unknown map[string]jsontext.Value) error {
-	var errs []error
-	for _, name := range slices.Sorted(maps.Keys(unknown)) {
-		errs = append(
-			errs,
-			validation.Field(validation.New(ErrUnknownMember, "member is not allowed"), name),
-		)
+// Omit returns the members of members not named by names, or nil when none is left.
+func Omit(members map[string]jsontext.Value, names ...string) map[string]jsontext.Value {
+	var out map[string]jsontext.Value
+
+	for name, v := range members {
+		if slices.Contains(names, name) {
+			continue
+		}
+
+		if out == nil {
+			out = map[string]jsontext.Value{}
+		}
+
+		out[name] = v
 	}
 
-	return validation.Join(errs...)
+	return out
 }
 
 // IsKind reports whether raw is of one of the JSON Schema types, such as "object" or "null".

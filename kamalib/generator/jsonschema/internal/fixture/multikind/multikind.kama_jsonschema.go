@@ -2,7 +2,7 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T02:46:41Z
+// generated: 2026-11-24T11:53:40Z
 
 package multikind
 
@@ -20,16 +20,39 @@ import (
 //
 //kama:generated kama:jsonschema
 type Cell struct {
-	Value CellValue             `json:"value"`
-	Label opt.Option[CellLabel] `json:"label,omitzero"`
+	Value CellValue                 `json:"value"`
+	Label opt.Option[CellLabel]     `json:"label,omitzero"`
+	_x    map[string]jsontext.Value `json:",embed"`
+}
+
+// AdditionalProperties returns the members of the object that Cell declares
+// no field for.
+//
+//kama:generated kama:jsonschema
+func (v Cell) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
+//
+//kama:generated kama:jsonschema
+func (v Cell) MarshalJSONTo(enc *jsontext.Encoder) error {
+	type plain struct {
+		Value                CellValue                 `json:"value"`
+		Label                opt.Option[CellLabel]     `json:"label,omitzero"`
+		AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{Value: v.Value, Label: v.Label, AdditionalProperties: v._x})
 }
 
 // cellWire keeps a missing member of Cell apart from null.
 //
 //kama:generated kama:jsonschema
 type cellWire struct {
-	Value und.Und[CellValue] `json:"value,omitzero"`
-	Label jsontext.Value     `json:"label,omitzero"`
+	Value                und.Und[CellValue]        `json:"value,omitzero"`
+	Label                jsontext.Value            `json:"label,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -51,6 +74,7 @@ func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "value"))
 	out.Label, err = jsonschemart.DecodeOptional[CellLabel](w.Label)
 	errs = append(errs, validation.Field(err, "label"))
+	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

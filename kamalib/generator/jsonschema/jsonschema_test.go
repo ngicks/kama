@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/scanner"
 	"go/token"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -106,15 +107,14 @@ func TestGenerateRejects(t *testing.T) {
 			"give the Go field name AB",
 		},
 		{
-			"property named like the wire field of rejected members",
-			`{"type":"object","properties":{"unknown":{}},"additionalProperties":false}`,
+			"property named like the method of the validator",
+			`{"type":"object","properties":{"validate":{}}}`,
 			ErrConflict,
-			"give the Go field name Unknown",
+			"give the Go field name Validate",
 		},
 		{
-			"property named like the field of kept members",
-			`{"type":"object","properties":{"additional_properties":{}},
-			"additionalProperties":{"type":"string"}}`,
+			"property named like the method of additional members",
+			`{"type":"object","properties":{"additional_properties":{}}}`,
 			ErrConflict,
 			"give the Go field name AdditionalProperties",
 		},
@@ -551,12 +551,9 @@ func TestGenerateNullableUnion(t *testing.T) {
 
 			files, _, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
 			assert.NilError(t, err)
-			assert.Assert(
-				t,
-				strings.Contains(string(files[0].Content), tc.want),
-				"%s",
-				files[0].Content,
-			)
+			// gofmt aligns the fields, so runs of blanks compare as one.
+			content := regexp.MustCompile(`[ \t]+`).ReplaceAllString(string(files[0].Content), " ")
+			assert.Assert(t, strings.Contains(content, tc.want), "%s", files[0].Content)
 		})
 	}
 }

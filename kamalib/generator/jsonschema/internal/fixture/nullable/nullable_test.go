@@ -4,14 +4,19 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"reflect"
 	"testing"
 
+	gocmp "github.com/google/go-cmp/cmp"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
+
+// allFields compares the unexported field _x of the generated structs too.
+var allFields = gocmp.Exporter(func(reflect.Type) bool { return true })
 
 const required = `"reqOneOf":null,"reqAnyOf":null,"reqType":null`
 
@@ -51,7 +56,7 @@ func TestDecode(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var v Nullable
 			assert.NilError(t, json.Unmarshal([]byte(tc.in), &v))
-			assert.Equal(t, v, tc.want)
+			assert.DeepEqual(t, v, tc.want, allFields)
 
 			out, err := json.Marshal(v)
 			assert.NilError(t, err)

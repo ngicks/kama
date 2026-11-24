@@ -345,13 +345,13 @@ func TestMember(t *testing.T) {
 	assert.Assert(t, Member(jsontext.Value(`[]`), "a") == nil)
 }
 
-func TestRejectUnknown(t *testing.T) {
-	assert.NilError(t, RejectUnknown(nil))
-
-	err := RejectUnknown(map[string]jsontext.Value{"b": nil, "a": nil})
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/a", "/b"})
-	assert.ErrorIs(t, err, ErrUnknownMember)
-	assert.Assert(t, strings.HasPrefix(err.Error(), "validation failed at .a:"), err.Error())
+func TestOmit(t *testing.T) {
+	assert.Assert(t, Omit(nil, "a") == nil)
+	assert.Assert(t, Omit(map[string]jsontext.Value{"a": nil}, "a") == nil)
+	assert.DeepEqual(t,
+		Omit(map[string]jsontext.Value{"a": jsontext.Value("1"), "b": jsontext.Value("2")}, "a"),
+		map[string]jsontext.Value{"b": jsontext.Value("2")},
+	)
 }
 
 func TestSelection(t *testing.T) {

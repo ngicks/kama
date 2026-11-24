@@ -4,14 +4,19 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"reflect"
 	"testing"
 
+	gocmp "github.com/google/go-cmp/cmp"
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
+
+// allFields compares the unexported field _x of the generated structs too.
+var allFields = gocmp.Exporter(func(reflect.Type) bool { return true })
 
 func TestRoundTrip(t *testing.T) {
 	cases := []struct {
@@ -46,9 +51,14 @@ func TestSelectedMember(t *testing.T) {
 		"amount":1.5}`,
 	), &v))
 
-	assert.DeepEqual(t, v.Star.Kind, PetCat{Cat: Cat{Kind: "cat", Lives: 9}})
-	assert.DeepEqual(t, v.Pets[0].Kind, PetDog{Dog: Dog{Kind: "dog", Good: true}})
-	assert.DeepEqual(t, v.Mixed.Kind, ZooMixedObject{Object: ZooMixedObjectValue{Note: "n"}})
+	assert.DeepEqual(t, v.Star.Kind, PetCat{Cat: Cat{Kind: "cat", Lives: 9}}, allFields)
+	assert.DeepEqual(t, v.Pets[0].Kind, PetDog{Dog: Dog{Kind: "dog", Good: true}}, allFields)
+	assert.DeepEqual(
+		t,
+		v.Mixed.Kind,
+		ZooMixedObject{Object: ZooMixedObjectValue{Note: "n"}},
+		allFields,
+	)
 	assert.DeepEqual(t, v.Amount.Value().Kind, ZooAmountNumber{Number: 1.5})
 	assert.Assert(t, v.Favorite.IsNone())
 }

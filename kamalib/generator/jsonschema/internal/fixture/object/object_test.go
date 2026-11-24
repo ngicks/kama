@@ -41,7 +41,7 @@ func TestRoundTrip(t *testing.T) {
 	}{
 		{"full", full, full},
 		{"minimal", doc(), doc()},
-		{"unknown member of root is dropped", doc("zzz", `1`), doc()},
+		{"unknown member of root is kept", doc("zzz", `1`), doc("zzz", `1`)},
 		{"opt null name defined", doc("optNullName", `"x"`), doc("optNullName", `"x"`)},
 		{"optional raw null", doc("extra", `null`), doc("extra", `null`)},
 		{"anything raw", doc("anything", `{"a":[1,null]}`), doc("anything", `{"a":[1,null]}`)},
@@ -68,6 +68,23 @@ func TestDecodeValues(t *testing.T) {
 	assert.Equal(t, string(v.Extra.Value()), `null`)
 	assert.Equal(t, v.Color, ObjectColorDarkBlue)
 	assert.Equal(t, string(v.Anything), `1.50`)
+}
+
+func TestAdditionalProperties(t *testing.T) {
+	var v Object
+	assert.NilError(t, json.Unmarshal([]byte(doc(
+		"zzz", `[1]`,
+		"inline", `{"x":1,"y":2}`,
+		"open", `{"id":1,"p":"q"}`,
+	)), &v))
+
+	assert.DeepEqual(t, v.AdditionalProperties(), map[string]jsontext.Value{"zzz": []byte(`[1]`)})
+	assert.DeepEqual(
+		t,
+		v.Inline.AdditionalProperties(),
+		map[string]jsontext.Value{"y": []byte(`2`)},
+	)
+	assert.DeepEqual(t, v.Open.Value().AdditionalProperties(), map[string]string{"p": "q"})
 }
 
 func TestDecodeError(t *testing.T) {
@@ -101,12 +118,6 @@ func TestDecodeError(t *testing.T) {
 		{"enum null", doc("color", `null`), []string{"/color"}, validation.ErrNull},
 		{"null item", doc("tags", `["a",null]`), []string{"/tags/1"}, validation.ErrNull},
 		{"null map value", doc("counts", `{"a":null}`), []string{"/counts/a"}, validation.ErrNull},
-		{
-			"unknown member rejected",
-			doc("closed", `{"b":1,"a":true,"c":2}`),
-			[]string{"/closed/b", "/closed/c"},
-			jsonschemart.ErrUnknownMember,
-		},
 		{"additional property type", doc("open", `{"z":5}`), []string{"/open/z"}, errSemantic},
 		{"missing raw", doc("anything", ""), []string{"/anything"}, validation.ErrRequired},
 		{

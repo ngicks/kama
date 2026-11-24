@@ -51,6 +51,9 @@ const (
 	// suite accepts every other kind. The suite must call the instance
 	// valid.
 	reasonImpliedKind = "a schema without type takes the kind its keywords imply"
+	// Decoding keeps the members additionalProperties false rejects. The
+	// schema must hold additionalProperties.
+	reasonClosed = "additionalProperties false is not checked"
 )
 
 var unenforcedKeywords = []string{
@@ -214,8 +217,10 @@ var suiteAllowed = map[suiteKey]string{
 		"properties whose names are Javascript object property names",
 		"ignores other non-objects",
 	}: reasonImpliedKind,
-	{"ref.json", "root pointer ref", "match"}:           reasonImpliedKind,
-	{"ref.json", "root pointer ref", "recursive match"}: reasonImpliedKind,
+	{"ref.json", "root pointer ref", "match"}:              reasonImpliedKind,
+	{"ref.json", "root pointer ref", "recursive match"}:    reasonImpliedKind,
+	{"ref.json", "root pointer ref", "mismatch"}:           reasonClosed,
+	{"ref.json", "root pointer ref", "recursive mismatch"}: reasonClosed,
 	{
 		"ref.json",
 		"ref applies alongside sibling keywords",
@@ -664,6 +669,15 @@ func checkAllowed(reason string, schema jsontext.Value, valid bool) error {
 
 		if !held {
 			return errors.New("the schema holds no pure validation keyword")
+		}
+	case reasonClosed:
+		held, err := holdsKeyword(schema, []string{"additionalProperties"})
+		if err != nil {
+			return err
+		}
+
+		if !held {
+			return errors.New("the schema holds no additionalProperties")
 		}
 	case reasonImpliedKind:
 		if !valid {

@@ -2,7 +2,7 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T02:46:46Z
+// generated: 2026-11-24T11:53:48Z
 
 package prefilter
 
@@ -112,16 +112,39 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:generated kama:jsonschema
 type Circle struct {
-	Kind   CircleKind `json:"kind"`
-	Radius float64    `json:"radius"`
+	Kind   CircleKind                `json:"kind"`
+	Radius float64                   `json:"radius"`
+	_x     map[string]jsontext.Value `json:",embed"`
+}
+
+// AdditionalProperties returns the members of the object that Circle
+// declares no field for.
+//
+//kama:generated kama:jsonschema
+func (v Circle) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
+//
+//kama:generated kama:jsonschema
+func (v Circle) MarshalJSONTo(enc *jsontext.Encoder) error {
+	type plain struct {
+		Kind                 CircleKind                `json:"kind"`
+		Radius               float64                   `json:"radius"`
+		AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{Kind: v.Kind, Radius: v.Radius, AdditionalProperties: v._x})
 }
 
 // circleWire keeps a missing member of Circle apart from null.
 //
 //kama:generated kama:jsonschema
 type circleWire struct {
-	Kind   und.Und[CircleKind] `json:"kind,omitzero"`
-	Radius und.Und[float64]    `json:"radius,omitzero"`
+	Kind                 und.Und[CircleKind]       `json:"kind,omitzero"`
+	Radius               und.Und[float64]          `json:"radius,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -143,6 +166,7 @@ func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "kind"))
 	out.Radius, err = jsonschemart.Required(w.Radius)
 	errs = append(errs, validation.Field(err, "radius"))
+	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -187,15 +211,36 @@ func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:generated kama:jsonschema
 type Square struct {
-	Side opt.Option[float64] `json:"side,omitzero"`
+	Side opt.Option[float64]       `json:"side,omitzero"`
+	_x   map[string]jsontext.Value `json:",embed"`
+}
+
+// AdditionalProperties returns the members of the object that Square
+// declares no field for.
+//
+//kama:generated kama:jsonschema
+func (v Square) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
+//
+//kama:generated kama:jsonschema
+func (v Square) MarshalJSONTo(enc *jsontext.Encoder) error {
+	type plain struct {
+		Side                 opt.Option[float64]       `json:"side,omitzero"`
+		AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{Side: v.Side, AdditionalProperties: v._x})
 }
 
 // squareWire keeps a missing member of Square apart from null.
 //
 //kama:generated kama:jsonschema
 type squareWire struct {
-	Side    und.Und[float64]          `json:"side,omitzero"`
-	Unknown map[string]jsontext.Value `json:",embed"`
+	Side                 und.Und[float64]          `json:"side,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -215,7 +260,7 @@ func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.Side, err = jsonschemart.Optional(w.Side)
 	errs = append(errs, validation.Field(err, "side"))
-	errs = append(errs, jsonschemart.RejectUnknown(w.Unknown))
+	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}

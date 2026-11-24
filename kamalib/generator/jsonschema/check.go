@@ -25,9 +25,12 @@ var unsupportedKeywords = []string{
 // scalarKinds are the kinds a Go scalar type holds.
 var scalarKinds = []string{"string", "integer", "number", "boolean"}
 
-// methodNames are the methods a generated struct may declare, which no
-// field of it may be named.
-var methodNames = []string{"MarshalJSONTo", "UnmarshalJSONFrom"}
+// methodNames are the methods a generated struct declares, which no field
+// of it may be named. Validate is the method the validator generator
+// declares on it.
+var methodNames = []string{
+	"MarshalJSONTo", "UnmarshalJSONFrom", "AdditionalProperties", "Validate",
+}
 
 // check reports every schema of doc the generator cannot express, then
 // every pair of Go names that collide.
@@ -627,13 +630,7 @@ func fieldNames(doc *jsonschema.Schema, opts Options, ptr string, s *jsonschema.
 		add(wire, f, "property "+strconv.Quote(n.Name))
 	}
 
-	switch {
-	case closed(s):
-		add(wire, "Unknown", "the field of the members additionalProperties rejects")
-	case extraMembers(s):
-		add(fields, "AdditionalProperties", "the field of the members additionalProperties keeps")
-		add(wire, "AdditionalProperties", "the field of the members additionalProperties keeps")
-	}
+	add(wire, "AdditionalProperties", "the field of the members no property declares")
 
 	return errs
 }

@@ -2,12 +2,13 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T00:00:00Z
+// generated: 2026-11-24T11:53:42Z
 
 package nullable
 
 import (
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamalib/pkg/validation"
@@ -26,19 +27,47 @@ type Nullable struct {
 	ReqType   opt.Option[string]         `json:"reqType"`
 	OptType   und.Und[string]            `json:"optType,omitzero"`
 	OptInline und.Und[NullableOptInline] `json:"optInline,omitzero"`
+	_x        map[string]jsontext.Value  `json:",embed"`
+}
+
+// AdditionalProperties returns the members of the object that Nullable
+// declares no field for.
+//
+//kama:generated kama:jsonschema
+func (v Nullable) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
+//
+//kama:generated kama:jsonschema
+func (v Nullable) MarshalJSONTo(enc *jsontext.Encoder) error {
+	type plain struct {
+		ReqOneOf             opt.Option[Item]           `json:"reqOneOf"`
+		OptOneOf             und.Und[Item]              `json:"optOneOf,omitzero"`
+		ReqAnyOf             opt.Option[int64]          `json:"reqAnyOf"`
+		OptAnyOf             und.Und[int64]             `json:"optAnyOf,omitzero"`
+		ReqType              opt.Option[string]         `json:"reqType"`
+		OptType              und.Und[string]            `json:"optType,omitzero"`
+		OptInline            und.Und[NullableOptInline] `json:"optInline,omitzero"`
+		AdditionalProperties map[string]jsontext.Value  `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{ReqOneOf: v.ReqOneOf, OptOneOf: v.OptOneOf, ReqAnyOf: v.ReqAnyOf, OptAnyOf: v.OptAnyOf, ReqType: v.ReqType, OptType: v.OptType, OptInline: v.OptInline, AdditionalProperties: v._x})
 }
 
 // nullableWire keeps a missing member of Nullable apart from null.
 //
 //kama:generated kama:jsonschema
 type nullableWire struct {
-	ReqOneOf  und.Und[Item]              `json:"reqOneOf,omitzero"`
-	OptOneOf  und.Und[Item]              `json:"optOneOf,omitzero"`
-	ReqAnyOf  und.Und[int64]             `json:"reqAnyOf,omitzero"`
-	OptAnyOf  und.Und[int64]             `json:"optAnyOf,omitzero"`
-	ReqType   und.Und[string]            `json:"reqType,omitzero"`
-	OptType   und.Und[string]            `json:"optType,omitzero"`
-	OptInline und.Und[NullableOptInline] `json:"optInline,omitzero"`
+	ReqOneOf             und.Und[Item]              `json:"reqOneOf,omitzero"`
+	OptOneOf             und.Und[Item]              `json:"optOneOf,omitzero"`
+	ReqAnyOf             und.Und[int64]             `json:"reqAnyOf,omitzero"`
+	OptAnyOf             und.Und[int64]             `json:"optAnyOf,omitzero"`
+	ReqType              und.Und[string]            `json:"reqType,omitzero"`
+	OptType              und.Und[string]            `json:"optType,omitzero"`
+	OptInline            und.Und[NullableOptInline] `json:"optInline,omitzero"`
+	AdditionalProperties map[string]jsontext.Value  `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -66,6 +95,7 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validation.Field(err, "reqType"))
 	out.OptType = w.OptType
 	out.OptInline = w.OptInline
+	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -78,7 +108,28 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:generated kama:jsonschema
 type NullableOptInline struct {
-	S string `json:"s"`
+	S  string                    `json:"s"`
+	_x map[string]jsontext.Value `json:",embed"`
+}
+
+// AdditionalProperties returns the members of the object that
+// NullableOptInline declares no field for.
+//
+//kama:generated kama:jsonschema
+func (v NullableOptInline) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
+//
+//kama:generated kama:jsonschema
+func (v NullableOptInline) MarshalJSONTo(enc *jsontext.Encoder) error {
+	type plain struct {
+		S                    string                    `json:"s"`
+		AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{S: v.S, AdditionalProperties: v._x})
 }
 
 // nullableOptInlineWire keeps a missing member of NullableOptInline apart
@@ -86,7 +137,8 @@ type NullableOptInline struct {
 //
 //kama:generated kama:jsonschema
 type nullableOptInlineWire struct {
-	S und.Und[string] `json:"s,omitzero"`
+	S                    und.Und[string]           `json:"s,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -106,6 +158,7 @@ func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.S, err = jsonschemart.Required(w.S)
 	errs = append(errs, validation.Field(err, "s"))
+	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
@@ -117,14 +170,36 @@ func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:generated kama:jsonschema
 type Item struct {
-	N int64 `json:"n"`
+	N  int64                     `json:"n"`
+	_x map[string]jsontext.Value `json:",embed"`
+}
+
+// AdditionalProperties returns the members of the object that Item declares
+// no field for.
+//
+//kama:generated kama:jsonschema
+func (v Item) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
+//
+//kama:generated kama:jsonschema
+func (v Item) MarshalJSONTo(enc *jsontext.Encoder) error {
+	type plain struct {
+		N                    int64                     `json:"n"`
+		AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{N: v.N, AdditionalProperties: v._x})
 }
 
 // itemWire keeps a missing member of Item apart from null.
 //
 //kama:generated kama:jsonschema
 type itemWire struct {
-	N und.Und[int64] `json:"n,omitzero"`
+	N                    und.Und[int64]            `json:"n,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -144,6 +219,7 @@ func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	out.N, err = jsonschemart.Required(w.N)
 	errs = append(errs, validation.Field(err, "n"))
+	out._x = w.AdditionalProperties
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
