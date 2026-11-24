@@ -213,7 +213,7 @@ func TestMethodTypeParams(t *testing.T) {
 func TestStaleCheck(t *testing.T) {
 	const gen = "base-test-gen"
 
-	reg := genmark.NewRegistry()
+	reg := genmark.NewRegistry(base.ToolName)
 	assert.NilError(t, reg.Register(gen))
 	assert.NilError(t, reg.Register("other-gen"))
 

@@ -23,7 +23,6 @@ import (
 	"gotest.tools/v3/assert"
 
 	pkgfileloader "github.com/ngicks/kama/kamalib/pkg/fileloader"
-	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/proc/fileloader"
 	_ "github.com/ngicks/kama/kamalib/proc/overlayfs"
@@ -123,8 +122,8 @@ func TestRenderMarksDeclarations(t *testing.T) {
 		names = append(names, name)
 
 		assert.Assert(t, doc != nil, "%s has no doc comment", name)
-		assert.Equal(t, doc.List[len(doc.List)-1].Text, genmark.Marker(GeneratorName), name)
-		gen, ok := genmark.DefaultRegistry.Generated(doc)
+		assert.Equal(t, doc.List[len(doc.List)-1].Text, base.Marker(GeneratorName), name)
+		gen, ok := base.DefaultRegistry.Generated(doc)
 		assert.Assert(t, ok, name)
 		assert.Equal(t, gen, GeneratorName, name)
 	}

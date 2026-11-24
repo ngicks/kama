@@ -14,6 +14,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
@@ -24,7 +25,7 @@ func funcs(t *testing.T, src string) map[string]string {
 
 	_, decls := gentest.FuncDecls(t, src)
 	for name, fd := range decls {
-		_, marked := genmark.DefaultRegistry.Generated(fd.Doc)
+		_, marked := base.DefaultRegistry.Generated(fd.Doc)
 		assert.Assert(t, marked, "%s has no marker", name)
 	}
 
@@ -316,7 +317,7 @@ func TestRegistry(t *testing.T) {
 	assert.NilError(t, err)
 
 	// A registry without the generator does not tell its declarations.
-	_, err = generate(t, files, Options{Registry: genmark.NewRegistry()})
+	_, err = generate(t, files, Options{Registry: genmark.NewRegistry(base.ToolName)})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(t, err, "APartial is already declared")
 }

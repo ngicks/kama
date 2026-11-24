@@ -1,7 +1,5 @@
 package genhelper
 
-import "github.com/ngicks/kama/kamalib/pkg/genmark"
-
 // Lang is the vocabulary of steps and texts for the context type C. A
 // caller names the context type once, in the type of a Lang value, instead
 // of instantiating [Expr], [Stmt], [Name], [Fail] and [FailGen] at every call.
@@ -44,14 +42,15 @@ func (Lang[C]) Comment(parts ...Gen[C]) Gen[C] {
 	return Comment(parts...)
 }
 
-// DocComment returns the doc comment of a declaration the generator named
-// generator writes, as one comment group: the text of format and args, an
-// empty comment line and the marker of the generator.
-func (l Lang[C]) DocComment(generator, format string, args ...any) Gen[C] {
+// DocComment returns the doc comment of a generated declaration as one
+// comment group: the text of format and args, an empty comment line and
+// marker. The caller passes the directive comment marking its generator as
+// marker.
+func (l Lang[C]) DocComment(marker, format string, args ...any) Gen[C] {
 	return l.Comment(
 		l.Expr(format, args...),
 		l.Expr(""),
-		l.Expr("%s", genmark.Marker(generator)),
+		l.Expr("%s", marker),
 	)
 }
 

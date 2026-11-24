@@ -122,7 +122,7 @@ func TestHeader(t *testing.T) {
 func TestStaleCheckDir(t *testing.T) {
 	const gen = "base-test-dir-gen"
 
-	reg := genmark.NewRegistry()
+	reg := genmark.NewRegistry(ToolName)
 	assert.NilError(t, reg.Register(gen))
 	assert.NilError(t, reg.Register("other-gen"))
 

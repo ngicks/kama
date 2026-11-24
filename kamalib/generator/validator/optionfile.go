@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
@@ -28,7 +29,7 @@ func NewLoader(
 	optionFile fileloader.Input,
 ) genopt.Loader[PackageOptions, TypeOptions, FieldOptions] {
 	return genopt.NewLoader[PackageOptions, TypeOptions, FieldOptions](
-		toolName, directive, OptionFileVersion, optionFile,
+		base.ToolName, directive, OptionFileVersion, optionFile,
 	)
 }
 

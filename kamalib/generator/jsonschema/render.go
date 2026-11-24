@@ -195,7 +195,11 @@ func q(path, name string) genExpr {
 // docComment returns the doc comment of a declaration: text wrapped at
 // commentWidth, an empty comment line and the marker of the generator.
 func docComment(text string) genExpr {
-	return lang.DocComment(GeneratorName, "%s", genhelper.WrapComment(text, commentWidth))
+	return lang.DocComment(
+		base.Marker(GeneratorName),
+		"%s",
+		genhelper.WrapComment(text, commentWidth),
+	)
 }
 
 // typeDoc returns lead followed by the description of the schema at ptr

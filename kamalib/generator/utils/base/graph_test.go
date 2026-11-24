@@ -28,7 +28,7 @@ func TestTypeGraph(t *testing.T) {
 	pkgs := base.SourcePackages(gentest.Load(t, map[string]string{"a.go": graphSrc}))
 	pkgPath := pkgs[0].PkgPath
 
-	reg := genmark.NewRegistry()
+	reg := genmark.NewRegistry(base.ToolName)
 	assert.NilError(t, reg.Register("kama-x"))
 
 	g, err := base.TypeGraph(pkgs, reg)
@@ -44,7 +44,7 @@ func TestMarkedTypeError(t *testing.T) {
 	pkgs := base.SourcePackages(gentest.Load(t, map[string]string{"a.go": graphSrc}))
 	pkgPath := pkgs[0].PkgPath
 
-	reg := genmark.NewRegistry()
+	reg := genmark.NewRegistry(base.ToolName)
 	assert.NilError(t, reg.Register("kama-x"))
 
 	g, err := base.TypeGraph(pkgs, reg)

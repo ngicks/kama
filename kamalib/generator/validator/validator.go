@@ -67,7 +67,7 @@ type Options struct {
 	// rule.DefaultRegistry() when nil.
 	Registry *rule.Registry
 	// Markers tells the declarations emitted by generators. It is
-	// genmark.DefaultRegistry when nil.
+	// base.DefaultRegistry when nil.
 	Markers *genmark.Registry
 	// Loaded holds the options of the directives and the option files of
 	// the packages Generate is given. The Loader of NewLoader loads them.
@@ -86,7 +86,7 @@ func (o Options) WithDefaults() Options {
 	}
 
 	if o.Markers == nil {
-		o.Markers = genmark.DefaultRegistry
+		o.Markers = base.DefaultRegistry
 	}
 
 	if o.Now == nil {

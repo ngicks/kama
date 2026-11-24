@@ -21,10 +21,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
-const (
-	toolName  = "kama"
-	directive = "partial"
-)
+const directive = "partial"
 
 // selection is the run: the loaded packages and the options, which were
 // decoded once from directive comments and option files. Every fact, the

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
@@ -29,7 +30,7 @@ func NewLoader(
 	optionFile fileloader.Input,
 ) genopt.Loader[PackageOptions, TypeOptions, FieldOptions] {
 	return genopt.NewLoader[PackageOptions, TypeOptions, FieldOptions](
-		toolName, directive, OptionFileVersion, optionFile,
+		base.ToolName, directive, OptionFileVersion, optionFile,
 	)
 }
 
@@ -377,7 +378,7 @@ func (o optionSource) origin() string { return o.src.Origin(o.sub, o.keys) }
 
 // spelling names the option o sets as its source spells it.
 func (o optionSource) spelling() string {
-	return o.src.Spelling(toolName, directive, ":", o.sub)
+	return o.src.Spelling(base.ToolName, directive, ":", o.sub)
 }
 
 func unknownDirective(src genopt.Source, sub string) error {

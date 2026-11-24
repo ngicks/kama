@@ -1,10 +1,11 @@
-// Package genmark marks declarations emitted by kama generators.
+// Package genmark marks declarations emitted by code generators.
 //
-// Every declaration a kama generator emits carries the directive comment
-// //kama:generated <generator-name> in its doc comment. A generator
-// registers its name in a Registry, and kama treats a declaration marked
-// with a registered name as generated. A marker naming an unregistered
-// generator does not make a declaration generated.
+// Every declaration a generator of a tool emits carries the directive
+// comment //<tool-name>:generated <generator-name> in its doc comment. A
+// Registry belongs to one tool. A generator registers its name in the
+// Registry of its tool, and the Registry reports a declaration marked with
+// that tool and a registered name as generated. A marker naming another
+// tool or an unregistered generator does not make a declaration generated.
 package genmark
 
 import (
@@ -21,35 +22,30 @@ import (
 	"github.com/ngicks/opiter"
 )
 
-const (
-	toolName  = "kama"
-	directive = "generated"
-)
+const directive = "generated"
 
 var (
 	ErrInvalidName = errors.New("genmark: invalid generator name")
 	ErrDuplicate   = errors.New("genmark: duplicate generator name")
 )
 
-// DefaultRegistry is the Registry kama generators register their names in.
-var DefaultRegistry = NewRegistry()
-
 // Marker returns the directive comment marking a declaration as emitted by
-// the generator name.
-func Marker(name string) string {
+// the generator name of the tool toolName.
+func Marker(toolName, name string) string {
 	return "//" + toolName + ":" + directive + " " + name
 }
 
-// Registry holds the names of kama generators. It is safe for concurrent
-// use.
+// Registry holds the names of the generators of one tool. It is safe for
+// concurrent use.
 type Registry struct {
-	mu    sync.RWMutex
-	names map[string]struct{}
+	toolName string
+	mu       sync.RWMutex
+	names    map[string]struct{}
 }
 
-// NewRegistry returns an empty Registry.
-func NewRegistry() *Registry {
-	return &Registry{names: make(map[string]struct{})}
+// NewRegistry returns an empty Registry of the tool toolName.
+func NewRegistry(toolName string) *Registry {
+	return &Registry{toolName: toolName, names: make(map[string]struct{})}
 }
 
 // Register adds name to r. A valid name is non-empty and contains no
@@ -98,7 +94,7 @@ func (r *Registry) find(comments []dircmnt.Comment) (string, bool) {
 
 	return opiter.WrapSeq(slices.Values(comments)).
 		Filter(
-			func(c dircmnt.Comment) bool { return c.ToolName == toolName && c.Directive == directive },
+			func(c dircmnt.Comment) bool { return c.ToolName == r.toolName && c.Directive == directive },
 		).
 		Map(markerName).
 		Filter(isRegistered).

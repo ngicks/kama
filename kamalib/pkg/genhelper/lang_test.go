@@ -7,7 +7,6 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
-	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
 
 func TestLang(t *testing.T) {
@@ -171,9 +170,12 @@ func TestLang(t *testing.T) {
 	}
 
 	t.Run("DocComment ends with the marker of the generator", func(t *testing.T) {
-		got, err := l.Render(fnCtx(), l.Line(l.DocComment("kama-x", "Doc of %s.", ref("v"))))
+		got, err := l.Render(
+			fnCtx(),
+			l.Line(l.DocComment("//x:generated x-gen", "Doc of %s.", ref("v"))),
+		)
 		assert.NilError(t, err)
-		assert.Equal(t, got, "// Doc of v.\n//\n"+genmark.Marker("kama-x")+"\n")
+		assert.Equal(t, got, "// Doc of v.\n//\n//x:generated x-gen\n")
 	})
 
 	t.Run("FailGen returns err as it is", func(t *testing.T) {

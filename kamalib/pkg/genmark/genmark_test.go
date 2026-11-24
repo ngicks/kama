@@ -28,7 +28,7 @@ func parse(t *testing.T, src string) (*token.FileSet, *ast.File) {
 func newRegistry(t *testing.T, names ...string) *Registry {
 	t.Helper()
 
-	r := NewRegistry()
+	r := NewRegistry("tool")
 	for _, name := range names {
 		assert.NilError(t, r.Register(name))
 	}
@@ -37,46 +37,46 @@ func newRegistry(t *testing.T, names ...string) *Registry {
 }
 
 func TestMarker(t *testing.T) {
-	m := Marker("kama-partial")
-	assert.Equal(t, m, "//kama:generated kama-partial")
+	m := Marker("tool", "tool-partial")
+	assert.Equal(t, m, "//tool:generated tool-partial")
 
 	c, ok := dircmnt.Parse(m)
 	assert.Assert(t, ok)
 	assert.DeepEqual(
 		t,
 		c,
-		dircmnt.Comment{ToolName: "kama", Directive: "generated", Args: "kama-partial"},
+		dircmnt.Comment{ToolName: "tool", Directive: "generated", Args: "tool-partial"},
 	)
 }
 
 func TestRegister(t *testing.T) {
-	r := NewRegistry()
-	assert.NilError(t, r.Register("kama-partial"))
-	assert.ErrorIs(t, r.Register("kama-partial"), ErrDuplicate)
+	r := NewRegistry("tool")
+	assert.NilError(t, r.Register("tool-partial"))
+	assert.ErrorIs(t, r.Register("tool-partial"), ErrDuplicate)
 
-	for _, name := range []string{"", " ", "kama partial", "kama\tpartial", "kama-partial\n"} {
+	for _, name := range []string{"", " ", "tool partial", "tool\tpartial", "tool-partial\n"} {
 		assert.ErrorIs(t, r.Register(name), ErrInvalidName, "name = %q", name)
 	}
 }
 
 func TestGenerated(t *testing.T) {
-	r := newRegistry(t, "kama-partial", "kama-clone")
+	r := newRegistry(t, "tool-partial", "tool-clone")
 
 	cases := []struct {
 		doc  string
 		name string
 		ok   bool
 	}{
-		{"//kama:generated kama-partial", "kama-partial", true},
-		{"// Foo is generated.\n//kama:generated kama-clone", "kama-clone", true},
-		{"//kama:generated  kama-partial extra", "kama-partial", true},
-		{"//kama:generated unknown\n//kama:generated kama-clone", "kama-clone", true},
-		{"//kama:generated unknown", "", false},
-		{"//kama:generated", "", false},
-		{"//other:generated kama-partial", "", false},
-		{"//kama:ignore kama-partial", "", false},
-		{"// kama:generated kama-partial", "", false},
-		{"/*kama:generated kama-partial*/", "", false},
+		{"//tool:generated tool-partial", "tool-partial", true},
+		{"// Foo is generated.\n//tool:generated tool-clone", "tool-clone", true},
+		{"//tool:generated  tool-partial extra", "tool-partial", true},
+		{"//tool:generated unknown\n//tool:generated tool-clone", "tool-clone", true},
+		{"//tool:generated unknown", "", false},
+		{"//tool:generated", "", false},
+		{"//other:generated tool-partial", "", false},
+		{"//tool:ignore tool-partial", "", false},
+		{"// tool:generated tool-partial", "", false},
+		{"/*tool:generated tool-partial*/", "", false},
 		{"// Foo is plain.", "", false},
 	}
 	for _, tc := range cases {
@@ -90,25 +90,43 @@ func TestGenerated(t *testing.T) {
 }
 
 func TestGeneratedNil(t *testing.T) {
-	r := newRegistry(t, "kama-partial")
+	r := newRegistry(t, "tool-partial")
 	name, ok := r.Generated(nil)
 	assert.Assert(t, !ok)
 	assert.Equal(t, name, "")
 }
 
+func TestGeneratedOfAnotherTool(t *testing.T) {
+	a := NewRegistry("a")
+	assert.NilError(t, a.Register("gen"))
+
+	b := NewRegistry("b")
+	assert.NilError(t, b.Register("gen"))
+
+	_, f := parse(t, "package x\n\n"+Marker("b", "gen")+"\ntype Foo int\n")
+	doc := f.Decls[0].(*ast.GenDecl).Doc
+
+	_, ok := a.Generated(doc)
+	assert.Assert(t, !ok)
+
+	name, ok := b.Generated(doc)
+	assert.Assert(t, ok)
+	assert.Equal(t, name, "gen")
+}
+
 func TestGeneratedDst(t *testing.T) {
-	r := newRegistry(t, "kama-partial")
+	r := newRegistry(t, "tool-partial")
 
 	src := `package x
 
-//kama:generated kama-partial
+//tool:generated tool-partial
 type Foo int
 
-//kama:generated kama-partial
+//tool:generated tool-partial
 
 type Bar int
 
-//kama:generated unknown
+//tool:generated unknown
 type Baz int
 `
 	fset, f := parse(t, src)
@@ -122,14 +140,14 @@ type Baz int
 		assert.Equal(t, ok, want[i], "decl %d", i)
 
 		if ok {
-			assert.Equal(t, name, "kama-partial")
+			assert.Equal(t, name, "tool-partial")
 		}
 	}
 }
 
 func TestRegistryConcurrent(t *testing.T) {
-	r := NewRegistry()
-	_, f := parse(t, "package x\n\n"+Marker("gen-0")+"\ntype Foo int\n")
+	r := NewRegistry("tool")
+	_, f := parse(t, "package x\n\n"+Marker("tool", "gen-0")+"\ntype Foo int\n")
 	doc := f.Decls[0].(*ast.GenDecl).Doc
 
 	var g errgroup.Group

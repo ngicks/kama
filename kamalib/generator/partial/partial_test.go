@@ -18,6 +18,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
@@ -28,7 +29,7 @@ import (
 func registry(t *testing.T) *genmark.Registry {
 	t.Helper()
 
-	r := genmark.NewRegistry()
+	r := genmark.NewRegistry(base.ToolName)
 	assert.NilError(t, r.Register(GeneratorName))
 
 	return r
@@ -128,9 +129,9 @@ func TestOptions(t *testing.T) {
 	def := Options{}.WithDefaults()
 	assert.Equal(t, def.Merge, MergeOverwrite)
 	assert.Equal(t, def.MergeNested, MergeNestedRecursive)
-	assert.Equal(t, def.Registry, genmark.DefaultRegistry)
+	assert.Equal(t, def.Registry, base.DefaultRegistry)
 
-	r := genmark.NewRegistry()
+	r := genmark.NewRegistry(base.ToolName)
 	assert.Equal(t, Options{Registry: r}.WithDefaults().Registry, r)
 
 	i := &instance{}
@@ -147,7 +148,7 @@ func TestOptions(t *testing.T) {
 	assert.NilError(t, i.Param(ProcParamPartial{MergeStrategy: und.Defined("append")}))
 	assert.Equal(t, i.opts.Merge, MergeAppend)
 	assert.Equal(t, i.opts.MergeNested, MergeNestedRecursive)
-	assert.Equal(t, i.opts.Registry, genmark.DefaultRegistry)
+	assert.Equal(t, i.opts.Registry, base.DefaultRegistry)
 }
 
 func TestTargetErrors(t *testing.T) {

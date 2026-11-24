@@ -1,4 +1,5 @@
-// Package base holds what code generators share: the files they return and
+// Package base holds what kama generators share: the tool name, the
+// registry of generator names and the markers, the files they return and
 // how those are staged, the names of generated files, the header and the
 // stale file warnings, the placement of declarations several generated
 // files share, the scope a generated file spells packages and types

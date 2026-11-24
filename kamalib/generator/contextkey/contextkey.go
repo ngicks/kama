@@ -136,7 +136,7 @@ type Options struct {
 	// means time.Now.
 	Now func() time.Time
 	// Registry tells the generators markers name, for the stale file
-	// warnings of the proc. Nil means genmark.DefaultRegistry.
+	// warnings of the proc. Nil means base.DefaultRegistry.
 	Registry *genmark.Registry
 }
 
@@ -146,7 +146,7 @@ func (o Options) withDefaults() Options {
 	}
 
 	if o.Registry == nil {
-		o.Registry = genmark.DefaultRegistry
+		o.Registry = base.DefaultRegistry
 	}
 
 	return o
@@ -221,7 +221,7 @@ func renderEntry(e Entry, opts Options, header string) ([]byte, error) {
 		Package:     opts.Package,
 		KeyTypeFunc: opts.KeyTypeFunc,
 		Imports:     imports,
-		Marker:      genmark.Marker(GeneratorName),
+		Marker:      base.Marker(GeneratorName),
 	})
 	if err != nil {
 		return nil, err

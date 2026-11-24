@@ -19,7 +19,6 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
-	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
 
 // helperSet holds the declarations validators declared for the files of a
@@ -160,7 +159,7 @@ func renderHelpersWith(
 		d.Decorations().Start = dst.Decorations{
 			"// " + hf.Names[i] + " is a helper of the generated Validate methods.",
 			"//",
-			genmark.Marker(GeneratorName),
+			base.Marker(GeneratorName),
 		}
 	}
 

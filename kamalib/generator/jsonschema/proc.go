@@ -13,7 +13,6 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
-	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
@@ -136,7 +135,7 @@ func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
 		return err
 	}
 
-	stale := base.StaleCheck{Registry: genmark.DefaultRegistry, Generator: GeneratorName}
+	stale := base.StaleCheck{Registry: base.DefaultRegistry, Generator: GeneratorName}
 
 	staleWarnings, err := stale.Dir(i.fs.FS(), i.opts.Dir, files)
 	if err != nil {

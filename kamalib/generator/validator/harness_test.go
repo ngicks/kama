@@ -14,6 +14,7 @@ import (
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
@@ -53,7 +54,7 @@ func modulePath(t *testing.T) string {
 func markers(t *testing.T) *genmark.Registry {
 	t.Helper()
 
-	r := genmark.NewRegistry()
+	r := genmark.NewRegistry(base.ToolName)
 	assert.NilError(t, r.Register(GeneratorName))
 
 	return r

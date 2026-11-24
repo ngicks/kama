@@ -54,7 +54,7 @@ func TestGenerated(t *testing.T) {
 	scope := pkgs[0].Types.Scope()
 	method, _, _ := types.LookupFieldOrMethod(scope.Lookup("T").Type(), false, pkgs[0].Types, "M")
 
-	reg := genmark.NewRegistry()
+	reg := genmark.NewRegistry(base.ToolName)
 	assert.NilError(t, reg.Register("kama-x"))
 
 	for _, obj := range []types.Object{
@@ -78,7 +78,7 @@ func TestGenerated(t *testing.T) {
 func TestUnownedDecls(t *testing.T) {
 	pkgs := base.SourcePackages(gentest.Load(t, map[string]string{"a.go": markerSrc}))
 
-	reg := genmark.NewRegistry()
+	reg := genmark.NewRegistry(base.ToolName)
 	assert.NilError(t, reg.Register("kama-x"))
 
 	var names []string

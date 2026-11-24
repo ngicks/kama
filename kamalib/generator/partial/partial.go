@@ -118,7 +118,7 @@ type Options struct {
 	// MergeNestedRecursive when empty.
 	MergeNested MergeNestedMode
 	// Registry tells the declarations emitted by generators. It is
-	// genmark.DefaultRegistry when nil.
+	// base.DefaultRegistry when nil.
 	Registry *genmark.Registry
 	// Loaded holds the options of the directives and the option files of
 	// the packages Generate is given. The Loader of NewLoader loads them.
@@ -140,7 +140,7 @@ func (o Options) WithDefaults() Options {
 
 	o.MergeNested = cmp.Or(o.MergeNested, MergeNestedRecursive)
 	if o.Registry == nil {
-		o.Registry = genmark.DefaultRegistry
+		o.Registry = base.DefaultRegistry
 	}
 
 	if o.Now == nil {
@@ -613,7 +613,7 @@ func (p *mapper) decl(n *typegraph.Node) ([]dst.Decl, error) {
 			named.Obj().Name(),
 		),
 		"//",
-		genmark.Marker(GeneratorName),
+		base.Marker(GeneratorName),
 	}
 
 	methods, err := w.decls()
