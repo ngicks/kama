@@ -141,6 +141,56 @@ func Resources(root *Schema, uri string) iter.Seq2[string, string] {
 	}
 }
 
+// ResourcesAlong returns the pointers of the schema resources holding the schema at ptr of root,
+// from the root down: the root and each schema declaring $id on the way, the schema at ptr
+// included. The last one is the resource the schema at ptr belongs to.
+func ResourcesAlong(root *Schema, ptr string) ([]string, error) {
+	var along []string
+
+	_, err := walkPointer(root, ptr, func(at string, s *Schema) error {
+		if at == "" || s.Id.IsSome() {
+			along = append(along, at)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return along, nil
+}
+
+// DynamicAnchor returns the pointer of the schema of the resource at res of root that declares
+// the $dynamicAnchor name, outside the resources embedded in it. An $anchor of that name does
+// not count, as JSON Schema resolves a $dynamicRef in the dynamic scope by $dynamicAnchor only.
+func DynamicAnchor(root *Schema, res, name string) (string, bool) {
+	s, err := ResolvePointer(root, res)
+	if err != nil {
+		return "", false
+	}
+
+	var find func(s *Schema, ptr string) (string, bool)
+
+	find = func(s *Schema, ptr string) (string, bool) {
+		if s.DynamicAnchor == opt.Some(name) {
+			return ptr, true
+		}
+
+		for step, c := range children(s) {
+			if c.Id.IsNone() {
+				if found, ok := find(c, ptr+step); ok {
+					return found, true
+				}
+			}
+		}
+
+		return "", false
+	}
+
+	return find(s, res)
+}
+
 // enclosing returns the pointer of the schema resource holding the schema at ptr of root and
 // the base URI of that schema.
 func enclosing(root *Schema, uri, ptr string) (string, string, error) {

@@ -23,23 +23,24 @@ import (
 // rawRules returns the args of //kama:validate checking the schema at ptr
 // on raw JSON text, as JSON Schema applies it to a value of any kind.
 func rawRules(doc *jsonschema.Schema, opts Options, ptr string) ([]string, error) {
-	return rulesOf(doc, opts, ptr, false, everyKeyword, nil)
+	return rulesOf(doc, opts, ptr, false, everyKeyword, lexicalScope(doc, ptr), nil)
 }
 
 // rulesOf returns the args checking the keywords of the schema at ptr that
 // keep keeps. The subschemas take every keyword. annotated tells that an
 // unevaluatedProperties or an unevaluatedItems applies to the same value,
 // which then needs what the validators evaluate: a reference is written
-// out rather than named, since ref reports no evaluation. stack holds the
-// schemas whose args are being built, which a reference reaches again on a
-// cycle.
+// out rather than named, since ref reports no evaluation. scope holds the
+// schema resources evaluation entered, the dynamic scope a $dynamicRef
+// resolves in. stack holds the schemas whose args are being built, which a
+// reference reaches again on a cycle.
 func rulesOf(
 	doc *jsonschema.Schema,
 	opts Options,
 	ptr string,
 	annotated bool,
 	keep func(kw string) bool,
-	stack []string,
+	scope, stack []string,
 ) ([]string, error) {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -54,18 +55,19 @@ func rulesOf(
 		return []string{callArg("or")}, nil
 	}
 
+	scope = enter(doc, scope, ptr)
 	stack = append(stack, ptr)
 	inPlace := annotated || s.UnevaluatedProperties != nil || s.UnevaluatedItems != nil
 
 	// sub returns the args of the subschema at the keys under ptr applying
 	// to a member or an element of the value.
 	sub := func(keys ...string) ([]string, error) {
-		return rulesOf(doc, opts, child(ptr, keys...), false, everyKeyword, stack)
+		return rulesOf(doc, opts, child(ptr, keys...), false, everyKeyword, scope, stack)
 	}
 	// same returns the args of the subschema at the keys under ptr
 	// applying to the value itself, as one arg.
 	same := func(keys ...string) (string, error) {
-		args, err := rulesOf(doc, opts, child(ptr, keys...), inPlace, everyKeyword, stack)
+		args, err := rulesOf(doc, opts, child(ptr, keys...), inPlace, everyKeyword, scope, stack)
 		return single(args), err
 	}
 
@@ -80,7 +82,12 @@ func rulesOf(
 		func() ([]string, error) { return listRules(s, same, keep) },
 		func() ([]string, error) { return notRules(s, same, keep) },
 		func() ([]string, error) { return ifRules(s, same, inPlace, keep) },
-		func() ([]string, error) { return refRules(doc, opts, ptr, inPlace, keep, stack) },
+		func() ([]string, error) {
+			return refRules(doc, opts, ptr, "$ref", inPlace, keep, scope, stack)
+		},
+		func() ([]string, error) {
+			return refRules(doc, opts, ptr, "$dynamicRef", inPlace, keep, scope, stack)
+		},
 	}
 
 	for _, step := range steps {
@@ -514,31 +521,44 @@ func ifRules(
 	return []string{callArg("if", ops...)}, nil
 }
 
-// refRules returns the args the $ref of the schema at ptr applies: ref
-// naming the type of a target of raw JSON text, else the args of the
-// target written out. annotated writes out a target off the cycle of
-// stack, since ref reports no evaluation.
+// refRules returns the args the keyword kw, $ref or $dynamicRef, of the
+// schema at ptr applies: ref or decode naming the type of its target, else
+// the args of the target written out. A $dynamicRef resolves in scope, as
+// dynamicTarget tells. The target is written out when annotated asks for
+// what it evaluates, off the cycle of stack, since ref reports no
+// evaluation, and when the dynamic scope would resolve the $dynamicRef
+// under the target otherwise than the type of the target does, as
+// scopeKeeps tells.
 func refRules(
 	doc *jsonschema.Schema,
 	opts Options,
-	ptr string,
+	ptr, kw string,
 	annotated bool,
 	keep func(kw string) bool,
-	stack []string,
+	scope, stack []string,
 ) ([]string, error) {
 	s, err := at(doc, ptr)
-	if err != nil || s.Ref.IsNone() || !keep("$ref") {
+	if err != nil || !keep(kw) {
 		return nil, err
 	}
 
-	target, err := refTarget(doc, ptr)
+	if _, ok := refOf(s, kw); !ok {
+		return nil, nil
+	}
+
+	target, err := refTargetOf(doc, ptr, kw)
+	if err == nil && kw == "$dynamicRef" {
+		target, err = dynamicTarget(doc, ptr, target, scope)
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
 	onCycle := slices.Contains(stack, target)
+	keeps := scopeKeeps(doc, scope, target)
 
-	if name := namedBy(doc, target); name != "" && (onCycle || !annotated) {
+	if name := namedBy(doc, target); name != "" && keeps && (onCycle || !annotated) {
 		t, err := typeName(doc, opts, target)
 		if err != nil {
 			return nil, err
@@ -548,12 +568,12 @@ func refRules(
 	}
 
 	if onCycle {
-		return nil, unsupported(child(ptr, "$ref"),
+		return nil, unsupported(child(ptr, kw),
 			"reference closes a cycle through a union, which validates on no decoding,"+
-				" or a schema declaring no type")
+				" a schema declaring no type, or a type the dynamic scope resolves otherwise")
 	}
 
-	return rulesOf(doc, opts, target, annotated, everyKeyword, stack)
+	return rulesOf(doc, opts, target, annotated, everyKeyword, scope, stack)
 }
 
 // namedBy returns the validator applying the type the schema at ptr

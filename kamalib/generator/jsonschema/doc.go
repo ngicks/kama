@@ -239,7 +239,11 @@
 // schema resource of its own: a reference names it by its URI, a fragment
 // pointer in a reference starts at the resource, and an $anchor is looked
 // up in the resource holding the reference. A schema of an embedded
-// resource is named as any other schema, by its place in the document.
+// resource is named as any other schema, by its place in the document,
+// except that a schema under $defs inside a resource other than the root
+// takes the name of the resource followed by its own, as CustomerName for
+// $defs/Name of a resource named Customer. A resource at a keyword giving
+// no name, such as then, prefixes nothing.
 //
 // A reference whose URI names no resource of the document names another
 // document. Generate calls Options.Load with the URI without its fragment,
@@ -262,10 +266,56 @@
 // of the schemas of every document land in the one generated file. The
 // root of a document takes the base name of the path of its retrieval URI
 // without its extension, so https://example.com/schemas/money.json gives
-// Money, and a schema under $defs inside a document takes that name
-// followed by its own, as MoneyCurrency. Two documents giving one name is
-// an error wrapping ErrConflict naming both. The JSON pointers in comments,
-// warnings and errors run from the root through the key of the document.
+// Money, and a schema under $defs inside it takes that name followed by
+// its own, as MoneyCurrency. Two documents giving one name is an error
+// wrapping ErrConflict naming both. The JSON pointers in comments, warnings
+// and errors run from the root through the key of the document.
+//
+// # Dynamic references
+//
+// A $dynamicRef resolves as a $ref does. When its fragment is a plain name
+// and the schema it names declares a $dynamicAnchor of that name, it names
+// instead the schema declaring that $dynamicAnchor in the outermost schema
+// resource of the dynamic scope that declares one: the resources
+// evaluation entered, from the root down. The generated validators carry
+// no dynamic scope, so the generator resolves each $dynamicRef on every
+// path the validators of a type follow, at generation time. A schema
+// holding $dynamicRef is raw JSON text, and its validators are those of
+// the schema it resolves to.
+//
+// The validators of a type resolve in the lexical scope of the type: the
+// root and the resources holding the type in the document, so a type of a
+// document decoded alone validates as if evaluation came to it from the
+// root. A $ref or a $dynamicRef names the type of its target, or a $ref
+// alone takes it, only where entering the target from the scope at hand
+// resolves every $dynamicRef of the document as that lexical scope does.
+// Otherwise the validators of the target are written out in place, and the
+// $ref is raw JSON text. A reference written out that reaches its own
+// schema again on such a path is an error wrapping ErrUnsupported. The
+// classic extensible tree generates a type for each schema:
+//
+//	{
+//	  "$id": "https://example.com/strict-tree",
+//	  "title": "StrictTree",
+//	  "$dynamicAnchor": "node",
+//	  "$ref": "tree",
+//	  "unevaluatedProperties": false,
+//	  "$defs": {
+//	    "Tree": {
+//	      "$id": "tree",
+//	      "$dynamicAnchor": "node",
+//	      "type": "object",
+//	      "properties": {
+//	        "data": true,
+//	        "children": {"type": "array", "items": {"$dynamicRef": "#node"}}
+//	      }
+//	    }
+//	  }
+//	}
+//
+// The children of StrictTree and those of Tree validate as StrictTree,
+// since the root is the outermost resource declaring the $dynamicAnchor
+// node in the scope of either.
 //
 // # Unions
 //
@@ -392,7 +442,7 @@
 //	not                                   not(<schema>)
 //	if, then, else                        if(<if>, <then>, <else>), and()
 //	                                      for an absent then
-//	$ref                                  ref=<type>, decode=<type> or the
+//	$ref, $dynamicRef                     ref=<type>, decode=<type> or the
 //	                                      validators of the target
 //	unevaluatedProperties                 unevalprops(<the others>, ...)
 //	unevaluatedItems                      unevalitems(<the others>, ...)
@@ -465,11 +515,12 @@
 // These are errors wrapping ErrUnsupported that name the JSON pointer of
 // the schema or of the keyword:
 //
-//   - $dynamicRef, and a $schema other than the meta-schema of draft
-//     2020-12, whose vocabularies the generator cannot read;
+//   - a $schema other than the meta-schema of draft 2020-12, whose
+//     vocabularies the generator cannot read;
 //   - a $ref naming no schema of the documents, a chain of references back
-//     to itself, and a $ref in the validators of raw JSON text
-//     reaching a union or a schema declaring no type again on a cycle;
+//     to itself, and a $ref or a $dynamicRef in the validators of raw JSON
+//     text reaching a union, a schema declaring no type or a type the
+//     dynamic scope resolves otherwise again on a cycle;
 //   - a pattern of patternProperties RE2 does not compile;
 //   - a nil schema of a document built in Go, and a slice or a map holding
 //     itself with no declared type in between;

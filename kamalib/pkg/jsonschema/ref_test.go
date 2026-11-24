@@ -292,3 +292,53 @@ func TestResolvePointerErrorNamesTheMissingStep(t *testing.T) {
 			`no schema at "/$defs/a~1b/allOf/0"`,
 	)
 }
+
+func TestResourcesAlong(t *testing.T) {
+	var root Schema
+	assert.NilError(t, jsonv2.Unmarshal([]byte(resourceDoc), &root))
+
+	for ptr, want := range map[string][]string{
+		"":                       {""},
+		"/$defs/leaf":            {""},
+		"/$defs/rel":             {"", "/$defs/rel"},
+		"/$defs/rel/$defs/leaf":  {"", "/$defs/rel"},
+		"/$defs/rel/$defs/inner": {"", "/$defs/rel", "/$defs/rel/$defs/inner"},
+	} {
+		got, err := ResourcesAlong(&root, ptr)
+		assert.NilError(t, err, ptr)
+		assert.DeepEqual(t, got, want)
+	}
+}
+
+func TestDynamicAnchor(t *testing.T) {
+	var root Schema
+	assert.NilError(t, jsonv2.Unmarshal([]byte(`{
+		"$dynamicAnchor": "top",
+		"$defs": {
+			"a": {"$dynamicAnchor": "node"},
+			"b": {"$anchor": "plain"},
+			"inner": {
+				"$id": "inner.json",
+				"$dynamicAnchor": "inner",
+				"$defs": {"c": {"$dynamicAnchor": "deep"}}
+			}
+		}
+	}`), &root))
+
+	for _, c := range []struct {
+		res, name, want string
+		ok              bool
+	}{
+		{"", "top", "", true},
+		{"", "node", "/$defs/a", true},
+		{"", "plain", "", false},
+		{"", "deep", "", false},
+		{"/$defs/inner", "deep", "/$defs/inner/$defs/c", true},
+		{"/$defs/inner", "inner", "/$defs/inner", true},
+		{"/$defs/inner", "node", "", false},
+	} {
+		got, ok := DynamicAnchor(&root, c.res, c.name)
+		assert.Equal(t, ok, c.ok, "%s %s", c.res, c.name)
+		assert.Equal(t, got, c.want, "%s %s", c.res, c.name)
+	}
+}

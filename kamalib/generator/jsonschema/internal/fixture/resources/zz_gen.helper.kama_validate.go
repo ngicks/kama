@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T16:01:13Z
+// generated: 2026-11-24T16:17:58Z
 
 package resources
 

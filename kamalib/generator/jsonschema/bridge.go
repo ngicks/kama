@@ -30,7 +30,7 @@ func jsonArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, error
 		keep = everyKeyword
 	}
 
-	args, err := rulesOf(doc, opts, ptr, false, keep, nil)
+	args, err := rulesOf(doc, opts, ptr, false, keep, lexicalScope(doc, ptr), nil)
 	if err != nil || len(args) == 0 {
 		return nil, err
 	}

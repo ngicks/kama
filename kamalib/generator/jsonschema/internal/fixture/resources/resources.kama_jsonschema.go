@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T16:01:12Z
+// generated: 2026-11-24T16:17:57Z
 
 package resources
 
@@ -25,7 +25,7 @@ import (
 //kama:generated kama:jsonschema
 type Order struct {
 	Customer Customer                  `json:"customer"`
-	ShipTo   opt.Option[Zip]           `json:"shipTo,omitzero"`
+	ShipTo   opt.Option[AddressZip]    `json:"shipTo,omitzero"`
 	Lines    opt.Option[[]Line]        `json:"lines,omitzero"`
 	Note     opt.Option[Note]          `json:"note,omitzero"`
 	_x       map[string]jsontext.Value `json:",embed"`
@@ -46,7 +46,7 @@ func (v Order) AdditionalProperties() map[string]jsontext.Value {
 func (v Order) MarshalJSONTo(enc *jsontext.Encoder) error {
 	type plain struct {
 		Customer             Customer                  `json:"customer"`
-		ShipTo               opt.Option[Zip]           `json:"shipTo,omitzero"`
+		ShipTo               opt.Option[AddressZip]    `json:"shipTo,omitzero"`
 		Lines                opt.Option[[]Line]        `json:"lines,omitzero"`
 		Note                 opt.Option[Note]          `json:"note,omitzero"`
 		AdditionalProperties map[string]jsontext.Value `json:",embed"`
@@ -59,7 +59,7 @@ func (v Order) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 type orderWire struct {
 	Customer             und.Und[Customer]         `json:"customer,omitzero"`
-	ShipTo               und.Und[Zip]              `json:"shipTo,omitzero"`
+	ShipTo               und.Und[AddressZip]       `json:"shipTo,omitzero"`
 	Lines                und.Und[[]Line]           `json:"lines,omitzero"`
 	Note                 und.Und[Note]             `json:"note,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
@@ -171,8 +171,7 @@ func (v *Customer) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	return nil
 }
 
-// CustomerName is generated from the schema at
-// #/$defs/Customer/$defs/CustomerName.
+// CustomerName is generated from the schema at #/$defs/Customer/$defs/Name.
 //
 //kama:validate runes=">=1"
 //kama:generated kama:jsonschema
@@ -211,7 +210,7 @@ func (v *CustomerName) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:generated kama:jsonschema
 type Address struct {
 	City opt.Option[string]        `json:"city,omitzero"`
-	Zip  opt.Option[Zip]           `json:"zip,omitzero"`
+	Zip  opt.Option[AddressZip]    `json:"zip,omitzero"`
 	_x   map[string]jsontext.Value `json:",embed"`
 }
 
@@ -230,7 +229,7 @@ func (v Address) AdditionalProperties() map[string]jsontext.Value {
 func (v Address) MarshalJSONTo(enc *jsontext.Encoder) error {
 	type plain struct {
 		City                 opt.Option[string]        `json:"city,omitzero"`
-		Zip                  opt.Option[Zip]           `json:"zip,omitzero"`
+		Zip                  opt.Option[AddressZip]    `json:"zip,omitzero"`
 		AdditionalProperties map[string]jsontext.Value `json:",embed"`
 	}
 	return json.MarshalEncode(enc, plain{City: v.City, Zip: v.Zip, AdditionalProperties: v._x})
@@ -241,7 +240,7 @@ func (v Address) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 type addressWire struct {
 	City                 und.Und[string]           `json:"city,omitzero"`
-	Zip                  und.Und[Zip]              `json:"zip,omitzero"`
+	Zip                  und.Und[AddressZip]       `json:"zip,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -276,16 +275,16 @@ func (v *Address) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	return nil
 }
 
-// Zip is generated from the schema at #/$defs/Address/$defs/Zip.
+// AddressZip is generated from the schema at #/$defs/Address/$defs/Zip.
 //
 //kama:validate regexp="^[0-9]{5}$"
 //kama:generated kama:jsonschema
-type Zip string
+type AddressZip string
 
 // MarshalJSONTo encodes v as its underlying type.
 //
 //kama:generated kama:jsonschema
-func (v Zip) MarshalJSONTo(enc *jsontext.Encoder) error {
+func (v AddressZip) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, string(v))
 }
 
@@ -293,7 +292,7 @@ func (v Zip) MarshalJSONTo(enc *jsontext.Encoder) error {
 // Validate.
 //
 //kama:generated kama:jsonschema
-func (v *Zip) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+func (v *AddressZip) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
 		return err
@@ -302,10 +301,10 @@ func (v *Zip) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Zip(out), false); err != nil {
+	if err := jsonschemart.Validate(AddressZip(out), false); err != nil {
 		return err
 	}
-	*v = Zip(out)
+	*v = AddressZip(out)
 	return nil
 }
 
@@ -314,7 +313,7 @@ func (v *Zip) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //kama:validate hook=off
 //kama:generated kama:jsonschema
 type Line struct {
-	Sku Sku `json:"sku"`
+	Sku LineSku `json:"sku"`
 	//kama:validate cmp=">=1"
 	Count opt.Option[int64]         `json:"count,omitzero"`
 	_x    map[string]jsontext.Value `json:",embed"`
@@ -334,7 +333,7 @@ func (v Line) AdditionalProperties() map[string]jsontext.Value {
 //kama:generated kama:jsonschema
 func (v Line) MarshalJSONTo(enc *jsontext.Encoder) error {
 	type plain struct {
-		Sku                  Sku                       `json:"sku"`
+		Sku                  LineSku                   `json:"sku"`
 		Count                opt.Option[int64]         `json:"count,omitzero"`
 		AdditionalProperties map[string]jsontext.Value `json:",embed"`
 	}
@@ -345,7 +344,7 @@ func (v Line) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 type lineWire struct {
-	Sku                  und.Und[Sku]              `json:"sku,omitzero"`
+	Sku                  und.Und[LineSku]          `json:"sku,omitzero"`
 	Count                und.Und[int64]            `json:"count,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
@@ -381,16 +380,16 @@ func (v *Line) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	return nil
 }
 
-// Sku is generated from the schema at #/$defs/Line/$defs/Sku.
+// LineSku is generated from the schema at #/$defs/Line/$defs/Sku.
 //
 //kama:validate regexp="^[A-Z]+$"
 //kama:generated kama:jsonschema
-type Sku string
+type LineSku string
 
 // MarshalJSONTo encodes v as its underlying type.
 //
 //kama:generated kama:jsonschema
-func (v Sku) MarshalJSONTo(enc *jsontext.Encoder) error {
+func (v LineSku) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, string(v))
 }
 
@@ -398,7 +397,7 @@ func (v Sku) MarshalJSONTo(enc *jsontext.Encoder) error {
 // Validate.
 //
 //kama:generated kama:jsonschema
-func (v *Sku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+func (v *LineSku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	raw, err := jsonschemart.ReadValue(dec)
 	if err != nil {
 		return err
@@ -407,10 +406,10 @@ func (v *Sku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Sku(out), false); err != nil {
+	if err := jsonschemart.Validate(LineSku(out), false); err != nil {
 		return err
 	}
-	*v = Sku(out)
+	*v = LineSku(out)
 	return nil
 }
 

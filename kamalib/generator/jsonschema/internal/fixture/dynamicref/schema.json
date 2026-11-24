@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/strict-tree",
+  "title": "StrictTree",
+  "description": "StrictTree is a Tree whose nodes, children included, hold no member Tree does not declare.",
+  "$dynamicAnchor": "node",
+  "$ref": "tree",
+  "unevaluatedProperties": false,
+  "$defs": {
+    "Tree": {
+      "$id": "tree",
+      "$dynamicAnchor": "node",
+      "type": "object",
+      "properties": {
+        "data": true,
+        "children": {"type": "array", "items": {"$dynamicRef": "#node"}}
+      }
+    },
+    "List": {
+      "$id": "list",
+      "type": "array",
+      "items": {"$dynamicRef": "#item"},
+      "$defs": {"Item": {"$dynamicAnchor": "item"}}
+    },
+    "Names": {
+      "$id": "names",
+      "$ref": "list",
+      "$defs": {"Item": {"$dynamicAnchor": "item", "type": "string"}}
+    }
+  }
+}

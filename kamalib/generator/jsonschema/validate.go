@@ -359,7 +359,7 @@ func fieldArgs(doc *jsonschema.Schema, opts Options, ptr, name string) []string 
 // validator of the target again.
 func named(doc *jsonschema.Schema, ptr string) bool {
 	s, err := at(doc, ptr)
-	if err != nil || !refAlone(s) {
+	if err != nil || !refAloneAt(doc, ptr, s) {
 		return false
 	}
 
@@ -469,7 +469,7 @@ func valueType(doc *jsonschema.Schema, ptr string) bool {
 	}
 
 	s, err := at(doc, ptr)
-	if err != nil || s.Bool.IsSome() || refAlone(s) || transparentAllOf(doc, ptr, s) ||
+	if err != nil || s.Bool.IsSome() || refAloneAt(doc, ptr, s) || transparentAllOf(doc, ptr, s) ||
 		nullableUnion(doc, ptr) || unionMember(ptr) && nullMember(doc, ptr) || ruled(doc, ptr) {
 		return false
 	}

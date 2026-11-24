@@ -326,13 +326,19 @@ func shapesOtherThan(s *jsonschema.Schema, allowed ...string) []string {
 // refTarget returns the pointer of the schema the $ref of the schema at
 // ptr names, as jsonschema.ResolveRef resolves it.
 func refTarget(doc *jsonschema.Schema, ptr string) (string, error) {
+	return refTargetOf(doc, ptr, "$ref")
+}
+
+// refTargetOf returns the pointer of the schema the keyword kw, $ref or
+// $dynamicRef, of the schema at ptr names, resolved as a $ref is.
+func refTargetOf(doc *jsonschema.Schema, ptr, kw string) (string, error) {
 	s, err := at(doc, ptr)
 	if err != nil {
 		return "", err
 	}
 
-	ref := s.Ref.Value()
-	kw := child(ptr, "$ref")
+	ref, _ := refOf(s, kw)
+	kw = child(ptr, kw)
 
 	found, err := jsonschema.ResolveRef(doc, "", ptr, ref)
 	if errors.Is(err, jsonschema.ErrNonLocalRef) {
@@ -498,7 +504,7 @@ func resolvedFrom(
 		var err error
 
 		switch {
-		case refAlone(s):
+		case refAloneAt(doc, ptr, s):
 			ptr, err = refTarget(doc, ptr)
 		case transparentAllOf(doc, ptr, s):
 			ptr = child(ptr, "allOf", "0")
@@ -544,7 +550,7 @@ func transparentAllOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) 
 
 		seen = append(seen, m)
 
-		if !refAlone(ms) {
+		if !refAloneAt(doc, m, ms) {
 			return !ms.Type.IsZero() && opiter.WrapSeq(slices.Values(ms.Type.Names)).
 				Every(func(k string) bool {
 					return slices.Contains(s.Type.Names, k) ||
@@ -616,7 +622,10 @@ func rawFrom(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
 	switch {
 	case err != nil:
 		return false
-	case s.Bool.IsSome() || refBeside(s) || nullableType(s) && len(bridging(doc, r, s)) > 0:
+	// A $ref left after resolving is next to other keywords or keeps the
+	// dynamic scope from naming the type of its target.
+	case s.Bool.IsSome() || s.Ref.IsSome() || s.DynamicRef.IsSome() ||
+		nullableType(s) && len(bridging(doc, r, s)) > 0:
 		return true
 	case union(s) || structKind(s) || product(doc, r, s) || stringEnum(s) ||
 		nullableUnion(doc, r):
@@ -768,7 +777,7 @@ func stringEnum(s *jsonschema.Schema) bool {
 // are spelled by built-in types.
 func declares(doc *jsonschema.Schema, ptr string) bool {
 	s, err := at(doc, ptr)
-	if err != nil || s.Bool.IsSome() || refAlone(s) || transparentAllOf(doc, ptr, s) ||
+	if err != nil || s.Bool.IsSome() || refAloneAt(doc, ptr, s) || transparentAllOf(doc, ptr, s) ||
 		nullableUnion(doc, ptr) || ruled(doc, ptr) {
 		return false
 	}

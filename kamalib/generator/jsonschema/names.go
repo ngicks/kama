@@ -89,7 +89,7 @@ func typeNameAt(
 
 	switch kw {
 	case "$defs":
-		return definitionName(ptr, ends, key)
+		return definitionName(doc, opts, ptr, parent, key, seen)
 	case "properties":
 		return suffixed(doc, opts, parent, up, seen, ptr, "property", key)
 	case "oneOf", "anyOf", "allOf":
@@ -103,29 +103,39 @@ func typeNameAt(
 	return "", unsupported(ptr, "no Go name for a schema at this keyword")
 }
 
-// definitionName names the schema at ptr, whose steps end at ends, under
-// $defs by its name key there. A document bundle embeds takes the name
-// documentName gives it, and a schema under $defs inside such a document
-// takes that name followed by its own, so two documents may each define a
-// name.
-func definitionName(ptr string, ends []int, key string) (string, error) {
+// definitionName names the schema at ptr under $defs by its name key
+// there. A document bundle embeds takes the name documentName gives it. A
+// schema under $defs inside a schema resource other than the root takes
+// the name of that resource followed by its own, so two resources may each
+// define a name. A resource without a name of its own prefixes nothing.
+func definitionName(
+	doc *jsonschema.Schema,
+	opts Options,
+	ptr, parent, key string,
+	seen []string,
+) (string, error) {
 	if uri := embeddedDocument(ptr); uri != "" {
 		return documentName(ptr, uri)
 	}
 
 	name, err := identifier(ptr, "definition", key)
-	if err != nil || len(ends) < 2 {
-		return name, err
+	if err != nil {
+		return "", err
 	}
 
-	uri := embeddedDocument(ptr[:ends[0]])
-	if uri == "" {
+	along := lexicalScope(doc, parent)
+	if len(along) < 2 {
 		return name, nil
 	}
 
-	prefix, err := documentName(ptr[:ends[0]], uri)
+	// A resource at a keyword giving no name, such as then, prefixes
+	// nothing.
+	prefix, err := typeNameSeen(doc, opts, along[len(along)-1], seen)
+	if err != nil {
+		return name, nil //nolint:nilerr
+	}
 
-	return prefix + name, err
+	return prefix + name, nil
 }
 
 // twoTokenKeywords hold a map or a list of schemas, so that a step through

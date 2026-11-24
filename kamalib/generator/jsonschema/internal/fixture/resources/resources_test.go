@@ -24,7 +24,7 @@ func TestOrder(t *testing.T) {
 		`{"customer": {"name": ""}}`: validation.ErrLength,
 		`{"customer": {"name": "a", "address": {"zip": "1"}}}`: validation.ErrPattern,
 		`{"customer": {"name": "a"}, "shipTo": "x"}`:           validation.ErrPattern,
-		// The anchor name of line.json names Sku, not CustomerName.
+		// The anchor name of line.json names LineSku, not CustomerName.
 		`{"customer": {"name": "a"}, "lines": [{"sku": "ab"}]}`:           validation.ErrPattern,
 		`{"customer": {"name": "a"}, "note": "longer than twenty runes"}`: validation.ErrLength,
 	} {

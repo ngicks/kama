@@ -52,10 +52,11 @@ var suiteGenerated = map[string]int{
 	"const.json":                   17,
 	"contains.json":                7,
 	"content.json":                 4,
+	"defs.json":                    1,
 	"default.json":                 3,
 	"dependentRequired.json":       4,
 	"dependentSchemas.json":        4,
-	"dynamicRef.json":              1,
+	"dynamicRef.json":              21,
 	"enum.json":                    16,
 	"exclusiveMaximum.json":        1,
 	"exclusiveMinimum.json":        1,
@@ -81,30 +82,24 @@ var suiteGenerated = map[string]int{
 	"prefixItems.json":             4,
 	"properties.json":              6,
 	"propertyNames.json":           6,
-	"ref.json":                     35,
+	"ref.json":                     36,
 	"refRemote.json":               15,
 	"required.json":                5,
 	"type.json":                    11,
-	"unevaluatedItems.json":        28,
-	"unevaluatedProperties.json":   43,
+	"unevaluatedItems.json":        29,
+	"unevaluatedProperties.json":   44,
 	"uniqueItems.json":             6,
 }
 
 // suiteUnsupported is the number of groups of each top-level file of the
 // suite that Generate rejects. A file missing here rejects none.
 var suiteUnsupported = map[string]int{
-	"defs.json":                  1,
-	"dynamicRef.json":            20,
-	"ref.json":                   1,
-	"unevaluatedItems.json":      1,
-	"unevaluatedProperties.json": 1,
-	"vocabulary.json":            2,
+	"vocabulary.json": 2,
 }
 
 // suiteUnsupportedReasons lists every reason a group of the suite is
 // rejected for, as rejectReasons spells it.
 var suiteUnsupportedReasons = []string{
-	"unsupported schema: keyword $dynamicRef is not supported",
 	"unsupported schema: meta-schema %q is not that of draft 2020-12",
 }
 

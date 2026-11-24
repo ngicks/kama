@@ -30,7 +30,7 @@ var fixtures = []string{
 	"object", "nullable", "recursive", "oneof", "anyof", "allof",
 	"prefilter", "nullablecycle", "multikind", "nullableenum", "nullableroot", "productcycle",
 	"oneofoverlap", "nestedunion", "validation", "rootscalar", "rawroot", "subschema",
-	"typedkeywords", "resources", "remote",
+	"typedkeywords", "resources", "remote", "dynamicref",
 }
 
 // fixtureRemotes are the remotes param of the fixtures whose spec.yaml

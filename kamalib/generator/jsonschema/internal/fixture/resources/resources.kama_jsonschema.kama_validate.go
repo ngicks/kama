@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T16:01:13Z
+// generated: 2026-11-24T16:17:58Z
 
 package resources
 
@@ -112,7 +112,7 @@ func (v Address) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Zip) Validate(stopOnFirstError bool) error {
+func (v AddressZip) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := kamaValidateRegexpString(kamaValidateRegexp_a94dc58b9a, string(v)); err != nil {
 		if stopOnFirstError {
@@ -150,7 +150,7 @@ func (v Line) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Sku) Validate(stopOnFirstError bool) error {
+func (v LineSku) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := kamaValidateRegexpString(kamaValidateRegexp_0ab128e122, string(v)); err != nil {
 		if stopOnFirstError {

@@ -14,10 +14,6 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
-// unsupportedKeywords change the set of valid instances in a way the
-// generated code cannot express.
-var unsupportedKeywords = []string{"$dynamicRef"}
-
 // metaSchema is the URI of the meta-schema of draft 2020-12.
 const metaSchema = "https://json-schema.org/draft/2020-12/schema"
 
@@ -60,7 +56,7 @@ func check(doc *jsonschema.Schema, opts Options) error {
 
 	// A $ref alone takes the type of its target, whose own check covers it.
 	for ptr, s := range schemas(doc) {
-		if s.Bool.IsSome() || refAlone(s) || ruled(doc, ptr) {
+		if s.Bool.IsSome() || refAloneAt(doc, ptr, s) || ruled(doc, ptr) {
 			continue
 		}
 
@@ -111,8 +107,9 @@ func checkTypes(doc *jsonschema.Schema, opts Options) error {
 		spell(definedType(doc, opts, ""))
 	}
 
+	// A type of raw JSON text spells jsontext.Value whatever its keywords.
 	for ptr, s := range schemas(doc) {
-		if !declares(doc, ptr) {
+		if !declares(doc, ptr) || rawFrom(doc, ptr, s) {
 			continue
 		}
 
@@ -151,9 +148,7 @@ func checkSchema(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []err
 		return nil
 	}
 
-	errs := opiter.WrapSeq(slices.Values(present(s, unsupportedKeywords))).
-		Map(func(kw string) error { return unsupported(child(ptr, kw), "keyword is not supported") }).
-		CollectSlice()
+	var errs []error
 
 	// Another meta-schema may turn vocabularies off or give keywords the
 	// meaning of another draft, which only fetching it would tell.
@@ -168,13 +163,13 @@ func checkSchema(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []err
 
 	errs = append(errs, checkKeywords(ptr, s)...)
 
-	if s.Ref.IsSome() {
-		if _, err := refTarget(doc, ptr); err != nil {
+	for _, kw := range present(s, []string{"$ref", "$dynamicRef"}) {
+		if _, err := refTargetOf(doc, ptr, kw); err != nil {
 			errs = append(errs, err)
 		}
 	}
 
-	if len(errs) > 0 || refAlone(s) || ruled(doc, ptr) || rawFrom(doc, ptr, s) {
+	if len(errs) > 0 || refAloneAt(doc, ptr, s) || ruled(doc, ptr) || rawFrom(doc, ptr, s) {
 		return errs
 	}
 
@@ -441,6 +436,7 @@ func checkNames(doc *jsonschema.Schema, opts Options) error {
 
 				declare(c, child(ptr, "enum", strconv.Itoa(i)))
 			}
+		case rawFrom(doc, ptr, s):
 		default:
 			declare(wireName(name), ptr)
 			errs = append(errs, fieldNames(doc, opts, ptr, s)...)
