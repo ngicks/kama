@@ -20,8 +20,8 @@
 // calls such a number an integer.
 //
 // Union holders select their member with [IsKind], [HasMembers], [OnlyMembers] and
-// [MemberEquals], then pick the result with [OneOf] or [AnyOf]. Product structs of allOf marshal
-// through [MarshalObjects].
+// [MemberEquals], then decode the value with each remaining member and report a failure with
+// [NoMatch] or [MultipleMatch]. Product structs of allOf marshal through [MarshalObjects].
 //
 // # Dependencies
 //

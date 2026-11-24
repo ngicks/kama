@@ -2,7 +2,7 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T00:00:00Z
+// generated: 2026-11-24T02:46:40Z
 
 package anyof
 
@@ -135,33 +135,30 @@ func (v *DocValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var found []DocValueKind
 	var errs []error
 	if jsonschemart.IsKind(raw, "string") {
 		var m string
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("String", err))
 		} else {
-			found = append(found, DocValueString{String: m})
+			*v = DocValue{Kind: DocValueString{String: m}}
+			return nil
 		}
 	}
 	if jsonschemart.IsKind(raw, "null") {
-		found = append(found, DocValueNull{})
+		*v = DocValue{Kind: DocValueNull{}}
+		return nil
 	}
 	if jsonschemart.IsKind(raw, "integer") {
 		var m int64
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Integer", err))
 		} else {
-			found = append(found, DocValueInteger{Integer: m})
+			*v = DocValue{Kind: DocValueInteger{Integer: m}}
+			return nil
 		}
 	}
-	kind, err := jsonschemart.AnyOf(found, errs)
-	if err != nil {
-		return err
-	}
-	*v = DocValue{Kind: kind}
-	return nil
+	return jsonschemart.NoMatch(errs)
 }
 
 // Label is the first of Named, Tagged that the value matches. It is
@@ -224,14 +221,14 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var found []LabelKind
 	var errs []error
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.HasMembers(raw, "name") {
 		var m Named
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Named", err))
 		} else {
-			found = append(found, LabelNamed{Named: m})
+			*v = Label{Kind: LabelNamed{Named: m}}
+			return nil
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.HasMembers(raw, "tag") {
@@ -239,15 +236,11 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Tagged", err))
 		} else {
-			found = append(found, LabelTagged{Tagged: m})
+			*v = Label{Kind: LabelTagged{Tagged: m}}
+			return nil
 		}
 	}
-	kind, err := jsonschemart.AnyOf(found, errs)
-	if err != nil {
-		return err
-	}
-	*v = Label{Kind: kind}
-	return nil
+	return jsonschemart.NoMatch(errs)
 }
 
 // Named is generated from the schema at #/$defs/Named.

@@ -2,7 +2,7 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T00:00:00Z
+// generated: 2026-11-24T02:46:46Z
 
 package prefilter
 
@@ -76,16 +76,18 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var found []ShapeKind
-	var names []string
+	var found ShapeKind
+	var name string
 	var errs []error
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.MemberEquals(raw, "kind", "\"circle\"") && jsonschemart.HasMembers(raw, "kind", "radius") {
 		var m Circle
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Circle", err))
 		} else {
-			found = append(found, ShapeCircle{Circle: m})
-			names = append(names, "Circle")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "Circle")
+			}
+			found, name = ShapeCircle{Circle: m}, "Circle"
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.OnlyMembers(raw, "side") {
@@ -93,15 +95,16 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Square", err))
 		} else {
-			found = append(found, ShapeSquare{Square: m})
-			names = append(names, "Square")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "Square")
+			}
+			found, name = ShapeSquare{Square: m}, "Square"
 		}
 	}
-	kind, err := jsonschemart.OneOf(found, names, errs)
-	if err != nil {
-		return err
+	if found == nil {
+		return jsonschemart.NoMatch(errs)
 	}
-	*v = Shape{Kind: kind}
+	*v = Shape{Kind: found}
 	return nil
 }
 

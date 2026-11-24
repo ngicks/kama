@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Chains",
+  "type": "object",
+  "properties": {
+    "any": { "$ref": "#/$defs/Any" },
+    "tagged": { "$ref": "#/$defs/Tagged" },
+    "overlap": { "$ref": "#/$defs/Overlap" }
+  },
+  "$defs": {
+    "Any": { "anyOf": [{ "$ref": "#/$defs/AnyLeft" }, { "$ref": "#/$defs/AnyRight" }] },
+    "AnyLeft": {
+      "type": "object",
+      "properties": { "c": { "$ref": "#/$defs/Any" }, "l": { "type": "string" } }
+    },
+    "AnyRight": {
+      "type": "object",
+      "properties": { "c": { "$ref": "#/$defs/Any" }, "r": { "type": "string" } }
+    },
+    "Tagged": { "oneOf": [{ "$ref": "#/$defs/TaggedLeft" }, { "$ref": "#/$defs/TaggedRight" }] },
+    "TaggedLeft": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": { "kind": { "const": "left" }, "c": { "$ref": "#/$defs/Tagged" } }
+    },
+    "TaggedRight": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": { "kind": { "const": "right" }, "c": { "$ref": "#/$defs/Tagged" } }
+    },
+    "Overlap": {
+      "oneOf": [{ "$ref": "#/$defs/OverlapLeft" }, { "$ref": "#/$defs/OverlapRight" }]
+    },
+    "OverlapLeft": {
+      "type": "object",
+      "properties": { "c": { "$ref": "#/$defs/Overlap" }, "l": { "type": "string" } }
+    },
+    "OverlapRight": {
+      "type": "object",
+      "properties": { "c": { "$ref": "#/$defs/Overlap" }, "l": { "type": "integer" } }
+    }
+  }
+}

@@ -16,18 +16,18 @@ type Printer interface {
 }
 
 type bufPrinter struct {
-	buf bytes.Buffer
+	buf *bytes.Buffer
 }
 
+// newBufPrinter appends to b in place. A step receives the text of the
+// steps before it and hands on its own, so nothing reads b again, and
+// copying it would make every step cost the length of the whole text.
 func newBufPrinter(b []byte) *bufPrinter {
-	buf := bytes.Buffer{}
-	buf.Write(b)
-
-	return &bufPrinter{buf: buf}
+	return &bufPrinter{buf: bytes.NewBuffer(b)}
 }
 
 func (p *bufPrinter) Printf(format string, a ...any) {
-	fmt.Fprintf(&p.buf, format, a...)
+	fmt.Fprintf(p.buf, format, a...)
 }
 
 func (p *bufPrinter) Bytes() []byte {

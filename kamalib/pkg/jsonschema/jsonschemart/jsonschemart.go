@@ -270,30 +270,16 @@ func MemberEquals(raw jsontext.Value, name, want string) bool {
 	return bytes.Equal(got, w)
 }
 
-// OneOf returns the only element of found. names lists the members found, and errs holds why
-// the other members failed. Zero or two or more elements are an error.
-func OneOf[K any](found []K, names []string, errs []error) (K, error) {
-	var zero K
-
-	switch len(found) {
-	case 1:
-		return found[0], nil
-	case 0:
-		return zero, noMatch(errs)
-	}
-
-	return zero, validation.New(ErrMultipleMatch, "value matches %s", strings.Join(names, ", "))
+// NoMatch reports a value no member of a union decodes. errs holds why each member failed.
+func NoMatch(errs []error) error {
+	return validation.Join(
+		append([]error{validation.New(ErrNoMatch, "value matches no member")}, errs...)...,
+	)
 }
 
-// AnyOf returns the first element of found. errs holds why the other members failed. No
-// element is an error.
-func AnyOf[K any](found []K, errs []error) (K, error) {
-	if len(found) == 0 {
-		var zero K
-		return zero, noMatch(errs)
-	}
-
-	return found[0], nil
+// MultipleMatch reports a value that the members first and second of a oneOf both decode.
+func MultipleMatch(first, second string) error {
+	return validation.New(ErrMultipleMatch, "value matches %s, %s", first, second)
 }
 
 // MemberError returns err annotated with the union member name.
@@ -474,12 +460,6 @@ func locate(err error, ptr jsontext.Pointer) error {
 	}
 
 	return err
-}
-
-func noMatch(errs []error) error {
-	return validation.Join(
-		append([]error{validation.New(ErrNoMatch, "value matches no member")}, errs...)...,
-	)
 }
 
 func kindName(k jsontext.Kind) string {

@@ -237,6 +237,37 @@ func TestGenerateRejects(t *testing.T) {
 			"#/oneOf/1:",
 		},
 		{
+			"ref to contentSchema",
+			`{"type":"object","properties":{"a":{"$ref":"#/properties/b/contentSchema"},
+			"b":{"type":"string","contentSchema":{"type":"object"}}}}`,
+			ErrUnsupported,
+			`#/properties/a/$ref: reference "#/properties/b/contentSchema" names no schema ` +
+				"the generator reads",
+		},
+		{
+			"ref to additionalProperties false",
+			`{"type":"object","properties":{"a":{"$ref":"#/additionalProperties"}},
+			"additionalProperties":false}`,
+			ErrUnsupported,
+			`#/properties/a/$ref: reference "#/additionalProperties" names no schema ` +
+				"the generator reads",
+		},
+		{
+			"ref to an index with a leading zero",
+			`{"type":"object","properties":{"a":{"$ref":"#/$defs/u/anyOf/01"}},
+			"$defs":{"u":{"anyOf":[{"type":"string"},{"type":"integer"}]}}}`,
+			ErrUnsupported,
+			`#/properties/a/$ref: reference "#/$defs/u/anyOf/01" names no schema ` +
+				"the generator reads",
+		},
+		{
+			"ref to a missing definition",
+			`{"type":"object","properties":{"a":{"$ref":"#/$defs/b"}},"$defs":{"c":{}}}`,
+			ErrUnsupported,
+			`#/properties/a/$ref: reference "#/$defs/b" names no schema ` +
+				"the generator reads",
+		},
+		{
 			"root holding itself through no declared type",
 			`{"type":"array","items":{"$ref":"#"}}`,
 			ErrUnsupported,

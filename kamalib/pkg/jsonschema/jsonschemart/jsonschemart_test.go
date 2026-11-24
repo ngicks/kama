@@ -384,28 +384,19 @@ func TestSelection(t *testing.T) {
 	}
 }
 
-func TestOneOfAnyOf(t *testing.T) {
+func TestNoMatchMultipleMatch(t *testing.T) {
 	memberErr := MemberError("B", validation.Field(validation.New(validation.ErrNull, "x"), "f"))
 
-	k, err := OneOf([]int{1}, []string{"A"}, []error{memberErr})
-	assert.NilError(t, err)
-	assert.Equal(t, k, 1)
-
-	_, err = OneOf([]int{1, 2}, []string{"A", "C"}, nil)
+	err := MultipleMatch("A", "C")
 	assert.ErrorIs(t, err, ErrMultipleMatch)
 	assert.Equal(t, err.Error(), "validation failed: multiple matches: value matches A, C")
 
-	_, err = OneOf[int](nil, nil, []error{memberErr})
+	err = NoMatch([]error{memberErr})
 	assert.ErrorIs(t, err, ErrNoMatch)
 	assert.ErrorIs(t, err, validation.ErrNull)
 	assert.DeepEqual(t, validation.Pointers(validation.Field(err, "u")), []string{"/u", "/u/f"})
 
-	k, err = AnyOf([]int{1, 2}, nil)
-	assert.NilError(t, err)
-	assert.Equal(t, k, 1)
-
-	_, err = AnyOf[int](nil, nil)
-	assert.ErrorIs(t, err, ErrNoMatch)
+	assert.ErrorIs(t, NoMatch(nil), ErrNoMatch)
 }
 
 func TestMarshalObjects(t *testing.T) {

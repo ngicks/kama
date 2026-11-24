@@ -54,6 +54,19 @@ func typeName(doc *jsonschema.Schema, opts Options, ptr string) (string, error) 
 }
 
 func typeNameSeen(doc *jsonschema.Schema, opts Options, ptr string, seen []string) (string, error) {
+	return typeNameAt(doc, opts, ptr, stepEnds(ptr), seen)
+}
+
+// typeNameAt is typeNameSeen for ptr whose steps end at the offsets ends.
+// The name of ptr takes the names of its parents, which reuse ends rather
+// than parse their steps again, so a name costs the length of ptr once.
+func typeNameAt(
+	doc *jsonschema.Schema,
+	opts Options,
+	ptr string,
+	ends []int,
+	seen []string,
+) (string, error) {
 	if slices.Contains(seen, ptr) {
 		return "", unsupported(ptr, "names itself")
 	}
@@ -64,52 +77,70 @@ func typeNameSeen(doc *jsonschema.Schema, opts Options, ptr string, seen []strin
 		return rootName(doc, opts)
 	}
 
-	parent, kw, key := lastStep(ptr)
+	up := ends[:len(ends)-1]
+
+	parent := ""
+	if len(up) > 0 {
+		parent = ptr[:up[len(up)-1]]
+	}
+
+	kw, key, _ := strings.Cut(ptr[len(parent)+1:], "/")
+	kw, key = unescape(kw), unescape(key)
 
 	switch kw {
 	case "$defs":
 		return identifier(ptr, "definition", key)
 	case "properties":
-		return suffixed(doc, opts, parent, seen, ptr, "property", key)
+		return suffixed(doc, opts, parent, up, seen, ptr, "property", key)
 	case "oneOf", "anyOf", "allOf":
-		return memberTypeName(doc, opts, parent, kw, key, seen)
+		return memberTypeName(doc, opts, parent, up, kw, key, seen)
 	case "items":
-		return suffixed(doc, opts, parent, seen, ptr, "items", "Item")
+		return suffixed(doc, opts, parent, up, seen, ptr, "items", "Item")
 	case "additionalProperties":
-		return suffixed(doc, opts, parent, seen, ptr, "additionalProperties", "Value")
+		return suffixed(doc, opts, parent, up, seen, ptr, "additionalProperties", "Value")
 	}
 
 	return "", unsupported(ptr, "no Go name for a schema at this keyword")
 }
 
-// lastStep splits ptr, a pointer schemas yields, into the pointer of the
-// schema holding it, the keyword and the name or index under the keyword.
-// The keyword takes the key only where it holds a map or a list.
-func lastStep(ptr string) (parent, kw, key string) {
+// stepEnds returns the offsets in ptr, a pointer schemas yields, where each
+// of its steps ends. A step is a keyword and, where the keyword holds a map
+// or a list, the name or index under it. It parses from the front, since a
+// name such as "items" cannot be told from a keyword from the back.
+func stepEnds(ptr string) []int {
+	if ptr == "" {
+		return nil
+	}
+
 	toks := strings.Split(strings.TrimPrefix(ptr, "/"), "/")
 
-	for i := 0; i < len(toks); {
-		parent, kw, key = strings.Join(toks[:i], "/"), unescape(toks[i]), ""
-		if i > 0 {
-			parent = "/" + parent
-		}
+	var ends []int
 
+	end := 0
+
+	for i := 0; i < len(toks); {
+		kw := unescape(toks[i])
+		end += 1 + len(toks[i])
 		i++
 
 		if slices.Contains([]string{"$defs", "properties", "oneOf", "anyOf", "allOf"}, kw) &&
 			i < len(toks) {
-			key = unescape(toks[i])
+			end += 1 + len(toks[i])
 			i++
 		}
+
+		ends = append(ends, end)
 	}
 
-	return parent, kw, key
+	return ends
 }
 
 func memberTypeName(
 	doc *jsonschema.Schema,
 	opts Options,
-	parent, kw, index string,
+	parent string,
+	ends []int,
+	kw, index string,
 	seen []string,
 ) (string, error) {
 	ps, err := at(doc, parent)
@@ -117,7 +148,7 @@ func memberTypeName(
 		return "", err
 	}
 
-	p, err := typeNameSeen(doc, opts, parent, seen)
+	p, err := typeNameAt(doc, opts, parent, ends, seen)
 	if err != nil || nullableUnion(doc, parent) || transparentAllOf(ps) {
 		return p, err
 	}
@@ -136,10 +167,11 @@ func suffixed(
 	doc *jsonschema.Schema,
 	opts Options,
 	parent string,
+	ends []int,
 	seen []string,
 	ptr, what, name string,
 ) (string, error) {
-	p, err := typeNameSeen(doc, opts, parent, seen)
+	p, err := typeNameAt(doc, opts, parent, ends, seen)
 	if err != nil {
 		return "", err
 	}
@@ -173,7 +205,11 @@ func identifier(ptr, what, name string) (string, error) {
 	return n, nil
 }
 
-func unescape(tok string) string { return strings.NewReplacer("~1", "/", "~0", "~").Replace(tok) }
+func unescape(tok string) string { return pointerUnescaper.Replace(tok) }
+
+// pointerUnescaper is built once, since building a Replacer costs far more
+// than a replacement.
+var pointerUnescaper = strings.NewReplacer("~1", "/", "~0", "~")
 
 // members returns the number of members of the union or allOf s. The
 // members of a type of several kinds are its kinds.

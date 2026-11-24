@@ -172,10 +172,13 @@
 // is an object it also drops it when a required property with a const or
 // an enum of one value does not hold that value, when a required member is
 // missing and, under additionalProperties false, when the value holds a
-// member the object does not declare. Every remaining member decodes the
-// value. A oneOf needs exactly one to succeed. An anyOf and a type of
-// several kinds take the first in schema order and do not keep later
-// matches. Marshaling writes the member the holder holds.
+// member the object does not declare. The remaining members decode the
+// value in schema order. An anyOf and a type of several kinds take the
+// first that succeeds and do not try later members. A oneOf needs exactly
+// one to succeed. It stops at the second success and reports an error
+// naming the two members, without trying later members. When no member
+// succeeds, the error holds the error of every member tried. Marshaling
+// writes the member the holder holds.
 //
 // The generated code does not check the keywords listed under Not
 // enforced, so it cannot tell apart two members of a oneOf that differ

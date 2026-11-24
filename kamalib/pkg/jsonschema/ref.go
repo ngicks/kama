@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"iter"
 	"net/url"
-	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/ngicks/opiter"
 	"github.com/ngicks/option/opt"
 )
 
@@ -67,41 +65,58 @@ func ResolvePointer(root *Schema, ptr string) (*Schema, error) {
 		return nil, fmt.Errorf("%w: pointer %q does not start with \"/\"", ErrUnresolved, ptr)
 	}
 
-	tokens := strings.Split(rest, "/")
-	for i, tok := range tokens {
-		t, err := unescapePointerToken(tok)
-		if err != nil {
+	// A bad escape is reported before a missing step, wherever it is.
+	for tok := range strings.SplitSeq(rest, "/") {
+		if _, err := unescapePointerToken(tok); err != nil {
 			return nil, fmt.Errorf("%w: pointer %q: %w", ErrUnresolved, ptr, err)
 		}
-
-		tokens[i] = t
 	}
 
+	// The tokens are taken one by one from rest rather than split up front:
+	// resolving runs for every question a generator asks, and a slice of
+	// the tokens of a deep pointer costs more than the walk.
 	cur := root
-	for i := 0; i < len(tokens); {
-		next, n := child(cur, tokens[i:])
-		if next == nil {
-			at := opiter.WrapSeq(slices.Values(tokens[:min(i+max(n, 1), len(tokens))])).
-				Map(EscapePointerToken).
-				CollectSlice()
 
-			return nil, fmt.Errorf(
-				"%w: pointer %q: no schema at %q", ErrUnresolved, ptr, "/"+strings.Join(at, "/"),
-			)
+	for {
+		first, after, more := strings.Cut(rest, "/")
+		second, _, _ := strings.Cut(after, "/")
+		kw, _ := unescapePointerToken(first)
+		key, _ := unescapePointerToken(second)
+
+		next, n := child(cur, kw, key, more)
+
+		taken := len(first)
+		if n == 2 && more {
+			taken += 1 + len(second)
 		}
 
-		cur, i = next, i+n
-	}
+		if next == nil {
+			at := ptr[:len(ptr)-len(rest)+taken]
+			return nil, fmt.Errorf("%w: pointer %q: no schema at %q", ErrUnresolved, ptr, at)
+		}
 
-	return cur, nil
+		cur = next
+
+		rest = rest[taken:]
+		if rest == "" {
+			return cur, nil
+		}
+
+		rest = rest[1:]
+	}
 }
 
 // EscapePointerToken escapes s for use as one reference token of a JSON pointer.
-func EscapePointerToken(s string) string {
-	return strings.NewReplacer("~", "~0", "/", "~1").Replace(s)
-}
+func EscapePointerToken(s string) string { return pointerEscaper.Replace(s) }
+
+// pointerEscaper is built once, since building a Replacer costs far more than a replacement.
+var pointerEscaper = strings.NewReplacer("~", "~0", "/", "~1")
 
 func unescapePointerToken(tok string) (string, error) {
+	if !strings.Contains(tok, "~") {
+		return tok, nil
+	}
+
 	var b strings.Builder
 
 	for i := 0; i < len(tok); i++ {
@@ -126,29 +141,30 @@ func unescapePointerToken(tok string) (string, error) {
 	return b.String(), nil
 }
 
-// child returns the subschema of s that the leading tokens name and the number of tokens the
+// child returns the subschema of s that the keyword kw names, with key
+// the token after it when hasKey holds, and the number of tokens the
 // keyword takes. It returns nil when the tokens name no subschema.
-func child(s *Schema, tokens []string) (*Schema, int) {
+func child(s *Schema, kw, key string, hasKey bool) (*Schema, int) {
 	if s == nil || s.Bool.IsSome() {
 		return nil, 0
 	}
 
-	if m, ok := schemaMapOf(s, tokens[0]); ok {
-		if len(tokens) < 2 {
+	if m, ok := schemaMapOf(s, kw); ok {
+		if !hasKey {
 			return nil, 2
 		}
 
-		c, _ := m.Get(tokens[1])
+		c, _ := m.Get(key)
 
 		return c, 2
 	}
 
-	if l, ok := schemaListOf(s, tokens[0]); ok {
-		if len(tokens) < 2 {
+	if l, ok := schemaListOf(s, kw); ok {
+		if !hasKey {
 			return nil, 2
 		}
 
-		i, ok := arrayIndex(tokens[1])
+		i, ok := arrayIndex(key)
 		if !ok || i >= len(l) {
 			return nil, 2
 		}
@@ -156,7 +172,7 @@ func child(s *Schema, tokens []string) (*Schema, int) {
 		return l[i], 2
 	}
 
-	return schemaOf(s, tokens[0]), 1
+	return schemaOf(s, kw), 1
 }
 
 func schemaMapOf(s *Schema, keyword string) (SchemaMap, bool) {

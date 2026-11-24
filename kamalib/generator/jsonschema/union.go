@@ -116,9 +116,13 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	return append(steps, unionUnmarshal(doc, opts, ptr))
 }
 
-// unionUnmarshal returns UnmarshalJSONFrom of the union at ptr: every
-// member the value may match decodes it, and OneOf or AnyOf picks the
-// result.
+// unionUnmarshal returns UnmarshalJSONFrom of the union at ptr: the members
+// the value may match decode it in schema order. An anyOf stops at the
+// first that succeeds. A oneOf stops at the second, which makes the value
+// an error. Decoding every member would make a value nested in unions
+// cost time exponential in its depth even when the first member accepts
+// every level. A value no member accepts still costs that much, since
+// every member of every level fails.
 func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -135,11 +139,13 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 	body := []genStep{
 		lang.Stmt("raw, err := %s(dec)", q(runtimePath, "ReadValue")),
 		lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
-		lang.Stmt("var found []%sKind", name),
 	}
 
 	if oneOf {
-		body = append(body, lang.Stmt("var names []string"))
+		body = append(body,
+			lang.Stmt("var found %sKind", name),
+			lang.Stmt("var name string"),
+		)
 	}
 
 	body = append(body, lang.Stmt("var errs []error"))
@@ -150,16 +156,29 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 			return lang.Fail(err)
 		}
 
-		found := []genStep{lang.Stmt("found = append(found, %s{%s: m})", name+m, m)}
+		kind := lang.Expr("%s{%s: m}", name+m, m)
 		if isNullMember(doc, ptr, i) {
-			found = []genStep{lang.Stmt("found = append(found, %s{})", name+m)}
+			kind = lang.Expr("%s{}", name+m)
 		}
 
+		found := lang.Steps(
+			lang.Stmt("*v = %s{Kind: %s}", name, kind),
+			lang.Stmt("return nil"),
+		)
 		if oneOf {
-			found = append(found, lang.Stmt("names = append(names, %s)", strconv.Quote(m)))
+			found = lang.Steps(
+				lang.If(
+					lang.Expr("found != nil"),
+					lang.Stmt(
+						"return %s(name, %s)", q(runtimePath, "MultipleMatch"), strconv.Quote(m),
+					),
+					nil,
+				),
+				lang.Stmt("found, name = %s, %s", kind, strconv.Quote(m)),
+			)
 		}
 
-		then := lang.Steps(found...)
+		then := found
 		if !isNullMember(doc, ptr, i) {
 			then = lang.Steps(
 				lang.Stmt("var m %s", unionMemberType(doc, opts, ptr, i)),
@@ -169,7 +188,7 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 						"errs = append(errs, %s(%s, err))",
 						q(runtimePath, "MemberError"), strconv.Quote(m),
 					),
-					lang.Steps(found...),
+					found,
 				),
 			)
 		}
@@ -177,20 +196,23 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 		body = append(body, lang.If(memberCondition(doc, ptr, i), then, nil))
 	}
 
-	pick := lang.Stmt("kind, err := %s(found, errs)", q(runtimePath, "AnyOf"))
 	text := "UnmarshalJSONFrom decodes v from the first member the value matches."
 
 	if oneOf {
-		pick = lang.Stmt("kind, err := %s(found, names, errs)", q(runtimePath, "OneOf"))
 		text = "UnmarshalJSONFrom decodes v from the only member the value matches."
-	}
 
-	body = append(body,
-		pick,
-		lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
-		lang.Stmt("*v = %s{Kind: kind}", name),
-		lang.Stmt("return nil"),
-	)
+		body = append(body,
+			lang.If(
+				lang.Expr("found == nil"),
+				lang.Stmt("return %s(errs)", q(runtimePath, "NoMatch")),
+				nil,
+			),
+			lang.Stmt("*v = %s{Kind: found}", name),
+			lang.Stmt("return nil"),
+		)
+	} else {
+		body = append(body, lang.Stmt("return %s(errs)", q(runtimePath, "NoMatch")))
+	}
 
 	return lang.DocFunc(
 		docComment(text),

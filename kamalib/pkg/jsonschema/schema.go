@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/ngicks/opiter"
 	"github.com/ngicks/option/opt"
 )
 
@@ -231,11 +230,14 @@ type NamedSchema struct {
 
 // Get returns the schema of the first member named name.
 func (m SchemaMap) Get(name string) (*Schema, bool) {
-	n := opiter.WrapSeq(slices.Values(m)).
-		Filter(func(n NamedSchema) bool { return n.Name == name }).
-		First()
+	// Every pointer and reference resolves through Get, so it avoids the
+	// allocations of an iterator chain.
+	i := slices.IndexFunc(m, func(n NamedSchema) bool { return n.Name == name })
+	if i < 0 {
+		return nil, false
+	}
 
-	return n.Value().Schema, n.IsSome()
+	return m[i].Schema, true
 }
 
 // MarshalJSONTo implements [encoding/json/v2.MarshalerTo].

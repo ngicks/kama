@@ -200,14 +200,82 @@ func refTarget(doc *jsonschema.Schema, ptr string) (string, error) {
 		return "", unsupported(kw, "reference %q: %v", ref, err)
 	}
 
-	reads := opiter.WrapSeq2(schemas(doc)).
-		OmitL().
-		Any(func(p string) bool { return p == target })
-	if !reads {
+	if !yielded(doc, target) {
 		return "", unsupported(kw, "reference %q names no schema the generator reads", ref)
 	}
 
 	return target, nil
+}
+
+// yielded reports whether schemas yields ptr, a pointer spelled as child
+// spells it. It walks the tokens of ptr through the keywords visit
+// descends into rather than through every pointer of doc, which would make
+// each reference cost as much as the document.
+func yielded(doc *jsonschema.Schema, ptr string) bool {
+	cur := doc
+	toks := strings.Split(ptr, "/")[1:]
+
+	for i := 0; i < len(toks); i++ {
+		if cur == nil {
+			return false
+		}
+
+		kw := unescape(toks[i])
+
+		switch kw {
+		case "additionalProperties":
+			if !extraMembers(cur) {
+				return false
+			}
+
+			cur = cur.AdditionalProperties
+
+			continue
+		case "items":
+			if cur.Items == nil {
+				return false
+			}
+
+			cur = cur.Items
+
+			continue
+		}
+
+		if i+1 == len(toks) {
+			return false
+		}
+
+		i++
+		key := unescape(toks[i])
+
+		switch kw {
+		case "properties", "$defs":
+			m := cur.Properties
+			if kw == "$defs" {
+				m = cur.Defs
+			}
+
+			c, ok := m.Get(key)
+			if !ok {
+				return false
+			}
+
+			cur = c
+		case "oneOf", "anyOf", "allOf":
+			l := listOf(cur, kw)
+
+			n, err := strconv.Atoi(key)
+			if err != nil || strconv.Itoa(n) != key || n < 0 || n >= len(l) {
+				return false
+			}
+
+			cur = l[n]
+		default:
+			return false
+		}
+	}
+
+	return true
 }
 
 // normalPointer escapes ptr the way child does, so that two spellings of
@@ -224,53 +292,60 @@ func normalPointer(ptr string) (string, error) {
 			return "", fmt.Errorf("invalid escape in %q", tok)
 		}
 
-		out = child(out, strings.NewReplacer("~1", "/", "~0", "~").Replace(tok))
+		out = child(out, unescape(tok))
 	}
 
 	return out, nil
 }
 
-// resolve returns the pointer of the schema that gives the Go type of the
-// schema at ptr: it follows $ref and an allOf of one member.
-func resolve(doc *jsonschema.Schema, ptr string) (string, error) {
-	var seen []string
-
-	for {
-		if slices.Contains(seen, ptr) {
-			return "", unsupported(ptr, "references itself without a type in between")
-		}
-
-		seen = append(seen, ptr)
-
-		s, err := at(doc, ptr)
-		if err != nil {
-			return "", err
-		}
-
-		switch {
-		case s.Ref.IsSome():
-			ptr, err = refTarget(doc, ptr)
-			if err != nil {
-				return "", err
-			}
-		case transparentAllOf(s):
-			ptr = child(ptr, "allOf", "0")
-		default:
-			return ptr, nil
-		}
-	}
-}
-
-// resolved returns the schema resolve finds for ptr and its pointer.
+// resolved returns the pointer of the schema that gives the Go type of the
+// schema at ptr, and that schema: it follows $ref and an allOf of one
+// member.
 func resolved(doc *jsonschema.Schema, ptr string) (string, *jsonschema.Schema, error) {
-	r, err := resolve(doc, ptr)
+	s, err := at(doc, ptr)
 	if err != nil {
 		return "", nil, err
 	}
 
-	s, err := at(doc, r)
+	return resolvedFrom(doc, ptr, s)
+}
 
-	return r, s, err
+// resolvedFrom is resolved for s, the schema at ptr, which a caller holding
+// it passes to spare walking ptr again.
+func resolvedFrom(
+	doc *jsonschema.Schema,
+	ptr string,
+	s *jsonschema.Schema,
+) (string, *jsonschema.Schema, error) {
+	var seen []string
+
+	for {
+		if slices.Contains(seen, ptr) {
+			return "", nil, unsupported(ptr, "references itself without a type in between")
+		}
+
+		seen = append(seen, ptr)
+
+		var err error
+
+		switch {
+		case s.Ref.IsSome():
+			ptr, err = refTarget(doc, ptr)
+		case transparentAllOf(s):
+			ptr = child(ptr, "allOf", "0")
+		default:
+			return ptr, s, nil
+		}
+
+		if err != nil {
+			return "", nil, err
+		}
+
+		s, err = at(doc, ptr)
+		if err != nil {
+			return "", nil, err
+		}
+	}
 }
 
 // transparentAllOf reports whether s is an allOf of one member whose type
@@ -456,20 +531,34 @@ func structKind(s *jsonschema.Schema) bool {
 // kinds returns the JSON types the schema at ptr admits, in the order its
 // keywords give them. "integer" stands for itself.
 func kinds(doc *jsonschema.Schema, ptr string) ([]string, error) {
-	return kindsSeen(doc, ptr, nil)
+	return kindsSeen(doc, ptr, nil, map[string]bool{})
 }
 
-func kindsSeen(doc *jsonschema.Schema, ptr string, seen []string) ([]string, error) {
+// kindsSeen is kinds for a schema reached through the unions of onPath.
+// done holds the unions the walk has finished, which it skips: their kinds
+// came earlier in the walk, so the result stays the same, while walking
+// them again for every path to them takes time exponential in the depth of
+// unions sharing members.
+func kindsSeen(
+	doc *jsonschema.Schema,
+	ptr string,
+	onPath []string,
+	done map[string]bool,
+) ([]string, error) {
 	r, s, err := resolved(doc, ptr)
 	if err != nil {
 		return nil, err
 	}
 
-	if slices.Contains(seen, r) {
+	if slices.Contains(onPath, r) {
 		return nil, unsupported(r, "is a member of itself")
 	}
 
-	seen = append(seen, r)
+	if done[r] {
+		return nil, nil
+	}
+
+	onPath = append(onPath, r)
 
 	switch {
 	case s.Bool.IsSome():
@@ -493,13 +582,15 @@ func kindsSeen(doc *jsonschema.Schema, ptr string, seen []string) ([]string, err
 		var out []string
 
 		for i := range listOf(s, kw) {
-			k, err := kindsSeen(doc, child(r, kw, strconv.Itoa(i)), seen)
+			k, err := kindsSeen(doc, child(r, kw, strconv.Itoa(i)), onPath, done)
 			if err != nil {
 				return nil, err
 			}
 
 			out = append(out, k...)
 		}
+
+		done[r] = true
 
 		return slices.Collect(opiter.Unique(slices.Values(out))), nil
 	case s.AllOf != nil || objectKind(s):
@@ -552,75 +643,98 @@ func extraMembers(s *jsonschema.Schema) bool {
 	return s.AdditionalProperties != nil && s.AdditionalProperties.Bool.IsNone()
 }
 
-// structOf returns the pointer of the struct or product the schema at ptr
-// holds by value: itself, through references and nullable unions.
-func structOf(doc *jsonschema.Schema, ptr string) (string, bool) {
+// structOf returns the pointer of the struct or product the schema s at
+// ptr holds by value, and that struct or product: itself, through
+// references and nullable unions.
+func structOf(
+	doc *jsonschema.Schema,
+	ptr string,
+	s *jsonschema.Schema,
+) (string, *jsonschema.Schema, bool) {
 	var seen []string
 
 	for !slices.Contains(seen, ptr) {
 		seen = append(seen, ptr)
 
-		r, err := resolve(doc, ptr)
-		if err != nil {
-			return "", false
-		}
-
-		if !nullableUnion(doc, r) {
-			s, err := at(doc, r)
-			if err != nil || (!structKind(s) && !product(s)) {
-				return "", false
-			}
-
-			return r, true
+		r, rs, err := resolvedFrom(doc, ptr, s)
+		switch {
+		case err != nil:
+			return "", nil, false
+		case structKind(rs) || product(rs):
+			return r, rs, true
+		// nullableUnion walks r again, which only a union needs.
+		case unionKeyword(rs) == "" || !nullableUnion(doc, r):
+			return "", nil, false
 		}
 
 		ptr = valueMember(doc, r)
+
+		s, err = at(doc, ptr)
+		if err != nil {
+			return "", nil, false
+		}
 	}
 
-	return "", false
+	return "", nil, false
 }
 
-// byValue returns the pointers of the structs and products the struct or
-// product at ptr holds by value, in the order of its fields.
-func byValue(doc *jsonschema.Schema, ptr string) []string {
-	s, err := at(doc, ptr)
-	if err != nil {
-		return nil
-	}
+// byValue yields the structs and products the struct or product s at ptr
+// holds by value, with their pointers, in the order of its fields.
+func byValue(
+	doc *jsonschema.Schema,
+	ptr string,
+	s *jsonschema.Schema,
+) iter.Seq2[string, *jsonschema.Schema] {
+	return func(yield func(string, *jsonschema.Schema) bool) {
+		for i, m := range s.AllOf {
+			if m == nil {
+				continue
+			}
 
-	var out []string
+			t, ts, ok := structOf(doc, child(ptr, "allOf", strconv.Itoa(i)), m)
+			if ok && !yield(t, ts) {
+				return
+			}
+		}
 
-	for i := range s.AllOf {
-		if t, ok := structOf(doc, child(ptr, "allOf", strconv.Itoa(i))); ok {
-			out = append(out, t)
+		for _, n := range s.Properties {
+			if n.Schema == nil {
+				continue
+			}
+
+			t, ts, ok := structOf(doc, child(ptr, "properties", n.Name), n.Schema)
+			if ok && !yield(t, ts) {
+				return
+			}
 		}
 	}
-
-	for _, n := range s.Properties {
-		if t, ok := structOf(doc, child(ptr, "properties", n.Name)); ok {
-			out = append(out, t)
-		}
-	}
-
-	return out
 }
 
 // onCycle reports whether the field at ptr of the struct at owner closes a
 // cycle of structs held by value, which Go cannot lay out: following the
 // fields held by value from the type of the field reaches owner again.
 // Every field on such a cycle becomes a pointer.
+//
+// The walk carries the schema of each pointer with it. Finding the schema
+// of a pointer again costs the length of the pointer, which made the walk
+// cubic in the depth of nested objects.
 func onCycle(doc *jsonschema.Schema, owner, ptr string) bool {
-	start, ok := structOf(doc, ptr)
+	s, err := at(doc, ptr)
+	if err != nil {
+		return false
+	}
+
+	start, ss, ok := structOf(doc, ptr, s)
 	if !ok {
 		return false
 	}
 
 	seen := map[string]bool{}
-	stack := []string{start}
+	ptrs, nodes := []string{start}, []*jsonschema.Schema{ss}
 
-	for len(stack) > 0 {
-		cur := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
+	for len(ptrs) > 0 {
+		cur, cs := ptrs[len(ptrs)-1], nodes[len(nodes)-1]
+		ptrs, nodes = ptrs[:len(ptrs)-1], nodes[:len(nodes)-1]
 
 		if cur == owner {
 			return true
@@ -631,7 +745,10 @@ func onCycle(doc *jsonschema.Schema, owner, ptr string) bool {
 		}
 
 		seen[cur] = true
-		stack = append(stack, byValue(doc, cur)...)
+
+		for t, ts := range byValue(doc, cur, cs) {
+			ptrs, nodes = append(ptrs, t), append(nodes, ts)
+		}
 	}
 
 	return false

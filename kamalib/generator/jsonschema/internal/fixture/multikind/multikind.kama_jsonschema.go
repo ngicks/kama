@@ -2,7 +2,7 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T00:00:00Z
+// generated: 2026-11-24T02:46:41Z
 
 package multikind
 
@@ -133,14 +133,14 @@ func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var found []CellValueKind
 	var errs []error
 	if jsonschemart.IsKind(raw, "string") {
 		var m string
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("String", err))
 		} else {
-			found = append(found, CellValueString{String: m})
+			*v = CellValue{Kind: CellValueString{String: m}}
+			return nil
 		}
 	}
 	if jsonschemart.IsKind(raw, "integer") {
@@ -148,7 +148,8 @@ func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Integer", err))
 		} else {
-			found = append(found, CellValueInteger{Integer: m})
+			*v = CellValue{Kind: CellValueInteger{Integer: m}}
+			return nil
 		}
 	}
 	if jsonschemart.IsKind(raw, "boolean") {
@@ -156,15 +157,11 @@ func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Boolean", err))
 		} else {
-			found = append(found, CellValueBoolean{Boolean: m})
+			*v = CellValue{Kind: CellValueBoolean{Boolean: m}}
+			return nil
 		}
 	}
-	kind, err := jsonschemart.AnyOf(found, errs)
-	if err != nil {
-		return err
-	}
-	*v = CellValue{Kind: kind}
-	return nil
+	return jsonschemart.NoMatch(errs)
 }
 
 // CellLabel is the first of String, Number, Null that the value matches. It
@@ -240,14 +237,14 @@ func (v *CellLabel) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var found []CellLabelKind
 	var errs []error
 	if jsonschemart.IsKind(raw, "string") {
 		var m string
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("String", err))
 		} else {
-			found = append(found, CellLabelString{String: m})
+			*v = CellLabel{Kind: CellLabelString{String: m}}
+			return nil
 		}
 	}
 	if jsonschemart.IsKind(raw, "number") {
@@ -255,16 +252,13 @@ func (v *CellLabel) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Number", err))
 		} else {
-			found = append(found, CellLabelNumber{Number: m})
+			*v = CellLabel{Kind: CellLabelNumber{Number: m}}
+			return nil
 		}
 	}
 	if jsonschemart.IsKind(raw, "null") {
-		found = append(found, CellLabelNull{})
+		*v = CellLabel{Kind: CellLabelNull{}}
+		return nil
 	}
-	kind, err := jsonschemart.AnyOf(found, errs)
-	if err != nil {
-		return err
-	}
-	*v = CellLabel{Kind: kind}
-	return nil
+	return jsonschemart.NoMatch(errs)
 }

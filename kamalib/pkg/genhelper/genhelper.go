@@ -20,7 +20,8 @@ type Context[C Context[C]] interface {
 	WithScope(s *Scope) C
 	// Package returns the package the text lands in.
 	Package() *Package
-	// Printer returns a Printer whose text starts with b.
+	// Printer returns a Printer whose text starts with b. It may append to
+	// b in place, so the caller does not use b afterwards.
 	Printer(b []byte) Printer
 }
 

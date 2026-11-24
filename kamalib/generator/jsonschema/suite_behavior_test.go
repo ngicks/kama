@@ -279,12 +279,60 @@ var suiteAllowed = map[suiteKey]string{
 	}: reasonUnenforced,
 }
 
+// suiteGenerated is the least number of groups of each top-level file of
+// the suite that Generate accepts. A file generating fewer means Generate
+// rejects schemas it used to accept. A file missing here generates none.
+var suiteGenerated = map[string]int{
+	"additionalProperties.json":    3,
+	"allOf.json":                   2,
+	"anchor.json":                  1,
+	"anyOf.json":                   5,
+	"boolean_schema.json":          1,
+	"const.json":                   10,
+	"content.json":                 4,
+	"default.json":                 3,
+	"dependentRequired.json":       4,
+	"dynamicRef.json":              1,
+	"enum.json":                    8,
+	"exclusiveMaximum.json":        1,
+	"exclusiveMinimum.json":        1,
+	"format.json":                  19,
+	"infinite-loop-detection.json": 1,
+	"items.json":                   3,
+	"maxContains.json":             1,
+	"maxItems.json":                2,
+	"maxLength.json":               2,
+	"maxProperties.json":           3,
+	"maximum.json":                 2,
+	"minContains.json":             1,
+	"minItems.json":                2,
+	"minLength.json":               2,
+	"minProperties.json":           2,
+	"minimum.json":                 2,
+	"multipleOf.json":              6,
+	"oneOf.json":                   5,
+	"pattern.json":                 3,
+	"properties.json":              2,
+	"ref.json":                     15,
+	"required.json":                3,
+	"type.json":                    8,
+	"uniqueItems.json":             2,
+	"vocabulary.json":              1,
+}
+
 // TestSuiteBehavior generates a package from every group of the top-level
 // files of the draft 2020-12 suite that Generate accepts, builds them with
 // a driver into one program and runs it. The driver decodes each instance
 // of a group into the root type of its package. A decode succeeds exactly
 // when the suite calls the instance valid, except for the tests of
-// suiteAllowed, which must disagree.
+// suiteAllowed, which must disagree. Each file generates at least the
+// groups suiteGenerated records.
+//
+// The driver encodes every value that decodes, decodes the result and
+// encodes it again. The second decode must succeed and both encodings must
+// be equal. They are not compared with the instance, which decoding may
+// change by design: it drops unknown members, an anyOf keeps the first
+// member that matches, and 1.0 encodes as 1.
 func TestSuiteBehavior(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds a program from the generated packages")
@@ -305,6 +353,8 @@ func TestSuiteBehavior(t *testing.T) {
 		groups  int
 		skipped int
 	)
+
+	generated := map[string]int{}
 
 	for _, path := range files {
 		b, err := os.ReadFile(path)
@@ -327,6 +377,7 @@ func TestSuiteBehavior(t *testing.T) {
 			assert.NilError(t, err, "%s: %s", file, g.Description)
 
 			groups++
+			generated[file]++
 
 			writeFile(t, filepath.Join(mod, pkg, pkg+".kama_jsonschema.go"), src)
 
@@ -340,21 +391,28 @@ func TestSuiteBehavior(t *testing.T) {
 		}
 	}
 
+	checkGenerated(t, generated)
+
 	writeFile(t, filepath.Join(mod, "main.go"), driver.source())
 
-	got := runSuiteDriver(t, mod)
-	assert.Equal(t, len(got), len(keys))
+	results := runSuiteDriver(t, mod)
+	assert.Equal(t, len(results), len(keys))
 
 	agree, allowed := 0, map[string]int{}
 
 	for i, k := range keys {
+		if msg, ok := strings.CutPrefix(results[i], "E "); ok {
+			t.Errorf("%s: %s: %s: round trip: %s", k.file, k.group, k.test, msg)
+		}
+
+		got := results[i] != "0"
 		reason, ok := suiteAllowed[k]
 
 		switch {
-		case got[i] == valid[i] && ok:
+		case got == valid[i] && ok:
 			t.Errorf("%s: %s: %s: agrees but is allowed to disagree: %s",
 				k.file, k.group, k.test, reason)
-		case got[i] == valid[i]:
+		case got == valid[i]:
 			agree++
 		case ok:
 			allowed[reason]++
@@ -364,7 +422,7 @@ func TestSuiteBehavior(t *testing.T) {
 			}
 		default:
 			t.Errorf("%s: %s: %s: valid is %t, decoding succeeded is %t",
-				k.file, k.group, k.test, valid[i], got[i])
+				k.file, k.group, k.test, valid[i], got)
 		}
 	}
 
@@ -385,6 +443,26 @@ func TestSuiteBehavior(t *testing.T) {
 	}
 }
 
+// checkGenerated reports a file of the suite that generates fewer groups
+// than suiteGenerated records, and logs one that generates more.
+func checkGenerated(t *testing.T, generated map[string]int) {
+	t.Helper()
+
+	for _, file := range slices.Sorted(maps.Keys(suiteGenerated)) {
+		if generated[file] < suiteGenerated[file] {
+			t.Errorf("%s: %d groups generated, want at least %d",
+				file, generated[file], suiteGenerated[file])
+		}
+	}
+
+	for _, file := range slices.Sorted(maps.Keys(generated)) {
+		if generated[file] > suiteGenerated[file] {
+			t.Logf("%s: %d groups generated, more than %d: raise the number in suiteGenerated",
+				file, generated[file], suiteGenerated[file])
+		}
+	}
+}
+
 func compareSuiteKeys(a, b suiteKey) int {
 	return cmp.Or(cmp.Compare(a.file, b.file), cmp.Compare(a.group, b.group),
 		cmp.Compare(a.test, b.test))
@@ -395,11 +473,12 @@ func compareSuiteKeys(a, b suiteKey) int {
 func checkAllowed(reason string, schema jsontext.Value, valid bool) error {
 	switch reason {
 	case reasonUnenforced:
-		mentioned := opiter.WrapSeq(slices.Values(unenforcedKeywords)).
-			ContainsFunc(
-				func(kw string) bool { return bytes.Contains(schema, []byte(strconv.Quote(kw))) },
-			)
-		if !mentioned {
+		held, err := holdsKeyword(schema, unenforcedKeywords)
+		if err != nil {
+			return err
+		}
+
+		if !held {
 			return errors.New("the schema holds no pure validation keyword")
 		}
 	case reasonImpliedKind:
@@ -411,6 +490,39 @@ func checkAllowed(reason string, schema jsontext.Value, valid bool) error {
 	}
 
 	return nil
+}
+
+// holdsKeyword reports whether a schema of raw that the generator reads
+// holds one of keywords as a keyword. A property of that name is no
+// keyword.
+func holdsKeyword(raw jsontext.Value, keywords []string) (bool, error) {
+	var doc jsonschema.Schema
+	if err := jsonv2.Unmarshal(raw, &doc); err != nil {
+		return false, err
+	}
+
+	for _, s := range schemas(&doc) {
+		b, err := jsonv2.Marshal(s)
+		if err != nil {
+			return false, err
+		}
+
+		var members map[string]jsontext.Value
+
+		if jsontext.Value(b).Kind() != '{' {
+			continue
+		}
+
+		if err := jsonv2.Unmarshal(b, &members); err != nil {
+			return false, err
+		}
+
+		if slices.ContainsFunc(keywords, func(kw string) bool { _, ok := members[kw]; return ok }) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // suitePackage names the package of group gi of file after both, so a
@@ -461,26 +573,27 @@ func (d *suiteDriver) add(pkg string, data jsontext.Value) {
 
 	d.cases = append(
 		d.cases,
-		fmt.Sprintf("\t{decode[%s.Root], %s},\n", pkg, strconv.Quote(string(data))),
+		fmt.Sprintf("\t{check[%s.Root], %s},\n", pkg, strconv.Quote(string(data))),
 	)
 }
 
-// source returns the driver program. It prints 1 for each case whose
-// instance decodes and 0 for each that does not, one per line.
+// source returns the driver program. It prints one line per case: 0 for
+// an instance that does not decode, 1 for one that decodes and survives the
+// round trip, and E followed by the quoted reason for one that decodes and
+// fails it.
 func (d *suiteDriver) source() []byte {
 	var b bytes.Buffer
 
-	b.WriteString("package main\n\nimport (\n\t\"encoding/json/v2\"\n\t\"fmt\"\n\n")
+	b.WriteString("package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json/v2\"\n" +
+		"\t\"fmt\"\n\t\"strconv\"\n\n")
 
 	for _, pkg := range d.pkgs {
 		fmt.Fprintf(&b, "\t%q\n", suiteModulePath+"/"+pkg)
 	}
 
 	b.WriteString(")\n\n")
-	b.WriteString(
-		"func decode[T any](b []byte) error {\n\tvar v T\n\treturn json.Unmarshal(b, &v)\n}\n\n",
-	)
-	b.WriteString("var cases = []struct {\n\tdecode func([]byte) error\n\tdata   string\n}{\n")
+	b.WriteString(driverCheck)
+	b.WriteString("var cases = []struct {\n\tcheck func([]byte) string\n\tdata  string\n}{\n")
 
 	for _, c := range d.cases {
 		b.WriteString(c)
@@ -488,11 +601,43 @@ func (d *suiteDriver) source() []byte {
 
 	b.WriteString("}\n\n")
 	b.WriteString("func main() {\n\tfor _, c := range cases {\n" +
-		"\t\tif c.decode([]byte(c.data)) == nil {\n\t\t\tfmt.Println(1)\n\t\t} else {\n" +
-		"\t\t\tfmt.Println(0)\n\t\t}\n\t}\n}\n")
+		"\t\tfmt.Println(c.check([]byte(c.data)))\n\t}\n}\n")
 
 	return b.Bytes()
 }
+
+// driverCheck is the function of the driver deciding the line of a case.
+// Deterministic sorts the members of a map, which would otherwise make two
+// encodings of one value differ.
+const driverCheck = `func check[T any](b []byte) string {
+	var v T
+	if json.Unmarshal(b, &v) != nil {
+		return "0"
+	}
+
+	first, err := json.Marshal(v, json.Deterministic(true))
+	if err != nil {
+		return "E " + strconv.Quote("encode: "+err.Error())
+	}
+
+	var w T
+	if err := json.Unmarshal(first, &w); err != nil {
+		return "E " + strconv.Quote("decode "+string(first)+": "+err.Error())
+	}
+
+	second, err := json.Marshal(w, json.Deterministic(true))
+	if err != nil {
+		return "E " + strconv.Quote("encode again: "+err.Error())
+	}
+
+	if !bytes.Equal(first, second) {
+		return "E " + strconv.Quote(string(first)+" encodes again as "+string(second))
+	}
+
+	return "1"
+}
+
+`
 
 const suiteModulePath = "example.invalid/suite"
 
@@ -528,9 +673,9 @@ func suiteModule(t *testing.T) string {
 	return root
 }
 
-// runSuiteDriver runs the driver of the module at root and returns, per
-// case, whether its instance decoded.
-func runSuiteDriver(t *testing.T, root string) []bool {
+// runSuiteDriver runs the driver of the module at root and returns its
+// line per case.
+func runSuiteDriver(t *testing.T, root string) []string {
 	t.Helper()
 
 	cmd := exec.Command("go", "run", ".")
@@ -546,7 +691,7 @@ func runSuiteDriver(t *testing.T, root string) []bool {
 	assert.NilError(t, err, "%s", stderr.String())
 
 	return opiter.WrapSeq(strings.Lines(string(out))).
-		Map(func(l string) bool { return strings.TrimSpace(l) == "1" }).
+		Map(func(l string) string { return strings.TrimSuffix(l, "\n") }).
 		CollectSlice()
 }
 

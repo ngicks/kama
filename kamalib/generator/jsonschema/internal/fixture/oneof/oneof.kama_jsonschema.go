@@ -2,7 +2,7 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T00:00:00Z
+// generated: 2026-11-24T02:46:44Z
 
 package oneof
 
@@ -145,16 +145,18 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var found []ZooMixedKind
-	var names []string
+	var found ZooMixedKind
+	var name string
 	var errs []error
 	if jsonschemart.IsKind(raw, "string") {
 		var m string
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("String", err))
 		} else {
-			found = append(found, ZooMixedString{String: m})
-			names = append(names, "String")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "String")
+			}
+			found, name = ZooMixedString{String: m}, "String"
 		}
 	}
 	if jsonschemart.IsKind(raw, "integer") {
@@ -162,8 +164,10 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Integer", err))
 		} else {
-			found = append(found, ZooMixedInteger{Integer: m})
-			names = append(names, "Integer")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "Integer")
+			}
+			found, name = ZooMixedInteger{Integer: m}, "Integer"
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.HasMembers(raw, "note") {
@@ -171,15 +175,16 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Object", err))
 		} else {
-			found = append(found, ZooMixedObject{Object: m})
-			names = append(names, "Object")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "Object")
+			}
+			found, name = ZooMixedObject{Object: m}, "Object"
 		}
 	}
-	kind, err := jsonschemart.OneOf(found, names, errs)
-	if err != nil {
-		return err
+	if found == nil {
+		return jsonschemart.NoMatch(errs)
 	}
-	*v = ZooMixed{Kind: kind}
+	*v = ZooMixed{Kind: found}
 	return nil
 }
 
@@ -284,16 +289,18 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var found []ZooAmountKind
-	var names []string
+	var found ZooAmountKind
+	var name string
 	var errs []error
 	if jsonschemart.IsKind(raw, "integer") {
 		var m int64
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Integer", err))
 		} else {
-			found = append(found, ZooAmountInteger{Integer: m})
-			names = append(names, "Integer")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "Integer")
+			}
+			found, name = ZooAmountInteger{Integer: m}, "Integer"
 		}
 	}
 	if jsonschemart.IsKind(raw, "number") {
@@ -301,15 +308,16 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Number", err))
 		} else {
-			found = append(found, ZooAmountNumber{Number: m})
-			names = append(names, "Number")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "Number")
+			}
+			found, name = ZooAmountNumber{Number: m}, "Number"
 		}
 	}
-	kind, err := jsonschemart.OneOf(found, names, errs)
-	if err != nil {
-		return err
+	if found == nil {
+		return jsonschemart.NoMatch(errs)
 	}
-	*v = ZooAmount{Kind: kind}
+	*v = ZooAmount{Kind: found}
 	return nil
 }
 
@@ -373,16 +381,18 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var found []PetKind
-	var names []string
+	var found PetKind
+	var name string
 	var errs []error
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.MemberEquals(raw, "kind", "\"cat\"") && jsonschemart.HasMembers(raw, "kind", "lives") {
 		var m Cat
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Cat", err))
 		} else {
-			found = append(found, PetCat{Cat: m})
-			names = append(names, "Cat")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "Cat")
+			}
+			found, name = PetCat{Cat: m}, "Cat"
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.MemberEquals(raw, "kind", "\"dog\"") && jsonschemart.HasMembers(raw, "kind", "good") {
@@ -390,15 +400,16 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Dog", err))
 		} else {
-			found = append(found, PetDog{Dog: m})
-			names = append(names, "Dog")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "Dog")
+			}
+			found, name = PetDog{Dog: m}, "Dog"
 		}
 	}
-	kind, err := jsonschemart.OneOf(found, names, errs)
-	if err != nil {
-		return err
+	if found == nil {
+		return jsonschemart.NoMatch(errs)
 	}
-	*v = Pet{Kind: kind}
+	*v = Pet{Kind: found}
 	return nil
 }
 

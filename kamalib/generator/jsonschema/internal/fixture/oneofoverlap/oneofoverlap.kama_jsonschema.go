@@ -2,7 +2,7 @@
 // params:
 //	schema: "schema.json"
 //	type_name: null
-// generated: 2026-11-24T02:23:49Z
+// generated: 2026-11-24T02:46:45Z
 
 package oneofoverlap
 
@@ -76,16 +76,18 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var found []EitherKind
-	var names []string
+	var found EitherKind
+	var name string
 	var errs []error
 	if jsonschemart.IsKind(raw, "object") {
 		var m EitherLeftValue
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Left", err))
 		} else {
-			found = append(found, EitherLeft{Left: m})
-			names = append(names, "Left")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "Left")
+			}
+			found, name = EitherLeft{Left: m}, "Left"
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") {
@@ -93,15 +95,16 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Right", err))
 		} else {
-			found = append(found, EitherRight{Right: m})
-			names = append(names, "Right")
+			if found != nil {
+				return jsonschemart.MultipleMatch(name, "Right")
+			}
+			found, name = EitherRight{Right: m}, "Right"
 		}
 	}
-	kind, err := jsonschemart.OneOf(found, names, errs)
-	if err != nil {
-		return err
+	if found == nil {
+		return jsonschemart.NoMatch(errs)
 	}
-	*v = Either{Kind: kind}
+	*v = Either{Kind: found}
 	return nil
 }
 
