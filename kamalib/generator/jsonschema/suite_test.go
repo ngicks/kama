@@ -12,10 +12,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
@@ -94,7 +94,7 @@ func generateSuite(raw jsontext.Value) (err error) {
 		Package:  "suite",
 		TypeName: "Root",
 		Schema:   "schema.json",
-		Now:      func() time.Time { return fixtureNow },
+		Now:      gentest.Now,
 	})
 	if err != nil {
 		return err

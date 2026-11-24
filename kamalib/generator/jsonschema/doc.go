@@ -8,6 +8,47 @@
 // are those of package github.com/ngicks/kama/kamalib/pkg/validation,
 // located by the JSON path of the offending member. The generated code
 // imports package github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart.
+// Proc runs Generate as the workflow step kind jsonschema.generate.
+//
+// # Proc
+//
+// Proc reads the schema file from the overlay of its out and stages the
+// generated file in it. It takes no in. Its param has these keys:
+//
+//	schema     the path of the schema file, slash-separated and relative
+//	           to the root of the out; required
+//	dir        the output directory, relative to the root of the out;
+//	           the directory of schema when left out
+//	package    the package clause; the base name of dir when left out
+//	type_name  the name of the root type; the title of the root schema
+//	           when left out
+//
+// The schema file holds JSON. A spec generating the types of
+// api/schema.json into api/api.kama_jsonschema.go of package api:
+//
+//	version: 1
+//	steps:
+//	  root:
+//	    proc: overlayfs.open
+//	  generate:
+//	    proc: jsonschema.generate
+//	    out: root
+//	    param:
+//	      schema: api/schema.json
+//	      type_name: Pet
+//	  final:
+//	    proc: overlayfs.copy_down
+//	    in: root
+//	    after: generate
+//
+// The header of the generated file names the schema and type_name params
+// and the time of the run. Proc keeps a file that differs from the
+// existing one in the generated: line only. A Go file of the output
+// directory that holds a declaration marked by the generator and that the
+// run does not produce is stale. Proc reports a warning wrapping ErrStale
+// of package github.com/ngicks/kama/kamalib/generator/utils/base for it
+// and leaves it in place. Every file the generator marks in one directory
+// must therefore come from one run.
 //
 // # Shapes
 //
