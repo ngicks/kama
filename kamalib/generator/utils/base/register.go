@@ -68,13 +68,8 @@ func (id Id) ProcKind() string {
 // underscore-separated element of the stem of Naming is neither test nor
 // a known GOOS or GOARCH, as in acme_test, acme_linux or linux_amd64.
 func (id Id) Validate() error {
-	for _, part := range []string{id.Namespace, id.Name} {
-		if !isWord(part) {
-			return fmt.Errorf(
-				"%w: %q: %q is not an ASCII letter followed by letters, digits or underscores",
-				ErrInvalidId, id.String(), part,
-			)
-		}
+	if err := id.validateWords(); err != nil {
+		return err
 	}
 
 	if constrained("x" + id.Naming().Suffix() + ".go") {
@@ -103,7 +98,22 @@ func isWord(s string) bool {
 
 func isLetter(c byte) bool { return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' }
 
-// MustRegister validates id and registers it in DefaultRegistry. A
+// validateWords checks the spelling of Namespace and Name alone.
+func (id Id) validateWords() error {
+	for _, part := range []string{id.Namespace, id.Name} {
+		if !isWord(part) {
+			return fmt.Errorf(
+				"%w: %q: %q is not an ASCII letter followed by letters, digits or underscores",
+				ErrInvalidId, id.String(), part,
+			)
+		}
+	}
+
+	return nil
+}
+
+// MustRegister checks the spelling of id and registers it in
+// DefaultRegistry. A
 // generator registers its Id from an init function: the framework drives
 // only a registered generator, and the registry tells the generated marks
 // of the registered generators from those of no generator, which the stale
@@ -111,7 +121,10 @@ func isLetter(c byte) bool { return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z'
 // panics on error, since an invalid or duplicate Id is a programming
 // error.
 func MustRegister(id Id) {
-	if err := id.Validate(); err != nil {
+	// The build constraint check of Validate asks the go command for the
+	// known platforms. An init function must not run a command, so only the
+	// spelling is checked here. Prepare runs the whole of Validate.
+	if err := id.validateWords(); err != nil {
 		panic(err)
 	}
 

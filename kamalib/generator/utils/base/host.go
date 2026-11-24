@@ -34,7 +34,7 @@ func (c Caller) constrained(shared string) bool {
 		return constrained(c.Src)
 	}
 
-	// Constrained takes the _test suffix for a constraint of its own.
+	// constrained takes the _test suffix for a constraint of its own.
 	return constrained(src+".go") || !isTestFile(shared)
 }
 

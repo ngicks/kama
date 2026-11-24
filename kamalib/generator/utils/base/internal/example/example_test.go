@@ -26,7 +26,7 @@ steps:
     proc: packages.load
     in: root
     param:
-      patterns: [./a, ./b]
+      patterns: [./a, ./b, ./c]
   greet:
     proc: acme.greet.generate
     out: root
@@ -69,6 +69,9 @@ func TestExample(t *testing.T) {
 		"package a\n\n//acme:foo label=apple\ntype A struct{}\n\n//acme:foo\ntype Apricot int\n",
 	)
 	write("b/b.go", "package b\n\n//acme:foo\ntype B struct{}\n")
+	// The option file of package c labels C, which carries no directive.
+	write("c/c.go", "package c\n\ntype C struct{}\n")
+	write("c/acme_foo.yaml", "version: 1\ntypes:\n  C:\n    label: cherry\n")
 	write("kama.yaml", spec)
 
 	run := func() []error {
@@ -108,6 +111,9 @@ func TestExample(t *testing.T) {
 	assert.Assert(t, strings.Contains(a, "func (A) Label() string { return \"apple\" }"), a)
 	assert.Assert(t, strings.Contains(a, "func (Apricot) Label() string { return \"apricot\" }"), a)
 	assert.Assert(t, strings.Contains(read("b/zz_gen.foo.acme_foo.go"), "func (B) Label()"))
+	assert.Assert(t, strings.Contains(
+		read("c/zz_gen.foo.acme_foo.go"), "func (C) Label() string { return \"cherry\" }",
+	))
 
 	write("b/b.go", "package b\n\ntype B struct{}\n")
 

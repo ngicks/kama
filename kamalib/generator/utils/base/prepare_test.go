@@ -495,6 +495,8 @@ func TestProcRequiredFields(t *testing.T) {
 	noOptions.Options = nil
 	noLoader := fakeProc(&loaded, nil)
 	noLoader.Loader = nil
+	noGenerate := fakeProc(&loaded, nil)
+	noGenerate.Generator.Generate = nil
 
 	for _, c := range []struct {
 		proc workflow.Proc
@@ -502,6 +504,7 @@ func TestProcRequiredFields(t *testing.T) {
 	}{
 		{noOptions, "base: proc of acme:fake: Options is nil"},
 		{noLoader, "base: proc of acme:fake: Loader is nil"},
+		{noGenerate, "base: proc of acme:fake: Generator.Generate is nil"},
 		{
 			base.Proc[noInParamPartial, noInParam, base.None, string]{
 				Generator: base.Generator[string]{Id: driveId},
@@ -594,4 +597,24 @@ func TestDriveExplainsUnknownMark(t *testing.T) {
 			` of its generator; it carries //kama:generated acme:gone, which names no registered`+
 			` generator`,
 	)
+}
+
+// TestDriveWarnsOfNothingOnError fails a run whose scope holds a stale
+// file: the run warns of nothing.
+func TestDriveWarnsOfNothingOnError(t *testing.T) {
+	root := t.TempDir()
+	mkdir(t, root, "sub")
+	writeFile(t, root, "stale.go", "package x\n\n//kama:generated acme:drive\nfunc S() {}\n")
+
+	env, f, r := rootEnv(t, root)
+
+	err := base.Drive(t.Context(), yielding([]base.Output{whole("sub", "x")}), env, struct{}{},
+		base.Scope{Files: []string{"stale.go"}}, f)
+	assert.ErrorContains(t, err, "is a directory")
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+
+	err = base.Drive(t.Context(), yielding(nil), env, struct{}{},
+		base.Scope{Files: []string{"stale.go"}}, f)
+	assert.NilError(t, err)
+	assert.Equal(t, len(r.Warnings), 1, "%v", r.Warnings)
 }

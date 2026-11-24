@@ -145,7 +145,8 @@
 // # Example: a generator generating from loaded packages
 //
 // Package foo declares a method returning a label for each type marked
-// //acme:foo [label=<label>]. Its type options decode the directive, and
+// //acme:foo [label=<label>], or labelled in the option file acme_foo.yaml
+// of its package. Its type options decode the directive, and
 // [NewOptionLoader] loads them from the directives and the option files:
 //
 //	var proc = base.SourceProc[base.ParamOf[Param], Param, Param, struct{}, TypeOptions, struct{}]{
@@ -177,7 +178,7 @@
 //	    proc: packages.load
 //	    in: root
 //	    param:
-//	      patterns: [./a, ./b]
+//	      patterns: [./a, ./b, ./c]
 //	  greet:
 //	    proc: acme.greet.generate
 //	    out: root

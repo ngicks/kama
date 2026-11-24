@@ -311,5 +311,7 @@ func TestMustRegisterPanicsOnInvalidId(t *testing.T) {
 		assert.ErrorIs(t, err, ErrInvalidId)
 	}()
 
-	MustRegister(Id{Namespace: "acme", Name: "test"})
+	// The build constraint check waits for Prepare, so an init function runs
+	// no command. A misspelt id is caught here.
+	MustRegister(Id{Namespace: "acme", Name: "1foo"})
 }

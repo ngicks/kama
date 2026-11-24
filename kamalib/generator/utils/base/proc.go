@@ -31,7 +31,8 @@ import (
 // Files returns the files Run would stage, as [Prepare] returns them, and
 // stages nothing.
 //
-// Input is required: Instantiate returns an error when it is nil.
+// Generator.Generate and Input are required: Instantiate returns an error
+// when one is nil.
 type Proc[Partial ParamPartial[Partial, Param], Param, X, I any] struct {
 	Generator Generator[I]
 	// Default returns the values Param takes for the keys a step leaves out.
