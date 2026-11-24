@@ -66,9 +66,11 @@ func TestLabels(t *testing.T) {
 		map[string]error{
 			`{"x-a": 1}`: validation.ErrKind,
 			`{"n": "s"}`: validation.ErrKind,
-			`[]`:         validation.ErrKind,
 		},
 	)
+
+	var v Labels
+	assert.Assert(t, json.Unmarshal([]byte(`[]`), &v) != nil)
 }
 
 func TestPoint(t *testing.T) {

@@ -374,3 +374,15 @@ func Decode[T any, V ~[]byte](v V) error {
 
 	return nil
 }
+
+// Encoded reports the errors f returns for v encoded as JSON, as JSON
+// Schema applies its keywords to the JSON value whatever Go type holds it.
+// A value that does not encode is an error wrapping validation.ErrEncode.
+func Encoded(v any, f Func) error {
+	b, err := jsonv2.Marshal(v)
+	if err != nil {
+		return validation.New(validation.ErrEncode, "%v", err)
+	}
+
+	return f(b)
+}

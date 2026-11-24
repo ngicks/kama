@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:15Z
+// generated: 2026-11-24T15:22:35Z
 
 package oneof
 
@@ -132,6 +132,14 @@ type ZooMixedString struct {
 //kama:generated kama:jsonschema
 func (ZooMixedString) isZooMixedKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v ZooMixedString) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.String)
+}
+
 // ZooMixedInteger holds the Integer member of ZooMixed.
 //
 //kama:validate hook=off
@@ -145,6 +153,14 @@ type ZooMixedInteger struct {
 //kama:generated kama:jsonschema
 func (ZooMixedInteger) isZooMixedKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v ZooMixedInteger) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Integer)
+}
+
 // ZooMixedObject holds the Object member of ZooMixed.
 //
 //kama:validate hook=off
@@ -157,6 +173,14 @@ type ZooMixedObject struct {
 //
 //kama:generated kama:jsonschema
 func (ZooMixedObject) isZooMixedKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v ZooMixedObject) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Object)
+}
 
 // ZooMixedUnknown holds a value of ZooMixed that no member decodes, or that
 // two members decode. UnmarshalJSONFrom yields it instead of failing, and
@@ -179,12 +203,8 @@ func (ZooMixedUnknown) isZooMixedKind() {}
 //kama:generated kama:jsonschema
 func (v ZooMixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
-	case ZooMixedString:
-		return json.MarshalEncode(enc, k.String)
-	case ZooMixedInteger:
-		return json.MarshalEncode(enc, k.Integer)
-	case ZooMixedObject:
-		return json.MarshalEncode(enc, k.Object)
+	case ZooMixedString, ZooMixedInteger, ZooMixedObject:
+		return json.MarshalEncode(enc, k)
 	case ZooMixedUnknown:
 		return enc.WriteValue(k.Value)
 	}
@@ -198,11 +218,7 @@ func (v ZooMixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v ZooMixed) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case ZooMixedString:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case ZooMixedInteger:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case ZooMixedObject:
+	case ZooMixedString, ZooMixedInteger, ZooMixedObject:
 		return jsonschemart.Validate(k, stopOnFirstError)
 	case ZooMixedUnknown:
 		return jsonschemart.UnknownMember(k.err)
@@ -377,6 +393,14 @@ type ZooAmountInteger struct {
 //kama:generated kama:jsonschema
 func (ZooAmountInteger) isZooAmountKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v ZooAmountInteger) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Integer)
+}
+
 // ZooAmountNumber holds the Number member of ZooAmount.
 //
 //kama:validate hook=off
@@ -389,6 +413,14 @@ type ZooAmountNumber struct {
 //
 //kama:generated kama:jsonschema
 func (ZooAmountNumber) isZooAmountKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v ZooAmountNumber) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Number)
+}
 
 // ZooAmountUnknown holds a value of ZooAmount that no member decodes, or
 // that two members decode. UnmarshalJSONFrom yields it instead of failing,
@@ -411,10 +443,8 @@ func (ZooAmountUnknown) isZooAmountKind() {}
 //kama:generated kama:jsonschema
 func (v ZooAmount) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
-	case ZooAmountInteger:
-		return json.MarshalEncode(enc, k.Integer)
-	case ZooAmountNumber:
-		return json.MarshalEncode(enc, k.Number)
+	case ZooAmountInteger, ZooAmountNumber:
+		return json.MarshalEncode(enc, k)
 	case ZooAmountUnknown:
 		return enc.WriteValue(k.Value)
 	}
@@ -428,9 +458,7 @@ func (v ZooAmount) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v ZooAmount) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case ZooAmountInteger:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case ZooAmountNumber:
+	case ZooAmountInteger, ZooAmountNumber:
 		return jsonschemart.Validate(k, stopOnFirstError)
 	case ZooAmountUnknown:
 		return jsonschemart.UnknownMember(k.err)
@@ -520,6 +548,14 @@ type PetCat struct {
 //kama:generated kama:jsonschema
 func (PetCat) isPetKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v PetCat) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Cat)
+}
+
 // PetDog holds the Dog member of Pet.
 //
 //kama:validate hook=off
@@ -532,6 +568,14 @@ type PetDog struct {
 //
 //kama:generated kama:jsonschema
 func (PetDog) isPetKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v PetDog) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Dog)
+}
 
 // PetUnknown holds a value of Pet that no member decodes, or that two
 // members decode. UnmarshalJSONFrom yields it instead of failing, and
@@ -554,10 +598,8 @@ func (PetUnknown) isPetKind() {}
 //kama:generated kama:jsonschema
 func (v Pet) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
-	case PetCat:
-		return json.MarshalEncode(enc, k.Cat)
-	case PetDog:
-		return json.MarshalEncode(enc, k.Dog)
+	case PetCat, PetDog:
+		return json.MarshalEncode(enc, k)
 	case PetUnknown:
 		return enc.WriteValue(k.Value)
 	}
@@ -571,9 +613,7 @@ func (v Pet) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v Pet) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case PetCat:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case PetDog:
+	case PetCat, PetDog:
 		return jsonschemart.Validate(k, stopOnFirstError)
 	case PetUnknown:
 		return jsonschemart.UnknownMember(k.err)

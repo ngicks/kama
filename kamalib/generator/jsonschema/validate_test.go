@@ -136,7 +136,6 @@ func TestGenerateWarnsUnenforced(t *testing.T) {
 		CollectSlice()
 
 	assert.DeepEqual(t, got, []string{
-		"jsonschema: keyword not enforced: #/dependentRequired",
 		"jsonschema: keyword not enforced: #/properties/a/pattern",
 		"jsonschema: keyword not enforced: #/properties/b/pattern",
 	})

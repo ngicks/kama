@@ -131,3 +131,13 @@ func TestDecode(t *testing.T) {
 	assert.NilError(t, Decode[decoded](named(`{"A": 1}`)))
 	assert.ErrorIs(t, Decode[decoded](named(`"a"`)), validation.ErrDecode)
 }
+
+type unencodable struct{ C chan int }
+
+func TestEncoded(t *testing.T) {
+	assert.NilError(t, Encoded(decoded{A: 1}, func(v jsontext.Value) error {
+		return Required(v, false, "A")
+	}))
+	assert.ErrorIs(t, Encoded(decoded{A: 1}, kindFunc("string")), validation.ErrKind)
+	assert.ErrorIs(t, Encoded(unencodable{}, kindFunc("object")), validation.ErrEncode)
+}

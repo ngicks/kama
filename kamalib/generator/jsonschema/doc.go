@@ -99,7 +99,8 @@
 //	number                       float64
 //	boolean                      bool
 //	array with items T           []T
-//	array without items          []jsontext.Value
+//	array without items, or
+//	  with prefixItems           []jsontext.Value
 //	object with only
 //	  additionalProperties T     map[string]T
 //	raw JSON text                jsontext.Value
@@ -112,20 +113,23 @@
 //
 // A schema whose value is of no single Go shape is raw JSON text: a boolean
 // schema, a schema without type, a type naming several kinds one of which
-// is an object or an array, a type of null only, an enum or a const of
-// values of several kinds, of objects or of arrays, an object that makes
-// neither a struct nor a map, an allOf, a oneOf or an anyOf next to another
-// keyword restricting the value, a $ref next to such a keyword, and a
-// schema holding a keyword only validators express: not, if, then, else,
-// prefixItems, contains, patternProperties, propertyNames,
-// dependentSchemas, unevaluatedProperties and unevaluatedItems. Its Go type
-// is jsontext.Value, and a type it declares, as one under $defs or the
+// is an object or an array, a type of null only, a type naming null and
+// one other kind next to not, if, then or else, which may reject null, an
+// enum or a const of values of several kinds, of objects or of arrays, an
+// object that makes neither a struct nor a map, and a $ref next to another
+// keyword restricting the value. Its Go type is jsontext.Value, and a type it declares, as one
+// under $defs or the
 // root, is defined over jsontext.Value with the method RawJson, which tells
 // the validators to check it as raw JSON text, and carries a Validate. Its
 // keywords become the validators of raw JSON text, as Validation lists,
 // and the schemas under them become their operands. Such a schema under a
 // keyword of raw JSON text declares no type of its own; a schema under
 // $defs always may.
+//
+// Any other schema keeps its Go type whatever other keywords it holds. The
+// keywords its Go type does not express, such as not, if or
+// patternProperties, check the value encoded as JSON, as Validation
+// describes. A schema under such a keyword declares no type of its own.
 //
 // A root that declares no type of its own still needs a name to decode a
 // document into. It declares a type defined over its Go type, such as
@@ -176,9 +180,10 @@
 // A T that holds null itself, jsontext.Value or a union with a member of
 // type null, is the field when required and an opt.Option otherwise.
 //
-// An object that does not fit a struct is raw JSON text: one requiring a
-// member it declares no property for, or declaring a property whose name
-// holds a comma, a quote, a backslash or a control character.
+// An object declaring a property whose name holds a comma, a quote, a
+// backslash or a control character does not fit a struct and is raw JSON
+// text. A member an object requires without declaring a property for it
+// stays in _x, which the validators of the value encoded as JSON check.
 //
 // The struct decodes through an unexported wire struct. It holds a
 // property as an und.Und, which keeps a missing member apart from null, or
@@ -196,7 +201,10 @@
 // additionalProperties schema T, whose values decode as T, and a
 // map[string]jsontext.Value otherwise. additionalProperties false makes
 // Validate report each member of _x, with an error wrapping
-// validation.ErrClosed located at the member. encoding/json/v2 refuses a
+// validation.ErrClosed located at the member. Next to patternProperties,
+// which takes some of those members from additionalProperties, _x is a
+// map[string]jsontext.Value and both keywords check the value encoded as
+// JSON. encoding/json/v2 refuses a
 // tagged unexported field, so every struct encodes through MarshalJSONTo,
 // and go vet reports the tag, which the validator generator reads.
 //
@@ -213,9 +221,9 @@
 //
 // # Unions
 //
-// A oneOf or an anyOf without any other keyword restricting the value,
-// type included, and a type naming two or more kinds other than null
-// declare a holder, an interface and a wrapper per member:
+// A oneOf or an anyOf, and a type naming two or more kinds other than null
+// and no other keyword shaping the value, declare a holder, an interface
+// and a wrapper per member:
 //
 //	type Pet struct{ Kind PetKind }
 //	type PetKind interface{ isPetKind() }
@@ -251,7 +259,11 @@
 //
 // The holder has a Validate of its own, which calls the Validate of the
 // wrapper it holds. The wrappers carry //kama:validate and get theirs from
-// the validator generator.
+// the validator generator. A wrapper encodes as its member. The other
+// keywords of the union, the type next to a oneOf or an anyOf included,
+// check the value of every member: each wrapper carries json(...) of them,
+// as Validation describes, so decoding drops a member whose value fails
+// them.
 //
 // The generated code does not check every validation keyword, as
 // Validation lists, so it cannot tell apart two members of a oneOf that
@@ -262,13 +274,19 @@
 //
 // # allOf
 //
-// An allOf of one member and no other keyword restricting the value takes
-// the type of the member. An allOf of objects is a product: a struct with a
-// field per member, tagged "-", followed by the fields of its own
-// properties. Every member must be a struct, which takes members besides
-// its own and counts none, and the allOf must hold no keyword restricting
-// the value but type object, properties, required and additionalProperties
-// true. Any other allOf is raw JSON text checked by and.
+// An allOf of one member takes the type of the member when no other keyword
+// restricts the value but a type naming every kind the type of the member
+// names. An allOf of objects is a product: a struct with a field per
+// member, tagged "-", followed by the fields of its own properties. Every
+// member must be a struct, which takes members besides its own, counts
+// none and checks nothing on the value encoded as JSON, which would lack
+// the members of the others. The allOf must hold no keyword shaping the
+// value but type object, properties, required and additionalProperties
+// true. Its other keywords check the product encoded as JSON. Any other
+// allOf next to a type of one kind takes the Go type of that kind, a struct
+// of its own properties for an object, and json(and(...)) checks its
+// members. An allOf without type that makes no product is raw JSON text
+// checked by and.
 // Decoding decodes each member and the own properties from the same
 // object. The _x of the product holds the members that neither a member
 // nor an own property declares. The product clears the _x of each member
@@ -332,6 +350,25 @@
 //	unevaluatedItems                      unevalitems(<the others>, ...)
 //	true, false                           no validator, or()
 //
+// The keywords a Go type other than raw JSON text does not express check
+// the value encoded as JSON: the type or the field carries json(...) of the
+// validators of raw JSON text above, as the type of raw JSON text would.
+// These keywords are not, if, then, else, prefixItems, contains,
+// minContains, maxContains, patternProperties, propertyNames,
+// dependentSchemas, unevaluatedProperties and unevaluatedItems, an allOf
+// that makes no product, items next to prefixItems, additionalProperties
+// next to patternProperties, a required member without a property, a
+// dependentRequired of a map, of a product or naming a member without a
+// property, the keywords of a product but those shaping it, and the
+// keywords of a union but its oneOf or anyOf. An unevaluatedProperties or
+// an unevaluatedItems needs what every keyword evaluates, so json(...) then
+// checks every keyword of the schema, those the Go type checks too, and a
+// failure of such a keyword is reported twice. A field applies json(...) to
+// the value an opt.Option or an und.Und holds, so an absent member and a
+// null of a nullable member are not checked. Validate encodes the value
+// once per type or field carrying json(...), and a value nested in such a
+// value is encoded again by its own Validate.
+//
 // A $ref names a type of raw JSON text by ref and a type whose decoder
 // validates by decode. A union, which validates on no decoding, and a
 // schema declaring no type are written out, and one reached again on a
@@ -357,8 +394,7 @@
 //
 // Generate warns with ErrUnenforced about a validation keyword the
 // generated code does not check: a keyword of a nullable root, a pattern
-// RE2 does not compile, a dependentRequired of a struct naming a member
-// without a property, and a keyword of a typed schema outside an object
+// RE2 does not compile, and a keyword of a typed schema outside an object
 // property that declares no type.
 //
 // Decoders call Validate through jsonschemart.Validate, since the

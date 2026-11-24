@@ -29,6 +29,7 @@ var (
 	ErrKind     = errors.New("kind")
 	ErrContains = errors.New("contains")
 	ErrDecode   = errors.New("decode")
+	ErrEncode   = errors.New("encode")
 )
 
 // Error is an error located by a path of segments from the outermost value to the failing one.

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T13:35:49Z
+// generated: 2026-11-24T15:22:38Z
 
 package prefilter
 
@@ -45,6 +45,14 @@ type ShapeCircle struct {
 //kama:generated kama:jsonschema
 func (ShapeCircle) isShapeKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v ShapeCircle) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Circle)
+}
+
 // ShapeSquare holds the Square member of Shape.
 //
 //kama:validate hook=off
@@ -57,6 +65,14 @@ type ShapeSquare struct {
 //
 //kama:generated kama:jsonschema
 func (ShapeSquare) isShapeKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v ShapeSquare) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Square)
+}
 
 // ShapeUnknown holds a value of Shape that no member decodes, or that two
 // members decode. UnmarshalJSONFrom yields it instead of failing, and
@@ -79,10 +95,8 @@ func (ShapeUnknown) isShapeKind() {}
 //kama:generated kama:jsonschema
 func (v Shape) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
-	case ShapeCircle:
-		return json.MarshalEncode(enc, k.Circle)
-	case ShapeSquare:
-		return json.MarshalEncode(enc, k.Square)
+	case ShapeCircle, ShapeSquare:
+		return json.MarshalEncode(enc, k)
 	case ShapeUnknown:
 		return enc.WriteValue(k.Value)
 	}
@@ -96,9 +110,7 @@ func (v Shape) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v Shape) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case ShapeCircle:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case ShapeSquare:
+	case ShapeCircle, ShapeSquare:
 		return jsonschemart.Validate(k, stopOnFirstError)
 	case ShapeUnknown:
 		return jsonschemart.UnknownMember(k.err)

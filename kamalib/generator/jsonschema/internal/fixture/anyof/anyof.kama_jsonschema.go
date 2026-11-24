@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:03Z
+// generated: 2026-11-24T15:22:25Z
 
 package anyof
 
@@ -122,6 +122,14 @@ type DocValueString struct {
 //kama:generated kama:jsonschema
 func (DocValueString) isDocValueKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v DocValueString) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.String)
+}
+
 // DocValueNull holds the Null member of DocValue.
 //
 //kama:validate hook=off
@@ -132,6 +140,14 @@ type DocValueNull struct{}
 //
 //kama:generated kama:jsonschema
 func (DocValueNull) isDocValueKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v DocValueNull) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return enc.WriteToken(jsontext.Null)
+}
 
 // DocValueInteger holds the Integer member of DocValue.
 //
@@ -145,6 +161,14 @@ type DocValueInteger struct {
 //
 //kama:generated kama:jsonschema
 func (DocValueInteger) isDocValueKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v DocValueInteger) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Integer)
+}
 
 // DocValueUnknown holds a value of DocValue that no member decodes.
 // UnmarshalJSONFrom yields it instead of failing, and Validate reports it
@@ -167,12 +191,8 @@ func (DocValueUnknown) isDocValueKind() {}
 //kama:generated kama:jsonschema
 func (v DocValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
-	case DocValueString:
-		return json.MarshalEncode(enc, k.String)
-	case DocValueNull:
-		return enc.WriteToken(jsontext.Null)
-	case DocValueInteger:
-		return json.MarshalEncode(enc, k.Integer)
+	case DocValueString, DocValueNull, DocValueInteger:
+		return json.MarshalEncode(enc, k)
 	case DocValueUnknown:
 		return enc.WriteValue(k.Value)
 	}
@@ -186,11 +206,7 @@ func (v DocValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v DocValue) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case DocValueString:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case DocValueNull:
-		return nil
-	case DocValueInteger:
+	case DocValueString, DocValueNull, DocValueInteger:
 		return jsonschemart.Validate(k, stopOnFirstError)
 	case DocValueUnknown:
 		return jsonschemart.UnknownMember(k.err)
@@ -271,6 +287,14 @@ type LabelNamed struct {
 //kama:generated kama:jsonschema
 func (LabelNamed) isLabelKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v LabelNamed) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Named)
+}
+
 // LabelTagged holds the Tagged member of Label.
 //
 //kama:validate hook=off
@@ -283,6 +307,14 @@ type LabelTagged struct {
 //
 //kama:generated kama:jsonschema
 func (LabelTagged) isLabelKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v LabelTagged) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Tagged)
+}
 
 // LabelUnknown holds a value of Label that no member decodes.
 // UnmarshalJSONFrom yields it instead of failing, and Validate reports it
@@ -305,10 +337,8 @@ func (LabelUnknown) isLabelKind() {}
 //kama:generated kama:jsonschema
 func (v Label) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
-	case LabelNamed:
-		return json.MarshalEncode(enc, k.Named)
-	case LabelTagged:
-		return json.MarshalEncode(enc, k.Tagged)
+	case LabelNamed, LabelTagged:
+		return json.MarshalEncode(enc, k)
 	case LabelUnknown:
 		return enc.WriteValue(k.Value)
 	}
@@ -322,9 +352,7 @@ func (v Label) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v Label) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case LabelNamed:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case LabelTagged:
+	case LabelNamed, LabelTagged:
 		return jsonschemart.Validate(k, stopOnFirstError)
 	case LabelUnknown:
 		return jsonschemart.UnknownMember(k.err)

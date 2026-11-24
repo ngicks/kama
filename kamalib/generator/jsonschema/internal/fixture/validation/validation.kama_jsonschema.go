@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T13:35:54Z
+// generated: 2026-11-24T15:22:44Z
 
 package validation
 
@@ -376,6 +376,14 @@ type OrderPickOption1 struct {
 //kama:generated kama:jsonschema
 func (OrderPickOption1) isOrderPickKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v OrderPickOption1) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Option1)
+}
+
 // OrderPickOption2 holds the Option2 member of OrderPick.
 //
 //kama:validate hook=off
@@ -388,6 +396,14 @@ type OrderPickOption2 struct {
 //
 //kama:generated kama:jsonschema
 func (OrderPickOption2) isOrderPickKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v OrderPickOption2) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Option2)
+}
 
 // OrderPickUnknown holds a value of OrderPick that no member decodes, or
 // that two members decode. UnmarshalJSONFrom yields it instead of failing,
@@ -410,10 +426,8 @@ func (OrderPickUnknown) isOrderPickKind() {}
 //kama:generated kama:jsonschema
 func (v OrderPick) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
-	case OrderPickOption1:
-		return json.MarshalEncode(enc, k.Option1)
-	case OrderPickOption2:
-		return json.MarshalEncode(enc, k.Option2)
+	case OrderPickOption1, OrderPickOption2:
+		return json.MarshalEncode(enc, k)
 	case OrderPickUnknown:
 		return enc.WriteValue(k.Value)
 	}
@@ -427,9 +441,7 @@ func (v OrderPick) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v OrderPick) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case OrderPickOption1:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case OrderPickOption2:
+	case OrderPickOption1, OrderPickOption2:
 		return jsonschemart.Validate(k, stopOnFirstError)
 	case OrderPickUnknown:
 		return jsonschemart.UnknownMember(k.err)

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:05Z
+// generated: 2026-11-24T15:22:27Z
 
 package multikind
 
@@ -117,6 +117,14 @@ type CellValueString struct {
 //kama:generated kama:jsonschema
 func (CellValueString) isCellValueKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v CellValueString) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.String)
+}
+
 // CellValueInteger holds the Integer member of CellValue.
 //
 //kama:validate hook=off
@@ -130,6 +138,14 @@ type CellValueInteger struct {
 //kama:generated kama:jsonschema
 func (CellValueInteger) isCellValueKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v CellValueInteger) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Integer)
+}
+
 // CellValueBoolean holds the Boolean member of CellValue.
 //
 //kama:validate hook=off
@@ -142,6 +158,14 @@ type CellValueBoolean struct {
 //
 //kama:generated kama:jsonschema
 func (CellValueBoolean) isCellValueKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v CellValueBoolean) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Boolean)
+}
 
 // CellValueUnknown holds a value of CellValue that no member decodes.
 // UnmarshalJSONFrom yields it instead of failing, and Validate reports it
@@ -164,12 +188,8 @@ func (CellValueUnknown) isCellValueKind() {}
 //kama:generated kama:jsonschema
 func (v CellValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
-	case CellValueString:
-		return json.MarshalEncode(enc, k.String)
-	case CellValueInteger:
-		return json.MarshalEncode(enc, k.Integer)
-	case CellValueBoolean:
-		return json.MarshalEncode(enc, k.Boolean)
+	case CellValueString, CellValueInteger, CellValueBoolean:
+		return json.MarshalEncode(enc, k)
 	case CellValueUnknown:
 		return enc.WriteValue(k.Value)
 	}
@@ -183,11 +203,7 @@ func (v CellValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v CellValue) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case CellValueString:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case CellValueInteger:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case CellValueBoolean:
+	case CellValueString, CellValueInteger, CellValueBoolean:
 		return jsonschemart.Validate(k, stopOnFirstError)
 	case CellValueUnknown:
 		return jsonschemart.UnknownMember(k.err)
@@ -278,6 +294,14 @@ type CellLabelString struct {
 //kama:generated kama:jsonschema
 func (CellLabelString) isCellLabelKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v CellLabelString) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.String)
+}
+
 // CellLabelNumber holds the Number member of CellLabel.
 //
 //kama:validate hook=off
@@ -291,6 +315,14 @@ type CellLabelNumber struct {
 //kama:generated kama:jsonschema
 func (CellLabelNumber) isCellLabelKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v CellLabelNumber) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Number)
+}
+
 // CellLabelNull holds the Null member of CellLabel.
 //
 //kama:validate hook=off
@@ -301,6 +333,14 @@ type CellLabelNull struct{}
 //
 //kama:generated kama:jsonschema
 func (CellLabelNull) isCellLabelKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v CellLabelNull) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return enc.WriteToken(jsontext.Null)
+}
 
 // CellLabelUnknown holds a value of CellLabel that no member decodes.
 // UnmarshalJSONFrom yields it instead of failing, and Validate reports it
@@ -323,12 +363,8 @@ func (CellLabelUnknown) isCellLabelKind() {}
 //kama:generated kama:jsonschema
 func (v CellLabel) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
-	case CellLabelString:
-		return json.MarshalEncode(enc, k.String)
-	case CellLabelNumber:
-		return json.MarshalEncode(enc, k.Number)
-	case CellLabelNull:
-		return enc.WriteToken(jsontext.Null)
+	case CellLabelString, CellLabelNumber, CellLabelNull:
+		return json.MarshalEncode(enc, k)
 	case CellLabelUnknown:
 		return enc.WriteValue(k.Value)
 	}
@@ -342,12 +378,8 @@ func (v CellLabel) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v CellLabel) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case CellLabelString:
+	case CellLabelString, CellLabelNumber, CellLabelNull:
 		return jsonschemart.Validate(k, stopOnFirstError)
-	case CellLabelNumber:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case CellLabelNull:
-		return nil
 	case CellLabelUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}

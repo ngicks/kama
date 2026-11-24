@@ -412,7 +412,7 @@ func builtinTypeSeen(
 		return "bool", nil
 	case "array":
 		e, err := q(jsontextPath, "Value")(c)
-		if s.Items != nil {
+		if s.Items != nil && !bridged(doc, r, s, "items") {
 			e, err = elemTypeSeen(c, doc, opts, child(r, "items"), seen)
 		}
 

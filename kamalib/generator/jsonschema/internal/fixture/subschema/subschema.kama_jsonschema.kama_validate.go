@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T14:57:55Z
+// generated: 2026-11-24T15:46:36Z
 
 package subschema
 
@@ -86,17 +86,13 @@ func (v Address) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Labels) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := rawjson.Kind(v, "object"); err != nil {
-		if stopOnFirstError {
-			return err
-		}
-		errs = append(errs, err)
-	}
-	if err := rawjson.Properties(v, stopOnFirstError, nil, rawjson.PatternProperty(kamaValidateRegexp_5f8f9cdb3f, func(m jsontext.Value) error {
-		return rawjson.Kind(m, "string")
-	}), rawjson.Additional(func(m2 jsontext.Value) error {
-		return rawjson.Kind(m2, "integer")
-	})); err != nil {
+	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+		return rawjson.Properties(m, stopOnFirstError, nil, rawjson.PatternProperty(kamaValidateRegexp_5f8f9cdb3f, func(m2 jsontext.Value) error {
+			return rawjson.Kind(m2, "string")
+		}), rawjson.Additional(func(m3 jsontext.Value) error {
+			return rawjson.Kind(m3, "integer")
+		}))
+	}); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -111,18 +107,14 @@ func (v Labels) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Point) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := rawjson.Kind(v, "array"); err != nil {
-		if stopOnFirstError {
-			return err
-		}
-		errs = append(errs, err)
-	}
-	if err := rawjson.Elements(v, stopOnFirstError, nil, func(m jsontext.Value) error {
-		return rawjson.Kind(m, "string")
-	}, func(m2 jsontext.Value) error {
-		return rawjson.Kind(m2, "number")
-	}, func(m3 jsontext.Value) error {
-		return rawjson.Kind(m3, "number")
+	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+		return rawjson.Elements(m, stopOnFirstError, nil, func(m2 jsontext.Value) error {
+			return rawjson.Kind(m2, "string")
+		}, func(m3 jsontext.Value) error {
+			return rawjson.Kind(m3, "number")
+		}, func(m4 jsontext.Value) error {
+			return rawjson.Kind(m4, "number")
+		})
 	}); err != nil {
 		if stopOnFirstError {
 			return err
@@ -138,15 +130,11 @@ func (v Point) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Tags) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := rawjson.Kind(v, "array"); err != nil {
-		if stopOnFirstError {
-			return err
-		}
-		errs = append(errs, err)
-	}
-	if err := rawjson.Contains(v, nil, func(m jsontext.Value) error {
-		return rawjson.Const(m, "\"go\"")
-	}, rawjson.Count{Op: ">=", N: 1}, rawjson.Count{Op: "<=", N: 2}); err != nil {
+	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+		return rawjson.Contains(m, nil, func(m2 jsontext.Value) error {
+			return rawjson.Const(m2, "\"go\"")
+		}, rawjson.Count{Op: ">=", N: 1}, rawjson.Count{Op: "<=", N: 2})
+	}); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -161,14 +149,10 @@ func (v Tags) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Keys) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := rawjson.Kind(v, "object"); err != nil {
-		if stopOnFirstError {
-			return err
-		}
-		errs = append(errs, err)
-	}
-	if err := rawjson.Keys(v, stopOnFirstError, func(m jsontext.Value) error {
-		return rawjson.Pattern(m, kamaValidateRegexp_39c46b3647)
+	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+		return rawjson.Keys(m, stopOnFirstError, func(m2 jsontext.Value) error {
+			return rawjson.Pattern(m2, kamaValidateRegexp_39c46b3647)
+		})
 	}); err != nil {
 		if stopOnFirstError {
 			return err
@@ -184,13 +168,9 @@ func (v Keys) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Payment) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := rawjson.Kind(v, "object"); err != nil {
-		if stopOnFirstError {
-			return err
-		}
-		errs = append(errs, err)
-	}
-	if err := kamaValidateIf(rawjson.Required(v, stopOnFirstError, "card"), rawjson.Required(v, stopOnFirstError, "billing"), nil); err != nil {
+	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+		return kamaValidateIf(rawjson.Required(m, stopOnFirstError, "card"), rawjson.Required(m, stopOnFirstError, "billing"), nil)
+	}); err != nil {
 		if stopOnFirstError {
 			return err
 		}

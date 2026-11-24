@@ -60,10 +60,17 @@ func check(doc *jsonschema.Schema, opts Options) error {
 
 	// A $ref alone takes the type of its target, whose own check covers it.
 	for ptr, s := range schemas(doc) {
-		if s.Bool.IsNone() && !refAlone(s) && rawFrom(doc, ptr, s) && !ruled(doc, ptr) {
-			if _, err := rawRules(doc, opts, ptr); err != nil {
-				errs = append(errs, err)
-			}
+		if s.Bool.IsSome() || refAlone(s) || ruled(doc, ptr) {
+			continue
+		}
+
+		rules := jsonArgs
+		if rawFrom(doc, ptr, s) {
+			rules = rawRules
+		}
+
+		if _, err := rules(doc, opts, ptr); err != nil {
+			errs = append(errs, err)
 		}
 	}
 
@@ -118,7 +125,7 @@ func checkTypes(doc *jsonschema.Schema, opts Options) error {
 			}
 		case stringEnum(s):
 		default:
-			for i := range s.AllOf {
+			for i := range productOf(doc, ptr, s) {
 				spell(goType(doc, opts, child(ptr, "allOf", strconv.Itoa(i))))
 			}
 
@@ -126,7 +133,7 @@ func checkTypes(doc *jsonschema.Schema, opts Options) error {
 				spell(fieldType(doc, opts, ptr, n.Name))
 			}
 
-			if extraMembers(s) {
+			if extraMembers(s) && !bridged(doc, ptr, s, "additionalProperties") {
 				spell(elemType(doc, opts, child(ptr, "additionalProperties")))
 			}
 		}
@@ -355,7 +362,7 @@ func checkEnum(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error
 }
 
 // checkProperties checks the properties of a struct or a product give Go
-// names and json tags, and that every required member has a property.
+// names and json tags.
 func checkProperties(ptr string, s *jsonschema.Schema) []error {
 	var errs []error
 
@@ -370,14 +377,6 @@ func checkProperties(ptr string, s *jsonschema.Schema) []error {
 			return strings.ContainsRune(",\\'\"`", r) || unicode.IsControl(r)
 		}) {
 			errs = append(errs, unsupported(pp, "property name %q does not fit a json tag", n.Name))
-		}
-	}
-
-	for _, name := range s.Required {
-		if _, ok := s.Properties.Get(name); !ok {
-			errs = append(errs, unsupported(
-				child(ptr, "required"), "required member %q has no property", name,
-			))
 		}
 	}
 
@@ -484,7 +483,7 @@ func fieldNames(doc *jsonschema.Schema, opts Options, ptr string, s *jsonschema.
 		scope[name] = what
 	}
 
-	for i := range s.AllOf {
+	for i := range productOf(doc, ptr, s) {
 		m, err := memberName(doc, opts, ptr, i)
 		if err != nil {
 			errs = append(errs, err)

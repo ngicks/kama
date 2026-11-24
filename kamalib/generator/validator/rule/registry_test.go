@@ -25,6 +25,7 @@ func TestRegistry(t *testing.T) {
 		"format",
 		"if",
 		"items",
+		"json",
 		"keys",
 		"kind",
 		"length",

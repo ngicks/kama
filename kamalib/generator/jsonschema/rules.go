@@ -23,20 +23,22 @@ import (
 // rawRules returns the args of //kama:validate checking the schema at ptr
 // on raw JSON text, as JSON Schema applies it to a value of any kind.
 func rawRules(doc *jsonschema.Schema, opts Options, ptr string) ([]string, error) {
-	return rulesOf(doc, opts, ptr, false, nil)
+	return rulesOf(doc, opts, ptr, false, everyKeyword, nil)
 }
 
-// rulesOf returns the args checking the schema at ptr. annotated tells
-// that an unevaluatedProperties or an unevaluatedItems applies to the same
-// value, which then needs what the validators evaluate: a reference is
-// written out rather than named, since ref reports no evaluation. stack
-// holds the schemas whose args are being built, which a reference reaches
-// again on a cycle.
+// rulesOf returns the args checking the keywords of the schema at ptr that
+// keep keeps. The subschemas take every keyword. annotated tells that an
+// unevaluatedProperties or an unevaluatedItems applies to the same value,
+// which then needs what the validators evaluate: a reference is written
+// out rather than named, since ref reports no evaluation. stack holds the
+// schemas whose args are being built, which a reference reaches again on a
+// cycle.
 func rulesOf(
 	doc *jsonschema.Schema,
 	opts Options,
 	ptr string,
 	annotated bool,
+	keep func(kw string) bool,
 	stack []string,
 ) ([]string, error) {
 	s, err := at(doc, ptr)
@@ -58,27 +60,27 @@ func rulesOf(
 	// sub returns the args of the subschema at the keys under ptr applying
 	// to a member or an element of the value.
 	sub := func(keys ...string) ([]string, error) {
-		return rulesOf(doc, opts, child(ptr, keys...), false, stack)
+		return rulesOf(doc, opts, child(ptr, keys...), false, everyKeyword, stack)
 	}
 	// same returns the args of the subschema at the keys under ptr
 	// applying to the value itself, as one arg.
 	same := func(keys ...string) (string, error) {
-		args, err := rulesOf(doc, opts, child(ptr, keys...), inPlace, stack)
+		args, err := rulesOf(doc, opts, child(ptr, keys...), inPlace, everyKeyword, stack)
 		return single(args), err
 	}
 
-	args := leafRules(s)
+	args := leafRules(s, keep)
 
 	steps := []func() ([]string, error){
-		func() ([]string, error) { return propsRules(s, sub, inPlace) },
-		func() ([]string, error) { return itemsRules(s, sub, inPlace) },
-		func() ([]string, error) { return containsRules(s, sub) },
-		func() ([]string, error) { return keysRules(s, sub) },
-		func() ([]string, error) { return dependentRules(s, same) },
-		func() ([]string, error) { return listRules(s, same) },
-		func() ([]string, error) { return notRules(s, same) },
-		func() ([]string, error) { return ifRules(s, same, inPlace) },
-		func() ([]string, error) { return refRules(doc, opts, ptr, inPlace, stack) },
+		func() ([]string, error) { return propsRules(s, sub, inPlace, keep) },
+		func() ([]string, error) { return itemsRules(s, sub, inPlace, keep) },
+		func() ([]string, error) { return containsRules(s, sub, keep) },
+		func() ([]string, error) { return keysRules(s, sub, keep) },
+		func() ([]string, error) { return dependentRules(s, same, keep) },
+		func() ([]string, error) { return listRules(s, same, keep) },
+		func() ([]string, error) { return notRules(s, same, keep) },
+		func() ([]string, error) { return ifRules(s, same, inPlace, keep) },
+		func() ([]string, error) { return refRules(doc, opts, ptr, inPlace, keep, stack) },
 	}
 
 	for _, step := range steps {
@@ -91,7 +93,7 @@ func rulesOf(
 	}
 
 	for _, kw := range []string{"unevaluatedProperties", "unevaluatedItems"} {
-		if !slices.Contains(present(s, []string{kw}), kw) {
+		if !slices.Contains(present(s, []string{kw}), kw) || !keep(kw) {
 			continue
 		}
 
@@ -168,12 +170,13 @@ func argName(a string) string {
 	return kv[0].Key
 }
 
-// leafRules returns the args of the keywords of s holding no subschema.
-func leafRules(s *jsonschema.Schema) []string {
+// leafRules returns the args of the keywords of s holding no subschema that
+// keep keeps.
+func leafRules(s *jsonschema.Schema, keep func(kw string) bool) []string {
 	var args []string
 
-	add := func(name, arg string) {
-		if arg != "" {
+	add := func(name, arg string, keywords ...string) {
+		if arg != "" && slices.ContainsFunc(keywords, keep) {
 			args = append(args, name+"="+quoteArg(arg))
 		}
 	}
@@ -182,46 +185,46 @@ func leafRules(s *jsonschema.Schema) []string {
 	}
 
 	if !s.Type.IsZero() {
-		add("kind", strings.Join(slices.Compact(slices.Clone(s.Type.Names)), " "))
+		add("kind", strings.Join(slices.Compact(slices.Clone(s.Type.Names)), " "), "type")
 	}
 
-	if values := enumValues(s); values != nil {
+	if values := enumValues(s); values != nil && (keep("enum") || keep("const")) {
 		if len(values) == 0 {
 			args = append(args, callArg("or"))
 		} else {
-			add("const", rawValues(values))
+			add("const", rawValues(values), "enum", "const")
 		}
 	}
 
 	add("cmp", comparisons(map[string]jsontext.Value{
 		">=": s.Minimum, "<=": s.Maximum, ">": s.ExclusiveMinimum, "<": s.ExclusiveMaximum,
-	}, numberText))
+	}, numberText), "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum")
 
 	if s.MultipleOf != nil {
-		add("multipleof", string(s.MultipleOf))
+		add("multipleof", string(s.MultipleOf), "multipleOf")
 	}
 
-	add("runes", lengths(s.MinLength, s.MaxLength))
+	add("runes", lengths(s.MinLength, s.MaxLength), "minLength", "maxLength")
 
 	if s.Pattern.IsSome() {
 		if _, err := regexp.Compile(s.Pattern.Value()); err == nil {
-			add("regexp", s.Pattern.Value())
+			add("regexp", s.Pattern.Value(), "pattern")
 		}
 	}
 
-	add("length", lengths(s.MinItems, s.MaxItems))
+	add("length", lengths(s.MinItems, s.MaxItems), "minItems", "maxItems")
 
-	if s.UniqueItems.Value() {
+	if s.UniqueItems.Value() && keep("uniqueItems") {
 		args = append(args, "unique")
 	}
 
-	add("members", lengths(s.MinProperties, s.MaxProperties))
+	add("members", lengths(s.MinProperties, s.MaxProperties), "minProperties", "maxProperties")
 
 	if len(s.Required) > 0 {
-		add("required", spellNames(s.Required))
+		add("required", spellNames(s.Required), "required")
 	}
 
-	if dep := rawDependents(s); dep != "" {
+	if dep := rawDependents(s); dep != "" && keep("dependentRequired") {
 		args = append(args, dep)
 	}
 
@@ -229,26 +232,40 @@ func leafRules(s *jsonschema.Schema) []string {
 }
 
 // propsRules returns props for the properties, the patternProperties and
-// the additionalProperties of s. An entry without validators stays when
-// rest needs to know the member is no other one, or when annotated needs
-// what the entry evaluates.
+// the additionalProperties of s that keep keeps. An entry without
+// validators, as a property keep leaves out gives, stays only when rest
+// needs to know the member is no other one, or when annotated needs what
+// the entry evaluates.
 func propsRules(
 	s *jsonschema.Schema,
 	sub func(keys ...string) ([]string, error),
 	annotated bool,
+	keep func(kw string) bool,
 ) ([]string, error) {
 	var (
 		entries []string
 		checks  bool
 	)
 
+	rest := s.AdditionalProperties != nil && keep("additionalProperties")
+
 	entry := func(kind, name string, keys ...string) error {
-		ops, err := sub(keys...)
-		if err != nil {
-			return err
+		var ops []string
+
+		if keep(keys[0]) {
+			var err error
+
+			ops, err = sub(keys...)
+			if err != nil {
+				return err
+			}
 		}
 
 		checks = checks || len(ops) > 0
+
+		if len(ops) == 0 && kind != "rest" && !rest && !annotated {
+			return nil
+		}
 
 		if name != "" {
 			ops = append([]string{strconv.Quote(name)}, ops...)
@@ -266,6 +283,10 @@ func propsRules(
 	}
 
 	for _, n := range s.PatternProperties {
+		if !keep("patternProperties") {
+			break
+		}
+
 		if _, err := regexp.Compile(n.Name); err != nil {
 			return nil, unsupported(
 				child("", "patternProperties", n.Name), "pattern does not compile as RE2: %v", err,
@@ -277,7 +298,7 @@ func propsRules(
 		}
 	}
 
-	if s.AdditionalProperties != nil {
+	if rest {
 		if err := entry("rest", "", "additionalProperties"); err != nil {
 			return nil, err
 		}
@@ -293,15 +314,16 @@ func propsRules(
 }
 
 // itemsRules returns prefix for the prefixItems of s, with the items of s
-// as its rest, or items for the items of s alone.
+// as its rest, or items for the items of s alone, as keep keeps them.
 func itemsRules(
 	s *jsonschema.Schema,
 	sub func(keys ...string) ([]string, error),
 	annotated bool,
+	keep func(kw string) bool,
 ) ([]string, error) {
 	var rest []string
 
-	if s.Items != nil {
+	if s.Items != nil && keep("items") {
 		var err error
 
 		rest, err = sub("items")
@@ -310,8 +332,8 @@ func itemsRules(
 		}
 	}
 
-	if s.PrefixItems == nil {
-		if s.Items == nil || len(rest) == 0 && !annotated {
+	if s.PrefixItems == nil || !keep("prefixItems") {
+		if s.Items == nil || !keep("items") || len(rest) == 0 && !annotated {
 			return nil, nil
 		}
 
@@ -329,7 +351,7 @@ func itemsRules(
 		ops = append(ops, single(args))
 	}
 
-	if s.Items != nil {
+	if s.Items != nil && keep("items") {
 		ops = append(ops, callArg("rest", rest...))
 	}
 
@@ -341,8 +363,9 @@ func itemsRules(
 func containsRules(
 	s *jsonschema.Schema,
 	sub func(keys ...string) ([]string, error),
+	keep func(kw string) bool,
 ) ([]string, error) {
-	if s.Contains == nil {
+	if s.Contains == nil || !keep("contains") {
 		return nil, nil
 	}
 
@@ -364,8 +387,12 @@ func containsRules(
 }
 
 // keysRules returns keys for the propertyNames of s.
-func keysRules(s *jsonschema.Schema, sub func(keys ...string) ([]string, error)) ([]string, error) {
-	if s.PropertyNames == nil {
+func keysRules(
+	s *jsonschema.Schema,
+	sub func(keys ...string) ([]string, error),
+	keep func(kw string) bool,
+) ([]string, error) {
+	if s.PropertyNames == nil || !keep("propertyNames") {
 		return nil, nil
 	}
 
@@ -382,7 +409,12 @@ func keysRules(s *jsonschema.Schema, sub func(keys ...string) ([]string, error))
 func dependentRules(
 	s *jsonschema.Schema,
 	same func(keys ...string) (string, error),
+	keep func(kw string) bool,
 ) ([]string, error) {
+	if !keep("dependentSchemas") {
+		return nil, nil
+	}
+
 	var args []string
 
 	for _, n := range s.DependentSchemas {
@@ -399,12 +431,16 @@ func dependentRules(
 
 // listRules returns and, or and oneof for the allOf, anyOf and oneOf of
 // s, each member one operand.
-func listRules(s *jsonschema.Schema, same func(keys ...string) (string, error)) ([]string, error) {
+func listRules(
+	s *jsonschema.Schema,
+	same func(keys ...string) (string, error),
+	keep func(kw string) bool,
+) ([]string, error) {
 	var args []string
 
 	for _, kw := range []string{"allOf", "anyOf", "oneOf"} {
 		members := listOf(s, kw)
-		if members == nil {
+		if members == nil || !keep(kw) {
 			continue
 		}
 
@@ -427,8 +463,12 @@ func listRules(s *jsonschema.Schema, same func(keys ...string) (string, error)) 
 }
 
 // notRules returns not for the not of s.
-func notRules(s *jsonschema.Schema, same func(keys ...string) (string, error)) ([]string, error) {
-	if s.Not == nil {
+func notRules(
+	s *jsonschema.Schema,
+	same func(keys ...string) (string, error),
+	keep func(kw string) bool,
+) ([]string, error) {
+	if s.Not == nil || !keep("not") {
 		return nil, nil
 	}
 
@@ -447,8 +487,9 @@ func ifRules(
 	s *jsonschema.Schema,
 	same func(keys ...string) (string, error),
 	annotated bool,
+	keep func(kw string) bool,
 ) ([]string, error) {
-	if s.If == nil || s.Then == nil && s.Else == nil && !annotated {
+	if s.If == nil || !keep("if") || s.Then == nil && s.Else == nil && !annotated {
 		return nil, nil
 	}
 
@@ -482,10 +523,11 @@ func refRules(
 	opts Options,
 	ptr string,
 	annotated bool,
+	keep func(kw string) bool,
 	stack []string,
 ) ([]string, error) {
 	s, err := at(doc, ptr)
-	if err != nil || s.Ref.IsNone() {
+	if err != nil || s.Ref.IsNone() || !keep("$ref") {
 		return nil, err
 	}
 
@@ -511,7 +553,7 @@ func refRules(
 				" or a schema declaring no type")
 	}
 
-	return rulesOf(doc, opts, target, annotated, stack)
+	return rulesOf(doc, opts, target, annotated, everyKeyword, stack)
 }
 
 // namedBy returns the validator applying the type the schema at ptr

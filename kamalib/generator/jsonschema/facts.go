@@ -32,8 +32,9 @@ var shapeKeywords = []string{
 	"items", "allOf", "anyOf", "oneOf",
 }
 
-// ruleKeywords hold subschemas that only the validators of raw JSON text
-// express, so that a schema holding one is raw JSON text.
+// ruleKeywords hold subschemas that no Go type expresses. The validators
+// of raw JSON text check them, on raw JSON text itself or on a typed value
+// encoded as JSON, as bridged tells.
 var ruleKeywords = []string{
 	"not", "if", "then", "else", "prefixItems", "patternProperties", "dependentSchemas",
 	"unevaluatedItems", "unevaluatedProperties", "contains", "propertyNames",
@@ -239,18 +240,22 @@ func refAlone(s *jsonschema.Schema) bool {
 	return s.Ref.IsSome() && slices.Equal(constraining(s), []string{"$ref"})
 }
 
-// ruleOnly reports whether s holds a keyword of ruleKeywords or a $ref next
-// to other keywords, which make it raw JSON text.
-func ruleOnly(s *jsonschema.Schema) bool {
+// refBeside reports whether s holds a $ref next to other keywords
+// restricting the values, which makes it raw JSON text checked against
+// both.
+func refBeside(s *jsonschema.Schema) bool { return s.Ref.IsSome() && !refAlone(s) }
+
+// holdsRuleKeyword reports whether s holds a keyword of ruleKeywords.
+func holdsRuleKeyword(s *jsonschema.Schema) bool {
 	// present builds a map per call, which this hot predicate cannot afford.
 	return s.Not != nil || s.If != nil || s.Then != nil || s.Else != nil ||
 		s.PrefixItems != nil || s.PatternProperties != nil || s.DependentSchemas != nil ||
 		s.UnevaluatedItems != nil || s.UnevaluatedProperties != nil || s.Contains != nil ||
-		s.PropertyNames != nil || s.Ref.IsSome() && !refAlone(s)
+		s.PropertyNames != nil
 }
 
 // ruled reports whether the schema at ptr sits in the validators of
-// another schema: under a keyword of ruleKeywords or under a schema of raw
+// another schema: under a keyword bridged tells or under a schema of raw
 // JSON text, through no $defs. Its keywords check the part of the value it
 // applies to, and it declares no Go type.
 //
@@ -268,7 +273,7 @@ func ruled(doc *jsonschema.Schema, ptr string) bool {
 		case kw == "$defs":
 			in = false
 		case !in:
-			in = slices.Contains(ruleKeywords, kw) || rawFrom(doc, ptr[:start], cur)
+			in = rawFrom(doc, ptr[:start], cur) || bridged(doc, ptr[:start], cur, kw)
 		}
 
 		if cur = stepInto(cur, kw, key); cur == nil {
@@ -485,7 +490,7 @@ func resolvedFrom(
 		switch {
 		case refAlone(s):
 			ptr, err = refTarget(doc, ptr)
-		case transparentAllOf(s):
+		case transparentAllOf(doc, ptr, s):
 			ptr = child(ptr, "allOf", "0")
 		default:
 			return ptr, s, nil
@@ -502,10 +507,45 @@ func resolvedFrom(
 	}
 }
 
-// transparentAllOf reports whether s is an allOf of one member whose type
-// it keeps: no other keyword restricts the values.
-func transparentAllOf(s *jsonschema.Schema) bool {
-	return len(s.AllOf) == 1 && slices.Equal(constraining(s), []string{"allOf"})
+// transparentAllOf reports whether the schema s at ptr is an allOf of one
+// member whose type it keeps: no other keyword restricts the values but a
+// type naming every kind the type of the member names, which then admits
+// nothing the member does not. A type naming null makes a nullable value,
+// which the member does not tell.
+func transparentAllOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
+	if len(s.AllOf) != 1 || slices.Contains(s.Type.Names, "null") {
+		return false
+	}
+
+	switch c := constraining(s); {
+	case slices.Equal(c, []string{"allOf"}):
+		return true
+	case !slices.Equal(c, []string{"type", "allOf"}):
+		return false
+	}
+
+	var seen []string
+
+	for m := child(ptr, "allOf", "0"); ; {
+		ms, err := at(doc, m)
+		if err != nil || slices.Contains(seen, m) {
+			return false
+		}
+
+		seen = append(seen, m)
+
+		if !refAlone(ms) {
+			return !ms.Type.IsZero() && opiter.WrapSeq(slices.Values(ms.Type.Names)).
+				Every(func(k string) bool {
+					return slices.Contains(s.Type.Names, k) ||
+						k == "integer" && slices.Contains(s.Type.Names, "number")
+				})
+		}
+
+		if m, err = refTarget(doc, m); err != nil {
+			return false
+		}
+	}
 }
 
 // unionKeyword returns "oneOf" or "anyOf", whichever s holds, or "".
@@ -534,17 +574,19 @@ func typeKinds(s *jsonschema.Schema) []string {
 func multiKind(s *jsonschema.Schema) bool {
 	k := typeKinds(s)
 
-	return len(k) >= 2 && len(shapesOtherThan(s, "type")) == 0 && !ruleOnly(s) &&
+	return len(k) >= 2 && len(shapesOtherThan(s, "type")) == 0 && !refBeside(s) &&
 		opiter.WrapSeq(slices.Values(k)).
 			Every(func(k string) bool { return slices.Contains(scalarKinds, k) })
 }
 
 // raw reports whether the Go type of the schema at ptr is raw JSON text,
-// jsontext.Value: a boolean schema, a schema holding a keyword only
-// validators express, as ruleOnly tells, a schema of every kind, of several
-// kinds that make no union or of null only, an object that makes neither a
-// struct nor a map, an allOf, a oneOf or an anyOf that makes no product or
-// union, and an enum or a const of other than one scalar kind.
+// jsontext.Value: a boolean schema, a $ref next to other keywords, a
+// schema of every kind, of several kinds that make no union or of null
+// only, a nullable value holding a keyword its Go type leaves to the
+// validators of the value encoded as JSON, as bridged tells, since neither
+// an absent value nor the opt.Option of a nullable root is checked, an object that makes neither a
+// struct nor a map, and
+// an enum or a const of other than one scalar kind.
 // A schema without type is of every kind, whatever keywords it holds. Its
 // keywords apply to the value of each kind they test, as validators of raw
 // JSON text do.
@@ -564,12 +606,12 @@ func rawFrom(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
 	switch {
 	case err != nil:
 		return false
-	case s.Bool.IsSome() || ruleOnly(s):
+	case s.Bool.IsSome() || refBeside(s) || nullableType(s) && len(bridging(doc, r, s)) > 0:
 		return true
 	case union(s) || structKind(s) || product(doc, r, s) || stringEnum(s) ||
 		nullableUnion(doc, r):
 		return false
-	case objectKind(s) && !mapOnly(s) || unionKeyword(s) != "" || s.AllOf != nil:
+	case objectKind(s) && !mapOnly(s):
 		return true
 	}
 
@@ -616,7 +658,7 @@ func nullableUnion(doc *jsonschema.Schema, ptr string) bool {
 	kw := unionKeyword(s)
 	members := listOf(s, kw)
 
-	if len(members) != 2 || len(shapesOtherThan(s, kw, "type")) > 0 {
+	if len(members) != 2 || len(shapesOtherThan(s, kw, "type")) > 0 || holdsRuleKeyword(s) {
 		return false
 	}
 
@@ -694,16 +736,17 @@ func objectKind(s *jsonschema.Schema) bool {
 }
 
 // mapOnly reports whether the object s describes is a map: it declares no
-// property and gives additionalProperties a schema.
+// property and gives additionalProperties a schema applying to every
+// member, which no patternProperties narrows.
 func mapOnly(s *jsonschema.Schema) bool {
-	return s.Properties == nil && s.Required == nil && s.AdditionalProperties != nil &&
-		s.AdditionalProperties.Bool.IsNone()
+	return s.Properties == nil && s.Required == nil && s.PatternProperties == nil &&
+		s.AdditionalProperties != nil && s.AdditionalProperties.Bool.IsNone()
 }
 
 // stringEnum reports whether s is an enum of strings, which makes a named
 // string type.
 func stringEnum(s *jsonschema.Schema) bool {
-	return len(s.Enum) > 0 && !ruleOnly(s) && opiter.WrapSeq(slices.Values(s.Enum)).
+	return len(s.Enum) > 0 && !refBeside(s) && opiter.WrapSeq(slices.Values(s.Enum)).
 		Every(func(v jsontext.Value) bool { return v.Kind() == '"' })
 }
 
@@ -715,7 +758,7 @@ func stringEnum(s *jsonschema.Schema) bool {
 // are spelled by built-in types.
 func declares(doc *jsonschema.Schema, ptr string) bool {
 	s, err := at(doc, ptr)
-	if err != nil || s.Bool.IsSome() || refAlone(s) || transparentAllOf(s) ||
+	if err != nil || s.Bool.IsSome() || refAlone(s) || transparentAllOf(doc, ptr, s) ||
 		nullableUnion(doc, ptr) || ruled(doc, ptr) {
 		return false
 	}
@@ -725,29 +768,30 @@ func declares(doc *jsonschema.Schema, ptr string) bool {
 }
 
 // union reports whether s holds a oneOf, an anyOf or a type of two or more
-// kinds, and no other keyword restricts the values, type included. It does not
-// tell a nullable union apart, which declares no union: callers that need
-// the difference ask nullableUnion, as declares does.
+// kinds, as multiKind tells, and no $ref beside. The other keywords of s
+// check the value of each member through the validators of its wrapper, as
+// bridged tells. It does not tell a nullable union apart, which declares no
+// union: callers that need the difference ask nullableUnion, as declares
+// does.
 func union(s *jsonschema.Schema) bool {
-	kw := unionKeyword(s)
-	if kw == "" {
+	if unionKeyword(s) == "" {
 		return multiKind(s)
 	}
 
-	return s.Type.IsZero() && len(shapesOtherThan(s, kw)) == 0 && !ruleOnly(s) &&
-		len(presentValidation(s)) == 0
+	return !refBeside(s)
 }
 
 // product reports whether the schema s at ptr is an allOf of objects that
 // each give a field, a struct holding them and its own properties: no
-// other keyword restricts the values but type naming object, properties,
+// other keyword shapes the values but type naming object, properties,
 // required and additionalProperties true, every member is a struct taking
-// any member besides its own and counting none, and no two of the members
-// and s declare one member differently.
+// any member besides its own, counting none and checking nothing on the
+// value encoded as JSON, which would miss the members of the others, and
+// no two of the members and s declare one member differently. The other
+// keywords of s check the product as bridged tells.
 func product(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
 	other := shapesOtherThan(s, "allOf", "type", "properties", "required", "additionalProperties")
-	if len(s.AllOf) == 0 || transparentAllOf(s) || len(other) > 0 || ruleOnly(s) ||
-		len(presentValidation(s)) > 0 ||
+	if len(s.AllOf) == 0 || transparentAllOf(doc, ptr, s) || len(other) > 0 || refBeside(s) ||
 		!s.Type.IsZero() && !slices.Equal(s.Type.Names, []string{"object"}) ||
 		s.AdditionalProperties != nil && s.AdditionalProperties.Bool != opt.Some(true) ||
 		!fitsTags(s) {
@@ -767,7 +811,8 @@ func product(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
 
 	for i := range s.AllOf {
 		r, rs, err := resolved(doc, child(ptr, "allOf", strconv.Itoa(i)))
-		if err != nil || !structKind(rs) || closed(rs) || len(present(rs, countKeywords)) > 0 {
+		if err != nil || !structKind(rs) || closed(rs) || len(present(rs, countKeywords)) > 0 ||
+			len(bridging(doc, r, rs)) > 0 {
 			return false
 		}
 
@@ -788,14 +833,31 @@ func product(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
 }
 
 // structKind reports whether s is an object that becomes a struct: its
-// type names object, no keyword makes it raw JSON text or a map, and every
-// member it requires has a property whose name fits a json tag.
+// type names object, no keyword makes it raw JSON text, a map or a union,
+// and every property name fits a json tag. A struct holding an allOf may
+// be a product too, as product tells. Otherwise the members of the allOf
+// check it as bridged tells.
 func structKind(s *jsonschema.Schema) bool {
-	return s.Enum == nil && s.Const == nil && s.AllOf == nil && unionKeyword(s) == "" &&
-		objectKind(s) &&
-		!mapOnly(s) && !ruleOnly(s) && fitsTags(s) &&
-		opiter.WrapSeq(slices.Values(s.Required)).
-			Every(func(n string) bool { _, ok := s.Properties.Get(n); return ok })
+	return s.Enum == nil && s.Const == nil && unionKeyword(s) == "" &&
+		objectKind(s) && !mapOnly(s) && !refBeside(s) && fitsTags(s)
+}
+
+// productOf returns the members of the allOf of the schema s at ptr when
+// it is a product, each giving a field, and none otherwise.
+func productOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []*jsonschema.Schema {
+	if !product(doc, ptr, s) {
+		return nil
+	}
+
+	return s.AllOf
+}
+
+// requiresUndeclared reports whether the object s requires a member it
+// declares no property for, which only the validators of raw JSON text
+// check.
+func requiresUndeclared(s *jsonschema.Schema) bool {
+	return opiter.WrapSeq(slices.Values(s.Required)).
+		Any(func(n string) bool { _, ok := s.Properties.Get(n); return !ok })
 }
 
 // fitsTags reports whether every property name of s fits a json tag.
@@ -964,7 +1026,7 @@ func byValue(
 	s *jsonschema.Schema,
 ) iter.Seq2[string, *jsonschema.Schema] {
 	return func(yield func(string, *jsonschema.Schema) bool) {
-		for i, m := range s.AllOf {
+		for i, m := range productOf(doc, ptr, s) {
 			if m == nil {
 				continue
 			}

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T14:57:54Z
+// generated: 2026-11-24T15:22:48Z
 
 package subschema
 
@@ -147,20 +147,42 @@ func (v Address) RawJson() jsontext.Value {
 
 // Labels is generated from the schema at #/$defs/Labels.
 //
-//kama:validate kind="object"
-//kama:validate props(match("^x-", kind="string"), rest(kind="integer"))
+//kama:validate hook=off
+//kama:validate json(props(match("^x-", kind="string"), rest(kind="integer")))
 //kama:generated kama:jsonschema
-type Labels jsontext.Value
+type Labels struct {
+	_x map[string]jsontext.Value `json:",embed"`
+}
 
-// MarshalJSONTo encodes v as its underlying type.
+// AdditionalProperties returns the members of the object that Labels
+// declares no field for.
+//
+//kama:generated kama:jsonschema
+func (v Labels) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
 //
 //kama:generated kama:jsonschema
 func (v Labels) MarshalJSONTo(enc *jsontext.Encoder) error {
-	return json.MarshalEncode(enc, jsontext.Value(v))
+	type plain struct {
+		AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{AdditionalProperties: v._x})
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// labelsWire keeps a missing member of Labels apart from null.
+//
+//kama:generated kama:jsonschema
+type labelsWire struct {
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Labels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -168,37 +190,34 @@ func (v *Labels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	var w labelsWire
+	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Labels(out), false); err != nil {
+	var out Labels
+	var errs []error
+	out._x = w.AdditionalProperties
+	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	*v = Labels(out)
+	if err := jsonschemart.Validate(out, false); err != nil {
+		return err
+	}
+	*v = out
 	return nil
-}
-
-// RawJson returns v as raw JSON text, which tells the validators to check v
-// as JSON Schema does.
-//
-//kama:generated kama:jsonschema
-func (v Labels) RawJson() jsontext.Value {
-	return jsontext.Value(v)
 }
 
 // Point is generated from the schema at #/$defs/Point.
 //
-//kama:validate kind="array"
-//kama:validate prefix(kind="number", kind="number", rest(kind="string"))
+//kama:validate json(prefix(kind="number", kind="number", rest(kind="string")))
 //kama:generated kama:jsonschema
-type Point jsontext.Value
+type Point []jsontext.Value
 
 // MarshalJSONTo encodes v as its underlying type.
 //
 //kama:generated kama:jsonschema
 func (v Point) MarshalJSONTo(enc *jsontext.Encoder) error {
-	return json.MarshalEncode(enc, jsontext.Value(v))
+	return json.MarshalEncode(enc, []jsontext.Value(v))
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
@@ -210,7 +229,7 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var out jsontext.Value
+	var out []jsontext.Value
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
@@ -221,26 +240,17 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	return nil
 }
 
-// RawJson returns v as raw JSON text, which tells the validators to check v
-// as JSON Schema does.
-//
-//kama:generated kama:jsonschema
-func (v Point) RawJson() jsontext.Value {
-	return jsontext.Value(v)
-}
-
 // Tags is generated from the schema at #/$defs/Tags.
 //
-//kama:validate kind="array"
-//kama:validate contains(>=1, <=2, const="`\"go\"`")
+//kama:validate json(contains(>=1, <=2, const="`\"go\"`"))
 //kama:generated kama:jsonschema
-type Tags jsontext.Value
+type Tags []jsontext.Value
 
 // MarshalJSONTo encodes v as its underlying type.
 //
 //kama:generated kama:jsonschema
 func (v Tags) MarshalJSONTo(enc *jsontext.Encoder) error {
-	return json.MarshalEncode(enc, jsontext.Value(v))
+	return json.MarshalEncode(enc, []jsontext.Value(v))
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
@@ -252,7 +262,7 @@ func (v *Tags) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var out jsontext.Value
+	var out []jsontext.Value
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
@@ -263,30 +273,44 @@ func (v *Tags) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	return nil
 }
 
-// RawJson returns v as raw JSON text, which tells the validators to check v
-// as JSON Schema does.
-//
-//kama:generated kama:jsonschema
-func (v Tags) RawJson() jsontext.Value {
-	return jsontext.Value(v)
-}
-
 // Keys is generated from the schema at #/$defs/Keys.
 //
-//kama:validate kind="object"
-//kama:validate keys(regexp="^[a-z]+$")
+//kama:validate hook=off
+//kama:validate json(keys(regexp="^[a-z]+$"))
 //kama:generated kama:jsonschema
-type Keys jsontext.Value
+type Keys struct {
+	_x map[string]jsontext.Value `json:",embed"`
+}
 
-// MarshalJSONTo encodes v as its underlying type.
+// AdditionalProperties returns the members of the object that Keys declares
+// no field for.
+//
+//kama:generated kama:jsonschema
+func (v Keys) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
 //
 //kama:generated kama:jsonschema
 func (v Keys) MarshalJSONTo(enc *jsontext.Encoder) error {
-	return json.MarshalEncode(enc, jsontext.Value(v))
+	type plain struct {
+		AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{AdditionalProperties: v._x})
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// keysWire keeps a missing member of Keys apart from null.
+//
+//kama:generated kama:jsonschema
+type keysWire struct {
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -294,41 +318,61 @@ func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	var w keysWire
+	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Keys(out), false); err != nil {
+	var out Keys
+	var errs []error
+	out._x = w.AdditionalProperties
+	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	*v = Keys(out)
+	if err := jsonschemart.Validate(out, false); err != nil {
+		return err
+	}
+	*v = out
 	return nil
-}
-
-// RawJson returns v as raw JSON text, which tells the validators to check v
-// as JSON Schema does.
-//
-//kama:generated kama:jsonschema
-func (v Keys) RawJson() jsontext.Value {
-	return jsontext.Value(v)
 }
 
 // Payment is generated from the schema at #/$defs/Payment.
 //
-//kama:validate kind="object"
-//kama:validate if(required="card", required="billing")
+//kama:validate hook=off
+//kama:validate json(if(required="card", required="billing"))
 //kama:generated kama:jsonschema
-type Payment jsontext.Value
+type Payment struct {
+	_x map[string]jsontext.Value `json:",embed"`
+}
 
-// MarshalJSONTo encodes v as its underlying type.
+// AdditionalProperties returns the members of the object that Payment
+// declares no field for.
+//
+//kama:generated kama:jsonschema
+func (v Payment) AdditionalProperties() map[string]jsontext.Value {
+	return v._x
+}
+
+// MarshalJSONTo encodes v as one JSON object, the members
+// AdditionalProperties returns included.
 //
 //kama:generated kama:jsonschema
 func (v Payment) MarshalJSONTo(enc *jsontext.Encoder) error {
-	return json.MarshalEncode(enc, jsontext.Value(v))
+	type plain struct {
+		AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	}
+	return json.MarshalEncode(enc, plain{AdditionalProperties: v._x})
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// paymentWire keeps a missing member of Payment apart from null.
+//
+//kama:generated kama:jsonschema
+type paymentWire struct {
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
+// decode stops it. Otherwise it reports every member the schema rejects. A
+// value whose members all convert must pass Validate.
 //
 //kama:generated kama:jsonschema
 func (v *Payment) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -336,23 +380,21 @@ func (v *Payment) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err != nil {
 		return err
 	}
-	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	var w paymentWire
+	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Payment(out), false); err != nil {
+	var out Payment
+	var errs []error
+	out._x = w.AdditionalProperties
+	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	*v = Payment(out)
+	if err := jsonschemart.Validate(out, false); err != nil {
+		return err
+	}
+	*v = out
 	return nil
-}
-
-// RawJson returns v as raw JSON text, which tells the validators to check v
-// as JSON Schema does.
-//
-//kama:generated kama:jsonschema
-func (v Payment) RawJson() jsontext.Value {
-	return jsontext.Value(v)
 }
 
 // Strict is generated from the schema at #/$defs/Strict.

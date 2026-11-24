@@ -67,12 +67,28 @@ func placeKind(doc *jsonschema.Schema, ptr string) string {
 
 // valueArgs returns the args of //kama:validate checking the validation
 // keywords of the schema at ptr itself on a Go value of kind, and the
+// keywords that apply to kind and that no arg checks: those kindArgs
+// gives, then json(...) for the keywords the Go type leaves to the
+// validators of raw JSON text, as jsonArgs tells.
+func valueArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string, []string) {
+	args, unchecked := kindArgs(doc, opts, ptr, kind)
+	if kind == "" || kind == "raw" {
+		return args, unchecked
+	}
+
+	bridge, _ := jsonArgs(doc, opts, ptr)
+
+	return append(args, bridge...), unchecked
+}
+
+// kindArgs returns the args of //kama:validate checking the validation
+// keywords of the schema at ptr itself on a Go value of kind, and the
 // keywords that apply to kind and that no arg checks. A keyword applying
 // to another kind of value holds for a value of kind, so it gives neither.
 // The args of a struct are those of the struct as a whole, which typeArgs
 // gives. The args of raw JSON text are those rawRules gives, which check
 // every keyword but a pattern RE2 does not compile.
-func valueArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string, []string) {
+func kindArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string, []string) {
 	s, err := at(doc, ptr)
 	if err != nil {
 		return nil, nil
@@ -128,10 +144,6 @@ func valueArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string
 	case "map":
 		if l := lengths(s.MinProperties, s.MaxProperties); l != "" {
 			args = append(args, "length="+quoteArg(l))
-		}
-
-		if s.DependentRequired != nil {
-			unchecked = append(unchecked, "dependentRequired")
 		}
 	case "":
 		unchecked = append(unchecked, presentValidation(s)...)
@@ -255,15 +267,20 @@ func presentValidation(s *jsonschema.Schema) []string {
 // ptr declares, and the keywords that apply to its value and that no arg
 // checks. A struct or a product takes hook=off, its hooks being unwritten,
 // and the validators of the object as a whole. A union takes none, its
-// holder having a Validate of its own.
+// holder having a Validate of its own, and its wrappers take the
+// validators of its keywords, as unionArgs tells.
 func typeArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, []string) {
 	s, err := at(doc, ptr)
 	if err != nil {
 		return nil, nil
 	}
 
+	if union(s) && !nullable(doc, ptr) {
+		return nil, rawUnchecked(s)
+	}
+
 	if !structKind(s) && !product(doc, ptr, s) {
-		if ptr == "" && nullable(doc, ptr) {
+		if ptr == "" && nullable(doc, ptr) && !raw(doc, ptr) {
 			// The root is an opt.Option, a struct of another package, which
 			// takes no validator of its value.
 			_, unchecked := valueArgs(doc, opts, ptr, "")
@@ -275,29 +292,28 @@ func typeArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, []str
 
 	args := []string{"hook=off"}
 
-	if closed(s) {
+	if closed(s) && !bridged(doc, ptr, s, "additionalProperties") {
 		args = append(args, "closed")
 	}
 
 	members := comparisons(
 		map[string]jsontext.Value{">=": s.MinProperties, "<=": s.MaxProperties}, integerText,
 	)
-	if members != "" {
+	if members != "" && !bridged(doc, ptr, s, "minProperties") {
 		args = append(args, "members="+quoteArg(members))
 	}
 
-	// A member without a property has no field to read or to test.
-	undeclared := func(n string) bool { _, ok := s.Properties.Get(n); return !ok }
+	bridge, _ := jsonArgs(doc, opts, ptr)
 
-	unfit := opiter.WrapSeq2(opiter.MapsSorted(s.DependentRequired)).
-		Any(func(key string, deps []string) bool {
-			return undeclared(key) || slices.ContainsFunc(deps, undeclared)
-		})
-	if unfit {
-		return args, []string{"dependentRequired"}
-	}
+	return append(args, bridge...), nil
+}
 
-	return args, nil
+// unionArgs returns the args of //kama:validate on each wrapper of the
+// union at ptr: hook=off, its hooks being unwritten, and the validators of
+// the keywords of the union, which check the value of every member.
+func unionArgs(doc *jsonschema.Schema, opts Options, ptr string) []string {
+	bridge, _ := jsonArgs(doc, opts, ptr)
+	return append([]string{"hook=off"}, bridge...)
 }
 
 // declArgs returns the args of //kama:validate on the type the schema at
@@ -360,7 +376,7 @@ func named(doc *jsonschema.Schema, ptr string) bool {
 // property is no field; typeArgs reports it.
 func dependentArgs(doc *jsonschema.Schema, ptr, name string) []string {
 	s, err := at(doc, ptr)
-	if err != nil {
+	if err != nil || bridged(doc, ptr, s, "dependentRequired") {
 		return nil
 	}
 
@@ -453,7 +469,7 @@ func valueType(doc *jsonschema.Schema, ptr string) bool {
 	}
 
 	s, err := at(doc, ptr)
-	if err != nil || s.Bool.IsSome() || refAlone(s) || transparentAllOf(s) ||
+	if err != nil || s.Bool.IsSome() || refAlone(s) || transparentAllOf(doc, ptr, s) ||
 		nullableUnion(doc, ptr) || unionMember(ptr) && nullMember(doc, ptr) || ruled(doc, ptr) {
 		return false
 	}
@@ -464,13 +480,15 @@ func valueType(doc *jsonschema.Schema, ptr string) bool {
 		return constrains(s)
 	}
 
-	if union(s) || s.AllOf != nil || stringEnum(s) || structKind(s) {
+	if union(s) || product(doc, ptr, s) || stringEnum(s) || structKind(s) {
 		return false
 	}
 
-	args, _ := valueArgs(doc, Options{}, ptr, placeKind(doc, ptr))
+	// The args of json(...) may name this very type through decode, so the
+	// keywords it checks rather than its args tell.
+	args, _ := kindArgs(doc, Options{}, ptr, placeKind(doc, ptr))
 
-	return len(args) > 0
+	return len(args) > 0 || len(bridging(doc, ptr, s)) > 0
 }
 
 // unionMember reports whether ptr is the schema of a member of a oneOf or

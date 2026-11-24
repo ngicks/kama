@@ -185,6 +185,7 @@
 //	keys(<v>, ...)        the errors of the operands, at their members
 //	unevalprops(<s>, ...) the errors of s and of the operands
 //	unevalitems(<s>, ...) the errors of s and of the operands
+//	json(<v>, ...)        the errors of the operands, validation.ErrEncode
 //
 // required takes no arg, except member names on raw JSON text, as told
 // below. The value is not the zero value: an opt.Option
@@ -348,6 +349,14 @@
 // name of each member as a JSON string. unevalprops and unevalitems take
 // the scope first. Each applies to raw JSON text only and passes a value
 // of another kind.
+//
+// json takes the validators of raw JSON text as operands and applies them
+// to the value of any other type encoded as JSON, as in
+// //kama:validate json(not(required=x), props(match("^x-", kind=string))) on
+// a struct. It applies to the value a pointer, an opt.Option or an und.Und
+// holds, so a value holding none is not checked. It is a StructRule too, so
+// the doc comment of a struct type takes it. A value that does not encode
+// is an error wrapping validation.ErrEncode.
 //
 // A validator with several comparisons, as length, runes, cmp and members
 // take, checks them all. With stopOnFirstError true it returns the first

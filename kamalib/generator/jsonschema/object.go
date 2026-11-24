@@ -32,7 +32,7 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	lead := name + " is generated from the schema at #" + ptr + "."
-	if s.AllOf != nil {
+	if product(doc, ptr, s) {
 		lead = name + " is all of " + parts + ". It is generated from the schema at #" + ptr + "."
 	}
 
@@ -41,7 +41,7 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		lang.Stmt("type %s struct {", name),
 	}
 
-	for i := range s.AllOf {
+	for i := range productOf(doc, ptr, s) {
 		steps = append(steps, lang.Stmt(
 			"%s %s `json:\"-\"`",
 			memberField(doc, opts, ptr, i),
@@ -92,14 +92,14 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 
 // extraType spells the Go type of the values of the members the struct or
 // product at ptr declares no field for: the type of its additionalProperties
-// schema, else raw JSON text.
+// schema, unless patternProperties takes some of them, else raw JSON text.
 func extraType(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	s, err := at(doc, ptr)
 	if err != nil {
 		return lang.FailGen(err)
 	}
 
-	if extraMembers(s) {
+	if extraMembers(s) && !bridged(doc, ptr, s, "additionalProperties") {
 		return elemType(doc, opts, child(ptr, "additionalProperties"))
 	}
 
@@ -116,7 +116,7 @@ func productParts(doc *jsonschema.Schema, opts Options, ptr string) (string, err
 	}
 
 	names, err := opiter.TryCollect(
-		opiter.WrapSeq(opiter.Range(0, len(s.AllOf))).
+		opiter.WrapSeq(opiter.Range(0, len(productOf(doc, ptr, s)))).
 			Disassemble(func(i int) (string, error) { return memberName(doc, opts, ptr, i) }),
 	)
 	if err != nil {
@@ -124,7 +124,7 @@ func productParts(doc *jsonschema.Schema, opts Options, ptr string) (string, err
 	}
 
 	text := strings.Join(names, ", ")
-	if s.AllOf != nil && s.Properties != nil {
+	if product(doc, ptr, s) && s.Properties != nil {
 		text += " and its own properties"
 	}
 
@@ -152,7 +152,7 @@ func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	text := "MarshalJSONTo encodes v as one JSON object, the members AdditionalProperties " +
 		"returns included."
 
-	if s.AllOf != nil {
+	if product(doc, ptr, s) {
 		parts, err := productParts(doc, opts, ptr)
 		if err != nil {
 			return []genStep{lang.Fail(err)}
@@ -190,13 +190,13 @@ func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	inits = append(inits, lang.Expr("AdditionalProperties: v._x"))
 	value := lang.Expr("plain{%s}", lang.Join(", ", inits...))
 
-	if s.AllOf == nil {
+	if !product(doc, ptr, s) {
 		body = append(body, lang.Stmt("return %s(enc, %s)", q(jsonPath, "MarshalEncode"), value))
 
 		return []genStep{lang.DocFunc(docComment(text), sig, body...)}
 	}
 
-	values := opiter.WrapSeq(opiter.Range(0, len(s.AllOf))).
+	values := opiter.WrapSeq(opiter.Range(0, len(productOf(doc, ptr, s)))).
 		Map(func(i int) genExpr { return lang.Expr("v.%s", memberField(doc, opts, ptr, i)) }).
 		CollectSlice()
 
@@ -295,7 +295,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 
 	text := "UnmarshalJSONFrom decodes v from one JSON object. "
 
-	if s.AllOf != nil {
+	if product(doc, ptr, s) {
 		parts, err := productParts(doc, opts, ptr)
 		if err != nil {
 			return []genStep{lang.Fail(err)}
@@ -323,7 +323,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 		lang.Stmt("var errs []error"),
 	}
 
-	for i := range s.AllOf {
+	for i := range productOf(doc, ptr, s) {
 		body = append(body, lang.Stmt(
 			"errs = append(errs, %s(raw, &out.%s))",
 			q(runtimePath, "Unmarshal"), memberField(doc, opts, ptr, i),
@@ -371,14 +371,14 @@ func extraSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		return []genStep{lang.Fail(err)}
 	}
 
-	if s.AllOf == nil {
+	if !product(doc, ptr, s) {
 		return []genStep{lang.Stmt("out._x = w.AdditionalProperties")}
 	}
 
 	args := append([]string{"w.AdditionalProperties"}, quoteAll(declaredMembers(doc, ptr, nil))...)
 	steps := []genStep{lang.Stmt("out._x = %s(%s)", q(runtimePath, "Omit"), joinComma(args))}
 
-	for i := range s.AllOf {
+	for i := range productOf(doc, ptr, s) {
 		if r, rs, err := resolved(doc, child(ptr, "allOf", strconv.Itoa(i))); err == nil &&
 			(structKind(rs) || product(doc, r, rs)) {
 			steps = append(steps, lang.Stmt("out.%s._x = nil", memberField(doc, opts, ptr, i)))

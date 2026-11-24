@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Order",
+  "description": "Order keeps its struct next to keywords no Go type expresses.",
+  "type": "object",
+  "properties": {
+    "kind": {"type": "string", "enum": ["card", "cash"]},
+    "card": {"type": "string"},
+    "note": {"type": "string", "not": {"const": "x"}},
+    "lines": {"type": "array", "items": {"type": "integer"}, "contains": {"const": 0}, "maxContains": 1},
+    "counts": {"$ref": "#/$defs/Counts"}
+  },
+  "required": ["kind", "id"],
+  "if": {"properties": {"kind": {"const": "card"}}},
+  "then": {"required": ["card"]},
+  "else": {"not": {"required": ["card"]}},
+  "dependentSchemas": {"note": {"required": ["lines"]}},
+  "patternProperties": {"^x-": {"type": "string"}},
+  "propertyNames": {"maxLength": 8},
+  "$defs": {
+    "Shape": {
+      "type": "object",
+      "minProperties": 1,
+      "not": {"properties": {"r": {"const": 0}}, "required": ["r"]},
+      "oneOf": [{"$ref": "#/$defs/Circle"}, {"$ref": "#/$defs/Square"}]
+    },
+    "Circle": {
+      "type": "object",
+      "properties": {"r": {"type": "number"}},
+      "required": ["r"],
+      "additionalProperties": false
+    },
+    "Square": {
+      "type": "object",
+      "properties": {"side": {"type": "number"}},
+      "required": ["side"],
+      "additionalProperties": false
+    },
+    "Named": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]},
+    "Aged": {"type": "object", "properties": {"age": {"type": "integer"}}},
+    "Person": {
+      "allOf": [{"$ref": "#/$defs/Named"}, {"$ref": "#/$defs/Aged"}],
+      "not": {"required": ["nick"]}
+    },
+    "Bounded": {
+      "type": "object",
+      "properties": {"lo": {"type": "integer"}, "hi": {"type": "integer"}},
+      "allOf": [{"required": ["lo"]}, {"not": {"required": ["x"]}}]
+    },
+    "Wrapped": {"type": "object", "allOf": [{"$ref": "#/$defs/Named"}]},
+    "Sealed": {
+      "type": "object",
+      "properties": {"a": {"type": "integer"}},
+      "patternProperties": {"^x-": true},
+      "unevaluatedProperties": false
+    },
+    "Tagged": {
+      "type": "object",
+      "properties": {"a": {"type": "integer"}},
+      "patternProperties": {"^x-": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "Counts": {"type": "object", "additionalProperties": {"type": "integer"}}
+  }
+}

@@ -1,8 +1,10 @@
 package tests
 
 import (
+	"encoding/json/jsontext"
 	"testing"
 
+	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/internal/fixture/model"
@@ -74,5 +76,57 @@ func TestReachTree(t *testing.T) {
 		err := model.Tree(tc.text).Validate(false)
 		assert.ErrorIs(t, err, tc.kind, tc.text)
 		assert.Assert(t, len(validation.At(err, tc.pointer)) > 0, "%s: %v", tc.text, err)
+	}
+}
+
+func TestReachEncoded(t *testing.T) {
+	assert.NilError(t, model.Encoded{A: opt.None[string](), X: nil}.Validate(false))
+	assert.NilError(
+		t,
+		model.Encoded{
+			A: opt.Some("a"),
+			X: map[string]jsontext.Value{"n": jsontext.Value("1")},
+		}.Validate(
+			false,
+		),
+	)
+	assert.NilError(t, model.Pairs{1, 0, 2}.Validate(false))
+
+	cases := []struct {
+		name    string
+		err     error
+		pointer string
+		kind    error
+	}{
+		{"field", model.Encoded{A: opt.Some("b"), X: nil}.Validate(false), "/a", validation.ErrNot},
+		{
+			"rest",
+			model.Encoded{
+				A: opt.None[string](),
+				X: map[string]jsontext.Value{"n": jsontext.Value(`"s"`)},
+			}.
+				Validate(
+					false,
+				),
+			"/n",
+			validation.ErrKind,
+		},
+		{
+			"not",
+			model.Encoded{
+				A: opt.None[string](),
+				X: map[string]jsontext.Value{"x": jsontext.Value("1")},
+			}.
+				Validate(
+					false,
+				),
+			"",
+			validation.ErrNot,
+		},
+		{"slice", model.Pairs{0, 0}.Validate(false), "", validation.ErrContains},
+	}
+	for _, tc := range cases {
+		assert.ErrorIs(t, tc.err, tc.kind, tc.name)
+		assert.Assert(t, len(validation.At(tc.err, tc.pointer)) > 0, "%s: %v", tc.name, tc.err)
 	}
 }

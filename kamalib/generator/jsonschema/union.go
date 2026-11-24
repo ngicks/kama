@@ -62,11 +62,14 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	for i, m := range names {
 		steps = append(steps, lang.Line(validatedDoc(
 			wrappers[i]+" holds the "+m+" member of "+name+".",
-			[]string{"hook=off"},
+			unionArgs(doc, opts, ptr),
 		)))
+
+		encode := lang.Stmt("return %s(enc, v.%s)", q(jsonPath, "MarshalEncode"), m)
 
 		if isNullMember(doc, ptr, i) {
 			steps = append(steps, lang.Stmt("type %s struct{}", wrappers[i]))
+			encode = lang.Stmt("return enc.WriteToken(%s)", q(jsontextPath, "Null"))
 		} else {
 			steps = append(steps,
 				lang.Stmt("type %s struct {", wrappers[i]),
@@ -78,6 +81,16 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		steps = append(steps,
 			lang.Line(docComment("is"+kind+" marks "+wrappers[i]+" as a "+kind+".")),
 			lang.Stmt("func (%s) is%s() {}", wrappers[i], kind),
+			lang.DocFunc(
+				docComment("MarshalJSONTo encodes the member v holds, which the validators of "+
+					"the value encoded as JSON check."),
+				lang.Expr(
+					"func (v %s) MarshalJSONTo(enc *%s) error",
+					wrappers[i],
+					q(jsontextPath, "Encoder"),
+				),
+				encode,
+			),
 		)
 	}
 
@@ -98,19 +111,14 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 
 	var marshalCases, validateCases []genhelper.Case[genCtx]
 
-	for i, m := range names {
-		marshal := lang.Stmt("return %s(enc, k.%s)", q(jsonPath, "MarshalEncode"), m)
-		validate := lang.Stmt("return %s(k, stopOnFirstError)", q(runtimePath, "Validate"))
-
-		if isNullMember(doc, ptr, i) {
-			marshal = lang.Stmt("return enc.WriteToken(%s)", q(jsontextPath, "Null"))
-			validate = lang.Stmt("return nil")
-		}
-
-		marshalCases = append(marshalCases, lang.Case(lang.Expr("%s", wrappers[i]), marshal))
-		validateCases = append(validateCases, lang.Case(lang.Expr("%s", wrappers[i]), validate))
-	}
-
+	marshalCases = append(marshalCases, lang.Case(
+		lang.Expr("%s", strings.Join(wrappers, ", ")),
+		lang.Stmt("return %s(enc, k)", q(jsonPath, "MarshalEncode")),
+	))
+	validateCases = append(validateCases, lang.Case(
+		lang.Expr("%s", strings.Join(wrappers, ", ")),
+		lang.Stmt("return %s(k, stopOnFirstError)", q(runtimePath, "Validate")),
+	))
 	marshalCases = append(marshalCases,
 		lang.Case(lang.Expr("%s", unknown), lang.Stmt("return enc.WriteValue(k.Value)")),
 	)
@@ -331,7 +339,7 @@ func memberCondition(doc *jsonschema.Schema, ptr string, i int) genExpr {
 		))
 	}
 
-	if closed(rs) {
+	if closed(rs) && !bridged(doc, r, rs, "additionalProperties") {
 		props := opiter.WrapSeq(slices.Values(rs.Properties)).
 			Map(func(n jsonschema.NamedSchema) string { return n.Name }).
 			CollectSlice()

@@ -163,7 +163,7 @@ func memberTypeName(
 	// The value of a nullable union and the member of an allOf of one member
 	// take the name of the schema holding them, which declares no type. The
 	// root declares a type under that name anyway, so its value takes Value.
-	if nullableUnion(doc, parent) || transparentAllOf(ps) {
+	if nullableUnion(doc, parent) || transparentAllOf(doc, parent, ps) {
 		if parent == "" {
 			return p + "Value", nil
 		}

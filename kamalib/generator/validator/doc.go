@@ -413,7 +413,8 @@
 // first, then v.Level.Validate.
 //
 // A struct type takes only validators of the struct as a whole, which
-// implement rule.StructRule, such as members. The rule reads the fields through rule.Struct,
+// implement rule.StructRule, such as members and json. The rule reads the fields through
+// rule.Struct,
 // which names them by the JSON members they encode as. A field takes no
 // rule.StructRule.
 //
@@ -442,6 +443,15 @@
 //	//kama:validate kind=object
 //	//kama:validate props(field("next", ref=Tree), rest(kind=integer))
 //	type Tree jsontext.Value
+//
+// json applies the validators of raw JSON text to a value of any other type
+// encoded as JSON, a struct included:
+//
+//	//kama:validate json(not(required=x), props(match("^x-", kind=string)))
+//	type Labeled struct {
+//		Name string `json:"name"`
+//		X    map[string]jsontext.Value `json:",embed"`
+//	}
 //
 // # Errors of Validate
 //

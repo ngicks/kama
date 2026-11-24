@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T14:57:03Z
+// generated: 2026-11-24T15:16:00Z
 
 package model
 
@@ -127,6 +127,56 @@ func (v Tree) Validate(stopOnFirstError bool) error {
 		}, nil)
 	}, func(m3 jsontext.Value) error {
 		return rawjson.Kind(m3, "null")
+	}); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v Encoded) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+		return kamaValidateAll(stopOnFirstError, kamaValidateNot(rawjson.Required(m, stopOnFirstError, "x"), "required=\"x\""), rawjson.Properties(m, stopOnFirstError, nil, rawjson.Property("a", func(m2 jsontext.Value) error {
+			return error(nil)
+		}), rawjson.Additional(func(m3 jsontext.Value) error {
+			return rawjson.Kind(m3, "integer")
+		})))
+	}); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.A.IsSome() {
+		if err := validation.Field(rawjson.Encoded(v.A.Value(), func(m jsontext.Value) error {
+			return kamaValidateNot(rawjson.Const(m, "\"b\""), "const=\"`\\\"b\\\"`\"")
+		}), "a"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v Pairs) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+		return rawjson.Contains(m, nil, func(m2 jsontext.Value) error {
+			return rawjson.Const(m2, "0")
+		}, rawjson.Count{Op: "<=", N: 1})
 	}); err != nil {
 		if stopOnFirstError {
 			return err

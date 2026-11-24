@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:17Z
+// generated: 2026-11-24T15:22:36Z
 
 package oneofoverlap
 
@@ -45,6 +45,14 @@ type EitherLeft struct {
 //kama:generated kama:jsonschema
 func (EitherLeft) isEitherKind() {}
 
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v EitherLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Left)
+}
+
 // EitherRight holds the Right member of Either.
 //
 //kama:validate hook=off
@@ -57,6 +65,14 @@ type EitherRight struct {
 //
 //kama:generated kama:jsonschema
 func (EitherRight) isEitherKind() {}
+
+// MarshalJSONTo encodes the member v holds, which the validators of the
+// value encoded as JSON check.
+//
+//kama:generated kama:jsonschema
+func (v EitherRight) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return json.MarshalEncode(enc, v.Right)
+}
 
 // EitherUnknown holds a value of Either that no member decodes, or that two
 // members decode. UnmarshalJSONFrom yields it instead of failing, and
@@ -79,10 +95,8 @@ func (EitherUnknown) isEitherKind() {}
 //kama:generated kama:jsonschema
 func (v Either) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch k := v.Kind.(type) {
-	case EitherLeft:
-		return json.MarshalEncode(enc, k.Left)
-	case EitherRight:
-		return json.MarshalEncode(enc, k.Right)
+	case EitherLeft, EitherRight:
+		return json.MarshalEncode(enc, k)
 	case EitherUnknown:
 		return enc.WriteValue(k.Value)
 	}
@@ -96,9 +110,7 @@ func (v Either) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v Either) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case EitherLeft:
-		return jsonschemart.Validate(k, stopOnFirstError)
-	case EitherRight:
+	case EitherLeft, EitherRight:
 		return jsonschemart.Validate(k, stopOnFirstError)
 	case EitherUnknown:
 		return jsonschemart.UnknownMember(k.err)
