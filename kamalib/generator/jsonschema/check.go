@@ -162,10 +162,6 @@ func checkSchema(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []err
 			"meta-schema %q is not that of draft 2020-12", s.Schema.Value()))
 	}
 
-	if ptr != "" && s.Id.IsSome() {
-		errs = append(errs, unsupported(child(ptr, "$id"), "a schema resource other than the root"))
-	}
-
 	if !s.Type.IsZero() {
 		errs = append(errs, checkType(ptr, s)...)
 	}

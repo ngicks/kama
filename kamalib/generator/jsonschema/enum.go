@@ -3,6 +3,7 @@ package jsonschema
 import (
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
+	"slices"
 	"strconv"
 
 	"github.com/ngicks/opiter"
@@ -79,7 +80,10 @@ func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 }
 
 // enumConst names the constant of the value i of the enum at ptr: the name
-// of the type followed by the Go name of the value.
+// of the type followed by the Go name of the value. A value giving no Go
+// name takes "Value" followed by its 1-based index. A name an earlier value
+// of the enum already takes is followed by the least number from 2 up that
+// makes it distinct, so names follow the source order.
 func enumConst(doc *jsonschema.Schema, opts Options, ptr string, i int) (string, error) {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -91,9 +95,23 @@ func enumConst(doc *jsonschema.Schema, opts Options, ptr string, i int) (string,
 		return "", err
 	}
 
-	v, err := identifier(child(ptr, "enum", strconv.Itoa(i)), "enum value", enumString(s.Enum[i]))
+	var taken []string
 
-	return name + v, err
+	for j := 0; j <= i; j++ {
+		v, ok := goName(enumString(s.Enum[j]))
+		if !ok {
+			v = "Value" + strconv.Itoa(j+1)
+		}
+
+		unique := v
+		for n := 2; slices.Contains(taken, unique); n++ {
+			unique = v + strconv.Itoa(n)
+		}
+
+		taken = append(taken, unique)
+	}
+
+	return name + taken[i], nil
 }
 
 // enumString decodes v, a JSON string stringEnum has checked.

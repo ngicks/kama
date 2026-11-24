@@ -46,7 +46,7 @@ type suiteKey struct {
 var suiteGenerated = map[string]int{
 	"additionalProperties.json":    9,
 	"allOf.json":                   12,
-	"anchor.json":                  1,
+	"anchor.json":                  4,
 	"anyOf.json":                   8,
 	"boolean_schema.json":          2,
 	"const.json":                   17,
@@ -56,7 +56,7 @@ var suiteGenerated = map[string]int{
 	"dependentRequired.json":       4,
 	"dependentSchemas.json":        4,
 	"dynamicRef.json":              1,
-	"enum.json":                    15,
+	"enum.json":                    16,
 	"exclusiveMaximum.json":        1,
 	"exclusiveMinimum.json":        1,
 	"format.json":                  19,
@@ -81,7 +81,7 @@ var suiteGenerated = map[string]int{
 	"prefixItems.json":             4,
 	"properties.json":              6,
 	"propertyNames.json":           6,
-	"ref.json":                     20,
+	"ref.json":                     35,
 	"required.json":                5,
 	"type.json":                    11,
 	"unevaluatedItems.json":        28,
@@ -92,11 +92,9 @@ var suiteGenerated = map[string]int{
 // suiteUnsupported is the number of groups of each top-level file of the
 // suite that Generate rejects. A file missing here rejects none.
 var suiteUnsupported = map[string]int{
-	"anchor.json":                3,
 	"defs.json":                  1,
 	"dynamicRef.json":            20,
-	"enum.json":                  1,
-	"ref.json":                   16,
+	"ref.json":                   1,
 	"refRemote.json":             15,
 	"unevaluatedItems.json":      1,
 	"unevaluatedProperties.json": 1,
@@ -106,12 +104,9 @@ var suiteUnsupported = map[string]int{
 // suiteUnsupportedReasons lists every reason a group of the suite is
 // rejected for, as rejectReasons spells it.
 var suiteUnsupportedReasons = []string{
-	"name conflict: #/enum/0 and #/enum/1 both give the Go name RootFooBar",
-	"unsupported schema: a schema resource other than the root",
 	"unsupported schema: keyword $dynamicRef is not supported",
 	"unsupported schema: meta-schema %q is not that of draft 2020-12",
 	"unsupported schema: reference %q leaves the document",
-	"unsupported schema: reference %q names no schema the generator reads",
 }
 
 // suiteEnv names the environment variable that enables TestSuiteBehavior.

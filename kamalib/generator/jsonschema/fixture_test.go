@@ -29,7 +29,7 @@ var fixtures = []string{
 	"object", "nullable", "recursive", "oneof", "anyof", "allof",
 	"prefilter", "nullablecycle", "multikind", "nullableenum", "nullableroot", "productcycle",
 	"oneofoverlap", "nestedunion", "validation", "rootscalar", "rawroot", "subschema",
-	"typedkeywords",
+	"typedkeywords", "resources",
 }
 
 func TestFixtureSpecBuild(t *testing.T) {

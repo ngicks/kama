@@ -94,21 +94,28 @@ func TestResolveRef(t *testing.T) {
 	root := decodeRefDoc(t)
 
 	for ref, title := range map[string]string{
-		"#":                    "root",
-		"#/$defs/x":            "x",
-		"#/$defs/a~1b":         "slash",
-		"#/$defs/a%20b":        "space",
-		"#/$defs/%2525":        "percent",
-		"#/oneOf/1":            "one1",
-		"#top":                 "root",
-		"#ax":                  "x",
-		"#deep":                "one1",
-		"#d":                   "dyn",
-		"#/$defs/emb":          "emb",
-		"#/prefixItems/1":      "prefix1",
-		"#/properties/p/items": "item",
+		"":                              "root",
+		"#":                             "root",
+		"#/$defs/x":                     "x",
+		"#/$defs/a~1b":                  "slash",
+		"#/$defs/a%20b":                 "space",
+		"#/$defs/%2525":                 "percent",
+		"#/oneOf/1":                     "one1",
+		"#top":                          "root",
+		"#ax":                           "x",
+		"#deep":                         "one1",
+		"#d":                            "dyn",
+		"#/$defs/emb":                   "emb",
+		"#/prefixItems/1":               "prefix1",
+		"#/properties/p/items":          "item",
+		"http://example.com/emb":        "emb",
+		"http://example.com/emb#":       "emb",
+		"http://example.com/emb#hidden": "emb",
 	} {
-		s, err := ResolveRef(root, ref)
+		ptr, err := ResolveRef(root, "", "", ref)
+		assert.NilError(t, err, ref)
+
+		s, err := ResolvePointer(root, ptr)
 		assert.NilError(t, err, ref)
 		assert.Equal(t, s.Title.Value(), title, ref)
 	}
@@ -123,21 +130,130 @@ func TestResolveRefErrors(t *testing.T) {
 		"#/$defs/nope",
 		"#/$defs/%zz",
 		"#/$defs/x/title",
+		"http://example.com/emb#top",
 	} {
-		_, err := ResolveRef(root, ref)
+		_, err := ResolveRef(root, "", "", ref)
 		assert.ErrorIs(t, err, ErrUnresolved, ref)
 	}
 
 	for _, ref := range []string{
 		"other.json",
 		"other.json#/$defs/x",
-		"http://example.com/emb",
-		"http://example.com/emb#hidden",
-		"",
+		"http://example.com/other",
 	} {
-		_, err := ResolveRef(root, ref)
+		_, err := ResolveRef(root, "", "", ref)
 		assert.ErrorIs(t, err, ErrNonLocalRef, ref)
 	}
+}
+
+const resourceDoc = `{
+	"$id": "http://example.com/root.json",
+	"$anchor": "a",
+	"$defs": {
+		"rel": {
+			"$id": "dir/rel.json",
+			"$anchor": "a",
+			"$defs": {
+				"inner": {"$id": "inner.json", "title": "inner"},
+				"leaf": {"title": "rel-leaf"}
+			},
+			"title": "rel"
+		},
+		"urn": {
+			"$id": "urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed",
+			"$defs": {"leaf": {"$anchor": "u", "title": "urn-leaf"}},
+			"title": "urn"
+		},
+		"enum": {"enum": [{"$id": "http://example.com/not-an-id"}], "title": "enum"},
+		"unknown": {"x-keyword": {"$id": "http://example.com/unknown"}, "title": "unknown"},
+		"leaf": {"title": "root-leaf"}
+	},
+	"title": "root"
+}`
+
+func TestResolveRefAcrossResources(t *testing.T) {
+	var root Schema
+	assert.NilError(t, jsonv2.Unmarshal([]byte(resourceDoc), &root))
+
+	for _, c := range []struct {
+		ptr, ref, title string
+	}{
+		{"", "#a", "root"},
+		{"/$defs/rel", "#a", "rel"},
+		{"/$defs/rel/$defs/leaf", "#a", "rel"},
+		{"/$defs/rel/$defs/leaf", "#/$defs/leaf", "rel-leaf"},
+		{"/$defs/leaf", "#/$defs/leaf", "root-leaf"},
+		{"", "dir/rel.json", "rel"},
+		{"", "dir/inner.json", "inner"},
+		{"/$defs/rel", "inner.json", "inner"},
+		{"/$defs/rel", "../root.json#a", "root"},
+		{"", "#/$defs/rel/$defs/inner", "inner"},
+		{"", "dir/rel.json#/$defs/inner", "inner"},
+		{"", "urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed#u", "urn-leaf"},
+		{"/$defs/urn", "#/$defs/leaf", "urn-leaf"},
+		{"/$defs/urn/$defs/leaf", "#u", "urn-leaf"},
+	} {
+		ptr, err := ResolveRef(&root, "", c.ptr, c.ref)
+		assert.NilError(t, err, "%s %s", c.ptr, c.ref)
+
+		s, err := ResolvePointer(&root, ptr)
+		assert.NilError(t, err)
+		assert.Equal(t, s.Title.Value(), c.title, "%s %s", c.ptr, c.ref)
+	}
+
+	for _, ref := range []string{"http://example.com/not-an-id", "http://example.com/unknown"} {
+		_, err := ResolveRef(&root, "", "", ref)
+		assert.ErrorIs(t, err, ErrNonLocalRef, ref)
+	}
+
+	_, err := ResolveRef(&root, "", "/$defs/urn", "#a")
+	assert.ErrorIs(t, err, ErrUnresolved)
+}
+
+func TestBaseUri(t *testing.T) {
+	var root Schema
+	assert.NilError(t, jsonv2.Unmarshal([]byte(resourceDoc), &root))
+
+	for ptr, want := range map[string]string{
+		"":                       "http://example.com/root.json",
+		"/$defs/leaf":            "http://example.com/root.json",
+		"/$defs/rel":             "http://example.com/dir/rel.json",
+		"/$defs/rel/$defs/inner": "http://example.com/dir/inner.json",
+		"/$defs/urn/$defs/leaf":  "urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed",
+		"/$defs/enum":            "http://example.com/root.json",
+	} {
+		got, err := BaseUri(&root, "", ptr)
+		assert.NilError(t, err, ptr)
+		assert.Equal(t, got, want, ptr)
+	}
+
+	var bare Schema
+	assert.NilError(t, jsonv2.Unmarshal([]byte(`{"$defs": {"a": {"$id": "a.json"}}}`), &bare))
+
+	got, err := BaseUri(&bare, "http://example.com/dir/doc.json", "/$defs/a")
+	assert.NilError(t, err)
+	assert.Equal(t, got, "http://example.com/dir/a.json")
+
+	got, err = BaseUri(&bare, "http://example.com/dir/doc.json", "")
+	assert.NilError(t, err)
+	assert.Equal(t, got, "http://example.com/dir/doc.json")
+}
+
+func TestResources(t *testing.T) {
+	var root Schema
+	assert.NilError(t, jsonv2.Unmarshal([]byte(resourceDoc), &root))
+
+	var got []string
+	for uri, ptr := range Resources(&root, "") {
+		got = append(got, uri+" "+ptr)
+	}
+
+	assert.DeepEqual(t, got, []string{
+		"http://example.com/root.json ",
+		"http://example.com/dir/rel.json /$defs/rel",
+		"http://example.com/dir/inner.json /$defs/rel/$defs/inner",
+		"urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed /$defs/urn",
+	})
 }
 
 func TestEscapePointerToken(t *testing.T) {

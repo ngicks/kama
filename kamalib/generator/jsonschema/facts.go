@@ -2,9 +2,9 @@ package jsonschema
 
 import (
 	"encoding/json/jsontext"
+	"errors"
 	"fmt"
 	"iter"
-	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -324,7 +324,7 @@ func shapesOtherThan(s *jsonschema.Schema, allowed ...string) []string {
 }
 
 // refTarget returns the pointer of the schema the $ref of the schema at
-// ptr names.
+// ptr names, as jsonschema.ResolveRef resolves it.
 func refTarget(doc *jsonschema.Schema, ptr string) (string, error) {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -334,31 +334,16 @@ func refTarget(doc *jsonschema.Schema, ptr string) (string, error) {
 	ref := s.Ref.Value()
 	kw := child(ptr, "$ref")
 
-	frag, ok := strings.CutPrefix(ref, "#")
-	if !ok {
+	found, err := jsonschema.ResolveRef(doc, "", ptr, ref)
+	if errors.Is(err, jsonschema.ErrNonLocalRef) {
 		return "", unsupported(kw, "reference %q leaves the document", ref)
 	}
 
-	frag, err = url.PathUnescape(frag)
 	if err != nil {
-		return "", unsupported(kw, "reference %q: %v", ref, err)
+		return "", unsupported(kw, "reference %q names no schema", ref)
 	}
 
-	if frag != "" && !strings.HasPrefix(frag, "/") {
-		found := opiter.WrapSeq2(schemas(doc)).
-			Filter(func(_ string, c *jsonschema.Schema) bool {
-				return c.Anchor == opt.Some(frag) || c.DynamicAnchor == opt.Some(frag)
-			}).
-			OmitL().
-			First()
-		if found.IsNone() {
-			return "", unsupported(kw, "reference %q names no anchor", ref)
-		}
-
-		return found.Value(), nil
-	}
-
-	target, err := normalPointer(frag)
+	target, err := normalPointer(found)
 	if err != nil {
 		return "", unsupported(kw, "reference %q: %v", ref, err)
 	}

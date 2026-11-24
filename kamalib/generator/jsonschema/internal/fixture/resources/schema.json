@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/order.json",
+  "title": "Order",
+  "description": "Order refers to the schema resources under $defs by their URIs.",
+  "type": "object",
+  "properties": {
+    "customer": {"$ref": "customer.json"},
+    "shipTo": {"$ref": "address.json#/$defs/Zip"},
+    "lines": {"type": "array", "items": {"$ref": "line.json"}},
+    "note": {"$ref": "#note"}
+  },
+  "required": ["customer"],
+  "$defs": {
+    "Customer": {
+      "$id": "customer.json",
+      "type": "object",
+      "properties": {
+        "name": {"$ref": "#name"},
+        "address": {"$ref": "address.json"}
+      },
+      "required": ["name"],
+      "$defs": {
+        "CustomerName": {"$anchor": "name", "type": "string", "minLength": 1}
+      }
+    },
+    "Address": {
+      "$id": "address.json",
+      "type": "object",
+      "properties": {
+        "city": {"type": "string"},
+        "zip": {"$ref": "#/$defs/Zip"}
+      },
+      "$defs": {
+        "Zip": {"type": "string", "pattern": "^[0-9]{5}$"}
+      }
+    },
+    "Line": {
+      "$id": "line.json",
+      "type": "object",
+      "properties": {
+        "sku": {"$ref": "#name"},
+        "count": {"type": "integer", "minimum": 1}
+      },
+      "required": ["sku"],
+      "$defs": {
+        "Sku": {"$anchor": "name", "type": "string", "pattern": "^[A-Z]+$"}
+      }
+    },
+    "Note": {"$anchor": "note", "type": "string", "maxLength": 20}
+  }
+}

@@ -157,6 +157,13 @@
 // that schema is the root, whose type already takes the name. A $ref takes
 // the type of the schema it names; a reference declares nothing.
 //
+// The constant of a value of an enum of strings takes the name of the type
+// followed by the name of the value. A value that gives no exported
+// identifier takes Value followed by its 1-based index. A value whose name
+// an earlier value of the enum takes is followed by the least number from 2
+// that makes it distinct, so "foo bar" and "foo_bar" of type Root give
+// RootFooBar and RootFooBar2.
+//
 // Names are upper-camel-cased on the characters an identifier cannot hold,
 // as foo_bar and foo-bar give FooBar. A name that gives no exported
 // identifier is an error wrapping ErrUnsupported. Two names colliding in
@@ -218,6 +225,17 @@
 // pointer is nil for null. An optional pointer is nil for absent and has
 // omitzero. An optional nullable pointer is nil for absent and for null,
 // so null encodes back as absent.
+//
+// # References
+//
+// A $ref resolves against the base URI of the schema holding it, which the
+// $id of that schema and of the schemas above it give, as package
+// github.com/ngicks/kama/kamalib/pkg/jsonschema resolves it. A root without
+// $id has an empty base URI. A schema declaring $id below the root is a
+// schema resource of its own: a reference names it by its URI, a fragment
+// pointer in a reference starts at the resource, and an $anchor is looked
+// up in the resource holding the reference. A schema of an embedded
+// resource is named as any other schema, by its place in the document.
 //
 // # Unions
 //
@@ -419,8 +437,8 @@
 //
 //   - $dynamicRef, and a $schema other than the meta-schema of draft
 //     2020-12, whose vocabularies the generator cannot read;
-//   - a $ref leaving the document, a chain of references back to itself,
-//     $id below the root, and a $ref in the validators of raw JSON text
+//   - a $ref naming no schema of the document, a chain of references back
+//     to itself, and a $ref in the validators of raw JSON text
 //     reaching a union or a schema declaring no type again on a cycle;
 //   - a pattern of patternProperties RE2 does not compile;
 //   - a nil schema of a document built in Go, and a slice or a map holding

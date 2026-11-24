@@ -180,15 +180,13 @@ func TestGenerateRejects(t *testing.T) {
 			`{"type":"object","properties":{"a":{"$ref":"#/$defs/u/anyOf/01"}},
 			"$defs":{"u":{"anyOf":[{"type":"string"},{"type":"integer"}]}}}`,
 			ErrUnsupported,
-			`#/properties/a/$ref: reference "#/$defs/u/anyOf/01" names no schema ` +
-				"the generator reads",
+			`#/properties/a/$ref: reference "#/$defs/u/anyOf/01" names no schema`,
 		},
 		{
 			"ref to a missing definition",
 			`{"type":"object","properties":{"a":{"$ref":"#/$defs/b"}},"$defs":{"c":{}}}`,
 			ErrUnsupported,
-			`#/properties/a/$ref: reference "#/$defs/b" names no schema ` +
-				"the generator reads",
+			`#/properties/a/$ref: reference "#/$defs/b" names no schema`,
 		},
 		{
 			"root holding itself through no declared type",
