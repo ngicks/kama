@@ -463,10 +463,56 @@ func TestSelectionErrors(t *testing.T) {
 			msgs: []string{"names no validator", "mark the type in its doc comment instead"},
 		},
 		{
-			name: "validator on a type",
-			src:  "//kama:validate required\ntype A struct{ N int }\n",
+			name: "validator on a struct type",
+			src:  "//kama:validate required hook=off\ntype A struct{ N int }\n",
 			is:   ErrDirective,
-			msgs: []string{`unknown arg "required"`, "validators apply to struct fields only"},
+			msgs: []string{
+				"a.go:3:1", "//kama:validate required on struct type A",
+				"a struct type takes only validators of the struct as a whole",
+			},
+		},
+		{
+			name: "ignore with a value",
+			src:  "//kama:validate ignore=yes\ntype A struct{ N int }\n",
+			is:   ErrDirective,
+			msgs: []string{`unknown arg "ignore=yes"`, "want ignore without a value"},
+		},
+		{
+			name: "validator on an ignored type",
+			src:  "//kama:validate ignore cmp=\">0\"\ntype N int\n",
+			is:   ErrDirective,
+			msgs: []string{"//kama:validate cmp on", "N, which gets no Validate"},
+		},
+		{
+			name: "validator on a pointer type",
+			src:  "//kama:validate nil\ntype P *int\n",
+			is:   ErrUnsupported,
+			msgs: []string{"P has underlying type *int; want a struct, slice or map"},
+		},
+		{
+			name: "unknown validator on a type",
+			src:  "//kama:validate nope\ntype N int\n",
+			is:   ErrDirective,
+			msgs: []string{"unknown validator //kama:validate nope on type N; known: cmp"},
+		},
+		{
+			name: "validator given twice on a type",
+			src:  "//kama:validate cmp=\">0\"\n//kama:validate cmp=\"<9\"\ntype N int\n",
+			is:   ErrDirective,
+			msgs: []string{"a.go:3:1", "validator cmp given twice on", "type.N"},
+		},
+		{
+			name: "validator given twice in a type group",
+			src: "//kama:validate cmp=\">0\"\ntype (\n\t//kama:validate cmp=\"<9\"\n" +
+				"\tN int\n\tM int\n)\n",
+			is:   ErrDirective,
+			msgs: []string{"a.go:5:2", "validator cmp given twice on", "type_group.N"},
+		},
+		{
+			name: "validator rejecting a type",
+			src:  "//kama:validate regexp=a\ntype N int\n",
+			is:   ErrUnsupported,
+			msgs: []string{"//kama:validate regexp on type N", "N is neither a string nor"},
 		},
 		{
 			name: "validator given twice",

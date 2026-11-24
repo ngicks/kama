@@ -4,9 +4,9 @@
 //
 //	func (v T) Validate(stopOnFirstError bool) error
 //
-// Validate runs the validators that //kama:validate directives name on the
-// fields of T, validates the values the fields hold through their own
-// Validate, and calls a hook method per field. It returns errors of
+// Validate runs the validators that //kama:validate directives name on T
+// and on the fields of T, validates the values the fields hold through
+// their own Validate, and calls a hook method per field. It returns errors of
 // package github.com/ngicks/kama/kamalib/pkg/validation, located by the
 // json names of the fields. Proc runs Generate as the workflow step kind
 // validate.generate.
@@ -60,8 +60,9 @@
 //
 //   - In the doc comment of a type, the directive marks the type. The arg
 //     ignore exempts the type instead. The arg hook=on or hook=off sets the
-//     default hook of the fields of the type. Targets and Hooks describe
-//     them.
+//     default hook of the fields of the type. Every other arg names a
+//     validator of the value of the type. Targets, Hooks and Type validators
+//     describe them.
 //   - On a struct field, each arg names a validator, and the arg hook=on or
 //     hook=off switches the hook of the field. Validators and Hooks
 //     describe them.
@@ -110,13 +111,16 @@
 // validators and hook only.
 //
 // Only defined types whose underlying type is a struct, a slice or a map
-// get a Validate. File marks, package marks and the search for dependants
-// skip other types silently. An explicit //kama:validate on one, or on an
-// alias, is an error wrapping ErrUnsupported. Types of packages outside the
-// run are never targets.
+// get a Validate, and types of another underlying type with validators of
+// their own, as Type validators describes. File marks, package marks and
+// the search for dependants skip other types silently. An explicit
+// //kama:validate without validators on one, or on an alias, is an error
+// wrapping ErrUnsupported. Types of packages outside the run are never
+// targets.
 //
-// A named array or pointer type of the run holding something to validate,
-// as in type Pair [2]Inner or type PI *Inner, gets no Validate either. A
+// A named array type without validators of its own or a named pointer type
+// of the run holding something to validate, as in type Pair [2]Inner or
+// type PI *Inner, gets no Validate either. A
 // field of a struct type or a slice or map type holding such a type is an
 // error wrapping ErrUnsupported. The error applies to a type that would be
 // a dependant through it as well. So does a type argument reaching such a
@@ -206,8 +210,9 @@
 //     into the underlying type of a named type, except for a named array or
 //     pointer type of a package outside the run. A struct, slice or map
 //     type of the run holding something to validate by itself is a target
-//     itself. A named array or pointer type of the run holding something to
-//     validate, a type parameter of the target included, is an error. So
+//     itself. A named pointer type, or a named array type without
+//     validators of its own, of the run holding something to validate, a
+//     type parameter of the target included, is an error. So
 //     is an instance of an unmarked generic struct, slice or map type of
 //     the run whose type arguments hold something to validate. Targets
 //     describes both.
@@ -227,10 +232,14 @@
 // float keys included. A lookup by a NaN key never finds its value. Sorting
 // the keys would therefore lose that value.
 //
-// A slice or map target gets a Validate walking its elements as step 2
-// does, with the index or key as the path segment. Validators and hooks do
-// not apply to it. A target with nothing to validate gets a Validate
-// returning nil.
+// A slice, array or map target gets a Validate walking its elements as
+// step 2 does, with the index or key as the path segment. Hooks do not
+// apply to it. A target with nothing to validate gets a Validate returning
+// nil.
+//
+// The validators of the type itself, described under Type validators, run
+// first in every Validate, before the steps of the fields and the walk of
+// the elements.
 //
 // # Path segments
 //
@@ -292,11 +301,15 @@
 // and lists the known validators. These are errors wrapping ErrDirective
 // too:
 //
-//   - the same validator named twice on one field.
-//   - a validator on a field of a type that gets no Validate.
+//   - the same validator named twice on one field or one type.
+//   - a validator on a field of a type that gets no Validate, or in the doc
+//     comment of such a type, as in //kama:validate ignore cmp=">0".
 //   - //kama:validate without args on a field.
-//   - a validator name in the doc comment of a type or in a free-floating
-//     comment.
+//   - a validator name in a free-floating comment.
+//   - a validator other than a rule.StructRule in the doc comment of a
+//     struct type, a rule.StructRule on a field or in the doc comment of a
+//     type of another kind, and a rule.SiblingRule in the doc comment of
+//     any type.
 //
 // A validator applied to a type it cannot handle, or with an arg it does
 // not accept, is an error wrapping ErrUnsupported. The error names the
@@ -310,10 +323,42 @@
 // every error of Validator.Parse at once. Such an error comes from the arg
 // alone and should wrap rule.ErrArgs. required, zero and nil therefore look
 // at a pointer itself, and every other validator applies to the pointee of
-// a non-nil pointer. elastic.Elastic holds no single value and takes
+// a non-nil pointer. A rule.SiblingRule, such as requires, reads the other
+// fields of the struct and applies to the field itself only. Its errors
+// are located where the rule puts them, as at a sibling field, without the
+// path segment of the field it is written on. elastic.Elastic holds no single value and takes
 // required, zero and null only.
 //
 // Package rule documents the built-in validators and the errors they report.
+//
+// # Type validators
+//
+// The validators //kama:validate names in the doc comment of a type
+// validate the value of the type itself. The receiver of Validate is the
+// value, and the errors carry no path segment of their own. A field holding
+// the type adds its segment through the nested call:
+//
+//	//kama:validate cmp=">=1 <=5"
+//	type Level int
+//
+//	//kama:validate length=">=1" unique
+//	type Tags []string
+//
+// A type whose underlying type is no struct, slice or map, such as Level,
+// gets a Validate when its directive names validators. A pointer or
+// interface type cannot declare methods. Validators on one are an error
+// wrapping ErrUnsupported. A slice, array or map type runs its validators
+// before the walk of its elements. A target of these kinds has no fields
+// and therefore no hooks. hook=on in its doc comment calls nothing.
+//
+// Validate of every type holding such a type calls its Validate, as for a
+// struct target. A field Level Level runs the validators of the field
+// first, then v.Level.Validate.
+//
+// A struct type takes only validators of the struct as a whole, which
+// implement rule.StructRule, such as members. The rule reads the fields through rule.Struct,
+// which names them by the JSON members they encode as. A field takes no
+// rule.StructRule.
 //
 // # Errors of Validate
 //
@@ -387,11 +432,16 @@
 //	            hook: true          # hook=on on Note
 //	      Draft:
 //	        ignore: true            # //kama:validate ignore on Draft
+//	      Level:
+//	        validators:             # //kama:validate cmp=">=1" on Level
+//	          - name: cmp
+//	            args: ">=1"
 //
 // Listing a type marks it unless ignore is true. Its hooks are then on by
 // default. args is the arg a directive gives after name=, unquoted. An
-// empty or absent args stands for no arg. A validator listed twice on one
-// field is an error. The file has no equivalent of //kama:validate file.
+// empty or absent args stands for no arg. The validators of a type stand
+// for the validators of its doc comment. A validator listed twice on one
+// field or one type is an error. The file has no equivalent of //kama:validate file.
 // version is required and is 1. An unknown key is a warning wrapping
 // genopt.ErrUnknownKey that names the file and the key path. An entry
 // holding unknown keys only does not list its type or field, so a
@@ -460,9 +510,9 @@
 //     are all required.
 //   - Validators on the elements of a slice or map, and on the fields of a
 //     struct type literal. Write a hook, or give the element type a
-//     Validate.
+//     Validate or validators of its own.
 //   - Validators other than required, zero and null on an elastic.Elastic.
 //   - Hooks and implementors with a pointer receiver.
 //   - Targets of packages outside the run, and types other than struct,
-//     slice and map types.
+//     slice and map types without validators of their own.
 package validator

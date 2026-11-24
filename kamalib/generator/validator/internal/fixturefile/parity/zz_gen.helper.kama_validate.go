@@ -2,7 +2,7 @@
 // params:
 //	option_file: "validate.yaml"
 //	package_option_file: "parity/kama_validate.yaml"
-// generated: 2026-11-22T14:09:15Z
+// generated: 2026-11-24T10:13:57Z
 
 package parity
 
@@ -81,6 +81,19 @@ func kamaValidateConst[T comparable](got T, want ...T) error {
 	return nil
 }
 
+// kamaValidateCount is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateCount(present ...bool) int {
+	n := 0
+	for _, ok := range present {
+		if ok {
+			n++
+		}
+	}
+	return n
+}
+
 // kamaValidateFormatUrl is a helper of the generated Validate methods.
 //
 //kama:generated kama-validate
@@ -101,6 +114,16 @@ func kamaValidateLength(got int, op string, want int) error {
 	return nil
 }
 
+// kamaValidateMembers is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateMembers(got int, op string, want int) error {
+	if !kamaValidateCompare(got, op, want) {
+		return validation.New(validation.ErrLength, "want member count %s %d, got %d", op, want, got)
+	}
+	return nil
+}
+
 // kamaValidateRegexpString is a helper of the generated Validate methods.
 //
 //kama:generated kama-validate
@@ -111,10 +134,25 @@ func kamaValidateRegexpString(re *regexp.Regexp, got string) error {
 	return nil
 }
 
+// kamaValidateRegexp_0ab128e122 is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+var kamaValidateRegexp_0ab128e122 = regexp.MustCompile("^[A-Z]+$")
+
 // kamaValidateRegexp_ffdea35bad is a helper of the generated Validate methods.
 //
 //kama:generated kama-validate
 var kamaValidateRegexp_ffdea35bad = regexp.MustCompile("^[A-Z]{3}-[0-9]+$")
+
+// kamaValidateRunes is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateRunes(got int, op string, want int) error {
+	if !kamaValidateCompare(got, op, want) {
+		return validation.New(validation.ErrLength, "want rune count %s %d, got %d", op, want, got)
+	}
+	return nil
+}
 
 // kamaValidateSpell is a helper of the generated Validate methods.
 //

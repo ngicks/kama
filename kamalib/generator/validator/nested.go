@@ -21,9 +21,11 @@ import (
 // fields of struct type literals and named array and pointer types of
 // packages outside the run, and never into the underlying type of another
 // named type. A struct, slice or map type of the run holding something to
-// validate by itself is a target itself. A named array or pointer type of
-// the run holding something to validate, a type parameter of the receiver
-// included, is an error. So is an instance of a generic struct, slice or
+// validate by itself is a target itself, and so is a type of the run with
+// validators of its own. A named pointer type, or a named array type
+// without validators of its own, of the run holding something to validate,
+// a type parameter of the receiver included, is an error. So is an instance of a generic struct,
+// slice or
 // map type of the run that is no target and whose type arguments hold
 // something to validate. selectTargets reports the fields and types
 // holding one. nestedNamed reports one a type argument reaches.

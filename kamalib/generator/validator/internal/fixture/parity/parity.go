@@ -11,7 +11,7 @@ import (
 // ErrNote is the error of the hook of Order.Note.
 var ErrNote = errors.New("note too long")
 
-//kama:validate hook=off
+//kama:validate hook=off members=">=4"
 type Order struct {
 	//kama:validate required regexp="^[A-Z]{3}-[0-9]+$"
 	Id string `json:"id"`
@@ -37,7 +37,13 @@ type Line struct {
 	Qty int `json:"qty"`
 	//kama:validate format=url
 	Url opt.Option[string] `json:"url"`
+	Sku Sku                `json:"sku"`
 }
+
+// Sku is a scalar type with validators of its own.
+//
+//kama:validate regexp="^[A-Z]+$" runes="<=8"
+type Sku string
 
 // Batch holds orders, which makes it a dependant.
 type Batch struct {

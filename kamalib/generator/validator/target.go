@@ -116,11 +116,24 @@ func (s *selection) matches(n *typegraph.Node) bool {
 }
 
 // generates reports whether n gets a Validate when the trim reaches it: a
-// struct, slice or map type that is not ignored and has no Validate of
-// its own.
+// struct, slice or map type, or a type validatesValue reports, that is not
+// ignored and has no Validate of its own.
 func (s *selection) generates(n *typegraph.Node) bool {
-	return typequery.IsStructSliceOrMap(n.Detail.Type) && !s.ignored(n.Id) &&
-		!s.implementor(n.Detail.Type)
+	return (typequery.IsStructSliceOrMap(n.Detail.Type) || s.validatesValue(n)) &&
+		!s.ignored(n.Id) && !s.implementor(n.Detail.Type)
+}
+
+// validatesValue reports whether the directive of n names validators for
+// the value of n and n can declare Validate: its underlying type is no
+// pointer and no interface. Without validators, a type of another kind than
+// struct, slice and map has nothing to validate.
+func (s *selection) validatesValue(n *typegraph.Node) bool {
+	switch n.Detail.Type.Underlying().(type) {
+	case *types.Pointer, *types.Interface:
+		return false
+	}
+
+	return len(s.typeValidators(n.Id)) > 0
 }
 
 // reaches reports whether a value of type t holds a value of a named type
@@ -510,7 +523,8 @@ func (s *selection) unsupported(named *types.Named, typeParams bool) bool {
 // the graph trim returns, which tells the targets. Such a type is one of
 // the run of these:
 //
-//   - an array or pointer type without a Validate of its own.
+//   - a pointer type without a Validate of its own, or an array type that
+//     is no target and has no Validate of its own.
 //   - an instance of a generic struct, slice or map type that is neither a
 //     target nor ignored. Its type arguments hold what it holds. A type
 //     holding something to validate otherwise is a target itself.
@@ -600,18 +614,22 @@ func (s *selection) holdsLeaf(
 }
 
 // getsNoValidate reports whether named is a type of the run that gets no
-// Validate and that Validate cannot walk through: an array or pointer type
-// without a Validate of its own, or an instance of a generic struct, slice
-// or map type that is neither a target nor ignored. An ignored type is
-// left unchecked on purpose.
+// Validate and that Validate cannot walk through: a pointer type without a
+// Validate of its own, an array type that is neither a target nor has a
+// Validate of its own, or an instance of a generic struct, slice or map
+// type that is neither a target nor ignored. An array type is a target
+// only with validators of its own. An ignored type is left unchecked on
+// purpose.
 func (s *selection) getsNoValidate(trimmed *typegraph.MatchedGraph, named *types.Named) bool {
 	if !s.loaded(named.Obj().Pkg()) || s.implementor(named) {
 		return false
 	}
 
 	switch named.Underlying().(type) {
-	case *types.Array, *types.Pointer:
+	case *types.Pointer:
 		return true
+	case *types.Array:
+		return !s.targetIn(trimmed, originId(named))
 	case *types.Struct, *types.Slice, *types.Map:
 		id := originId(named)
 		return named.TypeArgs().Len() > 0 && !s.targetIn(trimmed, id) && !s.ignored(id)

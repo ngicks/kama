@@ -231,3 +231,54 @@ func TestStampPromotedIsZero(t *testing.T) {
 	assert.DeepEqual(t, validation.Pointers(err), []string{"/zero"})
 	assert.ErrorIs(t, err, validation.ErrZero)
 }
+
+// TestRequires reports each sibling a present field requires and lacks, at
+// the sibling.
+func TestRequires(t *testing.T) {
+	city := "c"
+
+	for _, valid := range []model.Shipping{
+		{},
+		{City: &city, Zip: und.Null[string]()},
+		{Street: opt.Some("s"), City: &city, Zip: und.Defined("z"), Express: true},
+	} {
+		for _, stop := range []bool{true, false} {
+			assert.NilError(t, valid.Validate(stop))
+		}
+	}
+
+	invalid := model.Shipping{Street: opt.Some(""), Zip: und.Null[string](), Express: true}
+	err := invalid.Validate(false)
+	assert.DeepEqual(t, validation.Pointers(err), []string{"/city", "/zip"})
+	assert.ErrorIs(t, validation.At(err, "/city")[0], validation.ErrRequired)
+	assert.ErrorContains(t, validation.At(err, "/zip")[0], `want a value, as "street" has one`)
+	assert.DeepEqual(t, validation.Pointers(invalid.Validate(true)), []string{"/city"})
+
+	err = model.Shipping{Express: true}.Validate(false)
+	assert.DeepEqual(t, validation.Pointers(err), []string{"/street"})
+	assert.ErrorContains(t, err, `want a value, as "express" has one`)
+}
+
+// TestMembers counts the fields present, the fields without an optional
+// state and the entries of the embedded fallback.
+func TestMembers(t *testing.T) {
+	phone := "p"
+
+	for _, valid := range []model.Contact{
+		{Email: opt.Some("e")},
+		{Phone: &phone, Extra: map[string]any{"x": 1}},
+	} {
+		for _, stop := range []bool{true, false} {
+			assert.NilError(t, valid.Validate(stop))
+		}
+	}
+
+	err := model.Contact{}.Validate(false)
+	assert.DeepEqual(t, validation.Pointers(err), []string{""})
+	assert.ErrorIs(t, err, validation.ErrLength)
+	assert.ErrorContains(t, err, "want member count >= 2, got 1")
+
+	err = model.Contact{Email: opt.Some("e"), Phone: &phone, Extra: map[string]any{"x": 1}}.
+		Validate(false)
+	assert.ErrorContains(t, err, "want member count <= 3, got 4")
+}

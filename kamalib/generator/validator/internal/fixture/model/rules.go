@@ -117,3 +117,25 @@ type Stamped struct {
 	//kama:validate zero
 	Zero Stamp `json:"zero"`
 }
+
+// Shipping holds fields whose presence requires other fields.
+//
+//kama:validate hook=off
+type Shipping struct {
+	//kama:validate requires="city zip"
+	Street opt.Option[string] `json:"street"`
+	City   *string            `json:"city"`
+	Zip    und.Und[string]    `json:"zip"`
+	//kama:validate requires=street
+	Express bool `json:"express"`
+}
+
+// Contact counts its members.
+//
+//kama:validate members=">=2 <=3" hook=off
+type Contact struct {
+	Name  string             `json:"name"`
+	Email opt.Option[string] `json:"email"`
+	Phone *string            `json:"phone"`
+	Extra map[string]any     `json:",embed"`
+}

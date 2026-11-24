@@ -6,6 +6,7 @@ import (
 
 	"github.com/ngicks/option/elastic"
 	"github.com/ngicks/option/opt"
+	"github.com/ngicks/option/und"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/internal/fixture/model"
@@ -74,4 +75,53 @@ func TestElasticElements(t *testing.T) {
 		"/s/1/1/name",
 	})
 	assert.DeepEqual(t, validation.Pointers(invalid.Validate(true)), []string{"/s/1/1/name"})
+}
+
+// TestTypeValidators runs the validators of Rank and Ranks, written on
+// the types, wherever Values holds them.
+func TestTypeValidators(t *testing.T) {
+	valid := model.Values{
+		L: 1,
+		P: new(model.Rank(2)),
+		O: opt.Some(model.Rank(3)),
+		U: und.Defined(model.Rank(4)),
+		S: model.Ranks{1, 2},
+		M: map[string]model.Rank{"k": 5},
+		B: model.Box[model.Rank]{Items: []model.Rank{1}, One: und.Null[model.Rank]()},
+		F: 1,
+	}
+
+	for _, stop := range []bool{true, false} {
+		assert.NilError(t, valid.Validate(stop))
+	}
+
+	invalid := model.Values{
+		P: new(model.Rank(6)),
+		O: opt.Some(model.Rank(0)),
+		U: und.Defined(model.Rank(9)),
+		S: model.Ranks{1, 1, 7, 2},
+		M: map[string]model.Rank{"k": 0},
+		B: model.Box[model.Rank]{Items: []model.Rank{1, 8}, One: und.Defined(model.Rank(0))},
+		F: 6,
+	}
+
+	err := invalid.Validate(false)
+	assert.DeepEqual(t, validation.Pointers(err), []string{
+		"/b/items/1",
+		"/b/one",
+		"/f",
+		"/l",
+		"/m/k",
+		"/o",
+		"/p",
+		"/s",
+		"/s/2",
+		"/u",
+	})
+	// The validators of Ranks run before those of its elements.
+	assert.Equal(t, len(validation.At(err, "/s")), 2)
+	assert.ErrorIs(t, validation.At(err, "/s")[0], validation.ErrLength)
+	assert.ErrorIs(t, validation.At(err, "/s")[1], validation.ErrUnique)
+	assert.Equal(t, len(validation.At(err, "/f")), 2)
+	assert.DeepEqual(t, validation.Pointers(invalid.Validate(true)), []string{"/l"})
 }

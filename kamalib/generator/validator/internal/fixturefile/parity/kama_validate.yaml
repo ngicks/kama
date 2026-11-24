@@ -1,4 +1,4 @@
-# The options of Line, standing for its directives in
+# The options of Line and Sku, standing for their directives in
 # internal/fixture/parity.
 version: 1
 types:
@@ -13,3 +13,9 @@ types:
         validators:
           - name: format
             args: url
+  Sku:
+    validators:
+      - name: regexp
+        args: "^[A-Z]+$"
+      - name: runes
+        args: "<=8"

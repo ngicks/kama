@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
-	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -108,12 +107,23 @@ func (w *writer) local(name string) any {
 func validateRole(tp string) string { return "validate" + tp }
 
 // body returns the statements of Validate for a target of the underlying
-// type u. It reports every error of the fields.
+// type u: the validators of the type, then those of the fields and the
+// walk of the values u holds. It reports every error of them.
 func (w *writer) body(u types.Type) ([]genStep, error) {
 	var (
 		steps []genStep
 		errs  []error
 	)
+
+	for _, vo := range w.sel.typeValidators(w.n.Id) {
+		s, err := w.typeValidator(u, vo)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		steps = append(steps, s)
+	}
 
 	switch u := u.(type) {
 	case *types.Struct:
@@ -122,7 +132,7 @@ func (w *writer) body(u types.Type) ([]genStep, error) {
 			steps = append(steps, s...)
 			errs = append(errs, err...)
 		}
-	case *types.Slice, *types.Map:
+	case *types.Slice, *types.Array, *types.Map:
 		s, err := w.nested(u, lang.Name("v"), noWrap, 0)
 		if s != nil {
 			steps = append(steps, s)
@@ -172,7 +182,7 @@ func (w *writer) field(st *types.Struct, i int) ([]genStep, []error) {
 	)
 
 	for _, vo := range w.sel.opts.Loaded.Option.Field(w.n.Id, v.Name()).Validators {
-		s, err := w.validator(v, vo, x, wrap)
+		s, err := w.validator(st, i, vo, x, wrap)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -207,23 +217,10 @@ func (w *writer) field(st *types.Struct, i int) ([]genStep, []error) {
 // adds no segment, as encoders inline its fields.
 func (w *writer) fieldWrap(st *types.Struct, i int, outer wrapFunc) wrapFunc {
 	v := st.Field(i)
+	name, _ := tagName(st, i)
 
-	tag := reflect.StructTag(st.Tag(i)).Get("json")
-	name, _, _ := strings.Cut(tag, ",")
-
-	if tag == "-" {
-		name = ""
-	}
-
-	if name == "" && v.Embedded() {
-		elem := v.Type()
-		if p, ok := types.Unalias(elem).(*types.Pointer); ok {
-			elem = p.Elem()
-		}
-
-		if _, ok := elem.Underlying().(*types.Struct); ok {
-			return outer
-		}
+	if name == "" && v.Embedded() && isStructOrPointer(v.Type()) {
+		return outer
 	}
 
 	if name == "" {
@@ -247,50 +244,147 @@ func accessible(v *types.Var, pkg *types.Package) bool {
 	return v.Name() != "_" && (v.Exported() || v.Pkg() == pkg)
 }
 
-// validator returns the step running the validator vo on the field v whose
-// value x denotes.
+// validator returns the step running the validator vo on the field i of
+// st, whose value x denotes.
 func (w *writer) validator(
-	v *types.Var,
+	st *types.Struct,
+	i int,
 	vo ValidatorOptions,
 	x genExpr,
 	wrap wrapFunc,
 ) (genStep, error) {
-	val, ok := w.sel.opts.Registry.Lookup(vo.Name)
-	if !ok {
+	v := st.Field(i)
+	place := "field " + v.Name()
+
+	r, err := w.parse(vo, place)
+	if err != nil {
+		return nil, err
+	}
+
+	if sr, ok := r.(rule.SiblingRule); ok {
+		s, err := w.sibling(sr, st, i, x)
+		if err != nil {
+			return nil, ruleError(vo, place, err)
+		}
+
+		return s, nil
+	}
+
+	if _, ok := r.(rule.StructRule); ok {
 		return nil, fmt.Errorf(
-			"%w: %s: unknown validator %s on field %s; known: %s",
-			ErrDirective, vo.src.origin(), vo.src.spelling(), v.Name(),
-			strings.Join(w.sel.opts.Registry.Names(), ", "),
+			"%w: %s: %s on %s validates a struct as a whole;"+
+				" write it in the doc comment of a struct type",
+			ErrDirective, vo.src.origin(), vo.src.spelling(), place,
 		)
 	}
 
-	s, err := w.rule(val, vo.Args, v.Type(), x, wrap)
+	s, err := w.apply(r, v.Type(), x, wrap)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"%w: %s: %s on field %s: %w",
-			ErrUnsupported, vo.src.origin(), vo.src.spelling(), v.Name(), err,
-		)
+		return nil, ruleError(vo, place, err)
 	}
 
 	return s, nil
 }
 
-// rule parses arg with val and applies the rule to the value x of type t.
-func (w *writer) rule(
-	val rule.Validator,
-	arg string,
-	t types.Type,
-	x genExpr,
-	wrap wrapFunc,
-) (genStep, error) {
-	r, err := val.Parse(arg)
-	// An error of the args alone would repeat for the value t holds, so
-	// apply never sees it.
+// sibling returns the step running sr on the field i of st, whose value x
+// denotes. The rule tests the field itself, so a pointer or an option
+// counts as present by its own test and is never unwrapped. Its errors are
+// located at the struct. The rule adds the segment of each error itself.
+func (w *writer) sibling(sr rule.SiblingRule, st *types.Struct, i int, x genExpr) (genStep, error) {
+	v := st.Field(i)
+
+	name, _ := tagName(st, i)
+	if name == "" {
+		name = v.Name()
+	}
+
+	r, err := sr.Siblings(structView{st: st, x: lang.Name("v"), pkg: w.scope.Pkg.Types}, name)
 	if err != nil {
 		return nil, err
 	}
 
-	return w.apply(r, t, x, wrap)
+	if err := r.Check(v.Type()); err != nil {
+		return nil, err
+	}
+
+	return w.emit(r, v.Type(), x, noWrap), nil
+}
+
+// typeValidator returns the step running the validator vo, named in the
+// doc comment of w.n, on the receiver of Validate. u is the underlying type
+// of w.n. Only a rule.StructRule applies to a struct type, and only to one.
+// A rule.SiblingRule applies to no type.
+func (w *writer) typeValidator(u types.Type, vo ValidatorOptions) (genStep, error) {
+	named := w.n.Detail.Type
+	place := "type " + named.Obj().Name()
+
+	r, err := w.parse(vo, place)
+	if err != nil {
+		return nil, err
+	}
+
+	sr, isStructRule := r.(rule.StructRule)
+	_, isSiblingRule := r.(rule.SiblingRule)
+	st, isStruct := u.(*types.Struct)
+
+	switch {
+	case isStruct && isStructRule:
+		r, err = sr.Struct(structView{st: st, x: lang.Name("v"), pkg: w.scope.Pkg.Types})
+		if err != nil {
+			return nil, ruleError(vo, place, err)
+		}
+	case isStruct:
+		return nil, fmt.Errorf(
+			"%w: %s: %s on struct %s; a struct type takes only validators of the struct"+
+				" as a whole, so write it on a field",
+			ErrDirective, vo.src.origin(), vo.src.spelling(), place,
+		)
+	case isStructRule:
+		return nil, fmt.Errorf(
+			"%w: %s: %s on %s validates a struct as a whole, and %s is no struct",
+			ErrDirective, vo.src.origin(), vo.src.spelling(), place, named.Obj().Name(),
+		)
+	case isSiblingRule:
+		return nil, fmt.Errorf(
+			"%w: %s: %s on %s reads the siblings of a struct field; write it on a field",
+			ErrDirective, vo.src.origin(), vo.src.spelling(), place,
+		)
+	}
+
+	s, err := w.apply(r, named, lang.Name("v"), noWrap)
+	if err != nil {
+		return nil, ruleError(vo, place, err)
+	}
+
+	return s, nil
+}
+
+// parse returns the rule of the validator vo. place names what vo applies
+// to in errors, as in field Name. An error of the args alone would repeat
+// for the value a pointer or an option holds, so apply never sees it.
+func (w *writer) parse(vo ValidatorOptions, place string) (rule.Rule, error) {
+	val, ok := w.sel.opts.Registry.Lookup(vo.Name)
+	if !ok {
+		return nil, fmt.Errorf(
+			"%w: %s: unknown validator %s on %s; known: %s",
+			ErrDirective, vo.src.origin(), vo.src.spelling(), place,
+			strings.Join(w.sel.opts.Registry.Names(), ", "),
+		)
+	}
+
+	r, err := val.Parse(vo.Args)
+	if err != nil {
+		return nil, ruleError(vo, place, err)
+	}
+
+	return r, nil
+}
+
+// ruleError reports err of the rule of the validator vo applied to place.
+func ruleError(vo ValidatorOptions, place string, err error) error {
+	return fmt.Errorf(
+		"%w: %s: %s on %s: %w", ErrUnsupported, vo.src.origin(), vo.src.spelling(), place, err,
+	)
 }
 
 // apply returns the step running r on the value x of type t. When r
@@ -300,16 +394,7 @@ func (w *writer) rule(
 func (w *writer) apply(r rule.Rule, t types.Type, x genExpr, wrap wrapFunc) (genStep, error) {
 	checkErr := r.Check(t)
 	if checkErr == nil {
-		// Emit runs as the expression renders, so that only rendered code
-		// declares helpers.
-		return w.check(wrap(func(c genCtx) (string, error) {
-			e, err := r.Emit(w.emitter, t, x)
-			if err != nil {
-				return "", err
-			}
-
-			return e(c)
-		})), nil
+		return w.emit(r, t, x, wrap), nil
 	}
 
 	held, guard, value, ok := heldValue(t, x)
@@ -323,6 +408,21 @@ func (w *writer) apply(r rule.Rule, t types.Type, x genExpr, wrap wrapFunc) (gen
 	}
 
 	return lang.If(guard, s, nil), nil
+}
+
+// emit returns the step running r, which accepted t, on the value x of
+// type t.
+func (w *writer) emit(r rule.Rule, t types.Type, x genExpr, wrap wrapFunc) genStep {
+	// Emit runs as the expression renders, so that only rendered code
+	// declares helpers.
+	return w.check(wrap(func(c genCtx) (string, error) {
+		e, err := r.Emit(w.emitter, t, x)
+		if err != nil {
+			return "", err
+		}
+
+		return e(c)
+	}))
 }
 
 // heldValue returns the one value a pointer, an opt.Option or an und.Und x

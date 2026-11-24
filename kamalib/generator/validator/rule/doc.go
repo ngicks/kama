@@ -85,6 +85,18 @@
 // a Format holding DefaultFormats and the new FormatHelper, as the doc
 // comment of Format shows.
 //
+// A rule validating a struct as a whole implements StructRule. The doc
+// comment of a struct type takes such rules only. Struct of the rule
+// receives the struct as a Struct, which names its fields by the JSON
+// members they encode as, and returns the Rule the generator applies to
+// the struct value.
+//
+// A rule of a field reading the other fields of its struct implements
+// SiblingRule. Siblings of the rule receives the struct as a Struct and
+// returns the Rule the generator applies to the field. The generator
+// applies it to the field itself, never to the value a pointer or an
+// option holds, and adds no path segment of the field to its errors.
+//
 // # Built-in validators
 //
 // The built-in validators report leaf errors created by validation.New with
@@ -103,6 +115,8 @@
 //	multipleof=<n>        validation.ErrMultiple
 //	unique                validation.ErrUnique
 //	format=<name>         validation.ErrFormat
+//	requires="<name> ..." validation.ErrRequired
+//	members="<op><n> ..." validation.ErrLength
 //
 // required takes no arg. The value is not the zero value: an opt.Option
 // is some, an und.Und or an elastic.Elastic is defined, a pointer, slice,
@@ -179,7 +193,25 @@
 // with time.DateOnly, date-time parses with time.RFC3339, and url parses
 // with net/url and has a scheme and a host.
 //
-// A validator with several comparisons, as length, runes and cmp take, checks
-// them all. With stopOnFirstError true it returns the first failure only,
-// otherwise every failure joined.
+// requires takes one or more JSON member names of sibling fields, as in
+// requires="city zip". When the field is present, each sibling named is
+// present too, as JSON Schema dependentRequired tests. Present means what
+// required tests, so an und.Und holding null is absent. The field and each
+// sibling must be of a type required applies to. A name no sibling field
+// encodes as is an error. The error of a missing sibling is located at the
+// sibling. requires applies to a pointer or an option field itself and
+// never to the value it holds.
+//
+// members takes the arg of length and is written in the doc comment of a
+// struct type, as in //kama:validate members=">=1 <=3". The number of JSON
+// members of the value satisfies every comparison, as JSON Schema
+// minProperties and maxProperties count them. A field of an option type or
+// a nillable type counts when required would pass on it. Any other field
+// encoded as a member always counts, and so does each entry of the
+// embedded fallback map, the field tagged json:",embed". A fallback of
+// another type and a struct inlining an embedded struct are errors.
+//
+// A validator with several comparisons, as length, runes, cmp and members
+// take, checks them all. With stopOnFirstError true it returns the first
+// failure only, otherwise every failure joined.
 package rule

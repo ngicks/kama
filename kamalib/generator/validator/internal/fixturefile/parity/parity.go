@@ -29,7 +29,10 @@ func (o Order) validateNote(bool) error {
 type Line struct {
 	Qty int                `json:"qty"`
 	Url opt.Option[string] `json:"url"`
+	Sku Sku                `json:"sku"`
 }
+
+type Sku string
 
 // Batch holds orders, which makes it a dependant.
 type Batch struct {

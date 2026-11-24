@@ -2,13 +2,14 @@
 // params:
 //	option_file: "validate.yaml"
 //	package_option_file: "parity/kama_validate.yaml"
-// generated: 2026-11-22T14:09:15Z
+// generated: 2026-11-24T10:13:57Z
 
 package parity
 
 import (
 	"maps"
 	"slices"
+	"unicode/utf8"
 
 	"github.com/ngicks/kama/kamalib/pkg/validation"
 )
@@ -19,6 +20,12 @@ import (
 //kama:generated kama-validate
 func (v Order) Validate(stopOnFirstError bool) error {
 	var errs []error
+	if err := kamaValidateMembers(kamaValidateCount(v.Lines != nil)+3, ">=", 4); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
 	if err := validation.Field(requiredComparable(v.Id), "id"); err != nil {
 		if stopOnFirstError {
 			return err
@@ -79,6 +86,33 @@ func (v Line) Validate(stopOnFirstError bool) error {
 			}
 			errs = append(errs, err)
 		}
+	}
+	if err := validation.Field(v.Sku.Validate(stopOnFirstError), "sku"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama-validate
+func (v Sku) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := kamaValidateRegexpString(kamaValidateRegexp_0ab128e122, string(v)); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := kamaValidateRunes(utf8.RuneCountInString(string(v)), "<=", 8); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
 	}
 	return validation.Join(errs...)
 }

@@ -48,6 +48,14 @@ func (s *selection) ignored(id typegraph.QualifiedType) bool {
 	return ok
 }
 
+// typeValidators returns the validators the directives or the option file
+// entry of the type id name for the value of the type, those of its type
+// group first.
+func (s *selection) typeValidators(id typegraph.QualifiedType) []ValidatorOptions {
+	to, _ := s.opts.Loaded.Option.Type(id)
+	return slices.Concat(to.Group.Validators, to.Type.Validators)
+}
+
 // marked reports whether the user marked n: by //kama:validate on it, by
 // //kama:validate file in its file or by //kama:validate package in its
 // package, or by the option file counterparts.
@@ -87,7 +95,7 @@ func (s *selection) hookOn(n *typegraph.Node, v *types.Var) bool {
 
 // checkMarks reports types both marked and ignored, and types marked
 // explicitly that cannot get a Validate: aliases, types of other kinds than
-// struct, slice and map, and implementors.
+// struct, slice and map without validators of their own, and implementors.
 func (s *selection) checkMarks(g *typegraph.Graph) error {
 	var errs []error
 
@@ -107,13 +115,23 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 			continue
 		}
 
-		err := base.MarkedTypeError(s.pkgs, s.opts.Markers, g, id, mark.origin(), ErrUnsupported)
-		if err != nil {
-			errs = append(errs, err)
-			continue
+		n, ok := g.Get(id)
+		if !ok || !s.validatesValue(n) {
+			err := base.MarkedTypeError(
+				s.pkgs,
+				s.opts.Markers,
+				g,
+				id,
+				mark.origin(),
+				ErrUnsupported,
+			)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
 		}
 
-		if n, ok := g.Get(id); ok && s.implementor(n.Detail.Type) {
+		if ok && s.implementor(n.Detail.Type) {
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s declares Validate itself; remove the mark",
 				ErrConflict, mark.origin(), id,
@@ -126,7 +144,7 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 
 // checkFieldOptions reports hook and validator options on types that get
 // no Validate, where they would have no effect, and validators given twice
-// to one field.
+// to one type or one field.
 func (s *selection) checkFieldOptions() error {
 	var errs []error
 
@@ -140,6 +158,18 @@ func (s *selection) checkFieldOptions() error {
 					ErrDirective, o.hookSrc.origin(), o.hookSrc.spelling(), id,
 				))
 			}
+		}
+
+		vs := s.typeValidators(id)
+		if !isTarget {
+			for _, v := range vs {
+				errs = append(errs, fmt.Errorf(
+					"%w: %s: %s on %s, which gets no Validate",
+					ErrDirective, v.src.origin(), v.src.spelling(), id,
+				))
+			}
+		} else {
+			errs = append(errs, duplicateValidators(vs, id.String())...)
 		}
 
 		fields, _ := to.Fields.Unpack()
@@ -166,19 +196,33 @@ func (s *selection) fieldOptionErrors(
 		))
 	}
 
-	seen := map[string]bool{}
+	if isTarget {
+		return append(errs, duplicateValidators(o.Validators, "field "+id.String()+"."+field)...)
+	}
 
 	for _, v := range o.Validators {
-		switch {
-		case !isTarget:
+		errs = append(errs, fmt.Errorf(
+			"%w: %s: %s on field %s.%s, whose type gets no Validate; mark the type",
+			ErrDirective, v.src.origin(), v.src.spelling(), id, field,
+		))
+	}
+
+	return errs
+}
+
+// duplicateValidators reports the validators of vs named twice. place
+// names what vs apply to.
+func duplicateValidators(vs []ValidatorOptions, place string) []error {
+	var (
+		errs []error
+		seen = map[string]bool{}
+	)
+
+	for _, v := range vs {
+		if seen[v.Name] {
 			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s on field %s.%s, whose type gets no Validate; mark the type",
-				ErrDirective, v.src.origin(), v.src.spelling(), id, field,
-			))
-		case seen[v.Name]:
-			errs = append(errs, fmt.Errorf(
-				"%w: %s: validator %s given twice on field %s.%s",
-				ErrDirective, v.src.origin(), v.Name, id, field,
+				"%w: %s: validator %s given twice on %s",
+				ErrDirective, v.src.origin(), v.Name, place,
 			))
 		}
 

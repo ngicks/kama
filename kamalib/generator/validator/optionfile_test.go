@@ -99,6 +99,31 @@ types:
 	assertNotContains(t, src, "B)")
 }
 
+// TestOptionFileTypeValidators gives a type validators of its own, as its
+// directive would, and warns of an unknown key of such a validator.
+func TestOptionFileTypeValidators(t *testing.T) {
+	out, warnings, err := generateWithWarnings(t, map[string]string{
+		"a.go": "package x\n\ntype N int\n",
+		"kama_validate.yaml": "version: 1\ntypes:\n  N:\n    validators:\n" +
+			"      - name: cmp\n        args: \">0\"\n        ww: 1\n",
+	}, nil)
+	assert.NilError(t, err)
+	assertContains(t, gentest.Funcs(t, out["a.kama_validate.go"])["N.Validate"],
+		check(`kamaValidateCmp(v, ">", 0)`),
+	)
+	assert.Equal(t, len(warnings), 1)
+	assert.ErrorIs(t, warnings[0], genopt.ErrUnknownKey)
+	assert.ErrorContains(t, warnings[0], "types.N.validators.0.ww")
+
+	_, err = generateWithOptionFiles(t, map[string]string{
+		"a.go": "package x\n\ntype N int\n",
+		"kama_validate.yaml": "version: 1\ntypes:\n  N:\n    validators:\n" +
+			"      - name: cmp\n        args: '>\"1'\n",
+	})
+	assert.ErrorIs(t, err, ErrUnsupported)
+	assert.ErrorContains(t, err, "types.N.validators.0: package option file cmp option on type N")
+}
+
 func TestOptionFileErrors(t *testing.T) {
 	cases := []struct {
 		name string

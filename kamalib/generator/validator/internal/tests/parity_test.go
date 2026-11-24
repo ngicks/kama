@@ -31,13 +31,16 @@ type parityValues struct {
 func TestParity(t *testing.T) {
 	order := parity.Order{
 		Id:       "ABC-1",
-		Lines:    []parity.Line{{Qty: 100, Url: opt.Some("https://example.com/a")}},
+		Lines:    []parity.Line{{Qty: 100, Url: opt.Some("https://example.com/a"), Sku: "AB"}},
 		Currency: "eur",
 		Note:     "short",
 	}
 	bad := parity.Order{
-		Id:       "abc",
-		Lines:    []parity.Line{{Qty: 101, Url: opt.Some("/relative")}, {Qty: 0}},
+		Id: "abc",
+		Lines: []parity.Line{
+			{Qty: 101, Url: opt.Some("/relative"), Sku: "ab"},
+			{Qty: 0, Sku: "ABCDEFGHI"},
+		},
 		Currency: "EUR",
 		Note:     "far too long",
 	}
@@ -46,13 +49,16 @@ func TestParity(t *testing.T) {
 
 	fileOrder := fileparity.Order{
 		Id:       "ABC-1",
-		Lines:    []fileparity.Line{{Qty: 100, Url: opt.Some("https://example.com/a")}},
+		Lines:    []fileparity.Line{{Qty: 100, Url: opt.Some("https://example.com/a"), Sku: "AB"}},
 		Currency: "eur",
 		Note:     "short",
 	}
 	fileBad := fileparity.Order{
-		Id:       "abc",
-		Lines:    []fileparity.Line{{Qty: 101, Url: opt.Some("/relative")}, {Qty: 0}},
+		Id: "abc",
+		Lines: []fileparity.Line{
+			{Qty: 101, Url: opt.Some("/relative"), Sku: "ab"},
+			{Qty: 0, Sku: "ABCDEFGHI"},
+		},
 		Currency: "EUR",
 		Note:     "far too long",
 	}
@@ -98,7 +104,9 @@ func testParity(t *testing.T, tc parityValues) {
 		{"/id", validation.ErrPattern, `want a match of "^[A-Z]{3}-[0-9]+$", got "abc"`},
 		{"/lines/0/qty", validation.ErrCompare, "want <= 100, got 101"},
 		{"/lines/0/url", validation.ErrFormat, "want format url"},
+		{"/lines/0/sku", validation.ErrPattern, `want a match of "^[A-Z]+$", got "ab"`},
 		{"/lines/1/qty", validation.ErrCompare, "want > 0, got 0"},
+		{"/lines/1/sku", validation.ErrLength, "want rune count <= 8, got 9"},
 		{"/currency", validation.ErrConst, `want one of "eur", "usd", got "EUR"`},
 		{"/note", tc.errNote, tc.errNote.Error()},
 	}
@@ -117,9 +125,15 @@ func testParity(t *testing.T, tc parityValues) {
 	assert.DeepEqual(t, validation.Pointers(err), slices.Sorted(slices.Values(want)))
 	assert.DeepEqual(t, validation.Pointers(tc.invalid.Validate(true)), []string{"/id"})
 
-	at := validation.At(tc.emptyLines.Validate(false), "/lines")
+	err = tc.emptyLines.Validate(false)
+	at := validation.At(err, "/lines")
 	assert.Equal(t, len(at), 1)
 	assert.ErrorIs(t, at[0], validation.ErrLength)
+
+	// Order counts nil Lines as an absent member.
+	at = validation.At(err, "")
+	assert.Equal(t, len(at), 1)
+	assert.ErrorContains(t, at[0], "want member count >= 4, got 3")
 
 	assert.DeepEqual(t, validation.Pointers(tc.batch.Validate(true)), []string{"/orders/b/id"})
 }

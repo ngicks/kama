@@ -98,6 +98,10 @@ type TypeOptions struct {
 	// Hook stands for //kama:validate hook=on (true) or hook=off (false). Nil
 	// leaves the default.
 	Hook *bool `json:"hook"`
+	// Validators stand for the validators //kama:validate names in the doc
+	// comment of the type, in the order written. They validate the value of
+	// the type itself.
+	Validators []ValidatorOptions `json:"validators"`
 	// Unknown captures the keys of an option file entry that name no option.
 	Unknown map[string]any `json:",embed"`
 	// marked stands for //kama:validate without ignore, or for an option
@@ -111,6 +115,7 @@ type TypeOptions struct {
 // directive without ignore marks the type, as an option file entry does.
 // genopt joins the lines of a target into one directive, so a line holding
 // only hook=on cannot be told from one following a bare //kama:validate.
+// Each arg other than ignore and hook names a validator.
 func (o *TypeOptions) UnmarshalKeyValue(
 	src genopt.Source,
 	sub string,
@@ -124,6 +129,11 @@ func (o *TypeOptions) UnmarshalKeyValue(
 		switch {
 		case a.Key == ignoreWord && !a.HasValue:
 			o.Ignore = true
+		case a.Key == ignoreWord:
+			return fmt.Errorf(
+				"%w: %s: unknown arg %q on %s; want ignore without a value",
+				ErrDirective, src.Pos, a.String(), src.Target.Describe(),
+			)
 		case a.Key == hookWord:
 			if o.Hook != nil {
 				return fmt.Errorf(
@@ -141,11 +151,11 @@ func (o *TypeOptions) UnmarshalKeyValue(
 			o.Hook = &on
 			o.hookSrc = optionSource{src: src, arg: a.String()}
 		default:
-			return fmt.Errorf(
-				"%w: %s: unknown arg %q on %s; want ignore or hook=on|off;"+
-					" validators apply to struct fields only",
-				ErrDirective, src.Pos, a.String(), src.Target.Describe(),
-			)
+			o.Validators = append(o.Validators, ValidatorOptions{
+				Name: a.Key,
+				Args: a.Value,
+				src:  optionSource{src: src, arg: a.Key},
+			})
 		}
 	}
 
@@ -168,11 +178,15 @@ func (o *TypeOptions) SetSource(src genopt.Source) {
 	if o.Hook != nil {
 		o.hookSrc = optionSource{src: src, arg: hookWord}
 	}
+
+	setValidatorSources(o.Validators, src)
 }
 
 // UnknownKeys returns the keys of the option file entry that name no
-// option.
-func (o *TypeOptions) UnknownKeys() [][]string { return unknownkey.Paths(o.Unknown) }
+// option, those of each validator included.
+func (o *TypeOptions) UnknownKeys() [][]string {
+	return validatorUnknownKeys(o.Validators, unknownkey.Paths(o.Unknown))
+}
 
 // FieldOptions are the options of a struct field.
 type FieldOptions struct {
@@ -246,26 +260,37 @@ func (o *FieldOptions) SetSource(src genopt.Source) {
 		o.hookSrc = optionSource{src: src, arg: hookWord}
 	}
 
-	for i := range o.Validators {
-		o.Validators[i].src = optionSource{
-			src: src, arg: o.Validators[i].Name, keys: []string{"validators", strconv.Itoa(i)},
-		}
-	}
+	setValidatorSources(o.Validators, src)
 }
 
 // UnknownKeys returns the keys of the option file entry that name no
 // option, those of each validator included.
 func (o *FieldOptions) UnknownKeys() [][]string {
-	keys := unknownkey.Paths(o.Unknown)
-	for i, v := range o.Validators {
+	return validatorUnknownKeys(o.Validators, unknownkey.Paths(o.Unknown))
+}
+
+// setValidatorSources records src, the option file entry listing vs, in
+// each of vs.
+func setValidatorSources(vs []ValidatorOptions, src genopt.Source) {
+	for i := range vs {
+		vs[i].src = optionSource{
+			src: src, arg: vs[i].Name, keys: []string{"validators", strconv.Itoa(i)},
+		}
+	}
+}
+
+// validatorUnknownKeys returns keys followed by the unknown keys of each
+// of vs below the validators key.
+func validatorUnknownKeys(vs []ValidatorOptions, keys [][]string) [][]string {
+	for i, v := range vs {
 		keys = append(keys, unknownkey.Paths(v.Unknown, "validators", strconv.Itoa(i))...)
 	}
 
 	return keys
 }
 
-// ValidatorOptions are one validator of a field: the arg Name=Args of
-// //kama:validate, or Name alone when Args is empty.
+// ValidatorOptions are one validator of a field or a type: the arg
+// Name=Args of //kama:validate, or Name alone when Args is empty.
 type ValidatorOptions struct {
 	Name string `json:"name"`
 	// Args is the one argument of the validator, unparsed. Empty stands for

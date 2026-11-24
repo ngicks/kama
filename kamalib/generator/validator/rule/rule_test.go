@@ -1,6 +1,7 @@
 package rule
 
 import (
+	"errors"
 	"go/types"
 	"testing"
 
@@ -292,5 +293,120 @@ func TestUniqueCheck(t *testing.T) {
 			UniqueOptions{}.Check(typ),
 			typ.String()+" is not a slice or array type",
 		)
+	}
+}
+
+// testStruct is a Struct of the tests. Its members are those of types, in
+// the order of names.
+type testStruct struct {
+	names    []string
+	types    map[string]types.Type
+	fallback types.Type
+	err      error
+}
+
+func (s testStruct) Members() ([]string, error) { return s.names, s.err }
+
+func (s testStruct) Member(name string) (types.Type, Gen, bool) {
+	t, ok := s.types[name]
+	return t, lang.Expr("v.%s", name), ok
+}
+
+func (s testStruct) Fallback() (types.Type, Gen, bool) {
+	return s.fallback, lang.Expr("v.X"), s.fallback != nil
+}
+
+func TestRequiresParse(t *testing.T) {
+	o, err := Requires{}.Parse(`b "c d"`)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, o, RequiresOptions{Names: []string{"b", "c d"}})
+
+	for arg, msg := range map[string]string{
+		"":    "want one or more JSON names of sibling fields",
+		"b=1": `arg "b=1" is no JSON name`,
+	} {
+		_, err := Requires{}.Parse(arg)
+		assert.ErrorIs(t, err, ErrArgs, arg)
+		assert.ErrorContains(t, err, msg, arg)
+	}
+}
+
+func TestRequiresSiblings(t *testing.T) {
+	s := testStruct{
+		names: []string{"a", "b", "c"},
+		types: map[string]types.Type{
+			"a": types.NewPointer(types.Typ[types.Int]),
+			"b": types.Typ[types.String],
+			"c": types.NewStruct([]*types.Var{
+				types.NewField(0, nil, "L", types.NewSlice(types.Typ[types.Int]), false),
+			}, nil),
+		},
+	}
+	o := RequiresOptions{Names: []string{"b"}}
+
+	assert.ErrorContains(t, o.Check(types.Typ[types.Int]), "write it on a field of a struct")
+
+	r, err := o.Siblings(s, "a")
+	assert.NilError(t, err)
+	assert.NilError(t, r.Check(s.types["a"]))
+	assert.ErrorContains(t, r.Check(s.types["c"]), "is not comparable")
+
+	_, err = RequiresOptions{Names: []string{"b", "z"}}.Siblings(s, "a")
+	assert.ErrorContains(t, err, `no sibling field encodes as the member "z"`)
+
+	_, err = RequiresOptions{Names: []string{"c"}}.Siblings(s, "a")
+	assert.ErrorContains(t, err, `sibling "c" has no presence test`)
+}
+
+func TestMembersParse(t *testing.T) {
+	o, err := Members{}.Parse(">=1 <=3")
+	assert.NilError(t, err)
+	assert.DeepEqual(t, o, MembersOptions{Comparisons: []Comparison{
+		{Op: ">=", Operand: "1"},
+		{Op: "<=", Operand: "3"},
+	}})
+
+	for arg, msg := range map[string]string{
+		"":    "want one or more comparisons",
+		">-1": "length -1 is negative",
+	} {
+		_, err := Members{}.Parse(arg)
+		assert.ErrorIs(t, err, ErrArgs, arg)
+		assert.ErrorContains(t, err, msg, arg)
+	}
+}
+
+func TestMembersStruct(t *testing.T) {
+	o := MembersOptions{Comparisons: []Comparison{{Op: ">=", Operand: "1"}}}
+	assert.ErrorContains(t, o.Check(types.Typ[types.Int]), "members counts the members of a struct")
+
+	strMap := types.NewMap(types.Typ[types.String], types.Typ[types.Int])
+
+	r, err := o.Struct(testStruct{fallback: strMap})
+	assert.NilError(t, err)
+	assert.NilError(t, r.Check(types.Typ[types.Int]))
+
+	_, err = o.Struct(testStruct{err: errors.New("inlined")})
+	assert.ErrorContains(t, err, "inlined")
+
+	_, err = o.Struct(testStruct{fallback: types.Typ[types.String]})
+	assert.ErrorContains(t, err, "the embedded fallback field of type string is no map")
+}
+
+func TestOptionalState(t *testing.T) {
+	for _, typ := range []types.Type{
+		types.NewPointer(types.Typ[types.Int]),
+		types.NewSlice(types.Typ[types.Int]),
+		types.NewInterfaceType(nil, nil),
+	} {
+		assert.Assert(t, optionalState(typ), typ.String())
+	}
+
+	for _, typ := range []types.Type{
+		types.Typ[types.Int],
+		types.Typ[types.String],
+		types.NewStruct(nil, nil),
+	} {
+		assert.Assert(t, !optionalState(typ), typ.String())
 	}
 }

@@ -7,6 +7,9 @@ packages:
     types:
       Order:
         hook: false
+        validators:
+          - name: members
+            args: ">=4"
         fields:
           Id:
             validators:

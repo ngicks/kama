@@ -8,7 +8,7 @@ import (
 	"slices"
 )
 
-// Validator is one kind of field validator //kama:validate can name.
+// Validator is one kind of validator //kama:validate can name.
 type Validator interface {
 	// Name is the word naming the validator in the args of //kama:validate.
 	// It must not be hook, ignore, file or package.
@@ -41,7 +41,8 @@ const ValidationPath = "github.com/ngicks/kama/kamalib/pkg/validation"
 // The generator applies a rule to the type of the field first. When Check
 // rejects it and the field is a pointer, an opt.Option or an und.Und, the
 // generator applies it to the value held, under a guard that skips the
-// rule when no value is held.
+// rule when no value is held. A rule in the doc comment of a type applies
+// to the value of the type itself.
 type Rule interface {
 	// Check reports why the rule cannot apply to a value of type t. It
 	// returns nil when it can.
@@ -56,6 +57,55 @@ type Rule interface {
 	// that can find several errors should return only the first one when
 	// that parameter is true.
 	Emit(e Emitter, t types.Type, v Gen) (Gen, error)
+}
+
+// StructRule is a Rule validating a value of a struct type as a whole. The
+// doc comment of a struct type takes only rules of this kind, and a field
+// takes none of them. The generator never calls Check and Emit of the rule
+// itself. It applies the rule Struct returns to the struct type and its
+// value instead.
+type StructRule interface {
+	Rule
+	// Struct returns the rule validating a value of s, or the error telling
+	// why the rule cannot validate s.
+	Struct(s Struct) (Rule, error)
+}
+
+// SiblingRule is a Rule of a struct field that reads the other fields of
+// the struct holding the field. The generator never calls Check and Emit
+// of the rule itself. It applies the rule Siblings returns to the field.
+// It never applies that rule to the value a pointer or an option of the
+// field holds, and it adds no path segment of the field to its errors. The
+// errors are located at the struct, and the rule adds the segment of each
+// error itself, as validation.Field does.
+type SiblingRule interface {
+	Rule
+	// Siblings returns the rule validating the field of s named field,
+	// which reads the other fields of s, or the error telling why the rule
+	// cannot read them. field is the name the json tag of the field gives,
+	// else the name of the field.
+	Siblings(s Struct, field string) (Rule, error)
+}
+
+// Struct is the struct type a StructRule validates, or the struct holding
+// the field a SiblingRule validates. It names the fields by the JSON
+// members encoders write them as.
+type Struct interface {
+	// Members returns the names of the members the fields encode as, in the
+	// order of the fields. A field encodes as a member when it is exported,
+	// its json tag is not "-" and encoders do not inline it. The member
+	// takes the name of the json tag, else the name of the field. Members
+	// reports an error when the struct inlines an embedded struct. It does
+	// not list the members such a struct adds.
+	Members() ([]string, error)
+	// Member returns the type of the field encoding as the member name and
+	// the expression of its value, or false when no field Members lists
+	// encodes as name.
+	Member(name string) (types.Type, Gen, bool)
+	// Fallback returns the type of the embedded fallback field, a field
+	// tagged json:",embed" whose type is no struct, and the expression of
+	// its value, or false when the struct has none.
+	Fallback() (types.Type, Gen, bool)
 }
 
 // Importer spells packages by path in the file generated code lands in.
@@ -104,7 +154,7 @@ func NewRegistry(vs ...Validator) *Registry {
 
 // DefaultRegistry returns a new registry holding the built-in validators:
 // required, zero, nil, null, regexp, length, runes, cmp, const, multipleof,
-// unique and format with DefaultFormats.
+// unique, format with DefaultFormats, requires and members.
 func DefaultRegistry() *Registry {
 	return NewRegistry(
 		Required{},
@@ -119,6 +169,8 @@ func DefaultRegistry() *Registry {
 		MultipleOf{},
 		Unique{},
 		Format{Formats: DefaultFormats()},
+		Requires{},
+		Members{},
 	)
 }
 

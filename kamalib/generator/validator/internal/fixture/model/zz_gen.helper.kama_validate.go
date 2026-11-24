@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T07:47:33Z
+// generated: 2026-11-24T10:13:55Z
 
 package model
 
@@ -90,6 +90,19 @@ func kamaValidateCopy[T any](v T) *T {
 	return &v
 }
 
+// kamaValidateCount is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateCount(present ...bool) int {
+	n := 0
+	for _, ok := range present {
+		if ok {
+			n++
+		}
+	}
+	return n
+}
+
 // kamaValidateEqual is a helper of the generated Validate methods.
 //
 //kama:generated kama-validate
@@ -141,6 +154,16 @@ func kamaValidateLength(got int, op string, want int) error {
 	return nil
 }
 
+// kamaValidateMembers is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateMembers(got int, op string, want int) error {
+	if !kamaValidateCompare(got, op, want) {
+		return validation.New(validation.ErrLength, "want member count %s %d, got %d", op, want, got)
+	}
+	return nil
+}
+
 // kamaValidateMultipleFloat is a helper of the generated Validate methods.
 //
 //kama:generated kama-validate
@@ -176,6 +199,14 @@ func kamaValidateNil(ok bool) error {
 		return validation.New(validation.ErrNil, "want nil, got a non-nil value")
 	}
 	return nil
+}
+
+// kamaValidateNonZero is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateNonZero[T comparable](t T) bool {
+	var zero T
+	return t != zero
 }
 
 // kamaValidateNull is a helper of the generated Validate methods.
@@ -221,6 +252,26 @@ func kamaValidateRequired(ok bool, got string) error {
 		return validation.New(validation.ErrRequired, "want a value, got %s", got)
 	}
 	return nil
+}
+
+// kamaValidateRequires is a helper of the generated Validate methods.
+//
+//kama:generated kama-validate
+func kamaValidateRequires(stopOnFirstError bool, field string, present bool, names []string, siblings ...bool) error {
+	if !present {
+		return nil
+	}
+	var errs []error
+	for i, ok := range siblings {
+		if !ok {
+			err := validation.Field(validation.New(validation.ErrRequired, "want a value, as %q has one", field), names[i])
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
 }
 
 // kamaValidateRunes is a helper of the generated Validate methods.
