@@ -58,7 +58,12 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 			comment = append(comment, lang.Expr("%s", commentLines(strings.Join(a, "\n\n"))))
 		}
 
-		if args := fieldArgs(doc, opts, ptr, n.Name); len(args) > 0 {
+		args, err := fieldArgs(doc, opts, ptr, n.Name)
+		if err != nil {
+			return []genStep{lang.Fail(err)}
+		}
+
+		if len(args) > 0 {
 			comment = append(comment, lang.Expr("%s", directiveLines(args)))
 		}
 
@@ -540,16 +545,33 @@ func goLiteral(ptr, kind string, v jsontext.Value) (string, error) {
 	return text, nil
 }
 
-// fieldName returns the Go name of the property name at ptr. check has
-// rejected a name giving none.
+// fieldName returns the Go name of the field of the property name at ptr,
+// as fieldIdent spells it. check has rejected a name giving none.
 func fieldName(ptr, name string) genExpr {
-	return func(genCtx) (string, error) { return identifier(ptr, "property", name) }
+	return func(genCtx) (string, error) {
+		f, err := identifier(ptr, "property", name)
+		return fieldIdent(f), err
+	}
 }
 
 // memberField returns the name of the field of the member i of the allOf
-// at ptr.
+// at ptr, as fieldIdent spells it.
 func memberField(doc *jsonschema.Schema, opts Options, ptr string, i int) genExpr {
-	return func(genCtx) (string, error) { return memberName(doc, opts, ptr, i) }
+	return func(genCtx) (string, error) {
+		m, err := memberName(doc, opts, ptr, i)
+		return fieldIdent(m), err
+	}
+}
+
+// fieldIdent returns name, the Go name of a field, with the suffix Field
+// when a method of the struct takes the name, as for a property named
+// validate or additionalProperties.
+func fieldIdent(name string) string {
+	if slices.Contains(methodNames, name) {
+		return name + "Field"
+	}
+
+	return name
 }
 
 // fieldType spells the type of the field of the property name of the

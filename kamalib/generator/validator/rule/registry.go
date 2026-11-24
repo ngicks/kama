@@ -79,10 +79,17 @@ type Rule interface {
 }
 
 // StructRule is a Rule validating a value of a struct type as a whole. The
-// doc comment of a struct type takes only rules of this kind, and a field
-// takes none of them. The generator never calls Check and Emit of the rule
-// itself. It applies the rule Struct returns to the struct type and its
-// value instead.
+// doc comment of a struct type takes only rules of this kind. On a struct
+// type the generator never calls Check and Emit of the rule itself. It
+// applies the rule Struct returns to the struct type and its value
+// instead.
+//
+// Elsewhere the rule is an ordinary Rule. The doc comment of a type of
+// another kind and a field take it when its Check accepts the type, or for
+// a field the value a pointer, an opt.Option or an und.Und holds, as
+// members accepts raw JSON text. The generator then calls Check and Emit
+// of the rule itself. A Check rejecting every type but the struct types
+// keeps the rule to the doc comments of struct types.
 type StructRule interface {
 	Rule
 	// Struct returns the rule validating a value of s, or the error telling

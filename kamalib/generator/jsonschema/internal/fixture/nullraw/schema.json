@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Root",
+  "type": "object",
+  "required": ["r"],
+  "properties": {
+    "r": {"type": ["integer", "null"], "not": {"type": "null"}},
+    "a": {"type": ["string", "null"], "not": {"type": "null"}},
+    "c": {"type": ["string", "null"], "const": "x"},
+    "e": {"type": ["string", "null"], "if": {"type": "null"}, "then": false},
+    "p": {"type": ["string", "null"]},
+    "s": {"type": ["string", "null"], "allOf": [{"type": "string"}]},
+    "d": {"type": ["integer", "null"], "anyOf": [{"minimum": 1}, {"type": "integer"}]},
+    "q": {"$ref": "#/$defs/N"},
+    "l": {"type": "array", "items": {"type": ["string", "null"], "not": {"type": "null"}}},
+    "m": {"type": "object", "additionalProperties": {"$ref": "#/$defs/N"}}
+  },
+  "$defs": {
+    "N": {"type": ["string", "null"], "not": {"type": "null"}}
+  }
+}

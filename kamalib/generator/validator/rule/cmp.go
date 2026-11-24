@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"math"
 	"math/big"
 	"strconv"
 
@@ -24,7 +25,10 @@ import (
 // exactly, passing a value of another kind. On an integer
 // type a number literal the type cannot represent, such as 1.5 or 1e30,
 // compares exactly: >=1.5 holds for the values >=2, ==1.5 for none and
-// <=1e30 for every value of int64.
+// <=1e30 for every value of int64. On a float type a number literal beyond
+// the greatest finite value of the type compares exactly too: <=1e400
+// holds for every value of float64 but +Inf and NaN, >=1e400 for +Inf
+// only.
 type Cmp struct{}
 
 // Name returns "cmp".
@@ -130,16 +134,24 @@ const (
 // same values of t. On an integer type, an operand that is a number t
 // cannot represent is rounded to the bound of the values satisfying c, and
 // holds tells holdsAlways or holdsNever when every value or none satisfies
-// c. Another operand must be a value of t.
+// c. On a float type, an operand beyond the finite values of t becomes the
+// greatest or the least of them, as beyondFloat tells. Another operand
+// must be a value of t.
 func onType(t types.Type, c Comparison) (Comparison, string, error) {
 	_, err := literalValue(t, c.Operand)
-	if err == nil || typequery.BasicInfo(t)&types.IsInteger == 0 {
+	info := typequery.BasicInfo(t)
+
+	if err == nil || info&(types.IsInteger|types.IsFloat) == 0 {
 		return c, "", err
 	}
 
 	r, ok := exactNumber(c.Operand)
 	if !ok {
 		return c, "", err
+	}
+
+	if info&types.IsFloat != 0 {
+		return beyondFloat(t, c, r, err)
 	}
 
 	lo, hi := integerRange(t)
@@ -175,6 +187,46 @@ func onType(t types.Type, c Comparison) (Comparison, string, error) {
 	}
 
 	return Comparison{Op: op, Operand: bound.String()}, "", nil
+}
+
+// beyondFloat returns c, whose operand r the float type t cannot
+// represent, as onType does: an operand above the greatest finite value m
+// of t gives <=m or >m, one below -m gives >=-m or <-m, so that only an
+// infinity satisfies what no finite value does. err is the error of an
+// operand that is not beyond the finite values, which t rounds to 0.
+func beyondFloat(t types.Type, c Comparison, r *big.Rat, err error) (Comparison, string, error) {
+	m := math.MaxFloat64
+	if t.Underlying().(*types.Basic).Kind() == types.Float32 {
+		m = math.MaxFloat32
+	}
+
+	limit := new(big.Rat).SetFloat64(m)
+	above := r.Cmp(limit) > 0
+
+	if !above && r.Cmp(new(big.Rat).Neg(limit)) >= 0 {
+		return c, "", err
+	}
+
+	switch c.Op {
+	case "==":
+		return c, holdsNever, nil
+	case "!=":
+		return c, holdsAlways, nil
+	}
+
+	text := strconv.FormatFloat(m, 'g', -1, 64)
+	below := c.Op == "<" || c.Op == "<="
+
+	switch {
+	case above && below:
+		return Comparison{Op: "<=", Operand: text}, "", nil
+	case above:
+		return Comparison{Op: ">", Operand: text}, "", nil
+	case below:
+		return Comparison{Op: "<", Operand: "-" + text}, "", nil
+	}
+
+	return Comparison{Op: ">=", Operand: "-" + text}, "", nil
 }
 
 // exactNumber returns the value of lit, a Go number literal with an

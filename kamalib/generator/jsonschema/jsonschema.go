@@ -135,7 +135,7 @@ func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
 
 	path := naming.SourceFile(filepath.Join(dir, opts.Package+".go"))
 
-	warnings := slices.Concat(unknownKeywords(doc), unenforcedKeywords(doc))
+	warnings := slices.Concat(unknownKeywords(doc), unenforcedKeywords(doc, opts))
 
 	return []File{{Path: path, Content: content}}, warnings, nil
 }

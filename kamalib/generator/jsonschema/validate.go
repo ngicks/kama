@@ -14,6 +14,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
@@ -142,7 +143,7 @@ func kindArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string,
 			args = append(args, "length="+quoteArg(l))
 		}
 
-		if s.UniqueItems.Value() {
+		if s.UniqueItems.Value() && !bridged(doc, ptr, s, "uniqueItems") {
 			args = append(args, "unique")
 		}
 	case "map":
@@ -209,16 +210,6 @@ func rawDependents(s *jsonschema.Schema) string {
 	}
 
 	return dircmnt.KeyValue{Key: "and", Call: true, Args: conds}.String()
-}
-
-// enumValues returns the values of the const or the enum of s, or nil when
-// it has neither.
-func enumValues(s *jsonschema.Schema) []jsontext.Value {
-	if s.Const != nil {
-		return []jsontext.Value{s.Const}
-	}
-
-	return s.Enum
 }
 
 // rawValues spells values as the arg of const on raw JSON text: the text
@@ -332,7 +323,7 @@ func declArgs(doc *jsonschema.Schema, opts Options, ptr string) []string {
 // of the property schema itself, unless it declares a type of its own, and
 // what the dependentRequired of the object asks of the field. The keywords
 // of a schema the property refers to are those of the type it declares.
-func fieldArgs(doc *jsonschema.Schema, opts Options, ptr, name string) []string {
+func fieldArgs(doc *jsonschema.Schema, opts Options, ptr, name string) ([]string, error) {
 	pp := child(ptr, "properties", name)
 
 	var args []string
@@ -351,10 +342,15 @@ func fieldArgs(doc *jsonschema.Schema, opts Options, ptr, name string) []string 
 			return slices.ContainsFunc(args, func(a string) bool { return argName(a) == n })
 		})
 	if clash {
-		args = []string{callArg("and", args...)}
+		and, err := callArg("and", args...)
+		if err != nil {
+			return nil, err
+		}
+
+		args = []string{and}
 	}
 
-	return append(args, deps...)
+	return append(args, deps...), nil
 }
 
 // named reports whether the schema at ptr is a $ref alone to a schema
@@ -419,11 +415,11 @@ func dependentArgs(doc *jsonschema.Schema, ptr, name string) []string {
 
 // unenforcedKeywords returns a warning for each validation keyword of the
 // schemas of doc that the generated code does not check.
-func unenforcedKeywords(doc *jsonschema.Schema) []error {
+func unenforcedKeywords(doc *jsonschema.Schema, opts Options) []error {
 	var warnings []error
 
 	for ptr := range schemas(doc) {
-		for _, kw := range uncheckedAt(doc, ptr) {
+		for _, kw := range uncheckedAt(doc, opts, ptr) {
 			warnings = append(warnings, fmt.Errorf("%w: #%s", ErrUnenforced, child(ptr, kw)))
 		}
 	}
@@ -433,9 +429,10 @@ func unenforcedKeywords(doc *jsonschema.Schema) []error {
 
 // uncheckedAt returns the validation keywords of the schema at ptr that no
 // directive checks: the keywords of a union, those a declared type or a
-// field cannot take, those of a schema that is neither, and a pattern RE2
-// does not compile in the validators of raw JSON text.
-func uncheckedAt(doc *jsonschema.Schema, ptr string) []string {
+// field cannot take, those of a schema that is neither, a format opts
+// asserts in a schema that is neither, and a pattern RE2 does not compile
+// in the validators of raw JSON text.
+func uncheckedAt(doc *jsonschema.Schema, opts Options, ptr string) []string {
 	s, err := at(doc, ptr)
 
 	switch {
@@ -458,6 +455,9 @@ func uncheckedAt(doc *jsonschema.Schema, ptr string) []string {
 	}
 
 	_, unchecked := valueArgs(doc, Options{}, ptr, "")
+	if assertedFormat(opts, s) != "" {
+		unchecked = append(unchecked, "format")
+	}
 
 	return unchecked
 }
@@ -530,7 +530,8 @@ func isProperty(ptr string) bool {
 // checkKeywords reports a validation keyword of s at ptr whose value is
 // none the keyword takes: a number for minimum, maximum and their exclusive
 // forms, a number above zero for multipleOf, and a non-negative integer for
-// the lengths and the counts.
+// the lengths and the counts. It also reports a multipleOf the validator
+// multipleof does not parse, a number below 1 too small to hold exactly.
 func checkKeywords(ptr string, s *jsonschema.Schema) []error {
 	var errs []error
 
@@ -560,12 +561,15 @@ func checkKeywords(ptr string, s *jsonschema.Schema) []error {
 			errs,
 			unsupported(child(ptr, "multipleOf"), "%s is not above zero", s.MultipleOf),
 		)
+	} else if _, err := (rule.MultipleOf{}).Parse(string(s.MultipleOf), nil); r != nil && err != nil {
+		errs = append(errs, unsupported(child(ptr, "multipleOf"), "%v", err))
 	}
 
 	for kw, v := range map[string]jsontext.Value{
 		"minLength": s.MinLength, "maxLength": s.MaxLength,
 		"minItems": s.MinItems, "maxItems": s.MaxItems,
 		"minProperties": s.MinProperties, "maxProperties": s.MaxProperties,
+		"minContains": s.MinContains, "maxContains": s.MaxContains,
 	} {
 		if r := number(kw, v); r != nil && (!r.IsInt() || r.Sign() < 0) {
 			errs = append(errs, unsupported(child(ptr, kw), "%s is no non-negative integer", v))
@@ -593,11 +597,18 @@ func comparisons(bounds map[string]jsontext.Value, text func(jsontext.Value) str
 func numberText(v jsontext.Value) string { return string(v) }
 
 // integerText returns the JSON number v, an integer that check accepted,
-// as a Go integer literal: 2.0 and 2e0 give 2.
+// as a Go integer literal: 2.0 and 2e0 give 2. An integer above the
+// greatest int64 gives 2^63, since the validators of a length or a count
+// fold every such bound alike and 1e100000 would spell 100001 digits.
 func integerText(v jsontext.Value) string {
 	r, ok := new(big.Rat).SetString(string(v))
 	if !ok || !r.IsInt() {
 		return string(v)
+	}
+
+	beyond := new(big.Int).Lsh(big.NewInt(1), 63)
+	if r.Num().Cmp(beyond) > 0 {
+		return beyond.String()
 	}
 
 	return r.Num().String()

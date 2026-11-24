@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Root",
+  "type": "object",
+  "properties": {
+    "validate": {"type": "string"},
+    "additionalProperties": {"type": "integer"},
+    "ce": {"$ref": "#/$defs/CE"},
+    "prefixUnique": {"type": "array", "prefixItems": [{"type": "number"}], "uniqueItems": true},
+    "objectUnique": {"type": "array", "items": {"$ref": "#/$defs/O"}, "uniqueItems": true},
+    "numberUnique": {"type": "array", "items": {"type": "number"}, "uniqueItems": true},
+    "emptyName": {"not": {"properties": {"": {"uniqueItems": true}}}},
+    "requiresEmpty": {"required": [""], "dependentRequired": {"": ["a"]}},
+    "maxHuge": {"type": "number", "maximum": 1e400},
+    "minHuge": {"type": "integer", "minimum": 1e400},
+    "exclusiveHuge": {"type": "number", "exclusiveMinimum": -1e400},
+    "multipleHuge": {"type": "integer", "multipleOf": 1e30},
+    "multipleHugeNumber": {"type": "number", "multipleOf": 1e100000},
+    "multipleTiny": {"type": "number", "multipleOf": 1e-400},
+    "lengthHuge": {"type": "string", "maxLength": 18446744073709551616},
+    "lengthHugeMin": {"type": "string", "minLength": 1e100000},
+    "membersStruct": {"type": "object", "properties": {"a": {}}, "maxProperties": 1e30},
+    "rawMaxLength": {"maxLength": 1e30},
+    "rawContains": {"contains": {"type": "integer"}, "maxContains": 1e30},
+    "rawMinContains": {"contains": {"type": "integer"}, "minContains": 1e30},
+    "membersHuge": {"type": "object", "maxProperties": 1e30, "additionalProperties": {"type": "integer"}},
+    "typedBig": {"type": "number", "enum": [18446744073709551617]},
+    "rawBig": {"enum": [18446744073709551617, "x"]}
+  },
+  "$defs": {
+    "CE": {"const": {"a": 1}, "enum": [{"a": 2}]},
+    "O": {"type": "object", "properties": {"x": {"type": "number"}}}
+  }
+}

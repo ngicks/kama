@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T15:22:48Z
+// generated: 2026-11-24T18:02:13Z
 
 package subschema
 
@@ -22,7 +22,7 @@ import (
 // Tree takes any JSON value. An object names itself and holds Trees as its
 // children.
 //
-//kama:validate required="name"
+//kama:validate required=`"name"`
 //kama:validate props(field("name", kind="string"), field("children", kind="array", items(ref=Tree)))
 //kama:generated kama:jsonschema
 type Tree jsontext.Value
@@ -105,7 +105,7 @@ func (v Small) RawJson() jsontext.Value {
 
 // Address is generated from the schema at #/$defs/Address.
 //
-//kama:validate and(if(required="zip", required="country"), if(props(field("country", const="`\"us\"`")), required="zip", required="postal"))
+//kama:validate and(if(required=`"zip"`, required=`"country"`), if(props(field("country", const="`\"us\"`")), required=`"zip"`, required=`"postal"`))
 //kama:validate props(field("country", const="`\"us\"` `\"ca\"`"))
 //kama:generated kama:jsonschema
 type Address jsontext.Value
@@ -338,7 +338,7 @@ func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Payment is generated from the schema at #/$defs/Payment.
 //
 //kama:validate hook=off
-//kama:validate json(if(required="card", required="billing"))
+//kama:validate json(if(required=`"card"`, required=`"billing"`))
 //kama:generated kama:jsonschema
 type Payment struct {
 	_x map[string]jsontext.Value `json:",embed"`

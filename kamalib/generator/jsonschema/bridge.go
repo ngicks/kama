@@ -35,7 +35,7 @@ func jsonArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, error
 		return nil, err
 	}
 
-	return []string{callArg("json", args...)}, nil
+	return oneCall("json", args...)
 }
 
 // bridged reports whether the Go type of the schema s at ptr, which is no
@@ -47,6 +47,10 @@ func jsonArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, error
 //   - every keyword of a product but allOf, type, properties, required and
 //     additionalProperties;
 //   - the keywords of ruleKeywords, minContains and maxContains;
+//   - the uniqueItems of an array whose elements are no Go scalars, which
+//     == or reflect.DeepEqual would compare otherwise than as JSON values:
+//     a struct by the raw text of its additional members, raw JSON text by
+//     its bytes;
 //   - an allOf that is no product;
 //   - items next to prefixItems and additionalProperties next to
 //     patternProperties, which narrow the values they apply to;
@@ -58,6 +62,8 @@ func bridged(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema, kw string
 		return kw != unionKeyword(s) && (kw != "type" || !multiKind(s))
 	case slices.Contains(ruleKeywords, kw) || kw == "minContains" || kw == "maxContains":
 		return true
+	case kw == "uniqueItems" && slices.Equal(typeKinds(s), []string{"array"}):
+		return !scalarItems(doc, ptr, s)
 	}
 
 	switch kw {
@@ -84,6 +90,28 @@ func bridged(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema, kw string
 	}
 
 	return mapOnly(s) || structKind(s) && undeclaredDependents(s)
+}
+
+// scalarItems reports whether the elements of the array s at ptr are Go
+// scalars: s gives no prefixItems and items of one scalar kind that is not
+// nullable and no raw JSON text. It reads the keywords of items rather
+// than its Go type, since raw asks bridged about a nullable array, which
+// items may refer to.
+func scalarItems(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
+	if s.PrefixItems != nil || s.Items == nil {
+		return false
+	}
+
+	r, is, err := resolved(doc, child(ptr, "items"))
+	if err != nil || is.Bool.IsSome() || is.Ref.IsSome() || is.DynamicRef.IsSome() ||
+		slices.Contains(is.Type.Names, "null") || len(typeKinds(is)) != 1 ||
+		!slices.Contains(scalarKinds, typeKinds(is)[0]) {
+		return false
+	}
+
+	k, err := kinds(doc, r)
+
+	return err == nil && slices.Equal(k, typeKinds(is))
 }
 
 // bridging returns the keywords of the schema s at ptr, which is no raw

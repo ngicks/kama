@@ -80,22 +80,10 @@ func TestGenerateRejects(t *testing.T) {
 			"give the Go field name AB",
 		},
 		{
-			"property named like the method of the validator",
-			`{"type":"object","properties":{"validate":{}}}`,
+			"property named like a method and one named like its suffixed field",
+			`{"type":"object","properties":{"validate":{},"validateField":{}}}`,
 			ErrConflict,
-			"give the Go field name Validate",
-		},
-		{
-			"property named like the method of additional members",
-			`{"type":"object","properties":{"additional_properties":{}}}`,
-			ErrConflict,
-			"give the Go field name AdditionalProperties",
-		},
-		{
-			"property named like a method",
-			`{"type":"object","properties":{"unmarshalJSONFrom":{}}}`,
-			ErrConflict,
-			"give the Go field name UnmarshalJSONFrom",
+			"give the Go field name ValidateField",
 		},
 		{
 			"empty property name",
@@ -193,6 +181,98 @@ func TestGenerateRejects(t *testing.T) {
 			`{"type":"array","items":{"$ref":"#"}}`,
 			ErrUnsupported,
 			"#:",
+		},
+		{
+			"schema applying itself under not",
+			`{"title":"Root","$ref":"#/$defs/a","$defs":{"a":{"not":{"$ref":"#/$defs/a"}}}}`,
+			ErrUnsupported,
+			"#/$defs/a: applies itself again to the value it applies to",
+		},
+		{
+			"allOf of itself",
+			`{"type":"object","properties":{"p":{"$ref":"#/$defs/a"}},
+			"$defs":{"a":{"allOf":[{"$ref":"#/$defs/a"}]}}}`,
+			ErrUnsupported,
+			"references itself",
+		},
+		{
+			"two schemas applying each other",
+			`{"type":"object","properties":{"p":{"$ref":"#/$defs/a"}},"$defs":{
+				"a":{"not":{"$ref":"#/$defs/b"}},"b":{"anyOf":[{"$ref":"#/$defs/a"},{"minimum":1}]}
+			}}`,
+			ErrUnsupported,
+			"#/$defs/b: applies itself again",
+		},
+		{
+			"typed schema applying itself through if",
+			`{"type":"object","properties":{"a":{"type":"integer"}},"if":{"$ref":"#"},"then":true}`,
+			ErrUnsupported,
+			"#: applies itself again",
+		},
+		{
+			"minContains that is an object",
+			`{"contains":{},"minContains":{"a":1}}`,
+			ErrUnsupported,
+			`#/minContains: {"a":1} is no number`,
+		},
+		{
+			"minContains that is no integer",
+			`{"contains":{},"minContains":1.5}`,
+			ErrUnsupported,
+			"#/minContains: 1.5 is no non-negative integer",
+		},
+		{
+			"maxContains that is a string",
+			`{"contains":{},"maxContains":"x y"}`,
+			ErrUnsupported,
+			`#/maxContains: "x y" is no number`,
+		},
+		{
+			"multipleOf too small to hold",
+			`{"type":"number","multipleOf":1e-9999}`,
+			ErrUnsupported,
+			"#/multipleOf: divisor 1e-9999 is out of range",
+		},
+		{
+			"patternProperties RE2 does not compile under a property",
+			`{"type":"object","properties":{"o":{"patternProperties":{"(?=x)":{}}}}}`,
+			ErrUnsupported,
+			"#/properties/o/patternProperties/(?=x): pattern does not compile as RE2",
+		},
+		{
+			"pattern RE2 does not compile under not",
+			`{"type":"object","properties":{"s":{"type":"string","not":{"pattern":"(?=x)"}},
+			"t":{"not":{"pattern":"(?=x)"}}}}`,
+			ErrUnsupported,
+			"#/properties/s/not/pattern: keyword not enforced where leaving it out may reject",
+		},
+		{
+			"pattern RE2 does not compile in a type referred to under not",
+			`{"type":"object","properties":{"a":{"not":{"$ref":"#/$defs/s"}}},
+			"$defs":{"s":{"type":"string","pattern":"(?=x)"}}}`,
+			ErrUnsupported,
+			"#/$defs/s/pattern: keyword not enforced",
+		},
+		{
+			"pattern RE2 does not compile in a member of a oneOf",
+			`{"type":"object","properties":{"a":{"oneOf":[
+				{"type":"object","properties":{"s":{"type":"string","pattern":"(?=x)"}}},
+				{"type":"integer"}
+			]}}}`,
+			ErrUnsupported,
+			"#/properties/a/oneOf/0/properties/s/pattern: keyword not enforced",
+		},
+		{
+			"pattern RE2 does not compile in the if of a then",
+			`{"if":{"pattern":"(?=x)"},"then":false}`,
+			ErrUnsupported,
+			"#/if/pattern: keyword not enforced",
+		},
+		{
+			"pattern RE2 does not compile in the contains of a maxContains",
+			`{"contains":{"pattern":"(?=x)"},"maxContains":1}`,
+			ErrUnsupported,
+			"#/contains/pattern: keyword not enforced",
 		},
 	}
 	for _, tc := range cases {
@@ -759,4 +839,32 @@ func TestGenerateAssertFormats(t *testing.T) {
 		// The validator generator has no helper for email.
 		assert.Assert(t, !strings.Contains(content, `format="email"`))
 	}
+}
+
+// TestGenerateUncheckedFormat checks an asserted format that a typed
+// element leaves unchecked: a warning where leaving it out accepts more,
+// an error under not, where it rejects more.
+func TestGenerateUncheckedFormat(t *testing.T) {
+	defs := `"$defs":{"a":{"type":"array","minItems":1,"items":{"type":"string","format":"uuid"}}}`
+	opts := Options{Package: "p", TypeName: "Root", AssertFormats: true}
+
+	var doc jsonschema.Schema
+	assert.NilError(t, jsonv2.Unmarshal(
+		[]byte(`{"type":"object","properties":{"q":{"$ref":"#/$defs/a"}},`+defs+`}`), &doc,
+	))
+
+	_, warnings, err := Generate(&doc, opts)
+	assert.NilError(t, err)
+	assert.Equal(t, len(warnings), 1)
+	assert.ErrorIs(t, warnings[0], ErrUnenforced)
+	assert.ErrorContains(t, warnings[0], "#/$defs/a/items/format")
+
+	doc = jsonschema.Schema{}
+	assert.NilError(t, jsonv2.Unmarshal(
+		[]byte(`{"type":"object","properties":{"p":{"not":{"$ref":"#/$defs/a"}}},`+defs+`}`), &doc,
+	))
+
+	_, _, err = Generate(&doc, opts)
+	assert.ErrorIs(t, err, ErrUnsupported)
+	assert.ErrorContains(t, err, "#/$defs/a/items/format: keyword not enforced")
 }

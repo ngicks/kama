@@ -70,8 +70,8 @@ func (kv KeyValue) Arg() string {
 // space is a character for which unicode.IsSpace reports true. An arg
 // starting with an op is always a comparison, so a bare key never starts
 // with "<", ">", "=" or "!". A bare key is not empty and ends at the first
-// "=" or "("; a bare value may be empty and may hold "=". A key is not
-// empty, quoted or not.
+// "=" or "("; a bare value may be empty and may hold "=". A quoted key may
+// be empty, as in "" or ""=1.
 //
 // A bare key directly followed by "(" is the name of a call, whose args
 // follow the same grammar and are separated by commas, as in
@@ -219,7 +219,7 @@ func parseArg(s string, p place) (KeyValue, string, error) {
 		return kv, "", fmt.Errorf("dircmnt: key at %q: %w", s, err)
 	}
 
-	if key == "" {
+	if key == "" && !kv.KeyQuoted {
 		return kv, "", fmt.Errorf("dircmnt: missing key at %q", s)
 	}
 

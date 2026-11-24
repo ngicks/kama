@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"math"
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
@@ -19,11 +20,12 @@ import (
 //
 // It applies to types of an integer or float underlying type. An integer
 // value is tested with %, by the numerator of n in lowest terms: 1.5 is
-// 3/2, and a multiple of 3/2 is an integer that 3 divides. The numerator
-// must be a value of the type. A float value is tested exactly, as the
-// shortest decimal that reads back as the value: float64(0.0075) is a
-// multiple of 0.0001 although its binary value is not. NaN and the
-// infinities are multiples of nothing.
+// 3/2, and a multiple of 3/2 is an integer that 3 divides. A float value
+// is tested exactly, as the shortest decimal that reads back as the value:
+// float64(0.0075) is a multiple of 0.0001 although its binary value is
+// not. NaN and the infinities are multiples of nothing. When n, or the
+// numerator of n for an integer type, is above every value of the type,
+// such as 1e30 for int64 or 1e400 for float64, only 0 is a multiple.
 //
 // On raw JSON text, as IsRawJson tells, n must be a JSON number. It tests a
 // number exactly and passes a value of another kind.
@@ -38,7 +40,9 @@ type MultipleOfOptions struct {
 	Divisor string
 }
 
-// Parse decodes arg into a positive number literal.
+// Parse decodes arg into a positive number literal. A literal below 1
+// whose exact value Go constants do not hold, such as 1e-9999, is an
+// error.
 func (MultipleOf) Parse(arg string, _ Resolver) (Rule, error) {
 	if _, err := divisorValue(arg); err != nil {
 		return nil, argsError(err)
@@ -55,22 +59,13 @@ func (o MultipleOfOptions) Check(t types.Type) error {
 
 	info := typequery.BasicInfo(t)
 
-	switch {
-	case info&types.IsInteger != 0:
-		d, err := divisorValue(o.Divisor)
-		if err != nil {
-			return err
-		}
-
-		if _, err := literalValue(t, constant.Num(d).ExactString()); err != nil {
-			return fmt.Errorf("divisor %s: %w", o.Divisor, err)
-		}
-	case info&types.IsFloat != 0:
-	default:
+	if info&(types.IsInteger|types.IsFloat) == 0 {
 		return fmt.Errorf("%s is not an integer or float type", t)
 	}
 
-	return nil
+	_, err := divisorValue(o.Divisor)
+
+	return err
 }
 
 // Emit calls kamaValidateMultipleInt or kamaValidateMultipleFloat.
@@ -82,6 +77,12 @@ func (o MultipleOfOptions) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	d, err := divisorValue(o.Divisor)
 	if err != nil {
 		return nil, err
+	}
+
+	if aboveType(t, d) {
+		e.Declare(multipleZeroName, multipleZeroDecl)
+
+		return lang.Expr("%s(%s, %s)", multipleZeroName, v, strconv.Quote(o.Divisor)), nil
 	}
 
 	info := typequery.BasicInfo(t)
@@ -127,23 +128,68 @@ func divisorValue(lit string) (constant.Value, error) {
 	}
 
 	d := constant.MakeFromLiteral(b.Value, b.Kind, 0)
-	// constant holds a float of a huge exponent inexactly, and Num of it
-	// is unknown.
-	if constant.Num(d).Kind() != constant.Int {
-		return nil, fmt.Errorf("divisor %s is out of range", lit)
-	}
-
 	if constant.Sign(d) <= 0 {
 		return nil, errors.New("divisor " + lit + " is not positive")
+	}
+
+	// constant holds a float of a huge exponent inexactly, and Num of it
+	// is unknown. Above 1 such a divisor exceeds every Go number, which
+	// aboveType tells without its digits.
+	if constant.Num(d).Kind() != constant.Int &&
+		constant.Compare(d, token.LSS, constant.MakeInt64(1)) {
+		return nil, fmt.Errorf("divisor %s is out of range", lit)
 	}
 
 	return d, nil
 }
 
+// aboveType reports whether no value of t but 0 is a multiple of the
+// divisor d: d exceeds the greatest finite value of the float type t, or
+// the numerator of d in lowest terms exceeds the greatest value of the
+// integer type t.
+func aboveType(t types.Type, d constant.Value) bool {
+	if constant.Num(d).Kind() != constant.Int {
+		return true
+	}
+
+	if typequery.BasicInfo(t)&types.IsInteger != 0 {
+		_, err := literalValue(t, constant.Num(d).ExactString())
+		return err != nil
+	}
+
+	m := math.MaxFloat64
+	if t.Underlying().(*types.Basic).Kind() == types.Float32 {
+		m = math.MaxFloat32
+	}
+
+	return constant.Compare(d, token.GTR, constant.MakeFloat64(m))
+}
+
 const (
 	multipleIntName   = "kamaValidateMultipleInt"
 	multipleFloatName = "kamaValidateMultipleFloat"
+	multipleZeroName  = "kamaValidateMultipleZero"
 )
+
+func multipleZeroDecl(imp Importer) Step {
+	v := imp.Import(ValidationPath)
+
+	return lang.Func(
+		lang.Expr(
+			"func %s[%s ~int | ~int8 | ~int16 | ~int32 | ~int64 |\n"+
+				"~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr |\n"+
+				"~float32 | ~float64](%s %s, %s string) error",
+			multipleZeroName, shadow("T"), shadow("got"), ref("T"), shadow("want"),
+		),
+		lang.If(
+			lang.Expr("%s != 0", ref("got")),
+			lang.Stmt(`return %s.New(%s.ErrMultiple, "want a multiple of %%s, got %%v", %s, %s)`,
+				v, v, ref("want"), ref("got")),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
+}
 
 func multipleIntDecl(imp Importer) Step {
 	v := imp.Import(ValidationPath)

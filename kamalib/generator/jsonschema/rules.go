@@ -2,7 +2,6 @@ package jsonschema
 
 import (
 	"encoding/json/jsontext"
-	"iter"
 	"regexp"
 	"slices"
 	"strconv"
@@ -52,7 +51,7 @@ func rulesOf(
 			return nil, nil
 		}
 
-		return []string{callArg("or")}, nil
+		return []string{noArgs("or")}, nil
 	}
 
 	scope = enter(doc, scope, ptr)
@@ -68,13 +67,17 @@ func rulesOf(
 	// applying to the value itself, as one arg.
 	same := func(keys ...string) (string, error) {
 		args, err := rulesOf(doc, opts, child(ptr, keys...), inPlace, everyKeyword, scope, stack)
-		return single(args), err
+		if err != nil {
+			return "", err
+		}
+
+		return single(args)
 	}
 
 	args := leafRules(opts, s, keep)
 
 	steps := []func() ([]string, error){
-		func() ([]string, error) { return propsRules(s, sub, inPlace, keep) },
+		func() ([]string, error) { return propsRules(ptr, s, sub, inPlace, keep) },
 		func() ([]string, error) { return itemsRules(s, sub, inPlace, keep) },
 		func() ([]string, error) { return containsRules(s, sub, keep) },
 		func() ([]string, error) { return keysRules(s, sub, keep) },
@@ -114,16 +117,26 @@ func rulesOf(
 			name = "unevalitems"
 		}
 
-		args = []string{callArg(name, append([]string{single(args)}, rest...)...)}
+		inner, err := single(args)
+		if err != nil {
+			return nil, err
+		}
+
+		arg, err := callArg(name, append([]string{inner}, rest...)...)
+		if err != nil {
+			return nil, err
+		}
+
+		args = []string{arg}
 	}
 
-	return distinct(args), nil
+	return distinct(args)
 }
 
 // distinct returns args with every validator named once, as a type or a
 // field takes it: the args of a validator named twice move into one and,
 // in the place of the first, along with the operands of an and among them.
-func distinct(args []string) []string {
+func distinct(args []string) ([]string, error) {
 	names := opiter.WrapSeq(slices.Values(args)).
 		Map(argName).
 		CollectSlice()
@@ -137,7 +150,7 @@ func distinct(args []string) []string {
 	repeated := opiter.WrapSeq(slices.Values(names)).
 		Any(twice)
 	if !repeated {
-		return args
+		return args, nil
 	}
 
 	var (
@@ -148,7 +161,11 @@ func distinct(args []string) []string {
 	for i, a := range args {
 		switch {
 		case names[i] == "and":
-			kv, _ := dircmnt.ParseArgsKeyValue(a)
+			kv, err := dircmnt.ParseArgsKeyValue(a)
+			if err != nil {
+				return nil, err
+			}
+
 			joined = append(joined, opiter.WrapSeq(slices.Values(kv[0].Args)).
 				Map(dircmnt.KeyValue.String).
 				CollectSlice()...)
@@ -164,7 +181,12 @@ func distinct(args []string) []string {
 		}
 	}
 
-	return slices.Insert(out, at, callArg("and", joined...))
+	and, err := callArg("and", joined...)
+	if err != nil {
+		return nil, err
+	}
+
+	return slices.Insert(out, at, and), nil
 }
 
 // argName returns the name of the validator the arg a names.
@@ -195,11 +217,16 @@ func leafRules(opts Options, s *jsonschema.Schema, keep func(kw string) bool) []
 		add("kind", strings.Join(slices.Compact(slices.Clone(s.Type.Names)), " "), "type")
 	}
 
-	if values := enumValues(s); values != nil && (keep("enum") || keep("const")) {
-		if len(values) == 0 {
-			args = append(args, callArg("or"))
+	// A const next to an enum applies too, so each gives a const of its own.
+	if s.Const != nil {
+		add("const", rawValues([]jsontext.Value{s.Const}), "const")
+	}
+
+	if s.Enum != nil && keep("enum") {
+		if len(s.Enum) == 0 {
+			args = append(args, noArgs("or"))
 		} else {
-			add("const", rawValues(values), "enum", "const")
+			add("const", rawValues(s.Enum), "enum")
 		}
 	}
 
@@ -243,8 +270,9 @@ func leafRules(opts Options, s *jsonschema.Schema, keep func(kw string) bool) []
 // the additionalProperties of s that keep keeps. An entry without
 // validators, as a property keep leaves out gives, stays only when rest
 // needs to know the member is no other one, or when annotated needs what
-// the entry evaluates.
+// the entry evaluates. ptr is the pointer of s.
 func propsRules(
+	ptr string,
 	s *jsonschema.Schema,
 	sub func(keys ...string) ([]string, error),
 	annotated bool,
@@ -257,6 +285,8 @@ func propsRules(
 
 	rest := s.AdditionalProperties != nil && keep("additionalProperties")
 
+	// entry adds the entry kind of the subschema at keys, which names the
+	// member name or the pattern name, but for rest.
 	entry := func(kind, name string, keys ...string) error {
 		var ops []string
 
@@ -275,11 +305,16 @@ func propsRules(
 			return nil
 		}
 
-		if name != "" {
-			ops = append([]string{strconv.Quote(name)}, ops...)
+		if kind != "rest" {
+			ops = append([]string{quoteName(name)}, ops...)
 		}
 
-		entries = append(entries, callArg(kind, ops...))
+		arg, err := callArg(kind, ops...)
+		if err != nil {
+			return err
+		}
+
+		entries = append(entries, arg)
 
 		return nil
 	}
@@ -297,7 +332,7 @@ func propsRules(
 
 		if _, err := regexp.Compile(n.Name); err != nil {
 			return nil, unsupported(
-				child("", "patternProperties", n.Name), "pattern does not compile as RE2: %v", err,
+				child(ptr, "patternProperties", n.Name), "pattern does not compile as RE2: %v", err,
 			)
 		}
 
@@ -318,7 +353,7 @@ func propsRules(
 		return nil, nil
 	}
 
-	return []string{callArg("props", entries...)}, nil
+	return oneCall("props", entries...)
 }
 
 // itemsRules returns prefix for the prefixItems of s, with the items of s
@@ -345,7 +380,7 @@ func itemsRules(
 			return nil, nil
 		}
 
-		return []string{callArg("items", rest...)}, nil
+		return oneCall("items", rest...)
 	}
 
 	var ops []string
@@ -356,14 +391,24 @@ func itemsRules(
 			return nil, err
 		}
 
-		ops = append(ops, single(args))
+		op, err := single(args)
+		if err != nil {
+			return nil, err
+		}
+
+		ops = append(ops, op)
 	}
 
 	if s.Items != nil && keep("items") {
-		ops = append(ops, callArg("rest", rest...))
+		op, err := callArg("rest", rest...)
+		if err != nil {
+			return nil, err
+		}
+
+		ops = append(ops, op)
 	}
 
-	return []string{callArg("prefix", ops...)}, nil
+	return oneCall("prefix", ops...)
 }
 
 // containsRules returns contains for the contains of s, counted by its
@@ -391,7 +436,7 @@ func containsRules(
 		counts = append(counts, "<="+integerText(s.MaxContains))
 	}
 
-	return []string{callArg("contains", append(counts, ops...)...)}, nil
+	return oneCall("contains", append(counts, ops...)...)
 }
 
 // keysRules returns keys for the propertyNames of s.
@@ -409,7 +454,7 @@ func keysRules(
 		return nil, err
 	}
 
-	return []string{callArg("keys", ops...)}, nil
+	return oneCall("keys", ops...)
 }
 
 // dependentRules returns, for each key of the dependentSchemas of s,
@@ -431,7 +476,12 @@ func dependentRules(
 			return nil, err
 		}
 
-		args = append(args, callArg("if", "required="+quoteArg(spellNames([]string{n.Name})), then))
+		arg, err := callArg("if", "required="+quoteArg(spellNames([]string{n.Name})), then)
+		if err != nil {
+			return nil, err
+		}
+
+		args = append(args, arg)
 	}
 
 	return args, nil
@@ -463,8 +513,14 @@ func listRules(
 			ops = append(ops, op)
 		}
 
-		name := map[string]string{"allOf": "and", "anyOf": "or", "oneOf": "oneof"}[kw]
-		args = append(args, callArg(name, ops...))
+		arg, err := callArg(
+			map[string]string{"allOf": "and", "anyOf": "or", "oneOf": "oneof"}[kw],
+			ops...)
+		if err != nil {
+			return nil, err
+		}
+
+		args = append(args, arg)
 	}
 
 	return args, nil
@@ -485,7 +541,7 @@ func notRules(
 		return nil, err
 	}
 
-	return []string{callArg("not", op)}, nil
+	return oneCall("not", op)
 }
 
 // ifRules returns if for the if, then and else of s. An if without then
@@ -515,11 +571,11 @@ func ifRules(
 
 			ops = append(ops, op)
 		case kw == "then":
-			ops = append(ops, callArg("and"))
+			ops = append(ops, noArgs("and"))
 		}
 	}
 
-	return []string{callArg("if", ops...)}, nil
+	return oneCall("if", ops...)
 }
 
 // refRules returns the args the keyword kw, $ref or $dynamicRef, of the
@@ -599,44 +655,53 @@ func namedBy(doc *jsonschema.Schema, ptr string) string {
 }
 
 // single returns args as one arg: the only arg, else and(...) of them.
-func single(args []string) string {
+func single(args []string) (string, error) {
 	if len(args) == 1 {
-		return args[0]
+		return args[0], nil
 	}
 
 	return callArg("and", args...)
 }
 
-// callArg spells the call name(args...), each of args the text of one arg
-// of //kama:validate.
-func callArg(name string, args ...string) string {
-	kvs := opiter.WrapSeq(slices.Values(args)).
-		FlatMap(func(a string) iter.Seq[dircmnt.KeyValue] {
-			kv, err := dircmnt.ParseArgsKeyValue(a)
-			if err != nil {
-				// Each arg is spelled by this file, which dircmnt reads back.
-				panic(err)
-			}
+// oneCall returns the call name(args...) as the only arg.
+func oneCall(name string, args ...string) ([]string, error) {
+	arg, err := callArg(name, args...)
+	if err != nil {
+		return nil, err
+	}
 
-			return slices.Values(kv)
-		}).
-		CollectSlice()
-
-	return dircmnt.KeyValue{Key: name, Call: true, Args: kvs}.String()
+	return []string{arg}, nil
 }
 
+// callArg spells the call name(args...), each of args the text of one arg
+// of //kama:validate. An arg dircmnt does not read back is an error.
+func callArg(name string, args ...string) (string, error) {
+	kvs, err := opiter.TryCollect(
+		opiter.WrapSeq(slices.Values(args)).
+			Disassemble(dircmnt.ParseArgsKeyValue),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	return dircmnt.KeyValue{Key: name, Call: true, Args: slices.Concat(kvs...)}.String(), nil
+}
+
+// noArgs spells the call name() without args.
+func noArgs(name string) string { return dircmnt.KeyValue{Key: name, Call: true}.String() }
+
 // spellNames spells names as the arg of required on raw JSON text, each
-// quoted only when a bare token would not read back as the name.
+// quoted, so that no name reads back as a comparison or as nothing.
 func spellNames(names []string) string {
 	return dircmnt.SpellArgs(
 		opiter.WrapSeq(slices.Values(names)).
-			Map(func(n string) dircmnt.KeyValue {
-				// A bare token starting with an operator reads as a comparison.
-				return dircmnt.KeyValue{
-					Key:       n,
-					KeyQuoted: n == "" || strings.ContainsAny(n[:1], "<>=!"),
-				}
-			}).
+			Map(func(n string) dircmnt.KeyValue { return dircmnt.KeyValue{Key: n, KeyQuoted: true} }).
 			CollectSlice(),
 	)
+}
+
+// quoteName spells the member name or the pattern n as the first arg of
+// field or match, quoted so that no name reads as a validator.
+func quoteName(n string) string {
+	return dircmnt.KeyValue{Key: n, KeyQuoted: true}.String()
 }

@@ -82,59 +82,83 @@ func visit(ptr string, s *jsonschema.Schema, yield func(string, *jsonschema.Sche
 		return false
 	}
 
-	if s == nil {
-		return true
-	}
-
-	for _, n := range s.Properties {
-		if !visit(child(ptr, "properties", n.Name), n.Schema, yield) {
-			return false
-		}
-	}
-
-	if s.AdditionalProperties != nil && s.AdditionalProperties.Bool.IsNone() {
-		if !visit(child(ptr, "additionalProperties"), s.AdditionalProperties, yield) {
-			return false
-		}
-	}
-
-	for _, kw := range []string{"items", "contains", "propertyNames"} {
-		if c := subschema(s, kw); c != nil && !visit(child(ptr, kw), c, yield) {
-			return false
-		}
-	}
-
-	for _, kw := range []string{"prefixItems", "oneOf", "anyOf", "allOf"} {
-		for i, m := range listOf(s, kw) {
-			if !visit(child(ptr, kw, strconv.Itoa(i)), m, yield) {
-				return false
-			}
-		}
-	}
-
-	for _, kw := range []string{"patternProperties", "dependentSchemas"} {
-		for _, n := range mapOf(s, kw) {
-			if !visit(child(ptr, kw, n.Name), n.Schema, yield) {
-				return false
-			}
-		}
-	}
-
-	for _, kw := range []string{
-		"not", "if", "then", "else", "unevaluatedProperties", "unevaluatedItems",
-	} {
-		if c := subschema(s, kw); c != nil && !visit(child(ptr, kw), c, yield) {
-			return false
-		}
-	}
-
-	for _, n := range s.Defs {
-		if !visit(child(ptr, "$defs", n.Name), n.Schema, yield) {
+	for c, cs := range children(ptr, s, true) {
+		if !visit(c, cs, yield) {
 			return false
 		}
 	}
 
 	return true
+}
+
+// children yields the schemas directly under the schema s at ptr with
+// their pointers, in the order schemas yields them, and with defs the
+// schemas under $defs last. A nil schema has none.
+func children(ptr string, s *jsonschema.Schema, defs bool) iter.Seq2[string, *jsonschema.Schema] {
+	return func(yield func(string, *jsonschema.Schema) bool) {
+		if s == nil {
+			return
+		}
+
+		for _, n := range s.Properties {
+			if !yield(child(ptr, "properties", n.Name), n.Schema) {
+				return
+			}
+		}
+
+		if s.AdditionalProperties != nil && s.AdditionalProperties.Bool.IsNone() {
+			if !yield(child(ptr, "additionalProperties"), s.AdditionalProperties) {
+				return
+			}
+		}
+
+		for _, kw := range []string{"items", "contains", "propertyNames"} {
+			if c := subschema(s, kw); c != nil && !yield(child(ptr, kw), c) {
+				return
+			}
+		}
+
+		for _, kw := range []string{"prefixItems", "oneOf", "anyOf", "allOf"} {
+			for i, m := range listOf(s, kw) {
+				if !yield(child(ptr, kw, strconv.Itoa(i)), m) {
+					return
+				}
+			}
+		}
+
+		for _, kw := range []string{"patternProperties", "dependentSchemas"} {
+			for _, n := range mapOf(s, kw) {
+				if !yield(child(ptr, kw, n.Name), n.Schema) {
+					return
+				}
+			}
+		}
+
+		for _, kw := range []string{
+			"not", "if", "then", "else", "unevaluatedProperties", "unevaluatedItems",
+		} {
+			if c := subschema(s, kw); c != nil && !yield(child(ptr, kw), c) {
+				return
+			}
+		}
+
+		if !defs {
+			return
+		}
+
+		for _, n := range s.Defs {
+			if !yield(child(ptr, "$defs", n.Name), n.Schema) {
+				return
+			}
+		}
+	}
+}
+
+// stepKeyword returns the keyword of the step from the schema at parent to
+// the schema at ptr directly under it, which children yields.
+func stepKeyword(parent, ptr string) string {
+	kw, _, _ := strings.Cut(strings.TrimPrefix(ptr, parent+"/"), "/")
+	return kw
 }
 
 func listOf(s *jsonschema.Schema, keyword string) []*jsonschema.Schema {
@@ -733,15 +757,17 @@ func resolvedValue(doc *jsonschema.Schema, ptr string) (string, *jsonschema.Sche
 
 // nullable reports whether the schema at ptr is a nullable value of
 // another schema: a type naming null and one other kind, or a nullable
-// union.
+// union. A schema of raw JSON text is none. Its keywords may reject null,
+// so its Go type holds null itself, where its validators see it.
 func nullable(doc *jsonschema.Schema, ptr string) bool {
 	r, s, err := resolved(doc, ptr)
 
-	return err == nil && (nullableType(s) || nullableUnion(doc, r))
+	return err == nil && (nullableType(s) && !rawFrom(doc, r, s) || nullableUnion(doc, r))
 }
 
 // acceptsNull reports whether the Go type of the schema at ptr holds null
-// itself: a schema of any kind, or a union with a member admitting null.
+// itself: a schema of any kind, a schema of raw JSON text admitting null,
+// or a union with a member admitting null.
 func acceptsNull(doc *jsonschema.Schema, ptr string) bool {
 	k, err := kinds(doc, ptr)
 

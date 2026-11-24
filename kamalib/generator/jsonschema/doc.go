@@ -148,7 +148,9 @@
 // A nullable value is a type naming null and one other kind, or a oneOf or
 // an anyOf of exactly a schema and a schema of type null. It is no union.
 // In a oneOf the schema must not admit null itself, or null would match
-// both members, and the oneOf stays a union.
+// both members, and the oneOf stays a union. A type naming null and one
+// other kind that makes raw JSON text is no nullable value: its
+// jsontext.Value holds null itself, so that its validators check null too.
 // Outside an object property it is an opt.Option of the type of the other
 // kind.
 //
@@ -173,10 +175,12 @@
 //
 // Names are upper-camel-cased on the characters an identifier cannot hold,
 // as foo_bar and foo-bar give FooBar. A name that gives no exported
-// identifier is an error wrapping ErrUnsupported. Two names colliding in
-// the package, in a struct or in its wire struct, or a field named like
-// a method of the struct, MarshalJSONTo, UnmarshalJSONFrom,
-// AdditionalProperties or Validate, is an error wrapping ErrConflict. A
+// identifier is an error wrapping ErrUnsupported. A field named like a
+// method of the struct, MarshalJSONTo, UnmarshalJSONFrom,
+// AdditionalProperties or Validate, takes the suffix Field, as a property
+// validate gives the field ValidateField. Two names colliding in the
+// package, in a struct or in its wire struct, after that suffix, is an
+// error wrapping ErrConflict. A
 // union named Pet declares PetKind and PetUnknown besides its wrappers, so
 // a member titled Unknown collides too.
 //
@@ -499,9 +503,14 @@
 // carry hook=off, since the generator writes no hook. A property takes the
 // keywords of its own schema. A schema it refers to declares a type with
 // its own. A number compares as the Go value, so an enum of numbers cannot
-// tell apart two numbers one float64 holds. unique on a slice compares its
-// elements as Go values, so the raw JSON elements 1 and 1.0 of a slice
-// differ. requires, required and members count
+// tell apart two numbers one float64 holds. uniqueItems on a slice of Go
+// scalars gives unique, which compares the elements as Go values. On a
+// slice of other elements, as structs holding additional members or raw
+// JSON text, it gives json(unique), which compares them as JSON values. A
+// bound a typed value cannot reach folds: a maximum of 1e400 holds for
+// every finite float64, a maxLength above every int for every string, and
+// a multipleOf above every value of the type leaves 0 the only multiple.
+// requires, required and members count
 // an und.Und holding null as present, as JSON Schema counts a member
 // holding null. An optional nullable property on a cycle is a pointer,
 // which is nil for null and absent alike, so it counts as absent.
@@ -510,7 +519,16 @@
 // Generate warns with ErrUnenforced about a validation keyword the
 // generated code does not check: a keyword of a nullable root, a pattern
 // RE2 does not compile, and a keyword of a typed schema outside an object
-// property that declares no type.
+// property that declares no type, an asserted format included. Leaving such a keyword out only
+// accepts
+// more values where the schema holding it applies positively. Where a
+// schema applies under not, as a member of a oneOf other than a nullable
+// value, as the if of a then or an else, as the contains of a
+// maxContains, or in place of a schema holding unevaluatedProperties or
+// unevaluatedItems, whose annotations decide what those reject, a value it
+// wrongly accepts may get rejected. Such a keyword there, and in every
+// schema such a schema reaches through subschemas and references, is an
+// error wrapping ErrUnsupported instead.
 //
 // Decoders call Validate through jsonschemart.Validate, since the
 // generated file compiles before the validator generator runs. A struct
@@ -530,7 +548,8 @@
 // schema in the validators of raw JSON text is checked. A schema that
 // declares no type for its other keywords, such as a string under items
 // or under $defs, leaves its format unchecked, since format gives it no
-// type of its own.
+// type of its own. Generate warns about it with ErrUnenforced.
+//
 // description and deprecated feed doc comments, keeping the lines of a
 // description. Every line is printed as a line comment of its own, so a
 // description cannot write a directive or end the comment. title names the
@@ -547,7 +566,10 @@
 //     vocabulary other than those of draft 2020-12, and a $schema below
 //     the root other than the meta-schema of draft 2020-12;
 //   - a $ref naming no schema of the documents, a chain of references back
-//     to itself, and a $ref or a $dynamicRef in the validators of raw JSON
+//     to itself, a schema applying itself again to the same value through
+//     allOf, anyOf, oneOf, not, if, then, else, dependentSchemas and
+//     references with no member or element in between, which would
+//     validate without end, and a $ref or a $dynamicRef in the validators of raw JSON
 //     text reaching a union, a schema declaring no type or a type the
 //     dynamic scope resolves otherwise again on a cycle;
 //   - a pattern of patternProperties RE2 does not compile;
@@ -555,8 +577,11 @@
 //     itself with no declared type in between;
 //   - a const or an enum value that is no Go constant of the scalar type
 //     its type keyword gives;
-//   - a numeric keyword that is no number, a multipleOf not above zero, and
-//     a length or a count that is no non-negative integer;
+//   - a numeric keyword that is no number, a multipleOf not above zero or
+//     below 1 and too small for a Go constant to hold exactly, and a
+//     length or a count that is no non-negative integer;
+//   - a keyword left out where leaving it out may reject a value, as told
+//     under Validation;
 //   - an enum of strings next to a type other than string;
 //   - a oneOf of members the generated code cannot tell apart, as told
 //     under Unions.

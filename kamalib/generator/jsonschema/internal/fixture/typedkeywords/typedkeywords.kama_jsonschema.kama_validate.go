@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T15:46:37Z
+// generated: 2026-11-24T18:02:15Z
 
 package typedkeywords
 
@@ -26,7 +26,7 @@ func (v Order) Validate(stopOnFirstError bool) error {
 			return rawjson.Runes(m3, "<=", 8)
 		}), kamaValidateAll(stopOnFirstError, kamaValidateIf(rawjson.Required(m, stopOnFirstError, "note"), rawjson.Required(m, stopOnFirstError, "lines"), nil), kamaValidateIf(rawjson.Properties(m, stopOnFirstError, nil, rawjson.Property("kind", func(m4 jsontext.Value) error {
 			return rawjson.Const(m4, "\"card\"")
-		})), rawjson.Required(m, stopOnFirstError, "card"), kamaValidateNot(rawjson.Required(m, stopOnFirstError, "card"), "required=\"card\""))))
+		})), rawjson.Required(m, stopOnFirstError, "card"), kamaValidateNot(rawjson.Required(m, stopOnFirstError, "card"), "required=`\"card\"`"))))
 	}); err != nil {
 		if stopOnFirstError {
 			return err
@@ -88,7 +88,7 @@ func (v ShapeCircle) Validate(stopOnFirstError bool) error {
 	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
 		return kamaValidateAll(stopOnFirstError, rawjson.Kind(m, "object"), rawjson.Members(m, ">=", 1), kamaValidateNot(kamaValidateAll(stopOnFirstError, rawjson.Required(m, stopOnFirstError, "r"), rawjson.Properties(m, stopOnFirstError, nil, rawjson.Property("r", func(m2 jsontext.Value) error {
 			return rawjson.Const(m2, "0")
-		}))), "and(required=\"r\", props(field(\"r\", const=\"0\")))"))
+		}))), "and(required=`\"r\"`, props(field(\"r\", const=\"0\")))"))
 	}); err != nil {
 		if stopOnFirstError {
 			return err
@@ -113,7 +113,7 @@ func (v ShapeSquare) Validate(stopOnFirstError bool) error {
 	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
 		return kamaValidateAll(stopOnFirstError, rawjson.Kind(m, "object"), rawjson.Members(m, ">=", 1), kamaValidateNot(kamaValidateAll(stopOnFirstError, rawjson.Required(m, stopOnFirstError, "r"), rawjson.Properties(m, stopOnFirstError, nil, rawjson.Property("r", func(m2 jsontext.Value) error {
 			return rawjson.Const(m2, "0")
-		}))), "and(required=\"r\", props(field(\"r\", const=\"0\")))"))
+		}))), "and(required=`\"r\"`, props(field(\"r\", const=\"0\")))"))
 	}); err != nil {
 		if stopOnFirstError {
 			return err
@@ -182,7 +182,7 @@ func (v Aged) Validate(stopOnFirstError bool) error {
 func (v Person) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
-		return kamaValidateNot(rawjson.Required(m, stopOnFirstError, "nick"), "required=\"nick\"")
+		return kamaValidateNot(rawjson.Required(m, stopOnFirstError, "nick"), "required=`\"nick\"`")
 	}); err != nil {
 		if stopOnFirstError {
 			return err
@@ -211,7 +211,7 @@ func (v Person) Validate(stopOnFirstError bool) error {
 func (v Bounded) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
-		return kamaValidateAll(stopOnFirstError, rawjson.Required(m, stopOnFirstError, "lo"), kamaValidateNot(rawjson.Required(m, stopOnFirstError, "x"), "required=\"x\""))
+		return kamaValidateAll(stopOnFirstError, rawjson.Required(m, stopOnFirstError, "lo"), kamaValidateNot(rawjson.Required(m, stopOnFirstError, "x"), "required=`\"x\"`"))
 	}); err != nil {
 		if stopOnFirstError {
 			return err

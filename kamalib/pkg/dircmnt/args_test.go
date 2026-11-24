@@ -111,8 +111,9 @@ func TestParseArgsKeyValue(t *testing.T) {
 		{`=="a"b`, nil, "after closing quote"},
 		{`==a"b"`, nil, "quote inside unquoted text"},
 		{`=="a`, nil, "unterminated"},
-		{`""=1`, nil, "missing key"},
-		{`""`, nil, "missing key"},
+		{`""=1`, []KeyValue{quoted(pair("", "1"), true, false)}, ""},
+		{`""`, []KeyValue{quoted(key(""), true, false)}, ""},
+		{"f(``, a)", []KeyValue{call("f", quoted(key(""), true, false), key("a"))}, ""},
 		{`a"b"`, nil, "quote inside unquoted text"},
 		{`a=x"y"`, nil, "quote inside unquoted text"},
 		{"a=x`y`", nil, "quote inside unquoted text"},
@@ -165,6 +166,7 @@ func TestSpellArgs(t *testing.T) {
 			`or(a, not(b=1), c="x,y") d`,
 		},
 		{`f(a=")", "(b"=1, ==",")`, `f(a=")", "(b"=1, ==",")`},
+		{`"" ""=1 f("", "")`, `"" ""=1 f("", "")`},
 	}
 
 	for _, c := range cases {

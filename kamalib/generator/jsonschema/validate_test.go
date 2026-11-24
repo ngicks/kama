@@ -52,7 +52,7 @@ func TestGenerateDirectives(t *testing.T) {
 			"raw property required by a key and requiring a member",
 			`{"type":"object","required":["a"],"dependentRequired":{"a":["b"]},
 			"properties":{"a":{"type":"object"},"b":{"required":["x"]}}}`,
-			[]string{"\t//kama:validate and(required=\"x\")\n\t//kama:validate required\n"},
+			[]string{"\t//kama:validate and(required=`\"x\"`)\n\t//kama:validate required\n"},
 		},
 		{
 			"raw JSON text of a schema of every kind",
@@ -61,8 +61,8 @@ func TestGenerateDirectives(t *testing.T) {
 			[]string{
 				"//kama:validate cmp=\">=1\"\n//kama:validate runes=\"<=2\"\n" +
 					"//kama:validate unique\n//kama:validate members=\">=1\"\n",
-				`//kama:validate and(if(required="a", required="b c"), if(required="d", required="e"))` +
-					"\n",
+				"//kama:validate and(if(required=`\"a\"`, required=`\"b\" \"c\"`), " +
+					"if(required=`\"d\"`, required=`\"e\"`))\n",
 				"type Root jsontext.Value\n",
 				"func (v Root) RawJson() jsontext.Value {",
 			},
@@ -83,6 +83,57 @@ func TestGenerateDirectives(t *testing.T) {
 			`{"type":"object","properties":{"oneOf":{"type":"array","items":{"type":"null"}}}}`,
 			[]string{
 				"//kama:validate kind=\"null\"\n//kama:generated kama:jsonschema\ntype RootOneOfItem ",
+			},
+		},
+		{
+			"properties named like methods",
+			`{"type":"object","required":["validate"],"properties":{
+				"validate":{"type":"string"},"additionalProperties":{"type":"integer"}
+			}}`,
+			[]string{
+				"plain{ValidateField: v.ValidateField, " +
+					"AdditionalPropertiesField: v.AdditionalPropertiesField, AdditionalProperties: v._x}",
+				"out.ValidateField, err = jsonschemart.Required(w.ValidateField)",
+			},
+		},
+		{
+			"empty member name in the validators of raw JSON text",
+			`{"not":{"properties":{"":{"uniqueItems":true}}},"required":[""],
+			"dependentRequired":{"":["a"]},"patternProperties":{"^$":{"type":"string"}}}`,
+			[]string{
+				"//kama:validate required=`\"\"`\n",
+				"//kama:validate if(required=`\"\"`, required=`\"a\"`)\n",
+				`//kama:validate props(match("^$", kind="string"))` + "\n",
+				`//kama:validate not(props(field("", unique)))` + "\n",
+			},
+		},
+		{
+			"const next to enum in the validators of raw JSON text",
+			`{"const":{"a":1},"enum":[{"a":2}]}`,
+			[]string{"//kama:validate and(const=\"`{\\\"a\\\":1}`\", const=\"`{\\\"a\\\":2}`\")\n"},
+		},
+		{
+			"uniqueItems of elements that are no Go scalars",
+			`{"type":"object","properties":{
+				"n":{"type":"array","items":{"type":"number"},"uniqueItems":true},
+				"o":{"type":"array","items":{"type":"object"},"uniqueItems":true},
+				"p":{"type":"array","prefixItems":[{"type":"number"}],"uniqueItems":true}
+			}}`,
+			[]string{
+				"\t//kama:validate unique\n\tN ",
+				"\t//kama:validate json(unique)\n\tO ",
+				"\t//kama:validate json(unique, prefix(kind=\"number\"))\n\tP ",
+			},
+		},
+		{
+			"uniqueItems of a nullable array, also holding itself",
+			`{"type":"object","properties":{
+				"a":{"type":["array","null"],"items":{"type":"string"},"uniqueItems":true},
+				"b":{"$ref":"#/$defs/n"}
+			},"$defs":{"n":{"type":["array","null"],"items":{"$ref":"#/$defs/n"},"uniqueItems":true}}}`,
+			[]string{
+				"\t//kama:validate unique\n\tA ",
+				"//kama:validate unique\n//kama:validate items(ref=N)\n",
 			},
 		},
 		{

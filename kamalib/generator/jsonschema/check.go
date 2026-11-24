@@ -3,6 +3,7 @@ package jsonschema
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -24,8 +25,8 @@ var countKeywords = []string{"minProperties", "maxProperties"}
 var scalarKinds = []string{"string", "integer", "number", "boolean"}
 
 // methodNames are the methods a generated struct declares, which no field
-// of it may be named. Validate is the method the validator generator
-// declares on it.
+// of it may be named, as fieldIdent ensures. Validate is the method the
+// validator generator declares on it.
 var methodNames = []string{
 	"MarshalJSONTo", "UnmarshalJSONFrom", "AdditionalProperties", "Validate",
 }
@@ -51,6 +52,10 @@ func check(doc *jsonschema.Schema, opts Options) error {
 	}
 
 	if err := errors.Join(errs...); err != nil {
+		return err
+	}
+
+	if err := errors.Join(checkExact(doc, opts)...); err != nil {
 		return err
 	}
 
@@ -164,10 +169,19 @@ func checkSchema(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []err
 
 	errs = append(errs, checkKeywords(ptr, s)...)
 
-	for _, kw := range present(s, []string{"$ref", "$dynamicRef"}) {
+	for _, kw := range present(s, refKeywords) {
 		if _, err := refTargetOf(doc, ptr, kw); err != nil {
 			errs = append(errs, err)
 		}
+	}
+
+	// resolved reports a cycle of references alone and of allOf of one
+	// member.
+	if len(errs) == 0 && !refAloneAt(doc, ptr, s) && !transparentAllOf(doc, ptr, s) &&
+		returnsToItself(doc, ptr, s) {
+		errs = append(errs, unsupported(ptr,
+			"applies itself again to the value it applies to, with no member or element "+
+				"in between, which validates without end"))
 	}
 
 	if len(errs) > 0 || refAloneAt(doc, ptr, s) || ruled(doc, ptr) || rawFrom(doc, ptr, s) {
@@ -185,6 +199,147 @@ func checkSchema(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []err
 
 	if structKind(s) || product(doc, ptr, s) {
 		errs = append(errs, checkProperties(ptr, s)...)
+	}
+
+	return errs
+}
+
+// refKeywords are the keywords referring to another schema.
+var refKeywords = []string{"$ref", "$dynamicRef"}
+
+// inPlaceKeywords are the keywords whose subschemas apply to the value the
+// schema holding them applies to.
+var inPlaceKeywords = []string{
+	"allOf", "anyOf", "oneOf", "not", "if", "then", "else", "dependentSchemas",
+}
+
+// inPlace returns the pointers of the schemas applying to the value the
+// schema s at ptr applies to: its subschemas of inPlaceKeywords and the
+// targets of its references. A $dynamicRef counts with the target it
+// names, whatever the dynamic scope resolves it to.
+func inPlace(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []string {
+	out := opiter.WrapSeq2(children(ptr, s, false)).
+		OmitL().
+		Filter(func(c string) bool { return slices.Contains(inPlaceKeywords, stepKeyword(ptr, c)) }).
+		CollectSlice()
+
+	if s == nil {
+		return out
+	}
+
+	for _, kw := range present(s, refKeywords) {
+		if t, err := refTargetOf(doc, ptr, kw); err == nil {
+			out = append(out, t)
+		}
+	}
+
+	return out
+}
+
+// returnsToItself reports whether the schema s at ptr reaches itself again
+// through the schemas inPlace gives, so that validating a value applies it
+// to that value again and again.
+func returnsToItself(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
+	seen := map[string]bool{}
+	todo := inPlace(doc, ptr, s)
+
+	for len(todo) > 0 {
+		cur := todo[len(todo)-1]
+		todo = todo[:len(todo)-1]
+
+		if cur == ptr {
+			return true
+		}
+
+		if seen[cur] {
+			continue
+		}
+
+		seen[cur] = true
+
+		if cs, err := at(doc, cur); err == nil {
+			todo = append(todo, inPlace(doc, cur, cs)...)
+		}
+	}
+
+	return false
+}
+
+// checkExact reports each keyword the generated code does not check, as
+// uncheckedAt tells, in a schema where leaving the keyword out may reject
+// a value: a schema applying under not, a oneOf other than a nullable
+// union, the if of a then or an else and the contains of a maxContains,
+// a schema applying in place of one holding unevaluatedProperties or
+// unevaluatedItems, whose annotations decide what those reject, and every
+// schema such a schema applies through its subschemas and its references.
+// Elsewhere leaving a keyword out only accepts more values, which
+// unenforcedKeywords warns about.
+func checkExact(doc *jsonschema.Schema, opts Options) []error {
+	var todo []string
+
+	for ptr, s := range schemas(doc) {
+		if s == nil || s.Bool.IsSome() {
+			continue
+		}
+
+		if s.Not != nil {
+			todo = append(todo, child(ptr, "not"))
+		}
+
+		if s.If != nil && (s.Then != nil || s.Else != nil) {
+			todo = append(todo, child(ptr, "if"))
+		}
+
+		if s.Contains != nil && s.MaxContains != nil {
+			todo = append(todo, child(ptr, "contains"))
+		}
+
+		if s.UnevaluatedProperties != nil || s.UnevaluatedItems != nil {
+			todo = append(todo, inPlace(doc, ptr, s)...)
+		}
+
+		if !nullableUnion(doc, ptr) {
+			for i := range listOf(s, "oneOf") {
+				todo = append(todo, child(ptr, "oneOf", strconv.Itoa(i)))
+			}
+		}
+	}
+
+	reached := map[string]bool{}
+
+	for len(todo) > 0 {
+		cur := todo[len(todo)-1]
+		todo = todo[:len(todo)-1]
+
+		if reached[cur] {
+			continue
+		}
+
+		reached[cur] = true
+
+		cs, err := at(doc, cur)
+		if err != nil || cs == nil {
+			continue
+		}
+
+		todo = slices.AppendSeq(todo, opiter.WrapSeq2(children(cur, cs, false)).
+			OmitL().
+			Iter())
+
+		for _, kw := range present(cs, refKeywords) {
+			if t, err := refTargetOf(doc, cur, kw); err == nil {
+				todo = append(todo, t)
+			}
+		}
+	}
+
+	var errs []error
+
+	for _, ptr := range slices.Sorted(maps.Keys(reached)) {
+		for _, kw := range uncheckedAt(doc, opts, ptr) {
+			errs = append(errs, unsupported(child(ptr, kw),
+				"keyword not enforced where leaving it out may reject a value"))
+		}
 	}
 
 	return errs
@@ -288,7 +443,9 @@ func allChecked(doc *jsonschema.Schema, ptr string) bool {
 		Filter(func(p string, _ *jsonschema.Schema) bool {
 			return p == ptr || strings.HasPrefix(p, ptr+"/")
 		}).
-		Any(func(p string, _ *jsonschema.Schema) bool { return len(uncheckedAt(doc, p)) > 0 })
+		Any(func(p string, _ *jsonschema.Schema) bool {
+			return len(uncheckedAt(doc, Options{}, p)) > 0
+		})
 }
 
 // checkProduct reports a member of the product at ptr that holds the
@@ -483,7 +640,7 @@ func fieldNames(doc *jsonschema.Schema, opts Options, ptr string, s *jsonschema.
 			continue
 		}
 
-		add(fields, m, "allOf member "+strconv.Itoa(i))
+		add(fields, fieldIdent(m), "allOf member "+strconv.Itoa(i))
 	}
 
 	for _, n := range s.Properties {
@@ -492,8 +649,8 @@ func fieldNames(doc *jsonschema.Schema, opts Options, ptr string, s *jsonschema.
 			continue
 		}
 
-		add(fields, f, "property "+strconv.Quote(n.Name))
-		add(wire, f, "property "+strconv.Quote(n.Name))
+		add(fields, fieldIdent(f), "property "+strconv.Quote(n.Name))
+		add(wire, fieldIdent(f), "property "+strconv.Quote(n.Name))
 	}
 
 	add(wire, "AdditionalProperties", "the field of the members no property declares")

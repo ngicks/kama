@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T14:37:21Z
+// generated: 2026-11-24T18:02:05Z
 
 package rawroot
 
@@ -24,7 +24,7 @@ import (
 //kama:validate length=">=1"
 //kama:validate unique
 //kama:validate members="<=2"
-//kama:validate if(required="a", required="b")
+//kama:validate if(required=`"a"`, required=`"b"`)
 //kama:generated kama:jsonschema
 type Loose jsontext.Value
 

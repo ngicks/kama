@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -58,19 +59,35 @@ func parseComparisons(arg string) ([]Comparison, error) {
 }
 
 // parseLengths decodes arg, one or more comparisons with non-negative
-// integer literals, as length and runes take it.
+// integer literals, as length and runes take it. A comparison with an
+// integer above the greatest int, which no length reaches, is left out
+// when every length satisfies it, and becomes >9223372036854775807 when
+// none does, taking int as 64 bits wide.
 func parseLengths(arg string) ([]Comparison, error) {
 	cs, err := parseComparisons(arg)
 	if err != nil {
 		return nil, err
 	}
 
+	out := make([]Comparison, 0, len(cs))
+
 	for _, c := range cs {
 		n := c.Operand
 
 		val, err := literalValue(types.Typ[types.Int], n)
 		if err != nil {
-			return nil, argsError(err)
+			if !beyondInt(n) {
+				return nil, argsError(err)
+			}
+
+			if c.Op == ">" || c.Op == ">=" || c.Op == "==" {
+				out = append(
+					out,
+					Comparison{Op: ">", Operand: strconv.FormatInt(math.MaxInt64, 10)},
+				)
+			}
+
+			continue
 		}
 
 		if constant.Sign(val) < 0 {
@@ -88,9 +105,37 @@ func parseLengths(arg string) ([]Comparison, error) {
 		if lit, ok := x.(*ast.BasicLit); !ok || lit.Kind != token.INT {
 			return nil, argsError(fmt.Errorf("length %s is not an integer literal", n))
 		}
+
+		out = append(out, c)
 	}
 
-	return cs, nil
+	return out, nil
+}
+
+// beyondInt reports whether lit is an integer literal, with an optional
+// unary plus, above the greatest int64.
+func beyondInt(lit string) bool {
+	x, err := parser.ParseExpr(lit)
+	if err != nil {
+		return false
+	}
+
+	if u, ok := x.(*ast.UnaryExpr); ok && u.Op == token.ADD {
+		x = u.X
+	}
+
+	b, ok := x.(*ast.BasicLit)
+
+	return ok && b.Kind == token.INT &&
+		constant.Compare(
+			constant.MakeFromLiteral(
+				b.Value,
+				token.INT,
+				0,
+			),
+			token.GTR,
+			constant.MakeInt64(math.MaxInt64),
+		)
 }
 
 // comparison splits kv, an arg written <op><operand> as in >=1, into its

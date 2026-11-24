@@ -415,8 +415,9 @@
 // A struct type takes only validators of the struct as a whole, which
 // implement rule.StructRule, such as members and json. The rule reads the fields through
 // rule.Struct,
-// which names them by the JSON members they encode as. A field takes no
-// rule.StructRule.
+// which names them by the JSON members they encode as. A field takes a
+// rule.StructRule only when the Check of the rule accepts the type of the
+// field or the value it holds, as members accepts raw JSON text.
 //
 // # Raw JSON text
 //

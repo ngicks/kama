@@ -202,16 +202,16 @@ func TestMultipleOfParse(t *testing.T) {
 	}
 
 	for arg, msg := range map[string]string{
-		"":       `divisor "" is not a Go literal`,
-		"0":      "divisor 0 is not positive",
-		"0.0":    "divisor 0.0 is not positive",
-		"-1":     "divisor -1 is not an integer or float literal",
-		`"1"`:    `divisor "1" is not an integer or float literal`,
-		"'a'":    "divisor 'a' is not an integer or float literal",
-		"1i":     "divisor 1i is not an integer or float literal",
-		"1+1":    "divisor 1+1 is not an integer or float literal",
-		"n":      "divisor n is not an integer or float literal",
-		"1e9999": "divisor 1e9999 is out of range",
+		"":        `divisor "" is not a Go literal`,
+		"0":       "divisor 0 is not positive",
+		"0.0":     "divisor 0.0 is not positive",
+		"-1":      "divisor -1 is not an integer or float literal",
+		`"1"`:     `divisor "1" is not an integer or float literal`,
+		"'a'":     "divisor 'a' is not an integer or float literal",
+		"1i":      "divisor 1i is not an integer or float literal",
+		"1+1":     "divisor 1+1 is not an integer or float literal",
+		"n":       "divisor n is not an integer or float literal",
+		"1e-9999": "divisor 1e-9999 is out of range",
 	} {
 		_, err := MultipleOf{}.Parse(arg, nil)
 		assert.ErrorIs(t, err, ErrArgs, arg)
@@ -230,8 +230,10 @@ func TestMultipleOfCheck(t *testing.T) {
 		{"1e-8", types.Typ[types.Int64], ""},
 		{"0.5", types.Typ[types.Float32], ""},
 		{"1e300", types.Typ[types.Float64], ""},
-		{"300", types.Typ[types.Int8], "divisor 300: 300 is no value of int8"},
-		{"51.2", types.Typ[types.Uint8], "divisor 51.2: 256 is no value of uint8"},
+		{"300", types.Typ[types.Int8], ""},
+		{"51.2", types.Typ[types.Uint8], ""},
+		{"1e400", types.Typ[types.Float64], ""},
+		{"1e9999", types.Typ[types.Float32], ""},
 		{"2", types.Typ[types.String], "string is not an integer or float type"},
 		{"2", types.Typ[types.Complex128], "complex128 is not an integer or float type"},
 		{"2", types.NewSlice(types.Typ[types.Int]), "[]int is not an integer or float type"},

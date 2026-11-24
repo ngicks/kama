@@ -330,6 +330,35 @@ func TestCmpIntegerBounds(t *testing.T) {
 	)
 }
 
+// TestBoundsBeyondType folds a bound no value of the type reaches: a
+// float comparison becomes one with the greatest finite value, a length
+// above every int holds always or never, and a divisor above every value
+// leaves 0 the only multiple.
+func TestBoundsBeyondType(t *testing.T) {
+	src := generateAndBuild(t, map[string]string{
+		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
+			"\t//kama:validate cmp=\"<=1e400 >-1e400\"\n\tA float64\n" +
+			"\t//kama:validate cmp=\">=1e400\"\n\tB float32\n" +
+			"\t//kama:validate length=\"<=18446744073709551616\"\n\tC string\n" +
+			"\t//kama:validate runes=\">=18446744073709551616\"\n\tD string\n" +
+			"\t//kama:validate multipleof=1e30\n\tE int64\n" +
+			"\t//kama:validate multipleof=1e100000\n\tF float64\n}\n",
+	})["a.kama_validate.go"]
+	fn := gentest.Funcs(t, src)["A.Validate"]
+
+	assertContains(
+		t,
+		fn,
+		`kamaValidateCmp(v.A, "<=", 1.7976931348623157e+308), `+
+			`kamaValidateCmp(v.A, ">=", -1.7976931348623157e+308)`,
+		`kamaValidateCmp(v.B, ">", 3.4028234663852886e+38)`,
+		check(`validation.Field(error(nil), "C")`),
+		`kamaValidateRunes(utf8.RuneCountInString(v.D), ">", 9223372036854775807)`,
+		`kamaValidateMultipleZero(v.E, "1e30")`,
+		`kamaValidateMultipleZero(v.F, "1e100000")`,
+	)
+}
+
 func TestClosedErrors(t *testing.T) {
 	cases := []struct {
 		name string
