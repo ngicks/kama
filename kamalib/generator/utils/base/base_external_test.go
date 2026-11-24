@@ -112,25 +112,58 @@ func fileOf(t *testing.T, pkgs []*packages.Package, name string) (*packages.Pack
 }
 
 func TestSourcePackages(t *testing.T) {
+	x := "github.com/ngicks/kama/kamalib/generator/utils/base/" + gentest.InlineDir(t)
 	f, opts := gentest.Stage(t, map[string]string{
-		"a.go":      "package x\n\ntype A int\n",
-		"a_test.go": "package x\n\nimport \"testing\"\n\nfunc TestA(*testing.T) {}\n",
+		"a.go":        "package x\n\ntype A int\n",
+		"a_test.go":   "package x\n\ntype B int\n",
+		"ext_test.go": "package x_test\n\nimport x \"" + x + "\"\n\ntype C x.A\n",
+		"y/y.go":      "package y\n\nimport x \"" + x + "\"\n\ntype D x.A\n",
 	})
 	opts.Tests = true
 	pkgs, err := gopackages.Load(context.Background(), f, opts)
 	assert.NilError(t, err)
 
-	isTestVariant := func(p *packages.Package) bool { return p.ID != p.PkgPath }
-	assert.Assert(t, slices.ContainsFunc(pkgs, isTestVariant), "a test variant is loaded")
 	src := base.SourcePackages(pkgs)
-	assert.Assert(t, !slices.ContainsFunc(src, isTestVariant))
 
-	paths := opiter.WrapSeq(slices.Values(src)).
-		Map(func(p *packages.Package) string { return p.PkgPath }).
-		CollectSlice()
+	ids := opiter.WrapSeq(slices.Values(src)).
+		Map(func(p *packages.Package) string { return p.ID }).
+		Collect(slices.Sorted)
 
-	assert.DeepEqual(t, paths, slices.Compact(slices.Clone(paths)))
-	assert.Assert(t, slices.Contains(paths, pkgs[0].PkgPath))
+	assert.DeepEqual(t, ids, []string{
+		x + " [" + x + ".test]",
+		x + "/y",
+		x + "_test [" + x + ".test]",
+	})
+
+	// y imports x, not the test variant standing for it.
+	y := src[slices.IndexFunc(src, func(p *packages.Package) bool { return p.PkgPath == x+"/y" })]
+	objA := y.Imports[x].Types.Scope().Lookup("A")
+	pkg := base.DeclaringPackage(src, objA)
+	assert.Equal(t, pkg.ID, x+" ["+x+".test]")
+	assert.Assert(t, pkg.Types.Scope().Lookup("A") != objA)
+	assert.Equal(t, pkg.Types.Scope().Lookup("A").Pos(), objA.Pos())
+	assert.Assert(t, base.DeclaringPackage(src, types.Universe.Lookup("int")) == nil)
+}
+
+func TestPackageFile(t *testing.T) {
+	f, opts := gentest.Stage(t, map[string]string{
+		"a.go":        "package x\n",
+		"a_test.go":   "package x\n",
+		"ext_test.go": "package x_test\n",
+	})
+	opts.Tests = true
+	pkgs, err := gopackages.Load(context.Background(), f, opts)
+	assert.NilError(t, err)
+
+	names := map[string]string{}
+	for _, p := range base.SourcePackages(pkgs) {
+		names[p.Name] = base.PackageFile(p, "zz_gen.helper.kama_x.go")
+	}
+
+	assert.DeepEqual(t, names, map[string]string{
+		"x":      "zz_gen.helper.kama_x.go",
+		"x_test": "zz_gen.helper.kama_x_test.go",
+	})
 }
 
 func TestBuildConstraint(t *testing.T) {

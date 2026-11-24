@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/ngicks/opiter"
 )
@@ -20,12 +21,25 @@ type Caller struct {
 	Uses map[string]bool
 }
 
-// constrained reports whether the source file has a build constraint, as a
-// //go:build line or a file name suffix.
-func (c Caller) constrained() bool {
-	_, ok := BuildConstraint(c.File)
-	return ok || Constrained(c.Src)
+// constrained reports whether the source file has a build constraint the
+// file shared stands under lacks: a //go:build line, a file name suffix,
+// or the _test suffix when shared is no test file.
+func (c Caller) constrained(shared string) bool {
+	if _, ok := BuildConstraint(c.File); ok {
+		return true
+	}
+
+	src, test := strings.CutSuffix(c.Src, "_test.go")
+	if !test {
+		return Constrained(c.Src)
+	}
+
+	// Constrained takes the _test suffix for a constraint of its own.
+	return Constrained(src+".go") || !isTestFile(shared)
 }
+
+// isTestFile reports whether the file at path is a _test.go file.
+func isTestFile(path string) bool { return strings.HasSuffix(path, "_test.go") }
 
 // Host is a file declaring shared declarations.
 type Host struct {
@@ -51,6 +65,13 @@ type Host struct {
 // the first caller using it, under the build
 // line of that caller, which stays right as long as the callers using the
 // name are loaded together.
+//
+// A _test.go caller counts as constrained unless shared is a _test.go file
+// too, as that of an external test package is: a name only test files use
+// stays out of the build of the package. The first caller that is a test
+// file exactly when shared is one is preferred to host a name, so a name a
+// test file and a constrained file of the package both use goes where the
+// build of the package sees it.
 func HostShared(n Naming, kind, shared string, callers []Caller) []Host {
 	names := map[string]bool{}
 	for _, c := range callers {
@@ -72,10 +93,14 @@ func HostShared(n Naming, kind, shared string, callers []Caller) []Host {
 		users := opiter.WrapSeq(slices.Values(callers)).
 			Filter(func(c Caller) bool { return c.Uses[name] })
 
-		if users.ContainsFunc(func(c Caller) bool { return !c.constrained() }) {
+		if users.ContainsFunc(func(c Caller) bool { return !c.constrained(shared) }) {
 			host(shared, "", name)
 		} else {
-			first := users.First().Value()
+			first := users.
+				Filter(func(c Caller) bool { return isTestFile(c.Src) == isTestFile(shared) }).
+				First().
+				Or(users.First()).
+				Value()
 			buildLine, _ := BuildConstraint(first.File)
 			host(n.SharedFileOf(kind, first.Src), buildLine, name)
 		}

@@ -224,7 +224,7 @@ func TestLoadPackagesWithoutSyntax(t *testing.T) {
 }
 
 // TestLoadPackagesTestVariant checks that a package path given twice counts
-// once, taking the package rather than its test variant.
+// once, taking the test variant rather than the package.
 func TestLoadPackagesTestVariant(t *testing.T) {
 	variant := parsedPackage(t, "m/a", "a", map[string]string{
 		"x.go":      "package a\n\n//kama:x\ntype T int\n",
@@ -245,5 +245,7 @@ func TestLoadPackagesTestVariant(t *testing.T) {
 	assert.DeepEqual(t, flatten(loaded.Option), map[string]string{
 		"m/a.T":      "a/x.go:3:1 fields=false",
 		"m/a.T type": "[]; at x.go:3:1 type m/a.T",
+		"m/a.U":      "a/x_test.go:3:1 fields=false",
+		"m/a.U type": "[]; at x_test.go:3:1 type m/a.U",
 	})
 }

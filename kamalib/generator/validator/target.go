@@ -247,9 +247,15 @@ func (s *selection) holdsForeignImplementor(n *typegraph.Node) bool {
 	})
 }
 
-// loaded reports whether pkg is one of the packages of the run.
+// loaded reports whether pkg is one of the packages of the run. A package
+// of the run may import a variant of pkg other than the one the run holds,
+// so packages are told by path.
 func (s *selection) loaded(pkg *types.Package) bool {
-	return slices.ContainsFunc(s.pkgs, func(p *packages.Package) bool { return p.Types == pkg })
+	return pkg != nil &&
+		slices.ContainsFunc(
+			s.pkgs,
+			func(p *packages.Package) bool { return p.PkgPath == pkg.Path() },
+		)
 }
 
 // targetsIn returns the targets the source file at filename declares, in

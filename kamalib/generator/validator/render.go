@@ -51,7 +51,9 @@ func renderPackage(
 	}
 
 	dir := filepath.Dir(srcs[0])
-	hosts := base.HostShared(naming, helperKind, filepath.Join(dir, HelpersFile), callers)
+	hosts := base.HostShared(
+		naming, helperKind, filepath.Join(dir, base.PackageFile(pkg, HelpersFile)), callers,
+	)
 
 	names := opiter.WrapSeq(slices.Values(hosts)).
 		FlatMap(func(h base.Host) iter.Seq[string] { return slices.Values(h.Names) }).

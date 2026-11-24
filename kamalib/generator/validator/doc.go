@@ -439,6 +439,19 @@
 // returns a warning wrapping ErrStale for a stale file, and Proc reports
 // it. The file is left in place; delete it if it is no longer needed.
 //
+// # Test files
+//
+// With the packages loaded with their tests, targets of _test.go files get
+// Validate too. The test variant of a package x stands for x, so a target
+// of a_test.go of x gets a.kama_validate_test.go and the files of x come
+// out as without tests. A helper only _test.go files of x call goes to the
+// helpers file of the first of them, as in
+// zz_gen.helper.a.kama_validate_test.go. The external test package x_test
+// is a package of its own at the path of x followed by _test, and its
+// helpers file is zz_gen.helper.kama_validate_test.go. The package option
+// file found in the directory of x belongs to x. An option file entry
+// naming a type of the tests needs the tests loaded.
+//
 // # Not supported
 //
 //   - and(...) and or(...) combinators. Several validators on one field

@@ -62,21 +62,12 @@ func (s *selection) generates(named *types.Named) bool {
 	// Obj of an instantiated type is the TypeName of its origin.
 	obj := named.Obj()
 
-	pkg := s.loaded(obj)
-	if pkg == nil || pkg.Types.Scope().Lookup(obj.Name()) != obj {
+	if base.DeclaringPackage(s.pkgs, obj) == nil || obj.Parent() != obj.Pkg().Scope() {
 		return false
 	}
 
 	return typequery.IsStructSliceOrMap(named) && !s.generated(obj) &&
 		!s.ignored(typegraph.QualifiedTypeFromObject(obj))
-}
-
-// loaded returns the loaded package declaring obj, or nil.
-func (s *selection) loaded(obj types.Object) *packages.Package {
-	return opiter.WrapSeq(slices.Values(s.pkgs)).
-		Filter(func(pkg *packages.Package) bool { return pkg.Types == obj.Pkg() }).
-		First().
-		UnwrapOrDefault()
 }
 
 // partialOf reports the target or the implementor t refers to when a
@@ -325,19 +316,21 @@ func (s *selection) checkNames(sorted []*typegraph.Node) error {
 			)
 		}
 
+		flagSet := base.PackageFile(pkg, FlagSetFile)
+
 		for _, f := range pkg.Syntax {
-			base := filepath.Base(pkg.Fset.Position(f.FileStart).Filename)
-			if base != FlagSetFile && !isHelpersFile(base) {
+			name := filepath.Base(pkg.Fset.Position(f.FileStart).Filename)
+			if name != flagSet && !isHelpersFile(name) {
 				continue
 			}
 
 			for _, decl := range f.Decls {
-				if s.ownDecl(base, decl) {
+				if s.ownDecl(name == flagSet, decl) {
 					continue
 				}
 
 				conflict(pkg.Fset, decl.Pos(),
-					"%s holds a declaration the generator did not write", base,
+					"%s holds a declaration the generator did not write", name,
 				)
 			}
 		}
@@ -346,10 +339,10 @@ func (s *selection) checkNames(sorted []*typegraph.Node) error {
 	return errors.Join(errs...)
 }
 
-// ownDecl reports whether decl of the file named base is one the generator
-// writes there: imports, and marked types in FlagSetFile or marked
-// functions in a helpers file.
-func (s *selection) ownDecl(base string, decl ast.Decl) bool {
+// ownDecl reports whether decl of a flag set file, as flagSet tells, or of
+// a helpers file is one the generator writes there: imports, and marked
+// types in the flag set file or marked functions in a helpers file.
+func (s *selection) ownDecl(flagSet bool, decl ast.Decl) bool {
 	switch d := decl.(type) {
 	case *ast.GenDecl:
 		if d.Tok == token.IMPORT {
@@ -358,10 +351,10 @@ func (s *selection) ownDecl(base string, decl ast.Decl) bool {
 
 		_, ok := s.opts.Registry.Generated(d.Doc)
 
-		return ok && d.Tok == token.TYPE && base == FlagSetFile
+		return ok && d.Tok == token.TYPE && flagSet
 	case *ast.FuncDecl:
 		_, ok := s.opts.Registry.Generated(d.Doc)
-		return ok && d.Recv == nil && isHelpersFile(base)
+		return ok && d.Recv == nil && !flagSet
 	}
 
 	return false
@@ -524,7 +517,7 @@ func (s *selection) valueChild(n *types.Named, t types.Type) (*types.Named, bool
 // position returns pos in the file set of the package of the target n. pos
 // may lie in a package outside the run, as the fields of type A sub.S do.
 func (s *selection) position(n *types.Named, pos token.Pos) token.Position {
-	return s.loaded(n.Obj()).Fset.Position(pos)
+	return base.DeclaringPackage(s.pkgs, n.Obj()).Fset.Position(pos)
 }
 
 // deref strips one pointer from t, through aliases.

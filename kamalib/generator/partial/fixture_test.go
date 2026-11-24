@@ -22,6 +22,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	pkggopackages "github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs/suffix"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
 	_ "github.com/ngicks/kama/kamalib/proc/overlayfs"
 )
@@ -42,11 +43,14 @@ var fixtures = []fixture{
 		param: ProcParamPartial{OptionFile: und.Defined(fileloader.PathInput{Base: "partial"})},
 	},
 	{dir: "internal/fixturepackage"},
+	{dir: "internal/fixturetest", tests: true},
 }
 
 type fixture struct {
 	dir   string
 	param ProcParamPartial
+	// tests mirrors the tests param of the load step of spec.yaml.
+	tests bool
 }
 
 func TestFixtureSpecBuild(t *testing.T) {
@@ -73,9 +77,8 @@ func TestFixtureUpToDate(t *testing.T) {
 
 			defer f.Close()
 
-			pkgs, err := pkggopackages.Load(
-				ctx, f, pkggopackages.Options{Patterns: []string{"./..."}},
-			)
+			loadOpts := pkggopackages.Options{Patterns: []string{"./..."}, Tests: fx.tests}
+			pkgs, err := pkggopackages.Load(ctx, f, loadOpts)
 			assert.NilError(t, err)
 
 			i := &instance{}
@@ -109,9 +112,7 @@ func TestFixtureUpToDate(t *testing.T) {
 
 			// Load fails on any package error, so this checks the staged
 			// output compiles.
-			_, err = pkggopackages.Load(
-				ctx, f, pkggopackages.Options{Patterns: []string{"./..."}},
-			)
+			_, err = pkggopackages.Load(ctx, f, loadOpts)
 			assert.NilError(t, err)
 		})
 	}
@@ -124,9 +125,8 @@ func generatedFiles(t *testing.T, root string) []string {
 	var out []string
 
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-		if err == nil && !d.IsDir() &&
-			(strings.HasSuffix(p, FileSuffix+".go") ||
-				filepath.Base(p) == FlagSetFile || isHelpersFile(filepath.Base(p))) {
+		if err == nil && !d.IsDir() && filepath.Ext(p) == ".go" &&
+			suffix.IsSuffixed(filepath.Base(p), FileSuffix) {
 			out = append(out, p)
 		}
 

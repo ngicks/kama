@@ -24,7 +24,8 @@ const GeneratorName = "kama-validate"
 var naming = base.Naming{Name: "kama_validate"}
 
 // HelpersFile is the name of the file declaring the helpers the generated
-// files of a package call.
+// files of a package call. An external test package takes the name with
+// the _test suffix, as base.PackageFile gives it.
 const HelpersFile = "zz_gen.helper.kama_validate.go"
 
 // helperKind is the kind of the files declaring helpers, as their names
@@ -108,7 +109,8 @@ type File = base.File
 // ErrStale for each file of pkgs carrying the marker of the generator that
 // is not among the returned files.
 //
-// pkgs must be loaded as gopackages.Load does. Test variants are skipped.
+// pkgs must be loaded as gopackages.Load does. base.SourcePackages picks
+// the packages read, test variants and external test packages included.
 func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 	opts = opts.WithDefaults()
 	now := opts.Now()

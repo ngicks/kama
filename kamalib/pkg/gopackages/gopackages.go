@@ -79,6 +79,30 @@ func Load(ctx context.Context, fsys *overlayfs.Fs, opts Options) ([]*packages.Pa
 	return pkgs, nil
 }
 
+// IsTestVariant reports whether p is the test variant of a package, which
+// Load gives with Options.Tests: the package compiled together with its
+// _test.go files declaring the same package. Its ID names the test binary
+// after the path, as in "x [x.test]".
+func IsTestVariant(p *packages.Package) bool {
+	return p.ID == p.PkgPath+" ["+p.PkgPath+".test]"
+}
+
+// IsExternalTest reports whether p is an external test package, which Load
+// gives with Options.Tests: the _test.go files of the directory of the
+// package x declaring the package x_test, with the ID "x_test [x.test]".
+func IsExternalTest(p *packages.Package) bool {
+	tested, ok := strings.CutSuffix(p.PkgPath, "_test")
+	return ok && p.ID == p.PkgPath+" ["+tested+".test]"
+}
+
+// IsTestMain reports whether p is the main package of a test binary, which
+// Load gives with Options.Tests, as "x.test". It is generated, lies in the
+// build cache and shares the directory of x. A package main of a path
+// ending in .test written by hand is taken for one too.
+func IsTestMain(p *packages.Package) bool {
+	return p.Name == "main" && p.ID == p.PkgPath && strings.HasSuffix(p.PkgPath, ".test")
+}
+
 // PackageErrors maps a package path to the errors reported for that package.
 type PackageErrors map[string][]packages.Error
 

@@ -165,7 +165,7 @@ func TestLoadPackageFile(t *testing.T) {
 			},
 		},
 		{
-			name: "test variant counted once",
+			name: "test variant taken over the package",
 			pkgs: func(t *testing.T) []*packages.Package {
 				variant := typedPackage(t, "m/a", "a", map[string]string{
 					"x.go":      "package a\n",
@@ -178,7 +178,27 @@ func TestLoadPackageFile(t *testing.T) {
 					typedPackage(t, "m/a", "a", map[string]string{"x.go": "package a\n"}),
 				}
 			},
-			want: map[string][2]string{"m/a": {"a/kama_x.yaml", "a"}},
+			want: map[string][2]string{"m/a": {"top.yaml", "top"}},
+		},
+		{
+			name: "external test package skips the default",
+			pkgs: func(t *testing.T) []*packages.Package {
+				ext := typedPackage(
+					t,
+					"m/a_test",
+					"a",
+					map[string]string{"y_test.go": "package a_test\n"},
+				)
+				ext.ID = "m/a_test [m/a.test]"
+
+				named := typedPackage(t, "m/b_test", "a/b", map[string]string{
+					"y_test.go": "//kama:option-file x=local.yaml\n\npackage b_test\n",
+				})
+				named.ID = "m/b_test [m/b.test]"
+
+				return []*packages.Package{ext, named}
+			},
+			want: map[string][2]string{"m/b_test": {"a/b/local.yaml", "local"}},
 		},
 	}
 	for _, c := range cases {

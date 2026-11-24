@@ -57,6 +57,51 @@
 // lines name the position of the first line. The free-floating comments
 // of one file are one target.
 //
+// # Test files
+//
+// Targets may live in _test.go files, so that tests get partial variants
+// of the types they declare. A load with tests, as packages.load with
+// tests: true, gives two shapes, and Generate handles both:
+//
+//   - A _test.go file of the package x. The test variant of x holds the
+//     files of x and these test files, and the run reads it in place of x.
+//     The files of x are generated once, as without tests. A target of
+//     a_test.go gets a.kama_partial_test.go.
+//   - The external test package x_test, declared by the _test.go files of
+//     the directory of x with the package clause x_test. Its import path
+//     is the path of x followed by _test. Its partial files carry the
+//     package clause x_test. Its helpers file and flag set file take the
+//     _test suffix, zz_gen.helper.kama_partial_test.go and
+//     zz_gen.flagset.kama_partial_test.go, so that they do not meet the
+//     files of x in the one directory.
+//
+// A helper only _test.go files of x call goes to the helpers file of the
+// first of them, as in zz_gen.helper.a.kama_partial_test.go for
+// a_test.go, and so stays out of the build of x. A helper the files of x
+// call too stays in zz_gen.helper.kama_partial.go. The flag set file of x
+// serves its test files too, and stays zz_gen.flagset.kama_partial.go even
+// when only test files of x declare targets: the name with the _test
+// suffix belongs to x_test.
+//
+// The package option file found in the directory of x belongs to x. The
+// option file names the types of x_test under the path of x_test, and a
+// free-floating //kama:option-file directive in a file of x_test names a
+// package option file of its own.
+//
+// With tests loaded, file marks, package marks, all_types and reachability
+// take in the types of the test files too, and a test type that cannot
+// have a partial variant fails the run as any other type does. A target of
+// a test file reaches the types of the files of x as well, and those get
+// partial variants in the partial files of x.
+//
+// A run without tests reads neither test files nor x_test and reports no
+// file of the tests stale. It produces the files of x as a run with tests
+// does unless the tests reach types of x that nothing else reaches: their
+// partial variants are then left out and their files reported stale. An
+// option file entry naming a type of the tests, and a //kama:option-file
+// directive in a _test.go file of x, need the tests loaded. Once test
+// files declare targets, run the generator with tests every time.
+//
 // # Option file
 //
 // An option file gives the options of the directives for types that cannot

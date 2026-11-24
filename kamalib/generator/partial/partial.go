@@ -37,6 +37,8 @@ var naming = base.Naming{Name: "kama_partial"}
 // HelpersFile is the name of the file declaring the helpers the partial
 // files of a package call. The zz_gen. prefix marks a generated file no
 // source file stands behind and sorts it after the files written by hand.
+// An external test package takes the name with the _test suffix, as
+// base.PackageFile gives it.
 const HelpersFile = "zz_gen.helper.kama_partial.go"
 
 // helperKind is the kind of the files declaring helpers, as their names
@@ -183,7 +185,8 @@ type File = base.File
 // is not among the returned files, sorted by path. The flag set file of a
 // package the run produces no files for is not reported.
 //
-// pkgs must be loaded as gopackages.Load does. Test variants are skipped.
+// pkgs must be loaded as gopackages.Load does. base.SourcePackages picks
+// the packages read, test variants and external test packages included.
 // The returned content is not formatted beyond what printing the syntax
 // tree gives.
 func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
@@ -271,7 +274,13 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 				return nil, nil, err
 			}
 
-			out = append(out, File{Path: filepath.Join(pf.dir, FlagSetFile), Content: content})
+			out = append(
+				out,
+				File{
+					Path:    filepath.Join(pf.dir, base.PackageFile(pf.pkg, FlagSetFile)),
+					Content: content,
+				},
+			)
 		}
 
 		if err := base.CheckPredeclared(pf.pkg, out, ErrConflict); err != nil {
@@ -298,7 +307,8 @@ func Generate(pkgs []*packages.Package, opts Options) ([]File, []error, error) {
 		// gets it, so it cannot be stale there, unless OmitFlagSet leaves it
 		// out: a file an earlier run wrote is stale then.
 		Keep: func(pkg *packages.Package, path string) bool {
-			return !generated[pkg.PkgPath] && filepath.Base(path) == FlagSetFile
+			return !generated[pkg.PkgPath] &&
+				filepath.Base(path) == base.PackageFile(pkg, FlagSetFile)
 		},
 	}
 
@@ -369,7 +379,8 @@ func renderPackage(
 		Map(func(f *partialFile) base.Caller { return f.caller(targets) }).
 		CollectSlice()
 
-	for _, hf := range base.HostShared(naming, helperKind, filepath.Join(dir, HelpersFile), callers) {
+	shared := filepath.Join(dir, base.PackageFile(pkg, HelpersFile))
+	for _, hf := range base.HostShared(naming, helperKind, shared, callers) {
 		content, err := renderHelpers(sel, hdr, pkg, hf, helpers)
 		if err != nil {
 			return nil, err

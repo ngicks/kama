@@ -15,22 +15,15 @@ import (
 // Generated reports whether the declaration of obj, declared in a package
 // of pkgs, carries the marker of a generator reg registers.
 func Generated(pkgs []*packages.Package, reg *genmark.Registry, obj types.Object) bool {
-	if obj.Pkg() == nil {
+	pkg := DeclaringPackage(pkgs, obj)
+	if pkg == nil {
 		return false
 	}
 
-	for _, pkg := range pkgs {
-		if pkg.Types != obj.Pkg() {
-			continue
-		}
-
-		return slices.ContainsFunc(DeclDocs(pkg, obj), func(doc *ast.CommentGroup) bool {
-			_, ok := reg.Generated(doc)
-			return ok
-		})
-	}
-
-	return false
+	return slices.ContainsFunc(DeclDocs(pkg, obj), func(doc *ast.CommentGroup) bool {
+		_, ok := reg.Generated(doc)
+		return ok
+	})
 }
 
 // UnownedDecls returns the package-level objects of pkg named by names

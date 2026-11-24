@@ -80,6 +80,14 @@
 // directory. Of several files it finds, the last in name order is read,
 // with a warning for each other one.
 //
+// Of a package and its test variant, the loader reads the test variant,
+// which holds the directives of the _test.go files declaring the package
+// too. An external test package x_test is a package of its own at the
+// import path of x followed by _test. It shares the directory of x, and
+// the file Loader.PackageFile finds there belongs to x: x_test reads a
+// package option file only when an option-file directive of its own files
+// names one.
+//
 // # Precedence
 //
 // The Group, Type and Fields of one type come from exactly one source. A package option file comes
@@ -109,6 +117,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -465,12 +474,11 @@ var (
 
 // uniquePackages returns pkgs sorted by path with each path once. A test
 // variant shares the path of its package and holds the test files too, so
-// the package itself is preferred.
+// the variant is preferred, as base.SourcePackages prefers it.
 func uniquePackages(pkgs []*packages.Package) []*packages.Package {
 	byPath := map[string]*packages.Package{}
 	for _, pkg := range pkgs {
-		if prev, ok := byPath[pkg.PkgPath]; !ok ||
-			(prev.ID != prev.PkgPath && pkg.ID == pkg.PkgPath) {
+		if _, ok := byPath[pkg.PkgPath]; !ok || gopackages.IsTestVariant(pkg) {
 			byPath[pkg.PkgPath] = pkg
 		}
 	}

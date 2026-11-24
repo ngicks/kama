@@ -16,6 +16,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 )
 
 // optionFileDirective is the tool-wide directive naming the option files of
@@ -146,7 +147,11 @@ func (l Loader[P, T, F]) packageFile(
 	pkg := w.pkg
 
 	if len(named) == 0 {
-		if l.PackageFile == nil {
+		// The default file of a directory names the types of the package
+		// there. An external test package shares the directory, and its
+		// types are given by an option-file directive of its own or by a
+		// central option file instead.
+		if l.PackageFile == nil || gopackages.IsExternalTest(pkg) {
 			return fileloader.Document{}, false, warnings, nil
 		}
 

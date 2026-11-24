@@ -10,20 +10,68 @@ import (
 	"go/types"
 	"iter"
 	"slices"
+	"strings"
 
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
+
+	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 )
 
-// SourcePackages drops test variants, which repeat the declarations of the
-// package they test, and repeated packages. A generated test main package,
-// which declares nothing a generator reads, stays.
+// SourcePackages returns the packages of pkgs a generator reads, each path
+// once. A test variant of a package, which holds the files of the package
+// and its _test.go files declaring the same package, takes the place of
+// the package: it declares everything the package does and the types of
+// those test files too. An external test package stays. Other variants,
+// such as a package compiled again for the tests of another package, are
+// dropped, and so is a generated test main package, which declares nothing
+// a generator reads but shares the directory of the package it tests.
 func SourcePackages(pkgs []*packages.Package) []*packages.Package {
-	// The ID of a test variant differs from its path.
+	tested := map[string]bool{}
+
+	for _, p := range pkgs {
+		if gopackages.IsTestVariant(p) {
+			tested[p.PkgPath] = true
+		}
+	}
+
+	// The ID of any variant differs from its path.
 	return opiter.WrapSeq(slices.Values(pkgs)).
-		Filter(func(p *packages.Package) bool { return p.ID == p.PkgPath }).
+		Filter(func(p *packages.Package) bool {
+			return gopackages.IsTestVariant(p) || gopackages.IsExternalTest(p) ||
+				(p.ID == p.PkgPath && !tested[p.PkgPath] && !gopackages.IsTestMain(p))
+		}).
 		UniqueFunc(pkgPathOf).
 		CollectSlice()
+}
+
+// DeclaringPackage returns the package of pkgs declaring obj, or nil.
+//
+// A package and its test variant hold distinct objects for one
+// declaration, and a package of pkgs may import the one pkgs do not hold.
+// The package is therefore found by path. The variants share their syntax
+// trees, so a position of obj is one in the package found.
+func DeclaringPackage(pkgs []*packages.Package, obj types.Object) *packages.Package {
+	if obj.Pkg() == nil {
+		return nil
+	}
+
+	return opiter.WrapSeq(slices.Values(pkgs)).
+		Filter(func(p *packages.Package) bool { return p.PkgPath == obj.Pkg().Path() }).
+		First().
+		UnwrapOrDefault()
+}
+
+// PackageFile returns name, the name of a file without a directory that
+// the generated files of pkg share, as pkg names it. An external test
+// package shares its directory with the package it tests, so its file
+// takes the _test suffix, as in zz_gen.helper.kama_partial_test.go.
+func PackageFile(pkg *packages.Package, name string) string {
+	if !gopackages.IsExternalTest(pkg) {
+		return name
+	}
+
+	return strings.TrimSuffix(name, ".go") + "_test.go"
 }
 
 func pkgPathOf(p *packages.Package) string { return p.PkgPath }

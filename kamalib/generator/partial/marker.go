@@ -43,8 +43,7 @@ func (s *selection) implementor(t types.Type) (*types.Named, bool) {
 		return nil, false
 	}
 
-	isLoaded := func(pkg *packages.Package) bool { return pkg.Types == named.Obj().Pkg() }
-	if slices.ContainsFunc(s.pkgs, isLoaded) {
+	if base.DeclaringPackage(s.pkgs, named.Obj()) != nil {
 		return nil, false
 	}
 

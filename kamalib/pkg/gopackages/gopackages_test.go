@@ -57,6 +57,60 @@ func TestLoadSeesStagedFiles(t *testing.T) {
 	assert.DeepEqual(t, files, []string{"a.go", "b.gen.go"})
 }
 
+func TestTestPackages(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+
+	for name, src := range map[string]string{
+		"go.mod":          "module example.invalid/x\n\ngo 1.27\n",
+		"x.go":            "package x\n\ntype T struct{}\n",
+		"in_test.go":      "package x\n\ntype U struct{}\n",
+		"ext_test.go":     "package x_test\n\ntype V struct{}\n",
+		"y_test/y.go":     "package y_test\n\ntype W struct{}\n",
+		"y_test/y2.go":    "package y_test\n\ntype W2 struct{}\n",
+		"z/z.go":          "package z\n",
+		"z/z_ext_test.go": "package z_test\n",
+	} {
+		assert.NilError(t, os.MkdirAll(filepath.Dir(filepath.Join(root, name)), 0o755))
+		assert.NilError(t, os.WriteFile(filepath.Join(root, name), []byte(src), 0o644))
+	}
+
+	f, err := overlayfs.New(root)
+	assert.NilError(t, err)
+
+	defer f.Close()
+
+	pkgs, err := Load(ctx, f, Options{Patterns: []string{"./..."}, Tests: true})
+	assert.NilError(t, err)
+
+	kinds := map[string]string{}
+
+	for _, p := range pkgs {
+		switch {
+		case IsTestVariant(p):
+			kinds[p.ID] = "variant"
+		case IsExternalTest(p):
+			kinds[p.ID] = "external"
+		case IsTestMain(p):
+			kinds[p.ID] = "main"
+		default:
+			kinds[p.ID] = "other"
+		}
+	}
+
+	// A package whose path ends in _test is no external test package.
+	assert.DeepEqual(t, kinds, map[string]string{
+		"example.invalid/x":                                   "other",
+		"example.invalid/x [example.invalid/x.test]":          "variant",
+		"example.invalid/x_test [example.invalid/x.test]":     "external",
+		"example.invalid/x.test":                              "main",
+		"example.invalid/x/y_test":                            "other",
+		"example.invalid/x/z":                                 "other",
+		"example.invalid/x/z_test [example.invalid/x/z.test]": "external",
+		"example.invalid/x/z.test":                            "main",
+	})
+}
+
 func TestLoadFailsOnPackageErrors(t *testing.T) {
 	cases := []struct {
 		name  string

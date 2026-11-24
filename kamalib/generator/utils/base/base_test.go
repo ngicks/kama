@@ -45,6 +45,14 @@ func TestNaming(t *testing.T) {
 	assert.Assert(t, !Constrained("d/a_tagged.go"))
 	assert.Assert(t, Constrained("d/a_linux.go"))
 	assert.Assert(t, Constrained("d/a_amd64.go"))
+	assert.Assert(t, Constrained("d/a_test.go"))
+	assert.Equal(t, n.SourceFile("d/a_test.go"), filepath.FromSlash("d/a.kama_x_test.go"))
+	assert.Equal(
+		t,
+		n.SharedFileOf("helper", "d/a_linux_test.go"),
+		filepath.FromSlash("d/zz_gen.helper.a.kama_x_linux_test.go"),
+	)
+	assert.Assert(t, n.IsShared("helper", "zz_gen.helper.kama_x_test.go"))
 }
 
 func TestHostShared(t *testing.T) {
@@ -89,6 +97,30 @@ func TestHostShared(t *testing.T) {
 		{Path: "zz_gen.helper.b.kama_x_linux.go", Names: []string{"onlyB"}},
 	})
 	assert.Equal(t, len(HostShared(n, "helper", "shared.go", nil)), 0)
+
+	// A test file is constrained unless the shared file is a test file too.
+	hosts = HostShared(n, "helper", "shared.go", []Caller{
+		{Src: "a_test.go", File: plain, Uses: uses("onlyTest", "testAndB", "testAndP")},
+		{Src: "b_linux.go", File: plain, Uses: uses("testAndB")},
+		{Src: "c_test.go", File: plain, Uses: uses("onlyTest")},
+		{Src: "p.go", File: plain, Uses: uses("testAndP")},
+	})
+	assert.DeepEqual(t, hosts, []Host{
+		{Path: "shared.go", Names: []string{"testAndP"}},
+		// A name a test file shares with a constrained file goes where the
+		// build of the package sees it.
+		{Path: "zz_gen.helper.a.kama_x_test.go", Names: []string{"onlyTest"}},
+		{Path: "zz_gen.helper.b.kama_x_linux.go", Names: []string{"testAndB"}},
+	})
+
+	hosts = HostShared(n, "helper", "shared_test.go", []Caller{
+		{Src: "a_test.go", File: plain, Uses: uses("a")},
+		{Src: "b_linux_test.go", File: plain, Uses: uses("b")},
+	})
+	assert.DeepEqual(t, hosts, []Host{
+		{Path: "shared_test.go", Names: []string{"a"}},
+		{Path: "zz_gen.helper.b.kama_x_linux_test.go", Names: []string{"b"}},
+	})
 }
 
 func TestRelFiles(t *testing.T) {
