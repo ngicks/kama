@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:11Z
+// generated: 2026-11-24T18:37:54Z
 
 package nullableenum
 
@@ -20,6 +20,7 @@ import (
 // Levels is generated from the schema at #.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Levels struct {
 	Ref   und.Und[Level]       `json:"ref,omitzero"`
@@ -89,7 +90,7 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -99,6 +100,7 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // LevelsConst is generated from the schema at #/properties/const/oneOf/0.
 //
 //kama:validate const=`"x"`
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type LevelsConst string
 
@@ -122,7 +124,7 @@ func (v *LevelsConst) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(LevelsConst(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(LevelsConst(out), false); err != nil {
 		return err
 	}
 	*v = LevelsConst(out)
@@ -132,6 +134,7 @@ func (v *LevelsConst) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // LevelsBig is generated from the schema at #/properties/big/oneOf/0.
 //
 //kama:validate const="18446744073709551616"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type LevelsBig float64
 
@@ -155,7 +158,7 @@ func (v *LevelsBig) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(LevelsBig(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(LevelsBig(out), false); err != nil {
 		return err
 	}
 	*v = LevelsBig(out)
@@ -165,6 +168,7 @@ func (v *LevelsBig) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Level is generated from the schema at #/$defs/Level.
 //
 //kama:validate const="1 2 3"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Level int64
 
@@ -188,7 +192,7 @@ func (v *Level) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Level(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Level(out), false); err != nil {
 		return err
 	}
 	*v = Level(out)

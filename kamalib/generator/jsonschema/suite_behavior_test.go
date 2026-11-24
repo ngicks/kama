@@ -670,7 +670,7 @@ func (d *suiteDriver) source() []byte {
 	var b bytes.Buffer
 
 	b.WriteString("package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json/v2\"\n" +
-		"\t\"fmt\"\n\t\"strconv\"\n\n")
+		"\t\"fmt\"\n\t\"reflect\"\n\t\"strconv\"\n\n")
 
 	for _, imp := range d.imports {
 		b.WriteString(imp)
@@ -708,7 +708,9 @@ func suitePackage(file string, gi int) string {
 // driverCheck is the function of the driver deciding the line of a case. A
 // value decodes when Unmarshal succeeds and the value passes its Validate,
 // if any: a union yields its unknown member rather than failing, which only
-// Validate reports.
+// Validate reports. The decoder of any other type validates what it
+// decodes, a nested union holding its unknown member included, so such a
+// decoded value failing its Validate is an error of the generated code.
 // Deterministic sorts the members of a map, which would otherwise make two
 // encodings of one value differ.
 const driverCheck = `func check[T any](b []byte) string {
@@ -717,8 +719,12 @@ const driverCheck = `func check[T any](b []byte) string {
 		return "0"
 	}
 
-	if x, ok := any(v).(interface{ Validate(bool) error }); ok && x.Validate(false) != nil {
-		return "0"
+	if x, ok := any(v).(interface{ Validate(bool) error }); ok {
+		if err := x.Validate(false); err != nil && isUnion(v) {
+			return "0"
+		} else if err != nil {
+			return "E " + strconv.Quote("decoded a value Validate rejects: "+err.Error())
+		}
 	}
 
 	first, err := json.Marshal(v, json.Deterministic(true))
@@ -741,6 +747,19 @@ const driverCheck = `func check[T any](b []byte) string {
 	}
 
 	return "1"
+}
+
+// isUnion reports whether v is the holder of a union, whose field Kind holds
+// its member.
+func isUnion(v any) bool {
+	t := reflect.TypeOf(v)
+	if t.Kind() != reflect.Struct {
+		return false
+	}
+
+	f, ok := t.FieldByName("Kind")
+
+	return ok && f.Type.Kind() == reflect.Interface
 }
 
 `

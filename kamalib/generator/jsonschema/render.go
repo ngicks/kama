@@ -216,18 +216,32 @@ func validatedDoc(text string, args []string) genExpr {
 	)
 }
 
-// validateStep returns the statement returning the error of Validate of
-// the value v when the decoders validate, else nothing.
+// validateStep returns the statement returning the error of
+// ValidateShallow of the value v when the decoders validate, else nothing.
+// The nested values of v decoded through decoders that validated them, so
+// validating them again would cost each level of a recursive value the
+// whole value below it.
 func validateStep(opts Options, v genExpr) genStep {
 	if !opts.Validate {
 		return lang.Steps()
 	}
 
 	return lang.If(
-		lang.Expr("err := %s(%s, false); err != nil", q(runtimePath, "Validate"), v),
+		lang.Expr("err := %s(%s, false); err != nil", q(runtimePath, "ValidateShallow"), v),
 		lang.Stmt("return err"),
 		nil,
 	)
+}
+
+// decodedArgs returns args followed by decoded when the decoders validate.
+// decoded tells the validator generator that a decoded value of the type
+// is valid, so ValidateShallow of a type holding one skips it.
+func decodedArgs(opts Options, args []string) []string {
+	if !opts.Validate {
+		return args
+	}
+
+	return append(slices.Clone(args), "decoded")
 }
 
 // validateDirective is the directive of the validator generator.

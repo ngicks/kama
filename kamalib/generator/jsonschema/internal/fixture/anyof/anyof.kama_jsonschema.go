@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T15:22:25Z
+// generated: 2026-11-24T18:50:45Z
 
 package anyof
 
@@ -20,6 +20,7 @@ import (
 // Doc is generated from the schema at #.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Doc struct {
 	Label Label                     `json:"label"`
@@ -86,7 +87,7 @@ func (v *Doc) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -112,6 +113,7 @@ type DocValueKind interface {
 // DocValueString holds the String member of DocValue.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type DocValueString struct {
 	String string
@@ -133,6 +135,7 @@ func (v DocValueString) MarshalJSONTo(enc *jsontext.Encoder) error {
 // DocValueNull holds the Null member of DocValue.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type DocValueNull struct{}
 
@@ -152,6 +155,7 @@ func (v DocValueNull) MarshalJSONTo(enc *jsontext.Encoder) error {
 // DocValueInteger holds the Integer member of DocValue.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type DocValueInteger struct {
 	Integer int64
@@ -214,9 +218,25 @@ func (v DocValue) Validate(stopOnFirstError bool) error {
 	return validation.New(jsonschemart.ErrNilKind, "DocValue holds no member")
 }
 
+// ValidateShallow is Validate for a decoded DocValue. The decoder yields a
+// member only after the member passed ValidateShallow of its wrapper, so
+// ValidateShallow reports DocValueUnknown and a nil Kind only.
+//
+//kama:generated kama:jsonschema
+func (v DocValue) ValidateShallow(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case DocValueString, DocValueNull, DocValueInteger:
+		return nil
+	case DocValueUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "DocValue holds no member")
+}
+
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
-// member matches when it decodes the value and its wrapper passes Validate.
-// A value no member matches gives DocValueUnknown, which Validate reports.
+// member matches when it decodes the value and its wrapper passes
+// ValidateShallow. A value no member matches gives DocValueUnknown, which
+// Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *DocValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -230,7 +250,7 @@ func (v *DocValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("String", err))
 		} else {
-			if err := jsonschemart.Validate(DocValueString{String: m}, false); err != nil {
+			if err := jsonschemart.ValidateShallow(DocValueString{String: m}, false); err != nil {
 				errs = append(errs, jsonschemart.MemberError("String", err))
 			} else {
 				*v = DocValue{Kind: DocValueString{String: m}}
@@ -247,7 +267,7 @@ func (v *DocValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Integer", err))
 		} else {
-			if err := jsonschemart.Validate(DocValueInteger{Integer: m}, false); err != nil {
+			if err := jsonschemart.ValidateShallow(DocValueInteger{Integer: m}, false); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Integer", err))
 			} else {
 				*v = DocValue{Kind: DocValueInteger{Integer: m}}
@@ -277,6 +297,7 @@ type LabelKind interface {
 // LabelNamed holds the Named member of Label.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type LabelNamed struct {
 	Named Named
@@ -298,6 +319,7 @@ func (v LabelNamed) MarshalJSONTo(enc *jsontext.Encoder) error {
 // LabelTagged holds the Tagged member of Label.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type LabelTagged struct {
 	Tagged Tagged
@@ -360,9 +382,59 @@ func (v Label) Validate(stopOnFirstError bool) error {
 	return validation.New(jsonschemart.ErrNilKind, "Label holds no member")
 }
 
+// labelNamedProbe is the raw value the union at #/$defs/Label tests before
+// decoding it as its Named member. Its validators are the keywords of the
+// member that need no decoding of a nested value, so a value they reject
+// costs no decoding.
+//
+//kama:validate props(field("name", kind="string"))
+//kama:generated kama:jsonschema
+type labelNamedProbe jsontext.Value
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v labelNamedProbe) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// labelTaggedProbe is the raw value the union at #/$defs/Label tests before
+// decoding it as its Tagged member. Its validators are the keywords of the
+// member that need no decoding of a nested value, so a value they reject
+// costs no decoding.
+//
+//kama:validate props(field("name", kind="string"), field("tag", kind="string"))
+//kama:generated kama:jsonschema
+type labelTaggedProbe jsontext.Value
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v labelTaggedProbe) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// ValidateShallow is Validate for a decoded Label. The decoder yields a
+// member only after the member passed ValidateShallow of its wrapper, so
+// ValidateShallow reports LabelUnknown and a nil Kind only.
+//
+//kama:generated kama:jsonschema
+func (v Label) ValidateShallow(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case LabelNamed, LabelTagged:
+		return nil
+	case LabelUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "Label holds no member")
+}
+
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
-// member matches when it decodes the value and its wrapper passes Validate.
-// A value no member matches gives LabelUnknown, which Validate reports.
+// member matches when it decodes the value and its wrapper passes
+// ValidateShallow. A value no member matches gives LabelUnknown, which
+// Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -372,28 +444,36 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var errs []error
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.HasMembers(raw, "name") {
-		var m Named
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
+		if err := jsonschemart.Validate(labelNamedProbe(raw), false); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Named", err))
 		} else {
-			if err := jsonschemart.Validate(LabelNamed{Named: m}, false); err != nil {
+			var m Named
+			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Named", err))
 			} else {
-				*v = Label{Kind: LabelNamed{Named: m}}
-				return nil
+				if err := jsonschemart.ValidateShallow(LabelNamed{Named: m}, false); err != nil {
+					errs = append(errs, jsonschemart.MemberError("Named", err))
+				} else {
+					*v = Label{Kind: LabelNamed{Named: m}}
+					return nil
+				}
 			}
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.HasMembers(raw, "tag") {
-		var m Tagged
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
+		if err := jsonschemart.Validate(labelTaggedProbe(raw), false); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Tagged", err))
 		} else {
-			if err := jsonschemart.Validate(LabelTagged{Tagged: m}, false); err != nil {
+			var m Tagged
+			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Tagged", err))
 			} else {
-				*v = Label{Kind: LabelTagged{Tagged: m}}
-				return nil
+				if err := jsonschemart.ValidateShallow(LabelTagged{Tagged: m}, false); err != nil {
+					errs = append(errs, jsonschemart.MemberError("Tagged", err))
+				} else {
+					*v = Label{Kind: LabelTagged{Tagged: m}}
+					return nil
+				}
 			}
 		}
 	}
@@ -404,6 +484,7 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Named is generated from the schema at #/$defs/Named.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Named struct {
 	Name string                    `json:"name"`
@@ -460,7 +541,7 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -470,6 +551,7 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Tagged is generated from the schema at #/$defs/Tagged.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Tagged struct {
 	Name opt.Option[string]        `json:"name,omitzero"`
@@ -531,7 +613,7 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

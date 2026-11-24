@@ -82,7 +82,8 @@ func TestGenerateDirectives(t *testing.T) {
 			"null-only schema of a property named like a union keyword",
 			`{"type":"object","properties":{"oneOf":{"type":"array","items":{"type":"null"}}}}`,
 			[]string{
-				"//kama:validate kind=\"null\"\n//kama:generated kama:jsonschema\ntype RootOneOfItem ",
+				"//kama:validate kind=\"null\"\n//kama:validate decoded\n" +
+					"//kama:generated kama:jsonschema\ntype RootOneOfItem ",
 			},
 		},
 		{
@@ -137,9 +138,44 @@ func TestGenerateDirectives(t *testing.T) {
 			},
 		},
 		{
+			"references under unevaluatedProperties",
+			unevaluatedChain(2),
+			[]string{
+				"//kama:validate unevalprops(ref=D0, or())\n",
+				"//kama:validate and(ref=D1, and(props(field(\"p0\")), ref=D1))\n",
+				"//kama:validate props(field(\"z\"))\n",
+			},
+		},
+		{
+			"typed properties under unevaluatedProperties",
+			`{"type":"object","properties":{"next":{"$ref":"#"},"v":{"type":"integer"}},
+			"unevaluatedProperties":false}`,
+			[]string{
+				`//kama:validate json(unevalprops(and(kind="object", ` +
+					`props(field("next"), field("v"))), or()))`,
+			},
+		},
+		{
+			"probes of union members",
+			`{"oneOf":[{"$ref":"#/$defs/a"},{"$ref":"#/$defs/b"}],"$defs":{
+				"a":{"type":"object","properties":{"n":{"$ref":"#"},"a":{"minimum":0}}},
+				"b":{"type":"object","minProperties":2,"properties":{"n":{"$ref":"#"}}}
+			}}`,
+			[]string{
+				"//kama:validate props(field(\"a\", cmp=\">=0\"))\n//kama:generated kama:jsonschema\n" +
+					"type rootAProbe jsontext.Value\n",
+				"//kama:validate members=\">=2\"\n//kama:generated kama:jsonschema\n" +
+					"type rootBProbe jsontext.Value\n",
+				"if err := jsonschemart.Validate(rootAProbe(raw), false); err != nil {",
+			},
+		},
+		{
 			"root over a union",
 			`{"$ref":"#/$defs/u","$defs":{"u":{"oneOf":[{"type":"string"},{"type":"integer"}]}}}`,
-			[]string{"type Root U\n", "if err := jsonschemart.Validate(out, false); err != nil {"},
+			[]string{
+				"type Root U\n",
+				"if err := jsonschemart.ValidateShallow(out, false); err != nil {",
+			},
 		},
 	}
 	for _, tc := range cases {

@@ -140,16 +140,25 @@ func renderFileWith(
 	)
 
 	for _, n := range nodes {
-		w := &writer{emitter: e, sel: sel, n: n}
-
-		m, err := w.method()
-		if err != nil {
-			errs = append(errs, err)
-			continue
+		forms := []*writer{{emitter: e, sel: sel, n: n}}
+		if sel.hasShallow(n.Detail.Type) {
+			forms = append(forms, &writer{emitter: e, sel: sel, n: n, shallow: true})
 		}
 
-		text.WriteString(m)
-		text.WriteString("\n")
+		if hasEvaluated(n.Detail.Type) {
+			forms = append(forms, &writer{emitter: e, sel: sel, n: n, evaluated: true})
+		}
+
+		for _, w := range forms {
+			m, err := w.method()
+			if err != nil {
+				errs = append(errs, err)
+				break
+			}
+
+			text.WriteString(m)
+			text.WriteString("\n")
+		}
 	}
 
 	if err := errors.Join(errs...); err != nil {

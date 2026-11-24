@@ -2,11 +2,16 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:42:07Z
+// generated: 2026-11-24T19:06:21Z
 
 package nestedunion
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import (
+	"encoding/json/jsontext"
+
+	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+)
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -41,6 +46,42 @@ func (v Chains) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v Chains) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
+	if v.Any.IsSome() {
+		if err := validation.Field(v.Any.Value().ValidateShallow(stopOnFirstError), "any"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Tagged.IsSome() {
+		if err := validation.Field(v.Tagged.Value().ValidateShallow(stopOnFirstError), "tagged"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Overlap.IsSome() {
+		if err := validation.Field(v.Overlap.Value().ValidateShallow(stopOnFirstError), "overlap"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -54,6 +95,17 @@ func (v AnyAnyLeft) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v AnyAnyLeft) ValidateShallow(stopOnFirstError bool) error {
+	return nil
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -71,6 +123,87 @@ func (v AnyAnyRight) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v AnyAnyRight) ValidateShallow(stopOnFirstError bool) error {
+	return nil
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v anyAnyLeftProbe) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, nil, rawjson.Property("l", func(m jsontext.Value) error {
+		return rawjson.Kind(m, "string")
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v anyAnyLeftProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, ev, rawjson.Property("l", func(m jsontext.Value) error {
+		return rawjson.Kind(m, "string")
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v anyAnyRightProbe) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, nil, rawjson.Property("r", func(m jsontext.Value) error {
+		return rawjson.Kind(m, "string")
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v anyAnyRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, ev, rawjson.Property("r", func(m jsontext.Value) error {
+		return rawjson.Kind(m, "string")
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -79,6 +212,26 @@ func (v AnyLeft) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.C.IsSome() {
 		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v AnyLeft) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -105,6 +258,26 @@ func (v AnyRight) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v AnyRight) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -120,6 +293,17 @@ func (v TaggedTaggedLeft) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v TaggedTaggedLeft) ValidateShallow(stopOnFirstError bool) error {
+	return nil
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -127,6 +311,87 @@ func (v TaggedTaggedLeft) Validate(stopOnFirstError bool) error {
 func (v TaggedTaggedRight) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := validation.Field(v.TaggedRight.Validate(stopOnFirstError), "TaggedRight"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v TaggedTaggedRight) ValidateShallow(stopOnFirstError bool) error {
+	return nil
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v taggedTaggedLeftProbe) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, nil, rawjson.Property("kind", func(m jsontext.Value) error {
+		return rawjson.Const(m, "\"left\"")
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v taggedTaggedLeftProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, ev, rawjson.Property("kind", func(m jsontext.Value) error {
+		return rawjson.Const(m, "\"left\"")
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v taggedTaggedRightProbe) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, nil, rawjson.Property("kind", func(m jsontext.Value) error {
+		return rawjson.Const(m, "\"right\"")
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v taggedTaggedRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, ev, rawjson.Property("kind", func(m jsontext.Value) error {
+		return rawjson.Const(m, "\"right\"")
+	})); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -149,6 +414,32 @@ func (v TaggedLeft) Validate(stopOnFirstError bool) error {
 	}
 	if v.C.IsSome() {
 		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v TaggedLeft) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
+	if err := validation.Field(kamaValidateConst(v.Kind, "left"), "kind"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -181,6 +472,32 @@ func (v TaggedRight) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v TaggedRight) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
+	if err := validation.Field(kamaValidateConst(v.Kind, "right"), "kind"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -196,6 +513,17 @@ func (v OverlapOverlapLeft) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v OverlapOverlapLeft) ValidateShallow(stopOnFirstError bool) error {
+	return nil
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -203,6 +531,87 @@ func (v OverlapOverlapLeft) Validate(stopOnFirstError bool) error {
 func (v OverlapOverlapRight) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := validation.Field(v.OverlapRight.Validate(stopOnFirstError), "OverlapRight"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v OverlapOverlapRight) ValidateShallow(stopOnFirstError bool) error {
+	return nil
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v overlapOverlapLeftProbe) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, nil, rawjson.Property("l", func(m jsontext.Value) error {
+		return rawjson.Kind(m, "string")
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v overlapOverlapLeftProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, ev, rawjson.Property("l", func(m jsontext.Value) error {
+		return rawjson.Kind(m, "string")
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v overlapOverlapRightProbe) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, nil, rawjson.Property("l", func(m jsontext.Value) error {
+		return rawjson.Kind(m, "integer")
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v overlapOverlapRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, ev, rawjson.Property("l", func(m jsontext.Value) error {
+		return rawjson.Kind(m, "integer")
+	})); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -228,6 +637,26 @@ func (v OverlapLeft) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v OverlapLeft) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -236,6 +665,26 @@ func (v OverlapRight) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.C.IsSome() {
 		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v OverlapRight) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
+	if v.C.IsSome() {
+		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}

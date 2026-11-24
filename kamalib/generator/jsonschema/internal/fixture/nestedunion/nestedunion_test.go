@@ -37,11 +37,11 @@ func TestDecodeTime(t *testing.T) {
 	}
 }
 
-// BenchmarkDecode decodes chains of unions. A level of Overlap passes the
-// prefilter of both members, and the member whose l rejects the value
-// fails only after decoding the rest of the chain under c, so the time
-// doubles per level. So does an anyOf whose innermost value no member
-// accepts, since every member of every level fails.
+// BenchmarkDecode decodes chains of unions. The members of Overlap differ
+// in the kind of l, which the probe of each member tests before decoding
+// the rest of the chain under c, so each level decodes it once. An anyOf
+// whose innermost value no member accepts doubles the time per level,
+// since every member of every level decodes the rest and fails.
 func BenchmarkDecode(b *testing.B) {
 	cases := []struct {
 		name  string

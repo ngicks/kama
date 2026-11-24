@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T18:02:05Z
+// generated: 2026-11-24T18:38:01Z
 
 package rawroot
 
@@ -25,6 +25,7 @@ import (
 //kama:validate unique
 //kama:validate members="<=2"
 //kama:validate if(required=`"a"`, required=`"b"`)
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Loose jsontext.Value
 
@@ -48,7 +49,7 @@ func (v *Loose) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Loose(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Loose(out), false); err != nil {
 		return err
 	}
 	*v = Loose(out)
@@ -66,6 +67,7 @@ func (v Loose) RawJson() jsontext.Value {
 // Mixed is generated from the schema at #/$defs/Mixed.
 //
 //kama:validate const="1 `\"a\"` null `{\"b\":[]}`"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Mixed jsontext.Value
 
@@ -89,7 +91,7 @@ func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Mixed(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Mixed(out), false); err != nil {
 		return err
 	}
 	*v = Mixed(out)
@@ -108,6 +110,7 @@ func (v Mixed) RawJson() jsontext.Value {
 //
 //kama:validate kind="array object"
 //kama:validate length="<=2"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Pair jsontext.Value
 
@@ -131,7 +134,7 @@ func (v *Pair) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Pair(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Pair(out), false); err != nil {
 		return err
 	}
 	*v = Pair(out)

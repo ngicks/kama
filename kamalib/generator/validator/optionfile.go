@@ -37,6 +37,7 @@ func NewLoader(
 const (
 	hookWord    = "hook"
 	ignoreWord  = "ignore"
+	decodedWord = "decoded"
 	fileWord    = "file"
 	packageWord = "package"
 )
@@ -94,6 +95,10 @@ func (o *PackageOptions) UnmarshalKeyValue(
 type TypeOptions struct {
 	// Ignore stands for //kama:validate ignore.
 	Ignore bool `json:"ignore"`
+	// Decoded stands for //kama:validate decoded: decoding a value of the
+	// type validates it, so ValidateShallow takes a decoded value of it as
+	// valid.
+	Decoded bool `json:"decoded"`
 	// Hook stands for //kama:validate hook=on (true) or hook=off (false). Nil
 	// leaves the default.
 	Hook *bool `json:"hook"`
@@ -114,7 +119,7 @@ type TypeOptions struct {
 // directive without ignore marks the type, as an option file entry does.
 // genopt joins the lines of a target into one directive, so a line holding
 // only hook=on cannot be told from one following a bare //kama:validate.
-// Each arg other than ignore and hook names a validator.
+// Each arg other than ignore, decoded and hook names a validator.
 func (o *TypeOptions) UnmarshalKeyValue(
 	src genopt.Source,
 	sub string,
@@ -128,10 +133,12 @@ func (o *TypeOptions) UnmarshalKeyValue(
 		switch {
 		case a.Key == ignoreWord && !a.HasValue && !a.Call:
 			o.Ignore = true
-		case a.Key == ignoreWord:
+		case a.Key == decodedWord && !a.HasValue && !a.Call:
+			o.Decoded = true
+		case a.Key == ignoreWord || a.Key == decodedWord:
 			return fmt.Errorf(
-				"%w: %s: unknown arg %q on %s; want ignore without a value",
-				ErrDirective, src.Pos, a.String(), src.Target.Describe(),
+				"%w: %s: unknown arg %q on %s; want %s without a value",
+				ErrDirective, src.Pos, a.String(), src.Target.Describe(), a.Key,
 			)
 		case a.Key == hookWord:
 			if o.Hook != nil {

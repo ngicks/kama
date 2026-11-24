@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:42:05Z
+// generated: 2026-11-24T19:06:22Z
 
 package multikind
 
@@ -22,6 +22,32 @@ func (v Cell) Validate(stopOnFirstError bool) error {
 	}
 	if v.Label.IsSome() {
 		if err := validation.Field(v.Label.Value().Validate(stopOnFirstError), "label"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v Cell) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
+	if err := validation.Field(v.Value.ValidateShallow(stopOnFirstError), "value"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.Label.IsSome() {
+		if err := validation.Field(v.Label.Value().ValidateShallow(stopOnFirstError), "label"); err != nil {
 			if stopOnFirstError {
 				return err
 			}

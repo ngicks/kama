@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T13:38:06Z
+// generated: 2026-11-24T19:06:34Z
 
 package rawroot
 
@@ -56,6 +56,56 @@ func (v Loose) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v Loose) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Compare(v, ">=", "1"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.Runes(v, "<=", 3); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.Items(v, ">=", 1); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.Unique(v); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.Members(v, "<=", 2); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.If(ev, func(ev2 *rawjson.Evaluated) error {
+		return rawjson.Required(v, stopOnFirstError, "a")
+	}, func(ev3 *rawjson.Evaluated) error {
+		return rawjson.Required(v, stopOnFirstError, "b")
+	}, nil); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -71,11 +121,49 @@ func (v Mixed) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v Mixed) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Const(v, "1", "\"a\"", "null", "{\"b\":[]}"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
 func (v Pair) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Kind(v, "array", "object"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.Items(v, "<=", 2); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v Pair) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
 	var errs []error
 	if err := rawjson.Kind(v, "array", "object"); err != nil {
 		if stopOnFirstError {

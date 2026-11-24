@@ -15,8 +15,11 @@ import (
 // member or an element, so the recursion ends with the value.
 //
 // It applies to raw JSON text only, as IsRawJson tells. It returns the
-// errors of that Validate. It records no annotation, so a scope of
-// unevalprops or unevalitems does not see what the type evaluated.
+// errors of that Validate. As an Annotator it calls ValidateEvaluated of
+// type instead, which records what the validators of type evaluated and
+// which the generator writes for every target of raw JSON text that is not
+// generic. A type with a hand-written Validate needs a ValidateEvaluated of
+// the same shape for ref to annotate through it.
 type Ref struct{}
 
 // Name returns "ref".
@@ -49,4 +52,9 @@ func (o RefOptions) Check(t types.Type) error {
 // Emit calls Validate of the type on the value converted.
 func (o RefOptions) Emit(e Emitter, _ types.Type, v Gen) (Gen, error) {
 	return lang.Expr("%s(%s).Validate(%s)", o.Type, v, e.StopOnFirstError()), nil
+}
+
+// Annotate calls ValidateEvaluated of the type on the value converted.
+func (o RefOptions) Annotate(e Emitter, _ types.Type, v, ev Gen) (Gen, error) {
+	return lang.Expr("%s(%s).ValidateEvaluated(%s, %s)", o.Type, v, e.StopOnFirstError(), ev), nil
 }

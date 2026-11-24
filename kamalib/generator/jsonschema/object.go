@@ -37,7 +37,9 @@ func objectSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	steps := []genStep{
-		lang.Line(validatedDoc(typeDoc(doc, ptr, lead), declArgs(doc, opts, ptr))),
+		lang.Line(
+			validatedDoc(typeDoc(doc, ptr, lead), decodedArgs(opts, declArgs(doc, opts, ptr))),
+		),
 		lang.Stmt("type %s struct {", name),
 	}
 

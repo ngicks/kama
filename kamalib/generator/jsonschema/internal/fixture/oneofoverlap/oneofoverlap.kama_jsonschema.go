@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T15:22:36Z
+// generated: 2026-11-24T18:38:00Z
 
 package oneofoverlap
 
@@ -35,6 +35,7 @@ type EitherKind interface {
 // EitherLeft holds the Left member of Either.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type EitherLeft struct {
 	Left EitherLeftValue
@@ -56,6 +57,7 @@ func (v EitherLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
 // EitherRight holds the Right member of Either.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type EitherRight struct {
 	Right EitherRightValue
@@ -118,10 +120,25 @@ func (v Either) Validate(stopOnFirstError bool) error {
 	return validation.New(jsonschemart.ErrNilKind, "Either holds no member")
 }
 
+// ValidateShallow is Validate for a decoded Either. The decoder yields a
+// member only after the member passed ValidateShallow of its wrapper, so
+// ValidateShallow reports EitherUnknown and a nil Kind only.
+//
+//kama:generated kama:jsonschema
+func (v Either) ValidateShallow(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case EitherLeft, EitherRight:
+		return nil
+	case EitherUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "Either holds no member")
+}
+
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
-// member matches when it decodes the value and its wrapper passes Validate.
-// A value no member matches, or two members match, gives EitherUnknown,
-// which Validate reports.
+// member matches when it decodes the value and its wrapper passes
+// ValidateShallow. A value no member matches, or two members match, gives
+// EitherUnknown, which Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -137,7 +154,7 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Left", err))
 		} else {
-			if err := jsonschemart.Validate(EitherLeft{Left: m}, false); err != nil {
+			if err := jsonschemart.ValidateShallow(EitherLeft{Left: m}, false); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Left", err))
 			} else {
 				if found != nil {
@@ -153,7 +170,7 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Right", err))
 		} else {
-			if err := jsonschemart.Validate(EitherRight{Right: m}, false); err != nil {
+			if err := jsonschemart.ValidateShallow(EitherRight{Right: m}, false); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Right", err))
 			} else {
 				if found != nil {
@@ -175,6 +192,7 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // EitherLeftValue is generated from the schema at #/oneOf/0.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type EitherLeftValue struct {
 	L  opt.Option[string]        `json:"l,omitzero"`
@@ -232,7 +250,7 @@ func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -242,6 +260,7 @@ func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // EitherRightValue is generated from the schema at #/oneOf/1.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type EitherRightValue struct {
 	R  opt.Option[string]        `json:"r,omitzero"`
@@ -299,7 +318,7 @@ func (v *EitherRightValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

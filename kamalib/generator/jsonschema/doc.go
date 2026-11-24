@@ -360,29 +360,35 @@
 // is an object it also drops it when a required property with a const or
 // an enum of one value does not hold that value, when a required member is
 // missing and, under additionalProperties false, when the value holds a
-// member the object does not declare. The remaining members decode the
-// value in schema order, and a member that decodes it matches when its
-// wrapper passes Validate. An anyOf and a type of several kinds take the
-// first member that matches and do not try later members. A oneOf needs
-// exactly one to match and stops at the second, without trying later
-// members.
+// member the object does not declare. Before a member that reaches a
+// reference decodes the value, an unexported probe of raw JSON text, such
+// as petCatProbe, checks the keywords of the member that need no decoding
+// of a nested value: those of the member itself that hold no subschema,
+// and the properties whose schemas reach no reference. The remaining
+// members decode the value in schema order, and a member that decodes it
+// matches when its wrapper passes ValidateShallow. An anyOf and a type of
+// several kinds take the first member that matches and do not try later
+// members. A oneOf needs exactly one to match and stops at the second,
+// without trying later members.
 //
 // Decoding a union never fails on the selection. A value no member matches,
 // or that two members of a oneOf match, gives the wrapper PetUnknown,
 // holding the value as jsontext.Value and the error of the selection.
 // Validate of the holder returns that error, which holds the error of
-// every member tried or names the two members matching. The decoder of a
-// struct holding the union reports it through its Validate. A union
-// decoded alone reports it only when Validate is called. Marshaling writes
-// the member the holder holds, the value of PetUnknown as it is.
+// every member tried or names the two members matching, and so does its
+// ValidateShallow. The decoder of a struct holding the union reports it
+// through its ValidateShallow. A union decoded alone reports it only when
+// Validate is called. Marshaling writes the member the holder holds, the
+// value of PetUnknown as it is.
 //
 // The holder has a Validate of its own, which calls the Validate of the
-// wrapper it holds. The wrappers carry //kama:validate and get theirs from
-// the validator generator. A wrapper encodes as its member. The other
-// keywords of the union, the type next to a oneOf or an anyOf included,
-// check the value of every member: each wrapper carries json(...) of them,
-// as Validation describes, so decoding drops a member whose value fails
-// them.
+// wrapper it holds, and a ValidateShallow, which takes the wrapper as valid,
+// since the decoder validated it when selecting it. The wrappers carry
+// //kama:validate and get theirs from the validator generator. A wrapper
+// encodes as its member. The other keywords of the union, the type next to
+// a oneOf or an anyOf included, check the value of every member: each
+// wrapper carries json(...) of them, as Validation describes, so decoding
+// drops a member whose value fails them.
 //
 // The generated code does not check every validation keyword, as
 // Validation lists, so it cannot tell apart two members of a oneOf that
@@ -482,20 +488,28 @@
 // keywords of a union but its oneOf or anyOf. An unevaluatedProperties or
 // an unevaluatedItems needs what every keyword evaluates, so json(...) then
 // checks every keyword of the schema, those the Go type checks too, and a
-// failure of such a keyword is reported twice. A field applies json(...) to
-// the value an opt.Option or an und.Und holds, so an absent member and a
-// null of a nullable member are not checked. Validate encodes the value
-// once per type or field carrying json(...), and a value nested in such a
-// value is encoded again by its own Validate.
+// failure of such a keyword is reported twice. The properties are the
+// exception: an entry of a property the Go type declares only records the
+// member as evaluated, since the field checks its value and a nested value
+// it decoded is valid. A field applies json(...) to the value an
+// opt.Option or an und.Und holds, so an absent member and a null of a
+// nullable member are not checked. Validate encodes the value once per
+// type or field carrying json(...), and a value nested in such a value is
+// encoded again by its own Validate.
 //
 // A $ref names a type of raw JSON text by ref and a type whose decoder
 // validates by decode. A union, which validates on no decoding, and a
 // schema declaring no type are written out, and one reached again on a
-// cycle is an error. Under unevaluatedProperties or unevaluatedItems a
-// $ref applying to the same value is written out too, since ref and decode
-// report nothing evaluated. Validators named twice on one place join one
-// and. Each validator of the type or the field stands on a
-// //kama:validate line of its own.
+// cycle is an error. ref reports what its type evaluated through the
+// ValidateEvaluated the validator generator writes for raw JSON text, so a
+// type of raw JSON text keeps the entries that only record what they
+// evaluate when the document holds unevaluatedProperties or
+// unevaluatedItems. decode reports nothing evaluated, so under
+// unevaluatedProperties or unevaluatedItems a $ref to a type decode names
+// applying to the same value is written out, at each such $ref, and the
+// output grows with the number of paths reaching it. Validators named
+// twice on one place join one and. Each validator of the type or the field
+// stands on a //kama:validate line of its own.
 //
 // A keyword applies to one kind of value only, as minLength to strings, and
 // a value of another kind satisfies it. A typed value has one kind, so a
@@ -530,13 +544,24 @@
 // schema such a schema reaches through subschemas and references, is an
 // error wrapping ErrUnsupported instead.
 //
-// Decoders call Validate through jsonschemart.Validate, since the
-// generated file compiles before the validator generator runs. A struct
-// validates once its members convert, a type of a validated value once it
-// decodes, and a union validates each member it tries. A struct nested in
-// another is validated by its own decoder and again by the Validate of the
-// outer one, so decoding a value nested n levels deep validates the
-// innermost value n times.
+// Decoders call ValidateShallow through jsonschemart.ValidateShallow, since
+// the generated file compiles before the validator generator runs. Every
+// type whose decoder validates carries //kama:validate decoded, so that
+// ValidateShallow skips the nested values of such a type: their own
+// decoders validated them. A struct validates once its members convert, a
+// type of a validated value once it decodes, and a union validates the
+// wrapper of each member it tries. Decoding a value nested n levels deep
+// thus validates each level once. Each level still reads its whole value
+// before decoding its members from it, and json(...) encodes the value of
+// its level, so the time grows as the square of the depth.
+//
+// A union decodes the value once per member its prefilter and probe leave,
+// and nested unions multiply that per level. Members telling a value apart
+// only by something below a nested reference, as two members whose
+// properties differ only inside a recursive child, or a value no member of
+// any level matches, cost time growing as two to the power of the depth.
+// The same holds for a schema applying two references to one value, as an
+// allOf of two $ref to one definition, which validation runs both of.
 //
 // The content keywords are annotations and give no directive, and so is
 // format unless Options.AssertFormats is set. It makes format=<name> of the

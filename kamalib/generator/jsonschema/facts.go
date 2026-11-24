@@ -178,11 +178,28 @@ func listOf(s *jsonschema.Schema, keyword string) []*jsonschema.Schema {
 
 // subschema returns the subschema of s that keyword holds, or nil.
 func subschema(s *jsonschema.Schema, keyword string) *jsonschema.Schema {
-	return map[string]*jsonschema.Schema{
-		"items": s.Items, "contains": s.Contains, "propertyNames": s.PropertyNames,
-		"not": s.Not, "if": s.If, "then": s.Then, "else": s.Else,
-		"unevaluatedProperties": s.UnevaluatedProperties, "unevaluatedItems": s.UnevaluatedItems,
-	}[keyword]
+	switch keyword {
+	case "items":
+		return s.Items
+	case "contains":
+		return s.Contains
+	case "propertyNames":
+		return s.PropertyNames
+	case "not":
+		return s.Not
+	case "if":
+		return s.If
+	case "then":
+		return s.Then
+	case "else":
+		return s.Else
+	case "unevaluatedProperties":
+		return s.UnevaluatedProperties
+	case "unevaluatedItems":
+		return s.UnevaluatedItems
+	}
+
+	return nil
 }
 
 // mapOf returns the subschemas of s by name that keyword holds.

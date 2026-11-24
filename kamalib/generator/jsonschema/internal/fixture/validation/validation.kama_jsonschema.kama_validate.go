@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T13:16:49Z
+// generated: 2026-11-24T19:06:43Z
 
 package validation
 
@@ -142,6 +142,102 @@ func (v Order) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v Order) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
+	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v._x), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v._x), "<=", 11)); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateRunes(utf8.RuneCountInString(v.Id), ">=", 3), kamaValidateRunes(utf8.RuneCountInString(v.Id), "<=", 8)), "id"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := validation.Field(kamaValidateRegexpString(kamaValidateRegexp_3e69f2967d, v.Id), "id"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.Count.IsSome() {
+		if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Count.Value(), ">=", 2), kamaValidateCmp(v.Count.Value(), "<", 100)), "count"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Count.IsSome() {
+		if err := validation.Field(kamaValidateMultipleInt(v.Count.Value(), 2, "2"), "count"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Ratio.IsSome() {
+		if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Ratio.Value(), ">", 0), kamaValidateCmp(v.Ratio.Value(), "<=", 1.0)), "ratio"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateLength(len(v.Items), ">=", 1), kamaValidateLength(len(v.Items), "<=", 3)), "items"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := validation.Field(kamaValidateUnique(v.Items), "items"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.Labels.IsSome() {
+		if err := validation.Field(kamaValidateLength(len(v.Labels.Value()), "<=", 2), "labels"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if v.Level.IsSome() {
+		if err := validation.Field(kamaValidateConst(v.Level.Value(), 1, 2, 3), "level"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	if err := kamaValidateRequires(stopOnFirstError, "coupon", v.Coupon.IsSome(), []string{"discount"}, v.Discount.IsSome()); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if v.Pick.IsSome() {
+		if err := validation.Field(v.Pick.Value().ValidateShallow(stopOnFirstError), "pick"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -190,6 +286,17 @@ func (v OrderTyped) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v OrderTyped) ValidateShallow(stopOnFirstError bool) error {
+	return nil
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -220,6 +327,17 @@ func (v OrderPickOption1) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v OrderPickOption1) ValidateShallow(stopOnFirstError bool) error {
+	return nil
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -233,6 +351,17 @@ func (v OrderPickOption2) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v OrderPickOption2) ValidateShallow(stopOnFirstError bool) error {
+	return nil
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first

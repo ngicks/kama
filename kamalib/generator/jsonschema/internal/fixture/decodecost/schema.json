@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Costs",
+  "type": "object",
+  "properties": {
+    "plain": { "$ref": "#/$defs/Plain" },
+    "negated": { "$ref": "#/$defs/Negated" },
+    "chosen": { "$ref": "#/$defs/Chosen" },
+    "closed": { "$ref": "#/$defs/Closed" }
+  },
+  "$defs": {
+    "Plain": {
+      "type": "object",
+      "properties": { "next": { "$ref": "#/$defs/Plain" }, "v": { "type": "integer" } }
+    },
+    "Negated": {
+      "type": "object",
+      "properties": { "next": { "$ref": "#/$defs/Negated" }, "v": { "type": "integer" } },
+      "not": { "required": ["bad"] }
+    },
+    "Chosen": { "oneOf": [{ "$ref": "#/$defs/NonNegative" }, { "$ref": "#/$defs/Negative" }] },
+    "NonNegative": {
+      "type": "object",
+      "required": ["a"],
+      "properties": { "next": { "$ref": "#/$defs/Chosen" }, "a": { "type": "integer", "minimum": 0 } }
+    },
+    "Negative": {
+      "type": "object",
+      "required": ["a"],
+      "properties": { "next": { "$ref": "#/$defs/Chosen" }, "a": { "type": "integer", "maximum": -1 } }
+    },
+    "Closed": {
+      "type": "object",
+      "properties": { "next": { "$ref": "#/$defs/Closed" }, "v": { "type": "integer" } },
+      "unevaluatedProperties": false
+    }
+  }
+}

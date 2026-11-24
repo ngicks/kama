@@ -80,6 +80,21 @@ func Validate(v any, stopOnFirstError bool) error {
 	return x.Validate(stopOnFirstError)
 }
 
+// ValidateShallow returns the error of the method ValidateShallow(stopOnFirstError) of v, which
+// the validator generator writes for a type holding values that validate on decoding. A decoder
+// calls it on the value it decoded, whose nested values their own decoders validated. A v
+// without the method has nothing such to skip, so its Validate runs instead, as [Validate]
+// calls it.
+func ValidateShallow(v any, stopOnFirstError bool) error {
+	if x, ok := v.(interface {
+		ValidateShallow(stopOnFirstError bool) error
+	}); ok {
+		return x.ValidateShallow(stopOnFirstError)
+	}
+
+	return Validate(v, stopOnFirstError)
+}
+
 // UnknownMember returns the error of the unknown member of a union, which holds a value no
 // member decoded. err is the error decoding left, as NoMatch or MultipleMatch give it. A nil
 // err, as of an unknown member built in Go, gives an error wrapping ErrNoMatch.

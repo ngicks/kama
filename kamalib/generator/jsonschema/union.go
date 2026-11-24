@@ -60,9 +60,11 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	for i, m := range names {
+		// The decoder of the holder yields a wrapper only after it passed
+		// ValidateShallow, so a decoded wrapper is valid.
 		steps = append(steps, lang.Line(validatedDoc(
 			wrappers[i]+" holds the "+m+" member of "+name+".",
-			unionArgs(doc, opts, ptr),
+			decodedArgs(opts, unionArgs(doc, opts, ptr)),
 		)))
 
 		encode := lang.Stmt("return %s(enc, v.%s)", q(jsonPath, "MarshalEncode"), m)
@@ -152,6 +154,28 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		),
 	)
 
+	for i, m := range names {
+		steps = append(steps, probeSteps(doc, opts, ptr, i, wrappers[i], m)...)
+	}
+
+	if opts.Validate {
+		steps = append(steps, lang.DocFunc(
+			docComment("ValidateShallow is Validate for a decoded "+name+". The decoder yields "+
+				"a member only after the member passed ValidateShallow of its wrapper, so "+
+				"ValidateShallow reports "+unknown+" and a nil Kind only."),
+			lang.Expr("func (v %s) ValidateShallow(stopOnFirstError bool) error", name),
+			lang.Switch(
+				lang.Expr("k := v.Kind.(type)"),
+				lang.Case(lang.Expr("%s", strings.Join(wrappers, ", ")), lang.Stmt("return nil")),
+				lang.Case(
+					lang.Expr("%s", unknown),
+					lang.Stmt("return %s(k.err)", q(runtimePath, "UnknownMember")),
+				),
+			),
+			nilKind,
+		))
+	}
+
 	return append(steps, unionUnmarshal(doc, opts, ptr))
 }
 
@@ -224,7 +248,7 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 			)
 		}
 
-		then := found
+		var then genStep = found
 
 		if !isNullMember(doc, ptr, i) {
 			failed := lang.Stmt(
@@ -234,7 +258,11 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 			var decoded genStep = found
 			if opts.Validate {
 				decoded = lang.If(
-					lang.Expr("err := %s(%s, false); err != nil", q(runtimePath, "Validate"), kind),
+					lang.Expr(
+						"err := %s(%s, false); err != nil",
+						q(runtimePath, "ValidateShallow"),
+						kind,
+					),
 					failed,
 					found,
 				)
@@ -248,6 +276,17 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 					decoded,
 				),
 			)
+
+			if probeArgs(doc, opts, ptr, i) != nil {
+				then = lang.If(
+					lang.Expr(
+						"err := %s(%s(raw), false); err != nil",
+						q(runtimePath, "Validate"), probeName(name+m),
+					),
+					failed,
+					then,
+				)
+			}
 		}
 
 		body = append(body, lang.If(memberCondition(doc, ptr, i), then, nil))
@@ -274,7 +313,8 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 	}
 
 	if opts.Validate {
-		text += " A member matches when it decodes the value and its wrapper passes Validate."
+		text += " A member matches when it decodes the value and its wrapper passes " +
+			"ValidateShallow."
 	}
 
 	both := ""
@@ -294,6 +334,116 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 		),
 		body...,
 	)
+}
+
+// probeSteps returns the declaration of the probe of the member i of the
+// union at ptr, which the wrapper named wrapper holds under the field m, or
+// none when probeArgs gives no args.
+func probeSteps(
+	doc *jsonschema.Schema,
+	opts Options,
+	ptr string,
+	i int,
+	wrapper, m string,
+) []genStep {
+	args := probeArgs(doc, opts, ptr, i)
+	if args == nil {
+		return nil
+	}
+
+	probe := probeName(wrapper)
+
+	return []genStep{
+		lang.Line(validatedDoc(
+			probe+" is the raw value the union at #"+ptr+" tests before decoding it as its "+
+				m+" member. Its validators are the keywords of the member that need no decoding "+
+				"of a nested value, so a value they reject costs no decoding.",
+			args,
+		)),
+		lang.Stmt("type %s %s", probe, q(jsontextPath, "Value")),
+		lang.DocFunc(
+			docComment("RawJson returns v as raw JSON text, which tells the validators to check "+
+				"v as JSON Schema does."),
+			lang.Expr("func (v %s) RawJson() %s", probe, q(jsontextPath, "Value")),
+			lang.Stmt("return %s(v)", q(jsontextPath, "Value")),
+		),
+	}
+}
+
+// probeArgs returns the args of //kama:validate on the probe of the member
+// i of the union at ptr, or nil when the member gets none. Deciding between
+// members by decoding each one costs a decoding of the whole value per
+// member, and nested unions multiply that per level. A probe checks on the
+// raw value, before decoding, the keywords of the member that need no
+// decoding of a nested value: those of the member itself that hold no
+// subschema, and the properties whose schemas reach no reference. Each of
+// them is one conjunct of the member, so the probe rejects only values the
+// member rejects. A member reaching no reference decodes no nested type,
+// so it gets no probe.
+func probeArgs(doc *jsonschema.Schema, opts Options, ptr string, i int) []string {
+	s, err := at(doc, ptr)
+	if err != nil || !opts.Validate || unionKeyword(s) == "" {
+		return nil
+	}
+
+	mp := child(ptr, unionKeyword(s), strconv.Itoa(i))
+
+	r, rs, err := resolved(doc, mp)
+	if err != nil || rs.Bool.IsSome() || refFree(doc, mp) {
+		return nil
+	}
+
+	args := leafRules(opts, rs, func(kw string) bool { return kw != "type" && kw != "required" })
+
+	var fields []string
+
+	for _, n := range rs.Properties {
+		pp := child(r, "properties", n.Name)
+		if !refFree(doc, pp) {
+			continue
+		}
+
+		ops, err := rulesOf(doc, opts, pp, false, everyKeyword, lexicalScope(doc, pp), nil)
+		if err != nil || len(ops) == 0 {
+			continue
+		}
+
+		f, err := callArg("field", append([]string{quoteName(n.Name)}, ops...)...)
+		if err != nil {
+			continue
+		}
+
+		fields = append(fields, f)
+	}
+
+	if len(fields) > 0 {
+		props, err := callArg("props", fields...)
+		if err == nil {
+			args = append(args, props)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	return args
+}
+
+// refFree reports whether no schema at or under ptr, those under $defs
+// included, holds a $ref or a $dynamicRef.
+func refFree(doc *jsonschema.Schema, ptr string) bool {
+	s, err := at(doc, ptr)
+	if err != nil {
+		return false
+	}
+
+	under := func(yield func(string, *jsonschema.Schema) bool) { visit(ptr, s, yield) }
+
+	return !opiter.WrapSeq2(under).
+		Any(func(_ string, x *jsonschema.Schema) bool {
+			return x != nil && (x.Ref.IsSome() || x.DynamicRef.IsSome())
+		})
 }
 
 // memberCondition returns the condition of the member i of the union at

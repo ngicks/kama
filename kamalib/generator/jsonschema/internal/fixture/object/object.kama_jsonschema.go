@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T13:35:44Z
+// generated: 2026-11-24T18:37:58Z
 
 package object
 
@@ -22,6 +22,7 @@ import (
 // Object exercises every field shape of an object.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Object struct {
 	// ReqName is required and not null.
@@ -152,7 +153,7 @@ func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -162,6 +163,7 @@ func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // ObjectColor is generated from the schema at #/properties/color.
 //
 //kama:validate const=`"red" "green" "dark-blue"`
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type ObjectColor string
 
@@ -187,7 +189,7 @@ func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, (*string)(&s)); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(s, false); err != nil {
+	if err := jsonschemart.ValidateShallow(s, false); err != nil {
 		return err
 	}
 	*v = s
@@ -197,6 +199,7 @@ func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // ObjectInline is generated from the schema at #/properties/inline.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type ObjectInline struct {
 	X  float64                   `json:"x"`
@@ -253,7 +256,7 @@ func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -264,6 +267,7 @@ func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate hook=off
 //kama:validate closed
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type ObjectClosed struct {
 	A  opt.Option[bool]          `json:"a,omitzero"`
@@ -320,7 +324,7 @@ func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -330,6 +334,7 @@ func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // ObjectOpen is generated from the schema at #/properties/open.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type ObjectOpen struct {
 	Id opt.Option[int64] `json:"id,omitzero"`
@@ -386,7 +391,7 @@ func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -396,6 +401,7 @@ func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Point is generated from the schema at #/$defs/Point.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Point struct {
 	X  int64                     `json:"x"`
@@ -457,7 +463,7 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

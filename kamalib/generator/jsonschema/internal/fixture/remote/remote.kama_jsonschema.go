@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T16:07:57Z
+// generated: 2026-11-24T18:38:04Z
 
 package remote
 
@@ -22,6 +22,7 @@ import (
 // Invoice refers to the schemas of two other documents.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Invoice struct {
 	Total    Money                     `json:"total"`
@@ -88,7 +89,7 @@ func (v *Invoice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -99,6 +100,7 @@ func (v *Invoice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/$defs/https:~1~1example.com~1schemas~1money.json.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Money struct {
 	//kama:validate cmp=">=0"
@@ -161,7 +163,7 @@ func (v *Money) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -172,6 +174,7 @@ func (v *Money) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/$defs/https:~1~1example.com~1schemas~1money.json/$defs/Currency.
 //
 //kama:validate regexp="^[A-Z]{3}$"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type MoneyCurrency string
 
@@ -195,7 +198,7 @@ func (v *MoneyCurrency) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(MoneyCurrency(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(MoneyCurrency(out), false); err != nil {
 		return err
 	}
 	*v = MoneyCurrency(out)
@@ -206,6 +209,7 @@ func (v *MoneyCurrency) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/$defs/https:~1~1example.com~1schemas~1party.json.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Party struct {
 	Name    string                    `json:"name"`
@@ -272,7 +276,7 @@ func (v *Party) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

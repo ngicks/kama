@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:03Z
+// generated: 2026-11-24T18:37:44Z
 
 package allof
 
@@ -21,6 +21,7 @@ import (
 // generated from the schema at #.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Employee struct {
 	Person   Person                    `json:"-"`
@@ -90,7 +91,7 @@ func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -100,6 +101,7 @@ func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Person is generated from the schema at #/$defs/Person.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Person struct {
 	Name string                    `json:"name"`
@@ -161,7 +163,7 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -171,6 +173,7 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Contract is generated from the schema at #/$defs/Contract.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Contract struct {
 	Salary float64                   `json:"salary"`
@@ -232,7 +235,7 @@ func (v *Contract) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

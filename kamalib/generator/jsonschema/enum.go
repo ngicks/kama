@@ -41,7 +41,7 @@ func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	steps := []genStep{
 		lang.Line(validatedDoc(
 			typeDoc(doc, ptr, name+" is generated from the schema at #"+ptr+"."),
-			declArgs(doc, opts, ptr),
+			decodedArgs(opts, declArgs(doc, opts, ptr)),
 		)),
 		lang.Stmt("type %s string", name),
 		lang.Line(docComment(name + " values the schema allows.")),

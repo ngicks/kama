@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:21Z
+// generated: 2026-11-24T18:38:03Z
 
 package recursive
 
@@ -20,6 +20,7 @@ import (
 // Forest is generated from the schema at #.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Forest struct {
 	Trees  []Tree                    `json:"trees"`
@@ -91,7 +92,7 @@ func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -101,6 +102,7 @@ func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Tree is generated from the schema at #/$defs/Tree.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Tree struct {
 	Label    string                    `json:"label"`
@@ -162,7 +164,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -172,6 +174,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // List is generated from the schema at #/$defs/List.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type List struct {
 	Value int64                     `json:"value"`
@@ -233,7 +236,7 @@ func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -243,6 +246,7 @@ func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Chain is generated from the schema at #/$defs/Chain.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Chain struct {
 	Name string                    `json:"name"`
@@ -308,7 +312,7 @@ func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -318,6 +322,7 @@ func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Link is generated from the schema at #/$defs/Link.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Link struct {
 	Label string                    `json:"label"`
@@ -379,7 +384,7 @@ func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -389,6 +394,7 @@ func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Ouroboros is generated from the schema at #/$defs/Ouroboros.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Ouroboros struct {
 	Tail *Ouroboros                `json:"tail"`
@@ -449,7 +455,7 @@ func (v *Ouroboros) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

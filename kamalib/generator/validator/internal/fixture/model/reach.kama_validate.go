@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T15:16:00Z
+// generated: 2026-11-24T19:11:02Z
 
 package model
 
@@ -62,6 +62,56 @@ func (v Shape) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v Shape) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, ev, rawjson.Property("a", func(m jsontext.Value) error {
+		return rawjson.Kind(m, "integer")
+	}), rawjson.Property("b c", func(m2 jsontext.Value) error {
+		return error(nil)
+	}), rawjson.PatternProperty(kamaValidateRegexp_9c5b6217da, func(m3 jsontext.Value) error {
+		return rawjson.Kind(m3, "string")
+	}), rawjson.Additional(func(m4 jsontext.Value) error {
+		return kamaValidateOr()
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.Elements(v, stopOnFirstError, ev, func(m jsontext.Value) error {
+		return rawjson.Compare(m, ">=", "0")
+	}, func(m2 jsontext.Value) error {
+		return rawjson.Kind(m2, "string")
+	}); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.Contains(v, ev, func(m jsontext.Value) error {
+		return rawjson.Const(m, "0")
+	}, rawjson.Count{Op: ">=", N: 1}, rawjson.Count{Op: "<=", N: 2}); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.Keys(v, stopOnFirstError, func(m jsontext.Value) error {
+		return rawjson.Runes(m, "<=", 3)
+	}); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -69,6 +119,24 @@ func (v Shape) Validate(stopOnFirstError bool) error {
 func (v Holder) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := rawjson.Properties(v, stopOnFirstError, nil, rawjson.Property("bag", func(m jsontext.Value) error {
+		return rawjson.Decode[RawBag](m)
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v Holder) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, ev, rawjson.Property("bag", func(m jsontext.Value) error {
 		return rawjson.Decode[RawBag](m)
 	})); err != nil {
 		if stopOnFirstError {
@@ -122,6 +190,64 @@ func (v Tree) Validate(stopOnFirstError bool) error {
 			})
 		}, func(ev3 *rawjson.Evaluated) error {
 			return rawjson.Elements(v, stopOnFirstError, ev3, func(m2 jsontext.Value) error {
+				return rawjson.Kind(m2, "string")
+			})
+		}, nil)
+	}, func(m3 jsontext.Value) error {
+		return rawjson.Kind(m3, "null")
+	}); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v Tree) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
+	var errs []error
+	if err := rawjson.Properties(v, stopOnFirstError, ev, rawjson.Property("n", func(m jsontext.Value) error {
+		return Tree(m).Validate(stopOnFirstError)
+	})); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.UnevaluatedMembers(v, stopOnFirstError, ev, func(ev2 *rawjson.Evaluated) error {
+		return kamaValidateOr(rawjson.Branch(ev2, func(ev3 *rawjson.Evaluated) error {
+			return rawjson.Properties(v, stopOnFirstError, ev3, rawjson.Property("a", func(m jsontext.Value) error {
+				return error(nil)
+			}))
+		}), rawjson.Branch(ev2, func(ev4 *rawjson.Evaluated) error {
+			return rawjson.Properties(v, stopOnFirstError, ev4, rawjson.Property("b", func(m2 jsontext.Value) error {
+				return error(nil)
+			}))
+		}), rawjson.Branch(ev2, func(ev5 *rawjson.Evaluated) error {
+			return rawjson.Properties(v, stopOnFirstError, ev5, rawjson.Property("n", func(m3 jsontext.Value) error {
+				return error(nil)
+			}))
+		}))
+	}, func(m4 jsontext.Value) error {
+		return rawjson.Kind(m4, "null")
+	}); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.UnevaluatedElements(v, stopOnFirstError, ev, func(ev2 *rawjson.Evaluated) error {
+		return rawjson.If(ev2, func(ev3 *rawjson.Evaluated) error {
+			return rawjson.Elements(v, stopOnFirstError, ev3, nil, func(m jsontext.Value) error {
+				return rawjson.Kind(m, "string")
+			})
+		}, func(ev4 *rawjson.Evaluated) error {
+			return rawjson.Elements(v, stopOnFirstError, ev4, func(m2 jsontext.Value) error {
 				return rawjson.Kind(m2, "string")
 			})
 		}, nil)

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:09Z
+// generated: 2026-11-24T18:37:53Z
 
 package nullablecycle
 
@@ -19,6 +19,7 @@ import (
 // Node is generated from the schema at #.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Node struct {
 	Value  int64                     `json:"value"`
@@ -84,7 +85,7 @@ func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

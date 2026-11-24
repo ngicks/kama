@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T16:17:58Z
+// generated: 2026-11-24T19:06:37Z
 
 package remote
 
@@ -39,6 +39,17 @@ func (v Invoice) Validate(stopOnFirstError bool) error {
 	return validation.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v Invoice) ValidateShallow(stopOnFirstError bool) error {
+	return nil
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -52,6 +63,24 @@ func (v Money) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if err := validation.Field(v.Currency.Validate(stopOnFirstError), "currency"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v Money) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
+	if err := validation.Field(kamaValidateCmp(v.Amount, ">=", 0), "amount"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -98,4 +127,15 @@ func (v Party) Validate(stopOnFirstError bool) error {
 		}
 	}
 	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v Party) ValidateShallow(stopOnFirstError bool) error {
+	return nil
 }

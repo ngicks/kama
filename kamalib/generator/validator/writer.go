@@ -18,13 +18,17 @@ import (
 // Validate spell. They are reserved against imports so that they keep
 // their names. A type parameter or a package-level declaration of the same
 // name makes them take fresh names, as local does.
-var fixedNames = []string{"v", "stopOnFirstError", "errs", "err"}
+var fixedNames = []string{"v", "stopOnFirstError", "ev", "errs", "err"}
 
-// writer writes the Validate method of the target n as source text.
+// writer writes the Validate method of the target n as source text, its
+// ValidateShallow when shallow is set, or its ValidateEvaluated when
+// evaluated is set.
 type writer struct {
 	*emitter
-	sel *selection
-	n   *typegraph.Node
+	sel       *selection
+	n         *typegraph.Node
+	shallow   bool
+	evaluated bool
 }
 
 // tparams returns the names the method spells the type parameters of w.n
@@ -43,7 +47,8 @@ type wrapFunc func(err genExpr) genExpr
 
 func noWrap(err genExpr) genExpr { return err }
 
-// method returns the source of Validate of w.n.
+// method returns the source of Validate of w.n, of ValidateShallow when
+// w.shallow is set, or of ValidateEvaluated when w.evaluated is set.
 func (w *writer) method() (string, error) {
 	named := w.n.Detail.Type
 
@@ -65,26 +70,54 @@ func (w *writer) method() (string, error) {
 		}
 	}
 
-	doc := docComment("Validate reports why %s is invalid. With %s it returns the first\n"+
-		"error found, otherwise every error joined, or nil when there is none.",
-		lang.Name("v"), lang.Name("stopOnFirstError"))
+	text := "Validate reports why %s is invalid. With %s it returns the first\n" +
+		"error found, otherwise every error joined, or nil when there is none."
+	name := "Validate"
+
+	if w.shallow {
+		text = "ValidateShallow is Validate for a decoded %s. With %s it returns the\n" +
+			"first error found, otherwise every error joined, or nil when there is none.\n" +
+			"It takes the values it holds of a type marked decoded as valid, since\n" +
+			"their decoders validated them, and calls ValidateShallow where Validate\n" +
+			"calls a Validate that has one."
+		name = shallowName
+	}
+
+	if w.evaluated {
+		text = "ValidateEvaluated is Validate recording into %s the members and the\n" +
+			"elements of %s that its validators evaluated, as JSON Schema annotations\n" +
+			"tell unevaluatedProperties and unevaluatedItems. A nil %s records nothing."
+		name = evaluatedName
+
+		params = append(
+			params,
+			lang.Expr("%s *%s.Evaluated", decl("ev"), w.Import(rule.RawJsonPath)),
+		)
+	}
+
 	if len(tparams) > 0 {
-		doc = docComment("Validate reports why %s is invalid. With %s it returns the first\n"+
-			"error found, otherwise every error joined, or nil when there is none.\n"+
-			"A function given for a type parameter validates the values of that type;\n"+
-			"nil leaves them unchecked.",
-			lang.Name("v"), lang.Name("stopOnFirstError"))
+		text += "\nA function given for a type parameter validates the values of that type;\n" +
+			"nil leaves them unchecked."
 	}
 
 	return lang.Render(
 		w.scope.FuncContext(tparams),
 		lang.DocFunc(
-			doc,
-			lang.Expr("func (%s %s) Validate(%s) error",
-				decl("v"), recv, lang.Join(", ", params...)),
+			docComment(text, docNames(w.evaluated)...),
+			lang.Expr("func (%s %s) %s(%s) error",
+				decl("v"), recv, name, lang.Join(", ", params...)),
 			body...,
 		),
 	)
+}
+
+// docNames returns the names the doc comment of method spells, in order.
+func docNames(evaluated bool) []any {
+	if evaluated {
+		return []any{lang.Name("ev"), lang.Name("v"), lang.Name("ev")}
+	}
+
+	return []any{lang.Name("v"), lang.Name("stopOnFirstError")}
 }
 
 // local returns the argument of lang.Expr declaring the local named name:
@@ -437,12 +470,27 @@ func acceptsHeld(r rule.Rule, t types.Type) bool {
 }
 
 // emit returns the step running r, which accepted t, on the value x of
-// type t.
+// type t. In ValidateEvaluated an Annotator records into ev.
 func (w *writer) emit(r rule.Rule, t types.Type, x genExpr, wrap wrapFunc) genStep {
 	// Emit runs as the expression renders, so that only rendered code
 	// declares helpers.
 	return w.check(wrap(func(c genCtx) (string, error) {
-		e, err := r.Emit(w.emitter, t, x)
+		emit := r.Emit
+		if a, ok := r.(rule.Annotator); ok && w.evaluated {
+			// The function literals of the rule declare records of their own,
+			// which a name resolved later would refer to, so the parameter is
+			// spelled now.
+			ev, err := lang.Name("ev")(c)
+			if err != nil {
+				return "", err
+			}
+
+			emit = func(e rule.Emitter, t types.Type, v rule.Gen) (rule.Gen, error) {
+				return a.Annotate(e, t, v, lang.Expr("%s", ev))
+			}
+		}
+
+		e, err := emit(w.emitter, t, x)
 		if err != nil {
 			return "", err
 		}

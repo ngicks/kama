@@ -25,10 +25,10 @@ var countKeywords = []string{"minProperties", "maxProperties"}
 var scalarKinds = []string{"string", "integer", "number", "boolean"}
 
 // methodNames are the methods a generated struct declares, which no field
-// of it may be named, as fieldIdent ensures. Validate is the method the
-// validator generator declares on it.
+// of it may be named, as fieldIdent ensures. Validate and ValidateShallow
+// are the methods the validator generator declares on it.
 var methodNames = []string{
-	"MarshalJSONTo", "UnmarshalJSONFrom", "AdditionalProperties", "Validate",
+	"MarshalJSONTo", "UnmarshalJSONFrom", "AdditionalProperties", "Validate", "ValidateShallow",
 }
 
 // check reports every schema of doc the generator cannot express, then

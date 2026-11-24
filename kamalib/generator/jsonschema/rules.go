@@ -20,16 +20,29 @@ import (
 // validator reaching into the members or the elements of the value.
 
 // rawRules returns the args of //kama:validate checking the schema at ptr
-// on raw JSON text, as JSON Schema applies it to a value of any kind.
+// on raw JSON text, as JSON Schema applies it to a value of any kind. When
+// doc holds an unevaluatedProperties or an unevaluatedItems, ref may run
+// the args through ValidateEvaluated of the type for one of them, so they
+// keep the entries that only record what they evaluate.
 func rawRules(doc *jsonschema.Schema, opts Options, ptr string) ([]string, error) {
-	return rulesOf(doc, opts, ptr, false, everyKeyword, lexicalScope(doc, ptr), nil)
+	return rulesOf(doc, opts, ptr, evaluates(doc), everyKeyword, lexicalScope(doc, ptr), nil)
+}
+
+// evaluates reports whether a schema of doc holds unevaluatedProperties or
+// unevaluatedItems.
+func evaluates(doc *jsonschema.Schema) bool {
+	return opiter.WrapSeq2(schemas(doc)).
+		Any(func(_ string, s *jsonschema.Schema) bool {
+			return s != nil && (s.UnevaluatedProperties != nil || s.UnevaluatedItems != nil)
+		})
 }
 
 // rulesOf returns the args checking the keywords of the schema at ptr that
 // keep keeps. The subschemas take every keyword. annotated tells that an
 // unevaluatedProperties or an unevaluatedItems applies to the same value,
-// which then needs what the validators evaluate: a reference is written
-// out rather than named, since ref reports no evaluation. scope holds the
+// which then needs what the validators evaluate: a reference to a type
+// that decode names is written out rather than named, since decode reports
+// no evaluation. scope holds the
 // schema resources evaluation entered, the dynamic scope a $dynamicRef
 // resolves in. stack holds the schemas whose args are being built, which a
 // reference reaches again on a cycle.
@@ -581,11 +594,11 @@ func ifRules(
 // refRules returns the args the keyword kw, $ref or $dynamicRef, of the
 // schema at ptr applies: ref or decode naming the type of its target, else
 // the args of the target written out. A $dynamicRef resolves in scope, as
-// dynamicTarget tells. The target is written out when annotated asks for
-// what it evaluates, off the cycle of stack, since ref reports no
-// evaluation, and when the dynamic scope would resolve the $dynamicRef
-// under the target otherwise than the type of the target does, as
-// scopeKeeps tells.
+// dynamicTarget tells. ref reports what its type evaluated, and decode
+// does not, so a target decode names is written out when annotated asks
+// for what it evaluates, off the cycle of stack. A target is written out
+// too when the dynamic scope would resolve the $dynamicRef under the
+// target otherwise than the type of the target does, as scopeKeeps tells.
 func refRules(
 	doc *jsonschema.Schema,
 	opts Options,
@@ -615,7 +628,8 @@ func refRules(
 	onCycle := slices.Contains(stack, target)
 	keeps := scopeKeeps(doc, scope, target)
 
-	if name := namedBy(doc, target); name != "" && keeps && (onCycle || !annotated) {
+	if name := namedBy(doc, target); name != "" && keeps &&
+		(onCycle || !annotated || name == "ref") {
 		t, err := typeName(doc, opts, target)
 		if err != nil {
 			return nil, err

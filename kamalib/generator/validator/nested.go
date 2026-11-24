@@ -114,6 +114,8 @@ func (w *writer) nestedNamed(
 		}
 
 		return w.elements(option, lang.Expr("%s.Options()", x), wrap, depth, nil)
+	case w.shallow && w.sel.callable(named) && w.sel.decoded(named):
+		return nil, nil
 	case w.sel.callable(named):
 		call, err := w.call(named, x)
 		if err != nil {
@@ -248,8 +250,14 @@ func (w *writer) elements(
 }
 
 // call returns the call of Validate on the value x of the target or
-// implementor named, passing the function each type argument needs.
+// implementor named, passing the function each type argument needs. In
+// ValidateShallow it calls ValidateShallow when named has one.
 func (w *writer) call(named *types.Named, x genExpr) (genExpr, error) {
+	method := "Validate"
+	if w.shallow && w.sel.hasShallow(named) {
+		method = shallowName
+	}
+
 	args := []genExpr{lang.Name("stopOnFirstError")}
 
 	for arg := range named.TypeArgs().Types() {
@@ -261,15 +269,24 @@ func (w *writer) call(named *types.Named, x genExpr) (genExpr, error) {
 		args = append(args, fn)
 	}
 
-	return lang.Expr("%s.Validate(%s)", x, lang.Join(", ", args...)), nil
+	return lang.Expr("%s.%s(%s)", x, method, lang.Join(", ", args...)), nil
 }
 
 // typeArgFunc returns the function validating values of the type argument
 // arg: the function of the receiver for its own type parameter, a function
-// literal for a type holding something to validate, or nil.
+// literal for a type holding something to validate, or nil. The literal
+// validates as Validate does in ValidateShallow too, since a function for a
+// type parameter validates in full whichever method receives it.
 func (w *writer) typeArgFunc(arg types.Type) (genExpr, error) {
 	if tp, ok := types.Unalias(arg).(*types.TypeParam); ok {
 		return lang.Name(validateRole(w.tparams()[tp.Index()])), nil
+	}
+
+	if w.shallow {
+		deep := *w
+		deep.shallow = false
+
+		return deep.typeArgFunc(arg)
 	}
 
 	var body []genStep

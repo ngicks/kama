@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T15:22:28Z
+// generated: 2026-11-24T18:50:50Z
 
 package nestedunion
 
@@ -20,6 +20,7 @@ import (
 // Chains is generated from the schema at #.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Chains struct {
 	Any     opt.Option[Any]           `json:"any,omitzero"`
@@ -86,7 +87,7 @@ func (v *Chains) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -111,6 +112,7 @@ type AnyKind interface {
 // AnyAnyLeft holds the AnyLeft member of Any.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type AnyAnyLeft struct {
 	AnyLeft AnyLeft
@@ -132,6 +134,7 @@ func (v AnyAnyLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
 // AnyAnyRight holds the AnyRight member of Any.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type AnyAnyRight struct {
 	AnyRight AnyRight
@@ -193,9 +196,59 @@ func (v Any) Validate(stopOnFirstError bool) error {
 	return validation.New(jsonschemart.ErrNilKind, "Any holds no member")
 }
 
+// anyAnyLeftProbe is the raw value the union at #/$defs/Any tests before
+// decoding it as its AnyLeft member. Its validators are the keywords of the
+// member that need no decoding of a nested value, so a value they reject
+// costs no decoding.
+//
+//kama:validate props(field("l", kind="string"))
+//kama:generated kama:jsonschema
+type anyAnyLeftProbe jsontext.Value
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v anyAnyLeftProbe) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// anyAnyRightProbe is the raw value the union at #/$defs/Any tests before
+// decoding it as its AnyRight member. Its validators are the keywords of
+// the member that need no decoding of a nested value, so a value they
+// reject costs no decoding.
+//
+//kama:validate props(field("r", kind="string"))
+//kama:generated kama:jsonschema
+type anyAnyRightProbe jsontext.Value
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v anyAnyRightProbe) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// ValidateShallow is Validate for a decoded Any. The decoder yields a
+// member only after the member passed ValidateShallow of its wrapper, so
+// ValidateShallow reports AnyUnknown and a nil Kind only.
+//
+//kama:generated kama:jsonschema
+func (v Any) ValidateShallow(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case AnyAnyLeft, AnyAnyRight:
+		return nil
+	case AnyUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "Any holds no member")
+}
+
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
-// member matches when it decodes the value and its wrapper passes Validate.
-// A value no member matches gives AnyUnknown, which Validate reports.
+// member matches when it decodes the value and its wrapper passes
+// ValidateShallow. A value no member matches gives AnyUnknown, which
+// Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -205,28 +258,36 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var errs []error
 	if jsonschemart.IsKind(raw, "object") {
-		var m AnyLeft
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
+		if err := jsonschemart.Validate(anyAnyLeftProbe(raw), false); err != nil {
 			errs = append(errs, jsonschemart.MemberError("AnyLeft", err))
 		} else {
-			if err := jsonschemart.Validate(AnyAnyLeft{AnyLeft: m}, false); err != nil {
+			var m AnyLeft
+			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 				errs = append(errs, jsonschemart.MemberError("AnyLeft", err))
 			} else {
-				*v = Any{Kind: AnyAnyLeft{AnyLeft: m}}
-				return nil
+				if err := jsonschemart.ValidateShallow(AnyAnyLeft{AnyLeft: m}, false); err != nil {
+					errs = append(errs, jsonschemart.MemberError("AnyLeft", err))
+				} else {
+					*v = Any{Kind: AnyAnyLeft{AnyLeft: m}}
+					return nil
+				}
 			}
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") {
-		var m AnyRight
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
+		if err := jsonschemart.Validate(anyAnyRightProbe(raw), false); err != nil {
 			errs = append(errs, jsonschemart.MemberError("AnyRight", err))
 		} else {
-			if err := jsonschemart.Validate(AnyAnyRight{AnyRight: m}, false); err != nil {
+			var m AnyRight
+			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 				errs = append(errs, jsonschemart.MemberError("AnyRight", err))
 			} else {
-				*v = Any{Kind: AnyAnyRight{AnyRight: m}}
-				return nil
+				if err := jsonschemart.ValidateShallow(AnyAnyRight{AnyRight: m}, false); err != nil {
+					errs = append(errs, jsonschemart.MemberError("AnyRight", err))
+				} else {
+					*v = Any{Kind: AnyAnyRight{AnyRight: m}}
+					return nil
+				}
 			}
 		}
 	}
@@ -237,6 +298,7 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // AnyLeft is generated from the schema at #/$defs/AnyLeft.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type AnyLeft struct {
 	C  opt.Option[Any]           `json:"c,omitzero"`
@@ -298,7 +360,7 @@ func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -308,6 +370,7 @@ func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // AnyRight is generated from the schema at #/$defs/AnyRight.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type AnyRight struct {
 	C  opt.Option[Any]           `json:"c,omitzero"`
@@ -369,7 +432,7 @@ func (v *AnyRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -394,6 +457,7 @@ type TaggedKind interface {
 // TaggedTaggedLeft holds the TaggedLeft member of Tagged.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type TaggedTaggedLeft struct {
 	TaggedLeft TaggedLeft
@@ -415,6 +479,7 @@ func (v TaggedTaggedLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
 // TaggedTaggedRight holds the TaggedRight member of Tagged.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type TaggedTaggedRight struct {
 	TaggedRight TaggedRight
@@ -477,10 +542,59 @@ func (v Tagged) Validate(stopOnFirstError bool) error {
 	return validation.New(jsonschemart.ErrNilKind, "Tagged holds no member")
 }
 
+// taggedTaggedLeftProbe is the raw value the union at #/$defs/Tagged tests
+// before decoding it as its TaggedLeft member. Its validators are the
+// keywords of the member that need no decoding of a nested value, so a
+// value they reject costs no decoding.
+//
+//kama:validate props(field("kind", const="`\"left\"`"))
+//kama:generated kama:jsonschema
+type taggedTaggedLeftProbe jsontext.Value
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v taggedTaggedLeftProbe) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// taggedTaggedRightProbe is the raw value the union at #/$defs/Tagged tests
+// before decoding it as its TaggedRight member. Its validators are the
+// keywords of the member that need no decoding of a nested value, so a
+// value they reject costs no decoding.
+//
+//kama:validate props(field("kind", const="`\"right\"`"))
+//kama:generated kama:jsonschema
+type taggedTaggedRightProbe jsontext.Value
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v taggedTaggedRightProbe) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// ValidateShallow is Validate for a decoded Tagged. The decoder yields a
+// member only after the member passed ValidateShallow of its wrapper, so
+// ValidateShallow reports TaggedUnknown and a nil Kind only.
+//
+//kama:generated kama:jsonschema
+func (v Tagged) ValidateShallow(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case TaggedTaggedLeft, TaggedTaggedRight:
+		return nil
+	case TaggedUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "Tagged holds no member")
+}
+
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
-// member matches when it decodes the value and its wrapper passes Validate.
-// A value no member matches, or two members match, gives TaggedUnknown,
-// which Validate reports.
+// member matches when it decodes the value and its wrapper passes
+// ValidateShallow. A value no member matches, or two members match, gives
+// TaggedUnknown, which Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -492,34 +606,42 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var name string
 	var errs []error
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.MemberEquals(raw, "kind", "\"left\"") && jsonschemart.HasMembers(raw, "kind") {
-		var m TaggedLeft
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
+		if err := jsonschemart.Validate(taggedTaggedLeftProbe(raw), false); err != nil {
 			errs = append(errs, jsonschemart.MemberError("TaggedLeft", err))
 		} else {
-			if err := jsonschemart.Validate(TaggedTaggedLeft{TaggedLeft: m}, false); err != nil {
+			var m TaggedLeft
+			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 				errs = append(errs, jsonschemart.MemberError("TaggedLeft", err))
 			} else {
-				if found != nil {
-					*v = Tagged{Kind: TaggedUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "TaggedLeft")}}
-					return nil
+				if err := jsonschemart.ValidateShallow(TaggedTaggedLeft{TaggedLeft: m}, false); err != nil {
+					errs = append(errs, jsonschemart.MemberError("TaggedLeft", err))
+				} else {
+					if found != nil {
+						*v = Tagged{Kind: TaggedUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "TaggedLeft")}}
+						return nil
+					}
+					found, name = TaggedTaggedLeft{TaggedLeft: m}, "TaggedLeft"
 				}
-				found, name = TaggedTaggedLeft{TaggedLeft: m}, "TaggedLeft"
 			}
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.MemberEquals(raw, "kind", "\"right\"") && jsonschemart.HasMembers(raw, "kind") {
-		var m TaggedRight
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
+		if err := jsonschemart.Validate(taggedTaggedRightProbe(raw), false); err != nil {
 			errs = append(errs, jsonschemart.MemberError("TaggedRight", err))
 		} else {
-			if err := jsonschemart.Validate(TaggedTaggedRight{TaggedRight: m}, false); err != nil {
+			var m TaggedRight
+			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 				errs = append(errs, jsonschemart.MemberError("TaggedRight", err))
 			} else {
-				if found != nil {
-					*v = Tagged{Kind: TaggedUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "TaggedRight")}}
-					return nil
+				if err := jsonschemart.ValidateShallow(TaggedTaggedRight{TaggedRight: m}, false); err != nil {
+					errs = append(errs, jsonschemart.MemberError("TaggedRight", err))
+				} else {
+					if found != nil {
+						*v = Tagged{Kind: TaggedUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "TaggedRight")}}
+						return nil
+					}
+					found, name = TaggedTaggedRight{TaggedRight: m}, "TaggedRight"
 				}
-				found, name = TaggedTaggedRight{TaggedRight: m}, "TaggedRight"
 			}
 		}
 	}
@@ -534,6 +656,7 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // TaggedLeft is generated from the schema at #/$defs/TaggedLeft.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type TaggedLeft struct {
 	//kama:validate const=`"left"`
@@ -596,7 +719,7 @@ func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -606,6 +729,7 @@ func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // TaggedRight is generated from the schema at #/$defs/TaggedRight.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type TaggedRight struct {
 	//kama:validate const=`"right"`
@@ -668,7 +792,7 @@ func (v *TaggedRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -694,6 +818,7 @@ type OverlapKind interface {
 // OverlapOverlapLeft holds the OverlapLeft member of Overlap.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OverlapOverlapLeft struct {
 	OverlapLeft OverlapLeft
@@ -715,6 +840,7 @@ func (v OverlapOverlapLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
 // OverlapOverlapRight holds the OverlapRight member of Overlap.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OverlapOverlapRight struct {
 	OverlapRight OverlapRight
@@ -777,10 +903,59 @@ func (v Overlap) Validate(stopOnFirstError bool) error {
 	return validation.New(jsonschemart.ErrNilKind, "Overlap holds no member")
 }
 
+// overlapOverlapLeftProbe is the raw value the union at #/$defs/Overlap
+// tests before decoding it as its OverlapLeft member. Its validators are
+// the keywords of the member that need no decoding of a nested value, so a
+// value they reject costs no decoding.
+//
+//kama:validate props(field("l", kind="string"))
+//kama:generated kama:jsonschema
+type overlapOverlapLeftProbe jsontext.Value
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v overlapOverlapLeftProbe) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// overlapOverlapRightProbe is the raw value the union at #/$defs/Overlap
+// tests before decoding it as its OverlapRight member. Its validators are
+// the keywords of the member that need no decoding of a nested value, so a
+// value they reject costs no decoding.
+//
+//kama:validate props(field("l", kind="integer"))
+//kama:generated kama:jsonschema
+type overlapOverlapRightProbe jsontext.Value
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v overlapOverlapRightProbe) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// ValidateShallow is Validate for a decoded Overlap. The decoder yields a
+// member only after the member passed ValidateShallow of its wrapper, so
+// ValidateShallow reports OverlapUnknown and a nil Kind only.
+//
+//kama:generated kama:jsonschema
+func (v Overlap) ValidateShallow(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case OverlapOverlapLeft, OverlapOverlapRight:
+		return nil
+	case OverlapUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "Overlap holds no member")
+}
+
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
-// member matches when it decodes the value and its wrapper passes Validate.
-// A value no member matches, or two members match, gives OverlapUnknown,
-// which Validate reports.
+// member matches when it decodes the value and its wrapper passes
+// ValidateShallow. A value no member matches, or two members match, gives
+// OverlapUnknown, which Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -792,34 +967,42 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var name string
 	var errs []error
 	if jsonschemart.IsKind(raw, "object") {
-		var m OverlapLeft
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
+		if err := jsonschemart.Validate(overlapOverlapLeftProbe(raw), false); err != nil {
 			errs = append(errs, jsonschemart.MemberError("OverlapLeft", err))
 		} else {
-			if err := jsonschemart.Validate(OverlapOverlapLeft{OverlapLeft: m}, false); err != nil {
+			var m OverlapLeft
+			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 				errs = append(errs, jsonschemart.MemberError("OverlapLeft", err))
 			} else {
-				if found != nil {
-					*v = Overlap{Kind: OverlapUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "OverlapLeft")}}
-					return nil
+				if err := jsonschemart.ValidateShallow(OverlapOverlapLeft{OverlapLeft: m}, false); err != nil {
+					errs = append(errs, jsonschemart.MemberError("OverlapLeft", err))
+				} else {
+					if found != nil {
+						*v = Overlap{Kind: OverlapUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "OverlapLeft")}}
+						return nil
+					}
+					found, name = OverlapOverlapLeft{OverlapLeft: m}, "OverlapLeft"
 				}
-				found, name = OverlapOverlapLeft{OverlapLeft: m}, "OverlapLeft"
 			}
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") {
-		var m OverlapRight
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
+		if err := jsonschemart.Validate(overlapOverlapRightProbe(raw), false); err != nil {
 			errs = append(errs, jsonschemart.MemberError("OverlapRight", err))
 		} else {
-			if err := jsonschemart.Validate(OverlapOverlapRight{OverlapRight: m}, false); err != nil {
+			var m OverlapRight
+			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 				errs = append(errs, jsonschemart.MemberError("OverlapRight", err))
 			} else {
-				if found != nil {
-					*v = Overlap{Kind: OverlapUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "OverlapRight")}}
-					return nil
+				if err := jsonschemart.ValidateShallow(OverlapOverlapRight{OverlapRight: m}, false); err != nil {
+					errs = append(errs, jsonschemart.MemberError("OverlapRight", err))
+				} else {
+					if found != nil {
+						*v = Overlap{Kind: OverlapUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "OverlapRight")}}
+						return nil
+					}
+					found, name = OverlapOverlapRight{OverlapRight: m}, "OverlapRight"
 				}
-				found, name = OverlapOverlapRight{OverlapRight: m}, "OverlapRight"
 			}
 		}
 	}
@@ -834,6 +1017,7 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // OverlapLeft is generated from the schema at #/$defs/OverlapLeft.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OverlapLeft struct {
 	C  opt.Option[Overlap]       `json:"c,omitzero"`
@@ -895,7 +1079,7 @@ func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -905,6 +1089,7 @@ func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // OverlapRight is generated from the schema at #/$defs/OverlapRight.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OverlapRight struct {
 	C  opt.Option[Overlap]       `json:"c,omitzero"`
@@ -966,7 +1151,7 @@ func (v *OverlapRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

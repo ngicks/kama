@@ -299,9 +299,11 @@ func (s *selection) sorted() []*typegraph.Node {
 	return typegraph.SortedNodes(s.targets())
 }
 
-// checkConflicts reports names the generated method would collide with: a
+// checkConflicts reports names the generated methods would collide with: a
 // method Validate the generator did not write that is no implementor, a
-// field named Validate, a type parameter shadowing a predeclared
+// method ValidateShallow or ValidateEvaluated the generator did not write
+// on a target getting one, a field named like a generated method, a type parameter shadowing a
+// predeclared
 // identifier the generated code spells, and two fields whose hooks are on
 // and share a name. A type parameter named like a local of Validate is no
 // conflict. The local takes a fresh name instead.
@@ -312,8 +314,23 @@ func (s *selection) checkConflicts() error {
 		named := n.Detail.Type
 		pos := n.Detail.Pkg.Fset.Position
 
+		shallow := s.hasShallow(named)
+		written := map[string]bool{shallowName: shallow, evaluatedName: hasEvaluated(named)}
+
 		for m := range named.Methods() {
-			if m.Name() != "Validate" || s.generated(m) {
+			if s.generated(m) {
+				continue
+			}
+
+			if written[m.Name()] {
+				errs = append(errs, fmt.Errorf(
+					"%w: %s: %s declares %s, which the generator writes;"+
+						" remove it, or ignore the type with //kama:validate ignore",
+					ErrConflict, pos(m.Pos()), n.Id, m.Name(),
+				))
+			}
+
+			if m.Name() != "Validate" {
 				continue
 			}
 
@@ -331,10 +348,10 @@ func (s *selection) checkConflicts() error {
 
 		if st, ok := named.Underlying().(*types.Struct); ok {
 			for v := range st.Fields() {
-				if v.Name() == "Validate" {
+				if v.Name() == "Validate" || v.Name() == shallowName && shallow {
 					errs = append(errs, fmt.Errorf(
-						"%w: %s: field Validate of %s collides with the generated method",
-						ErrConflict, pos(v.Pos()), n.Id,
+						"%w: %s: field %s of %s collides with the generated method",
+						ErrConflict, pos(v.Pos()), v.Name(), n.Id,
 					))
 				}
 			}

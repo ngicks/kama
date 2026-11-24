@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:08Z
+// generated: 2026-11-24T18:37:51Z
 
 package nullable
 
@@ -20,6 +20,7 @@ import (
 // Nullable is generated from the schema at #.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Nullable struct {
 	ReqOneOf  opt.Option[Item]           `json:"reqOneOf"`
@@ -102,7 +103,7 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -113,6 +114,7 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/optInline/oneOf/0.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type NullableOptInline struct {
 	S  string                    `json:"s"`
@@ -170,7 +172,7 @@ func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -180,6 +182,7 @@ func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Item is generated from the schema at #/$defs/Item.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Item struct {
 	N  int64                     `json:"n"`
@@ -236,7 +239,7 @@ func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

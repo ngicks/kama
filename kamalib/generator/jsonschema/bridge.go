@@ -18,7 +18,11 @@ import (
 // ptr that bridged tells, or none when no such keyword checks anything.
 // Under unevaluatedProperties or unevaluatedItems it checks every keyword,
 // those the Go type checks too, since the annotations of every keyword
-// decide what is unevaluated.
+// decide what is unevaluated. The properties the Go type checks are the
+// exception: they only annotate the members they name. Their validators
+// would test again what the fields hold, and decode again a nested value
+// whose decoding validated it, which costs a recursive value as much as
+// two to the power of its depth.
 func jsonArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, error) {
 	s, err := at(doc, ptr)
 	if err != nil || s.Bool.IsSome() || raw(doc, ptr) {
@@ -27,7 +31,7 @@ func jsonArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, error
 
 	keep := func(kw string) bool { return bridged(doc, ptr, s, kw) }
 	if s.UnevaluatedProperties != nil || s.UnevaluatedItems != nil {
-		keep = everyKeyword
+		keep = func(kw string) bool { return kw != "properties" || bridged(doc, ptr, s, kw) }
 	}
 
 	args, err := rulesOf(doc, opts, ptr, false, keep, lexicalScope(doc, ptr), nil)

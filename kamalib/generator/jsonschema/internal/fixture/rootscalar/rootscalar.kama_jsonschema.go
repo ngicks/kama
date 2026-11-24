@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:46:01Z
+// generated: 2026-11-24T18:38:06Z
 
 package rootscalar
 
@@ -17,6 +17,7 @@ import (
 // Port is generated from the schema at #.
 //
 //kama:validate cmp=">=1 <=65535"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Port int64
 
@@ -40,7 +41,7 @@ func (v *Port) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Port(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Port(out), false); err != nil {
 		return err
 	}
 	*v = Port(out)

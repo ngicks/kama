@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:26:19Z
+// generated: 2026-11-24T19:06:25Z
 
 package nullableenum
 
@@ -38,6 +38,26 @@ func (v Levels) Validate(stopOnFirstError bool) error {
 			errs = append(errs, err)
 		}
 	}
+	if v.Number.IsSome() {
+		if err := validation.Field(kamaValidateConst(v.Number.Value(), 1.5, 18446744073709551616), "number"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v Levels) ValidateShallow(stopOnFirstError bool) error {
+	var errs []error
 	if v.Number.IsSome() {
 		if err := validation.Field(kamaValidateConst(v.Number.Value(), 1.5, 18446744073709551616), "number"); err != nil {
 			if stopOnFirstError {

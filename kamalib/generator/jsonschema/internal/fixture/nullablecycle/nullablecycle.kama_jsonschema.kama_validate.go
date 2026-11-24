@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T12:04:05Z
+// generated: 2026-11-24T19:06:23Z
 
 package nullablecycle
 
@@ -31,4 +31,15 @@ func (v Node) Validate(stopOnFirstError bool) error {
 		}
 	}
 	return validation.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
+// first error found, otherwise every error joined, or nil when there is none.
+// It takes the values it holds of a type marked decoded as valid, since
+// their decoders validated them, and calls ValidateShallow where Validate
+// calls a Validate that has one.
+//
+//kama:generated kama:validate
+func (v Node) ValidateShallow(stopOnFirstError bool) error {
+	return nil
 }

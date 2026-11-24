@@ -1,6 +1,6 @@
 // Package validator generates Validate methods for data models.
 //
-// A target T gets one method:
+// A target T gets the method
 //
 //	func (v T) Validate(stopOnFirstError bool) error
 //
@@ -9,7 +9,9 @@
 // their own Validate, and calls a hook method per field. It returns errors of
 // package github.com/ngicks/kama/kamalib/pkg/validation, located by the
 // json names of the fields. The proc of NewProc runs Generate as the
-// workflow step kind validate.generate.
+// workflow step kind validate.generate. Shallow validation and Raw JSON
+// text describe the methods ValidateShallow and ValidateEvaluated that
+// some targets get besides.
 //
 // A generic target gets one more parameter per type parameter, in order:
 //
@@ -63,7 +65,9 @@
 //
 //   - In the doc comment of a type, the directive marks the type. The arg
 //     ignore exempts the type instead. The arg hook=on or hook=off sets the
-//     default hook of the fields of the type. Every other arg names a
+//     default hook of the fields of the type. The arg decoded tells that
+//     decoding a value of the type validates it, as Shallow validation
+//     describes. Every other arg names a
 //     validator of the value of the type. Targets, Hooks and Type validators
 //     describe them.
 //   - On a struct field, each arg names a validator, and the arg hook=on or
@@ -75,7 +79,7 @@
 // Several //kama:validate lines on one type or one field count as one
 // directive. Their args are joined in source order. hook given twice on one
 // type or field is an error wrapping ErrDirective. The words hook, ignore,
-// file and package name no validator.
+// decoded, file and package name no validator.
 //
 // A sub-directive //kama:validate:<name> is an error wrapping ErrDirective.
 // The error shows the args of //kama:validate standing for it. For
@@ -246,6 +250,37 @@
 // The validators of the type itself, described under Type validators, run
 // first in every Validate, before the steps of the fields and the walk of
 // the elements.
+//
+// # Shallow validation
+//
+// A decoder validating the value it decodes, as the decoders the jsonschema
+// generator writes do, finds every nested value validated by the decoder
+// of its own type. Validate of the value would validate them again, and a
+// value nested n levels deep would cost time growing as n squared at best.
+// //kama:validate decoded on a type tells that its decoder validates it,
+// and such a decoder calls the second method a target may get:
+//
+//	func (v T) ValidateShallow(stopOnFirstError bool) error
+//
+// ValidateShallow runs what Validate runs, with two differences in the
+// nested validation of step 2. It skips a value of a type marked decoded.
+// It calls ValidateShallow in place of Validate on a value of a target or
+// an implementor having one. An implementor has one when it declares
+// ValidateShallow on its value receiver with the signature of its
+// Validate. A target gets one when its walk reaches a value of a type
+// marked decoded or of a type having a ValidateShallow, directly or through
+// the walk of another target. Any other target would get a ValidateShallow
+// equal to its Validate, so it gets none, and a caller asking such a type
+// for its shallow form calls Validate instead, as
+// jsonschemart.ValidateShallow does. A generic target takes the
+// parameters of its Validate, and the function given for a type parameter
+// validates in full.
+//
+// ValidateShallow is meant for a value a decoder produced. A value built in
+// Go may hold values of a type marked decoded that no decoder validated, so
+// its Validate is the method to call. A target declaring ValidateShallow
+// itself, or a struct field named ValidateShallow, collides with the
+// generated method and is an error wrapping ErrConflict.
 //
 // # Path segments
 //
@@ -445,6 +480,16 @@
 //	//kama:validate props(field("next", ref=Tree), rest(kind=integer))
 //	type Tree jsontext.Value
 //
+// A target of raw JSON text that is not generic gets one more method:
+//
+//	func (v T) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error
+//
+// It runs the validators of T as Validate does, those implementing
+// rule.Annotator recording into ev the members and the elements they
+// evaluated. ref calls it in the scope of unevalprops and unevalitems, so
+// that a type a reference names reports what it evaluated without its
+// validators being written out at the reference.
+//
 // json applies the validators of raw JSON text to a value of any other type
 // encoded as JSON, a struct included:
 //
@@ -526,6 +571,8 @@
 //	            hook: true          # hook=on on Note
 //	      Draft:
 //	        ignore: true            # //kama:validate ignore on Draft
+//	      Event:
+//	        decoded: true           # //kama:validate decoded on Event
 //	      Level:
 //	        validators:             # //kama:validate cmp=">=1" on Level
 //	          - name: cmp

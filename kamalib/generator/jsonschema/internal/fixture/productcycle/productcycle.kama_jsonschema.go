@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T12:42:20Z
+// generated: 2026-11-24T18:38:03Z
 
 package productcycle
 
@@ -21,6 +21,7 @@ import (
 // schema at #.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Product struct {
 	A   A                         `json:"-"`
@@ -89,7 +90,7 @@ func (v *Product) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -99,6 +100,7 @@ func (v *Product) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // A is generated from the schema at #/$defs/A.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type A struct {
 	// A declares shared first.
@@ -161,7 +163,7 @@ func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -171,6 +173,7 @@ func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // B is generated from the schema at #/$defs/B.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type B struct {
 	// B declares shared too.
@@ -233,7 +236,7 @@ func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -243,6 +246,7 @@ func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Back is generated from the schema at #/$defs/Back.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Back struct {
 	Product *Product                  `json:"product,omitzero"`
@@ -299,7 +303,7 @@ func (v *Back) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

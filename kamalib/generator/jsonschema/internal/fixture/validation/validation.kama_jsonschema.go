@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T15:22:44Z
+// generated: 2026-11-24T18:38:10Z
 
 package validation
 
@@ -23,6 +23,7 @@ import (
 //
 //kama:validate hook=off
 //kama:validate members=">=2 <=11"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Order struct {
 	//kama:validate runes=">=3 <=8"
@@ -139,7 +140,7 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -150,6 +151,7 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/labels/additionalProperties.
 //
 //kama:validate runes=">=1"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OrderLabelsValue string
 
@@ -173,7 +175,7 @@ func (v *OrderLabelsValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(OrderLabelsValue(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(OrderLabelsValue(out), false); err != nil {
 		return err
 	}
 	*v = OrderLabelsValue(out)
@@ -184,6 +186,7 @@ func (v *OrderLabelsValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate hook=off
 //kama:validate closed
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OrderClosed struct {
 	A  opt.Option[bool]          `json:"a,omitzero"`
@@ -240,7 +243,7 @@ func (v *OrderClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -250,6 +253,7 @@ func (v *OrderClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // OrderTyped is generated from the schema at #/properties/typed.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OrderTyped struct {
 	N  opt.Option[int64]          `json:"n,omitzero"`
@@ -306,7 +310,7 @@ func (v *OrderTyped) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -317,6 +321,7 @@ func (v *OrderTyped) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/typed/additionalProperties.
 //
 //kama:validate cmp=">=0"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OrderTypedValue int64
 
@@ -340,7 +345,7 @@ func (v *OrderTypedValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(OrderTypedValue(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(OrderTypedValue(out), false); err != nil {
 		return err
 	}
 	*v = OrderTypedValue(out)
@@ -366,6 +371,7 @@ type OrderPickKind interface {
 // OrderPickOption1 holds the Option1 member of OrderPick.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OrderPickOption1 struct {
 	Option1 OrderPickOption1Value
@@ -387,6 +393,7 @@ func (v OrderPickOption1) MarshalJSONTo(enc *jsontext.Encoder) error {
 // OrderPickOption2 holds the Option2 member of OrderPick.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OrderPickOption2 struct {
 	Option2 OrderPickOption2Value
@@ -449,10 +456,25 @@ func (v OrderPick) Validate(stopOnFirstError bool) error {
 	return validation.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
 }
 
+// ValidateShallow is Validate for a decoded OrderPick. The decoder yields a
+// member only after the member passed ValidateShallow of its wrapper, so
+// ValidateShallow reports OrderPickUnknown and a nil Kind only.
+//
+//kama:generated kama:jsonschema
+func (v OrderPick) ValidateShallow(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case OrderPickOption1, OrderPickOption2:
+		return nil
+	case OrderPickUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
+}
+
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
-// member matches when it decodes the value and its wrapper passes Validate.
-// A value no member matches, or two members match, gives OrderPickUnknown,
-// which Validate reports.
+// member matches when it decodes the value and its wrapper passes
+// ValidateShallow. A value no member matches, or two members match, gives
+// OrderPickUnknown, which Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -468,7 +490,7 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Option1", err))
 		} else {
-			if err := jsonschemart.Validate(OrderPickOption1{Option1: m}, false); err != nil {
+			if err := jsonschemart.ValidateShallow(OrderPickOption1{Option1: m}, false); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Option1", err))
 			} else {
 				if found != nil {
@@ -484,7 +506,7 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Option2", err))
 		} else {
-			if err := jsonschemart.Validate(OrderPickOption2{Option2: m}, false); err != nil {
+			if err := jsonschemart.ValidateShallow(OrderPickOption2{Option2: m}, false); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Option2", err))
 			} else {
 				if found != nil {
@@ -507,6 +529,7 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/pick/oneOf/0.
 //
 //kama:validate runes="<=2"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OrderPickOption1Value string
 
@@ -530,7 +553,7 @@ func (v *OrderPickOption1Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(OrderPickOption1Value(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(OrderPickOption1Value(out), false); err != nil {
 		return err
 	}
 	*v = OrderPickOption1Value(out)
@@ -541,6 +564,7 @@ func (v *OrderPickOption1Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/pick/oneOf/1.
 //
 //kama:validate runes=">=4"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OrderPickOption2Value string
 
@@ -564,7 +588,7 @@ func (v *OrderPickOption2Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(OrderPickOption2Value(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(OrderPickOption2Value(out), false); err != nil {
 		return err
 	}
 	*v = OrderPickOption2Value(out)
@@ -574,6 +598,7 @@ func (v *OrderPickOption2Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Sku is generated from the schema at #/$defs/Sku.
 //
 //kama:validate regexp="^[a-z]+$"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Sku string
 
@@ -597,7 +622,7 @@ func (v *Sku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Sku(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Sku(out), false); err != nil {
 		return err
 	}
 	*v = Sku(out)

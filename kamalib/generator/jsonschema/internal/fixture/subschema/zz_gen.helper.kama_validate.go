@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T14:37:25Z
+// generated: 2026-11-24T19:06:40Z
 
 package subschema
 

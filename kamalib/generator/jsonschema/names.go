@@ -366,7 +366,15 @@ func kindName(k string) string {
 }
 
 // wireName names the struct the type name decodes through.
-func wireName(name string) string {
+func wireName(name string) string { return unexported(name) + "Wire" }
+
+// probeName names the raw JSON text type that the union decoder tests
+// against the member the wrapper named wrapper holds before decoding it.
+func probeName(wrapper string) string { return unexported(wrapper) + "Probe" }
+
+// unexported returns the exported Go name name with its first letter
+// lower-cased.
+func unexported(name string) string {
 	r := []rune(name)
-	return string(unicode.ToLower(r[0])) + string(r[1:]) + "Wire"
+	return string(unicode.ToLower(r[0])) + string(r[1:])
 }

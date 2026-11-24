@@ -29,6 +29,7 @@ func TestGenerateTime(t *testing.T) {
 		{"union chain of 20", unionChain(20), 2 * time.Second},
 		{"300 nested objects", nested(300), 5 * time.Second},
 		{"reference chain of 500", refChain(500), 2 * time.Second},
+		{"unevaluated chain of 20", unevaluatedChain(20), 2 * time.Second},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -68,6 +69,15 @@ func BenchmarkGenerateUnionChain(b *testing.B) {
 func BenchmarkGenerateNested(b *testing.B) {
 	for _, d := range []int{100, 300} {
 		b.Run(fmt.Sprint(d), func(b *testing.B) { benchGenerate(b, nested(d)) })
+	}
+}
+
+// BenchmarkGenerateUnevaluatedChain doubles the paths to the last
+// definition per definition, under an unevaluatedProperties that needs what
+// every definition evaluated.
+func BenchmarkGenerateUnevaluatedChain(b *testing.B) {
+	for _, n := range []int{10, 20, 40} {
+		b.Run(fmt.Sprint(n), func(b *testing.B) { benchGenerate(b, unevaluatedChain(n)) })
 	}
 }
 
@@ -177,4 +187,21 @@ func refChain(n int) string {
 		`{"type":"object","properties":{"r":{"$ref":"#/$defs/R%d"}},"$defs":{%s}}`,
 		n-1, strings.Join(defs, ","),
 	)
+}
+
+// unevaluatedChain returns a root holding D0 and unevaluatedProperties
+// false, where D<i> is an allOf of a reference to D<i+1> and of properties
+// next to another reference to D<i+1>, so that D0 reaches D<n> along 2^n
+// paths.
+func unevaluatedChain(n int) string {
+	defs := []string{fmt.Sprintf(`"D%d":{"properties":{"z":true}}`, n)}
+	for i := range n {
+		next := fmt.Sprintf(`"$ref":"#/$defs/D%d"`, i+1)
+		defs = append(defs, fmt.Sprintf(
+			`"D%d":{"allOf":[{%s},{"properties":{"p%d":true},%s}]}`, i, next, i, next,
+		))
+	}
+
+	return `{"$ref":"#/$defs/D0","unevaluatedProperties":false,"$defs":{` +
+		strings.Join(defs, ",") + `}}`
 }

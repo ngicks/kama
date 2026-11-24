@@ -56,7 +56,7 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	if marked {
-		declDoc = validatedDoc(text, args)
+		declDoc = validatedDoc(text, decodedArgs(opts, args))
 
 		if opts.Validate {
 			decodeDoc += " The value must pass Validate."

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T18:15:37Z
+// generated: 2026-11-24T18:37:47Z
 
 package edgecases
 
@@ -20,6 +20,7 @@ import (
 // Root is generated from the schema at #.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Root struct {
 	ValidateField             opt.Option[string] `json:"validate,omitzero"`
@@ -206,7 +207,7 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -218,6 +219,7 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate hook=off
 //kama:validate members="<=9223372036854775808"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type RootMembersStruct struct {
 	A  opt.Option[jsontext.Value] `json:"a,omitzero"`
@@ -275,7 +277,7 @@ func (v *RootMembersStruct) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -285,6 +287,7 @@ func (v *RootMembersStruct) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // CE is generated from the schema at #/$defs/CE.
 //
 //kama:validate and(const="`{\"a\":1}`", const="`{\"a\":2}`")
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type CE jsontext.Value
 
@@ -308,7 +311,7 @@ func (v *CE) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(CE(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(CE(out), false); err != nil {
 		return err
 	}
 	*v = CE(out)
@@ -326,6 +329,7 @@ func (v CE) RawJson() jsontext.Value {
 // O is generated from the schema at #/$defs/O.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type O struct {
 	X  opt.Option[float64]       `json:"x,omitzero"`
@@ -382,7 +386,7 @@ func (v *O) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

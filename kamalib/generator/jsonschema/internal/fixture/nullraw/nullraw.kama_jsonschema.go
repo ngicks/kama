@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T18:15:35Z
+// generated: 2026-11-24T18:37:56Z
 
 package nullraw
 
@@ -20,6 +20,7 @@ import (
 // Root is generated from the schema at #.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Root struct {
 	//kama:validate kind="integer null"
@@ -130,7 +131,7 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -155,6 +156,7 @@ type RootDKind interface {
 // RootDOption1 holds the Option1 member of RootD.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type RootDOption1 struct {
 	Option1 jsontext.Value
@@ -176,6 +178,7 @@ func (v RootDOption1) MarshalJSONTo(enc *jsontext.Encoder) error {
 // RootDInteger holds the Integer member of RootD.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type RootDInteger struct {
 	Integer int64
@@ -238,9 +241,25 @@ func (v RootD) Validate(stopOnFirstError bool) error {
 	return validation.New(jsonschemart.ErrNilKind, "RootD holds no member")
 }
 
+// ValidateShallow is Validate for a decoded RootD. The decoder yields a
+// member only after the member passed ValidateShallow of its wrapper, so
+// ValidateShallow reports RootDUnknown and a nil Kind only.
+//
+//kama:generated kama:jsonschema
+func (v RootD) ValidateShallow(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case RootDOption1, RootDInteger:
+		return nil
+	case RootDUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "RootD holds no member")
+}
+
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
-// member matches when it decodes the value and its wrapper passes Validate.
-// A value no member matches gives RootDUnknown, which Validate reports.
+// member matches when it decodes the value and its wrapper passes
+// ValidateShallow. A value no member matches gives RootDUnknown, which
+// Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -254,7 +273,7 @@ func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Option1", err))
 		} else {
-			if err := jsonschemart.Validate(RootDOption1{Option1: m}, false); err != nil {
+			if err := jsonschemart.ValidateShallow(RootDOption1{Option1: m}, false); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Option1", err))
 			} else {
 				*v = RootD{Kind: RootDOption1{Option1: m}}
@@ -267,7 +286,7 @@ func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Integer", err))
 		} else {
-			if err := jsonschemart.Validate(RootDInteger{Integer: m}, false); err != nil {
+			if err := jsonschemart.ValidateShallow(RootDInteger{Integer: m}, false); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Integer", err))
 			} else {
 				*v = RootD{Kind: RootDInteger{Integer: m}}
@@ -283,6 +302,7 @@ func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate kind="string null"
 //kama:validate not(kind="null")
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type RootLItem jsontext.Value
 
@@ -306,7 +326,7 @@ func (v *RootLItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(RootLItem(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(RootLItem(out), false); err != nil {
 		return err
 	}
 	*v = RootLItem(out)
@@ -325,6 +345,7 @@ func (v RootLItem) RawJson() jsontext.Value {
 //
 //kama:validate kind="string null"
 //kama:validate not(kind="null")
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type N jsontext.Value
 
@@ -348,7 +369,7 @@ func (v *N) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(N(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(N(out), false); err != nil {
 		return err
 	}
 	*v = N(out)

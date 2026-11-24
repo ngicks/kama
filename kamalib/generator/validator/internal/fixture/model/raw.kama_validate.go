@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T16:55:05Z
+// generated: 2026-11-24T19:11:02Z
 
 package model
 
@@ -16,6 +16,34 @@ import (
 //
 //kama:generated kama:validate
 func (v Loose) Validate(stopOnFirstError bool) error {
+	var errs []error
+	if err := rawjson.Kind(v, "number", "string"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.Compare(v, ">=", "1"); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	if err := rawjson.Runes(v, "<=", 3); err != nil {
+		if stopOnFirstError {
+			return err
+		}
+		errs = append(errs, err)
+	}
+	return validation.Join(errs...)
+}
+
+// ValidateEvaluated is Validate recording into ev the members and the
+// elements of v that its validators evaluated, as JSON Schema annotations
+// tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
+//
+//kama:generated kama:validate
+func (v Loose) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
 	var errs []error
 	if err := rawjson.Kind(v, "number", "string"); err != nil {
 		if stopOnFirstError {

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T18:02:15Z
+// generated: 2026-11-24T18:51:10Z
 
 package typedkeywords
 
@@ -23,6 +23,7 @@ import (
 //
 //kama:validate hook=off
 //kama:validate json(required=`"kind" "id"`, props(match("^x-", kind="string")), keys(runes="<=8"), and(if(required=`"note"`, required=`"lines"`), if(props(field("kind", const="`\"card\"`")), required=`"card"`, not(required=`"card"`))))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Order struct {
 	Kind OrderKind          `json:"kind"`
@@ -101,7 +102,7 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -111,6 +112,7 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // OrderKind is generated from the schema at #/properties/kind.
 //
 //kama:validate const=`"card" "cash"`
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type OrderKind string
 
@@ -135,7 +137,7 @@ func (v *OrderKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, (*string)(&s)); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(s, false); err != nil {
+	if err := jsonschemart.ValidateShallow(s, false); err != nil {
 		return err
 	}
 	*v = s
@@ -161,6 +163,7 @@ type ShapeKind interface {
 //
 //kama:validate hook=off
 //kama:validate json(kind="object", members=">=1", not(and(required=`"r"`, props(field("r", const="0")))))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type ShapeCircle struct {
 	Circle Circle
@@ -183,6 +186,7 @@ func (v ShapeCircle) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:validate hook=off
 //kama:validate json(kind="object", members=">=1", not(and(required=`"r"`, props(field("r", const="0")))))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type ShapeSquare struct {
 	Square Square
@@ -245,10 +249,59 @@ func (v Shape) Validate(stopOnFirstError bool) error {
 	return validation.New(jsonschemart.ErrNilKind, "Shape holds no member")
 }
 
+// shapeCircleProbe is the raw value the union at #/$defs/Shape tests before
+// decoding it as its Circle member. Its validators are the keywords of the
+// member that need no decoding of a nested value, so a value they reject
+// costs no decoding.
+//
+//kama:validate props(field("r", kind="number"))
+//kama:generated kama:jsonschema
+type shapeCircleProbe jsontext.Value
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v shapeCircleProbe) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// shapeSquareProbe is the raw value the union at #/$defs/Shape tests before
+// decoding it as its Square member. Its validators are the keywords of the
+// member that need no decoding of a nested value, so a value they reject
+// costs no decoding.
+//
+//kama:validate props(field("side", kind="number"))
+//kama:generated kama:jsonschema
+type shapeSquareProbe jsontext.Value
+
+// RawJson returns v as raw JSON text, which tells the validators to check v
+// as JSON Schema does.
+//
+//kama:generated kama:jsonschema
+func (v shapeSquareProbe) RawJson() jsontext.Value {
+	return jsontext.Value(v)
+}
+
+// ValidateShallow is Validate for a decoded Shape. The decoder yields a
+// member only after the member passed ValidateShallow of its wrapper, so
+// ValidateShallow reports ShapeUnknown and a nil Kind only.
+//
+//kama:generated kama:jsonschema
+func (v Shape) ValidateShallow(stopOnFirstError bool) error {
+	switch k := v.Kind.(type) {
+	case ShapeCircle, ShapeSquare:
+		return nil
+	case ShapeUnknown:
+		return jsonschemart.UnknownMember(k.err)
+	}
+	return validation.New(jsonschemart.ErrNilKind, "Shape holds no member")
+}
+
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
-// member matches when it decodes the value and its wrapper passes Validate.
-// A value no member matches, or two members match, gives ShapeUnknown,
-// which Validate reports.
+// member matches when it decodes the value and its wrapper passes
+// ValidateShallow. A value no member matches, or two members match, gives
+// ShapeUnknown, which Validate reports.
 //
 //kama:generated kama:jsonschema
 func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -260,34 +313,42 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var name string
 	var errs []error
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.HasMembers(raw, "r") && jsonschemart.OnlyMembers(raw, "r") {
-		var m Circle
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
+		if err := jsonschemart.Validate(shapeCircleProbe(raw), false); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Circle", err))
 		} else {
-			if err := jsonschemart.Validate(ShapeCircle{Circle: m}, false); err != nil {
+			var m Circle
+			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Circle", err))
 			} else {
-				if found != nil {
-					*v = Shape{Kind: ShapeUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Circle")}}
-					return nil
+				if err := jsonschemart.ValidateShallow(ShapeCircle{Circle: m}, false); err != nil {
+					errs = append(errs, jsonschemart.MemberError("Circle", err))
+				} else {
+					if found != nil {
+						*v = Shape{Kind: ShapeUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Circle")}}
+						return nil
+					}
+					found, name = ShapeCircle{Circle: m}, "Circle"
 				}
-				found, name = ShapeCircle{Circle: m}, "Circle"
 			}
 		}
 	}
 	if jsonschemart.IsKind(raw, "object") && jsonschemart.HasMembers(raw, "side") && jsonschemart.OnlyMembers(raw, "side") {
-		var m Square
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
+		if err := jsonschemart.Validate(shapeSquareProbe(raw), false); err != nil {
 			errs = append(errs, jsonschemart.MemberError("Square", err))
 		} else {
-			if err := jsonschemart.Validate(ShapeSquare{Square: m}, false); err != nil {
+			var m Square
+			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
 				errs = append(errs, jsonschemart.MemberError("Square", err))
 			} else {
-				if found != nil {
-					*v = Shape{Kind: ShapeUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Square")}}
-					return nil
+				if err := jsonschemart.ValidateShallow(ShapeSquare{Square: m}, false); err != nil {
+					errs = append(errs, jsonschemart.MemberError("Square", err))
+				} else {
+					if found != nil {
+						*v = Shape{Kind: ShapeUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Square")}}
+						return nil
+					}
+					found, name = ShapeSquare{Square: m}, "Square"
 				}
-				found, name = ShapeSquare{Square: m}, "Square"
 			}
 		}
 	}
@@ -303,6 +364,7 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate hook=off
 //kama:validate closed
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Circle struct {
 	R  float64                   `json:"r"`
@@ -359,7 +421,7 @@ func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -370,6 +432,7 @@ func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate hook=off
 //kama:validate closed
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Square struct {
 	Side float64                   `json:"side"`
@@ -426,7 +489,7 @@ func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -436,6 +499,7 @@ func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Named is generated from the schema at #/$defs/Named.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Named struct {
 	Name string                    `json:"name"`
@@ -492,7 +556,7 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -502,6 +566,7 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Aged is generated from the schema at #/$defs/Aged.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Aged struct {
 	Age opt.Option[int64]         `json:"age,omitzero"`
@@ -558,7 +623,7 @@ func (v *Aged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -570,6 +635,7 @@ func (v *Aged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate hook=off
 //kama:validate json(not(required=`"nick"`))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Person struct {
 	Named Named                     `json:"-"`
@@ -629,7 +695,7 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -640,6 +706,7 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate hook=off
 //kama:validate json(and(required=`"lo"`, not(required=`"x"`)))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Bounded struct {
 	Lo opt.Option[int64]         `json:"lo,omitzero"`
@@ -701,7 +768,7 @@ func (v *Bounded) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -711,7 +778,8 @@ func (v *Bounded) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Sealed is generated from the schema at #/$defs/Sealed.
 //
 //kama:validate hook=off
-//kama:validate json(unevalprops(and(kind="object", props(field("a", kind="integer"), match("^x-"))), or()))
+//kama:validate json(unevalprops(and(kind="object", props(field("a"), match("^x-"))), or()))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Sealed struct {
 	A  opt.Option[int64]         `json:"a,omitzero"`
@@ -768,7 +836,7 @@ func (v *Sealed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -779,6 +847,7 @@ func (v *Sealed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate hook=off
 //kama:validate json(props(field("a"), match("^x-", kind="string"), rest(or())))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Tagged struct {
 	A  opt.Option[int64]         `json:"a,omitzero"`
@@ -835,7 +904,7 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out

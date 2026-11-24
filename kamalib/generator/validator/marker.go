@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -42,6 +43,76 @@ func (s *selection) implementor(named *types.Named) bool {
 	return fn != nil && validateShape(fn) && !s.generated(fn)
 }
 
+// shallowName is the name of the shallow form of Validate.
+const shallowName = "ValidateShallow"
+
+// evaluatedName is the name of the form of Validate recording annotations.
+const evaluatedName = "ValidateEvaluated"
+
+// hasEvaluated reports whether the target named gets ValidateEvaluated: it
+// is raw JSON text, whose validators may evaluate members and elements, and
+// not generic, so that the ref validator calls it alike on every target.
+func hasEvaluated(named *types.Named) bool {
+	return rule.IsRawJson(named) && named.TypeParams().Len() == 0
+}
+
+// decoded reports whether //kama:validate decoded, or its option file
+// counterpart, tells that decoding a value of named validates it.
+func (s *selection) decoded(named *types.Named) bool {
+	to, _ := s.opts.Loaded.Option.Type(originId(named))
+	return to.Type.Decoded || to.Group.Decoded
+}
+
+// hasShallow reports whether generated code calls ValidateShallow on a
+// value of named, which callable accepts: an implementor declaring
+// ValidateShallow of the shape of its Validate, or a target whose walk
+// reaches a value ValidateShallow treats otherwise than Validate does. That
+// is a value of a type marked decoded or of another type with a
+// ValidateShallow, directly or through the walk of another target. Any
+// other target would get a ValidateShallow equal to its Validate, so it
+// gets none.
+func (s *selection) hasShallow(named *types.Named) bool {
+	if s.implementor(named) {
+		return s.shallowImplementor(named)
+	}
+
+	// seen holds the targets the search entered, so that a cycle of types
+	// and types reached on several paths cost one walk each.
+	seen := []*types.Named{named}
+
+	var search func(t *types.Named) bool
+
+	search = func(t *types.Named) bool {
+		return s.reaches(t.Underlying(), func(n *types.Named) bool {
+			switch {
+			case !s.callable(n):
+				return false
+			case s.decoded(n):
+				return true
+			case s.implementor(n):
+				return s.shallowImplementor(n)
+			case onPath(seen, n):
+				return false
+			}
+
+			seen = append(seen, n)
+
+			return search(n)
+		})
+	}
+
+	return search(named)
+}
+
+// shallowImplementor reports whether the implementor named declares
+// ValidateShallow on its value receiver with the shape of its Validate.
+func (s *selection) shallowImplementor(named *types.Named) bool {
+	origin := named.Origin()
+	fn := declaredMethod(origin, origin, shallowName)
+
+	return fn != nil && validateShape(fn) && !s.generated(fn)
+}
+
 // pointerImplementor reports whether named has a Validate of the shape of
 // an implementor on its pointer receiver only. Generated code holds values,
 // which such a method cannot be called on in general, so it is reported as
@@ -60,7 +131,13 @@ func (s *selection) pointerImplementor(named *types.Named) bool {
 // declaredValidate returns the method Validate of the method set of t, which
 // is named or a pointer to it, when named declares it itself.
 func declaredValidate(t types.Type, named *types.Named) *types.Func {
-	sel := types.NewMethodSet(t).Lookup(named.Obj().Pkg(), "Validate")
+	return declaredMethod(t, named, "Validate")
+}
+
+// declaredMethod returns the method name of the method set of t, which is
+// named or a pointer to it, when named declares it itself.
+func declaredMethod(t types.Type, named *types.Named, name string) *types.Func {
+	sel := types.NewMethodSet(t).Lookup(named.Obj().Pkg(), name)
 	if sel == nil || len(sel.Index()) != 1 {
 		return nil
 	}

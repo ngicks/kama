@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T16:17:57Z
+// generated: 2026-11-24T18:38:05Z
 
 package resources
 
@@ -22,6 +22,7 @@ import (
 // Order refers to the schema resources under $defs by their URIs.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Order struct {
 	Customer Customer                  `json:"customer"`
@@ -93,7 +94,7 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -103,6 +104,7 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Customer is generated from the schema at #/$defs/Customer.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Customer struct {
 	Name    CustomerName              `json:"name"`
@@ -164,7 +166,7 @@ func (v *Customer) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -174,6 +176,7 @@ func (v *Customer) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // CustomerName is generated from the schema at #/$defs/Customer/$defs/Name.
 //
 //kama:validate runes=">=1"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type CustomerName string
 
@@ -197,7 +200,7 @@ func (v *CustomerName) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(CustomerName(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(CustomerName(out), false); err != nil {
 		return err
 	}
 	*v = CustomerName(out)
@@ -207,6 +210,7 @@ func (v *CustomerName) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Address is generated from the schema at #/$defs/Address.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Address struct {
 	City opt.Option[string]        `json:"city,omitzero"`
@@ -268,7 +272,7 @@ func (v *Address) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -278,6 +282,7 @@ func (v *Address) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // AddressZip is generated from the schema at #/$defs/Address/$defs/Zip.
 //
 //kama:validate regexp="^[0-9]{5}$"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type AddressZip string
 
@@ -301,7 +306,7 @@ func (v *AddressZip) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(AddressZip(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(AddressZip(out), false); err != nil {
 		return err
 	}
 	*v = AddressZip(out)
@@ -311,6 +316,7 @@ func (v *AddressZip) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Line is generated from the schema at #/$defs/Line.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Line struct {
 	Sku LineSku `json:"sku"`
@@ -373,7 +379,7 @@ func (v *Line) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -383,6 +389,7 @@ func (v *Line) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // LineSku is generated from the schema at #/$defs/Line/$defs/Sku.
 //
 //kama:validate regexp="^[A-Z]+$"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type LineSku string
 
@@ -406,7 +413,7 @@ func (v *LineSku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(LineSku(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(LineSku(out), false); err != nil {
 		return err
 	}
 	*v = LineSku(out)
@@ -416,6 +423,7 @@ func (v *LineSku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Note is generated from the schema at #/$defs/Note.
 //
 //kama:validate runes="<=20"
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Note string
 
@@ -439,7 +447,7 @@ func (v *Note) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Note(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Note(out), false); err != nil {
 		return err
 	}
 	*v = Note(out)

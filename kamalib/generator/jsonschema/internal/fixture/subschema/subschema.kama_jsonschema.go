@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T18:02:13Z
+// generated: 2026-11-24T18:38:08Z
 
 package subschema
 
@@ -24,6 +24,7 @@ import (
 //
 //kama:validate required=`"name"`
 //kama:validate props(field("name", kind="string"), field("children", kind="array", items(ref=Tree)))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Tree jsontext.Value
 
@@ -47,7 +48,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Tree(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Tree(out), false); err != nil {
 		return err
 	}
 	*v = Tree(out)
@@ -65,6 +66,7 @@ func (v Tree) RawJson() jsontext.Value {
 // Small is generated from the schema at #/$defs/Small.
 //
 //kama:validate not(cmp=">=5")
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Small jsontext.Value
 
@@ -88,7 +90,7 @@ func (v *Small) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Small(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Small(out), false); err != nil {
 		return err
 	}
 	*v = Small(out)
@@ -107,6 +109,7 @@ func (v Small) RawJson() jsontext.Value {
 //
 //kama:validate and(if(required=`"zip"`, required=`"country"`), if(props(field("country", const="`\"us\"`")), required=`"zip"`, required=`"postal"`))
 //kama:validate props(field("country", const="`\"us\"` `\"ca\"`"))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Address jsontext.Value
 
@@ -130,7 +133,7 @@ func (v *Address) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Address(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Address(out), false); err != nil {
 		return err
 	}
 	*v = Address(out)
@@ -149,6 +152,7 @@ func (v Address) RawJson() jsontext.Value {
 //
 //kama:validate hook=off
 //kama:validate json(props(match("^x-", kind="string"), rest(kind="integer")))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Labels struct {
 	_x map[string]jsontext.Value `json:",embed"`
@@ -200,7 +204,7 @@ func (v *Labels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -210,6 +214,7 @@ func (v *Labels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Point is generated from the schema at #/$defs/Point.
 //
 //kama:validate json(prefix(kind="number", kind="number", rest(kind="string")))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Point []jsontext.Value
 
@@ -233,7 +238,7 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Point(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Point(out), false); err != nil {
 		return err
 	}
 	*v = Point(out)
@@ -243,6 +248,7 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Tags is generated from the schema at #/$defs/Tags.
 //
 //kama:validate json(contains(>=1, <=2, const="`\"go\"`"))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Tags []jsontext.Value
 
@@ -266,7 +272,7 @@ func (v *Tags) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Tags(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Tags(out), false); err != nil {
 		return err
 	}
 	*v = Tags(out)
@@ -277,6 +283,7 @@ func (v *Tags) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate hook=off
 //kama:validate json(keys(regexp="^[a-z]+$"))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Keys struct {
 	_x map[string]jsontext.Value `json:",embed"`
@@ -328,7 +335,7 @@ func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -339,6 +346,7 @@ func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 //
 //kama:validate hook=off
 //kama:validate json(if(required=`"card"`, required=`"billing"`))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Payment struct {
 	_x map[string]jsontext.Value `json:",embed"`
@@ -390,7 +398,7 @@ func (v *Payment) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -400,6 +408,7 @@ func (v *Payment) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Strict is generated from the schema at #/$defs/Strict.
 //
 //kama:validate unevalprops(and(props(field("b")), and(props(field("a", kind="integer")))), or())
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Strict jsontext.Value
 
@@ -423,7 +432,7 @@ func (v *Strict) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Strict(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Strict(out), false); err != nil {
 		return err
 	}
 	*v = Strict(out)
@@ -441,6 +450,7 @@ func (v Strict) RawJson() jsontext.Value {
 // Mixed is generated from the schema at #/$defs/Mixed.
 //
 //kama:validate const="1 `\"a\"` null \"[1]\""
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Mixed jsontext.Value
 
@@ -464,7 +474,7 @@ func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Mixed(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Mixed(out), false); err != nil {
 		return err
 	}
 	*v = Mixed(out)
@@ -482,6 +492,7 @@ func (v Mixed) RawJson() jsontext.Value {
 // Node is generated from the schema at #/$defs/Node.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Node struct {
 	V    opt.Option[int64]         `json:"v,omitzero"`
@@ -548,7 +559,7 @@ func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -558,6 +569,7 @@ func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Holder is generated from the schema at #/$defs/Holder.
 //
 //kama:validate props(field("node", decode=Node))
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Holder jsontext.Value
 
@@ -581,7 +593,7 @@ func (v *Holder) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Holder(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Holder(out), false); err != nil {
 		return err
 	}
 	*v = Holder(out)

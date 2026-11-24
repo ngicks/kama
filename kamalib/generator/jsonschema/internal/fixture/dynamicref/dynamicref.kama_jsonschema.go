@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T16:22:55Z
+// generated: 2026-11-24T18:37:46Z
 
 package dynamicref
 
@@ -23,6 +23,7 @@ import (
 // does not declare.
 //
 //kama:validate unevalprops(and(kind="object", props(field("data"), field("children", kind="array", items(ref=StrictTree)))), or())
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type StrictTree jsontext.Value
 
@@ -46,7 +47,7 @@ func (v *StrictTree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(StrictTree(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(StrictTree(out), false); err != nil {
 		return err
 	}
 	*v = StrictTree(out)
@@ -64,6 +65,7 @@ func (v StrictTree) RawJson() jsontext.Value {
 // Tree is generated from the schema at #/$defs/Tree.
 //
 //kama:validate hook=off
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Tree struct {
 	Data     opt.Option[jsontext.Value]     `json:"data,omitzero"`
@@ -125,7 +127,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validation.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(out, false); err != nil {
+	if err := jsonschemart.ValidateShallow(out, false); err != nil {
 		return err
 	}
 	*v = out
@@ -136,6 +138,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/$defs/Tree/properties/children/items.
 //
 //kama:validate ref=StrictTree
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type TreeChildrenItem jsontext.Value
 
@@ -159,7 +162,7 @@ func (v *TreeChildrenItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(TreeChildrenItem(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(TreeChildrenItem(out), false); err != nil {
 		return err
 	}
 	*v = TreeChildrenItem(out)
@@ -176,7 +179,7 @@ func (v TreeChildrenItem) RawJson() jsontext.Value {
 
 // ListItem is generated from the schema at #/$defs/List/items.
 //
-//kama:validate
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type ListItem jsontext.Value
 
@@ -200,7 +203,7 @@ func (v *ListItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(ListItem(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(ListItem(out), false); err != nil {
 		return err
 	}
 	*v = ListItem(out)
@@ -219,6 +222,7 @@ func (v ListItem) RawJson() jsontext.Value {
 //
 //kama:validate kind="array"
 //kama:validate items(kind="string")
+//kama:validate decoded
 //kama:generated kama:jsonschema
 type Names jsontext.Value
 
@@ -242,7 +246,7 @@ func (v *Names) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.Validate(Names(out), false); err != nil {
+	if err := jsonschemart.ValidateShallow(Names(out), false); err != nil {
 		return err
 	}
 	*v = Names(out)
