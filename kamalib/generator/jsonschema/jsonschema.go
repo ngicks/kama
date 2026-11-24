@@ -1,13 +1,15 @@
 package jsonschema
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"go/token"
+	"iter"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/ngicks/opiter"
 
@@ -21,11 +23,17 @@ var GeneratorId = base.Id{Namespace: "kama", Name: "jsonschema"}
 // naming names the files the generator writes.
 var naming = GeneratorId.Naming()
 
-// generatorPath is the import path of the generator, named by the first
-// line of the header of every generated file.
-const generatorPath = "github.com/ngicks/kama/kamalib/generator/jsonschema"
-
 func init() { base.MustRegister(GeneratorId) }
+
+// Generator generates the Go types of the schema of an Input.
+var Generator = base.Generator[Input]{Id: GeneratorId, Generate: Generate}
+
+// Input is the input of a run of Generator.
+type Input struct {
+	// Doc is the schema document.
+	Doc     *jsonschema.Schema
+	Options Options
+}
 
 var (
 	// ErrUnsupported reports a keyword or a shape of a schema the generator
@@ -71,73 +79,93 @@ type Options struct {
 	// generator gives one, as described under Validation in the package
 	// documentation.
 	Validate bool
-	// Now gives the time the header of the generated file records. It is
-	// time.Now when nil.
-	Now func() time.Time
 }
 
-// WithDefaults returns o with empty fields set to their defaults.
-func (o Options) WithDefaults() Options {
-	if o.Now == nil {
-		o.Now = time.Now
-	}
-
-	return o
-}
-
-// File is a generated file. Its Path is <Package>.kama_jsonschema.go in
+// Generate yields the Go declarations of the schema of in, one file
+// holding a type for the root schema and for every schema under it that
+// needs one. The path of the file is <Package>.kama_jsonschema.go in
 // Options.Dir.
-type File = base.File
-
-// Generate returns the Go declarations of doc, one file holding a type for
-// the root schema and for every schema under it that needs one.
 //
-// The warnings wrap ErrUnknownKeyword, one per unknown keyword of a schema
-// the generator reads, in the order of the schemas and of the keyword
-// names, then ErrUnenforced, one per validation keyword the generated code
-// does not check, in the same order. The error wraps ErrUnsupported,
-// ErrConflict or ErrOptions.
-func Generate(doc *jsonschema.Schema, opts Options) ([]File, []error, error) {
-	opts = opts.WithDefaults()
+// Generate warns about each unknown keyword of a schema the generator
+// reads with an error wrapping ErrUnknownKeyword, in the order of the
+// schemas and of the keyword names, then about each validation keyword the
+// generated code does not check with an error wrapping ErrUnenforced, in
+// the same order. The error it yields wraps ErrUnsupported, ErrConflict or
+// ErrOptions, and names Options.Schema unless it is empty.
+func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, error] {
+	return func(yield func(base.Output, error) bool) {
+		out, warnings, err := generate(in.Doc, in.Options)
+		if err != nil {
+			if in.Options.Schema != "" {
+				err = fmt.Errorf("jsonschema: %s: %w", in.Options.Schema, err)
+			}
 
+			yield(nil, err)
+
+			return
+		}
+
+		for _, w := range warnings {
+			env.Reporter.Warn(w)
+		}
+
+		yield(out, nil)
+	}
+}
+
+// generate returns the file of Generate and the warnings.
+func generate(doc *jsonschema.Schema, opts Options) (base.Composed, []error, error) {
 	if err := checkPackage(opts.Package); err != nil {
-		return nil, nil, err
+		return base.Composed{}, nil, err
 	}
 
 	if err := checkTypeName(opts.TypeName); err != nil {
-		return nil, nil, err
+		return base.Composed{}, nil, err
 	}
 
 	doc, err := withVocabularies(doc, opts)
 	if err != nil {
-		return nil, nil, err
+		return base.Composed{}, nil, err
 	}
 
 	doc, err = bundle(doc, opts)
 	if err != nil {
-		return nil, nil, err
+		return base.Composed{}, nil, err
 	}
 
 	if err := check(doc, opts); err != nil {
-		return nil, nil, err
+		return base.Composed{}, nil, err
 	}
 
-	content, err := render(doc, opts)
+	parts, imports, err := render(doc, opts)
 	if err != nil {
-		return nil, nil, err
+		return base.Composed{}, nil, err
 	}
 
 	dir := opts.Dir
 	if dir == "" {
 		file, _, _ := strings.Cut(opts.Schema, "#")
-		dir = filepath.Dir(file)
+		dir = path.Dir(file)
 	}
 
-	path := naming.SourceFile(filepath.Join(dir, opts.Package+".go"))
+	typeName := any(nil)
+	if opts.TypeName != "" {
+		typeName = opts.TypeName
+	}
 
-	warnings := slices.Concat(unknownKeywords(doc), unenforcedKeywords(doc, opts))
+	out := base.Composed{
+		Path: filepath.ToSlash(naming.SourceFile(path.Join(dir, opts.Package+".go"))),
+		Params: map[string]any{
+			"schema":    opts.Schema,
+			"type_name": typeName,
+			"validate":  opts.Validate,
+		},
+		Package: opts.Package,
+		Imports: imports,
+		Parts:   parts,
+	}
 
-	return []File{{Path: path, Content: content}}, warnings, nil
+	return out, slices.Concat(unknownKeywords(doc), unenforcedKeywords(doc, opts)), nil
 }
 
 // unknownKeywords returns a warning for each unknown keyword of the

@@ -104,6 +104,19 @@ func TestDriveStagesNothingOnError(t *testing.T) {
 	assert.DeepEqual(t, overlaid(t, f), []string(nil))
 }
 
+func TestDriveStagesNothingOnFormatError(t *testing.T) {
+	env, f, _ := driveEnv(t)
+
+	g := yielding([]base.Output{
+		base.Composed{Path: "a.go", Package: "p", Parts: []base.Part{base.Decl("var A = 1")}},
+		base.Composed{Path: "b.go", Package: "p", Parts: []base.Part{base.Decl("var B = ")}},
+	})
+
+	err := base.Drive(context.Background(), g, env, struct{}{}, base.Scope{}, f)
+	assert.ErrorContains(t, err, `acme:drive: format "b.go"`)
+	assert.DeepEqual(t, overlaid(t, f), []string(nil))
+}
+
 func TestAssembleDuplicatePath(t *testing.T) {
 	env, _, _ := driveEnv(t)
 

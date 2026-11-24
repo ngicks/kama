@@ -19,8 +19,9 @@ import (
 // env.Out holds.
 //
 // Drive takes every output and every error g yields. When g yields an
-// error, or an output cannot be turned into a file, Drive stages nothing
-// and returns all of the errors joined. Otherwise it warns through
+// error, or an output cannot be turned into a file or does not format,
+// Drive stages nothing and returns all of the errors joined. Otherwise it
+// warns through
 // env.Reporter about every stale file of scope, as [StaleCheck.InScope]
 // tells, and stages the files with [Stage].
 func Drive[I any](
@@ -34,6 +35,20 @@ func Drive[I any](
 	files, err := Assemble(ctx, g, env, in)
 	if err != nil {
 		return err
+	}
+
+	// Stage formats as it writes, file by file. Formatting every file first
+	// keeps a file that fails from leaving the files before it staged.
+	var formatErrs []error
+
+	for _, f := range files {
+		if _, err := out.Format(ctx, f.Path, f.Content); err != nil {
+			formatErrs = append(formatErrs, fmt.Errorf("%s: format %q: %w", g.Id, f.Path, err))
+		}
+	}
+
+	if len(formatErrs) > 0 {
+		return errors.Join(formatErrs...)
 	}
 
 	stale, err := StaleCheck{Registry: env.Registry, Generator: g.Id}.InScope(env.Out, scope, files)

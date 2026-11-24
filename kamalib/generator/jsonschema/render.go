@@ -2,15 +2,15 @@ package jsonschema
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
 	"go/token"
 	"go/types"
 	"iter"
 	"slices"
-	"strconv"
 	"strings"
 	"unicode"
 
-	"github.com/dave/dst"
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
@@ -44,18 +44,18 @@ const (
 // commentWidth is the width doc comments are wrapped at.
 const commentWidth = 76
 
-// render prints the file holding the declarations of every schema of doc
-// that declares a Go type, in the order schemas yields them, after the
-// type of a root that declares none.
+// render returns the declarations of every schema of doc that declares a
+// Go type, in the order schemas yields them, after the type of a root that
+// declares none, and the imports they use.
 //
 // The bodies spell their locals by fixed names rather than through the
 // roles of genhelper.Scope. No identifier of the file can collide with
 // them: the declared types and constants are exported, the wire structs
 // end in "Wire", and the imports keep the names of their packages.
-func render(doc *jsonschema.Schema, opts Options) ([]byte, error) {
+func render(doc *jsonschema.Schema, opts Options) ([]base.Part, *importdecl.Map, error) {
 	imports, err := newImports(opts.Package)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	c := genhelper.NewBaseContext(
@@ -77,38 +77,54 @@ func render(doc *jsonschema.Schema, opts Options) ([]byte, error) {
 
 	text, err := lang.Render(c, steps...)
 	if err != nil {
+		return nil, nil, err
+	}
+
+	parts, err := splitDecls(text)
+	if err != nil {
+		return nil, nil, fmt.Errorf("jsonschema: parse declarations: %w", err)
+	}
+
+	return parts, imports, nil
+}
+
+// splitDecls returns the top-level declarations of text, each with its doc
+// comment.
+func splitDecls(text string) ([]base.Part, error) {
+	src := "package p\n\n" + text
+
+	fset := token.NewFileSet()
+
+	f, err := parser.ParseFile(fset, "", src, parser.ParseComments|parser.SkipObjectResolution)
+	if err != nil {
 		return nil, err
 	}
 
-	decls, err := genhelper.ParseDecls([]byte(text))
-	if err != nil {
-		return nil, fmt.Errorf("jsonschema: parse declarations: %w", err)
+	file := fset.File(f.Pos())
+	decl := func(d ast.Decl) base.Part {
+		start := d.Pos()
+		if doc := declDoc(d); doc != nil {
+			start = doc.Pos()
+		}
+
+		return base.Decl(src[file.Offset(start):file.Offset(d.End())])
 	}
 
-	typeName := any(nil)
-	if opts.TypeName != "" {
-		typeName = opts.TypeName
+	return opiter.WrapSeq(slices.Values(f.Decls)).
+		Map(decl).
+		CollectSlice(), nil
+}
+
+// declDoc returns the doc comment of d, or nil.
+func declDoc(d ast.Decl) *ast.CommentGroup {
+	switch d := d.(type) {
+	case *ast.FuncDecl:
+		return d.Doc
+	case *ast.GenDecl:
+		return d.Doc
 	}
 
-	hdr, err := base.Header(
-		generatorPath,
-		map[string]any{"schema": opts.Schema, "type_name": typeName, "validate": opts.Validate},
-		opts.Now(),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	if imp := importDecl(imports); imp != nil {
-		decls = slices.Insert(decls, 0, dst.Decl(imp))
-	}
-
-	content, err := genhelper.PrintDstFile(opts.Package, hdr, "", decls, nil)
-	if err != nil {
-		return nil, fmt.Errorf("jsonschema: print: %w", err)
-	}
-
-	return content, nil
+	return nil
 }
 
 // declSteps returns the declarations of the schema at ptr, which declares
@@ -145,50 +161,7 @@ func newImports(pkgName string) (*importdecl.Map, error) {
 		types.NewPackage(undPath, "und"),
 	})
 
-	return importdecl.NewParser(pkg).ParseDst(nil)
-}
-
-// importDecl returns the declaration of the imports the file used: the
-// standard library, an empty line, then the other packages, as goimports
-// groups them. It returns nil when there are none.
-func importDecl(m *importdecl.Map) *dst.GenDecl {
-	imps := slices.Collect(m.Missing())
-	if len(imps) == 0 {
-		return nil
-	}
-
-	std := func(imp importdecl.Import) bool {
-		first, _, _ := strings.Cut(imp.Package.Path, "/")
-		return !strings.Contains(first, ".")
-	}
-
-	ordered := slices.Concat(
-		opiter.WrapSeq(slices.Values(imps)).
-			Filter(std).
-			CollectSlice(),
-		opiter.WrapSeq(slices.Values(imps)).
-			Filter(func(imp importdecl.Import) bool { return !std(imp) }).
-			CollectSlice(),
-	)
-
-	decl := &dst.GenDecl{Tok: token.IMPORT, Lparen: len(ordered) > 1}
-
-	for i, imp := range ordered {
-		spec := &dst.ImportSpec{
-			Path: &dst.BasicLit{Kind: token.STRING, Value: strconv.Quote(imp.Package.Path)},
-		}
-		if imp.Name != "" {
-			spec.Name = dst.NewIdent(imp.Name)
-		}
-
-		if i > 0 && !std(imp) && std(ordered[i-1]) {
-			spec.Decs.Before = dst.EmptyLine
-		}
-
-		decl.Specs = append(decl.Specs, spec)
-	}
-
-	return decl
+	return importdecl.NewParser(pkg).ParseAst(nil)
 }
 
 // q spells name of the package at path, recording the import.
@@ -197,22 +170,20 @@ func q(path, name string) genExpr {
 }
 
 // docComment returns the doc comment of a declaration: the lines of
-// commentLines of text, an empty comment line and the marker of the
-// generator.
+// commentLines of text.
 func docComment(text string) genExpr {
-	return lang.DocComment(GeneratorId.Marker(), "%s", commentLines(text))
+	return lang.Comment(lang.Expr("%s", commentLines(text)))
 }
 
 // validatedDoc returns the doc comment of a type the validator generator
-// gives a Validate: docComment with the //kama:validate directive of the
-// args before the marker. The args name the validators of the value of the
+// gives a Validate: docComment, an empty comment line and the
+// //kama:validate directive of the args. The args name the validators of the value of the
 // type, and hook=off for a struct, whose hooks nothing writes.
 func validatedDoc(text string, args []string) genExpr {
 	return lang.Comment(
 		lang.Expr("%s", commentLines(text)),
 		lang.Expr(""),
 		lang.Expr("%s", directiveLines(args)),
-		lang.Expr("%s", GeneratorId.Marker()),
 	)
 }
 

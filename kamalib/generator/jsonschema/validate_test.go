@@ -82,8 +82,8 @@ func TestGenerateDirectives(t *testing.T) {
 			"null-only schema of a property named like a union keyword",
 			`{"type":"object","properties":{"oneOf":{"type":"array","items":{"type":"null"}}}}`,
 			[]string{
-				"//kama:validate kind=\"null\"\n//kama:validate decoded\n" +
-					"//kama:generated kama:jsonschema\ntype RootOneOfItem ",
+				"//kama:generated kama:jsonschema\n//kama:validate kind=\"null\"\n" +
+					"//kama:validate decoded\ntype RootOneOfItem ",
 			},
 		},
 		{
@@ -162,9 +162,9 @@ func TestGenerateDirectives(t *testing.T) {
 				"b":{"type":"object","minProperties":2,"properties":{"n":{"$ref":"#"}}}
 			}}`,
 			[]string{
-				"//kama:validate props(field(\"a\", cmp=\">=0\"))\n//kama:generated kama:jsonschema\n" +
+				"//kama:generated kama:jsonschema\n//kama:validate props(field(\"a\", cmp=\">=0\"))\n" +
 					"type rootAProbe jsontext.Value\n",
-				"//kama:validate members=\">=2\"\n//kama:generated kama:jsonschema\n" +
+				"//kama:generated kama:jsonschema\n//kama:validate members=\">=2\"\n" +
 					"type rootBProbe jsontext.Value\n",
 				"if err := jsonschemart.Validate(rootAProbe(raw), false); err != nil {",
 			},
@@ -183,7 +183,10 @@ func TestGenerateDirectives(t *testing.T) {
 			var doc jsonschema.Schema
 			assert.NilError(t, jsonv2.Unmarshal([]byte(tc.schema), &doc))
 
-			files, _, err := Generate(&doc, Options{Package: "p", TypeName: "Root", Validate: true})
+			files, _, err := generateFiles(
+				&doc,
+				Options{Package: "p", TypeName: "Root", Validate: true},
+			)
 			assert.NilError(t, err)
 
 			content := string(files[0].Content)
@@ -212,7 +215,7 @@ func TestGenerateWarnsUnenforced(t *testing.T) {
 		"$defs":{"n":{"type":"integer"}}
 	}`), &doc))
 
-	_, warnings, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
+	_, warnings, err := generateFiles(&doc, Options{Package: "p", TypeName: "Root"})
 	assert.NilError(t, err)
 
 	got := opiter.WrapSeq(slices.Values(warnings)).

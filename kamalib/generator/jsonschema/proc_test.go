@@ -129,9 +129,10 @@ func TestProcParam(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			i := &instance{}
+			p := DefaultProcParam().Merge(tc.param).ToValue()
+			assert.Equal(t, newInstance(t, gentest.Now()).Param(tc.param) == nil, tc.err == "")
 
-			err := i.Param(tc.param)
+			opts, err := procOptions(p)
 			if tc.err != "" {
 				assert.ErrorIs(t, err, ErrOptions)
 				assert.ErrorContains(t, err, tc.err)
@@ -140,7 +141,7 @@ func TestProcParam(t *testing.T) {
 			}
 
 			assert.NilError(t, err)
-			assert.DeepEqual(t, i.opts, tc.want)
+			assert.DeepEqual(t, opts, tc.want)
 		})
 	}
 }
@@ -179,7 +180,7 @@ func TestProcParamRemotes(t *testing.T) {
 		param := procParam("a.json", "", "p", "")
 		param.Remotes = und.Defined([]Remote{tc.remote})
 
-		err := (&instance{}).Param(param)
+		err := newInstance(t, gentest.Now()).Param(param)
 		assert.ErrorIs(t, err, ErrOptions)
 		assert.ErrorContains(t, err, tc.err)
 	}
@@ -253,7 +254,7 @@ func TestProcRunRemoteMissing(t *testing.T) {
 	param := procParam("api/schema.json", "", "", "")
 	param.Remotes = und.Defined([]Remote{{Uri: "http://x.test/", Dir: "remote"}})
 
-	i := &instance{}
+	i := newInstance(t, gentest.Now())
 	assert.NilError(t, i.Param(param))
 	i.Out(f)
 
@@ -283,8 +284,8 @@ func TestProcRun(t *testing.T) {
 	var doc jsonschema.Schema
 	assert.NilError(t, jsonv2.Unmarshal([]byte(procSchema), &doc))
 
-	want, _, err := Generate(&doc, Options{
-		Package: "api", Schema: "api/schema.json", Validate: true, Now: gentest.Now,
+	want, _, err := generateFiles(&doc, Options{
+		Package: "api", Schema: "api/schema.json", Validate: true,
 	})
 	assert.NilError(t, err)
 
@@ -308,8 +309,8 @@ func TestProcRunPointer(t *testing.T) {
 	var doc jsonschema.Schema
 	assert.NilError(t, jsonv2.Unmarshal([]byte(procSchema), &doc))
 
-	want, _, err := Generate(&doc, Options{
-		Package: "tests", Schema: schema, Validate: true, Now: gentest.Now,
+	want, _, err := generateFiles(&doc, Options{
+		Package: "tests", Schema: schema, Validate: true,
 	})
 	assert.NilError(t, err)
 
@@ -475,7 +476,7 @@ func TestProcRunFails(t *testing.T) {
 				schema += "#" + tc.pointer
 			}
 
-			i := &instance{}
+			i := newInstance(t, gentest.Now())
 			assert.NilError(t, i.Param(procParam(schema, "", "", "")))
 			i.Out(f)
 
@@ -510,6 +511,30 @@ func procParam(schema, dir, pkg, typeName string) ProcParamPartial {
 	}
 }
 
+// procInstance is an instance of Proc.
+type procInstance interface {
+	Param(p ProcParamPartial) error
+	In()
+	Out(f *overlayfs.Fs)
+	Run(ctx context.Context, r workflow.Reporter) error
+}
+
+// newInstance returns an instance of Proc whose runs take place at now.
+func newInstance(t *testing.T, now time.Time) procInstance {
+	t.Helper()
+
+	p := Proc
+	p.Now = func() time.Time { return now }
+
+	inst, err := p.Instantiate(context.Background(), false)
+	assert.NilError(t, err)
+
+	i, ok := inst.(procInstance)
+	assert.Assert(t, ok, "%T", inst)
+
+	return i
+}
+
 // procFs returns an overlay over a new directory holding files.
 func procFs(t *testing.T, files map[string]string) *overlayfs.Fs {
 	t.Helper()
@@ -534,9 +559,8 @@ func runProc(
 ) *gentest.RecordReporter {
 	t.Helper()
 
-	i := &instance{}
+	i := newInstance(t, now)
 	assert.NilError(t, i.Param(param))
-	i.opts.Now = func() time.Time { return now }
 	i.Out(f)
 
 	r := &gentest.RecordReporter{}

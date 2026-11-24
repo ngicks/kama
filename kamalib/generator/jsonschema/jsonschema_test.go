@@ -16,7 +16,6 @@ import (
 	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
@@ -280,7 +279,7 @@ func TestGenerateRejects(t *testing.T) {
 			var doc jsonschema.Schema
 			assert.NilError(t, jsonv2.Unmarshal([]byte(tc.schema), &doc))
 
-			_, _, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
+			_, _, err := generateFiles(&doc, Options{Package: "p", TypeName: "Root"})
 			assert.ErrorIs(t, err, tc.err)
 			assert.Assert(t, strings.Contains(err.Error(), tc.at), "%v", err)
 		})
@@ -340,7 +339,7 @@ func TestGenerateRootType(t *testing.T) {
 			var doc jsonschema.Schema
 			assert.NilError(t, jsonv2.Unmarshal([]byte(tc.schema), &doc))
 
-			files, _, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
+			files, _, err := generateFiles(&doc, Options{Package: "p", TypeName: "Root"})
 			assert.NilError(t, err)
 
 			for _, want := range tc.want {
@@ -385,7 +384,7 @@ func TestGenerateRejectsNilSchema(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, _, err := Generate(tc.doc, Options{Package: "p", TypeName: "Root"})
+			_, _, err := generateFiles(tc.doc, Options{Package: "p", TypeName: "Root"})
 			assert.ErrorIs(t, err, ErrUnsupported)
 			assert.ErrorContains(t, err, tc.at)
 		})
@@ -401,7 +400,7 @@ func TestGenerateWarnsUnknownKeywords(t *testing.T) {
 		"properties":{"a":{"type":"array","additionalItems":false,"items":{"x-ok":true}}}
 	}`), &doc))
 
-	_, warnings, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
+	_, warnings, err := generateFiles(&doc, Options{Package: "p", TypeName: "Root"})
 	assert.NilError(t, err)
 
 	got := opiter.WrapSeq(slices.Values(warnings)).
@@ -442,7 +441,7 @@ func TestGenerateHostileAnnotations(t *testing.T) {
 	var doc jsonschema.Schema
 	assert.NilError(t, jsonv2.Unmarshal([]byte(schema), &doc))
 
-	files, _, err := Generate(&doc, Options{Package: "p", Schema: "schema.json", Now: gentest.Now})
+	files, _, err := generateFiles(&doc, Options{Package: "p", Schema: "schema.json"})
 	assert.NilError(t, err)
 
 	content := files[0].Content
@@ -576,7 +575,7 @@ func TestGenerateNullableUnion(t *testing.T) {
 			var doc jsonschema.Schema
 			assert.NilError(t, jsonv2.Unmarshal([]byte(tc.schema), &doc))
 
-			files, _, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
+			files, _, err := generateFiles(&doc, Options{Package: "p", TypeName: "Root"})
 			assert.NilError(t, err)
 			// gofmt aligns the fields, so runs of blanks compare as one.
 			content := regexp.MustCompile(`[ \t]+`).ReplaceAllString(string(files[0].Content), " ")
@@ -600,7 +599,7 @@ func TestGenerateRootName(t *testing.T) {
 			var doc jsonschema.Schema
 			assert.NilError(t, jsonv2.Unmarshal([]byte(tc.schema), &doc))
 
-			files, _, err := Generate(&doc, Options{Package: "p", TypeName: tc.typeName})
+			files, _, err := generateFiles(&doc, Options{Package: "p", TypeName: tc.typeName})
 			assert.NilError(t, err)
 			assert.Assert(t, strings.Contains(string(files[0].Content), tc.want))
 		})
@@ -609,14 +608,14 @@ func TestGenerateRootName(t *testing.T) {
 	var doc jsonschema.Schema
 	assert.NilError(t, jsonv2.Unmarshal([]byte(`{"type":"object"}`), &doc))
 
-	_, _, err := Generate(&doc, Options{Package: "p"})
+	_, _, err := generateFiles(&doc, Options{Package: "p"})
 	assert.ErrorIs(t, err, ErrUnsupported)
 
-	_, _, err = Generate(&doc, Options{Package: "not a name", TypeName: "T"})
+	_, _, err = generateFiles(&doc, Options{Package: "not a name", TypeName: "T"})
 	assert.ErrorIs(t, err, ErrOptions)
 
 	for _, name := range []string{"pet", "a b", "1x", "My-Type"} {
-		_, _, err = Generate(&doc, Options{Package: "p", TypeName: name})
+		_, _, err = generateFiles(&doc, Options{Package: "p", TypeName: name})
 		assert.ErrorIs(t, err, ErrOptions, name)
 	}
 }
@@ -734,7 +733,7 @@ func TestGenerateDocuments(t *testing.T) {
 			var doc jsonschema.Schema
 			assert.NilError(t, jsonv2.Unmarshal([]byte(tc.schema), &doc))
 
-			files, _, err := Generate(&doc, Options{
+			files, _, err := generateFiles(&doc, Options{
 				Package: "p", TypeName: "Root", Load: mapLoader(t, tc.docs),
 			})
 			if tc.err != "" {
@@ -754,7 +753,7 @@ func TestGenerateDocuments(t *testing.T) {
 	var doc jsonschema.Schema
 	assert.NilError(t, jsonv2.Unmarshal([]byte(`{"$ref":"http://x.test/a.json"}`), &doc))
 
-	_, _, err := Generate(&doc, Options{Package: "p", TypeName: "Root"})
+	_, _, err := generateFiles(&doc, Options{Package: "p", TypeName: "Root"})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, `reference "http://x.test/a.json" names another document`)
 }
@@ -796,7 +795,7 @@ func TestGenerateVocabularies(t *testing.T) {
 			assert.NilError(t, jsonv2.Unmarshal([]byte(`{"$schema": "`+tc.meta+`",
 				"type": "object", "properties": {"count": {"type": "integer", "minimum": 1}}}`), &doc))
 
-			files, _, err := Generate(&doc, Options{
+			files, _, err := generateFiles(&doc, Options{
 				Package: "p", TypeName: "Root", Load: mapLoader(t, docs),
 			})
 			if tc.err != "" {
@@ -827,7 +826,7 @@ func TestGenerateAssertFormats(t *testing.T) {
 		"mail":{"type":"string","format":"email"}}}`), &doc))
 
 	for _, assertFormats := range []bool{false, true} {
-		files, _, err := Generate(&doc, Options{
+		files, _, err := generateFiles(&doc, Options{
 			Package: "p", TypeName: "Root", AssertFormats: assertFormats,
 		})
 		assert.NilError(t, err)
@@ -853,7 +852,7 @@ func TestGenerateUncheckedFormat(t *testing.T) {
 		[]byte(`{"type":"object","properties":{"q":{"$ref":"#/$defs/a"}},`+defs+`}`), &doc,
 	))
 
-	_, warnings, err := Generate(&doc, opts)
+	_, warnings, err := generateFiles(&doc, opts)
 	assert.NilError(t, err)
 	assert.Equal(t, len(warnings), 1)
 	assert.ErrorIs(t, warnings[0], ErrUnenforced)
@@ -864,7 +863,7 @@ func TestGenerateUncheckedFormat(t *testing.T) {
 		[]byte(`{"type":"object","properties":{"p":{"not":{"$ref":"#/$defs/a"}}},`+defs+`}`), &doc,
 	))
 
-	_, _, err = Generate(&doc, opts)
+	_, _, err = generateFiles(&doc, opts)
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, "#/$defs/a/items/format: keyword not enforced")
 }

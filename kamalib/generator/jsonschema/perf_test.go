@@ -1,6 +1,7 @@
 package jsonschema
 
 import (
+	"context"
 	jsonv2 "encoding/json/v2"
 	"fmt"
 	"strings"
@@ -9,8 +10,20 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
+
+// assembleRoot runs Generator on doc into package p with type name Root,
+// leaving out the formatting of generateFiles, which the budgets do not
+// cover.
+func assembleRoot(doc *jsonschema.Schema) ([]File, error) {
+	env := base.Env{Reporter: gentest.NopReporter{}, Now: gentest.Now()}
+	in := Input{Doc: doc, Options: Options{Package: "p", TypeName: "Root"}}
+
+	return base.Assemble(context.Background(), Generator, env, in)
+}
 
 // TestGenerateTime generates the hostile shapes of the benchmarks within
 // budgets far above what they take, so that a cost that grows faster than
@@ -36,7 +49,7 @@ func TestGenerateTime(t *testing.T) {
 			doc := decodeSchema(t, tc.schema)
 
 			start := time.Now()
-			_, _, err := Generate(doc, Options{Package: "p", TypeName: "Root"})
+			_, err := assembleRoot(doc)
 			elapsed := time.Since(start)
 
 			assert.NilError(t, err)
@@ -91,7 +104,7 @@ func benchGenerate(b *testing.B, schema string) {
 	doc := decodeSchema(b, schema)
 
 	for b.Loop() {
-		if _, _, err := Generate(doc, Options{Package: "p", TypeName: "Root"}); err != nil {
+		if _, err := assembleRoot(doc); err != nil {
 			b.Fatal(err)
 		}
 	}

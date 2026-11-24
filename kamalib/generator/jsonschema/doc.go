@@ -1,7 +1,7 @@
 // Package jsonschema generates Go types from a JSON Schema draft 2020-12
 // document.
 //
-// Generate writes one file, <package>.kama_jsonschema.go, holding a type for
+// Generate yields one file, <package>.kama_jsonschema.go, holding a type for
 // the root schema and for every schema under it that needs one. The types
 // decode with encoding/json/v2. Decoding checks the keywords that decide
 // the shape of a value, type and required. The validation keywords become
@@ -12,8 +12,10 @@
 // from its wire form to its type, as Validation describes. Errors are those
 // of package github.com/ngicks/kama/kamalib/pkg/validation, located by the
 // JSON path of the offending member. The generated code imports package
-// github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart. Proc runs
-// Generate as the workflow step kind jsonschema.generate.
+// github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart. Generator
+// is the generator of Generate in the framework of package
+// github.com/ngicks/kama/kamalib/generator/utils/base, and Proc runs it
+// as the workflow step kind jsonschema.generate.
 //
 // # Proc
 //

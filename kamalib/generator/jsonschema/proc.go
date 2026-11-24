@@ -10,12 +10,9 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
-	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/ngicks/opiter"
 	"github.com/ngicks/option/und"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
@@ -25,7 +22,7 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-func init() { workflow.Register("jsonschema.generate", NewProc) }
+func init() { workflow.Register(GeneratorId.ProcKind(), NewProc) }
 
 // ProcParam configures Proc. A spec decodes into ProcParamPartial, which
 // Proc merges onto DefaultProcParam.
@@ -95,56 +92,39 @@ func (p *ProcParamPartial) UnknownKeys() [][]string {
 	return paths
 }
 
-// Proc generates the Go types of the schema file its param names and
-// stages the file in its out. The schema file is read from its out, so a
-// file staged by an earlier step is read too. A file of its out that would
-// change in the generated: line of its header only is not staged. Proc
-// reports a warning for each stale file of the output directory, and the
-// number of files written and unchanged.
+// Proc runs Generator on the schema file its param names and stages the
+// file in its out, as base.Proc does. The schema file is read from its
+// out, so a file staged by an earlier step is read too. Its stale check
+// covers the Go files of the output directory.
 //
 //	Param(ProcParamPartial) error
 //	In()
 //	Out(*overlayfs.Fs)
-type Proc struct{}
+var Proc = base.Proc[ProcParamPartial, ProcParam, base.None, Input]{
+	Generator: Generator,
+	Default:   DefaultProcParam,
+	Check: func(p ProcParam) error {
+		_, err := procOptions(p)
+		return err
+	},
+	Input: procInput,
+}
 
-// NewProc returns a new Proc. It is the constructor of the kind
+// NewProc returns Proc. It is the constructor of the kind
 // jsonschema.generate in workflow.DefaultRegistry.
-func NewProc() workflow.Proc { return Proc{} }
+func NewProc() workflow.Proc { return Proc }
 
-func (Proc) ParamType() reflect.Type { return reflect.TypeFor[ProcParamPartial]() }
-
-func (Proc) InTypes() []reflect.Type { return nil }
-
-func (Proc) OutTypes() []reflect.Type {
-	return []reflect.Type{reflect.TypeFor[*overlayfs.Fs]()}
-}
-
-func (Proc) AsInputType() reflect.Type { return nil }
-
-func (Proc) Instantiate(context.Context, bool) (workflow.Instance, error) {
-	return &instance{}, nil
-}
-
-func (Proc) CleanUp(context.Context) error { return nil }
-
-type instance struct {
-	// opts has Schema and Dir set. Its Package is empty when the base name
-	// of the root of fs gives it, which is not known before Out.
-	opts    Options
-	remotes []Remote
-	fs      *overlayfs.Fs
-}
-
-func (i *instance) Param(partial ProcParamPartial) error {
-	p := DefaultProcParam().Merge(partial).ToValue()
-
+// procOptions returns the options of p, with Schema and Dir set. Its
+// Package is empty when the base name of the root of the out gives it,
+// which is not known before the run.
+func procOptions(p ProcParam) (Options, error) {
 	file, _, err := splitSchema(p.Schema)
 	if err != nil {
-		return fmt.Errorf("%w: invalid schema %q: %w", ErrOptions, p.Schema, err)
+		return Options{}, fmt.Errorf("%w: invalid schema %q: %w", ErrOptions, p.Schema, err)
 	}
 
 	if file == "" || !fs.ValidPath(file) {
-		return fmt.Errorf("%w: invalid schema %q", ErrOptions, p.Schema)
+		return Options{}, fmt.Errorf("%w: invalid schema %q", ErrOptions, p.Schema)
 	}
 
 	dir := p.Dir
@@ -153,7 +133,7 @@ func (i *instance) Param(partial ProcParamPartial) error {
 	}
 
 	if !fs.ValidPath(dir) {
-		return fmt.Errorf("%w: invalid dir %q", ErrOptions, dir)
+		return Options{}, fmt.Errorf("%w: invalid dir %q", ErrOptions, dir)
 	}
 
 	pkg := p.Package
@@ -161,63 +141,48 @@ func (i *instance) Param(partial ProcParamPartial) error {
 	switch {
 	case pkg != "":
 		if err := checkPackage(pkg); err != nil {
-			return err
+			return Options{}, err
 		}
 	case dir != ".":
 		pkg = path.Base(dir)
 		if err := checkPackage(pkg); err != nil {
-			return fmt.Errorf("%w; set package", err)
+			return Options{}, fmt.Errorf("%w; set package", err)
 		}
 	}
 
 	if err := checkTypeName(p.TypeName); err != nil {
-		return err
+		return Options{}, err
 	}
 
 	if err := checkRemotes(p.Remotes); err != nil {
-		return err
+		return Options{}, err
 	}
 
-	i.remotes = p.Remotes
-	i.opts = Options{
+	return Options{
 		Package:       pkg,
 		TypeName:      p.TypeName,
 		Schema:        p.Schema,
 		Dir:           dir,
 		Validate:      p.Validate,
 		AssertFormats: p.AssertFormats,
-	}
-
-	return nil
+	}, nil
 }
 
-func (i *instance) In() {}
-
-func (i *instance) Out(f *overlayfs.Fs) { i.fs = f }
-
-func (i *instance) Run(ctx context.Context, r workflow.Reporter) error {
-	files, warnings, err := i.generate()
+// procInput decodes the schema of p from out.
+func procInput(
+	_ context.Context,
+	p ProcParam,
+	_ base.None,
+	out *overlayfs.Fs,
+) (Input, base.Scope, error) {
+	opts, err := procOptions(p)
 	if err != nil {
-		return err
+		return Input{}, base.Scope{}, err
 	}
 
-	stale := base.StaleCheck{Registry: base.DefaultRegistry, Generator: GeneratorId}
-
-	staleWarnings, err := stale.InScope(i.fs.FS(), base.Scope{Dirs: []string{i.opts.Dir}}, files)
+	src, err := schemaValue(out.FS(), opts.Schema)
 	if err != nil {
-		return fmt.Errorf("jsonschema: %w", err)
-	}
-
-	return base.StageWithWarnings(ctx, i.fs, files, slices.Concat(warnings, staleWarnings), r)
-}
-
-// generate decodes the schema of i from its out and returns the files and
-// the warnings Generate gives, with slash-separated paths relative to the
-// root of the out.
-func (i *instance) generate() ([]File, []error, error) {
-	src, err := schemaValue(i.fs.FS(), i.opts.Schema)
-	if err != nil {
-		return nil, nil, fmt.Errorf("jsonschema: %w", err)
+		return Input{}, base.Scope{}, fmt.Errorf("jsonschema: %w", err)
 	}
 
 	// The document is decoded from the raw bytes rather than taken from
@@ -225,29 +190,19 @@ func (i *instance) generate() ([]File, []error, error) {
 	// text of numbers.
 	var doc jsonschema.Schema
 	if err := jsonv2.Unmarshal(src, &doc); err != nil {
-		return nil, nil, fmt.Errorf("jsonschema: %s: %w", i.opts.Schema, err)
+		return Input{}, base.Scope{}, fmt.Errorf("jsonschema: %s: %w", opts.Schema, err)
 	}
 
-	opts := i.opts
-	opts.Load = remoteLoader(i.fs.FS(), i.remotes)
+	opts.Load = remoteLoader(out.FS(), p.Remotes)
 
 	if opts.Package == "" {
-		opts.Package = filepath.Base(i.fs.Root())
+		opts.Package = filepath.Base(out.Root())
 		if err := checkPackage(opts.Package); err != nil {
-			return nil, nil, fmt.Errorf("%w; set package", err)
+			return Input{}, base.Scope{}, fmt.Errorf("%w; set package", err)
 		}
 	}
 
-	files, warnings, err := Generate(&doc, opts)
-	if err != nil {
-		return nil, nil, fmt.Errorf("jsonschema: %s: %w", i.opts.Schema, err)
-	}
-
-	slashed := opiter.WrapSeq(slices.Values(files)).
-		Map(func(f File) File { return File{Path: filepath.ToSlash(f.Path), Content: f.Content} }).
-		CollectSlice()
-
-	return slashed, warnings, nil
+	return Input{Doc: &doc, Options: opts}, base.Scope{Dirs: []string{opts.Dir}}, nil
 }
 
 // checkRemotes reports a remote without a URI, or naming not exactly one of

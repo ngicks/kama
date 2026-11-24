@@ -1,6 +1,7 @@
 package jsonschema
 
 import (
+	"context"
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 	"errors"
@@ -15,6 +16,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
@@ -27,7 +29,7 @@ type suiteGroup struct {
 
 // TestSuiteNeverPanics runs Generate over every schema of the draft 2020-12
 // test suite. Each run either gives a file that parses as Go and that
-// gofmt leaves as it is, or fails with ErrUnsupported or ErrConflict. The
+// gofmt formats, or fails with ErrUnsupported or ErrConflict. The
 // verbose output counts both outcomes per file of the suite.
 func TestSuiteNeverPanics(t *testing.T) {
 	root := filepath.FromSlash("../../pkg/jsonschema/testdata/suite/tests/draft2020-12")
@@ -116,13 +118,20 @@ func generateSuite(raw jsontext.Value, assertFormats bool) (err error) {
 		return fmt.Errorf("decode: %w", err)
 	}
 
-	files, _, err := Generate(&doc, Options{
-		Package:       "suite",
-		TypeName:      "Root",
-		Schema:        "schema.json",
-		Load:          remoteLoader(os.DirFS(filepath.FromSlash("../..")), suiteRemotes()),
-		AssertFormats: assertFormats,
-		Now:           gentest.Now,
+	env := base.Env{
+		Reporter: gentest.NopReporter{},
+		Now:      gentest.Now(),
+		Registry: base.DefaultRegistry,
+	}
+
+	files, err := base.Assemble(context.Background(), Generator, env, Input{
+		Doc: &doc,
+		Options: Options{
+			Package:       "suite",
+			TypeName:      "Root",
+			Load:          remoteLoader(os.DirFS(filepath.FromSlash("../..")), suiteRemotes()),
+			AssertFormats: assertFormats,
+		},
 	})
 	if err != nil {
 		return err
@@ -134,13 +143,8 @@ func generateSuite(raw jsontext.Value, assertFormats bool) (err error) {
 		return fmt.Errorf("parse: %w", err)
 	}
 
-	formatted, err := format.Source(content)
-	if err != nil {
+	if _, err := format.Source(content); err != nil {
 		return fmt.Errorf("format: %w", err)
-	}
-
-	if string(formatted) != string(content) {
-		return errors.New("gofmt changes the output")
 	}
 
 	return nil

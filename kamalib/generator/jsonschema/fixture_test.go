@@ -72,7 +72,7 @@ func TestFixtureUpToDate(t *testing.T) {
 
 			defer f.Close()
 
-			i := &instance{}
+			i := newInstance(t, gentest.Now())
 
 			param := procParam("schema.json", "", "", "")
 			if remotes, ok := fixtureRemotes[name]; ok {
