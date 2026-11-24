@@ -1,7 +1,11 @@
-package gofragment
+// Package wrap parses and prints the partial text of gofragment by wrapping
+// it in a file, for the ast functions of gofragment and the dst functions
+// of dstfragment alike.
+package wrap
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -13,46 +17,56 @@ import (
 	"github.com/ngicks/opiter"
 )
 
+// ErrNotPartial reports text that does not parse as the partial text asked
+// for: one expression, the statements of a function body or top-level
+// declarations other than imports. The Parse functions return it for text
+// escaping the file they wrap it in, such as statements closing the
+// function body.
+var ErrNotPartial = errors.New("gofragment: text is not the partial text asked for")
+
 // The expression wrapper places the text after "=" so that the parser
 // accepts type expressions too: the parser checks syntax only, and a type is
 // a valid operand there.
 const (
-	wrapperPkg   = "p"
-	exprPrefix   = "package " + wrapperPkg + "\n\nvar _ = "
-	stmtsPrefix  = "package " + wrapperPkg + "\n\nfunc _() {\n"
+	WrapperPkg   = "p"
+	exprPrefix   = "package " + WrapperPkg + "\n\nvar _ = "
+	stmtsPrefix  = "package " + WrapperPkg + "\n\nfunc _() {\n"
 	stmtsSuffix  = "}\n"
-	declsPrefix  = "package " + wrapperPkg + "\n\n"
-	printedFile  = "package " + wrapperPkg + "\n"
+	declsPrefix  = "package " + WrapperPkg + "\n\n"
+	PrintedFile  = "package " + WrapperPkg + "\n"
 	printedOpen  = "{\n"
 	printedClose = "\n}"
 )
 
-type partialKind int
+// Kind is the kind of partial text: an expression, statements or
+// declarations.
+type Kind int
 
+// The kinds of partial text.
 const (
-	exprKind partialKind = iota
-	stmtsKind
-	declsKind
+	ExprKind Kind = iota
+	StmtsKind
+	DeclsKind
 )
 
-func (k partialKind) String() string {
+func (k Kind) String() string {
 	switch k {
-	case exprKind:
+	case ExprKind:
 		return "expression"
-	case stmtsKind:
+	case StmtsKind:
 		return "statements"
 	default:
 		return "declarations"
 	}
 }
 
-func (k partialKind) wrap(b []byte) []byte {
+func (k Kind) wrap(b []byte) []byte {
 	var prefix, suffix string
 
 	switch k {
-	case exprKind:
+	case ExprKind:
 		prefix = exprPrefix
-	case stmtsKind:
+	case StmtsKind:
 		prefix, suffix = stmtsPrefix, stmtsSuffix
 	default:
 		prefix = declsPrefix
@@ -71,9 +85,9 @@ func (k partialKind) wrap(b []byte) []byte {
 	return append(src, suffix...)
 }
 
-// parseWrapped parses b wrapped for k into fset and checks the shape of
+// Parse parses b wrapped for k into fset and checks the shape of
 // the wrapper.
-func parseWrapped(fset *token.FileSet, k partialKind, b []byte) (*ast.File, error) {
+func Parse(fset *token.FileSet, k Kind, b []byte) (*ast.File, error) {
 	src := k.wrap(b)
 
 	f, err := parser.ParseFile(fset, "", src, parser.ParseComments)
@@ -88,9 +102,9 @@ func parseWrapped(fset *token.FileSet, k partialKind, b []byte) (*ast.File, erro
 	return f, nil
 }
 
-func checkShape(fset *token.FileSet, k partialKind, f *ast.File, src []byte) error {
+func checkShape(fset *token.FileSet, k Kind, f *ast.File, src []byte) error {
 	switch k {
-	case exprKind:
+	case ExprKind:
 		if len(f.Decls) != 1 {
 			return fmt.Errorf("%w: text adds %d declarations", ErrNotPartial, len(f.Decls)-1)
 		}
@@ -106,7 +120,7 @@ func checkShape(fset *token.FileSet, k partialKind, f *ast.File, src []byte) err
 		}
 
 		return checkTrailing(fset, spec.Values[0].End(), src)
-	case stmtsKind:
+	case StmtsKind:
 		if len(f.Decls) != 1 {
 			return fmt.Errorf("%w: text adds %d declarations", ErrNotPartial, len(f.Decls)-1)
 		}
@@ -159,18 +173,20 @@ func checkTrailing(fset *token.FileSet, end token.Pos, src []byte) error {
 	}
 }
 
-func printConfig(indent int) *printer.Config {
+// PrintConfig is the printer configuration of partial text indented by
+// indent.
+func PrintConfig(indent int) *printer.Config {
 	return &printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 8, Indent: indent}
 }
 
-// printBlock prints the statements of block at indentation 0.
+// PrintBlock prints the statements of block at indentation 0.
 //
 // The printer cannot print comments with a statement list that is not a
 // node, and it indents a list holding a labeled statement. Printing the
 // block at indentation -1 places its statements at 0, labels included, and
 // leaves the content of every line as the printer wrote it. Only the brace
 // lines are cut off.
-func printBlock(
+func PrintBlock(
 	fset *token.FileSet,
 	block *ast.BlockStmt,
 	comments []*ast.CommentGroup,
@@ -181,7 +197,7 @@ func printBlock(
 	}
 
 	var buf bytes.Buffer
-	if err := printConfig(-1).Fprint(&buf, fset, node); err != nil {
+	if err := PrintConfig(-1).Fprint(&buf, fset, node); err != nil {
 		return nil, err
 	}
 
@@ -191,13 +207,13 @@ func printBlock(
 		return nil, fmt.Errorf("unexpected block %q", out)
 	}
 
-	return trimLines(out[len(printedOpen) : len(out)-len(printedClose)]), nil
+	return TrimLines(out[len(printedOpen) : len(out)-len(printedClose)]), nil
 }
 
-// trimLines trims the empty lines around b and ends it with one newline.
+// TrimLines trims the empty lines around b and ends it with one newline.
 // Neither a raw string literal nor a comment starts or ends b, so the
 // newlines trimmed are line breaks of the printer.
-func trimLines(b []byte) []byte {
+func TrimLines(b []byte) []byte {
 	b = bytes.Trim(b, "\n")
 	if len(b) == 0 {
 		return []byte{}

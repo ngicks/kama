@@ -14,9 +14,9 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
-	"github.com/ngicks/kama/kamalib/pkg/gofragment"
+	"github.com/ngicks/kama/kamalib/pkg/gofragment/dstfragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
-	"github.com/ngicks/kama/kamalib/pkg/typeprint"
+	"github.com/ngicks/kama/kamalib/pkg/typeprint/dsttype"
 )
 
 // Scope is what a generator spells packages and types through in one
@@ -83,7 +83,7 @@ func (s *Scope) Ident(path string) (string, bool) { return s.Imports.Ident(path)
 
 // TypeExpr spells t as a type expression of the file.
 func (s *Scope) TypeExpr(t types.Type) (dst.Expr, error) {
-	return typeprint.Dst(t, s.Imports, s.Pkg.PkgPath)
+	return dsttype.Dst(t, s.Imports, s.Pkg.PkgPath)
 }
 
 // TypeString spells t as the source text of a type expression of the file.
@@ -93,7 +93,7 @@ func (s *Scope) TypeString(t types.Type) (string, error) {
 		return "", err
 	}
 
-	b, err := gofragment.PrintDstExpr(e)
+	b, err := dstfragment.PrintDstExpr(e)
 	if err != nil {
 		return "", fmt.Errorf("filescope: %w", err)
 	}
@@ -124,7 +124,7 @@ func Parts(decls []dst.Decl) ([]base.Part, error) {
 	parts := make([]base.Part, 0, len(decls))
 
 	for _, d := range decls {
-		b, err := gofragment.PrintDstDecls([]dst.Decl{d})
+		b, err := dstfragment.PrintDstDecls([]dst.Decl{d})
 		if err != nil {
 			return nil, fmt.Errorf("filescope: %w", err)
 		}
@@ -138,7 +138,7 @@ func Parts(decls []dst.Decl) ([]base.Part, error) {
 // ParseParts parses src, holding top-level declarations only, and returns
 // them as [Parts] does.
 func ParseParts(src []byte) ([]base.Part, error) {
-	decls, err := gofragment.ParseDstDecls(src)
+	decls, err := dstfragment.ParseDstDecls(src)
 	if err != nil {
 		return nil, fmt.Errorf("filescope: %w", err)
 	}

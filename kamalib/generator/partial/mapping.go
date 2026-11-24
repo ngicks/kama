@@ -12,7 +12,7 @@ import (
 	"github.com/dave/dst"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
-	"github.com/ngicks/kama/kamalib/pkg/gofragment"
+	"github.com/ngicks/kama/kamalib/pkg/gofragment/dstfragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl/dstimport"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
@@ -64,7 +64,7 @@ func (p *mapper) partialString(named *types.Named) (string, error) {
 		return "", err
 	}
 
-	b, err := gofragment.PrintDstExpr(e)
+	b, err := dstfragment.PrintDstExpr(e)
 	if err != nil {
 		return "", fmt.Errorf("partial: %w", err)
 	}

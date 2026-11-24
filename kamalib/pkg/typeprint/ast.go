@@ -10,6 +10,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
+	"github.com/ngicks/kama/kamalib/pkg/typeprint/internal/spell"
 )
 
 // Ast returns the go/ast type expression spelling ty. Types declared in
@@ -18,20 +19,20 @@ import (
 // does not import yet as missing.
 //
 // The nodes carry no positions, so go/printer lays out every struct and
-// interface over several lines, as in struct {\n}. Dst gives the layout
-// gofmt gives.
+// interface over several lines, as in struct {\n}. dsttype.Dst gives the
+// layout gofmt gives.
 func Ast(ty types.Type, m *importdecl.Map, currentPkgPath string) (ast.Expr, error) {
-	return astPrinter{printer{m: m, currentPkgPath: currentPkgPath}}.expr(ty)
+	return astPrinter{spell.Printer{M: m, CurrentPkgPath: currentPkgPath}}.expr(ty)
 }
 
 type astPrinter struct {
-	printer
+	spell.Printer
 }
 
 func (p astPrinter) expr(ty types.Type) (ast.Expr, error) {
 	switch ty := ty.(type) {
 	case *types.Basic:
-		qual, name, err := p.basicName(ty)
+		qual, name, err := p.BasicName(ty)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +59,7 @@ func (p astPrinter) expr(ty types.Type) (ast.Expr, error) {
 
 		return &ast.ArrayType{Elt: elem}, nil
 	case *types.Array:
-		n, err := arrayLen(ty)
+		n, err := spell.ArrayLen(ty)
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +93,7 @@ func (p astPrinter) expr(ty types.Type) (ast.Expr, error) {
 	case *types.Union:
 		return p.union(ty)
 	default:
-		return nil, fmt.Errorf("%w: %T %s", ErrUnsupported, ty, ty)
+		return nil, fmt.Errorf("%w: %T %s", spell.ErrUnsupported, ty, ty)
 	}
 }
 
@@ -109,11 +110,11 @@ func (p astPrinter) named(
 	tparams *types.TypeParamList,
 	targs *types.TypeList,
 ) (ast.Expr, error) {
-	if err := checkInstantiated(obj, tparams, targs); err != nil {
+	if err := spell.CheckInstantiated(obj, tparams, targs); err != nil {
 		return nil, err
 	}
 
-	qual, name, err := p.typeName(obj)
+	qual, name, err := p.TypeName(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -144,13 +145,13 @@ func (p astPrinter) chanType(c *types.Chan) (ast.Expr, error) {
 		return nil, err
 	}
 
-	if needsParen(c) {
+	if spell.NeedsParen(c) {
 		elem = &ast.ParenExpr{X: elem}
 	}
 
 	var dir ast.ChanDir
 
-	send, recv := chanDir(c.Dir())
+	send, recv := spell.ChanDir(c.Dir())
 	if send {
 		dir |= ast.SEND
 	}
@@ -163,7 +164,7 @@ func (p astPrinter) chanType(c *types.Chan) (ast.Expr, error) {
 }
 
 func (p astPrinter) signature(sig *types.Signature) (*ast.FuncType, error) {
-	if err := checkSignature(sig); err != nil {
+	if err := spell.CheckSignature(sig); err != nil {
 		return nil, err
 	}
 
@@ -173,7 +174,7 @@ func (p astPrinter) signature(sig *types.Signature) (*ast.FuncType, error) {
 	}
 
 	if sig.Variadic() {
-		elem, err := variadicElem(sig)
+		elem, err := spell.VariadicElem(sig)
 		if err != nil {
 			return nil, err
 		}
@@ -229,7 +230,7 @@ func (p astPrinter) structType(s *types.Struct) (*ast.StructType, error) {
 
 	for i := range s.NumFields() {
 		v := s.Field(i)
-		if err := p.checkMemberName(v); err != nil {
+		if err := p.CheckMemberName(v); err != nil {
 			return nil, err
 		}
 
@@ -266,7 +267,7 @@ func (p astPrinter) interfaceType(iface *types.Interface) (*ast.InterfaceType, e
 	}
 
 	for fn := range iface.ExplicitMethods() {
-		if err := p.checkMemberName(fn); err != nil {
+		if err := p.CheckMemberName(fn); err != nil {
 			return nil, err
 		}
 
@@ -305,7 +306,7 @@ func (p astPrinter) union(u *types.Union) (ast.Expr, error) {
 	}
 
 	if x == nil {
-		return nil, fmt.Errorf("%w: empty union", ErrUnsupported)
+		return nil, fmt.Errorf("%w: empty union", spell.ErrUnsupported)
 	}
 
 	return x, nil

@@ -5,29 +5,8 @@ import (
 	"go/token"
 	"strings"
 
-	"github.com/dave/dst"
-
-	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
-	"github.com/ngicks/kama/kamalib/pkg/importdecl/dstimport"
 )
-
-// ParseDecls parses src into declarations, each after an empty line.
-//
-// ParseDecls returns the errors [gofragment.ParseDstDecls] returns as they
-// are.
-func ParseDecls(src []byte) ([]dst.Decl, error) {
-	decls, err := gofragment.ParseDstDecls(src)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, d := range decls {
-		d.Decorations().Before = dst.EmptyLine
-	}
-
-	return decls, nil
-}
 
 // PrintFileHeader prints header with [PrintComment], then the package
 // clause of pkgName. header holds the comment sections before the package
@@ -195,25 +174,4 @@ func WrapFile[C Context[C]](header []string, pkgName string) Step[C] {
 
 		return c, p.Bytes(), nil
 	})
-}
-
-// AppendDecls parses decls and appends them to the existing file f, each
-// after an empty line, then adds the imports pkg.Imports records as
-// missing. A nil pkg or a nil pkg.Imports adds no import.
-//
-// AppendDecls returns the errors [gofragment.ParseDstDecls] returns, such
-// as one wrapping [gofragment.ErrNotPartial] for an import declaration, and
-// leaves f unchanged then.
-func AppendDecls(f *dst.File, pkg *Package, decls []byte) error {
-	parsed, err := ParseDecls(decls)
-	if err != nil {
-		return err
-	}
-
-	f.Decls = append(f.Decls, parsed...)
-	if pkg != nil && pkg.Imports != nil {
-		dstimport.AddMissing(pkg.Imports, f)
-	}
-
-	return nil
 }

@@ -1,16 +1,12 @@
 package genhelper_test
 
 import (
-	"bytes"
 	"errors"
 	"go/ast"
 	"go/token"
 	"go/types"
-	"slices"
 	"testing"
 
-	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
@@ -50,72 +46,6 @@ func missingPaths(m *importdecl.Map) []string {
 // marker is a context distinct from the one a step starts with.
 func marker() ctx {
 	return genhelper.NewBaseContext(genhelper.NewScope(), nil)
-}
-
-func TestDstSteps(t *testing.T) {
-	start := genhelper.NewBaseContext(genhelper.NewScope(), nil)
-
-	t.Run("expr", func(t *testing.T) {
-		want := marker()
-		step := genhelper.DstExpr(func(_ ctx, e dst.Expr) (ctx, dst.Expr, error) {
-			return want, &dst.CallExpr{Fun: dst.NewIdent("wrap"), Args: []dst.Expr{e}}, nil
-		})
-		c, b, err := step.Render(start, []byte("a.b"))
-		assert.NilError(t, err)
-		assert.Equal(t, string(b), "wrap(a.b)")
-		assert.Equal(t, c.Scope(), want.Scope())
-	})
-
-	t.Run("stmts", func(t *testing.T) {
-		want := marker()
-		step := genhelper.DstStmts(func(_ ctx, stmts []dst.Stmt) (ctx, []dst.Stmt, error) {
-			return want, append(stmts, &dst.ReturnStmt{}), nil
-		})
-		c, b, err := step.Render(start, []byte("// first\nf()\n"))
-		assert.NilError(t, err)
-		assert.Equal(t, string(b), "// first\nf()\nreturn\n")
-		assert.Equal(t, c.Scope(), want.Scope())
-	})
-
-	t.Run("decls", func(t *testing.T) {
-		want := marker()
-		step := genhelper.DstDecls(func(_ ctx, decls []dst.Decl) (ctx, []dst.Decl, error) {
-			slices.Reverse(decls)
-			return want, decls, nil
-		})
-		c, b, err := step.Render(start, []byte("var a = 1\n\n// B is two.\nvar B = 2\n"))
-		assert.NilError(t, err)
-		assert.Equal(t, string(b), "// B is two.\nvar B = 2\n\nvar a = 1\n")
-		assert.Equal(t, c.Scope(), want.Scope())
-	})
-
-	t.Run("f error", func(t *testing.T) {
-		errF := errors.New("f")
-		step := genhelper.DstExpr(func(c ctx, e dst.Expr) (ctx, dst.Expr, error) {
-			return c, e, errF
-		})
-		_, _, err := step.Render(start, []byte("a"))
-		assert.Equal(t, err, errF)
-	})
-
-	t.Run("parse error", func(t *testing.T) {
-		called := false
-		step := genhelper.DstStmts(func(c ctx, stmts []dst.Stmt) (ctx, []dst.Stmt, error) {
-			called = true
-			return c, stmts, nil
-		})
-		_, _, err := step.Render(start, []byte("}\nfunc f() {"))
-		assert.ErrorIs(t, err, gofragment.ErrNotPartial)
-		assert.Assert(t, !called)
-	})
-
-	t.Run("print error", func(t *testing.T) {
-		step := genhelper.DstExpr(func(c ctx, _ dst.Expr) (ctx, dst.Expr, error) {
-			return c, &dst.Ident{Name: "X", Path: optPath}, nil
-		})
-		_, _, err := step.Render(start, []byte("a"))
-		assert.ErrorContains(t, err, "gofragment: print expression")
-	})
 }
 
 func TestAstSteps(t *testing.T) {
@@ -215,52 +145,6 @@ func TestPackageType(t *testing.T) {
 	assert.ErrorIs(t, err, typeprint.ErrUnknownPackage)
 }
 
-func TestAppendDecls(t *testing.T) {
-	const src = "package dest\n\nvar x = 1\n"
-
-	t.Run("appended", func(t *testing.T) {
-		pkg, _ := newPackage(t, nil)
-		f, err := decorator.Parse(src)
-		assert.NilError(t, err)
-
-		ident, ok := pkg.Imports.Ident(optPath)
-		assert.Assert(t, ok)
-
-		err = genhelper.AppendDecls(
-			f,
-			pkg,
-			[]byte(
-				"// F returns none.\nfunc F() "+ident+".Option {\n\treturn "+ident+".None()\n}\n",
-			),
-		)
-		assert.NilError(t, err)
-
-		var buf bytes.Buffer
-		assert.NilError(t, decorator.Fprint(&buf, f))
-		assert.Equal(t, buf.String(), "package dest\n\n"+
-			"import \"example.invalid/opt\"\n\n"+
-			"var x = 1\n\n"+
-			"// F returns none.\nfunc F() opt.Option {\n\treturn opt.None()\n}\n")
-	})
-
-	t.Run("parse error", func(t *testing.T) {
-		pkg, _ := newPackage(t, nil)
-		f, err := decorator.Parse(src)
-		assert.NilError(t, err)
-
-		_, _ = pkg.Imports.Ident(optPath)
-
-		err = genhelper.AppendDecls(f, pkg, []byte("var y = 2\n\nimport \"fmt\"\n"))
-		assert.Assert(t, err != nil)
-		err = genhelper.AppendDecls(f, pkg, []byte("import \"fmt\"\n"))
-		assert.ErrorIs(t, err, gofragment.ErrNotPartial)
-
-		var buf bytes.Buffer
-		assert.NilError(t, decorator.Fprint(&buf, f))
-		assert.Equal(t, buf.String(), src)
-	})
-}
-
 func TestNodeStepsFuncError(t *testing.T) {
 	errF := errors.New("f")
 	pkg, _ := newPackage(t, token.NewFileSet())
@@ -273,27 +157,6 @@ func TestNodeStepsFuncError(t *testing.T) {
 		src  string
 	}
 	for _, tc := range []testCase{
-		{
-			name: "DstExpr",
-			step: genhelper.DstExpr(func(_ ctx, e dst.Expr) (ctx, dst.Expr, error) {
-				return want, e, errF
-			}),
-			src: "x",
-		},
-		{
-			name: "DstStmts",
-			step: genhelper.DstStmts(func(_ ctx, s []dst.Stmt) (ctx, []dst.Stmt, error) {
-				return want, s, errF
-			}),
-			src: "x()",
-		},
-		{
-			name: "DstDecls",
-			step: genhelper.DstDecls(func(_ ctx, d []dst.Decl) (ctx, []dst.Decl, error) {
-				return want, d, errF
-			}),
-			src: "var x = 1",
-		},
 		{
 			name: "AstExpr",
 			step: genhelper.AstExpr(func(_ ctx, e ast.Expr) (ctx, ast.Expr, error) {
@@ -323,11 +186,4 @@ func TestNodeStepsFuncError(t *testing.T) {
 			assert.Equal(t, c.Scope(), want.Scope())
 		})
 	}
-}
-
-func TestAppendDeclsWithoutPackage(t *testing.T) {
-	f, err := decorator.Parse("package p\n")
-	assert.NilError(t, err)
-	assert.NilError(t, genhelper.AppendDecls(f, nil, []byte("func f() {}\n")))
-	assert.Equal(t, len(f.Decls), 1)
 }

@@ -6,8 +6,6 @@ import (
 	"go/token"
 	"go/types"
 
-	"github.com/dave/dst"
-
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/typeprint"
@@ -51,22 +49,8 @@ func (p *Package) Qual(pkgPath, name string) (string, error) {
 	return ident + "." + name, nil
 }
 
-// Type spells t. It returns the errors [Package.TypeDst] returns.
-func (p *Package) Type(t types.Type) (string, error) {
-	e, err := p.TypeDst(t)
-	if err != nil {
-		return "", err
-	}
-
-	b, err := gofragment.PrintDstExpr(e)
-	if err != nil {
-		return "", err
-	}
-
-	return string(b), nil
-}
-
-// TypeDst returns the dst expression spelling t.
+// Type spells t on one line, as gofmt lays out a type expression written
+// on one line.
 //
 // The error wraps one of the typeprint errors:
 //
@@ -76,12 +60,39 @@ func (p *Package) Type(t types.Type) (string, error) {
 //     method of a package other than Path.
 //   - [typeprint.ErrUnsupported]: no type expression spells t, such as an
 //     untyped constant type or a type declared inside a function.
-func (p *Package) TypeDst(t types.Type) (dst.Expr, error) {
-	return typeprint.Dst(t, p.imports(), p.Path)
+func (p *Package) Type(t types.Type) (string, error) {
+	e, err := p.TypeAst(t)
+	if err != nil {
+		return "", err
+	}
+
+	// go/printer lays out a struct or an interface over several lines
+	// unless its braces sit on one line. Placing every brace at one
+	// position keeps the expression on one line.
+	fset := token.NewFileSet()
+	pos := fset.AddFile("", -1, 1).Pos(0)
+
+	ast.Inspect(e, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.StructType:
+			n.Fields.Opening, n.Fields.Closing = pos, pos
+		case *ast.InterfaceType:
+			n.Methods.Opening, n.Methods.Closing = pos, pos
+		}
+
+		return true
+	})
+
+	b, err := gofragment.PrintAst(fset, e)
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
 }
 
 // TypeAst returns the ast expression spelling t. It returns the errors
-// [Package.TypeDst] returns.
+// [Package.Type] returns.
 func (p *Package) TypeAst(t types.Type) (ast.Expr, error) {
 	return typeprint.Ast(t, p.imports(), p.Path)
 }

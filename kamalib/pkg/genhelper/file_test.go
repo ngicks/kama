@@ -10,7 +10,6 @@ import (
 
 	"github.com/ngicks/kama/kamalib/pkg/genheader"
 
-	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl/dstimport"
@@ -18,21 +17,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
-	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 )
-
-func TestParseDecls(t *testing.T) {
-	decls, err := genhelper.ParseDecls([]byte("var x = 1\nfunc f() {}\n"))
-	assert.NilError(t, err)
-	assert.Equal(t, len(decls), 2)
-
-	for _, d := range decls {
-		assert.Equal(t, d.Decorations().Before, dst.EmptyLine)
-	}
-
-	_, err = genhelper.ParseDecls([]byte("import \"fmt\"\n"))
-	assert.ErrorIs(t, err, gofragment.ErrNotPartial)
-}
 
 func TestPrintFileHeader(t *testing.T) {
 	for _, tc := range []struct {

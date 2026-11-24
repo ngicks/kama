@@ -19,7 +19,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
 	"github.com/ngicks/kama/kamalib/generator/validator/rule"
-	"github.com/ngicks/kama/kamalib/pkg/gofragment"
+	"github.com/ngicks/kama/kamalib/pkg/gofragment/dstfragment"
 )
 
 // helperSet holds the declarations validators declared for the files of a
@@ -141,7 +141,7 @@ func renderHelpersWith(
 		src.WriteString("\n")
 	}
 
-	decls, err := gofragment.ParseDstDecls([]byte(src.String()))
+	decls, err := dstfragment.ParseDstDecls([]byte(src.String()))
 	if err != nil {
 		return base.Composed{}, nil, fmt.Errorf(
 			"validator: parse helpers of %s: %w", hf.Path, err,

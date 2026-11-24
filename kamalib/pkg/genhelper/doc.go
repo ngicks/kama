@@ -4,7 +4,7 @@
 // it, wraps it or replaces it. [Steps] runs steps in order and is a step
 // itself, so chains nest. The text is partial: an expression, statements or
 // declarations. [WrapFile] turns declarations into a whole file, and
-// [AppendDecls] adds them to an existing one.
+// AppendDecls of package dstgen adds them to an existing dst file.
 //
 // Steps share a [Context]. Its [Scope] hands out identifiers by role, so
 // independently written steps declare locals without duplicating or
@@ -68,7 +68,8 @@
 // Lang also builds the clauses of [Switch] with [Lang.Case] and
 // [Lang.Default].
 //
-// Package [gofragment] converts the text to dst or ast nodes and back.
-// [DstExpr], [DstStmts], [DstDecls] and their ast counterparts are steps
-// editing the text as nodes through it.
+// Package [gofragment] converts the text to ast nodes and back. [AstExpr],
+// [AstStmts] and [AstDecls] are steps editing the text as ast nodes
+// through it. Package dstgen holds their dst counterparts, so that
+// genhelper does not make dst a dependency of its importers.
 package genhelper

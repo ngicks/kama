@@ -5,8 +5,6 @@ import (
 	"go/ast"
 	"go/token"
 
-	"github.com/dave/dst"
-
 	"github.com/ngicks/kama/kamalib/pkg/gofragment"
 )
 
@@ -38,18 +36,6 @@ func nodeStep[C Context[C], N any](
 	})
 }
 
-func dstStep[C Context[C], N any](
-	parse func(b []byte) (N, error),
-	f func(c C, n N) (C, N, error),
-	printN func(n N) ([]byte, error),
-) Step[C] {
-	return nodeStep(
-		func(_ C, b []byte) (N, error) { return parse(b) },
-		f,
-		func(_ C, n N) ([]byte, error) { return printN(n) },
-	)
-}
-
 func astStep[C Context[C], N any](
 	parse func(fset *token.FileSet, b []byte) (N, error),
 	f func(c C, n N) (C, N, error),
@@ -73,31 +59,6 @@ func astStep[C Context[C], N any](
 			func(_ C, n N) ([]byte, error) { return printN(fset, n) },
 		).Render(c, b)
 	})
-}
-
-// DstExpr is a step editing the text before it as one dst expression. The
-// step parses the text, calls f and prints the expression f returns.
-//
-// The step returns the errors of [gofragment.ParseDstExpr] and
-// [gofragment.PrintDstExpr], and the error of f as it is.
-func DstExpr[C Context[C]](f func(c C, e dst.Expr) (C, dst.Expr, error)) Step[C] {
-	return dstStep(gofragment.ParseDstExpr, f, gofragment.PrintDstExpr)
-}
-
-// DstStmts is a step editing the text before it as dst statements.
-//
-// The step returns the errors of [gofragment.ParseDstStmts] and
-// [gofragment.PrintDstStmts], and the error of f as it is.
-func DstStmts[C Context[C]](f func(c C, stmts []dst.Stmt) (C, []dst.Stmt, error)) Step[C] {
-	return dstStep(gofragment.ParseDstStmts, f, gofragment.PrintDstStmts)
-}
-
-// DstDecls is a step editing the text before it as dst declarations.
-//
-// The step returns the errors of [gofragment.ParseDstDecls] and
-// [gofragment.PrintDstDecls], and the error of f as it is.
-func DstDecls[C Context[C]](f func(c C, decls []dst.Decl) (C, []dst.Decl, error)) Step[C] {
-	return dstStep(gofragment.ParseDstDecls, f, gofragment.PrintDstDecls)
 }
 
 // AstExpr is a step editing the text before it as one ast expression.

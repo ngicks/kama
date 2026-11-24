@@ -14,6 +14,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper/dstgen"
 )
 
 type step = genhelper.Step[genhelper.BaseContext]
@@ -391,7 +392,7 @@ func ExamplePackage() {
 	// Qual recorded the import the file misses, under a name the existing
 	// import does not take. AppendDecls adds it to the import declaration
 	// of the file along with the function.
-	if err := genhelper.AppendDecls(f, r.Context.Package(), b); err != nil {
+	if err := dstgen.AppendDecls(f, r.Context.Package(), b); err != nil {
 		panic(err)
 	}
 

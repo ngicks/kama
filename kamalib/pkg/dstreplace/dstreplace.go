@@ -11,7 +11,7 @@ import (
 	"github.com/dave/dst"
 	"github.com/ngicks/opiter"
 
-	"github.com/ngicks/kama/kamalib/pkg/gofragment"
+	"github.com/ngicks/kama/kamalib/pkg/gofragment/dstfragment"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
 )
 
@@ -192,7 +192,7 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 			return nil, fmt.Errorf("%w: field %s has no type", ErrReplacement, field.Name)
 		}
 
-		b, err := gofragment.PrintDstExpr(r.Type)
+		b, err := dstfragment.PrintDstExpr(r.Type)
 		if err != nil {
 			return nil, fmt.Errorf("dstreplace: field %s: %w", field.Name, err)
 		}

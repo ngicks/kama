@@ -1,4 +1,7 @@
-package gofragment
+// Package dstfragment parses and prints partial Go text as dst nodes, as
+// package gofragment does with ast nodes. It is a package of its own so
+// that gofragment does not make dst a dependency of its importers.
+package dstfragment
 
 import (
 	"bytes"
@@ -13,12 +16,14 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
+
+	"github.com/ngicks/kama/kamalib/pkg/gofragment/internal/wrap"
 )
 
-func parseDstWrapped(k partialKind, b []byte) (*dst.File, error) {
+func parseDstWrapped(k wrap.Kind, b []byte) (*dst.File, error) {
 	fset := token.NewFileSet()
 
-	f, err := parseWrapped(fset, k, b)
+	f, err := wrap.Parse(fset, k, b)
 	if err != nil {
 		return nil, err
 	}
@@ -33,11 +38,12 @@ func parseDstWrapped(k partialKind, b []byte) (*dst.File, error) {
 
 // ParseDstExpr parses b as one expression or type expression.
 //
-// ParseDstExpr returns an error wrapping [ErrNotPartial] when b holds more
+// ParseDstExpr returns an error wrapping
+// [github.com/ngicks/kama/kamalib/pkg/gofragment.ErrNotPartial] when b holds more
 // than one expression, such as "a, b" or "a; var x = 1". Empty text is a
 // syntax error.
 func ParseDstExpr(b []byte) (dst.Expr, error) {
-	f, err := parseDstWrapped(exprKind, b)
+	f, err := parseDstWrapped(wrap.ExprKind, b)
 	if err != nil {
 		return nil, err
 	}
@@ -48,10 +54,11 @@ func ParseDstExpr(b []byte) (dst.Expr, error) {
 // ParseDstStmts parses b as the statements of a function body. Empty text
 // gives an empty slice.
 //
-// ParseDstStmts returns an error wrapping [ErrNotPartial] when b closes the
+// ParseDstStmts returns an error wrapping
+// [github.com/ngicks/kama/kamalib/pkg/gofragment.ErrNotPartial] when b closes the
 // function body it is parsed in.
 func ParseDstStmts(b []byte) ([]dst.Stmt, error) {
-	f, err := parseDstWrapped(stmtsKind, b)
+	f, err := parseDstWrapped(wrap.StmtsKind, b)
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +74,11 @@ func ParseDstStmts(b []byte) ([]dst.Stmt, error) {
 // ParseDstDecls parses b as top-level declarations. Empty text gives an
 // empty slice.
 //
-// ParseDstDecls returns an error wrapping [ErrNotPartial] when b holds an
+// ParseDstDecls returns an error wrapping
+// [github.com/ngicks/kama/kamalib/pkg/gofragment.ErrNotPartial] when b holds an
 // import declaration. The caller adds imports to the file itself.
 func ParseDstDecls(b []byte) ([]dst.Decl, error) {
-	f, err := parseDstWrapped(declsKind, b)
+	f, err := parseDstWrapped(wrap.DeclsKind, b)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +140,7 @@ func PrintDstExpr(e dst.Expr) ([]byte, error) {
 	// A dst node belongs to one tree. Placing the clone in the wrapper keeps
 	// e where the caller put it.
 	f := &dst.File{
-		Name: dst.NewIdent(wrapperPkg),
+		Name: dst.NewIdent(wrap.WrapperPkg),
 		Decls: []dst.Decl{&dst.GenDecl{
 			Tok: token.VAR,
 			Specs: []dst.Spec{&dst.ValueSpec{
@@ -151,7 +159,8 @@ func PrintDstExpr(e dst.Expr) ([]byte, error) {
 
 	var buf bytes.Buffer
 
-	err = printConfig(0).Fprint(&buf, fset, &printer.CommentedNode{Node: ae, Comments: af.Comments})
+	err = wrap.PrintConfig(0).
+		Fprint(&buf, fset, &printer.CommentedNode{Node: ae, Comments: af.Comments})
 	if err != nil {
 		return nil, fmt.Errorf("gofragment: print expression: %w", err)
 	}
@@ -175,7 +184,7 @@ func PrintDstStmts(stmts []dst.Stmt) ([]byte, error) {
 	// its line.
 	body.List[0].Decorations().Before = dst.NewLine
 	f := &dst.File{
-		Name: dst.NewIdent(wrapperPkg),
+		Name: dst.NewIdent(wrap.WrapperPkg),
 		Decls: []dst.Decl{&dst.FuncDecl{
 			Name: dst.NewIdent("_"),
 			Type: &dst.FuncType{},
@@ -188,7 +197,7 @@ func PrintDstStmts(stmts []dst.Stmt) ([]byte, error) {
 		return nil, fmt.Errorf("gofragment: print statements: %w", err)
 	}
 
-	b, err := printBlock(fset, af.Decls[0].(*ast.FuncDecl).Body, af.Comments)
+	b, err := wrap.PrintBlock(fset, af.Decls[0].(*ast.FuncDecl).Body, af.Comments)
 	if err != nil {
 		return nil, fmt.Errorf("gofragment: print statements: %w", err)
 	}
@@ -216,7 +225,7 @@ func PrintDstDecls(decls []dst.Decl) ([]byte, error) {
 	// package clause on its line.
 	cloned[0].Decorations().Before = dst.EmptyLine
 
-	af, fset, err := restore(&dst.File{Name: dst.NewIdent(wrapperPkg), Decls: cloned})
+	af, fset, err := restore(&dst.File{Name: dst.NewIdent(wrap.WrapperPkg), Decls: cloned})
 	if err != nil {
 		return nil, fmt.Errorf("gofragment: print declarations: %w", err)
 	}
@@ -224,14 +233,14 @@ func PrintDstDecls(decls []dst.Decl) ([]byte, error) {
 	// a node. The whole file carries them, and only its package clause is
 	// cut off.
 	var buf bytes.Buffer
-	if err := printConfig(0).Fprint(&buf, fset, af); err != nil {
+	if err := wrap.PrintConfig(0).Fprint(&buf, fset, af); err != nil {
 		return nil, fmt.Errorf("gofragment: print declarations: %w", err)
 	}
 
 	out := buf.Bytes()
-	if !bytes.HasPrefix(out, []byte(printedFile)) {
+	if !bytes.HasPrefix(out, []byte(wrap.PrintedFile)) {
 		return nil, fmt.Errorf("gofragment: print declarations: unexpected file %q", out)
 	}
 
-	return trimLines(out[len(printedFile):]), nil
+	return wrap.TrimLines(out[len(wrap.PrintedFile):]), nil
 }

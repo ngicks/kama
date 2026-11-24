@@ -5,23 +5,25 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+
+	"github.com/ngicks/kama/kamalib/pkg/gofragment/internal/wrap"
 )
 
-func parseAstWrapped(fset *token.FileSet, k partialKind, b []byte) (*ast.File, error) {
+func parseAstWrapped(fset *token.FileSet, k wrap.Kind, b []byte) (*ast.File, error) {
 	if fset == nil {
 		return nil, fmt.Errorf("gofragment: parse %s: %w", k, ErrNoFileSet)
 	}
 
-	return parseWrapped(fset, k, b)
+	return wrap.Parse(fset, k, b)
 }
 
 // ParseAstExpr parses b as one expression or type expression. Positions
 // refer to the file wrapping b, which ParseAstExpr adds to fset.
 //
 // ParseAstExpr returns an error wrapping [ErrNoFileSet] when fset is nil
-// and the errors [ParseDstExpr] returns.
+// and the errors [dstfragment.ParseDstExpr] returns.
 func ParseAstExpr(fset *token.FileSet, b []byte) (ast.Expr, error) {
-	f, err := parseAstWrapped(fset, exprKind, b)
+	f, err := parseAstWrapped(fset, wrap.ExprKind, b)
 	if err != nil {
 		return nil, err
 	}
@@ -34,9 +36,9 @@ func ParseAstExpr(fset *token.FileSet, b []byte) (ast.Expr, error) {
 // text gives an empty slice.
 //
 // ParseAstStmts returns an error wrapping [ErrNoFileSet] when fset is nil
-// and the errors [ParseDstStmts] returns.
+// and the errors [dstfragment.ParseDstStmts] returns.
 func ParseAstStmts(fset *token.FileSet, b []byte) ([]ast.Stmt, error) {
-	f, err := parseAstWrapped(fset, stmtsKind, b)
+	f, err := parseAstWrapped(fset, wrap.StmtsKind, b)
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +56,9 @@ func ParseAstStmts(fset *token.FileSet, b []byte) ([]ast.Stmt, error) {
 // empty slice.
 //
 // ParseAstDecls returns an error wrapping [ErrNoFileSet] when fset is nil
-// and the errors [ParseDstDecls] returns.
+// and the errors [dstfragment.ParseDstDecls] returns.
 func ParseAstDecls(fset *token.FileSet, b []byte) ([]ast.Decl, error) {
-	f, err := parseAstWrapped(fset, declsKind, b)
+	f, err := parseAstWrapped(fset, wrap.DeclsKind, b)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +84,7 @@ func PrintAst(fset *token.FileSet, n ast.Node) ([]byte, error) {
 	switch n := n.(type) {
 	case ast.Expr:
 		var buf bytes.Buffer
-		if err := printConfig(0).Fprint(&buf, fset, n); err != nil {
+		if err := wrap.PrintConfig(0).Fprint(&buf, fset, n); err != nil {
 			return nil, fmt.Errorf("gofragment: print expression: %w", err)
 		}
 
@@ -109,7 +111,7 @@ func PrintAstStmts(fset *token.FileSet, stmts []ast.Stmt) ([]byte, error) {
 		return []byte{}, nil
 	}
 
-	b, err := printBlock(fset, &ast.BlockStmt{List: stmts}, nil)
+	b, err := wrap.PrintBlock(fset, &ast.BlockStmt{List: stmts}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gofragment: print statements: %w", err)
 	}
@@ -131,9 +133,9 @@ func PrintAstDecls(fset *token.FileSet, decls []ast.Decl) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	if err := printConfig(0).Fprint(&buf, fset, decls); err != nil {
+	if err := wrap.PrintConfig(0).Fprint(&buf, fset, decls); err != nil {
 		return nil, fmt.Errorf("gofragment: print declarations: %w", err)
 	}
 
-	return trimLines(buf.Bytes()), nil
+	return wrap.TrimLines(buf.Bytes()), nil
 }

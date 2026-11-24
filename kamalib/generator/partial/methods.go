@@ -12,7 +12,7 @@ import (
 	"github.com/dave/dst"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper/dstgen"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -439,7 +439,7 @@ type convFunc func(m match, dst, src genExpr) genStep
 
 // decls parses the methods written.
 func (w *methodWriter) decls() ([]dst.Decl, error) {
-	decls, err := genhelper.ParseDecls([]byte(w.b.String()))
+	decls, err := dstgen.ParseDecls([]byte(w.b.String()))
 	if err != nil {
 		return nil, fmt.Errorf("partial: parse methods of %s: %w", w.recv, err)
 	}

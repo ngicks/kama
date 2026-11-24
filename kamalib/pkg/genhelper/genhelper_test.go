@@ -3,8 +3,10 @@ package genhelper_test
 import (
 	"go/token"
 	"go/types"
+	"strings"
 	"testing"
 
+	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
@@ -84,8 +86,29 @@ func TestPackageNilImports(t *testing.T) {
 
 	_, err = pkg.Type(named(other, "B"))
 	assert.ErrorIs(t, err, typeprint.ErrUnknownPackage)
-	_, err = pkg.TypeDst(named(other, "B"))
-	assert.ErrorIs(t, err, typeprint.ErrUnknownPackage)
 	_, err = pkg.TypeAst(named(other, "B"))
 	assert.ErrorIs(t, err, typeprint.ErrUnknownPackage)
+}
+
+// TestImportsNoDst keeps genhelper free of dst: text-based generation must
+// not make dst a dependency of every generator. No package genhelper
+// imports, directly or not, is one of dst. The dst parts live in dstgen.
+func TestImportsNoDst(t *testing.T) {
+	pkgs, err := packages.Load(
+		&packages.Config{Mode: packages.NeedName | packages.NeedImports | packages.NeedDeps},
+		".",
+	)
+	assert.NilError(t, err)
+	assert.Equal(t, len(pkgs), 1)
+
+	var dsts []string
+
+	packages.Visit(pkgs, nil, func(p *packages.Package) {
+		if strings.HasPrefix(p.PkgPath, "github.com/dave/dst") {
+			dsts = append(dsts, p.PkgPath)
+		}
+	})
+
+	assert.Assert(t, len(pkgs[0].Imports) > 0)
+	assert.DeepEqual(t, dsts, []string(nil))
 }

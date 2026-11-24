@@ -1,4 +1,7 @@
-package typeprint
+// Package dsttype renders go/types types as dst type expressions, as
+// package typeprint does with go/ast. It is a package of its own so that
+// typeprint does not make dst a dependency of its importers.
+package dsttype
 
 import (
 	"fmt"
@@ -8,24 +11,26 @@ import (
 	"github.com/dave/dst"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/structtag"
+	"github.com/ngicks/kama/kamalib/pkg/typeprint/internal/spell"
 	"github.com/ngicks/opiter"
 )
 
 // Dst returns the dst type expression spelling ty. It qualifies types the
-// same way Ast does. Qualified names are plain selector expressions, so
+// same way typeprint.Ast does and returns its errors. Qualified names are plain selector
+// expressions, so
 // the expression prints the same with or without an import resolver.
 func Dst(ty types.Type, m *importdecl.Map, currentPkgPath string) (dst.Expr, error) {
-	return dstPrinter{printer{m: m, currentPkgPath: currentPkgPath}}.expr(ty)
+	return dstPrinter{spell.Printer{M: m, CurrentPkgPath: currentPkgPath}}.expr(ty)
 }
 
 type dstPrinter struct {
-	printer
+	spell.Printer
 }
 
 func (p dstPrinter) expr(ty types.Type) (dst.Expr, error) {
 	switch ty := ty.(type) {
 	case *types.Basic:
-		qual, name, err := p.basicName(ty)
+		qual, name, err := p.BasicName(ty)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +57,7 @@ func (p dstPrinter) expr(ty types.Type) (dst.Expr, error) {
 
 		return &dst.ArrayType{Elt: elem}, nil
 	case *types.Array:
-		n, err := arrayLen(ty)
+		n, err := spell.ArrayLen(ty)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +91,7 @@ func (p dstPrinter) expr(ty types.Type) (dst.Expr, error) {
 	case *types.Union:
 		return p.union(ty)
 	default:
-		return nil, fmt.Errorf("%w: %T %s", ErrUnsupported, ty, ty)
+		return nil, fmt.Errorf("%w: %T %s", spell.ErrUnsupported, ty, ty)
 	}
 }
 
@@ -103,11 +108,11 @@ func (p dstPrinter) named(
 	tparams *types.TypeParamList,
 	targs *types.TypeList,
 ) (dst.Expr, error) {
-	if err := checkInstantiated(obj, tparams, targs); err != nil {
+	if err := spell.CheckInstantiated(obj, tparams, targs); err != nil {
 		return nil, err
 	}
 
-	qual, name, err := p.typeName(obj)
+	qual, name, err := p.TypeName(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +143,13 @@ func (p dstPrinter) chanType(c *types.Chan) (dst.Expr, error) {
 		return nil, err
 	}
 
-	if needsParen(c) {
+	if spell.NeedsParen(c) {
 		elem = &dst.ParenExpr{X: elem}
 	}
 
 	var dir dst.ChanDir
 
-	send, recv := chanDir(c.Dir())
+	send, recv := spell.ChanDir(c.Dir())
 	if send {
 		dir |= dst.SEND
 	}
@@ -157,7 +162,7 @@ func (p dstPrinter) chanType(c *types.Chan) (dst.Expr, error) {
 }
 
 func (p dstPrinter) signature(sig *types.Signature) (*dst.FuncType, error) {
-	if err := checkSignature(sig); err != nil {
+	if err := spell.CheckSignature(sig); err != nil {
 		return nil, err
 	}
 
@@ -169,7 +174,7 @@ func (p dstPrinter) signature(sig *types.Signature) (*dst.FuncType, error) {
 	params.Opening, params.Closing = true, true
 
 	if sig.Variadic() {
-		elem, err := variadicElem(sig)
+		elem, err := spell.VariadicElem(sig)
 		if err != nil {
 			return nil, err
 		}
@@ -230,7 +235,7 @@ func (p dstPrinter) structType(s *types.Struct) (*dst.StructType, error) {
 
 	for i := range s.NumFields() {
 		v := s.Field(i)
-		if err := p.checkMemberName(v); err != nil {
+		if err := p.CheckMemberName(v); err != nil {
 			return nil, err
 		}
 
@@ -267,7 +272,7 @@ func (p dstPrinter) interfaceType(iface *types.Interface) (*dst.InterfaceType, e
 	}
 
 	for fn := range iface.ExplicitMethods() {
-		if err := p.checkMemberName(fn); err != nil {
+		if err := p.CheckMemberName(fn); err != nil {
 			return nil, err
 		}
 
@@ -307,7 +312,7 @@ func (p dstPrinter) union(u *types.Union) (dst.Expr, error) {
 	}
 
 	if x == nil {
-		return nil, fmt.Errorf("%w: empty union", ErrUnsupported)
+		return nil, fmt.Errorf("%w: empty union", spell.ErrUnsupported)
 	}
 
 	return x, nil

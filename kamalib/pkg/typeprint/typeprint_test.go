@@ -12,8 +12,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
@@ -62,27 +60,6 @@ func formatAst(t *testing.T, expr ast.Expr) string {
 	assert.NilError(t, format.Node(&buf, token.NewFileSet(), expr))
 
 	return buf.String()
-}
-
-func formatDst(t *testing.T, expr dst.Expr) string {
-	t.Helper()
-
-	const prefix = "package p\n\ntype X "
-
-	f := &dst.File{
-		Name: dst.NewIdent("p"),
-		Decls: []dst.Decl{&dst.GenDecl{
-			Tok:   token.TYPE,
-			Specs: []dst.Spec{&dst.TypeSpec{Name: dst.NewIdent("X"), Type: expr}},
-		}},
-	}
-
-	var buf bytes.Buffer
-	assert.NilError(t, decorator.Fprint(&buf, f))
-	out, ok := strings.CutPrefix(buf.String(), prefix)
-	assert.Assert(t, ok, "%s", buf.String())
-
-	return strings.TrimSuffix(out, "\n")
 }
 
 // tokens scans src into its tokens separated by spaces, dropping
@@ -177,11 +154,6 @@ func TestModel(t *testing.T) {
 				// the source.
 				assert.Equal(t, tokens(t, formatAst(t, expr)), tokens(t, tc.want))
 			})
-			t.Run("dst", func(t *testing.T) {
-				expr, err := Dst(tc.ty, newMap(t, all, model), modelPath)
-				assert.NilError(t, err)
-				assert.Equal(t, formatDst(t, expr), tc.want)
-			})
 		})
 	}
 }
@@ -199,10 +171,6 @@ func TestQualifyCurrentPackage(t *testing.T) {
 	astExpr, err := Ast(ty, m, otherPath)
 	assert.NilError(t, err)
 	assert.Equal(t, formatAst(t, astExpr), "model.G[string, *model.Local]")
-
-	dstExpr, err := Dst(ty, m, otherPath)
-	assert.NilError(t, err)
-	assert.Equal(t, formatDst(t, dstExpr), "model.G[string, *model.Local]")
 
 	assert.DeepEqual(t, slices.Collect(m.Missing()), []importdecl.Import{
 		{Package: importdecl.Package{Path: modelPath, Name: "model"}},
@@ -223,14 +191,6 @@ func TestMissingImport(t *testing.T) {
 			}
 
 			return formatAst(t, expr), nil
-		},
-		"dst": func(m *importdecl.Map) (string, error) {
-			expr, err := Dst(ty, m, modelPath)
-			if err != nil {
-				return "", err
-			}
-
-			return formatDst(t, expr), nil
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -263,10 +223,6 @@ func TestUnexportedNameInDeclaringPackage(t *testing.T) {
 			astExpr, err := Ast(ty, newMap(t, all, other), otherPath)
 			assert.NilError(t, err)
 			assert.Equal(t, tokens(t, formatAst(t, astExpr)), tokens(t, tc.want))
-
-			dstExpr, err := Dst(ty, newMap(t, all, other), otherPath)
-			assert.NilError(t, err)
-			assert.Equal(t, formatDst(t, dstExpr), tc.want)
 		})
 	}
 }
@@ -318,8 +274,6 @@ func TestErrors(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := Ast(tc.ty, newMap(t, all, model), modelPath)
-			assert.ErrorIs(t, err, tc.err)
-			_, err = Dst(tc.ty, newMap(t, all, model), modelPath)
 			assert.ErrorIs(t, err, tc.err)
 		})
 	}
