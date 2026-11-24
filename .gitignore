@@ -5,3 +5,7 @@ go.work.sum
 # generates when KAMA_JSONSCHEMA_SUITE=1. They are kept for inspection and
 # never committed.
 /kamalib/generator/jsonschema/internal/suite/
+
+# Test binaries and profiles that go test -c and -cpuprofile leave behind.
+*.test
+*.prof
