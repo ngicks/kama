@@ -178,11 +178,7 @@ steps:
   partial: {proc: partial.generate, in: load, out: root}
   validate: {proc: validate.generate, in: load, out: root}
   template: {proc: file.load, in: root, param: {base: keys}}
-  keys:
-    proc: contextkey.generate
-    in: template
-    out: root
-    param: {package: keys, key_type_func: keyTypeFunc}
+  keys: {proc: contextkey.generate, in: load, out: root, param: {key_type_func: keyTypeFunc}}
   types: {proc: jsonschema.generate, out: root, param: {schema: types/schema.json}}
   final: {proc: overlayfs.copy_down, in: root, after: [partial, validate, keys, types]}
 `), 0o644))
@@ -211,11 +207,7 @@ steps:
     param: {mrege: append, option_file: {base: x, bse: y}}
   validate: {proc: validate.generate, in: load, out: root, param: {option_flie: x}}
   template: {proc: file.load, in: root, param: {base: keys, fromats: [yaml]}}
-  keys:
-    proc: contextkey.generate
-    in: template
-    out: root
-    param: {package: keys, key_type_func: keyTypeFunc, dri: x}
+  keys: {proc: contextkey.generate, in: load, out: root, param: {key_type_func: k, dri: x}}
   types:
     proc: jsonschema.generate
     out: root

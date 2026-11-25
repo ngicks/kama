@@ -1,5 +1,7 @@
 // Package shareda holds context keys generated from the template that
 // sharedb is also generated from.
+//
+//kama:option-file contextkey=../templates/shared.yml
 package shareda
 
 type keyTy string

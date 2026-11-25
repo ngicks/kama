@@ -10,6 +10,7 @@ import (
 	"go/token"
 	"go/types"
 	"iter"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -73,6 +74,29 @@ func PackageFile(pkg *packages.Package, name string) string {
 	}
 
 	return strings.TrimSuffix(name, ".go") + "_test.go"
+}
+
+// PackageDir returns the directory of pkg as the path of an output:
+// slash-separated and relative to root, an absolute directory. A package
+// outside root, or one whose directory is unknown, is an error.
+func PackageDir(root string, pkg *packages.Package) (string, error) {
+	dir := pkg.Dir
+	// CompiledGoFiles are not consulted: a file cgo processed lies in the
+	// build cache, outside the package directory.
+	if dir == "" && len(pkg.GoFiles) > 0 {
+		dir = filepath.Dir(pkg.GoFiles[0])
+	}
+
+	if dir == "" {
+		return "", fmt.Errorf("base: directory of package %s is unknown", pkg.PkgPath)
+	}
+
+	rel, err := filepath.Rel(root, dir)
+	if err != nil || !inside(rel) {
+		return "", fmt.Errorf("base: package %s in %s lies outside %s", pkg.PkgPath, dir, root)
+	}
+
+	return filepath.ToSlash(rel), nil
 }
 
 func pkgPathOf(p *packages.Package) string { return p.PkgPath }

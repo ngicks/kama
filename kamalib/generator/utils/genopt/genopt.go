@@ -88,6 +88,17 @@
 // package option file only when an option-file directive of its own files
 // names one.
 //
+// # Documents
+//
+// A generator whose input is a document of its own format, such as a
+// schema, reads the package file as that document rather than as an
+// option tree. DocumentLoader finds the documents of a package by the same
+// directive and the same default file, and returns their bytes without
+// decoding them. A generator named several times for a package by
+// option-file directives has a document per path, in file name and
+// position order, without a warning. A generator uses either Loader or
+// DocumentLoader: one file cannot be both.
+//
 // # Precedence
 //
 // The Group, Type and Fields of one type come from exactly one source. A package option file comes

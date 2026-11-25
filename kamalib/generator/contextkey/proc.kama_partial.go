@@ -4,7 +4,7 @@
 //	merge_nested: "recursive"
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:02Z
+// generated: 2026-11-25T04:02:19Z
 
 package contextkey
 
@@ -14,8 +14,6 @@ import "github.com/ngicks/option/und"
 //
 //kama:generated kama:partial
 type ProcParamPartial struct {
-	Dir         und.Und[string] `json:"dir,omitzero"`
-	Package     und.Und[string] `json:"package,omitzero"`
 	KeyTypeFunc und.Und[string] `json:"key_type_func,omitzero"`
 	Unknown     map[string]any  `json:",embed"`
 }
@@ -25,8 +23,6 @@ type ProcParamPartial struct {
 //
 //kama:generated kama:partial
 func (p *ProcParamPartial) FromValue(v ProcParam) {
-	p.Dir = und.Defined(v.Dir)
-	p.Package = und.Defined(v.Package)
 	p.KeyTypeFunc = und.Defined(v.KeyTypeFunc)
 	p.Unknown = v.Unknown
 }
@@ -37,8 +33,6 @@ func (p *ProcParamPartial) FromValue(v ProcParam) {
 //kama:generated kama:partial
 func (p ProcParamPartial) ToValue() ProcParam {
 	var v ProcParam
-	v.Dir = p.Dir.Value()
-	v.Package = p.Package.Value()
 	v.KeyTypeFunc = p.KeyTypeFunc.Value()
 	v.Unknown = p.Unknown
 	return v
@@ -49,12 +43,6 @@ func (p ProcParamPartial) ToValue() ProcParam {
 //
 //kama:generated kama:partial
 func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
-	if !r.Dir.IsUndefined() {
-		p.Dir = r.Dir
-	}
-	if !r.Package.IsUndefined() {
-		p.Package = r.Package
-	}
 	if !r.KeyTypeFunc.IsUndefined() {
 		p.KeyTypeFunc = r.KeyTypeFunc
 	}

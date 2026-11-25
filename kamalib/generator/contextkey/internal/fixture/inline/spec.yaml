@@ -2,19 +2,13 @@ version: 1
 steps:
   root:
     proc: overlayfs.open
-  template:
-    proc: file.load
+  load:
+    proc: packages.load
     in: root
-    param:
-      base: contextkey
-      formats: [yaml]
   generate:
     proc: contextkey.generate
-    in: template
+    in: load
     out: root
-    param:
-      package: inline
-      key_type_func: keyTypeFunc
   final:
     proc: overlayfs.copy_down
     in: root

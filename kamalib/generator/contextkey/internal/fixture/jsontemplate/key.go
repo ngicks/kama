@@ -1,5 +1,7 @@
 // Package jsontemplate holds context keys generated from a JSON template
 // in another directory.
+//
+//kama:option-file contextkey=../templates/json_keys.json
 package jsontemplate
 
 type keyTy string

@@ -1,3 +1,5 @@
+# key_type_func set here takes the place of the param of the step.
+key_type_func: keyTypeFunc
 entries:
   - file_name: slog_logger
     name: SlogLogger

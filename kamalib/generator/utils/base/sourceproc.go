@@ -120,6 +120,15 @@ func NewOptionLoader[P, T, F any](
 	return genopt.NewLoader[P, T, F](id.Namespace, id.Name, version, optionFile)
 }
 
+// NewDocumentLoader returns the genopt.DocumentLoader of the documents of
+// the generator id: the files //<namespace>:option-file <name>=<path>
+// names, else <namespace>_<name> with the extension of the first of
+// formats present in the package directory, as genopt.NewDocumentLoader
+// takes them for the tool and the generator.
+func NewDocumentLoader(id Id, formats ...fileloader.Format) genopt.DocumentLoader {
+	return genopt.NewDocumentLoader(id.Namespace, id.Name, formats...)
+}
+
 // OptionLoader loads the options of a generator. genopt.Loader implements
 // it.
 type OptionLoader[P, T, F any] interface {

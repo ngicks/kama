@@ -1,5 +1,5 @@
-// Package inline holds context keys generated into the directory of their
-// template, with the dir param left at its default.
+// Package inline holds context keys generated from kama_contextkey.yaml,
+// the template file a package naming none has.
 package inline
 
 //go:generate go run ../../../../../cmd/kama-simple --spec spec.yaml

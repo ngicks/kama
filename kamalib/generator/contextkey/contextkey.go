@@ -9,16 +9,33 @@
 // A file is named by inserting .kama_contextkey into Entry.FileName before
 // its build constraint suffixes, as in sig.kama_contextkey_linux.go for
 // sig_linux. It starts with the header of package base: the
-// generated-code line, the params package and key_type_func, and the time
+// generated-code line, the params template and key_type_func, and the time
 // of the run.
 //
 // A key of the template file that names no field of Template or Entry is
 // no error. Generate warns, wrapping ErrUnknownKey, about each of them with
 // the path of the file and the key path, as in entries.0.default.
 //
+// # Proc
+//
+// The proc, the workflow step kind contextkey.generate, takes the packages
+// a packages.load step loaded as its in and generates from the template
+// files of each package into the directory of the package, in the package
+// of the package. A package names its template files with the directive
+// //kama:option-file contextkey=<path> in a free-floating comment, the path
+// being relative to the package directory. A package naming none has the
+// template file kama_contextkey.toml, .yaml, .yml or .json in its
+// directory, the first one present in that order, or none. Several
+// directives, or several paths in one, give a package several template
+// files. Several packages may name one file. A package without a template
+// file generates nothing.
+//
+// The param of the proc has one key, key_type_func, which is the
+// key_type_func of a template file leaving it out.
+//
 // The proc keeps a file that would change in the generated: line only, and
-// warns, wrapping base.ErrStale, about each file of its
-// output directory that carries the marker of the generator and that the
+// warns, wrapping base.ErrStale, about each Go file of the directory of a
+// package it loaded that carries the marker of the generator and that the
 // run did not produce. Every generated file of a directory must therefore
 // come from one step.
 //
@@ -73,7 +90,8 @@ func FileName(name string) string { return naming.SourceFile(name + ".go") }
 
 // Input is the input of a run of Generator.
 type Input struct {
-	// Path is the path of the template file, which messages name.
+	// Path is the path of the template file, which messages and the header
+	// of the generated files name.
 	Path     string
 	Template Template
 	// Dir is the directory the files land in, slash-separated and relative
@@ -85,7 +103,10 @@ type Input struct {
 // Template is the decoded template file. The json tags of Template and
 // Entry give its keys. The keys are lowercase snake case.
 type Template struct {
-	Entries []Entry `json:"entries"`
+	// KeyTypeFunc overrides Options.KeyTypeFunc for the entries of the
+	// template unless it is empty.
+	KeyTypeFunc string  `json:"key_type_func"`
+	Entries     []Entry `json:"entries"`
 	// Unknown captures the keys of the file that name no field.
 	Unknown map[string]any `json:",embed"`
 }
@@ -145,7 +166,8 @@ type Options struct {
 	Package string
 	// KeyTypeFunc names a function in Package that takes a string and
 	// returns a key. It must return a distinct key on every call, since
-	// entries of the same Type pass it the same string.
+	// entries of the same Type pass it the same string. Template.KeyTypeFunc
+	// overrides it.
 	KeyTypeFunc string
 }
 
@@ -162,8 +184,9 @@ func (o Options) validate() error {
 }
 
 // Generate yields one file per entry of in, in the order of the entries,
-// and warns about the unknown keys of its template. An invalid entry and
-// a file name two entries share are errors naming the template file.
+// and warns about the unknown keys of its template. Invalid options, an
+// invalid entry and a file name two entries share are errors naming the
+// template file.
 func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, error] {
 	return func(yield func(base.Output, error) bool) {
 		for _, k := range in.Template.UnknownKeys() {
@@ -172,8 +195,12 @@ func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, 
 			)
 		}
 
+		if in.Template.KeyTypeFunc != "" {
+			in.Options.KeyTypeFunc = in.Template.KeyTypeFunc
+		}
+
 		if err := in.Options.validate(); err != nil {
-			yield(nil, err)
+			yield(nil, fmt.Errorf("%s: %w", in.Path, err))
 			return
 		}
 
@@ -228,7 +255,7 @@ func entryFile(in Input, e Entry, dup bool) (base.Output, error) {
 	return base.Composed{
 		Path: path.Join(in.Dir, FileName(e.FileName)),
 		Params: map[string]any{
-			"package":       in.Options.Package,
+			"template":      in.Path,
 			"key_type_func": in.Options.KeyTypeFunc,
 		},
 		Package: in.Options.Package,
