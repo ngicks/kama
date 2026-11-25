@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"gotest.tools/v3/assert"
-
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
@@ -36,8 +34,8 @@ func TestInt64(t *testing.T) {
 		{"100e-2", 1},
 	} {
 		got, ok := Int64(tc.in)
-		assert.Assert(t, ok, tc.in)
-		assert.Equal(t, got, tc.want, tc.in)
+		assertTrue(t, ok, tc.in)
+		equal(t, got, tc.want, tc.in)
 	}
 
 	for _, in := range []string{
@@ -45,7 +43,7 @@ func TestInt64(t *testing.T) {
 		"1e99999999999999999999", "1e-99999999999999999999", "a", "",
 	} {
 		_, ok := Int64(in)
-		assert.Assert(t, !ok, in)
+		assertTrue(t, !ok, in)
 	}
 }
 
@@ -70,14 +68,14 @@ func TestKind(t *testing.T) {
 		{`12340e-1`, []string{"integer"}, true},
 	} {
 		err := Kind(named(tc.v), tc.kinds...)
-		assert.Equal(t, err == nil, tc.ok, "%s %v: %v", tc.v, tc.kinds, err)
+		equal(t, err == nil, tc.ok, "%s %v: %v", tc.v, tc.kinds, err)
 
 		if !tc.ok {
-			assert.ErrorIs(t, err, validator.ErrKind)
+			errorIs(t, err, validator.ErrKind)
 		}
 	}
 
-	assert.ErrorContains(t, Kind(jsontext.Value(`"a"`), "array", "object"),
+	errorContains(t, Kind(jsontext.Value(`"a"`), "array", "object"),
 		"want array or object, got string")
 }
 
@@ -106,11 +104,11 @@ func TestCompare(t *testing.T) {
 		{`1`, "==", "not a number", false},
 	} {
 		err := Compare(jsontext.Value(tc.v), tc.op, tc.num)
-		assert.Equal(t, err == nil, tc.ok, "%s %s %s: %v", tc.v, tc.op, tc.num, err)
+		equal(t, err == nil, tc.ok, "%s %s %s: %v", tc.v, tc.op, tc.num, err)
 	}
 
-	assert.ErrorIs(t, Compare(jsontext.Value(`1`), ">", "1"), validator.ErrCompare)
-	assert.ErrorContains(t, Compare(jsontext.Value(`1`), ">", "1"), "want > 1, got 1")
+	errorIs(t, Compare(jsontext.Value(`1`), ">", "1"), validator.ErrCompare)
+	errorContains(t, Compare(jsontext.Value(`1`), ">", "1"), "want > 1, got 1")
 }
 
 func TestMultipleOf(t *testing.T) {
@@ -140,31 +138,31 @@ func TestMultipleOf(t *testing.T) {
 		{`1`, "0", false},
 	} {
 		err := MultipleOf(jsontext.Value(tc.v), tc.num)
-		assert.Equal(t, err == nil, tc.ok, "%s %s: %v", tc.v, tc.num, err)
+		equal(t, err == nil, tc.ok, "%s %s: %v", tc.v, tc.num, err)
 	}
 
-	assert.ErrorIs(t, MultipleOf(jsontext.Value(`3`), "2"), validator.ErrMultiple)
+	errorIs(t, MultipleOf(jsontext.Value(`3`), "2"), validator.ErrMultiple)
 }
 
 func TestLengths(t *testing.T) {
-	assert.NilError(t, Runes(jsontext.Value(`"💩💩"`), "<=", 2))
-	assert.ErrorIs(t, Runes(jsontext.Value(`"abc"`), "<=", 2), validator.ErrLength)
-	assert.NilError(t, Runes(jsontext.Value(`100`), "<=", 2))
+	nilError(t, Runes(jsontext.Value(`"💩💩"`), "<=", 2))
+	errorIs(t, Runes(jsontext.Value(`"abc"`), "<=", 2), validator.ErrLength)
+	nilError(t, Runes(jsontext.Value(`100`), "<=", 2))
 
-	assert.NilError(t, Items(jsontext.Value(`[1, 2]`), "<=", 2))
-	assert.ErrorContains(t, Items(jsontext.Value(`[1, 2, 3]`), "<=", 2), "want length <= 2, got 3")
-	assert.NilError(t, Items(jsontext.Value(`{"a":1,"b":2,"c":3}`), "<=", 2))
+	nilError(t, Items(jsontext.Value(`[1, 2]`), "<=", 2))
+	errorContains(t, Items(jsontext.Value(`[1, 2, 3]`), "<=", 2), "want length <= 2, got 3")
+	nilError(t, Items(jsontext.Value(`{"a":1,"b":2,"c":3}`), "<=", 2))
 
-	assert.ErrorContains(t, Members(jsontext.Value(`{"a":1,"b":2,"c":3}`), "<=", 2),
+	errorContains(t, Members(jsontext.Value(`{"a":1,"b":2,"c":3}`), "<=", 2),
 		"want member count <= 2, got 3")
-	assert.NilError(t, Members(jsontext.Value(`[1, 2, 3]`), "<=", 2))
+	nilError(t, Members(jsontext.Value(`[1, 2, 3]`), "<=", 2))
 }
 
 func TestPattern(t *testing.T) {
 	re := regexp.MustCompile("^a+$")
-	assert.NilError(t, Pattern(jsontext.Value(`"aa"`), re))
-	assert.ErrorIs(t, Pattern(jsontext.Value(`"ab"`), re), validator.ErrPattern)
-	assert.NilError(t, Pattern(jsontext.Value(`true`), re))
+	nilError(t, Pattern(jsontext.Value(`"aa"`), re))
+	errorIs(t, Pattern(jsontext.Value(`"ab"`), re), validator.ErrPattern)
+	nilError(t, Pattern(jsontext.Value(`true`), re))
 }
 
 func TestEqual(t *testing.T) {
@@ -185,7 +183,7 @@ func TestEqual(t *testing.T) {
 		{`1e9999999999`, `10e9999999998`, true},
 		{`[0, 1e9999999999]`, `[0.0, 1E+9999999999]`, true},
 	} {
-		assert.Equal(
+		equal(
 			t,
 			Equal(jsontext.Value(tc.a), jsontext.Value(tc.b)),
 			tc.eq,
@@ -197,30 +195,30 @@ func TestEqual(t *testing.T) {
 }
 
 func TestUniqueConst(t *testing.T) {
-	assert.NilError(t, Unique(jsontext.Value(`[1, "1", [1], {"a":1}]`)))
-	assert.ErrorContains(t, Unique(jsontext.Value(`[{"a":1,"b":2}, 0, {"b":2,"a":1}]`)),
+	nilError(t, Unique(jsontext.Value(`[1, "1", [1], {"a":1}]`)))
+	errorContains(t, Unique(jsontext.Value(`[{"a":1,"b":2}, 0, {"b":2,"a":1}]`)),
 		"want unique elements, got equal elements at 0 and 2")
-	assert.NilError(t, Unique(jsontext.Value(`"aa"`)))
-	assert.NilError(t, Unique(jsontext.Value(`[0, 1e9999999999]`)))
+	nilError(t, Unique(jsontext.Value(`"aa"`)))
+	nilError(t, Unique(jsontext.Value(`[0, 1e9999999999]`)))
 
-	assert.NilError(t, Const(jsontext.Value(`1.0`), `"a"`, `1`))
-	assert.NilError(t, Const(jsontext.Value(`{"b":null,"a":[]}`), `{"a":[],"b":null}`))
+	nilError(t, Const(jsontext.Value(`1.0`), `"a"`, `1`))
+	nilError(t, Const(jsontext.Value(`{"b":null,"a":[]}`), `{"a":[],"b":null}`))
 
 	err := Const(jsontext.Value(`2`), `"a"`, `1`)
-	assert.ErrorIs(t, err, validator.ErrConst)
-	assert.ErrorContains(t, err, `want one of "a", 1, got 2`)
+	errorIs(t, err, validator.ErrConst)
+	errorContains(t, err, `want one of "a", 1, got 2`)
 }
 
 func TestRequired(t *testing.T) {
 	v := jsontext.Value(`{"a":null}`)
-	assert.NilError(t, Required(v, false, "a"))
-	assert.NilError(t, Required(jsontext.Value(`[]`), false, "a"))
+	nilError(t, Required(v, false, "a"))
+	nilError(t, Required(jsontext.Value(`[]`), false, "a"))
 
 	err := Required(v, false, "a", "b", "c")
-	assert.ErrorIs(t, err, validator.ErrRequired)
-	assert.DeepEqual(t, validator.Pointers(err), []string{"/b", "/c"})
-	assert.DeepEqual(t, validator.Pointers(Required(v, true, "b", "c")), []string{"/b"})
-	assert.Assert(t, !errors.Is(Required(v, false), validator.ErrRequired))
+	errorIs(t, err, validator.ErrRequired)
+	deepEqual(t, validator.Pointers(err), []string{"/b", "/c"})
+	deepEqual(t, validator.Pointers(Required(v, true, "b", "c")), []string{"/b"})
+	assertTrue(t, !errors.Is(Required(v, false), validator.ErrRequired))
 }
 
 // TestHugeExponentCost pins that the cost of a number grows with its text, not with its
@@ -253,8 +251,8 @@ func TestHugeExponentCost(t *testing.T) {
 	check()
 	runtime.ReadMemStats(&after)
 
-	assert.Assert(t, elapsed < time.Second, "11 runs took %s", elapsed)
-	assert.Assert(
+	assertTrue(t, elapsed < time.Second, "11 runs took %s", elapsed)
+	assertTrue(
 		t,
 		after.TotalAlloc-before.TotalAlloc < 1<<20,
 		"one run allocated %d bytes in %.0f allocations",

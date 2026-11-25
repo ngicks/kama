@@ -58,7 +58,8 @@
 //
 // # Dependencies
 //
-// Generated code imports this package, so it depends on the standard library only. For that
-// reason it uses plain loops where the generator github.com/ngicks/kama/kamalib uses
+// Generated code imports this package. Its module has no dependency outside the standard
+// library, tests included, so a consumer's module graph gains no other module. For that
+// reason the package uses plain loops where the generator github.com/ngicks/kama/kamalib uses
 // github.com/ngicks/opiter chains.
 package validator

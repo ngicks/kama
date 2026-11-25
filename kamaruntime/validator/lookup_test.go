@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-
-	"gotest.tools/v3/assert"
 )
 
 var (
@@ -111,7 +109,7 @@ func TestLookups(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.DeepEqual(t, Pointers(tc.err), tc.pointers)
+			deepEqual(t, Pointers(tc.err), tc.pointers)
 
 			for _, l := range tc.lookups {
 				assertSameErrors(t, At(tc.err, l.pointer), l.at, "At %q", l.pointer)
@@ -131,18 +129,18 @@ func TestLookupInvariants(t *testing.T) {
 
 			for _, p := range Pointers(err) {
 				at := At(err, p)
-				assert.Assert(t, len(at) > 0, "pointer %q", p)
+				assertTrue(t, len(at) > 0, "pointer %q", p)
 
 				total += len(at)
 
 				for _, e := range at {
 					if pe, ok := errors.AsType[*Error](e); ok {
-						assert.Equal(t, pe.Pointer(), p)
+						equal(t, pe.Pointer(), p)
 					}
 				}
 			}
 
-			assert.Equal(t, len(Under(err, "")), total)
+			equal(t, len(Under(err, "")), total)
 		})
 	}
 }
@@ -150,15 +148,15 @@ func TestLookupInvariants(t *testing.T) {
 func TestPointersSortLexically(t *testing.T) {
 	err := Join(Index(errPlain, 10), Index(errPlain, 2), Index(errPlain, 2), Key(errPlain, ""))
 
-	assert.DeepEqual(t, Pointers(err), []string{"/", "/10", "/2"})
+	deepEqual(t, Pointers(err), []string{"/", "/10", "/2"})
 }
 
 func assertSameErrors(t *testing.T, got, want []error, msgAndArgs ...any) {
 	t.Helper()
 
-	assert.Equal(t, len(got), len(want), msgAndArgs...)
+	equal(t, len(got), len(want), msgAndArgs...)
 
 	for i := range got {
-		assert.Equal(t, got[i], want[i], msgAndArgs...)
+		equal(t, got[i], want[i], msgAndArgs...)
 	}
 }

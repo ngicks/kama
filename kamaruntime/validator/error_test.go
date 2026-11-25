@@ -4,16 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-
-	"gotest.tools/v3/assert"
 )
 
 func TestPathOrderAndText(t *testing.T) {
 	inner := New(ErrLength, "want %s, got %d", "<=3", 5)
 	err := Field(Index(Field(inner, "b"), 5), "a")
 
-	assert.Equal(t, err.Error(), "validation failed at .a[5].b: length: want <=3, got 5")
-	assert.Equal(t, mustError(t, err).Pointer(), "/a/5/b")
+	equal(t, err.Error(), "validation failed at .a[5].b: length: want <=3, got 5")
+	equal(t, mustError(t, err).Pointer(), "/a/5/b")
 }
 
 func TestErrorText(t *testing.T) {
@@ -38,7 +36,7 @@ func TestErrorText(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.err.Error(), tc.want)
+			equal(t, tc.err.Error(), tc.want)
 		})
 	}
 }
@@ -61,15 +59,15 @@ func TestPointer(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, mustError(t, tc.err).Pointer(), tc.want)
+			equal(t, mustError(t, tc.err).Pointer(), tc.want)
 		})
 	}
 }
 
 func TestWrapNil(t *testing.T) {
-	assert.NilError(t, Field(nil, "a"))
-	assert.NilError(t, Index(nil, 1))
-	assert.NilError(t, Key(nil, "k"))
+	nilError(t, Field(nil, "a"))
+	nilError(t, Index(nil, 1))
+	nilError(t, Key(nil, "k"))
 }
 
 func TestWrapDoesNotMutate(t *testing.T) {
@@ -77,24 +75,24 @@ func TestWrapDoesNotMutate(t *testing.T) {
 	a := Field(inner, "a")
 	b := Index(inner, 1)
 
-	assert.Equal(t, mustError(t, inner).Pointer(), "/c")
-	assert.Equal(t, mustError(t, a).Pointer(), "/a/c")
-	assert.Equal(t, mustError(t, b).Pointer(), "/1/c")
+	equal(t, mustError(t, inner).Pointer(), "/c")
+	equal(t, mustError(t, a).Pointer(), "/a/c")
+	equal(t, mustError(t, b).Pointer(), "/1/c")
 
 	joined := Join(inner, Key(New(ErrNull, "y"), "k"))
 	ja := Field(joined, "a")
 	jb := Field(joined, "b")
 
-	assert.DeepEqual(t, Pointers(joined), []string{"/c", "/k"})
-	assert.DeepEqual(t, Pointers(ja), []string{"/a/c", "/a/k"})
-	assert.DeepEqual(t, Pointers(jb), []string{"/b/c", "/b/k"})
+	deepEqual(t, Pointers(joined), []string{"/c", "/k"})
+	deepEqual(t, Pointers(ja), []string{"/a/c", "/a/k"})
+	deepEqual(t, Pointers(jb), []string{"/b/c", "/b/k"})
 }
 
 func TestWrapDistributesOverJoin(t *testing.T) {
 	err := Field(Join(Field(New(ErrZero, "x"), "a"), errors.New("plain")), "top")
 
-	assert.DeepEqual(t, Pointers(err), []string{"/top", "/top/a"})
-	assert.Equal(t, len(err.(interface{ Unwrap() []error }).Unwrap()), 2)
+	deepEqual(t, Pointers(err), []string{"/top", "/top/a"})
+	equal(t, len(err.(interface{ Unwrap() []error }).Unwrap()), 2)
 }
 
 func TestCompose(t *testing.T) {
@@ -102,22 +100,22 @@ func TestCompose(t *testing.T) {
 	join := Join(New(ErrConst, "want 1"), New(ErrPattern, "want ^x"))
 	err := Field(Compose(ErrOr, []error{cmp, nil, join}, "none of %d alternatives holds", 3), "b")
 
-	assert.Equal(t, err.Error(), "validation failed at .b: or: none of 3 alternatives holds\n"+
+	equal(t, err.Error(), "validation failed at .b: or: none of 3 alternatives holds\n"+
 		"\tvalidation failed at .a: compare: want >= 10, got 5\n"+
 		"\tvalidation failed: const: want 1\n"+
 		"\tvalidation failed: pattern: want ^x")
-	assert.Assert(t, errors.Is(err, ErrOr))
-	assert.Assert(t, !errors.Is(err, ErrCompare))
-	assert.DeepEqual(t, Pointers(err), []string{"/b"})
-	assert.Equal(t, len(At(err, "/b")), 1)
-	assert.Equal(t, len(Causes(err)), 2)
-	assert.Equal(t, Causes(err)[0], cmp)
-	assert.Equal(t, Causes(err)[1], join)
-	assert.Assert(t, Causes(New(ErrOr, "x")) == nil)
-	assert.Assert(t, Causes(errors.New("x")) == nil)
+	assertTrue(t, errors.Is(err, ErrOr))
+	assertTrue(t, !errors.Is(err, ErrCompare))
+	deepEqual(t, Pointers(err), []string{"/b"})
+	equal(t, len(At(err, "/b")), 1)
+	equal(t, len(Causes(err)), 2)
+	equal(t, Causes(err)[0], cmp)
+	equal(t, Causes(err)[1], join)
+	assertTrue(t, Causes(New(ErrOr, "x")) == nil)
+	assertTrue(t, Causes(errors.New("x")) == nil)
 
 	none := Compose(ErrOr, nil, "none of 0 alternatives holds")
-	assert.Equal(t, none.Error(), "validation failed: or: none of 0 alternatives holds")
+	equal(t, none.Error(), "validation failed: or: none of 0 alternatives holds")
 }
 
 func TestErrorsIs(t *testing.T) {
@@ -137,11 +135,11 @@ func TestErrorsIs(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Assert(t, errors.Is(tc.err, ErrRequired))
-			assert.Assert(t, !errors.Is(tc.err, ErrZero))
+			assertTrue(t, errors.Is(tc.err, ErrRequired))
+			assertTrue(t, !errors.Is(tc.err, ErrZero))
 
 			_, ok := errors.AsType[*Error](tc.err)
-			assert.Assert(t, ok)
+			assertTrue(t, ok)
 		})
 	}
 }
@@ -151,15 +149,15 @@ func TestJoin(t *testing.T) {
 	b := New(ErrNil, "b")
 	c := New(ErrNull, "c")
 
-	assert.NilError(t, Join())
-	assert.NilError(t, Join(nil, nil))
-	assert.Equal(t, Join(nil, a, nil), a)
+	nilError(t, Join())
+	nilError(t, Join(nil, nil))
+	equal(t, Join(nil, a, nil), a)
 
 	j := Join(a, nil, b)
-	assert.Equal(t, j.Error(), a.Error()+"\n"+b.Error())
+	equal(t, j.Error(), a.Error()+"\n"+b.Error())
 	assertSameErrors(t, unwrapAll(t, j), []error{a, b})
 
-	assert.Equal(t, Join(nil, j), j)
+	equal(t, Join(nil, j), j)
 
 	nested := Join(c, j, Join(nil, Join(a)))
 	assertSameErrors(t, unwrapAll(t, nested), []error{c, a, b, a})
@@ -176,14 +174,14 @@ func TestJoinKeepsForeignJoinOpaque(t *testing.T) {
 	foreign := errors.Join(New(ErrZero, "a"), New(ErrNil, "b"))
 	j := Join(foreign, New(ErrNull, "c"))
 
-	assert.Equal(t, len(unwrapAll(t, j)), 2)
+	equal(t, len(unwrapAll(t, j)), 2)
 }
 
 func mustError(t *testing.T, err error) *Error {
 	t.Helper()
 
 	e, ok := errors.AsType[*Error](err)
-	assert.Assert(t, ok, "%T is not *Error", err)
+	assertTrue(t, ok, "%T is not *Error", err)
 
 	return e
 }
@@ -192,7 +190,7 @@ func unwrapAll(t *testing.T, err error) []error {
 	t.Helper()
 
 	u, ok := err.(interface{ Unwrap() []error })
-	assert.Assert(t, ok, "%T has no Unwrap() []error", err)
+	assertTrue(t, ok, "%T has no Unwrap() []error", err)
 
 	return u.Unwrap()
 }

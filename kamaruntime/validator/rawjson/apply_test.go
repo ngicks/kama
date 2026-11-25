@@ -5,8 +5,6 @@ import (
 	"regexp"
 	"testing"
 
-	"gotest.tools/v3/assert"
-
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
@@ -22,59 +20,59 @@ func TestProperties(t *testing.T) {
 	}
 
 	for _, ok := range []string{`{}`, `{"a": 1, "xy": "s", "b": true}`, `"not an object"`, `[1]`} {
-		assert.NilError(t, Properties(named(ok), false, nil, entries...), ok)
+		nilError(t, Properties(named(ok), false, nil, entries...), ok)
 	}
 
 	err := Properties(named(`{"a": "1", "xa": 2, "b": null}`), false, nil, entries...)
-	assert.ErrorIs(t, err, validator.ErrKind)
-	assert.DeepEqual(t, validator.Pointers(err), []string{"/a", "/b", "/xa"})
+	errorIs(t, err, validator.ErrKind)
+	deepEqual(t, validator.Pointers(err), []string{"/a", "/b", "/xa"})
 
 	ev := &Evaluated{}
-	assert.NilError(t, Properties(named(`{"a": 1, "xy": "s", "b": true}`), false, ev,
+	nilError(t, Properties(named(`{"a": 1, "xy": "s", "b": true}`), false, ev,
 		Property("a", kindFunc("integer")), Property("c", kindFunc("null"))))
-	assert.DeepEqual(t, ev.members, map[string]bool{"a": true})
+	deepEqual(t, ev.members, map[string]bool{"a": true})
 }
 
 func TestElements(t *testing.T) {
 	prefix := []Func{kindFunc("string"), kindFunc("number")}
 
-	assert.NilError(t, Elements(named(`["a", 1, true]`), false, nil, nil, prefix...))
-	assert.NilError(t, Elements(named(`{"a": 1}`), false, nil, kindFunc("null")))
+	nilError(t, Elements(named(`["a", 1, true]`), false, nil, nil, prefix...))
+	nilError(t, Elements(named(`{"a": 1}`), false, nil, kindFunc("null")))
 
 	err := Elements(named(`["a", "b", 1, null]`), false, nil, kindFunc("null"), prefix...)
-	assert.DeepEqual(t, validator.Pointers(err), []string{"/1", "/2"})
+	deepEqual(t, validator.Pointers(err), []string{"/1", "/2"})
 
 	ev := &Evaluated{}
-	assert.NilError(t, Elements(named(`["a", 1, true]`), false, ev, nil, prefix...))
-	assert.DeepEqual(t, ev.items, map[int]bool{0: true, 1: true})
+	nilError(t, Elements(named(`["a", 1, true]`), false, ev, nil, prefix...))
+	deepEqual(t, ev.items, map[int]bool{0: true, 1: true})
 }
 
 func TestContains(t *testing.T) {
 	two := []Count{{Op: ">=", N: 1}, {Op: "<=", N: 2}}
 
 	for _, ok := range []string{`[1, "a"]`, `[1, 1, "a"]`, `"a"`} {
-		assert.NilError(t, Contains(named(ok), nil, kindFunc("integer"), two...), ok)
+		nilError(t, Contains(named(ok), nil, kindFunc("integer"), two...), ok)
 	}
 
 	for _, bad := range []string{`[]`, `["a"]`, `[1, 1, 1]`} {
-		assert.ErrorIs(t, Contains(named(bad), nil, kindFunc("integer"), two...),
+		errorIs(t, Contains(named(bad), nil, kindFunc("integer"), two...),
 			validator.ErrContains, bad)
 	}
 
 	ev := &Evaluated{}
-	assert.NilError(t, Contains(named(`["a", 1]`), ev, kindFunc("integer"), two...))
-	assert.DeepEqual(t, ev.items, map[int]bool{1: true})
+	nilError(t, Contains(named(`["a", 1]`), ev, kindFunc("integer"), two...))
+	deepEqual(t, ev.items, map[int]bool{1: true})
 }
 
 func TestKeys(t *testing.T) {
 	short := func(v jsontext.Value) error { return Runes(v, "<=", 2) }
 
-	assert.NilError(t, Keys(named(`{"ab": 1}`), false, short))
-	assert.NilError(t, Keys(named(`[1]`), false, short))
+	nilError(t, Keys(named(`{"ab": 1}`), false, short))
+	nilError(t, Keys(named(`[1]`), false, short))
 
 	err := Keys(named(`{"abc": 1, "a\"b": 2}`), false, short)
-	assert.ErrorIs(t, err, validator.ErrLength)
-	assert.DeepEqual(t, validator.Pointers(err), []string{"/a\"b", "/abc"})
+	errorIs(t, err, validator.ErrLength)
+	deepEqual(t, validator.Pointers(err), []string{"/a\"b", "/abc"})
 }
 
 func TestUnevaluated(t *testing.T) {
@@ -83,19 +81,19 @@ func TestUnevaluated(t *testing.T) {
 	}
 
 	err := UnevaluatedMembers(named(`{"a": 1, "b": 2}`), false, nil, scope, kindFunc("null"))
-	assert.DeepEqual(t, validator.Pointers(err), []string{"/b"})
+	deepEqual(t, validator.Pointers(err), []string{"/b"})
 
 	ev := &Evaluated{}
-	assert.NilError(t, UnevaluatedMembers(named(`{"a": 1, "b": 2}`), false, ev, scope,
+	nilError(t, UnevaluatedMembers(named(`{"a": 1, "b": 2}`), false, ev, scope,
 		kindFunc("integer")))
-	assert.DeepEqual(t, ev.members, map[string]bool{"a": true, "b": true})
+	deepEqual(t, ev.members, map[string]bool{"a": true, "b": true})
 
 	prefix := func(ev *Evaluated) error {
 		return Elements(named(`["a", 1]`), false, ev, nil, kindFunc("string"))
 	}
 
 	err = UnevaluatedElements(named(`["a", 1]`), false, nil, prefix, kindFunc("null"))
-	assert.DeepEqual(t, validator.Pointers(err), []string{"/1"})
+	deepEqual(t, validator.Pointers(err), []string{"/1"})
 }
 
 func TestBranch(t *testing.T) {
@@ -108,36 +106,36 @@ func TestBranch(t *testing.T) {
 	fails := func(*Evaluated) error { return validator.New(validator.ErrKind, "fails") }
 
 	ev := &Evaluated{}
-	assert.NilError(t, Branch(ev, field("a")))
-	assert.ErrorIs(t, Branch(ev, func(ev *Evaluated) error {
+	nilError(t, Branch(ev, field("a")))
+	errorIs(t, Branch(ev, func(ev *Evaluated) error {
 		_ = field("b")(ev)
 		return fails(ev)
 	}), validator.ErrKind)
-	assert.DeepEqual(t, ev.members, map[string]bool{"a": true})
+	deepEqual(t, ev.members, map[string]bool{"a": true})
 
 	ev = &Evaluated{}
-	assert.NilError(t, If(ev, field("a"), field("b"), fails))
-	assert.DeepEqual(t, ev.members, map[string]bool{"a": true, "b": true})
+	nilError(t, If(ev, field("a"), field("b"), fails))
+	deepEqual(t, ev.members, map[string]bool{"a": true, "b": true})
 
 	ev = &Evaluated{}
-	assert.ErrorIs(t, If(ev, fails, field("b"), fails), validator.ErrKind)
-	assert.NilError(t, If(ev, fails, fails, nil))
-	assert.Equal(t, len(ev.members), 0)
+	errorIs(t, If(ev, fails, field("b"), fails), validator.ErrKind)
+	nilError(t, If(ev, fails, fails, nil))
+	equal(t, len(ev.members), 0)
 }
 
 type decoded struct{ A int }
 
 func TestDecode(t *testing.T) {
-	assert.NilError(t, Decode[decoded](named(`{"A": 1}`)))
-	assert.ErrorIs(t, Decode[decoded](named(`"a"`)), validator.ErrDecode)
+	nilError(t, Decode[decoded](named(`{"A": 1}`)))
+	errorIs(t, Decode[decoded](named(`"a"`)), validator.ErrDecode)
 }
 
 type unencodable struct{ C chan int }
 
 func TestEncoded(t *testing.T) {
-	assert.NilError(t, Encoded(decoded{A: 1}, func(v jsontext.Value) error {
+	nilError(t, Encoded(decoded{A: 1}, func(v jsontext.Value) error {
 		return Required(v, false, "A")
 	}))
-	assert.ErrorIs(t, Encoded(decoded{A: 1}, kindFunc("string")), validator.ErrKind)
-	assert.ErrorIs(t, Encoded(unencodable{}, kindFunc("object")), validator.ErrEncode)
+	errorIs(t, Encoded(decoded{A: 1}, kindFunc("string")), validator.ErrKind)
+	errorIs(t, Encoded(unencodable{}, kindFunc("object")), validator.ErrEncode)
 }

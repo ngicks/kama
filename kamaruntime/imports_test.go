@@ -4,18 +4,18 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
-
-	"gotest.tools/v3/assert"
 )
 
 const modulePath = "github.com/ngicks/kama/kamaruntime"
 
 // TestImportsAllowlist keeps generated code, which imports this module, off any module but the
-// standard library and this one. Tests may import more, since a consumer never builds them.
+// standard library and this one. Tests are held to the same rule because a test dependency still
+// lands in go.mod, and a consumer's module graph lists every module there.
 func TestImportsAllowlist(t *testing.T) {
 	fset := token.NewFileSet()
 	parsed := 0
@@ -33,7 +33,7 @@ func TestImportsAllowlist(t *testing.T) {
 			return nil
 		}
 
-		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if !strings.HasSuffix(path, ".go") {
 			return nil
 		}
 
@@ -50,13 +50,36 @@ func TestImportsAllowlist(t *testing.T) {
 				return err
 			}
 
-			assert.Assert(t, allowed(imp), "%s imports %q", path, imp)
+			if !allowed(imp) {
+				t.Errorf("%s imports %q", path, imp)
+			}
 		}
 
 		return nil
 	})
-	assert.NilError(t, err)
-	assert.Assert(t, parsed > 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if parsed == 0 {
+		t.Fatal("no Go file found")
+	}
+}
+
+// TestGoModRequiresNothing keeps the module free of dependencies. The check parses go.mod by hand
+// since golang.org/x/mod would itself be a dependency.
+func TestGoModRequiresNothing(t *testing.T) {
+	data, err := os.ReadFile("go.mod")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i, line := range strings.Split(string(data), "\n") {
+		directive, _, _ := strings.Cut(strings.TrimSpace(line), "//")
+		if fields := strings.Fields(directive); len(fields) > 0 && fields[0] == "require" {
+			t.Errorf("go.mod:%d: %s", i+1, strings.TrimSpace(line))
+		}
+	}
 }
 
 func allowed(imp string) bool {
