@@ -81,6 +81,20 @@ type Options struct {
 	// generator gives one, as described under Validation in the package
 	// documentation.
 	Validate bool
+	// ExternalTest tells that Package is an external test package, which
+	// shares its directory with the package it tests. Its generated files
+	// are test files, as in zz_gen.helper.kama_jsonschema_test.go.
+	ExternalTest bool
+}
+
+// file returns name, the name of a generated file without a directory, as
+// the package of o names it: an external test package takes test files.
+func (o Options) file(name string) string {
+	if !o.ExternalTest || strings.HasSuffix(name, "_test.go") {
+		return name
+	}
+
+	return strings.TrimSuffix(name, ".go") + "_test.go"
 }
 
 // Generate yields the Go declarations of the schema of in, one file
@@ -178,7 +192,12 @@ func generate(env base.Env, doc *jsonschema.Schema, opts Options) ([]base.Output
 	}
 	outs := []base.Output{main}
 
-	helpers, ok, err := helpersFile(opts, dir, partsText(parts))
+	_, f, err := parseParts(parts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	helpers, names, ok, err := helpersFile(opts, dir, f.Decls)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,8 +205,7 @@ func generate(env base.Env, doc *jsonschema.Schema, opts Options) ([]base.Output
 	if ok {
 		helpers.Params = params
 
-		names := helperRef.FindAllString(partsText(helpers.Parts), -1)
-		if err := checkHelperNames(env.Out, env.Registry, dir, names); err != nil {
+		if err := checkHelperNames(env.Out, env.Registry, dir, opts.Package, names); err != nil {
 			return nil, nil, err
 		}
 
@@ -204,22 +222,6 @@ func generate(env base.Env, doc *jsonschema.Schema, opts Options) ([]base.Output
 	}
 
 	return outs, slices.Concat(unknownKeywords(doc), unenforcedKeywords(doc, opts)), nil
-}
-
-// partsText returns the source text of parts.
-func partsText(parts []base.Part) string {
-	return strings.Join(
-		opiter.WrapSeq(slices.Values(parts)).
-			Map(func(p base.Part) string {
-				if d, ok := p.(base.Decl); ok {
-					return string(d)
-				}
-
-				return ""
-			}).
-			CollectSlice(),
-		"\n",
-	)
 }
 
 // unknownKeywords returns a warning for each unknown keyword of the

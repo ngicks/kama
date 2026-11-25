@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:58:21Z
+// generated: 2026-11-25T06:11:47Z
 
 package validation
 
@@ -373,7 +373,9 @@ func (v OrderPick) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
-// OrderPickUnknown, which Validate reports.
+// OrderPickUnknown, which Validate reports. A member failing on a stub of
+// the validator generator fails the decoding, since the stub tells nothing
+// of the value.
 //
 //kama:generated kama:jsonschema
 func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -417,6 +419,9 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
+		if err := kamaJsonschemaStubbed(errs); err != nil {
+			return err
+		}
 		*v = OrderPick{Kind: OrderPickUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}

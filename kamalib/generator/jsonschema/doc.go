@@ -665,12 +665,17 @@
 // generator writes for the generated file, <package>.kama_jsonschema.kama_validate.go,
 // and carry its generated mark, //kama:generated kama:validate, so that it
 // takes them for its own output and replaces them. A stub returns an error
-// telling to run validate.generate over the package. Generate writes the
-// stubs when the file does not exist or when the declarations of the run
-// differ from those of the existing generated file, whose methods may
-// refer to fields and types the run drops. A run giving the declarations
-// of the existing file leaves the methods the validator generator wrote
-// alone.
+// wrapping validator.ErrStub telling to run validate.generate over the
+// package. A union whose members fail on a stub fails the decoding with
+// that error rather than taking the value for its unknown member, so
+// decoding never succeeds on a stub. Generate writes the stubs when the
+// file does not exist and validate is true, or when the declarations of
+// the run differ from those of the existing generated file, whose methods
+// may refer to fields and types the run drops, whatever validate is. A run
+// giving the declarations of the existing file leaves the methods the
+// validator generator wrote alone. A method the package declares by hand,
+// in a declaration without a generated mark, gets no stub, which would
+// declare it twice.
 //
 // A union decodes the value once per member its prefilter and probe leave,
 // and nested unions multiply that per level. Members telling a value apart

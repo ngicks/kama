@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:52Z
+// generated: 2026-11-25T06:11:23Z
 
 package nullraw
 
@@ -219,7 +219,8 @@ func (v RootD) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches gives RootDUnknown, which
-// Validate reports.
+// Validate reports. A member failing on a stub of the validator generator
+// fails the decoding, since the stub tells nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -253,6 +254,9 @@ func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 				return nil
 			}
 		}
+	}
+	if err := kamaJsonschemaStubbed(errs); err != nil {
+		return err
 	}
 	*v = RootD{Kind: RootDUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	return nil

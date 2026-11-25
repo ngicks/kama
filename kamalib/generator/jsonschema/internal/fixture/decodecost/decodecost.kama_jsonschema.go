@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:29Z
+// generated: 2026-11-25T06:11:03Z
 
 package decodecost
 
@@ -316,7 +316,9 @@ func (v Chosen) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
-// ChosenUnknown, which Validate reports.
+// ChosenUnknown, which Validate reports. A member failing on a stub of the
+// validator generator fails the decoding, since the stub tells nothing of
+// the value.
 //
 //kama:generated kama:jsonschema
 func (v *Chosen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -368,6 +370,9 @@ func (v *Chosen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
+		if err := kamaJsonschemaStubbed(errs); err != nil {
+			return err
+		}
 		*v = Chosen{Kind: ChosenUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}

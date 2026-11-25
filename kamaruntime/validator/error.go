@@ -30,6 +30,9 @@ var (
 	ErrContains = errors.New("contains")
 	ErrDecode   = errors.New("decode")
 	ErrEncode   = errors.New("encode")
+	// ErrStub reports a stub standing for a method the validator generator
+	// has not written yet. It tells nothing of the value checked.
+	ErrStub = errors.New("stub")
 )
 
 // Error is an error located by a path of segments from the outermost value to the failing one.

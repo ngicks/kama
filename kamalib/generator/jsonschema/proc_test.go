@@ -503,8 +503,9 @@ func runProc(
 	return r
 }
 
-// runProcErr loads the packages procFs staged for t from f and runs the
-// proc with param over them into f at now.
+// runProcErr loads the packages procFs staged for t from f, allowing type
+// errors as the first load of a spec does, and runs the proc with param over
+// them into f at now.
 func runProcErr(
 	t *testing.T,
 	f *overlayfs.Fs,
@@ -513,10 +514,43 @@ func runProcErr(
 ) (*gentest.RecordReporter, error) {
 	t.Helper()
 
+	return runProcLoad(t, f, param, now, gopackages.Options{AllowTypeErrors: true})
+}
+
+// runProcLoad is runProcErr loading the packages with load, whose patterns
+// it sets.
+func runProcLoad(
+	t *testing.T,
+	f *overlayfs.Fs,
+	param ProcParamPartial,
+	now time.Time,
+	load gopackages.Options,
+) (*gentest.RecordReporter, error) {
+	t.Helper()
+
 	ctx := context.Background()
 
-	// The go command matches no package of ./... in a directory the
-	// overlay holds alone, so each one is named.
+	load.Patterns = inlinePatterns(t, f)
+
+	pkgs, err := gopackages.Load(ctx, f, load)
+	assert.NilError(t, err)
+
+	i := newInstance(t, now)
+	assert.NilError(t, i.Param(param))
+	i.In(&procpackages.Packages{Pkgs: pkgs})
+	i.Out(f)
+
+	r := &gentest.RecordReporter{}
+
+	return r, i.Run(ctx, r)
+}
+
+// inlinePatterns returns a pattern for each directory procFs staged a Go
+// file of t in. The go command matches no package of ./... in a directory
+// the overlay holds alone, so each one is named.
+func inlinePatterns(t *testing.T, f *overlayfs.Fs) []string {
+	t.Helper()
+
 	var patterns []string
 
 	assert.NilError(t, fs.WalkDir(f.FS(), gentest.InlineDir(t), func(
@@ -529,15 +563,7 @@ func runProcErr(
 		return err
 	}))
 
-	pkgs, err := gopackages.Load(ctx, f, gopackages.Options{Patterns: slices.Compact(patterns)})
-	assert.NilError(t, err)
+	slices.Sort(patterns)
 
-	i := newInstance(t, now)
-	assert.NilError(t, i.Param(param))
-	i.In(&procpackages.Packages{Pkgs: pkgs})
-	i.Out(f)
-
-	r := &gentest.RecordReporter{}
-
-	return r, i.Run(ctx, r)
+	return slices.Compact(patterns)
 }

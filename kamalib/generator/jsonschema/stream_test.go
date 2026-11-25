@@ -87,15 +87,6 @@ func buffers(body *ast.BlockStmt) bool {
 	return found
 }
 
-func receiverName(fn *ast.FuncDecl) string {
-	t := fn.Recv.List[0].Type
-	if star, ok := t.(*ast.StarExpr); ok {
-		t = star.X
-	}
-
-	return t.(*ast.Ident).Name
-}
-
 func wireStruct(name string) bool {
 	return len(name) > len("Wire") && name[len(name)-len("Wire"):] == "Wire"
 }

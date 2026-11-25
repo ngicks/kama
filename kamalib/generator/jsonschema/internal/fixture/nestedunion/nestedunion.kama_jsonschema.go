@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:40Z
+// generated: 2026-11-25T06:11:13Z
 
 package nestedunion
 
@@ -221,7 +221,8 @@ func (v Any) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches gives AnyUnknown, which
-// Validate reports.
+// Validate reports. A member failing on a stub of the validator generator
+// fails the decoding, since the stub tells nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -263,6 +264,9 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 				}
 			}
 		}
+	}
+	if err := kamaJsonschemaStubbed(errs); err != nil {
+		return err
 	}
 	*v = Any{Kind: AnyUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	return nil
@@ -515,7 +519,9 @@ func (v Tagged) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
-// TaggedUnknown, which Validate reports.
+// TaggedUnknown, which Validate reports. A member failing on a stub of the
+// validator generator fails the decoding, since the stub tells nothing of
+// the value.
 //
 //kama:generated kama:jsonschema
 func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -567,6 +573,9 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
+		if err := kamaJsonschemaStubbed(errs); err != nil {
+			return err
+		}
 		*v = Tagged{Kind: TaggedUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
@@ -824,7 +833,9 @@ func (v Overlap) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
-// OverlapUnknown, which Validate reports.
+// OverlapUnknown, which Validate reports. A member failing on a stub of the
+// validator generator fails the decoding, since the stub tells nothing of
+// the value.
 //
 //kama:generated kama:jsonschema
 func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -876,6 +887,9 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
+		if err := kamaJsonschemaStubbed(errs); err != nil {
+			return err
+		}
 		*v = Overlap{Kind: OverlapUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}

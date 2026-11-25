@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:38Z
+// generated: 2026-11-25T06:11:11Z
 
 package multikind
 
@@ -210,7 +210,8 @@ func (v CellValue) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches gives CellValueUnknown, which
-// Validate reports.
+// Validate reports. A member failing on a stub of the validator generator
+// fails the decoding, since the stub tells nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -257,6 +258,9 @@ func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 				return nil
 			}
 		}
+	}
+	if err := kamaJsonschemaStubbed(errs); err != nil {
+		return err
 	}
 	*v = CellValue{Kind: CellValueUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	return nil
@@ -408,7 +412,8 @@ func (v CellLabel) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches gives CellLabelUnknown, which
-// Validate reports.
+// Validate reports. A member failing on a stub of the validator generator
+// fails the decoding, since the stub tells nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *CellLabel) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -446,6 +451,9 @@ func (v *CellLabel) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if raw.Kind() == jsontext.KindNull {
 		*v = CellLabel{Kind: CellLabelNull{}}
 		return nil
+	}
+	if err := kamaJsonschemaStubbed(errs); err != nil {
+		return err
 	}
 	*v = CellLabel{Kind: CellLabelUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	return nil

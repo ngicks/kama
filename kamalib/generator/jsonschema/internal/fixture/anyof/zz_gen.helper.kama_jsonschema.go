@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:02:55Z
+// generated: 2026-11-25T06:11:01Z
 
 package anyof
 
@@ -316,6 +316,19 @@ func kamaJsonschemaRequiredPresent[T any](dst *T, p kamaJsonschemaPresent[T]) er
 		return validator.New(validator.ErrRequired, "member is missing")
 	}
 	*dst = p.value
+	return nil
+}
+
+// kamaJsonschemaStubbed returns the first error of errs, the errors of the
+// members of a union, that wraps validator.ErrStub, or nil.
+//
+//kama:generated kama:jsonschema
+func kamaJsonschemaStubbed(errs []error) error {
+	for _, err := range errs {
+		if errors.Is(err, validator.ErrStub) {
+			return err
+		}
+	}
 	return nil
 }
 

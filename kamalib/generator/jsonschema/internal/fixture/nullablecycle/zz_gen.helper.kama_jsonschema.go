@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:03:13Z
+// generated: 2026-11-25T06:11:17Z
 
 package nullablecycle
 
@@ -19,7 +19,6 @@ import (
 
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
-	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
 
@@ -214,18 +213,6 @@ func kamaJsonschemaRequired[T any](dst *T, u und.Und[T]) error {
 		return validator.New(validator.ErrNull, "member is null")
 	}
 	*dst = u.Value()
-	return nil
-}
-
-// kamaJsonschemaRequiredNullable sets dst to the value of a required,
-// nullable member. None means null.
-//
-//kama:generated kama:jsonschema
-func kamaJsonschemaRequiredNullable[T any](dst *opt.Option[T], u und.Und[T]) error {
-	if u.IsUndefined() {
-		return validator.New(validator.ErrRequired, "member is missing")
-	}
-	*dst = u.Flatten()
 	return nil
 }
 

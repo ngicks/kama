@@ -10,12 +10,17 @@ import (
 	"go/printer"
 	"go/token"
 	"io/fs"
+	"iter"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/ngicks/opiter"
+
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/genheader"
+	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
 
 // validatorId is the identity of the validator generator of package
@@ -36,18 +41,24 @@ var validatorId = base.Id{Namespace: "kama", Name: "validate"}
 // whose declarations equal those of the existing file keeps the methods the
 // validator generator wrote for them. A run changing them replaces those
 // methods by stubs too, since the methods may refer to fields and types the
-// run drops. A stub reports that the validator generator has not run.
+// run drops, even when the decoders call no Validate. Without that file, a
+// run whose decoders call no Validate needs no stub. A stub reports that
+// the validator generator has not run with an error wrapping
+// validator.ErrStub.
+//
+// A method the package declares in a file of its own, without a generated
+// mark, gets no stub, which would declare it twice.
 func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool, error) {
-	if !opts.Validate {
-		return base.Whole{}, false, nil
-	}
+	file := filepath.ToSlash(validatorId.Naming().SourceFile(main.Path))
 
-	path := filepath.ToSlash(validatorId.Naming().SourceFile(main.Path))
+	exists := false
 
 	if env.Out != nil {
-		_, err := fs.Stat(env.Out, path)
+		_, err := fs.Stat(env.Out, file)
 		switch {
 		case err == nil:
+			exists = true
+
 			same, err := sameDecls(env.Out, main)
 			if err != nil || same {
 				return base.Whole{}, false, err
@@ -55,6 +66,10 @@ func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool
 		case !errors.Is(err, fs.ErrNotExist):
 			return base.Whole{}, false, fmt.Errorf("jsonschema: %w", err)
 		}
+	}
+
+	if !exists && !opts.Validate {
+		return base.Whole{}, false, nil
 	}
 
 	hdr, err := genheader.GeneratorParams{
@@ -71,9 +86,12 @@ func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool
 		return base.Whole{}, false, err
 	}
 
-	var b strings.Builder
+	own, err := ownFiles(env, path.Dir(main.Path), main.Package)
+	if err != nil {
+		return base.Whole{}, false, err
+	}
 
-	b.WriteString(hdr + "\n\npackage " + main.Package + "\n\nimport \"errors\"\n")
+	var b strings.Builder
 
 	for _, d := range f.Decls {
 		g, ok := d.(*ast.GenDecl)
@@ -88,14 +106,26 @@ func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool
 
 		name := g.Specs[0].(*ast.TypeSpec).Name.Name
 
-		b.WriteString(stub(name, "Validate"))
-
+		methods := []string{"Validate"}
 		if slices.Contains(lines, "decoded") {
-			b.WriteString(stub(name, "ValidateShallow"))
+			methods = append(methods, "ValidateShallow")
+		}
+
+		for _, m := range methods {
+			if !declaresMethod(env.Registry, own, name, m) {
+				b.WriteString(stub(name, m))
+			}
 		}
 	}
 
-	return base.Whole{Path: path, Content: []byte(b.String())}, true, nil
+	imports := ""
+	if b.Len() > 0 {
+		imports = "\nimport \"" + validPath + "\"\n"
+	}
+
+	content := hdr + "\n\npackage " + main.Package + "\n" + imports + b.String()
+
+	return base.Whole{Path: file, Content: []byte(content)}, true, nil
 }
 
 // stub returns the stub of the method of the type name.
@@ -106,9 +136,85 @@ func stub(name, method string) string {
 //
 %[3]s
 func (v %[1]s) %[2]s(stopOnFirstError bool) error {
-	return errors.New("%[1]s.%[2]s is a stub; run validate.generate over the package")
+	return validator.New(validator.ErrStub, "%[1]s.%[2]s; run validate.generate over the package")
 }
 `, name, method, validatorId.Marker())
+}
+
+// ownFiles returns the parsed Go files of dir in the output of env that
+// declare the package pkg. An external test package shares the directory
+// of the package it tests, and the package clause tells their files apart.
+// A file that does not parse is left to the build to report.
+func ownFiles(env base.Env, dir, pkg string) ([]*ast.File, error) {
+	if env.Out == nil {
+		return nil, nil
+	}
+
+	entries, err := fs.ReadDir(env.Out, dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("jsonschema: read %q: %w", dir, err)
+	}
+
+	var files []*ast.File
+
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
+			continue
+		}
+
+		name := path.Join(dir, e.Name())
+
+		src, err := fs.ReadFile(env.Out, name)
+		if err != nil {
+			return nil, fmt.Errorf("jsonschema: read %q: %w", name, err)
+		}
+
+		f, err := parser.ParseFile(
+			token.NewFileSet(), name, src, parser.ParseComments|parser.SkipObjectResolution,
+		)
+		if err == nil && f.Name.Name == pkg {
+			files = append(files, f)
+		}
+	}
+
+	return files, nil
+}
+
+// declaresMethod reports whether files declare the method name of the type
+// recv in a declaration without a generated mark: one written by hand.
+func declaresMethod(reg *genmark.Registry, files []*ast.File, recv, name string) bool {
+	return opiter.WrapSeq(slices.Values(files)).
+		FlatMap(func(f *ast.File) iter.Seq[ast.Decl] { return slices.Values(f.Decls) }).
+		Any(func(d ast.Decl) bool {
+			fd, ok := d.(*ast.FuncDecl)
+			if !ok || fd.Recv == nil || fd.Name.Name != name || receiverName(fd) != recv {
+				return false
+			}
+
+			return !slices.ContainsFunc(base.AstDeclDocs(d), func(doc *ast.CommentGroup) bool {
+				_, ok := reg.Generated(doc)
+				return ok
+			})
+		})
+}
+
+// receiverName returns the name of the type of the receiver of fd. The
+// types the generator declares take no type parameters.
+func receiverName(fd *ast.FuncDecl) string {
+	t := fd.Recv.List[0].Type
+	if s, ok := t.(*ast.StarExpr); ok {
+		t = s.X
+	}
+
+	if id, ok := t.(*ast.Ident); ok {
+		return id.Name
+	}
+
+	return ""
 }
 
 // directives returns the args of the //kama:validate lines of doc, one

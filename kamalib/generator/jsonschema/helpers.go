@@ -7,9 +7,9 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"iter"
 	"maps"
 	"path"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -24,17 +24,18 @@ import (
 // call. The helpers are unexported, so no other package sees them.
 const helperPrefix = "kamaJsonschema"
 
-// helperRef matches a reference to a helper in generated source text.
-var helperRef = regexp.MustCompile(`\b` + helperPrefix + `[A-Za-z0-9]*\b`)
-
-// helpersFile returns the file of the package declaring the helpers text,
-// the source of the other generated declarations, refers to, and every
-// helper those refer to in turn, in the order of their names. ok is false
-// when text refers to none.
-func helpersFile(opts Options, dir, text string) (base.Composed, bool, error) {
+// helpersFile returns the file of the package declaring the helpers decls,
+// the declarations of the other generated files, refer to, and every
+// helper those refer to in turn, in the order of their names, together
+// with those names. ok is false when decls refer to none.
+func helpersFile(
+	opts Options,
+	dir string,
+	decls []ast.Decl,
+) (base.Composed, []string, bool, error) {
 	imports, err := newImports(opts.Package)
 	if err != nil {
-		return base.Composed{}, false, err
+		return base.Composed{}, nil, false, err
 	}
 
 	c := genhelper.NewBaseContext(
@@ -42,56 +43,113 @@ func helpersFile(opts Options, dir, text string) (base.Composed, bool, error) {
 		&genhelper.Package{Imports: imports, Path: opts.Package},
 	)
 
-	// decls holds the source of each helper rendered so far. The helpers a
-	// text refers to are known only once it is rendered, so they are
+	// srcs holds the source of each helper rendered so far. The helpers a
+	// helper refers to are known only once it is rendered, so they are
 	// collected as the rendering goes.
-	decls := map[string]string{}
-	todo := helperRef.FindAllString(text, -1)
+	srcs := map[string]string{}
+	todo := helperRefs(decls)
 
 	for len(todo) > 0 {
 		name := todo[0]
 		todo = todo[1:]
 
-		if _, ok := decls[name]; ok {
+		if _, ok := srcs[name]; ok {
 			continue
 		}
 
 		step, ok := helperDecl(name)
 		if !ok {
-			return base.Composed{}, false, fmt.Errorf("jsonschema: no helper %s", name)
+			// An identifier of the prefix naming no helper is no reference to
+			// one, and the build reports it if it names nothing at all.
+			continue
 		}
 
 		src, err := lang.Render(c, step)
 		if err != nil {
-			return base.Composed{}, false, fmt.Errorf("jsonschema: helper %s: %w", name, err)
+			return base.Composed{}, nil, false, fmt.Errorf("jsonschema: helper %s: %w", name, err)
 		}
 
-		decls[name] = src
-		todo = append(todo, helperRef.FindAllString(src, -1)...)
+		f, err := parser.ParseFile(token.NewFileSet(), "", "package p\n"+src, 0)
+		if err != nil {
+			return base.Composed{}, nil, false, fmt.Errorf(
+				"jsonschema: parse helper %s: %w",
+				name,
+				err,
+			)
+		}
+
+		srcs[name] = src
+
+		todo = append(todo, helperRefs(f.Decls)...)
 	}
 
-	if len(decls) == 0 {
-		return base.Composed{}, false, nil
+	if len(srcs) == 0 {
+		return base.Composed{}, nil, false, nil
 	}
+
+	names := slices.Sorted(maps.Keys(srcs))
 
 	var src strings.Builder
 
-	for _, name := range slices.Sorted(maps.Keys(decls)) {
-		src.WriteString(decls[name])
+	for _, name := range names {
+		src.WriteString(srcs[name])
 		src.WriteString("\n")
 	}
 
 	parts, err := splitDecls(src.String())
 	if err != nil {
-		return base.Composed{}, false, fmt.Errorf("jsonschema: parse helpers: %w", err)
+		return base.Composed{}, nil, false, fmt.Errorf("jsonschema: parse helpers: %w", err)
 	}
 
 	return base.Composed{
-		Path:    path.Join(dir, naming.SharedFile(helperKind)),
+		Path:    path.Join(dir, opts.file(naming.SharedFile(helperKind))),
 		Package: opts.Package,
 		Imports: imports,
 		Parts:   parts,
-	}, true, nil
+	}, names, true, nil
+}
+
+// helperRefs returns the identifiers starting with helperPrefix that decls
+// use and do not declare themselves, sorted and each once. Comments,
+// string literals and struct tags hold no identifier, so text of a schema
+// that lands there refers to no helper, and neither does an unexported
+// type the generator names after a schema.
+func helperRefs(decls []ast.Decl) []string {
+	declared := opiter.WrapSeq(slices.Values(decls)).
+		FlatMap(func(d ast.Decl) iter.Seq[string] { return slices.Values(declNames(d)) }).
+		CollectSlice()
+
+	var used []string
+
+	for _, d := range decls {
+		ast.Inspect(d, func(n ast.Node) bool {
+			switch n := n.(type) {
+			case *ast.SelectorExpr:
+				// The name after the dot belongs to another scope.
+				ast.Inspect(n.X, func(n ast.Node) bool {
+					if id, ok := n.(*ast.Ident); ok {
+						used = append(used, id.Name)
+					}
+
+					return true
+				})
+
+				return false
+			case *ast.Ident:
+				used = append(used, n.Name)
+			}
+
+			return true
+		})
+	}
+
+	return slices.Compact(
+		opiter.WrapSeq(slices.Values(used)).
+			Filter(func(name string) bool {
+				return strings.HasPrefix(name, helperPrefix) && !slices.Contains(declared, name)
+			}).
+			Collect(slices.Sorted),
+	)
 }
 
 // helperKind is the kind of the file declaring the helpers, as its name
@@ -99,10 +157,18 @@ func helpersFile(opts Options, dir, text string) (base.Composed, bool, error) {
 const helperKind = "helper"
 
 // checkHelperNames reports a declaration of a Go file of dir in fsys that
-// the generator did not write and that is named like a helper of names, or
-// that stands in the helpers file. The generator reads no package, so it
-// tells the declarations apart by their syntax and their generated marks.
-func checkHelperNames(fsys fs.FS, reg *genmark.Registry, dir string, names []string) error {
+// declares the package pkg, that the generator did not write and that is
+// named like a helper of names, or that stands in the helpers file of pkg.
+// The generator reads no package, so it tells the declarations apart by
+// their syntax and their generated marks. An external test package shares
+// the directory of the package it tests, and the package clause tells
+// their files apart.
+func checkHelperNames(
+	fsys fs.FS,
+	reg *genmark.Registry,
+	dir, pkg string,
+	names []string,
+) error {
 	if fsys == nil {
 		return nil
 	}
@@ -133,7 +199,7 @@ func checkHelperNames(fsys fs.FS, reg *genmark.Registry, dir string, names []str
 		f, err := parser.ParseFile(
 			token.NewFileSet(), file, src, parser.ParseComments|parser.SkipObjectResolution,
 		)
-		if err != nil {
+		if err != nil || f.Name.Name != pkg {
 			// The build reports a file that does not parse.
 			continue
 		}
@@ -608,6 +674,17 @@ func unionHelperDecl(name string) (genStep, bool) {
 			`func kamaJsonschemaNoMatch(kind error, errs []error) error {
 	return %[1]s.Join(append([]error{%[1]s.New(kind, "value matches no member")}, errs...)...)
 }`, v), true
+	case helperPrefix + "Stubbed":
+		return helper(name+" returns the first error of errs, the errors of the members "+
+			"of a union, that wraps validator.ErrStub, or nil.",
+			`func kamaJsonschemaStubbed(errs []error) error {
+	for _, err := range errs {
+		if %[1]s.Is(err, %[2]s.ErrStub) {
+			return err
+		}
+	}
+	return nil
+}`, "errors", v), true
 	case helperPrefix + "UnknownMember":
 		return helper(name+" returns the error of the unknown member of a union, err as "+
 			"decoding left it. A nil err, as of an unknown member built in Go, gives the "+

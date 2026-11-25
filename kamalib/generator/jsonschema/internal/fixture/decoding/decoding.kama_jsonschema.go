@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:31Z
+// generated: 2026-11-25T06:11:05Z
 
 package decoding
 
@@ -297,7 +297,9 @@ func (v RootU) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
-// RootUUnknown, which Validate reports.
+// RootUUnknown, which Validate reports. A member failing on a stub of the
+// validator generator fails the decoding, since the stub tells nothing of
+// the value.
 //
 //kama:generated kama:jsonschema
 func (v *RootU) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -345,6 +347,9 @@ func (v *RootU) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
+		if err := kamaJsonschemaStubbed(errs); err != nil {
+			return err
+		}
 		*v = RootU{Kind: RootUUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
@@ -622,7 +627,9 @@ func (v RootTwice) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
-// RootTwiceUnknown, which Validate reports.
+// RootTwiceUnknown, which Validate reports. A member failing on a stub of
+// the validator generator fails the decoding, since the stub tells nothing
+// of the value.
 //
 //kama:generated kama:jsonschema
 func (v *RootTwice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -666,6 +673,9 @@ func (v *RootTwice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
+		if err := kamaJsonschemaStubbed(errs); err != nil {
+			return err
+		}
 		*v = RootTwice{Kind: RootTwiceUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}

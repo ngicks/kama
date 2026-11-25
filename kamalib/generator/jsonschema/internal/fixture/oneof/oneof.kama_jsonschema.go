@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:54Z
+// generated: 2026-11-25T06:11:25Z
 
 package oneof
 
@@ -219,7 +219,9 @@ func (v ZooMixed) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
-// ZooMixedUnknown, which Validate reports.
+// ZooMixedUnknown, which Validate reports. A member failing on a stub of
+// the validator generator fails the decoding, since the stub tells nothing
+// of the value.
 //
 //kama:generated kama:jsonschema
 func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -279,6 +281,9 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
+		if err := kamaJsonschemaStubbed(errs); err != nil {
+			return err
+		}
 		*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
@@ -454,7 +459,9 @@ func (v ZooAmount) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
-// ZooAmountUnknown, which Validate reports.
+// ZooAmountUnknown, which Validate reports. A member failing on a stub of
+// the validator generator fails the decoding, since the stub tells nothing
+// of the value.
 //
 //kama:generated kama:jsonschema
 func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -498,6 +505,9 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
+		if err := kamaJsonschemaStubbed(errs); err != nil {
+			return err
+		}
 		*v = ZooAmount{Kind: ZooAmountUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
@@ -662,7 +672,9 @@ func (v Pet) ValidateShallow(stopOnFirstError bool) error {
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
-// PetUnknown, which Validate reports.
+// PetUnknown, which Validate reports. A member failing on a stub of the
+// validator generator fails the decoding, since the stub tells nothing of
+// the value.
 //
 //kama:generated kama:jsonschema
 func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -714,6 +726,9 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
+		if err := kamaJsonschemaStubbed(errs); err != nil {
+			return err
+		}
 		*v = Pet{Kind: PetUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}

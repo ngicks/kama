@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:03:26Z
+// generated: 2026-11-25T06:11:27Z
 
 package oneofoverlap
 
@@ -213,6 +213,19 @@ var kamaJsonschemaRejectNull = json.UnmarshalFromFunc(
 		return errors.ErrUnsupported
 	},
 )
+
+// kamaJsonschemaStubbed returns the first error of errs, the errors of the
+// members of a union, that wraps validator.ErrStub, or nil.
+//
+//kama:generated kama:jsonschema
+func kamaJsonschemaStubbed(errs []error) error {
+	for _, err := range errs {
+		if errors.Is(err, validator.ErrStub) {
+			return err
+		}
+	}
+	return nil
+}
 
 // kamaJsonschemaUnknownMember returns the error of the unknown member of a
 // union, err as decoding left it. A nil err, as of an unknown member built
