@@ -77,7 +77,12 @@ func TestFixtureUpToDate(t *testing.T) {
 
 			load := gopackages.Options{Patterns: []string{"./..."}}
 
-			pkgs, err := gopackages.Load(ctx, f, load)
+			// The first load of each spec.yaml allows type errors.
+			pkgs, err := gopackages.Load(
+				ctx,
+				f,
+				gopackages.Options{Patterns: load.Patterns, AllowTypeErrors: true},
+			)
 			assert.NilError(t, err)
 
 			i := newInstance(t, gentest.Now())

@@ -26,52 +26,68 @@ import (
 
 // TestGateFixture runs testdata/gate/spec.yaml, whose generate step emits
 // code that parses and does not compile. The copy_down step must fail,
-// leaving the project directory as it was.
+// leaving the project directory as it was, whether the load before the
+// generate step allows type errors or not.
 func TestGateFixture(t *testing.T) {
-	ctx := context.Background()
-	root := t.TempDir()
+	for _, allowTypeErrors := range []bool{false, true} {
+		t.Run(fmt.Sprintf("allow_type_errors=%t", allowTypeErrors), func(t *testing.T) {
+			ctx := context.Background()
+			root := t.TempDir()
 
-	assert.NilError(t, os.CopyFS(root, os.DirFS("testdata/gate")))
-	// The fixture has no go.mod of its own: a go.mod under testdata would be
-	// a module the pre-commit hook lints on its own.
-	assert.NilError(t, os.WriteFile(
-		filepath.Join(root, "go.mod"), []byte("module example.invalid/gate\n\ngo 1.27\n"), 0o644,
-	))
+			assert.NilError(t, os.CopyFS(root, os.DirFS("testdata/gate")))
+			// The fixture has no go.mod of its own: a go.mod under testdata
+			// would be a module the pre-commit hook lints on its own.
+			assert.NilError(t, os.WriteFile(
+				filepath.Join(root, "go.mod"),
+				[]byte("module example.invalid/gate\n\ngo 1.27\n"),
+				0o644,
+			))
 
-	b, err := os.ReadFile(filepath.Join(root, "spec.yaml"))
-	assert.NilError(t, err)
+			b, err := os.ReadFile(filepath.Join(root, "spec.yaml"))
+			assert.NilError(t, err)
 
-	var spec workflow.Spec
-	assert.NilError(t, yaml.Unmarshal(b, &spec))
+			var spec workflow.Spec
+			assert.NilError(t, yaml.Unmarshal(b, &spec))
 
-	reg := workflow.NewRegistry()
-	assert.NilError(t, reg.Register("overlayfs.open", NewOpenProc))
-	assert.NilError(t, reg.Register("overlayfs.copy_down", NewCopyDownProc))
-	assert.NilError(t, reg.Register("packages.load", procgopackages.NewProc))
-	assert.NilError(
-		t,
-		reg.Register("fixture.generate", func() workflow.Proc { return brokenGenerator{} }),
-	)
+			load := spec.Steps["load"]
+			load.Param = map[string]any{"allow_type_errors": allowTypeErrors}
+			spec.Steps["load"] = load
 
-	before := readTree(t, root)
+			reg := workflow.NewRegistry()
+			assert.NilError(t, reg.Register("overlayfs.open", NewOpenProc))
+			assert.NilError(t, reg.Register("overlayfs.copy_down", NewCopyDownProc))
+			assert.NilError(t, reg.Register("packages.load", procgopackages.NewProc))
+			assert.NilError(
+				t,
+				reg.Register("fixture.generate", func() workflow.Proc { return brokenGenerator{} }),
+			)
 
-	// The spec opens the working directory, as a spec run by go generate does.
-	t.Chdir(root)
+			before := readTree(t, root)
 
-	g, err := spec.Build(ctx, reg)
-	assert.NilError(t, err)
-	assert.Assert(t, len(g.Warnings()) == 0, "%v", g.Warnings())
+			// The spec opens the working directory, as a spec run by go
+			// generate does.
+			t.Chdir(root)
 
-	err = g.Run(ctx, workflow.ProgressControl{})
-	assert.ErrorIs(t, err, workflow.ErrRun)
-	assert.ErrorContains(t, err, `step "final"`)
+			g, err := spec.Build(ctx, reg)
+			assert.NilError(t, err)
+			assert.Assert(t, len(g.Warnings()) == 0, "%v", g.Warnings())
 
-	pkgErrs, ok := errors.AsType[gopackages.PackageErrors](err)
-	assert.Assert(t, ok, "err: %v", err)
-	assert.DeepEqual(t, slices.Collect(maps.Keys(pkgErrs)), []string{"example.invalid/gate/model"})
-	assert.ErrorContains(t, err, "undefined: typeNameOf")
+			err = g.Run(ctx, workflow.ProgressControl{})
+			assert.ErrorIs(t, err, workflow.ErrRun)
+			assert.ErrorContains(t, err, `step "final"`)
 
-	assert.DeepEqual(t, readTree(t, root), before)
+			pkgErrs, ok := errors.AsType[gopackages.PackageErrors](err)
+			assert.Assert(t, ok, "err: %v", err)
+			assert.DeepEqual(
+				t,
+				slices.Collect(maps.Keys(pkgErrs)),
+				[]string{"example.invalid/gate/model"},
+			)
+			assert.ErrorContains(t, err, "undefined: typeNameOf")
+
+			assert.DeepEqual(t, readTree(t, root), before)
+		})
+	}
 }
 
 // readTree returns the content of every file under root, keyed by its

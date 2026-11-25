@@ -30,9 +30,32 @@
 // files. Several packages may name one file. A package without a template
 // file generates nothing.
 //
-// The packages load before the proc runs, and packages.load fails on any
-// error, so the Go files of a package must compile without the files the
-// proc has not generated yet.
+// The proc reads the name, the directory and the syntax trees of a
+// package, not its types. A spec loads the packages for it with the
+// packages.load param allow_type_errors true, so that Go files referring
+// to the files the proc has not generated yet, or a generated file that no
+// longer compiles, do not stop the run:
+//
+//	version: 1
+//	steps:
+//	  root:
+//	    proc: overlayfs.open
+//	  load:
+//	    proc: packages.load
+//	    in: root
+//	    param:
+//	      allow_type_errors: true
+//	  generate:
+//	    proc: contextkey.generate
+//	    in: load
+//	    out: root
+//	  final:
+//	    proc: overlayfs.copy_down
+//	    in: root
+//	    after: generate
+//
+// The final copy_down still checks that the packages compile with the
+// generated files.
 //
 // The param of the proc has one key, key_type_func, which is the
 // key_type_func of a template file leaving it out.

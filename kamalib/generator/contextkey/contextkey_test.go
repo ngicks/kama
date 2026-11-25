@@ -246,6 +246,40 @@ entries:
 	assert.Assert(t, strings.Contains(header("named/d.kama_contextkey.go"), `"shared/two.toml"`))
 }
 
+// TestProcRunOnPackagesWithErrors runs the proc over a package referring
+// to a function the proc generates, before the function exists and after
+// its file stops compiling.
+func TestProcRunOnPackagesWithErrors(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"gen/key.go": "package gen\n\nfunc keyTypeFunc(name string) *string { return &name }\n\n" +
+			"var _ = WithA\n",
+		"gen/kama_contextkey.yaml": "entries:\n" +
+			"  - {file_name: a, name: A, type: string, default_expr: '\"\"'}\n",
+	})
+	load := gopackages.Options{Patterns: []string{"./..."}}
+
+	assert.ErrorContains(t, gentest.Build(f, load), "undefined: WithA")
+
+	_, err := runProc(t, f, param("keyTypeFunc"), gentest.Now())
+	assert.NilError(t, err)
+	assert.NilError(t, gentest.Build(f, load))
+
+	want, err := fs.ReadFile(f.FS(), "gen/a.kama_contextkey.go")
+	assert.NilError(t, err)
+
+	stale := string(want) + "\nvar _ = goneHelper()\n"
+	assert.NilError(t, f.Write(context.Background(), "gen/a.kama_contextkey.go", []byte(stale)))
+	assert.ErrorContains(t, gentest.Build(f, load), "undefined: goneHelper")
+
+	_, err = runProc(t, f, param("keyTypeFunc"), gentest.Now())
+	assert.NilError(t, err)
+	assert.NilError(t, gentest.Build(f, load))
+
+	got, err := fs.ReadFile(f.FS(), "gen/a.kama_contextkey.go")
+	assert.NilError(t, err)
+	assert.Equal(t, string(got), string(want))
+}
+
 func TestProcRunErrors(t *testing.T) {
 	entry := func(name string) string {
 		return "entries: [{file_name: " + name + ", name: N, type: int, default_expr: '1'}]\n"
@@ -539,8 +573,8 @@ func procFs(t *testing.T, files map[string]string) *overlayfs.Fs {
 	return f
 }
 
-// runProc loads the packages of f and runs the proc with p over them into
-// f at now.
+// runProc loads the packages of f allowing type errors, as the specs do,
+// and runs the proc with p over them into f at now.
 func runProc(
 	t *testing.T,
 	f *overlayfs.Fs,
@@ -551,7 +585,11 @@ func runProc(
 
 	ctx := context.Background()
 
-	pkgs, err := gopackages.Load(ctx, f, gopackages.Options{Patterns: []string{"./..."}})
+	pkgs, err := gopackages.Load(
+		ctx,
+		f,
+		gopackages.Options{Patterns: []string{"./..."}, AllowTypeErrors: true},
+	)
 	assert.NilError(t, err)
 
 	i := newInstance(t, now)

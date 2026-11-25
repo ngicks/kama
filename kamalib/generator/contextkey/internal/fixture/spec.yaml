@@ -15,6 +15,9 @@ steps:
       # Listed one by one: ./... would load inline too, which has a spec of
       # its own.
       patterns: [./jsontemplate, ./tomltemplate, ./shareda, ./nested/deep]
+      # The proc reads the syntax trees only, so generated files that do not
+      # compile yet or any more do not stop it.
+      allow_type_errors: true
   generate:
     proc: contextkey.generate
     in: load
@@ -29,6 +32,7 @@ steps:
     in: root
     param:
       patterns: [./sharedb]
+      allow_type_errors: true
   generate_b:
     proc: contextkey.generate
     in: load_b

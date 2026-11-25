@@ -94,7 +94,10 @@
 // SourceProc takes as its in, file.load, loading a document into the
 // *fileloader.Document a document generator may take as its in, and
 // overlayfs.copy_down, checking that the staged files compile and writing
-// them into the project.
+// them into the project. A SourceProc rejects packages that hold errors,
+// which packages.load keeps with its param allow_type_errors, since its
+// generator reads their types. A generator reading the syntax trees only
+// may take such packages.
 //
 // # Params
 //

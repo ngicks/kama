@@ -33,13 +33,20 @@ type Options struct {
 	BuildFlags []string
 	// Tests also loads test packages.
 	Tests bool
+	// AllowTypeErrors keeps the packages that do not type-check, for a
+	// caller that reads their syntax trees only. Load still fails on a
+	// pattern the go command cannot load and on a file of a package the
+	// patterns name that does not parse. A dependency the patterns do not
+	// name may hold errors of any kind.
+	AllowTypeErrors bool
 }
 
 // Load loads the packages opts names from the project fsys shows, staged
 // files included.
 //
 // Unlike packages.Load, Load fails if any loaded package, dependencies
-// included, has errors. The returned error then wraps PackageErrors.
+// included, has errors, unless Options.AllowTypeErrors is set. The returned
+// error then wraps PackageErrors.
 func Load(ctx context.Context, fsys *overlayfs.Fs, opts Options) ([]*packages.Package, error) {
 	overlay, err := fsys.Overlay()
 	if err != nil {
@@ -60,23 +67,25 @@ func Load(ctx context.Context, fsys *overlayfs.Fs, opts Options) ([]*packages.Pa
 		return nil, err
 	}
 
-	errs := PackageErrors{}
-
-	packages.Visit(pkgs, nil, func(p *packages.Package) {
-		for _, e := range p.Errors {
-			// With Tests, a package and its test variants share PkgPath and
-			// report the same errors.
-			if !slices.Contains(errs[p.PkgPath], e) {
-				errs[p.PkgPath] = append(errs[p.PkgPath], e)
-			}
-		}
-	})
+	errs := Errors(pkgs)
+	if opts.AllowTypeErrors {
+		errs = unreadable(pkgs)
+	}
 
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("gopackages: %w", errs)
 	}
 
 	return pkgs, nil
+}
+
+// Errors returns the errors of pkgs and of their dependencies.
+func Errors(pkgs []*packages.Package) PackageErrors {
+	errs := PackageErrors{}
+
+	packages.Visit(pkgs, nil, func(p *packages.Package) { errs.add(p, p.Errors...) })
+
+	return errs
 }
 
 // IsTestVariant reports whether p is the test variant of a package, which
@@ -113,6 +122,36 @@ func (e PackageErrors) Error() string {
 			CollectSlice(),
 		"\n",
 	)
+}
+
+// add adds errs of p. With Options.Tests, a package and its test variants
+// share PkgPath and report the same errors, which add keeps once.
+func (e PackageErrors) add(p *packages.Package, errs ...packages.Error) {
+	for _, err := range errs {
+		if !slices.Contains(e[p.PkgPath], err) {
+			e[p.PkgPath] = append(e[p.PkgPath], err)
+		}
+	}
+}
+
+// unreadable returns the errors of pkgs that leave their syntax trees
+// unknown or incomplete: a pattern the go command could not load gives a
+// list error, and a file that does not parse a parse error. The other
+// errors, those of the dependencies included, tell only that the type
+// information is incomplete.
+func unreadable(pkgs []*packages.Package) PackageErrors {
+	errs := PackageErrors{}
+
+	for _, p := range pkgs {
+		errs.add(
+			p,
+			opiter.WrapSeq(slices.Values(p.Errors)).
+				Filter(func(e packages.Error) bool { return e.Kind != packages.TypeError }).
+				CollectSlice()...,
+		)
+	}
+
+	return errs
 }
 
 func packageErrorBlock(path string, errs []packages.Error) string {

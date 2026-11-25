@@ -7,6 +7,8 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
+	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	procgopackages "github.com/ngicks/kama/kamalib/proc/gopackages"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -42,4 +44,31 @@ func paramOptions(t *testing.T, p ProcParamPartial) Options {
 	assert.NilError(t, err)
 
 	return opts
+}
+
+// TestProcRunRejectsPackagesWithErrors runs the proc over packages a load
+// allowing type errors kept, whose types the generator cannot trust.
+func TestProcRunRejectsPackagesWithErrors(t *testing.T) {
+	f, load := gentest.Stage(t, map[string]string{
+		"a/a.go": "package a\n\n//kama:partial\ntype A struct{ N int }\n",
+		"a/b.go": "package a\n\nvar _ = gone()\n",
+	})
+	load.AllowTypeErrors = true
+
+	pkgs, err := gopackages.Load(context.Background(), f, load)
+	assert.NilError(t, err)
+
+	i := newInstance(t, NewProc())
+	assert.NilError(t, i.Param(ProcParamPartial{}))
+	i.In(&procgopackages.Packages{Pkgs: pkgs})
+	i.Out(f)
+
+	err = i.Run(context.Background(), gentest.NopReporter{})
+	assert.ErrorContains(t, err, "kama:partial needs packages that type-check")
+	assert.ErrorContains(t, err, "/a:\n\t")
+	assert.ErrorContains(t, err, "undefined: gone")
+
+	staged, err := f.Overlay()
+	assert.NilError(t, err)
+	assert.Equal(t, len(staged), 2, "%v", staged)
 }

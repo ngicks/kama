@@ -79,9 +79,10 @@ func (in Input[O, P, T, F]) Scope() Scope {
 // its out. The option file and the package option files are read from its
 // out, so a file staged by an earlier step is read too.
 //
-// The proc reports the warnings of loading the options before it runs the
-// generator. The scope of its stale check is the files of the packages the
-// run reads.
+// The proc rejects packages that hold errors, those of their dependencies
+// included, since the generator reads their types. It reports the warnings
+// of loading the options before it runs the generator. The scope of its
+// stale check is the files of the packages the run reads.
 //
 // Partial is the partial variant of the param Param that a spec decodes
 // into. O, P, T and F are those of the [Input] of the generator.
@@ -225,6 +226,10 @@ func (p SourceProc[Partial, Param, O, P, T, F]) input(
 	}
 
 	srcPkgs := SourcePackages(pkgs.Pkgs)
+
+	if err := checkTypes(p.Generator.Id, srcPkgs); err != nil {
+		return Input[O, P, T, F]{}, Scope{}, err
+	}
 
 	loaded, err := p.Loader.LoadOptionNamed(out.FS(), out.Root(), srcPkgs, optionFile)
 	if err != nil {

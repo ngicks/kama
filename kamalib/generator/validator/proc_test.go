@@ -16,7 +16,9 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	procpackages "github.com/ngicks/kama/kamalib/proc/gopackages"
 	procoverlayfs "github.com/ngicks/kama/kamalib/proc/overlayfs"
@@ -323,4 +325,31 @@ func readTree(t *testing.T, root string) map[string]string {
 	assert.NilError(t, err)
 
 	return out
+}
+
+// TestProcRunRejectsPackagesWithErrors runs the proc over packages a load
+// allowing type errors kept, whose types the generator cannot trust.
+func TestProcRunRejectsPackagesWithErrors(t *testing.T) {
+	f, load := gentest.Stage(t, map[string]string{
+		"a/a.go": procSrc,
+		"a/b.go": "package a\n\nvar _ = gone()\n",
+	})
+	load.AllowTypeErrors = true
+
+	pkgs, err := gopackages.Load(context.Background(), f, load)
+	assert.NilError(t, err)
+
+	i := newInstance(t, NewProc())
+	assert.NilError(t, i.Param(ProcParamPartial{}))
+	i.In(&procpackages.Packages{Pkgs: pkgs})
+	i.Out(f)
+
+	err = i.Run(context.Background(), gentest.NopReporter{})
+	assert.ErrorContains(t, err, "kama:validate needs packages that type-check")
+	assert.ErrorContains(t, err, "/a:\n\t")
+	assert.ErrorContains(t, err, "undefined: gone")
+
+	staged, err := f.Overlay()
+	assert.NilError(t, err)
+	assert.Equal(t, len(staged), 2, "%v", staged)
 }

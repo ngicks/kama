@@ -55,9 +55,9 @@
 //	           whether format asserts the formats the validator
 //	           generator checks; false when left out
 //
-// The packages must load before the proc runs, and the generated decoders
-// call the Validate methods the validator generator writes, so a spec loads
-// the packages twice: once for the proc and once, after it, for
+// The packages load before the proc runs, and the generated decoders call
+// the Validate methods the validator generator writes, so a spec loads the
+// packages twice: once for the proc and once, after it, for
 // validate.generate. A spec generating the types of api/schema.json into
 // api/api.kama_jsonschema.go of the package of api/api.go, which holds
 // //kama:option-file jsonschema=schema.json, then their Validate methods:
@@ -71,6 +71,7 @@
 //	    in: root
 //	    param:
 //	      patterns: [./api]
+//	      allow_type_errors: true
 //	  generate:
 //	    proc: jsonschema.generate
 //	    in: load
@@ -92,12 +93,13 @@
 //	    in: root
 //	    after: validate
 //
-// The first load type-checks every Go file of a package, and packages.load
-// fails on any error. A package whose generated files do not exist yet
-// loads when its other Go files compile without them. A generated file of
-// an earlier run that no longer compiles, such as one of an older version
-// of the generator importing a package that is gone, fails the first load
-// and is deleted by hand before the run.
+// The proc reads the name, the directory and the syntax trees of a
+// package, not its types, so the first load sets allow_type_errors. Go
+// files referring to the generated files before they exist, and a
+// generated file of an earlier run that no longer compiles, such as one of
+// an older version of the generator importing a package that is gone, then
+// give warnings instead of failing the load. The second load keeps the
+// default and fails on any error, since validate.generate reads the types.
 //
 // A spec running the proc with validate true needs the validate.generate step.
 // Without it the decoders fail on the stubs of the Validate methods, as

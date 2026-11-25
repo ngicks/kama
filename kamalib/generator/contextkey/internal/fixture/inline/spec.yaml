@@ -5,6 +5,10 @@ steps:
   load:
     proc: packages.load
     in: root
+    # The proc reads the syntax trees only, so generated files that do not
+    # compile yet or any more do not stop it.
+    param:
+      allow_type_errors: true
   generate:
     proc: contextkey.generate
     in: load

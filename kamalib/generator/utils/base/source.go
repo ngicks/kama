@@ -92,6 +92,30 @@ func PackageDir(root string, pkg *packages.Package) (string, error) {
 
 func pkgPathOf(p *packages.Package) string { return p.PkgPath }
 
+// shownErrors is the number of errors of each package checkTypes names.
+const shownErrors = 3
+
+// checkTypes reports pkgs or their dependencies holding errors. A load
+// keeping such packages gives incomplete type information, which a
+// generator reading the types would take for the source.
+func checkTypes(id Id, pkgs []*packages.Package) error {
+	errs := gopackages.Errors(pkgs)
+	if len(errs) == 0 {
+		return nil
+	}
+
+	for path, e := range errs {
+		errs[path] = e[:min(len(e), shownErrors)]
+	}
+
+	return fmt.Errorf(
+		"base: %s needs packages that type-check, loaded without allow_type_errors; "+
+			"the first errors of each package:\n%w",
+		id,
+		errs,
+	)
+}
+
 // source returns the package clause and the parts of c, the source of the
 // declarations of c without the imports and the marks.
 func (c Composed) source() []byte {

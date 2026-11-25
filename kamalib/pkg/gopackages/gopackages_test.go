@@ -197,6 +197,109 @@ func TestLoadFailsOnPackageErrors(t *testing.T) {
 	}
 }
 
+func TestLoadAllowTypeErrors(t *testing.T) {
+	cases := []struct {
+		name     string
+		files    map[string]string
+		patterns []string
+		// want maps a package path to one message substring per error Errors
+		// reports.
+		want map[string][]string
+	}{
+		{
+			name:  "type error",
+			files: map[string]string{"a.go": "package x\n\nfunc A() int { return B() }\n"},
+			want:  map[string][]string{"example.invalid/x": {"undefined: B"}},
+		},
+		{
+			name: "missing import",
+			files: map[string]string{
+				"a.go": "package x\n\nimport \"example.invalid/x/gone\"\n\nvar _ = gone.F\n",
+			},
+			want: map[string][]string{
+				"example.invalid/x":      {"could not import example.invalid/x/gone"},
+				"example.invalid/x/gone": {"no required module provides package"},
+			},
+		},
+		{
+			name: "errors in a dependency",
+			files: map[string]string{
+				"a/a.go": "package a\n\nimport _ \"example.invalid/x/b\"\n",
+				"b/b.go": "package b\n\nfunc B() int {\n",
+			},
+			patterns: []string{"./a"},
+			want: map[string][]string{
+				"example.invalid/x/b": {"expected ';'", "expected '}'", "missing return"},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := stageModule(t, tc.files)
+
+			patterns := tc.patterns
+			if patterns == nil {
+				patterns = []string{"./..."}
+			}
+
+			pkgs, err := Load(t.Context(), f, Options{Patterns: patterns, AllowTypeErrors: true})
+			assert.NilError(t, err)
+			assert.Assert(t, len(pkgs) > 0)
+
+			for _, p := range pkgs {
+				assert.Assert(t, len(p.Syntax) > 0, "%s", p.PkgPath)
+			}
+
+			assertErrors(t, Errors(pkgs), tc.want)
+
+			_, err = Load(t.Context(), f, Options{Patterns: patterns})
+
+			var pkgErrs PackageErrors
+			assert.Assert(t, errors.As(err, &pkgErrs), "err: %v", err)
+		})
+	}
+}
+
+func TestLoadAllowTypeErrorsFails(t *testing.T) {
+	cases := []struct {
+		name     string
+		files    map[string]string
+		patterns []string
+		want     map[string][]string
+	}{
+		{
+			name:     "missing pattern",
+			patterns: []string{"./nonexistent"},
+			want:     map[string][]string{"./nonexistent": {"directory not found"}},
+		},
+		{
+			name: "file that does not parse",
+			files: map[string]string{
+				"a.go": "package x\n\nfunc A() int { return B() }\n",
+				"b.go": "package x\n\nfunc B() int {\n",
+			},
+			patterns: []string{"./..."},
+			want: map[string][]string{
+				"example.invalid/x": {"expected ';'", "expected '}'"},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := stageModule(t, tc.files)
+
+			pkgs, err := Load(t.Context(), f, Options{Patterns: tc.patterns, AllowTypeErrors: true})
+			assert.Assert(t, pkgs == nil)
+
+			var pkgErrs PackageErrors
+			assert.Assert(t, errors.As(err, &pkgErrs), "err: %v", err)
+			assertErrors(t, pkgErrs, tc.want)
+		})
+	}
+}
+
 func TestLoadFailsOnMissingPattern(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
@@ -233,4 +336,47 @@ func TestPackageErrorsError(t *testing.T) {
 		"example.invalid/x/a:\n\ta.go:1:1: bad a1\n\t-: bad a2\n"+
 			"example.invalid/x/b:\n\tb.go:1:1: bad b",
 	)
+}
+
+// stageModule writes files, keyed by slash-separated path, and a go.mod of
+// the module example.invalid/x into a temporary directory and opens it.
+func stageModule(t *testing.T, files map[string]string) *overlayfs.Fs {
+	t.Helper()
+
+	root := t.TempDir()
+	files = maps.Clone(files)
+
+	if files == nil {
+		files = map[string]string{}
+	}
+
+	files["go.mod"] = "module example.invalid/x\n\ngo 1.27\n"
+	for name, src := range files {
+		p := filepath.Join(root, filepath.FromSlash(name))
+		assert.NilError(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		assert.NilError(t, os.WriteFile(p, []byte(src), 0o644))
+	}
+
+	f, err := overlayfs.New(root)
+	assert.NilError(t, err)
+	t.Cleanup(func() { f.Close() })
+
+	return f
+}
+
+// assertErrors checks that got has the paths of want, and for each path one
+// error per substring of want, in order.
+func assertErrors(t *testing.T, got PackageErrors, want map[string][]string) {
+	t.Helper()
+
+	assert.DeepEqual(t, slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(want)))
+
+	for path, msgs := range want {
+		errs := got[path]
+		assert.Equal(t, len(errs), len(msgs), "%s: %v", path, errs)
+
+		for i, msg := range msgs {
+			assert.Assert(t, strings.Contains(errs[i].Msg, msg), "%s: %v", path, errs[i])
+		}
+	}
 }
