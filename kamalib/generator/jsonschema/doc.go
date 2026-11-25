@@ -26,11 +26,15 @@
 // package, in the package of the package, staging the files in its out. A
 // package names its schema file with the directive
 // //kama:option-file jsonschema=<path> in a free-floating comment, the path
-// being slash-separated and relative to the package directory. A package
-// naming none has the schema file kama_jsonschema.json in its directory, or
-// none. A package without a schema file generates nothing. A package has
-// one schema file at most, since its declarations go to one file named
-// after the package. Several packages may name one file. The proc reads
+// being slash-separated and relative to the package directory. The path
+// may end in # and an RFC 6901 JSON pointer, percent-decoded as the
+// fragment of a $ref is, naming the schema inside a larger file, as in
+// tests.json#/0/schema. A package naming none has the schema file
+// kama_jsonschema.json in its directory, or none. A package without a
+// schema file generates nothing. A package has one schema file at most,
+// since its declarations go to one file named after the package: a file
+// named twice counts once, and two pointers into one file count as two.
+// Several packages may name one file. The proc reads
 // the schema files from the overlay of its out, so a file staged by an
 // earlier step is read too. A schema file holds JSON whatever its
 // extension. The proc decodes it from its raw bytes, so the order of its
@@ -109,11 +113,13 @@
 // value, even one holding a nested union that matches none of its members.
 //
 // The header of the generated file names the schema file, relative to the
-// root of the out, the type_name and validate params and the time of the
-// run. The helpers the declarations call go to
-// zz_gen.helper.kama_jsonschema.go of the output directory, as Decoding
-// describes. The proc keeps a file that differs from the existing one in
-// the generated: line only. A Go file of the directory of a package the
+// root of the out and followed by its pointer if any, the type_name and
+// validate params and the time of the run. The helpers the declarations
+// call go to zz_gen.helper.kama_jsonschema.go of the output directory, as
+// Decoding describes, or to zz_gen.helper.kama_jsonschema_test.go for an
+// external test package, whose generated files are test files. The proc
+// keeps a file that differs from the existing one in the generated: line
+// only. A Go file of the directory of a package the
 // proc loaded that holds a declaration marked by the generator and that the
 // run does not produce is stale, a package that dropped its schema file
 // included. The proc reports a warning wrapping ErrStale of package

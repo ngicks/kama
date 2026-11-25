@@ -8,6 +8,7 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"iter"
 	"os"
 	"path/filepath"
 	"slices"
@@ -66,6 +67,12 @@ var moduleRoot = filepath.FromSlash("../..")
 // external schemas and of the meta-schemas of draft 2020-12, to their files
 // relative to the root of this module.
 func suiteRemotes(g suitetest.Group) []Remote {
+	return slices.AppendSeq(suiteMetaRemotes(), externalRemotes(g))
+}
+
+// suiteMetaRemotes map the URIs of the meta-schemas of draft 2020-12 to
+// their files relative to the root of this module.
+func suiteMetaRemotes() []Remote {
 	meta := "https://json-schema.org/draft/2020-12/"
 	dir := "pkg/jsonschema/testdata/metaschema/draft2020-12/"
 
@@ -81,13 +88,16 @@ func suiteRemotes(g suitetest.Group) []Remote {
 		)
 	}
 
-	return slices.AppendSeq(
-		remotes,
-		opiter.WrapSeq2(opiter.MapsSorted(g.ExternalSchemas)).
-			OmitL().
-			Map(func(uri string) Remote { return Remote{Uri: uri, File: g.ExternalSchemaRef(uri)} }).
-			Iter(),
-	)
+	return remotes
+}
+
+// externalRemotes yields a remote per external schema of g, in the order of
+// the URIs, mapping the URI to the schema inside the file of the suite.
+func externalRemotes(g suitetest.Group) iter.Seq[Remote] {
+	return opiter.WrapSeq2(opiter.MapsSorted(g.ExternalSchemas)).
+		OmitL().
+		Map(func(uri string) Remote { return Remote{Uri: uri, File: g.ExternalSchemaRef(uri)} }).
+		Iter()
 }
 
 // generateSuite runs Generate over the schema of g and checks its output.

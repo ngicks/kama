@@ -200,16 +200,20 @@ func (l Loader[P, T, F]) overridden(w walked, winner, loser namedFile) error {
 type namedFile struct {
 	// name is the path of the file relative to the root.
 	name string
-	// path is the path the directive spells. It is empty for a file
-	// PackageFile finds.
+	// path is the path the directive spells, without its fragment. It is
+	// empty for a file PackageFile finds.
 	path string
+	// fragment is the fragment the directive gives the path, when the
+	// DocumentLoader takes fragments.
+	fragment string
 	// at locates the file in messages: the position of the directive, or
 	// the package.
 	at string
 }
 
 // locate returns the files of the package of w: those its option-file
-// directives name for the generator in position order, each once, or else
+// directives name for the generator in position order, each file and
+// fragment once, or else
 // those PackageFile finds in its directory in name order.
 func (l DocumentLoader) locate(fsys fs.FS, root string, w walked) ([]namedFile, error) {
 	named, err := l.namedFiles(w)
@@ -237,7 +241,9 @@ func (l DocumentLoader) locate(fsys fs.FS, root string, w walked) ([]namedFile, 
 
 		// A file named again, through any spelling of its path, is the same
 		// file, which the first naming locates.
-		if !slices.ContainsFunc(files, func(f namedFile) bool { return f.name == name }) {
+		if !slices.ContainsFunc(files, func(f namedFile) bool {
+			return f.name == name && f.fragment == n.fragment
+		}) {
 			n.name = name
 			files = append(files, n)
 		}
@@ -321,10 +327,18 @@ func (l DocumentLoader) namedFiles(w walked) ([]namedFile, error) {
 			case !kv.HasValue:
 				fail("%q has no path; want <generator>=<path>", kv.Key)
 			case kv.Key != l.Generator:
-			case kv.Value == "":
-				fail("empty path for %s", l.Generator)
 			default:
-				out = append(out, namedFile{path: kv.Value, at: pos.String()})
+				p, frag := kv.Value, ""
+				if l.Fragments {
+					p, frag, _ = strings.Cut(p, "#")
+				}
+
+				if p == "" {
+					fail("empty path for %s", l.Generator)
+					continue
+				}
+
+				out = append(out, namedFile{path: p, fragment: frag, at: pos.String()})
 			}
 		}
 	}

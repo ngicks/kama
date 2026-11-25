@@ -60,9 +60,10 @@ type Options struct {
 	// TypeName names the Go type of the root schema as it is, so it must be
 	// an exported Go identifier. Empty takes the title of the root schema.
 	TypeName string
-	// Schema is the path of the schema file, optionally followed by # and
-	// the JSON pointer of the schema document in the file. The header of
-	// the generated file records it as it is.
+	// Schema is the path of the schema file, followed by # and the JSON
+	// pointer of the schema document in the file when the document is a
+	// part of it, as a directive names it. The header of the generated file
+	// records it as it is, and errors name it.
 	Schema string
 	// Dir is the directory the generated file lands in. Empty means the
 	// directory of the file of Schema.

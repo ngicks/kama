@@ -17,6 +17,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	gopkg "github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
@@ -108,8 +109,14 @@ var proc = base.Proc[ProcParamPartial, ProcParam, *gopackages.Packages, procIn]{
 func NewProc() workflow.Proc { return proc }
 
 // documents finds the schema file of a package. The file is decoded from
-// its raw bytes, so it holds JSON whatever its name.
-var documents = base.NewDocumentLoader(GeneratorId(), fileloader.FormatJson)
+// its raw bytes, so it holds JSON whatever its name. A path a directive
+// names may end in # and a JSON pointer naming the schema inside the file.
+var documents = func() genopt.DocumentLoader {
+	l := base.NewDocumentLoader(GeneratorId(), fileloader.FormatJson)
+	l.Fragments = true
+
+	return l
+}()
 
 // procIn is the input of a run of the proc.
 type procIn struct {
@@ -200,19 +207,36 @@ func generatePackage(
 			return
 		}
 
+		schema := docs[0].Name
+		content := jsontext.Value(docs[0].Content)
+
+		if docs[0].Fragment != "" {
+			schema += "#" + docs[0].Fragment
+
+			_, ptr, err := splitSchema(schema)
+			if err == nil {
+				content, err = pointedValue(content, schema, ptr)
+			}
+
+			if err != nil {
+				yield(nil, fmt.Errorf("%w: %w", ErrOptions, err))
+				return
+			}
+		}
+
 		// The document is decoded from the raw bytes rather than through
 		// fileloader, whose decoded values lose the order of members and the
 		// text of numbers.
 		var doc jsonschema.Schema
-		if err := jsonv2.Unmarshal(docs[0].Content, &doc); err != nil {
-			yield(nil, fmt.Errorf("jsonschema: %s: %w", docs[0].Name, err))
+		if err := jsonv2.Unmarshal(content, &doc); err != nil {
+			yield(nil, fmt.Errorf("jsonschema: %s: %w", schema, err))
 			return
 		}
 
 		for out, err := range Generate(ctx, env, Input{Doc: &doc, Options: Options{
 			Package:       pkg.Name,
 			TypeName:      in.param.TypeName,
-			Schema:        docs[0].Name,
+			Schema:        schema,
 			Dir:           dir,
 			Load:          remoteLoader(env.Out, in.param.Remotes),
 			AssertFormats: in.param.AssertFormats,
@@ -318,8 +342,9 @@ func remoteValue(fsys fs.FS, file string, ref bool) ([]byte, error) {
 	return fs.ReadFile(fsys, file)
 }
 
-// splitSchema splits the File of a remote at its first # into the path of
-// the file and the JSON pointer of its fragment. The fragment is
+// splitSchema splits schema, the File of a remote or a schema file named
+// with a fragment, at its first # into the path of the file and the JSON
+// pointer of its fragment. The fragment is
 // percent-decoded, as the fragment of a $ref is. A File without # points
 // to the whole file.
 func splitSchema(schema string) (string, jsontext.Pointer, error) {
@@ -352,9 +377,17 @@ func schemaValue(fsys fs.FS, schema string) (jsontext.Value, error) {
 		return nil, err
 	}
 
+	return pointedValue(src, schema, ptr)
+}
+
+// pointedValue returns the raw value of src, the content of the file of
+// schema, that ptr, the pointer of schema, points to.
+func pointedValue(src []byte, schema string, ptr jsontext.Pointer) (jsontext.Value, error) {
 	v := jsontext.Value(src)
 
 	for tok := range ptr.Tokens() {
+		var err error
+
 		v, err = pointee(v, tok)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", schema, err)

@@ -262,6 +262,40 @@ func TestProcRunTests(t *testing.T) {
 	}
 }
 
+// TestProcRunSchemaPointer generates from the schema a JSON pointer names
+// inside a larger file, which the header records with the pointer.
+func TestProcRunSchemaPointer(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"api/api.go": "//kama:option-file jsonschema=../all.json#/defs/a%20pet\n\npackage api\n",
+		"all.json":   `{"defs": {"a pet": ` + procSchema + `}}`,
+		"bad/bad.go": "//kama:option-file jsonschema=../all.json#/defs/none\n\npackage bad\n",
+		"two/two.go": "//kama:option-file jsonschema=../all.json#/a " +
+			"jsonschema=../all.json#/b\n\npackage two\n",
+	})
+
+	_, err := runProcErr(t, f, ProcParamPartial{}, gentest.Now())
+	assert.ErrorIs(t, err, ErrOptions)
+	assert.ErrorContains(t, err, `all.json#/defs/none: no member "none"`)
+	assert.ErrorContains(t, err, "/two has 2 schema files; want one")
+
+	assert.NilError(
+		t,
+		f.Write(context.Background(), inline(t, "bad/bad.go"), []byte("package bad\n")),
+	)
+	assert.NilError(
+		t,
+		f.Write(context.Background(), inline(t, "two/two.go"), []byte("package two\n")),
+	)
+
+	r := runProc(t, f, ProcParamPartial{}, gentest.Now())
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+
+	got, err := fs.ReadFile(f.FS(), inline(t, "api/api.kama_jsonschema.go"))
+	assert.NilError(t, err)
+	assert.Assert(t, strings.Contains(string(got), "all.json#/defs/a%20pet\"\n"), "%s", got)
+	assert.Assert(t, strings.Contains(string(got), "\ntype Pet struct {"), "%s", got)
+}
+
 // TestProcRunSchemaNamedTwice takes one file named by two directives for
 // one schema file.
 func TestProcRunSchemaNamedTwice(t *testing.T) {

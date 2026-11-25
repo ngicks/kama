@@ -23,6 +23,11 @@ type DocumentLoader struct {
 	// none, relative to the package directory. No file is found when
 	// PackageFile is nil.
 	PackageFile fileloader.Input
+	// Fragments lets a path a directive names end in # and a fragment,
+	// which names a part of the file, such as a JSON pointer. The file is
+	// the path before the first #, and Document.Fragment holds the rest.
+	// Without Fragments a # belongs to the name of the file.
+	Fragments bool
 }
 
 // NewDocumentLoader returns the DocumentLoader of the generator of tool. A
@@ -49,15 +54,19 @@ type Document struct {
 	// Name is the path of the file, slash-separated and relative to the
 	// root.
 	Name string
-	// Content is the content of the file as it is.
+	// Fragment is the fragment the directive naming the file gives, without
+	// the #, when DocumentLoader.Fragments is set. It is empty for a file
+	// named without one and for a file PackageFile finds.
+	Fragment string
+	// Content is the content of the whole file as it is.
 	Content []byte
 }
 
 // Documents returns the documents of pkg. They are the files the
 // option-file directives of pkg name for the generator, in file name and
-// position order and each once, or else the files PackageFile finds in the directory of
-// pkg, in name order. A package naming no file and holding no default file
-// has none.
+// position order and each file and fragment once, or else the files
+// PackageFile finds in the directory of pkg, in name order. A package
+// naming no file and holding no default file has none.
 //
 // fsys is rooted at root, an absolute directory of the OS. pkg must be
 // loaded with packages.NeedName, packages.NeedCompiledGoFiles and
@@ -93,7 +102,7 @@ func (l DocumentLoader) Documents(
 			return nil, fmt.Errorf("%w: %s: %w", ErrPackageFile, f.at, err)
 		}
 
-		docs = append(docs, Document{Name: f.name, Content: b})
+		docs = append(docs, Document{Name: f.name, Fragment: f.fragment, Content: b})
 	}
 
 	return docs, nil

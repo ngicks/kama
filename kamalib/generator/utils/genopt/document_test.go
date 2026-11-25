@@ -97,6 +97,31 @@ func TestDocuments(t *testing.T) {
 	}
 }
 
+// TestDocumentsFragments splits the fragment off a named path when the
+// loader takes fragments: one file under two fragments is two documents,
+// and the same fragment named again is one.
+func TestDocumentsFragments(t *testing.T) {
+	fsys := fstest.MapFS{"a/one.json": {Data: []byte("one")}}
+	pkg := parsedPackage(t, "m/a", "a", map[string]string{
+		"x.go": "//kama:option-file x=one.json#/a x=one.json#/b x=./one.json#/a\n\npackage a\n",
+	})
+
+	l := NewDocumentLoader("kama", "x")
+	l.Fragments = true
+
+	docs, err := l.Documents(fsys, testRoot, pkg)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, docs, []Document{
+		{Name: "a/one.json", Fragment: "/a", Content: []byte("one")},
+		{Name: "a/one.json", Fragment: "/b", Content: []byte("one")},
+	})
+
+	l.Fragments = false
+
+	_, err = l.Documents(fsys, testRoot, pkg)
+	assert.ErrorIs(t, err, fs.ErrNotExist)
+}
+
 func TestDocumentsErrors(t *testing.T) {
 	l := NewDocumentLoader("kama", "x")
 

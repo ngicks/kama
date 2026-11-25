@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json/jsontext"
-	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"iter"
@@ -18,17 +17,12 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 	"unicode"
 
 	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/generator/utils/base"
-	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/internal/suitetest"
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
-	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
@@ -294,8 +288,9 @@ var suiteSets = []suiteSet{
 }
 
 // TestSuiteBehavior generates every group of suiteSets that Generate
-// accepts as a fixture under suiteDir, driving Generator as the proc
-// drives it, and checks the instances of the suite against them. Each group
+// accepts as a fixture under suiteDir, through jsonschema.generate and
+// validate.generate as runSuiteSpec runs them, and checks the instances of
+// the suite against them. Each group
 // of the suite that applies to draft 2020-12 belongs to exactly one set.
 // Run it with
 //
@@ -303,8 +298,9 @@ var suiteSets = []suiteSet{
 //
 // The fixtures stay on disk for inspection. Group gi of file f.json, a path
 // relative to suitetest.Dir and gi the index of the group in its tests
-// array, is the package <f>/g<gi> of the module in suiteDir, generated from
-// the schema f.json#/tests/<gi>/schema with the root type Root.
+// array, is the package <f>/g<gi> of the module in suiteDir, whose file
+// g<gi>.go names the schema f.json#/tests/<gi>/schema with
+// //kama:option-file, generated with the root type Root.
 //
 // A driver program in suiteDir decodes each instance of a group into the
 // root type of its package. A decode succeeds exactly when the suite calls
@@ -330,9 +326,10 @@ func TestSuiteBehavior(t *testing.T) {
 	suiteModule(t)
 
 	var (
-		keys   []suiteKey
-		valid  []bool
-		driver suiteDriver
+		keys    []suiteKey
+		valid   []bool
+		driver  suiteDriver
+		batches []suiteBatch
 	)
 
 	exceptions := map[string]string{}
@@ -351,7 +348,6 @@ func TestSuiteBehavior(t *testing.T) {
 		maps.Copy(exceptions, set.exceptions)
 
 		generated, unsupported, reasons := map[string]int{}, map[string]int{}, map[string]int{}
-		accepted := map[string][]suitetest.Group{}
 
 		for _, g := range groups {
 			if !set.selects(g) {
@@ -371,7 +367,7 @@ func TestSuiteBehavior(t *testing.T) {
 
 			assert.NilError(t, err, "%s: %s", g.File, g.Description)
 
-			accepted[g.File] = append(accepted[g.File], g)
+			batches = batchSuite(batches, g, set.assertFormats)
 			generated[g.File]++
 
 			for _, c := range g.Tests {
@@ -385,10 +381,6 @@ func TestSuiteBehavior(t *testing.T) {
 			}
 		}
 
-		for _, file := range slices.Sorted(maps.Keys(accepted)) {
-			runSuiteGenerate(t, file, accepted[file], set.assertFormats)
-		}
-
 		checkGenerated(t, set.generated, generated)
 		checkUnsupported(t, set, unsupported, reasons)
 
@@ -400,7 +392,7 @@ func TestSuiteBehavior(t *testing.T) {
 		}
 	}
 
-	runSuiteValidate(t)
+	runSuiteSpec(t, batches)
 
 	writeFile(t, filepath.Join(suiteDir, "main.go"), driver.source())
 
@@ -561,15 +553,80 @@ func suiteStem(file string) string { return strings.TrimSuffix(file, ".json") }
 // suiteGroupDir returns the name of the directory and package of group gi.
 func suiteGroupDir(gi int) string { return fmt.Sprintf("g%03d", gi) }
 
-// runSuiteGenerate generates the groups accepted of file into suiteDir,
-// driving Generator once per group as the proc drives it, asserting formats
-// as assertFormats tells. The schema of a group is a value inside a file of
-// the suite, which no package names as its schema file, so the proc itself
-// cannot generate it. The overlay is rooted at this module, which holds
-// both the suite and suiteDir. The packages under suiteDir belong to
-// another module and are copied down without a compile check: building the
-// driver checks them.
-func runSuiteGenerate(t *testing.T, file string, accepted []suitetest.Group, assertFormats bool) {
+// suiteBatch is the groups of the suite one jsonschema.generate step of
+// runSuiteSpec generates: groups of one set whose external schemas agree on
+// every URI they share, so that one remotes param serves them all.
+type suiteBatch struct {
+	assertFormats bool
+	groups        []suitetest.Group
+}
+
+// batchSuite adds g, a group of a set asserting formats as assertFormats
+// tells, to the first batch of batches it agrees with, or to a new one.
+func batchSuite(batches []suiteBatch, g suitetest.Group, assertFormats bool) []suiteBatch {
+	i := slices.IndexFunc(batches, func(b suiteBatch) bool {
+		return b.assertFormats == assertFormats && b.agrees(g)
+	})
+	if i < 0 {
+		batches = append(batches, suiteBatch{assertFormats: assertFormats})
+		i = len(batches) - 1
+	}
+
+	batches[i].groups = append(batches[i].groups, g)
+
+	return batches
+}
+
+// agrees reports whether the external schemas of g equal those of the
+// groups of b at every URI they share.
+func (b suiteBatch) agrees(g suitetest.Group) bool {
+	return !opiter.WrapSeq(slices.Values(b.groups)).
+		Any(func(o suitetest.Group) bool {
+			return opiter.WrapSeq2(maps.All(g.ExternalSchemas)).
+				Any(func(uri string, v jsontext.Value) bool {
+					w, ok := o.ExternalSchemas[uri]
+					return ok && !bytes.Equal(v, w)
+				})
+		})
+}
+
+// remotes returns the remotes param of b: the meta-schemas and each URI of
+// the external schemas of its groups, mapped to the schema of the first
+// group naming it.
+func (b suiteBatch) remotes() []any {
+	return opiter.WrapSeq(slices.Values(suiteMetaRemotes())).
+		Concat(opiter.WrapSeq(slices.Values(b.groups)).
+			FlatMap(externalRemotes).
+			Iter()).
+		UniqueFunc(func(r Remote) string { return r.Uri }).
+		Map(func(r Remote) any { return map[string]any{"uri": r.Uri, "file": r.File} }).
+		CollectSlice()
+}
+
+// suiteGroupPath returns the directory of the package of g, slash-separated
+// and relative to the root of this module.
+func suiteGroupPath(g suitetest.Group) string {
+	return path.Join(
+		"generator/jsonschema",
+		filepath.ToSlash(suiteDir),
+		suiteStem(g.File),
+		suiteGroupDir(g.Index),
+	)
+}
+
+// runSuiteSpec generates the groups of batches through the procs, as a
+// spec of a user does: it writes a package per group under suiteDir whose
+// only file names the schema of the group inside its file of the suite,
+// then runs a spec loading the packages of each batch, running
+// jsonschema.generate over them with the param of the batch, and then
+// validate.generate over every package.
+//
+// The overlay is rooted at this module, which holds both the suite and
+// suiteDir, so that a package names the schema inside the suite. The
+// packages under suiteDir belong to another module, which the go.work
+// suiteModule writes joins to this one for the loads, and are copied down
+// without a compile check: building the driver checks them.
+func runSuiteSpec(t *testing.T, batches []suiteBatch) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -577,75 +634,81 @@ func runSuiteGenerate(t *testing.T, file string, accepted []suitetest.Group, ass
 	module, err := filepath.Abs(moduleRoot)
 	assert.NilError(t, err)
 
-	f, err := overlayfs.New(module)
+	work, err := filepath.Abs(filepath.Join(suiteDir, "go.work"))
 	assert.NilError(t, err)
 
-	defer f.Close()
-
-	out := path.Join("generator/jsonschema", filepath.ToSlash(suiteDir), suiteStem(file))
-	env := base.Env{
-		Reporter: gentest.NopReporter{},
-		Now:      time.Now(),
-		Registry: base.DefaultRegistry(),
-		Out:      f.FS(),
-	}
-
-	for _, g := range accepted {
-		var doc jsonschema.Schema
-		assert.NilError(t, jsonv2.Unmarshal(g.Schema, &doc), "%s: %s", file, g.Description)
-
-		name := suiteGroupDir(g.Index)
-		dir := path.Join(out, name)
-
-		err := base.Drive(ctx, Generator(), env, Input{Doc: &doc, Options: Options{
-			Package:       name,
-			TypeName:      "Root",
-			Schema:        g.SchemaRef(),
-			Dir:           dir,
-			Load:          remoteLoader(f.FS(), suiteRemotes(g)),
-			AssertFormats: assertFormats,
-			Validate:      true,
-		}}, base.Scope{Dirs: []string{dir}}, f)
-		assert.NilError(t, err, "%s: %s", file, g.Description)
-	}
-
-	assert.NilError(t, f.CopyDown(ctx), file)
-}
-
-// runSuiteValidate runs validate.generate over the packages of the module
-// in suiteDir, which the generated decoders call the Validate methods of.
-// The overlay is rooted at suiteDir, since the go command loads the
-// packages of a module from its own directory only.
-func runSuiteValidate(t *testing.T) {
-	t.Helper()
-
-	// The go.work of the repository does not list the module.
-	for k, v := range map[string]string{"GOWORK": "off", "GOFLAGS": "-mod=mod", "GOPROXY": "off"} {
+	// The go.work of the repository does not list the module, and the
+	// go command refuses -mod=mod in workspace mode.
+	for k, v := range map[string]string{"GOWORK": work, "GOFLAGS": "", "GOPROXY": "off"} {
 		t.Setenv(k, v)
 	}
 
-	ctx := context.Background()
+	steps := map[string]workflow.Step{
+		"root": {Proc: "overlayfs.open", Param: map[string]any{"root": module}},
+	}
 
-	dir, err := filepath.Abs(suiteDir)
-	assert.NilError(t, err)
+	// Every step writes to root or reads it, so each one waits for the one
+	// before.
+	var prev workflow.Names
 
-	spec := workflow.Spec{Version: workflow.SpecVersion, Steps: map[string]workflow.Step{
-		"root": {Proc: "overlayfs.open", Param: map[string]any{"root": dir}},
-		"load": {Proc: "packages.load", In: workflow.Names{"root"}},
-		"validate": {
-			Proc: "validate.generate",
-			In:   workflow.Names{"load"},
-			Out:  workflow.Names{"root"},
-		},
-		"final": {
-			Proc:  "overlayfs.copy_down",
+	for i, b := range batches {
+		var patterns []any
+
+		for _, g := range b.groups {
+			dir := suiteGroupPath(g)
+			name := suiteGroupDir(g.Index)
+			// The schema lies inside this module, up from the package.
+			schema := strings.Repeat("../", strings.Count(dir, "/")+1) + g.SchemaRef()
+
+			writeFile(t, filepath.Join(module, filepath.FromSlash(dir), name+".go"), []byte(
+				"//kama:option-file jsonschema="+schema+"\n\npackage "+name+"\n",
+			))
+
+			patterns = append(patterns, "./"+dir)
+		}
+
+		load, generate := fmt.Sprintf("load%02d", i), fmt.Sprintf("generate%02d", i)
+		steps[load] = workflow.Step{
+			Proc:  "packages.load",
 			In:    workflow.Names{"root"},
-			After: workflow.Names{"validate"},
-			Param: map[string]any{"fast_ignore_compile_errors": true},
-		},
-	}}
+			After: prev,
+			Param: map[string]any{"patterns": patterns, "allow_type_errors": true},
+		}
+		steps[generate] = workflow.Step{
+			Proc: "jsonschema.generate",
+			In:   workflow.Names{load},
+			Out:  workflow.Names{"root"},
+			Param: map[string]any{
+				"type_name":      "Root",
+				"remotes":        b.remotes(),
+				"assert_formats": b.assertFormats,
+			},
+		}
+		prev = workflow.Names{generate}
+	}
 
-	g, err := spec.Build(ctx, workflow.DefaultRegistry)
+	steps["load"] = workflow.Step{
+		Proc:  "packages.load",
+		In:    workflow.Names{"root"},
+		After: prev,
+		Param: map[string]any{"patterns": []any{"./generator/jsonschema/" +
+			filepath.ToSlash(suiteDir) + "/..."}},
+	}
+	steps["validate"] = workflow.Step{
+		Proc: "validate.generate",
+		In:   workflow.Names{"load"},
+		Out:  workflow.Names{"root"},
+	}
+	steps["final"] = workflow.Step{
+		Proc:  "overlayfs.copy_down",
+		In:    workflow.Names{"root"},
+		After: workflow.Names{"validate"},
+		Param: map[string]any{"fast_ignore_compile_errors": true},
+	}
+
+	g, err := workflow.Spec{Version: workflow.SpecVersion, Steps: steps}.Build(
+		ctx, workflow.DefaultRegistry,
+	)
 	assert.NilError(t, err)
 	assert.Equal(t, len(g.Warnings()), 0, "%v", g.Warnings())
 	assert.NilError(t, g.Run(ctx, workflow.ProgressControl{}))
@@ -778,7 +841,8 @@ const suiteModulePath = "example.invalid/suite"
 
 // suiteModule makes suiteDir an empty module that resolves the runtime
 // module next to this module from its directory and requires package
-// option. Generated code imports nothing of this module, so the module of
+// option, with a go.work joining it to this module and the runtime module
+// for the loads of runSuiteSpec. Generated code imports nothing of this module, so the module of
 // the fixtures does not require it. It writes go.mod before it removes the fixtures of an earlier
 // run,
 // so an interrupted run leaves no fixture inside this module.
@@ -815,12 +879,14 @@ func suiteModule(t *testing.T) {
 		")\n\n"+
 		"replace github.com/ngicks/kama/kamaruntime => ../../../../../kamaruntime\n"))
 	writeFile(t, filepath.Join(suiteDir, "go.sum"), gosum)
+	writeFile(t, filepath.Join(suiteDir, "go.work"), []byte(goLine.Value()+"\n"+
+		"use (\n\t.\n\t../../../..\n\t../../../../../kamaruntime\n)\n"))
 
 	entries, err := os.ReadDir(suiteDir)
 	assert.NilError(t, err)
 
 	for _, e := range entries {
-		if e.Name() != "go.mod" && e.Name() != "go.sum" {
+		if !slices.Contains([]string{"go.mod", "go.sum", "go.work"}, e.Name()) {
 			assert.NilError(t, os.RemoveAll(filepath.Join(suiteDir, e.Name())))
 		}
 	}
