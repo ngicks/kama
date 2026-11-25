@@ -208,30 +208,25 @@ func (c *checked) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	return nil
 }
 
-func TestDecoded(t *testing.T) {
-	var v NonNullMap[string, Decoded[checked]]
+// TestElementError stops a container at an element whose own decoder fails, and json/v2
+// locates the error by the pointer of the element.
+func TestElementError(t *testing.T) {
+	var m NonNullMap[string, checked]
 
-	nilError(t, json.Unmarshal([]byte(`{"a":2,"b":1}`), &v))
-
-	m, err := MapOf[string](Decoded[checked].Value)(v)
-	deepEqual(t, m, map[string]checked{"a": {raw: "2"}, "b": {raw: "1"}})
-	deepEqual(t, validator.Pointers(err), []string{"/a/inner"})
-
-	var b NonNullSlice[checked]
-
-	nilError(t, json.Unmarshal([]byte(`[1,3]`), &b))
-
-	got, err := b.Value()
-	deepEqual(t, got, []checked{{raw: "1"}, {raw: "3"}})
-	deepEqual(t, validator.Pointers(err), []string{"/1/inner"})
-
-	var n Decoded[checked]
-
-	nilError(t, json.Unmarshal([]byte(`null`), &n))
-
-	one, err := n.Value()
-	equal(t, one.raw, "null")
+	err := json.Unmarshal([]byte(`{"b":1,"a":2,"c":3}`), &m)
+	se, ok := errors.AsType[*json.SemanticError](err)
+	equal(t, ok, true, "%T: %v", err, err)
+	equal(t, string(se.JSONPointer), "/a")
+	deepEqual(t, validator.Pointers(se.Err), []string{"/inner"})
 	errorIs(t, err, validator.ErrConst)
+
+	var s NonNullSlice[checked]
+
+	err = json.Unmarshal([]byte(`[1,3,4]`), &s)
+	se, ok = errors.AsType[*json.SemanticError](err)
+	equal(t, ok, true, "%T: %v", err, err)
+	equal(t, string(se.JSONPointer), "/1")
+	deepEqual(t, validator.Pointers(se.Err), []string{"/inner"})
 }
 
 // failing returns an error of no package validator after reading its value.
@@ -252,10 +247,10 @@ func (*early) UnmarshalJSONFrom(*jsontext.Decoder) error {
 	return validator.New(validator.ErrKind, "early")
 }
 
-func TestDecodedFails(t *testing.T) {
-	var f Decoded[failing]
+func TestElementFails(t *testing.T) {
+	var f NonNullSlice[failing]
 
-	err := json.Unmarshal([]byte(`1`), &f)
+	err := json.Unmarshal([]byte(`[1]`), &f)
 	equal(t, err != nil && strings.Contains(err.Error(), "foreign"), true, "%v", err)
 
 	var e NonNullSlice[early]
@@ -380,12 +375,12 @@ func TestCallerOptions(t *testing.T) {
 		},
 	))
 
-	var d Decoded[checked]
+	var d NonNullSlice[checked]
 
-	nilError(t, json.Unmarshal([]byte(`5`), &d, caller))
+	nilError(t, json.Unmarshal([]byte(`[5,6]`), &d, caller))
 
 	gotChecked, err := d.Value()
 	nilError(t, err)
-	equal(t, gotChecked.raw, "caller")
-	equal(t, points, 1)
+	deepEqual(t, gotChecked, []checked{{raw: "caller"}, {raw: "caller"}})
+	equal(t, points, 2)
 }

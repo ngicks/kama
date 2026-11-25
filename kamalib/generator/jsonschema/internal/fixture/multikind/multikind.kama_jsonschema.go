@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:01:11Z
+// generated: 2026-11-25T10:38:57Z
 
 package multikind
 
@@ -33,55 +33,27 @@ type Cell struct {
 //
 //kama:generated kama:jsonschema
 type cellWire struct {
-	Value                und.Und[wire.Decoded[CellValue]]
-	Label                und.Und[wire.Decoded[CellLabel]]
-	AdditionalProperties map[string]jsontext.Value
+	Value                und.Und[CellValue]        `json:"value,omitzero"`
+	Label                und.Und[CellLabel]        `json:"label,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
-// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
-// of another kind is skipped and returned as the error.
-//
-//kama:generated kama:jsonschema
-func (w *cellWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	if err := kamaJsonschemaBeginObject(dec); err != nil {
-		return err
-	}
-	for dec.PeekKind() != jsontext.KindEndObject {
-		name, err := kamaJsonschemaName(dec)
-		if err != nil {
-			return err
-		}
-		switch string(name) {
-		case "value":
-			err = w.Value.UnmarshalJSONFrom(dec)
-		case "label":
-			err = w.Label.UnmarshalJSONFrom(dec)
-		default:
-			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
-		}
-		if err != nil {
-			return err
-		}
-	}
-	_, err := dec.ReadToken()
-	return err
-}
-
-// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
-// the schema rejects together, and leaves in v what decoded of a value it
-// rejects. The value must pass ValidateShallow, which skips the members
-// that failed to decode.
+// UnmarshalJSONFrom decodes v from one JSON object. A nested value of a
+// declared type that fails stops it, and v keeps what it held. Otherwise it
+// reports every member the schema rejects together, and leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow, which
+// skips the members that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w cellWire
-	if err := w.UnmarshalJSONFrom(dec); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Cell
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Value, w.Value, wire.Decoded[CellValue].Value), "value"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptionalTakesNullOf(&out.Label, dec, w.Label, wire.Decoded[CellLabel].Value), "label"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Value, w.Value), "value"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalTakesNull(&out.Label, dec, w.Label), "label"))
 	out.AdditionalProperties = w.AdditionalProperties
 	*v = out
 	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))

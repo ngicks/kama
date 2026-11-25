@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T09:12:52Z
+// generated: 2026-11-25T10:38:50Z
 
 package dynamicref
 

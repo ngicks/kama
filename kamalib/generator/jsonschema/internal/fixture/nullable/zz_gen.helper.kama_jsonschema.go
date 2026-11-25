@@ -3,39 +3,23 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:29:56Z
+// generated: 2026-11-25T10:44:26Z
 
 package nullable
 
 import (
-	"bytes"
 	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
-
-// kamaJsonschemaBeginObject reads the token starting an object. A value of
-// another kind is skipped without being kept and returned as a validation
-// error.
-//
-//kama:generated kama:jsonschema
-func kamaJsonschemaBeginObject(dec *jsontext.Decoder) error {
-	k := dec.PeekKind()
-	if k == jsontext.KindBeginObject {
-		_, err := dec.ReadToken()
-		return err
-	}
-	if err := dec.SkipValue(); err != nil {
-		return err
-	}
-	return validator.New(validator.ErrKind, "want object, got %s", kamaJsonschemaKindName(k))
-}
 
 // kamaJsonschemaChecked joins err, the problems decoding a value recorded,
 // with verr, the error of ValidateShallow of the value, leaving out what
@@ -61,20 +45,45 @@ func kamaJsonschemaChecked(err, verr error) error {
 	return validator.Join(kept...)
 }
 
-// kamaJsonschemaExtra decodes the next value of dec into the member name of
-// *m, a member no property declares.
+// kamaJsonschemaDecode decodes the next value of dec into v. An error is
+// located relative to that value. Below the root it comes in a
+// json.SemanticError naming the pointer of the value, as json names it only
+// for a method that failed before or after reading the whole value, so that
+// the decoder of the enclosing value locates it in turn.
 //
 //kama:generated kama:jsonschema
-func kamaJsonschemaExtra[V any](dec *jsontext.Decoder, m *map[string]V, name string) error {
-	var v V
-	if err := json.UnmarshalDecode(dec, &v, kamaJsonschemaPinned); err != nil {
-		return err
+func kamaJsonschemaDecode(dec *jsontext.Decoder, v any) error {
+	depth := dec.StackDepth()
+	err := json.UnmarshalDecode(dec, v, kamaJsonschemaPinned)
+	se, ok := err.(*json.SemanticError)
+	if !ok || depth == 0 {
+		return kamaJsonschemaLocate(err, depth)
 	}
-	if *m == nil {
-		*m = map[string]V{}
+	var base jsontext.Pointer
+	n := 0
+	for tok := range se.JSONPointer.Tokens() {
+		if n == depth {
+			break
+		}
+		base = base.AppendToken(tok)
+		n++
 	}
-	(*m)[name] = v
-	return nil
+	return &json.SemanticError{JSONPointer: base, Err: kamaJsonschemaLocate(err, depth)}
+}
+
+// kamaJsonschemaDecodeObject is kamaJsonschemaDecode for a value that must
+// be a JSON object. A value of another kind is skipped without being kept
+// and returned as a validation error.
+//
+//kama:generated kama:jsonschema
+func kamaJsonschemaDecodeObject(dec *jsontext.Decoder, v any) error {
+	if k := dec.PeekKind(); k != jsontext.KindBeginObject {
+		if err := dec.SkipValue(); err != nil {
+			return err
+		}
+		return validator.New(validator.ErrKind, "want object, got %s", kamaJsonschemaKindName(k))
+	}
+	return kamaJsonschemaDecode(dec, v)
 }
 
 // kamaJsonschemaKindName names the JSON type of a value of kind k.
@@ -98,22 +107,35 @@ func kamaJsonschemaKindName(k jsontext.Kind) string {
 	return "invalid"
 }
 
-// kamaJsonschemaName reads the name of an object member. The name is valid
-// until dec reads again. Only a name holding an escape is copied.
+// kamaJsonschemaLocate returns err, a json.SemanticError of a decoder depth
+// values deep, as a validation error located relative to the value at that
+// depth. It takes a token of digits for an array index, which gives the
+// same pointer as an object member of that name.
 //
 //kama:generated kama:jsonschema
-func kamaJsonschemaName(dec *jsontext.Decoder) ([]byte, error) {
-	raw, err := dec.ReadValue()
-	if err != nil {
-		return nil, err
+func kamaJsonschemaLocate(err error, depth int) error {
+	se, ok := err.(*json.SemanticError)
+	if !ok {
+		return err
 	}
-	if bytes.IndexByte(raw, '\\') < 0 {
-		return raw[1 : len(raw)-1], nil
+	leaf := se.Err
+	if _, ok := errors.AsType[*validator.Error](leaf); !ok {
+		// The pointer moves to the validation path, so the copy drops it and the
+		// offset to keep it from showing twice.
+		c := *se
+		c.ByteOffset = 0
+		c.JSONPointer = ""
+		leaf = &c
 	}
-	// dec has read the name, so the only error left is invalid UTF-8 its options allow,
-	// which the name holds replaced as json/v2 holds it.
-	name, _ := jsontext.AppendUnquote(nil, raw)
-	return name, nil
+	tokens := slices.Collect(se.JSONPointer.Tokens())
+	for _, tok := range slices.Backward(tokens[min(depth, len(tokens)):]) {
+		if i, err := strconv.Atoi(tok); err == nil && i >= 0 && strconv.Itoa(i) == tok {
+			leaf = validator.Index(leaf, i)
+		} else {
+			leaf = validator.Field(leaf, tok)
+		}
+	}
+	return leaf
 }
 
 // kamaJsonschemaNullableOf sets dst to the value of an optional, nullable
@@ -147,6 +169,18 @@ var kamaJsonschemaPinned = json.JoinOptions(
 	json.MatchCaseInsensitiveNames(false),
 	jsonv1.ReportErrorsWithLegacySemantics(false),
 )
+
+// kamaJsonschemaRequiredNullable sets dst to the value of a required,
+// nullable member. None means null.
+//
+//kama:generated kama:jsonschema
+func kamaJsonschemaRequiredNullable[T any](dst *opt.Option[T], u und.Und[T]) error {
+	if u.IsUndefined() {
+		return validator.New(validator.ErrRequired, "member is missing")
+	}
+	*dst = u.Flatten()
+	return nil
+}
 
 // kamaJsonschemaRequiredNullableOf is kamaJsonschemaRequiredNullable for a
 // member whose wire field conv converts.

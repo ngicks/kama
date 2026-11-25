@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:01:19Z
+// generated: 2026-11-25T10:39:04Z
 
 package nullableenum
 
@@ -35,62 +35,30 @@ type Levels struct {
 //
 //kama:generated kama:jsonschema
 type levelsWire struct {
-	Ref                  und.Und[wire.Decoded[Level]]
-	Const                und.Und[wire.Decoded[LevelsConst]]
-	Big                  und.Und[wire.Decoded[LevelsBig]]
-	Number               und.Und[wire.Float64]
-	AdditionalProperties map[string]jsontext.Value
+	Ref                  und.Und[Level]            `json:"ref,omitzero"`
+	Const                und.Und[LevelsConst]      `json:"const,omitzero"`
+	Big                  und.Und[LevelsBig]        `json:"big,omitzero"`
+	Number               und.Und[wire.Float64]     `json:"number,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
-// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
-// of another kind is skipped and returned as the error.
-//
-//kama:generated kama:jsonschema
-func (w *levelsWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	if err := kamaJsonschemaBeginObject(dec); err != nil {
-		return err
-	}
-	for dec.PeekKind() != jsontext.KindEndObject {
-		name, err := kamaJsonschemaName(dec)
-		if err != nil {
-			return err
-		}
-		switch string(name) {
-		case "ref":
-			err = w.Ref.UnmarshalJSONFrom(dec)
-		case "const":
-			err = w.Const.UnmarshalJSONFrom(dec)
-		case "big":
-			err = w.Big.UnmarshalJSONFrom(dec)
-		case "number":
-			err = w.Number.UnmarshalJSONFrom(dec)
-		default:
-			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
-		}
-		if err != nil {
-			return err
-		}
-	}
-	_, err := dec.ReadToken()
-	return err
-}
-
-// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
-// the schema rejects together, and leaves in v what decoded of a value it
-// rejects. The value must pass ValidateShallow, which skips the members
-// that failed to decode.
+// UnmarshalJSONFrom decodes v from one JSON object. A nested value of a
+// declared type that fails stops it, and v keeps what it held. Otherwise it
+// reports every member the schema rejects together, and leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow, which
+// skips the members that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w levelsWire
-	if err := w.UnmarshalJSONFrom(dec); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Levels
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.Ref, w.Ref, wire.Decoded[Level].Value), "ref"))
-	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.Const, w.Const, wire.Decoded[LevelsConst].Value), "const"))
-	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.Big, w.Big, wire.Decoded[LevelsBig].Value), "big"))
+	out.Ref = w.Ref
+	out.Const = w.Const
+	out.Big = w.Big
 	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Number, w.Number, wire.Float64.Value), "number"))
 	out.AdditionalProperties = w.AdditionalProperties
 	*v = out

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:01:51Z
+// generated: 2026-11-25T10:39:37Z
 
 package validation
 
@@ -55,76 +55,30 @@ type Order struct {
 //
 //kama:generated kama:jsonschema
 type orderWire struct {
-	Id                   und.Und[wire.String]
-	Count                und.Und[wire.Int64]
-	Ratio                und.Und[wire.Float64]
-	Items                und.Und[wire.NonNullSlice[Sku]]
-	Labels               und.Und[wire.NonNullMap[string, OrderLabelsValue]]
-	Level                und.Und[wire.Int64]
-	Coupon               und.Und[wire.String]
-	Discount             und.Und[wire.Float64]
-	Closed               und.Und[wire.Decoded[OrderClosed]]
-	Typed                und.Und[wire.Decoded[OrderTyped]]
-	Pick                 und.Und[wire.Decoded[OrderPick]]
-	AdditionalProperties map[string]jsontext.Value
+	Id                   und.Und[wire.String]                               `json:"id,omitzero"`
+	Count                und.Und[wire.Int64]                                `json:"count,omitzero"`
+	Ratio                und.Und[wire.Float64]                              `json:"ratio,omitzero"`
+	Items                und.Und[wire.NonNullSlice[Sku]]                    `json:"items,omitzero"`
+	Labels               und.Und[wire.NonNullMap[string, OrderLabelsValue]] `json:"labels,omitzero"`
+	Level                und.Und[wire.Int64]                                `json:"level,omitzero"`
+	Coupon               und.Und[wire.String]                               `json:"coupon,omitzero"`
+	Discount             und.Und[wire.Float64]                              `json:"discount,omitzero"`
+	Closed               und.Und[OrderClosed]                               `json:"closed,omitzero"`
+	Typed                und.Und[OrderTyped]                                `json:"typed,omitzero"`
+	Pick                 und.Und[OrderPick]                                 `json:"pick,omitzero"`
+	AdditionalProperties map[string]jsontext.Value                          `json:",embed"`
 }
 
-// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
-// of another kind is skipped and returned as the error.
-//
-//kama:generated kama:jsonschema
-func (w *orderWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	if err := kamaJsonschemaBeginObject(dec); err != nil {
-		return err
-	}
-	for dec.PeekKind() != jsontext.KindEndObject {
-		name, err := kamaJsonschemaName(dec)
-		if err != nil {
-			return err
-		}
-		switch string(name) {
-		case "id":
-			err = w.Id.UnmarshalJSONFrom(dec)
-		case "count":
-			err = w.Count.UnmarshalJSONFrom(dec)
-		case "ratio":
-			err = w.Ratio.UnmarshalJSONFrom(dec)
-		case "items":
-			err = w.Items.UnmarshalJSONFrom(dec)
-		case "labels":
-			err = w.Labels.UnmarshalJSONFrom(dec)
-		case "level":
-			err = w.Level.UnmarshalJSONFrom(dec)
-		case "coupon":
-			err = w.Coupon.UnmarshalJSONFrom(dec)
-		case "discount":
-			err = w.Discount.UnmarshalJSONFrom(dec)
-		case "closed":
-			err = w.Closed.UnmarshalJSONFrom(dec)
-		case "typed":
-			err = w.Typed.UnmarshalJSONFrom(dec)
-		case "pick":
-			err = w.Pick.UnmarshalJSONFrom(dec)
-		default:
-			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
-		}
-		if err != nil {
-			return err
-		}
-	}
-	_, err := dec.ReadToken()
-	return err
-}
-
-// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
-// the schema rejects together, and leaves in v what decoded of a value it
-// rejects. The value must pass ValidateShallow, which skips the members
-// that failed to decode.
+// UnmarshalJSONFrom decodes v from one JSON object. A nested value of a
+// declared type that fails stops it, and v keeps what it held. Otherwise it
+// reports every member the schema rejects together, and leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow, which
+// skips the members that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w orderWire
-	if err := w.UnmarshalJSONFrom(dec); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Order
@@ -137,9 +91,9 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Level, w.Level, wire.Int64.Value), "level"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Coupon, w.Coupon, wire.String.Value), "coupon"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Discount, w.Discount, wire.Float64.Value), "discount"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Closed, w.Closed, wire.Decoded[OrderClosed].Value), "closed"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Typed, w.Typed, wire.Decoded[OrderTyped].Value), "typed"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Pick, w.Pick, wire.Decoded[OrderPick].Value), "pick"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Closed, w.Closed), "closed"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Typed, w.Typed), "typed"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Pick, w.Pick), "pick"))
 	out.AdditionalProperties = w.AdditionalProperties
 	*v = out
 	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
@@ -189,46 +143,20 @@ type OrderClosed struct {
 //
 //kama:generated kama:jsonschema
 type orderClosedWire struct {
-	A                    und.Und[wire.Bool]
-	AdditionalProperties map[string]jsontext.Value
+	A                    und.Und[wire.Bool]        `json:"a,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
-// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
-// of another kind is skipped and returned as the error.
-//
-//kama:generated kama:jsonschema
-func (w *orderClosedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	if err := kamaJsonschemaBeginObject(dec); err != nil {
-		return err
-	}
-	for dec.PeekKind() != jsontext.KindEndObject {
-		name, err := kamaJsonschemaName(dec)
-		if err != nil {
-			return err
-		}
-		switch string(name) {
-		case "a":
-			err = w.A.UnmarshalJSONFrom(dec)
-		default:
-			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
-		}
-		if err != nil {
-			return err
-		}
-	}
-	_, err := dec.ReadToken()
-	return err
-}
-
-// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
-// the schema rejects together, and leaves in v what decoded of a value it
-// rejects. The value must pass ValidateShallow, which skips the members
-// that failed to decode.
+// UnmarshalJSONFrom decodes v from one JSON object. A nested value of a
+// declared type that fails stops it, and v keeps what it held. Otherwise it
+// reports every member the schema rejects together, and leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow, which
+// skips the members that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *OrderClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w orderClosedWire
-	if err := w.UnmarshalJSONFrom(dec); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out OrderClosed
@@ -253,52 +181,26 @@ type OrderTyped struct {
 //
 //kama:generated kama:jsonschema
 type orderTypedWire struct {
-	N                    und.Und[wire.Int64]
-	AdditionalProperties map[string]wire.Decoded[OrderTypedValue]
+	N                    und.Und[wire.Int64]        `json:"n,omitzero"`
+	AdditionalProperties map[string]OrderTypedValue `json:",embed"`
 }
 
-// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
-// of another kind is skipped and returned as the error.
-//
-//kama:generated kama:jsonschema
-func (w *orderTypedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	if err := kamaJsonschemaBeginObject(dec); err != nil {
-		return err
-	}
-	for dec.PeekKind() != jsontext.KindEndObject {
-		name, err := kamaJsonschemaName(dec)
-		if err != nil {
-			return err
-		}
-		switch string(name) {
-		case "n":
-			err = w.N.UnmarshalJSONFrom(dec)
-		default:
-			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
-		}
-		if err != nil {
-			return err
-		}
-	}
-	_, err := dec.ReadToken()
-	return err
-}
-
-// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
-// the schema rejects together, and leaves in v what decoded of a value it
-// rejects. The value must pass ValidateShallow, which skips the members
-// that failed to decode.
+// UnmarshalJSONFrom decodes v from one JSON object. A nested value of a
+// declared type that fails stops it, and v keeps what it held. Otherwise it
+// reports every member the schema rejects together, and leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow, which
+// skips the members that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *OrderTyped) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w orderTypedWire
-	if err := w.UnmarshalJSONFrom(dec); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out OrderTyped
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.N, w.N, wire.Int64.Value), "n"))
-	errs = append(errs, kamaJsonschemaMembersOf(&out.AdditionalProperties, w.AdditionalProperties, wire.Decoded[OrderTypedValue].Value))
+	out.AdditionalProperties = w.AdditionalProperties
 	*v = out
 	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
@@ -470,42 +372,34 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var name string
 	var errs []error
 	if raw.Kind() == jsontext.KindString {
-		var w wire.Decoded[OrderPickOption1Value]
-		if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
+		var m OrderPickOption1Value
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Option1: %w", err))
 		} else {
-			if m, err := wire.Decoded[OrderPickOption1Value].Value(w); err != nil {
+			if err := (OrderPickOption1{Option1: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member Option1: %w", err))
 			} else {
-				if err := (OrderPickOption1{Option1: m}).ValidateShallow(false); err != nil {
-					errs = append(errs, fmt.Errorf("member Option1: %w", err))
-				} else {
-					if found != nil {
-						*v = OrderPick{Kind: OrderPickUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Option1", name)}}
-						return nil
-					}
-					found, name = OrderPickOption1{Option1: m}, "Option1"
+				if found != nil {
+					*v = OrderPick{Kind: OrderPickUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Option1", name)}}
+					return nil
 				}
+				found, name = OrderPickOption1{Option1: m}, "Option1"
 			}
 		}
 	}
 	if raw.Kind() == jsontext.KindString {
-		var w wire.Decoded[OrderPickOption2Value]
-		if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
+		var m OrderPickOption2Value
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Option2: %w", err))
 		} else {
-			if m, err := wire.Decoded[OrderPickOption2Value].Value(w); err != nil {
+			if err := (OrderPickOption2{Option2: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member Option2: %w", err))
 			} else {
-				if err := (OrderPickOption2{Option2: m}).ValidateShallow(false); err != nil {
-					errs = append(errs, fmt.Errorf("member Option2: %w", err))
-				} else {
-					if found != nil {
-						*v = OrderPick{Kind: OrderPickUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Option2", name)}}
-						return nil
-					}
-					found, name = OrderPickOption2{Option2: m}, "Option2"
+				if found != nil {
+					*v = OrderPick{Kind: OrderPickUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Option2", name)}}
+					return nil
 				}
+				found, name = OrderPickOption2{Option2: m}, "Option2"
 			}
 		}
 	}

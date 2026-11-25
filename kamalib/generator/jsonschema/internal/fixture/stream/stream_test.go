@@ -10,19 +10,18 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
-	"github.com/ngicks/kama/kamaruntime/wire"
 )
 
 // TestDecodeStreams decodes a document of a million elements that a reader
-// produces as it is read. The element bad of a document fails, and the
-// decoder reads on to the end, so that one decoding reports every problem,
-// and keeps every element in the value.
+// produces as it is read. The element bad of a document fails, which stops
+// the decoding there, as encoding/json stops a slice at an element that
+// fails, and leaves the value alone.
 func TestDecodeStreams(t *testing.T) {
 	const n = 1_000_000
 
 	r := &items{n: n, bad: func(i int) bool { return i == 1000 }}
 
-	var v Stream
+	v := Stream{{N: 7}}
 
 	err := json.UnmarshalRead(r, &v)
 	assert.Assert(t, err != nil)
@@ -31,31 +30,8 @@ func TestDecodeStreams(t *testing.T) {
 	assert.Assert(t, ok, "%T: %v", err, err)
 	assert.DeepEqual(t, validator.Pointers(se.Err), []string{"/1000/n"})
 	assert.ErrorIs(t, se.Err, validator.ErrCompare)
-	assert.Equal(t, r.read, r.size())
-	assert.Equal(t, len(v), n)
-	assert.Equal(t, v[1000].N, int64(-1))
-}
-
-// TestDecodeStreamsBounded decodes a document whose every element fails and
-// finds the errors of the first wire.MaxErrors elements and the count of
-// the others.
-func TestDecodeStreamsBounded(t *testing.T) {
-	const n = 1_000_000
-
-	r := &items{n: n, bad: func(int) bool { return true }}
-
-	var v Stream
-
-	err := json.UnmarshalRead(r, &v)
-
-	se, ok := errors.AsType[*json.SemanticError](err)
-	assert.Assert(t, ok, "%T: %v", err, err)
-	assert.Equal(t, len(validator.Under(se.Err, "")), wire.MaxErrors+1)
-
-	omitted := validator.At(se.Err, "")
-	assert.Equal(t, len(omitted), 1)
-	assert.ErrorIs(t, omitted[0], validator.ErrOmitted)
-	assert.ErrorContains(t, omitted[0], fmt.Sprintf("%d more", n-wire.MaxErrors))
+	assert.Assert(t, r.read < r.size(), "%d of %d", r.read, r.size())
+	assert.DeepEqual(t, v, Stream{{N: 7}})
 }
 
 // TestDecodeStreamsValid decodes a valid document of a million elements

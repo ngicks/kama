@@ -66,33 +66,47 @@ func TestDecodeCallsOnce(t *testing.T) {
 }
 
 // TestDecodeKeepsRules runs the validators the generated directives name
-// beside the functions of kama_validate.yaml.
+// beside the functions of kama_validate.yaml. A nested value that fails
+// stops the value holding it, so the functions of the holder do not run.
 func TestDecodeKeepsRules(t *testing.T) {
 	reset()
 
-	_, err := decode(`{"id":"ab","lines":[{"qty":0}],"sku":"a"}`)
-	assert.DeepEqual(t, sortedPointers(err), []string{"/id", "/lines/0/qty", "/sku"})
+	_, err := decode(`{"id":"ab","lines":[],"sku":"A"}`)
+	assert.DeepEqual(t, sortedPointers(err), []string{"/id"})
 	assert.DeepEqual(t, calls, map[string]int{
 		"validateOrderPre":  1,
 		"validateOrderPost": 1,
-		"validateLinePre":   1,
-		"validateLinePost":  1,
 		"validateSkuPre":    1,
 		"validateSkuPost":   1,
+	})
+
+	reset()
+
+	_, err = decode(`{"id":"ab","lines":[{"qty":0}],"sku":"a"}`)
+	assert.DeepEqual(t, sortedPointers(err), []string{"/lines/0/qty"})
+	assert.DeepEqual(t, calls, map[string]int{
+		"validateLinePre":  1,
+		"validateLinePost": 1,
 	})
 }
 
 // TestDecodeFunctionErrors locates the errors of the functions at the value
 // they validate, beside the problems decoding recorded.
 func TestDecodeFunctionErrors(t *testing.T) {
-	reset("validateOrderPost", "validateLinePre")
+	reset("validateOrderPost")
 
 	_, err := decode(`{"id":5,"lines":[{"qty":1}]}`)
 	assert.ErrorIs(t, err, validator.ErrKind)
 	assert.ErrorContains(t, err, "validateOrderPost")
-	assert.ErrorContains(t, err, "validateLinePre")
-	assert.DeepEqual(t, sortedPointers(err), []string{"", "/id", "/lines/0"})
+	assert.DeepEqual(t, sortedPointers(err), []string{"", "/id"})
 	assert.Equal(t, calls["validateOrderPost"], 1)
+
+	reset("validateLinePre")
+
+	_, err = decode(`{"id":5,"lines":[{"qty":1}]}`)
+	assert.ErrorContains(t, err, "validateLinePre")
+	assert.DeepEqual(t, sortedPointers(err), []string{"/lines/0"})
+	assert.Equal(t, calls["validateOrderPost"], 0)
 
 	reset("validateOrderPre")
 

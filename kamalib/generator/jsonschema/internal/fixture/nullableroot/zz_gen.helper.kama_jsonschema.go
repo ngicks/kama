@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:30:00Z
+// generated: 2026-11-25T10:44:32Z
 
 package nullableroot
 
@@ -11,11 +11,12 @@ import (
 	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
-	"github.com/ngicks/option/opt"
 )
 
 // kamaJsonschemaChecked joins err, the problems decoding a value recorded,
@@ -42,29 +43,61 @@ func kamaJsonschemaChecked(err, verr error) error {
 	return validator.Join(kept...)
 }
 
-// kamaJsonschemaDecode decodes the next value of dec into v, a value of a
-// type that records what the schema rejects, so that the error is one
-// decoding cannot go on past.
+// kamaJsonschemaDecode decodes the next value of dec into v. An error is
+// located relative to that value. Below the root it comes in a
+// json.SemanticError naming the pointer of the value, as json names it only
+// for a method that failed before or after reading the whole value, so that
+// the decoder of the enclosing value locates it in turn.
 //
 //kama:generated kama:jsonschema
 func kamaJsonschemaDecode(dec *jsontext.Decoder, v any) error {
-	return json.UnmarshalDecode(dec, v, kamaJsonschemaPinned)
+	depth := dec.StackDepth()
+	err := json.UnmarshalDecode(dec, v, kamaJsonschemaPinned)
+	se, ok := err.(*json.SemanticError)
+	if !ok || depth == 0 {
+		return kamaJsonschemaLocate(err, depth)
+	}
+	var base jsontext.Pointer
+	n := 0
+	for tok := range se.JSONPointer.Tokens() {
+		if n == depth {
+			break
+		}
+		base = base.AppendToken(tok)
+		n++
+	}
+	return &json.SemanticError{JSONPointer: base, Err: kamaJsonschemaLocate(err, depth)}
 }
 
-// kamaJsonschemaOptionOf returns a function converting an opt.Option of a
-// wire value by conv. None stays None.
+// kamaJsonschemaLocate returns err, a json.SemanticError of a decoder depth
+// values deep, as a validation error located relative to the value at that
+// depth. It takes a token of digits for an array index, which gives the
+// same pointer as an object member of that name.
 //
 //kama:generated kama:jsonschema
-func kamaJsonschemaOptionOf[W, T any](
-	conv func(W) (T, error),
-) func(opt.Option[W]) (opt.Option[T], error) {
-	return func(o opt.Option[W]) (opt.Option[T], error) {
-		if o.IsNone() {
-			return opt.None[T](), nil
-		}
-		v, err := conv(o.Value())
-		return opt.Some(v), err
+func kamaJsonschemaLocate(err error, depth int) error {
+	se, ok := err.(*json.SemanticError)
+	if !ok {
+		return err
 	}
+	leaf := se.Err
+	if _, ok := errors.AsType[*validator.Error](leaf); !ok {
+		// The pointer moves to the validation path, so the copy drops it and the
+		// offset to keep it from showing twice.
+		c := *se
+		c.ByteOffset = 0
+		c.JSONPointer = ""
+		leaf = &c
+	}
+	tokens := slices.Collect(se.JSONPointer.Tokens())
+	for _, tok := range slices.Backward(tokens[min(depth, len(tokens)):]) {
+		if i, err := strconv.Atoi(tok); err == nil && i >= 0 && strconv.Itoa(i) == tok {
+			leaf = validator.Index(leaf, i)
+		} else {
+			leaf = validator.Field(leaf, tok)
+		}
+	}
+	return leaf
 }
 
 // kamaJsonschemaPinned are the options a generated decoder decodes with

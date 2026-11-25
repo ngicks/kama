@@ -135,9 +135,9 @@ func TestDecodeError(t *testing.T) {
 			validator.ErrRequired,
 		},
 		{
-			"nested failure beside others",
+			"nested failure stops the others",
 			doc("reqName", "", "inline", `{}`),
-			[]string{"/inline/x", "/reqName"},
+			[]string{"/inline/x"},
 			validator.ErrRequired,
 		},
 		{"not object", `[]`, []string{""}, validator.ErrKind},

@@ -250,8 +250,8 @@
 //
 // The struct decodes through an unexported wire struct. It holds every
 // property as an und.Und of its wire type, as Decoding describes, which
-// keeps a missing member apart from null. The wire struct reads the
-// members of its object itself and dispatches each by its exact name.
+// keeps a missing member apart from null. encoding/json/v2 decodes the
+// wire struct by its struct tags, which name each member exactly.
 // UnmarshalJSONFrom converts each wire field and reports every member
 // missing or null against the required x nullable matrix, together with
 // what the wire types recorded. Where the Go type of the property holds
@@ -301,54 +301,57 @@
 // object. Raw JSON text is the value itself. Such a value decodes from the
 // bytes read, and each nested value in it decodes from those bytes again.
 //
-// Every value decodes through a type of package
+// A value of a built-in Go type decodes through a type of package
 // github.com/ngicks/kama/kamaruntime/wire, which the wire struct and the
 // other decoders name and which records what the schema rejects instead
 // of failing: wire.String, wire.Float64, wire.Bool and wire.Int64 for a
-// scalar, wire.NonNullSlice and wire.NonNullMap for a slice and a map,
-// whose elements are of the built-in type, and wire.Decoded for a value of
-// a type the generator declares. They record a value of a kind its Go type
-// cannot hold, such as a number for a string or an object for an array, a
-// null where the schema forbids it, a number that is no integer in the
-// range of int64, such as 1.5, while a number with a zero fraction, such as
-// 1.0 or 1e2, decodes into the int64, and the error a nested value of a
-// declared type returns after reading its whole value. The conversion of
-// the wire value into the Go type reports what they recorded, together
-// with the other errors of the value, with errors wrapping
-// validator.ErrKind, validator.ErrNull and the errors of the nested
-// values. The conversion hands a slice or a map on as decoded. A slice or
-// a map nested in another, or holding nullable elements, is copied once,
-// since its wire type differs from its Go type. Schema nullability is
-// expressed by github.com/ngicks/option types and by jsontext.Value. A
-// struct or a product decoding a value that is no object reports an error
-// wrapping validator.ErrKind.
+// scalar, and wire.NonNullSlice and wire.NonNullMap for a slice and a map,
+// whose elements of a built-in type are recorded the same way. They record
+// a value of a kind its Go type cannot hold, such as a number for a string
+// or an object for an array, a null where the schema forbids it, and a
+// number that is no integer in the range of int64, such as 1.5, while a
+// number with a zero fraction, such as 1.0 or 1e2, decodes into the int64.
+// The conversion of the wire value into the Go type reports what they
+// recorded, together with the members missing or null against the
+// schema, with errors wrapping validator.ErrKind, validator.ErrNull and
+// validator.ErrRequired. The conversion hands a slice or a map on as
+// decoded. A slice or a map nested in another, or holding nullable
+// elements, is copied once, since its wire type differs from its Go type.
+// Schema nullability is expressed by github.com/ngicks/option types and by
+// jsontext.Value. A struct or a product decoding a value that is no object
+// returns an error wrapping validator.ErrKind.
 //
-// One decoding of a document therefore reports every problem of it, at
-// every depth, together. A decoder fails during decoding only where it
-// cannot read past the input: a syntax error, a truncated input, invalid
-// UTF-8 or a duplicate member name the options of the caller reject, an
-// error of the reader, and an error of an unmarshaler of the caller. Such
-// an error leaves the decoder of the caller inside the value, as any
-// json.UnmarshalerFrom failing midway does. The decoder then returns
-// before it stores anything, so the destination keeps what it held before
-// the call, as encoding/json leaves it. Every other problem is recorded
-// where it happens and reported by the decoder of the root, after
-// it read its whole value, so a caller decoding a stream of documents reads
-// the next one after a document that failed. A value of the wrong kind is
-// skipped without being kept, and its error quotes at most the first bytes
-// of a scalar. A slice or a map keeps at most wire.MaxErrors errors of its
-// elements and reports how many more it left out with an error wrapping
-// validator.ErrOmitted, so a document of many wrong elements holds a
-// bounded number of errors. The members no property declares keep an error
-// per failing member, as the fallback field keeps a value per member.
+// A value of a type the generator declares, such as a nested struct, an
+// enum or a union, decodes through its own decoder, which encoding/json/v2
+// calls as it calls any json.UnmarshalerFrom. The error of that decoder
+// stops the value holding it, a struct, a slice or a map, as
+// encoding/json/v2 stops it: the decoder of the holder returns the error
+// without converting its wire struct. The problems of one object that the
+// wire types recorded are therefore reported together, while a nested
+// value that fails is reported alone and the members after it are not
+// read. A decoder also returns at once where it cannot read past the
+// input: a syntax error, a truncated input, invalid UTF-8 or a duplicate
+// member name the options of the caller reject, an error of the reader,
+// and an error of an unmarshaler of the caller. Such an error and the
+// error of a nested value leave the decoder of the caller inside the
+// value, as any json.UnmarshalerFrom failing midway does, so the caller
+// cannot read on from it. The decoder then returns before it stores
+// anything, so the destination keeps what it held before the call, as
+// encoding/json leaves it. Problems the root records are reported by the
+// decoder of the root after it read its whole value, so a caller decoding
+// a stream of documents reads the next one after such a document. A value
+// of the wrong kind is skipped without being kept, and its error quotes at
+// most the first bytes of a scalar. A slice or a map keeps at most
+// wire.MaxErrors errors of its elements of a built-in type and reports how
+// many more it left out with an error wrapping validator.ErrOmitted, so a
+// document of many wrong elements holds a bounded number of errors. The
+// members no property declares keep an error per member a wire type
+// recorded, as the fallback field keeps a value per member.
 //
-// On an error a decoder still stores what it decoded: a member or an
-// element that failed holds its zero value, or for a slice or a map the
-// elements that decoded, a nested value of a declared type holds what its
-// own decoder stored, and a union holds its unknown member. A struct
-// given a value that is no object stores nothing, so a nested one holds
-// its zero value and the destination of the caller keeps what it held.
-// That value is a best-effort partial value, never to be trusted as valid.
+// On a recorded problem a decoder still stores what it decoded: a member
+// or an element that failed holds its zero value, or for a slice or a map
+// the elements that decoded, and a union holds its unknown member. That
+// value is a best-effort partial value, never to be trusted as valid.
 //
 // A decoder decodes with the options of the decoder it is given, which
 // json.Unmarshal, json.UnmarshalDecode and json v1 fill from the options of
@@ -371,19 +374,19 @@
 //
 // An error of a decoder is located relative to the value it decodes, by
 // the path of the offending member in the lookups of the validator
-// package. json.Unmarshal and json.UnmarshalDecode report the error of the
-// root in a json.SemanticError, whose Err holds it, and json v1 and
-// json.Unmarshal under json.DefaultOptionsV1 report it so that
-// errors.AsType finds the *validator.Error, the locations of every leaf
-// unchanged. A decoder holding a nested value takes its error as a value
-// and locates it below the member, the index or the key holding it.
-//
-// json/v2 stops checking the member names of an object it decodes as a Go
-// struct or map once a value in it returns an error, so that reading the
-// object further fails. A Go struct of the caller holding a generated type
-// thus fails on a document the generated type rejects even under the
-// legacy semantics of json v1, which would otherwise read on past the
-// error.
+// package. json/v2 reports the error of a nested value in a
+// json.SemanticError naming the JSON pointer of that value. A generated
+// decoder below the root keeps such an error in a json.SemanticError
+// naming the pointer of its own value, and moves the rest of the pointer
+// into the path of the validator error it holds, so the decoder of the
+// enclosing value locates the error in turn. The decoder of the root
+// returns the validator error with the whole path. json.Unmarshal and
+// json.UnmarshalDecode report it in a json.SemanticError, whose Err holds
+// it, and json v1 and json.Unmarshal under json.DefaultOptionsV1 report it
+// so that errors.AsType finds the *validator.Error. A Go struct of the
+// caller holding a generated type gets the error in a json.SemanticError
+// naming the pointer of the generated value, whose Err holds the
+// validator error located relative to that value.
 //
 // The helpers the decoders call, such as kamaJsonschemaDecode, are
 // unexported declarations of the package in zz_gen.helper.kama_jsonschema.go

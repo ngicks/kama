@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:04Z
+// generated: 2026-11-25T10:39:06Z
 
 package nullableroot
 
@@ -32,11 +32,11 @@ func (v Code) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Code) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var w opt.Option[wire.Decoded[CodeValue]]
-	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+	var out opt.Option[CodeValue]
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	out, err := kamaJsonschemaOptionOf(wire.Decoded[CodeValue].Value)(w)
+	var err error
 	*v = Code(out)
 	return err
 }

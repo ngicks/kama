@@ -1,6 +1,6 @@
 // Package wire holds types that decode a JSON value leniently: they record what a schema
-// rejects and go on reading, so that one decoding reports every problem of a document together
-// with the path of each.
+// rejects of a value of a built-in Go type and go on reading, so that one decoding reports
+// every such problem of an object together with the path of each.
 //
 // A type of the package records, instead of failing:
 //   - a value of a JSON kind its Go type cannot hold, such as a number for a [String] or an
@@ -8,32 +8,23 @@
 //   - a null, which encoding/json/v2 decodes into the zero value of a string, a number, a
 //     boolean, a slice or a map;
 //   - a number that is no integer in the range of int64 for an [Int64], such as 1.5, and one
-//     out of the range of float64 for a [Float64];
-//   - the error a value of a type with its own UnmarshalJSONFrom method returns after it read
-//     its whole value, when the error is one of package
-//     github.com/ngicks/kama/kamaruntime/validator, as the decoders generated from a JSON
-//     Schema return it. [Decoded] holds such a value and the elements of the containers may.
+//     out of the range of float64 for a [Float64].
 //
 // The Value method of a type returns the decoded value as it is, with no copy, and an error of
-// package validator for every value recorded, located by validator.Index and validator.Key
-// below the value. A value whose decoding recorded a problem holds what decoded of it: the zero
-// value for a scalar, the elements that decoded for a container and the partial value its own
-// decoder left for a type with its own decoder. That value is never to be trusted as valid.
+// package github.com/ngicks/kama/kamaruntime/validator for every value recorded, located by
+// validator.Index and validator.Key below the value. A value whose decoding recorded a problem
+// holds what decoded of it: the zero value for a scalar and the elements that decoded for a
+// container. That value is never to be trusted as valid.
 //
 // # What fails
 //
-// The UnmarshalJSONFrom methods return an error only where reading cannot go on: a syntax
-// error, a truncated input, invalid UTF-8 or a duplicate member name the options of the
-// decoder reject, and an error of the reader. They return as well an error a value returns
-// that is no error of package validator, or that comes before the value is read whole, which
-// includes the error of an unmarshaler the caller passes. A decoder can tell neither where such
-// a value ends nor whether its error tells about the input.
-//
-// A value of a type with its own decoder records its error after json/v2 returned it. json/v2
-// then stops checking the names of every object it decodes as a Go struct or map around the
-// value, so that reading such an object further fails. A [Decoded], or a container of values
-// with their own decoder, therefore sits in an object the code holding it reads itself, as the
-// decoders generated from a JSON Schema read theirs, or in a container of the package.
+// The UnmarshalJSONFrom methods return an error where reading cannot go on: a syntax error, a
+// truncated input, invalid UTF-8 or a duplicate member name the options of the decoder reject,
+// and an error of the reader. A container returns as well the error json/v2 returns for an
+// element of a type other than the built-in ones, such as the error of a type with its own
+// UnmarshalJSONFrom method or of an unmarshaler the caller passes. Such an error stops the
+// container, as encoding/json/v2 stops a slice or a map, and json/v2 locates it by the JSON
+// pointer of the element in a json.SemanticError.
 //
 // # Bounded errors
 //
@@ -55,15 +46,14 @@
 // unmarshaler for *string or *bool sees a string or a boolean. The keys of a NonNullMap decode
 // through the unmarshalers, as the keys of a map do.
 //
-// The types read errors as json/v2 reports them, whatever the caller passes: under the legacy
-// semantics of json v1, json/v2 would read every value whole once more per level of nesting
-// before decoding it.
+// The types decode the values they hold with the errors json/v2 reports, whatever the caller
+// passes: under the legacy semantics of json v1, json/v2 would read every value whole once
+// more per level of nesting before decoding it.
 package wire
 
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
-	"errors"
 	"slices"
 	"strconv"
 	"unicode/utf8"
@@ -166,36 +156,11 @@ func (n Int64) Value() (int64, error) {
 	return n.value, n.problem
 }
 
-// Decoded is a value of T decoded through json/v2, which calls the UnmarshalJSONFrom method
-// of T unless an unmarshaler of the caller takes *T. It keeps the error of package validator
-// the decoding returns after reading the whole value, together with the value as the decoding
-// left it, and returns nil, so that the decoding of the value holding it goes on. Null goes to
-// T as any other value.
-type Decoded[T any] struct {
-	value   T
-	problem error
-}
-
-// UnmarshalJSONFrom decodes the next value of dec into d.
-func (d *Decoded[T]) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var err error
-
-	*d = Decoded[T]{}
-	d.problem, err = decodeJson(dec, &d.value)
-
-	return err
-}
-
-// Value returns the decoded value and the error its decoding recorded, if any.
-func (d Decoded[T]) Value() (T, error) {
-	return d.value, d.problem
-}
-
 // NonNullSlice is a slice decoded from a JSON array that must not be null. It decodes the
 // elements one by one from the decoder and records the problem of each, keeping its index: an
-// element of a type of the package or of a built-in type decodes as the type of the package
-// does, and an element of another type decodes as Decoded does. T is string, float64, bool,
-// int64, jsontext.Value, which holds any value, or a type with its own UnmarshalJSONFrom
+// element of a built-in type decodes as the type of the package for it does, and an element of
+// another type decodes through json/v2, whose error stops the slice. T is string, float64,
+// bool, int64, jsontext.Value, which holds any value, or a type with its own UnmarshalJSONFrom
 // method. The JSON kinds a built-in element accepts follow from T by a type switch over a
 // pointer to the element, which involves no reflection.
 type NonNullSlice[T any] struct {
@@ -365,7 +330,7 @@ var legacyOff = jsonv1.ReportErrorsWithLegacySemantics(false)
 const maxExcerpt = 32
 
 // decodeValue decodes the next value of dec into p as the type of the package for the
-// built-in type T does, and any other T as Decoded does.
+// built-in type T does, and any other T through json/v2.
 func decodeValue[T any](dec *jsontext.Decoder, p *T) (problem, err error) {
 	switch q := any(p).(type) {
 	case *string:
@@ -378,56 +343,7 @@ func decodeValue[T any](dec *jsontext.Decoder, p *T) (problem, err error) {
 		return readInt64(dec, q)
 	}
 
-	return decodeJson(dec, p)
-}
-
-// decodeJson decodes the next value of dec into p through json/v2. It returns as problem an
-// error of package validator the decoding returns after reading the whole value.
-func decodeJson[T any](dec *jsontext.Decoder, p *T) (problem, err error) {
-	depth := dec.StackDepth()
-	_, length := dec.StackIndex(depth)
-
-	err = json.UnmarshalDecode(dec, p, legacyOff)
-	if err == nil {
-		return nil, nil
-	}
-
-	// json/v2 checks a method the same way for having read exactly one value.
-	_, after := dec.StackIndex(depth)
-	if dec.StackDepth() != depth || after != length+1 {
-		return nil, err
-	}
-
-	if problem := validationError(err); problem != nil {
-		return problem, nil
-	}
-
-	return nil, err
-}
-
-// validationError returns the error of package validator err wraps, one made by validator.New
-// or validator.Join, or nil. json/v2 wraps the error of a method in a json.SemanticError, which
-// names the location of the value the method decoded, so the error found is relative to that
-// value.
-func validationError(err error) error {
-	for err != nil {
-		switch x := err.(type) {
-		case *validator.Error:
-			return x
-		case interface{ Unwrap() []error }:
-			if _, ok := errors.AsType[*validator.Error](err); ok {
-				return err
-			}
-
-			return nil
-		case interface{ Unwrap() error }:
-			err = x.Unwrap()
-		default:
-			return nil
-		}
-	}
-
-	return nil
+	return nil, json.UnmarshalDecode(dec, p, legacyOff)
 }
 
 func readString(dec *jsontext.Decoder, p *string) (problem, err error) {

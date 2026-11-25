@@ -10,7 +10,6 @@ import (
 
 	"github.com/ngicks/opiter"
 
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
@@ -257,11 +256,9 @@ func nilChecks(doc *jsonschema.Schema, ptr string) []genStep {
 	return body
 }
 
-// wireSteps returns the struct the object at ptr decodes through, every
-// property as an und.Und of its wire type and then the members the object
-// keeps, and its UnmarshalJSONFrom. The wire struct reads its members
-// itself: json/v2 decoding it as a struct would stop checking the names of
-// the object once a nested value returned the error it recorded.
+// wireSteps returns the struct the object at ptr decodes through: every
+// property as an und.Und of its wire type, then the members the object
+// keeps. encoding/json/v2 decodes it by its struct tags.
 func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -279,55 +276,25 @@ func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		lang.Stmt("type %s struct {", wireName(name)),
 	}
 
-	cases := make([]genhelper.Case[genCtx], 0, len(s.Properties)+1)
-
 	for _, n := range s.Properties {
 		pp := child(ptr, "properties", n.Name)
 
 		steps = append(steps, lang.Stmt(
-			"%s %s[%s]",
+			"%s %s[%s] `json:%s`",
 			fieldName(pp, n.Name),
 			q(undPath, "Und"),
 			wireType(doc, opts, pp, slotMember),
-		))
-		cases = append(cases, lang.Case(
-			lang.Expr("%s", strconv.Quote(n.Name)),
-			lang.Stmt("err = w.%s.UnmarshalJSONFrom(dec)", fieldName(pp, n.Name)),
+			strconv.Quote(n.Name+",omitzero"),
 		))
 	}
 
-	f := fallbackField(doc, opts, ptr)
-	cases = append(cases, lang.Default(lang.Stmt(
-		"err = kamaJsonschemaExtra(dec, &w.%s, string(name))", f,
-	)))
-
 	return append(steps,
-		lang.Stmt("%s map[string]%s", f, extraWire(doc, opts, ptr)),
-		lang.Stmt("}"),
-		lang.DocFunc(
-			docComment("UnmarshalJSONFrom decodes the members of one JSON object into w. A "+
-				"value of another kind is skipped and returned as the error."),
-			lang.Expr(
-				"func (w *%s) UnmarshalJSONFrom(dec *%s) error",
-				wireName(name),
-				q(jsontextPath, "Decoder"),
-			),
-			lang.If(
-				lang.Expr("err := kamaJsonschemaBeginObject(dec); err != nil"),
-				lang.Stmt("return err"),
-				nil,
-			),
-			lang.For(nil, lang.Expr("dec.PeekKind() != %s", q(jsontextPath, "KindEndObject")), nil,
-				lang.Steps(
-					lang.Stmt("name, err := kamaJsonschemaName(dec)"),
-					lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
-					lang.Switch(lang.Expr("string(name)"), cases...),
-					lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
-				),
-			),
-			lang.Stmt("_, err := dec.ReadToken()"),
-			lang.Stmt("return err"),
+		lang.Stmt(
+			"%s map[string]%s `json:\",embed\"`",
+			fallbackField(doc, opts, ptr),
+			extraWire(doc, opts, ptr),
 		),
+		lang.Stmt("}"),
 	)
 }
 
@@ -354,8 +321,9 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 		text += strings.Replace(parts, "its own", "the own", 1) + " decode from the same object. "
 	}
 
-	text += "It reports every member the schema rejects together, and leaves in v " +
-		"what decoded of a value it rejects."
+	text += "A nested value of a declared type that fails stops it, and v keeps what it " +
+		"held. Otherwise it reports every member the schema rejects together, and leaves " +
+		"in v what decoded of a value it rejects."
 	if opts.Validate {
 		text += " The value must pass ValidateShallow, which skips the members that " +
 			"failed to decode."
@@ -364,7 +332,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 	failed := lang.Stmt("return err")
 	body := []genStep{
 		lang.Stmt("var w %s", wireName(name)),
-		lang.If(lang.Expr("err := w.UnmarshalJSONFrom(dec); err != nil"), failed, nil),
+		lang.If(lang.Expr("err := kamaJsonschemaDecodeObject(dec, &w); err != nil"), failed, nil),
 	}
 
 	if product(doc, ptr, s) {
@@ -375,7 +343,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 			lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
 			lang.Stmt("var w %s", wireName(name)),
 			lang.If(
-				lang.Expr("err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil"),
+				lang.Expr("err := kamaJsonschemaUnmarshalObject(dec, raw, &w); err != nil"),
 				failed,
 				nil,
 			),
@@ -614,7 +582,14 @@ func decodeStep(doc *jsonschema.Schema, opts Options, ptr, name string) genStep 
 		case req:
 			return conv("RequiredPointer")
 		case null:
-			return conv("OptionalNullablePointer")
+			// Without conversion, nothing setting the pointer fails.
+			return converted(
+				wireConv(doc, opts, pp, slotMember),
+				func(genExpr) genStep { return conv("OptionalNullablePointer") },
+				func(genExpr) genStep {
+					return lang.Stmt("kamaJsonschemaOptionalNullablePointer(&out.%s, w.%s)", f, f)
+				},
+			)
 		default:
 			return conv("OptionalPointer")
 		}

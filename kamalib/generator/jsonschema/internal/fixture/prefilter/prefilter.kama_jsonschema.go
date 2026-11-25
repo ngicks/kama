@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:01:31Z
+// generated: 2026-11-25T10:39:17Z
 
 package prefilter
 
@@ -192,22 +192,18 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := shapeCircleProbe(raw).Validate(false); err != nil {
 			errs = append(errs, fmt.Errorf("member Circle: %w", err))
 		} else {
-			var w wire.Decoded[Circle]
-			if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
+			var m Circle
+			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Circle: %w", err))
 			} else {
-				if m, err := wire.Decoded[Circle].Value(w); err != nil {
+				if err := (ShapeCircle{Circle: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Circle: %w", err))
 				} else {
-					if err := (ShapeCircle{Circle: m}).ValidateShallow(false); err != nil {
-						errs = append(errs, fmt.Errorf("member Circle: %w", err))
-					} else {
-						if found != nil {
-							*v = Shape{Kind: ShapeUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Circle", name)}}
-							return nil
-						}
-						found, name = ShapeCircle{Circle: m}, "Circle"
+					if found != nil {
+						*v = Shape{Kind: ShapeUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Circle", name)}}
+						return nil
 					}
+					found, name = ShapeCircle{Circle: m}, "Circle"
 				}
 			}
 		}
@@ -216,22 +212,18 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := shapeSquareProbe(raw).Validate(false); err != nil {
 			errs = append(errs, fmt.Errorf("member Square: %w", err))
 		} else {
-			var w wire.Decoded[Square]
-			if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
+			var m Square
+			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Square: %w", err))
 			} else {
-				if m, err := wire.Decoded[Square].Value(w); err != nil {
+				if err := (ShapeSquare{Square: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Square: %w", err))
 				} else {
-					if err := (ShapeSquare{Square: m}).ValidateShallow(false); err != nil {
-						errs = append(errs, fmt.Errorf("member Square: %w", err))
-					} else {
-						if found != nil {
-							*v = Shape{Kind: ShapeUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Square", name)}}
-							return nil
-						}
-						found, name = ShapeSquare{Square: m}, "Square"
+					if found != nil {
+						*v = Shape{Kind: ShapeUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Square", name)}}
+						return nil
 					}
+					found, name = ShapeSquare{Square: m}, "Square"
 				}
 			}
 		}
@@ -262,54 +254,26 @@ type Circle struct {
 //
 //kama:generated kama:jsonschema
 type circleWire struct {
-	Kind                 und.Und[wire.Decoded[CircleKind]]
-	Radius               und.Und[wire.Float64]
-	AdditionalProperties map[string]jsontext.Value
+	Kind                 und.Und[CircleKind]       `json:"kind,omitzero"`
+	Radius               und.Und[wire.Float64]     `json:"radius,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
-// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
-// of another kind is skipped and returned as the error.
-//
-//kama:generated kama:jsonschema
-func (w *circleWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	if err := kamaJsonschemaBeginObject(dec); err != nil {
-		return err
-	}
-	for dec.PeekKind() != jsontext.KindEndObject {
-		name, err := kamaJsonschemaName(dec)
-		if err != nil {
-			return err
-		}
-		switch string(name) {
-		case "kind":
-			err = w.Kind.UnmarshalJSONFrom(dec)
-		case "radius":
-			err = w.Radius.UnmarshalJSONFrom(dec)
-		default:
-			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
-		}
-		if err != nil {
-			return err
-		}
-	}
-	_, err := dec.ReadToken()
-	return err
-}
-
-// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
-// the schema rejects together, and leaves in v what decoded of a value it
-// rejects. The value must pass ValidateShallow, which skips the members
-// that failed to decode.
+// UnmarshalJSONFrom decodes v from one JSON object. A nested value of a
+// declared type that fails stops it, and v keeps what it held. Otherwise it
+// reports every member the schema rejects together, and leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow, which
+// skips the members that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w circleWire
-	if err := w.UnmarshalJSONFrom(dec); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Circle
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Kind, w.Kind, wire.Decoded[CircleKind].Value), "kind"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Kind, w.Kind), "kind"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Radius, w.Radius, wire.Float64.Value), "radius"))
 	out.AdditionalProperties = w.AdditionalProperties
 	*v = out
@@ -361,46 +325,20 @@ type Square struct {
 //
 //kama:generated kama:jsonschema
 type squareWire struct {
-	Side                 und.Und[wire.Float64]
-	AdditionalProperties map[string]jsontext.Value
+	Side                 und.Und[wire.Float64]     `json:"side,omitzero"`
+	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
-// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
-// of another kind is skipped and returned as the error.
-//
-//kama:generated kama:jsonschema
-func (w *squareWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	if err := kamaJsonschemaBeginObject(dec); err != nil {
-		return err
-	}
-	for dec.PeekKind() != jsontext.KindEndObject {
-		name, err := kamaJsonschemaName(dec)
-		if err != nil {
-			return err
-		}
-		switch string(name) {
-		case "side":
-			err = w.Side.UnmarshalJSONFrom(dec)
-		default:
-			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
-		}
-		if err != nil {
-			return err
-		}
-	}
-	_, err := dec.ReadToken()
-	return err
-}
-
-// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
-// the schema rejects together, and leaves in v what decoded of a value it
-// rejects. The value must pass ValidateShallow, which skips the members
-// that failed to decode.
+// UnmarshalJSONFrom decodes v from one JSON object. A nested value of a
+// declared type that fails stops it, and v keeps what it held. Otherwise it
+// reports every member the schema rejects together, and leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow, which
+// skips the members that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w squareWire
-	if err := w.UnmarshalJSONFrom(dec); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Square

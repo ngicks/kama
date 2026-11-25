@@ -9,12 +9,13 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
-// A decoder decodes a value into a type of package wire, which records what the schema
-// rejects instead of failing: a value of a kind the Go type cannot hold, a null where
-// encoding/json/v2 decodes it into the zero value, a number such as 1.5 for an int64, and the
-// error of a nested value of a generated type. The conversion to the Go type reports what it
-// recorded with the other errors of the value. wireType spells the type a value decodes into
-// and wireConv the function converting it into the Go type of the value.
+// A decoder decodes a value of a built-in Go type into a type of package wire, which records
+// what the schema rejects instead of failing: a value of a kind the Go type cannot hold, a null
+// where encoding/json/v2 decodes it into the zero value and a number such as 1.5 for an int64.
+// The conversion to the Go type reports what it recorded with the other errors of the value. A
+// value of a type the generator declares decodes into that type, whose error stops the decoding
+// of the value holding it. wireType spells the type a value decodes into and wireConv the
+// function converting it into the Go type of the value.
 
 // slot is where a decoded value sits, which decides who records its problems.
 type slot int
@@ -112,15 +113,8 @@ func wireTypeSeen(
 	seen = append(seen, r)
 
 	switch {
-	case s.Bool.IsSome():
+	case s.Bool.IsSome() || declares(doc, r) || r == "" && raw(doc, r):
 		return goTypeSeen(c, doc, opts, r, seen[:len(seen)-1])
-	case declares(doc, r) || r == "" && raw(doc, r):
-		t, err := goTypeSeen(c, doc, opts, r, seen[:len(seen)-1])
-		if err != nil || at == slotElem {
-			return t, err
-		}
-
-		return lang.Expr("%s[%s]", q(wirePath, "Decoded"), t)(c)
 	case nullableUnion(doc, r):
 		return wireTypeSeen(c, doc, opts, valueMember(doc, r), at, seen)
 	}
@@ -148,16 +142,8 @@ func convSeen(
 	seen = append(seen, r)
 
 	switch {
-	case s.Bool.IsSome():
+	case s.Bool.IsSome() || declares(doc, r) || r == "" && raw(doc, r):
 		return "", nil
-	case declares(doc, r) || r == "" && raw(doc, r):
-		if at == slotElem {
-			return "", nil
-		}
-
-		t, err := wireTypeSeen(c, doc, opts, r, at, seen[:len(seen)-1])
-
-		return t + ".Value", err
 	case nullableUnion(doc, r):
 		return convSeen(c, doc, opts, valueMember(doc, r), at, seen)
 	}

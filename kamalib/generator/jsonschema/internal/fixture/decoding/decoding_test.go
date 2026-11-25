@@ -482,31 +482,21 @@ func TestRequiredTwice(t *testing.T) {
 	assert.Assert(t, ok, "%T", r.Twice.Value().Kind)
 }
 
-// problems is a document holding a value of the wrong kind in every
-// position, nulls, a missing required member and failing validations.
+// problems is a document holding a value of the wrong kind in members of
+// built-in types, nulls and a missing required member.
 var problems = doc(map[string]string{
-	"s":     `5`,
-	"n":     "",
-	"b":     `null`,
-	"arr":   `["a",2,null]`,
-	"m":     `{"k":"x","j":1}`,
-	"obj":   `{"x":"bad","y":1}`,
-	"nobj":  `{"x":-1,"y":1}`,
-	"items": `[{"x":1,"y":1},{"x":-1,"y":[1]}]`,
-	"dict":  `{"k":3}`,
-	"u":     `[1]`,
-	"all":   `{"p":{"x":"z","y":1},"q":1}`,
-	"twice": `true`,
+	"s":   `5`,
+	"n":   "",
+	"b":   `null`,
+	"arr": `["a",2,null]`,
+	"m":   `{"k":"x","j":1}`,
 })
 
 // problemPointers locates every problem of problems.
-var problemPointers = []string{
-	"/all/p/x", "/all/q", "/arr/1", "/arr/2", "/b", "/dict/k", "/items/1/x", "/items/1/y",
-	"/m/k", "/n", "/nobj/x", "/obj/x", "/s", "/twice", "/u",
-}
+var problemPointers = []string{"/arr/1", "/arr/2", "/b", "/m/k", "/n", "/s"}
 
-// TestEveryProblemAtOnce reports every problem of a document in one error,
-// each at its path, whatever its depth and kind.
+// TestEveryProblemAtOnce reports every problem of the members of an object
+// in one error, each at its path and kind.
 func TestEveryProblemAtOnce(t *testing.T) {
 	err := decodeErr(problems)
 	assert.DeepEqual(t, sortedPointers(err), problemPointers)
@@ -517,11 +507,6 @@ func TestEveryProblemAtOnce(t *testing.T) {
 	}{
 		{"/s", validator.ErrKind}, {"/n", validator.ErrRequired}, {"/b", validator.ErrNull},
 		{"/arr/1", validator.ErrKind}, {"/arr/2", validator.ErrNull}, {"/m/k", validator.ErrKind},
-		{"/obj/x", validator.ErrKind}, {"/nobj/x", validator.ErrCompare},
-		{"/items/1/x", validator.ErrCompare}, {"/items/1/y", validator.ErrKind},
-		{"/dict/k", validator.ErrKind}, {"/u", validator.ErrOneOf},
-		{"/all/p/x", validator.ErrKind}, {"/all/q", validator.ErrKind},
-		{"/twice", validator.ErrOneOf},
 	} {
 		at := validator.At(err, c.ptr)
 		assert.Equal(t, len(at), 1, c.ptr)
@@ -547,8 +532,58 @@ func TestEveryProblemAtOnce(t *testing.T) {
 	assert.DeepEqual(t, validator.Pointers(err), []string{""})
 }
 
-// TestPartialValue keeps in the value what decoded of a document that
-// fails, and leaves the value alone for a document that stops decoding.
+// nestedOuter holds Root in a struct of the caller.
+type nestedOuter struct {
+	Outer Root `json:"outer"`
+}
+
+// TestNestedFailureStops stops decoding an object at a nested value of a
+// declared type that fails, as encoding/json stops it. The problems
+// recorded before it and the members after it are not reported. The error
+// holds the validator error of the nested value with its whole path below
+// the generated value the caller decodes.
+func TestNestedFailureStops(t *testing.T) {
+	for _, c := range []struct {
+		in, ptr string
+	}{
+		{`{"s": 5, "obj": {"x": 1, "y": "oops"}, "arr": ["a", null]}`, "/obj/y"},
+		{
+			`{"s": 5, "items": [{"x": 1, "y": 1}, {"x": 1, "y": "oops"}], "arr": ["a", null]}`,
+			"/items/1/y",
+		},
+	} {
+		r := Root{S: "kept"}
+
+		err := json.Unmarshal([]byte(c.in), &r)
+		se, ok := errors.AsType[*json.SemanticError](err)
+		assert.Assert(t, ok, "%T: %v", err, err)
+		assert.DeepEqual(t, validator.Pointers(se.Err), []string{c.ptr})
+		assert.DeepEqual(t, validator.Pointers(err), []string{c.ptr})
+		assert.ErrorIs(t, err, validator.ErrKind)
+
+		ve, ok := errors.AsType[*validator.Error](err)
+		assert.Assert(t, ok, "%T: %v", err, err)
+		assert.Equal(t, ve.Pointer(), c.ptr)
+		assert.Equal(t, r.S, "kept")
+
+		var o nestedOuter
+
+		err = json.Unmarshal([]byte(`{"outer":`+c.in+`}`), &o)
+		se, ok = errors.AsType[*json.SemanticError](err)
+		assert.Assert(t, ok, "%T: %v", err, err)
+		assert.Equal(t, string(se.JSONPointer), "/outer")
+		assert.DeepEqual(t, validator.Pointers(se.Err), []string{c.ptr})
+
+		err = jsonv1.Unmarshal([]byte(c.in), &r)
+		ve, ok = errors.AsType[*validator.Error](err)
+		assert.Assert(t, ok, "%T: %v", err, err)
+		assert.Equal(t, ve.Pointer(), c.ptr)
+	}
+}
+
+// TestPartialValue keeps in the value what decoded of a document whose
+// problems were recorded, and leaves the value alone for a document that
+// stops decoding.
 func TestPartialValue(t *testing.T) {
 	var r Root
 
@@ -557,29 +592,22 @@ func TestPartialValue(t *testing.T) {
 	assert.Equal(t, r.S, "")
 	assert.DeepEqual(t, r.Arr, []string{"a", "", ""})
 	assert.DeepEqual(t, r.M, map[string]int64{"k": 0, "j": 1})
-	assert.Equal(t, r.Obj.Y, int64(1))
-	assert.Equal(t, r.Nobj.Value().X, int64(-1))
-	assert.Equal(t, r.Items.Value()[1].X, int64(-1))
-	assert.Equal(t, r.All.Value().Option1.P.Value().Y, int64(1))
 	assert.Equal(t, r.I, int64(1))
 
-	unknown, ok := r.U.Value().Kind.(RootUUnknown)
-	assert.Assert(t, ok, "%T", r.U.Value().Kind)
-	assert.Equal(t, string(unknown.Value), `[1]`)
-
-	r = Root{S: "kept", I: 1}
-	assert.Assert(t, json.Unmarshal([]byte(`"x"`), &r) != nil)
-	assert.Equal(t, r.S, "kept")
-	assert.Equal(t, r.I, int64(1))
-
-	r = Root{S: "kept", I: 1}
-	assert.Assert(t, json.Unmarshal([]byte(`{"s":"x",`), &r) != nil)
-	assert.Equal(t, r.S, "kept")
-	assert.Equal(t, r.I, int64(1))
+	for _, in := range []string{
+		`"x"`,
+		`{"s":"x",`,
+		string(doc(map[string]string{"obj": `{"x":"bad","y":1}`})),
+	} {
+		r = Root{S: "kept", I: 1}
+		assert.Assert(t, json.Unmarshal([]byte(in), &r) != nil)
+		assert.Equal(t, r.S, "kept")
+		assert.Equal(t, r.I, int64(1))
+	}
 }
 
 // TestDecoderUsable reads a valid document from the stream a document
-// with problems failed on.
+// with recorded problems failed on.
 func TestDecoderUsable(t *testing.T) {
 	dec := jsontext.NewDecoder(strings.NewReader(string(problems) + string(doc(nil))))
 
