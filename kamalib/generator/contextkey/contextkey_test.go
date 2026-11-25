@@ -246,6 +246,56 @@ entries:
 	assert.Assert(t, strings.Contains(header("named/d.kama_contextkey.go"), `"shared/two.toml"`))
 }
 
+// TestProcRunTests generates, with tests loaded, from a template file an
+// external test package names, into test files, and from one an in-package
+// test file names. A directory holding test files only generates nothing
+// when tests are not loaded.
+func TestProcRunTests(t *testing.T) {
+	entry := func(name string) string {
+		return "entries: [{file_name: " + name + ", name: N, type: int, default_expr: '1'}]\n"
+	}
+
+	f := procFs(t, map[string]string{
+		"k/k.go": "package k\n",
+		"k/x_test.go": "//kama:option-file contextkey=ck.yaml\n\npackage k_test\n\n" +
+			keyTypeFunc,
+		"k/ck.yaml":              entry("request_id"),
+		"i/i.go":                 "package i\n\n" + keyTypeFunc,
+		"i/i_test.go":            "//kama:option-file contextkey=ck.yaml\n\npackage i\n",
+		"i/ck.yaml":              entry("trace_id"),
+		"t/t_test.go":            "package t\n",
+		"t/kama_contextkey.yaml": entry("none"),
+	})
+
+	r, err := runProc(t, f, param("keyTypeFunc"), gentest.Now())
+	assert.NilError(t, err)
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+
+	ov, err := f.Overlay()
+	assert.NilError(t, err)
+	assert.Equal(t, len(ov), 0)
+
+	r, err = runProcLoad(t, f, param("keyTypeFunc"), gentest.Now(), true)
+	assert.NilError(t, err)
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+
+	ov, err = f.Overlay()
+	assert.NilError(t, err)
+	assert.DeepEqual(t, slices.Sorted(maps.Keys(ov)), []string{
+		filepath.Join(f.Root(), "i", "trace_id.kama_contextkey.go"),
+		filepath.Join(f.Root(), "k", "request_id.kama_contextkey_test.go"),
+		filepath.Join(f.Root(), "t", "none.kama_contextkey.go"),
+	})
+
+	assert.NilError(
+		t,
+		gentest.Build(f, gopackages.Options{Patterns: []string{"./k", "./i"}, Tests: true}),
+	)
+}
+
+// keyTypeFunc declares the key type func the entries of the tests name.
+const keyTypeFunc = "func keyTypeFunc(name string) *string { return &name }\n"
+
 // TestProcRunOnPackagesWithErrors runs the proc over a package referring
 // to a function the proc generates, before the function exists and after
 // its file stops compiling.
@@ -583,12 +633,25 @@ func runProc(
 ) (*gentest.RecordReporter, error) {
 	t.Helper()
 
+	return runProcLoad(t, f, p, now, false)
+}
+
+// runProcLoad is runProc loading the tests too when tests is true.
+func runProcLoad(
+	t *testing.T,
+	f *overlayfs.Fs,
+	p ProcParamPartial,
+	now time.Time,
+	tests bool,
+) (*gentest.RecordReporter, error) {
+	t.Helper()
+
 	ctx := context.Background()
 
 	pkgs, err := gopackages.Load(
 		ctx,
 		f,
-		gopackages.Options{Patterns: []string{"./..."}, AllowTypeErrors: true},
+		gopackages.Options{Patterns: []string{"./..."}, AllowTypeErrors: true, Tests: tests},
 	)
 	assert.NilError(t, err)
 

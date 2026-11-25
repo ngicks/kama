@@ -116,6 +116,18 @@ func TestHelperNameConflict(t *testing.T) {
 	}
 }
 
+// TestHelperNameOtherPackage takes no declaration of the external test
+// package sharing the directory for one named like a helper.
+func TestHelperNameOtherPackage(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"api/api.go":               "package api\n",
+		"api/kama_jsonschema.json": procSchema,
+		"api/x_test.go":            "package api_test\n\nfunc kamaJsonschemaDecodeObject() {}\n",
+	})
+
+	runProc(t, f, ProcParamPartial{}, gentest.Now())
+}
+
 // TestHelperScanIgnoresSchemaText generates from a schema whose names, a
 // description and an enum value spell identifiers of the helper prefix.
 // Only identifiers of the code select helpers, so the run succeeds, the

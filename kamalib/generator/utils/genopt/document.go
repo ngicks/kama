@@ -55,7 +55,7 @@ type Document struct {
 
 // Documents returns the documents of pkg. They are the files the
 // option-file directives of pkg name for the generator, in file name and
-// position order, or else the files PackageFile finds in the directory of
+// position order and each once, or else the files PackageFile finds in the directory of
 // pkg, in name order. A package naming no file and holding no default file
 // has none.
 //
@@ -63,12 +63,18 @@ type Document struct {
 // loaded with packages.NeedName, packages.NeedCompiledGoFiles and
 // packages.NeedSyntax, and lie under root when its directives name a file.
 // An external test package has the files its own directives name only, as
-// for Loader.
+// for Loader. A package without Go files, as go list gives for a directory
+// holding test files only when tests are not loaded, has none: a document
+// generating into it would make a package of a directory that holds none.
 func (l DocumentLoader) Documents(
 	fsys fs.FS,
 	root string,
 	pkg *packages.Package,
 ) ([]Document, error) {
+	if len(pkg.CompiledGoFiles) == 0 && len(pkg.Syntax) == 0 {
+		return nil, nil
+	}
+
 	ws, err := walk([]*packages.Package{pkg}, l.ToolName)
 	if err != nil {
 		return nil, err

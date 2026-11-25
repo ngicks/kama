@@ -13,6 +13,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	gopkg "github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/kama/kamalib/proc/gopackages"
@@ -153,7 +154,11 @@ func generatePackage(
 				continue
 			}
 
-			opts := Options{Package: pkg.Name, KeyTypeFunc: in.param.KeyTypeFunc}
+			opts := Options{
+				Package:      pkg.Name,
+				KeyTypeFunc:  in.param.KeyTypeFunc,
+				ExternalTest: gopkg.IsExternalTest(pkg),
+			}
 
 			for out, err := range Generate(ctx, env, Input{
 				Path: doc.Name, Template: tmpl, Dir: dir, Options: opts,

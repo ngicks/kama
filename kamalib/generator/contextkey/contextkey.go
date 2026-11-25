@@ -196,6 +196,20 @@ type Options struct {
 	// entries of the same Type pass it the same string. Template.KeyTypeFunc
 	// overrides it.
 	KeyTypeFunc string
+	// ExternalTest tells that Package is an external test package, which
+	// shares its directory with the package it tests. Its generated files
+	// are test files, as in a.kama_contextkey_test.go.
+	ExternalTest bool
+}
+
+// file returns name, the name of a generated file without a directory, as
+// the package of o names it: an external test package takes test files.
+func (o Options) file(name string) string {
+	if !o.ExternalTest {
+		return name
+	}
+
+	return strings.TrimSuffix(name, ".go") + "_test.go"
 }
 
 func (o Options) validate() error {
@@ -280,7 +294,7 @@ func entryFile(in Input, e Entry, dup bool) (base.Output, error) {
 	}
 
 	return base.Composed{
-		Path: path.Join(in.Dir, FileName(e.FileName)),
+		Path: path.Join(in.Dir, in.Options.file(FileName(e.FileName))),
 		Params: map[string]any{
 			"template":      in.Path,
 			"key_type_func": in.Options.KeyTypeFunc,

@@ -27,7 +27,10 @@ import (
 // those test files too. An external test package stays. Other variants,
 // such as a package compiled again for the tests of another package, are
 // dropped, and so is a generated test main package, which declares nothing
-// a generator reads but shares the directory of the package it tests.
+// a generator reads but shares the directory of the package it tests. A
+// package without Go files, as go list gives for a directory holding test
+// files only when tests are not loaded, declares nothing and is dropped
+// too.
 func SourcePackages(pkgs []*packages.Package) []*packages.Package {
 	tested := map[string]bool{}
 
@@ -39,6 +42,7 @@ func SourcePackages(pkgs []*packages.Package) []*packages.Package {
 
 	// The ID of any variant differs from its path.
 	return opiter.WrapSeq(slices.Values(pkgs)).
+		Filter(func(p *packages.Package) bool { return len(p.CompiledGoFiles) > 0 }).
 		Filter(func(p *packages.Package) bool {
 			return gopackages.IsTestVariant(p) || gopackages.IsExternalTest(p) ||
 				(p.ID == p.PkgPath && !tested[p.PkgPath] && !gopackages.IsTestMain(p))

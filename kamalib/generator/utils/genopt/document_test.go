@@ -57,6 +57,22 @@ func TestDocuments(t *testing.T) {
 			},
 		},
 		{
+			name: "one file named twice, spelled two ways",
+			pkg: func(t *testing.T) *packages.Package {
+				return parsedPackage(t, "m/a/b", "a/b", map[string]string{
+					"x.go": "//kama:option-file x=one.json x=./one.json\n" +
+						"//kama:option-file x=../b/one.json\n\npackage b\n",
+				})
+			},
+			want: []Document{{Name: "a/b/one.json", Content: []byte("one")}},
+		},
+		{
+			name: "package without Go files",
+			pkg: func(t *testing.T) *packages.Package {
+				return parsedPackage(t, "m/a", "a", nil)
+			},
+		},
+		{
 			name: "external test package skips the default",
 			pkg: func(t *testing.T) *packages.Package {
 				ext := parsedPackage(

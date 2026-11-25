@@ -18,6 +18,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
+	gopkg "github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
@@ -216,6 +217,7 @@ func generatePackage(
 			Load:          remoteLoader(env.Out, in.param.Remotes),
 			AssertFormats: in.param.AssertFormats,
 			Validate:      in.param.Validate,
+			ExternalTest:  gopkg.IsExternalTest(pkg),
 		}}) {
 			if !yield(out, err) {
 				return

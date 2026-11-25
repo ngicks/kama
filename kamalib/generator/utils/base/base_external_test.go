@@ -68,6 +68,23 @@ func TestSourcePackages(t *testing.T) {
 	assert.Assert(t, base.DeclaringPackage(src, types.Universe.Lookup("int")) == nil)
 }
 
+// TestSourcePackagesWithoutFiles drops the package of a directory holding
+// test files only, which a load without tests gives without files.
+func TestSourcePackagesWithoutFiles(t *testing.T) {
+	f, opts := gentest.Stage(t, map[string]string{
+		"a.go":        "package x\n",
+		"t/t_test.go": "package t\n",
+	})
+
+	pkgs, err := gopackages.Load(context.Background(), f, opts)
+	assert.NilError(t, err)
+	assert.Equal(t, len(pkgs), 2)
+
+	src := base.SourcePackages(pkgs)
+	assert.Equal(t, len(src), 1)
+	assert.Equal(t, src[0].Name, "x")
+}
+
 func TestInputScope(t *testing.T) {
 	f, pkgs := gentest.LoadFs(t, map[string]string{
 		"a.go":   "package x\n\ntype A int\n",

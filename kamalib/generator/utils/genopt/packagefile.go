@@ -209,8 +209,8 @@ type namedFile struct {
 }
 
 // locate returns the files of the package of w: those its option-file
-// directives name for the generator in position order, or else those
-// PackageFile finds in its directory in name order.
+// directives name for the generator in position order, each once, or else
+// those PackageFile finds in its directory in name order.
 func (l DocumentLoader) locate(fsys fs.FS, root string, w walked) ([]namedFile, error) {
 	named, err := l.namedFiles(w)
 	if err != nil {
@@ -223,7 +223,9 @@ func (l DocumentLoader) locate(fsys fs.FS, root string, w walked) ([]namedFile, 
 
 	dir, dirErr := PackageDir(root, w.pkg)
 
-	for i, n := range named {
+	var files []namedFile
+
+	for _, n := range named {
 		if dirErr != nil {
 			return nil, fmt.Errorf("%w: %s: %w", ErrPackageFile, n.at, dirErr)
 		}
@@ -233,10 +235,15 @@ func (l DocumentLoader) locate(fsys fs.FS, root string, w walked) ([]namedFile, 
 			return nil, fmt.Errorf("%w: %s: %w", ErrPackageFile, n.at, err)
 		}
 
-		named[i].name = name
+		// A file named again, through any spelling of its path, is the same
+		// file, which the first naming locates.
+		if !slices.ContainsFunc(files, func(f namedFile) bool { return f.name == name }) {
+			n.name = name
+			files = append(files, n)
+		}
 	}
 
-	return named, nil
+	return files, nil
 }
 
 // defaultFiles returns the files PackageFile finds in the directory of pkg,

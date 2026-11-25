@@ -224,6 +224,73 @@ func TestProcRun(t *testing.T) {
 	}
 }
 
+// TestProcRunTests generates, with tests loaded, from a schema file named
+// in a file of a package, in an in-package test file and in an external
+// test package sharing the directory of a package. The files of the
+// external test package are test files, and every package builds with its
+// tests after validate.generate.
+func TestProcRunTests(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"d/d.go":      "//kama:option-file jsonschema=a.json\n\npackage d\n",
+		"d/x_test.go": "//kama:option-file jsonschema=b.json\n\npackage d_test\n",
+		"d/a.json":    strings.Replace(procSchema, "pet", "a", 1),
+		"d/b.json":    strings.Replace(procSchema, "pet", "b", 1),
+		"e/e.go":      "package e\n",
+		"e/e_test.go": "//kama:option-file jsonschema=s.json\n\npackage e\n",
+		"e/s.json":    procSchema,
+	})
+
+	r, err := runProcLoad(
+		t, f, ProcParamPartial{}, gentest.Now(),
+		gopackages.Options{AllowTypeErrors: true, Tests: true},
+	)
+	assert.NilError(t, err)
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+
+	validateFs(t, f, true)
+
+	for _, name := range []string{
+		"d/d.kama_jsonschema.go",
+		"d/zz_gen.helper.kama_jsonschema.go",
+		"d/d.kama_jsonschema_test.go",
+		"d/zz_gen.helper.kama_jsonschema_test.go",
+		"e/e.kama_jsonschema.go",
+		"e/zz_gen.helper.kama_jsonschema.go",
+	} {
+		_, err := fs.Stat(f.FS(), inline(t, name))
+		assert.NilError(t, err, name)
+	}
+}
+
+// TestProcRunSchemaNamedTwice takes one file named by two directives for
+// one schema file.
+func TestProcRunSchemaNamedTwice(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"api/api.go": "//kama:option-file jsonschema=a.json\n" +
+			"//kama:option-file jsonschema=./a.json\n\npackage api\n",
+		"api/a.json": procSchema,
+	})
+
+	r := runProc(t, f, ProcParamPartial{}, gentest.Now())
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+}
+
+// TestProcRunTestOnlyPackage runs over a directory holding test files
+// only, which a load without tests gives as a package without files.
+func TestProcRunTestOnlyPackage(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"api/api.go":               "package api\n",
+		"api/kama_jsonschema.json": procSchema,
+		"t/t_test.go":              "package t\n",
+		"t/kama_jsonschema.json":   procSchema,
+	})
+
+	runProc(t, f, ProcParamPartial{}, gentest.Now())
+
+	_, err := fs.Stat(f.FS(), inline(t, "t/t.kama_jsonschema.go"))
+	assert.ErrorIs(t, err, fs.ErrNotExist)
+}
+
 // TestProcRunPackageName takes the name of the package, which the base name
 // of its directory need not be.
 func TestProcRunPackageName(t *testing.T) {
