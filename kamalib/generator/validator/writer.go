@@ -51,6 +51,7 @@ func noWrap(err genExpr) genExpr { return err }
 // w.shallow is set, or of ValidateEvaluated when w.evaluated is set.
 func (w *writer) method() (string, error) {
 	named := w.n.Detail.Type
+	delegates := w.shallow && !w.sel.shallowDiffers(named)
 
 	body, err := w.body(named.Underlying())
 	if err != nil {
@@ -83,6 +84,12 @@ func (w *writer) method() (string, error) {
 		name = shallowName
 	}
 
+	if delegates {
+		text = "ValidateShallow is Validate for a decoded %s, whose decoder calls it.\n" +
+			"%s is passed on to Validate, since %s holds no value ValidateShallow takes\n" +
+			"as valid."
+	}
+
 	if w.evaluated {
 		text = "ValidateEvaluated is Validate recording into %s the members and the\n" +
 			"elements of %s that its validators evaluated, as JSON Schema annotations\n" +
@@ -100,10 +107,24 @@ func (w *writer) method() (string, error) {
 			"nil leaves them unchecked."
 	}
 
+	names := docNames(w.evaluated)
+
+	if delegates {
+		args := []genExpr{lang.Name("stopOnFirstError")}
+		for _, tp := range tparams {
+			args = append(args, lang.Name(validateRole(tp)))
+		}
+
+		body = []genStep{lang.Stmt(
+			"return %s.Validate(%s)", lang.Name("v"), lang.Join(", ", args...),
+		)}
+		names = []any{lang.Name("v"), lang.Name("stopOnFirstError"), lang.Name("v")}
+	}
+
 	return lang.Render(
 		w.scope.FuncContext(tparams),
 		lang.DocFunc(
-			docComment(text, docNames(w.evaluated)...),
+			docComment(text, names...),
 			lang.Expr("func (%s %s) %s(%s) error",
 				decl("v"), recv, name, lang.Join(", ", params...)),
 			body...,

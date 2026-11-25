@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:18Z
+// generated: 2026-11-25T03:21:14Z
 
 package oneofoverlap
 
@@ -68,10 +68,28 @@ func (v EitherLeftValue) Validate(stopOnFirstError bool) error {
 	return nil
 }
 
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v EitherLeftValue) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
 func (v EitherRightValue) Validate(stopOnFirstError bool) error {
 	return nil
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v EitherRightValue) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
 }

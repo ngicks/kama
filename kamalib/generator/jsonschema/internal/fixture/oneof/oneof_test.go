@@ -11,7 +11,6 @@ import (
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
@@ -76,26 +75,26 @@ func TestDecodeError(t *testing.T) {
 			"zero matches",
 			`{"star":{"kind":"cow"},` + pets + `}`,
 			[]string{"/star"},
-			jsonschemart.ErrNoMatch,
+			validator.ErrOneOf,
 		},
 		{
 			"member error is kept",
 			`{"star":{"kind":"cat","lives":"x"},` + pets + `}`,
 			[]string{"/star", "/star/lives"},
-			jsonschemart.ErrNoMatch,
+			validator.ErrOneOf,
 		},
 		{
 			"two matches",
 			`{"star":{"kind":"cat","lives":9},` + pets + `,"amount":3}`,
 			[]string{"/amount"},
-			jsonschemart.ErrMultipleMatch,
+			validator.ErrOneOf,
 		},
 		{
 			"element of union slice",
 			`{"star":{"kind":"cat","lives":9},"pets":[{"kind":"dog","good":true},{"kind":"dog"}],
 			"mixed":"s"}`,
 			[]string{"/pets/1"},
-			jsonschemart.ErrNoMatch,
+			validator.ErrOneOf,
 		},
 		{
 			"null union",
@@ -107,7 +106,7 @@ func TestDecodeError(t *testing.T) {
 			"kind excluded",
 			`{"star":{"kind":"cat","lives":9},"pets":[],"mixed":true}`,
 			[]string{"/mixed"},
-			jsonschemart.ErrNoMatch,
+			validator.ErrOneOf,
 		},
 		{
 			"null optional union",
@@ -152,7 +151,7 @@ func TestMarshalNilKind(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := json.Marshal(tc.v)
-			assert.ErrorIs(t, err, jsonschemart.ErrNilKind)
+			assert.ErrorIs(t, err, validator.ErrNil)
 		})
 	}
 }

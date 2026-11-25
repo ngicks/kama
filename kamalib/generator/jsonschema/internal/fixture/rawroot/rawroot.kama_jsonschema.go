@@ -3,15 +3,13 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:41:08Z
+// generated: 2026-11-25T03:21:18Z
 
 package rawroot
 
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
-
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 )
 
 // Loose is generated from the schema at #.
@@ -41,15 +39,11 @@ func (v Loose) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Loose) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Loose(out), false); err != nil {
+	if err := Loose(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Loose(out)
@@ -83,15 +77,11 @@ func (v Mixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Mixed(out), false); err != nil {
+	if err := Mixed(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Mixed(out)
@@ -126,15 +116,11 @@ func (v Pair) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Pair) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Pair(out), false); err != nil {
+	if err := Pair(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Pair(out)

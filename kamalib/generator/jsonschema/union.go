@@ -2,6 +2,7 @@ package jsonschema
 
 import (
 	"encoding/json/jsontext"
+	"iter"
 	"slices"
 	"strconv"
 	"strings"
@@ -111,27 +112,32 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		lang.Stmt("func (%s) is%s() {}", unknown, kind),
 	)
 
-	var marshalCases, validateCases []genhelper.Case[genCtx]
-
-	marshalCases = append(marshalCases, lang.Case(
-		lang.Expr("%s", strings.Join(wrappers, ", ")),
-		lang.Stmt("return %s(enc, k)", q(jsonPath, "MarshalEncode")),
-	))
-	validateCases = append(validateCases, lang.Case(
-		lang.Expr("%s", strings.Join(wrappers, ", ")),
-		lang.Stmt("return %s(k, stopOnFirstError)", q(runtimePath, "Validate")),
-	))
-	marshalCases = append(marshalCases,
-		lang.Case(lang.Expr("%s", unknown), lang.Stmt("return enc.WriteValue(k.Value)")),
+	unknownErr := lang.Stmt(
+		"return kamaJsonschemaUnknownMember(%s, k.err)", noMatchKind(s),
 	)
-	validateCases = append(validateCases, lang.Case(
-		lang.Expr("%s", unknown), lang.Stmt("return %s(k.err)", q(runtimePath, "UnknownMember")),
-	))
+	marshalCases := []genhelper.Case[genCtx]{
+		lang.Case(
+			lang.Expr("%s", strings.Join(wrappers, ", ")),
+			lang.Stmt("return %s(enc, k)", q(jsonPath, "MarshalEncode")),
+		),
+		lang.Case(lang.Expr("%s", unknown), lang.Stmt("return enc.WriteValue(k.Value)")),
+	}
+	validateCases := append(
+		opiter.WrapSeq(slices.Values(wrappers)).
+			Map(func(w string) genhelper.Case[genCtx] {
+				return lang.Case(
+					lang.Expr("%s", w),
+					lang.Stmt("return k.Validate(stopOnFirstError)"),
+				)
+			}).
+			CollectSlice(),
+		lang.Case(lang.Expr("%s", unknown), unknownErr),
+	)
 
 	nilKind := lang.Stmt(
 		"return %s(%s, %s)",
 		q(validPath, "New"),
-		q(runtimePath, "ErrNilKind"),
+		q(validPath, "ErrNil"),
 		strconv.Quote(name+" holds no member"),
 	)
 
@@ -167,10 +173,7 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 			lang.Switch(
 				lang.Expr("k := v.Kind.(type)"),
 				lang.Case(lang.Expr("%s", strings.Join(wrappers, ", ")), lang.Stmt("return nil")),
-				lang.Case(
-					lang.Expr("%s", unknown),
-					lang.Stmt("return %s(k.err)", q(runtimePath, "UnknownMember")),
-				),
+				lang.Case(lang.Expr("%s", unknown), unknownErr),
 			),
 			nilKind,
 		))
@@ -200,11 +203,15 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 	}
 
 	oneOf := unionKeyword(s) == "oneOf"
+	// raw is valid until dec reads again. The members decode it before that,
+	// and the unknown member keeps a copy.
 	setUnknown := func(reason genExpr) genStep {
-		return lang.Stmt("*v = %s{Kind: %sUnknown{Value: raw, err: %s}}", name, name, reason)
+		return lang.Stmt(
+			"*v = %s{Kind: %sUnknown{Value: raw.Clone(), err: %s}}", name, name, reason,
+		)
 	}
 	body := []genStep{
-		lang.Stmt("raw, err := %s(dec)", q(runtimePath, "ReadValue")),
+		lang.Stmt("raw, err := dec.ReadValue()"),
 		lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
 	}
 
@@ -238,7 +245,9 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 					lang.Expr("found != nil"),
 					lang.Steps(
 						setUnknown(lang.Expr(
-							"%s(name, %s)", q(runtimePath, "MultipleMatch"), strconv.Quote(m),
+							"%s(%s, %s, name)",
+							q(validPath, "New"), q(validPath, "ErrOneOf"),
+							strconv.Quote("value matches %s, "+m),
 						)),
 						lang.Stmt("return nil"),
 					),
@@ -252,17 +261,16 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 
 		if !isNullMember(doc, ptr, i) {
 			failed := lang.Stmt(
-				"errs = append(errs, %s(%s, err))", q(runtimePath, "MemberError"), strconv.Quote(m),
+				"errs = append(errs, %s(%s, err))",
+				q("fmt", "Errorf"), strconv.Quote("member "+m+": %w"),
 			)
 
 			var decoded genStep = found
 			if opts.Validate {
+				// A composite literal in the header of an if needs the
+				// parentheses.
 				decoded = lang.If(
-					lang.Expr(
-						"err := %s(%s, false); err != nil",
-						q(runtimePath, "ValidateShallow"),
-						kind,
-					),
+					lang.Expr("err := (%s).ValidateShallow(false); err != nil", kind),
 					failed,
 					found,
 				)
@@ -271,7 +279,7 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 			then = lang.Steps(
 				lang.Stmt("var m %s", unionMemberType(doc, opts, ptr, i)),
 				lang.If(
-					lang.Expr("err := %s(raw, &m); err != nil", q(runtimePath, "Unmarshal")),
+					lang.Expr("err := kamaJsonschemaUnmarshal(raw, &m); err != nil"),
 					failed,
 					decoded,
 				),
@@ -279,10 +287,7 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 
 			if probeArgs(doc, opts, ptr, i) != nil {
 				then = lang.If(
-					lang.Expr(
-						"err := %s(%s(raw), false); err != nil",
-						q(runtimePath, "Validate"), probeName(name+m),
-					),
+					lang.Expr("err := %s(raw).Validate(false); err != nil", probeName(name+m)),
 					failed,
 					then,
 				)
@@ -292,7 +297,7 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 		body = append(body, lang.If(memberCondition(doc, ptr, i), then, nil))
 	}
 
-	noMatch := setUnknown(lang.Expr("%s(errs)", q(runtimePath, "NoMatch")))
+	noMatch := setUnknown(lang.Expr("kamaJsonschemaNoMatch(%s, errs)", noMatchKind(s)))
 
 	text := "UnmarshalJSONFrom decodes v from the first member the value matches."
 
@@ -456,9 +461,7 @@ func memberCondition(doc *jsonschema.Schema, ptr string, i int) genExpr {
 		return lang.FailGen(err)
 	}
 
-	conds := []genExpr{lang.Expr(
-		"%s(raw, %s)", q(runtimePath, "IsKind"), joinComma(quoteAll(k)),
-	)}
+	conds := []genExpr{kindCondition(k)}
 
 	s, _ := at(doc, ptr)
 	if memberKeyword(s) == "" || !slices.Equal(k, []string{"object"}) {
@@ -477,15 +480,15 @@ func memberCondition(doc *jsonschema.Schema, ptr string, i int) genExpr {
 	for _, name := range rs.Required {
 		if v, ok := fixedValue(doc, child(r, "properties", name)); ok {
 			conds = append(conds, lang.Expr(
-				"%s(raw, %s, %s)",
-				q(runtimePath, "MemberEquals"), strconv.Quote(name), strconv.Quote(string(v)),
+				"kamaJsonschemaMemberEquals(raw, %s, %s)",
+				strconv.Quote(name), strconv.Quote(string(v)),
 			))
 		}
 	}
 
 	if len(rs.Required) > 0 {
 		conds = append(conds, lang.Expr(
-			"%s(raw, %s)", q(runtimePath, "HasMembers"), joinComma(quoteAll(rs.Required)),
+			"kamaJsonschemaHasMembers(raw, %s)", joinComma(quoteAll(rs.Required)),
 		))
 	}
 
@@ -495,11 +498,59 @@ func memberCondition(doc *jsonschema.Schema, ptr string, i int) genExpr {
 			CollectSlice()
 
 		conds = append(conds, lang.Expr(
-			"%s(raw, %s)", q(runtimePath, "OnlyMembers"), joinComma(quoteAll(props)),
+			"kamaJsonschemaOnlyMembers(raw, %s)", joinComma(quoteAll(props)),
 		))
 	}
 
 	return lang.Join(" && ", conds...)
+}
+
+// kindCondition returns the condition of raw being of one of kinds, the
+// JSON Schema types. An integer is any number, since decoding into the Go
+// type rejects a fraction.
+func kindCondition(kinds []string) genExpr {
+	consts := opiter.WrapSeq(slices.Values(kinds)).
+		FlatMap(func(k string) iter.Seq[string] {
+			switch k {
+			case "null":
+				return opiter.Once("KindNull")
+			case "boolean":
+				return slices.Values([]string{"KindTrue", "KindFalse"})
+			case "string":
+				return opiter.Once("KindString")
+			case "integer", "number":
+				return opiter.Once("KindNumber")
+			case "object":
+				return opiter.Once("KindBeginObject")
+			case "array":
+				return opiter.Once("KindBeginArray")
+			}
+
+			return opiter.Once("KindInvalid")
+		}).
+		UniqueFunc(func(c string) string { return c }).
+		Map(func(c string) genExpr { return lang.Expr("raw.Kind() == %s", q(jsontextPath, c)) }).
+		CollectSlice()
+
+	switch len(consts) {
+	case 0:
+		return lang.Expr("false")
+	case 1:
+		return consts[0]
+	}
+
+	return lang.Expr("(%s)", lang.Join(" || ", consts...))
+}
+
+// noMatchKind spells the sentinel error of a value no member of the union
+// s matches: validator.ErrOneOf for a oneOf, as of two members matching,
+// and validator.ErrOr otherwise, as the validators or and oneof report.
+func noMatchKind(s *jsonschema.Schema) genExpr {
+	if unionKeyword(s) == "oneOf" {
+		return q(validPath, "ErrOneOf")
+	}
+
+	return q(validPath, "ErrOr")
 }
 
 // fixedValue returns the only value the schema at ptr admits: its const or

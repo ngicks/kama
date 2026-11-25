@@ -10,7 +10,7 @@ import (
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // allFields compares unexported fields too, such as those of opt.Option.
@@ -40,7 +40,7 @@ func TestDecodeBothMatch(t *testing.T) {
 	assert.Assert(t, ok, "%T", v.Kind)
 
 	err := v.Validate(false)
-	assert.ErrorIs(t, err, jsonschemart.ErrMultipleMatch)
+	assert.ErrorIs(t, err, validator.ErrOneOf)
 	assert.ErrorContains(t, err, "value matches Left, Right")
 
 	out, err := json.Marshal(v)

@@ -9,7 +9,6 @@ import (
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
@@ -48,8 +47,8 @@ func TestDecodeError(t *testing.T) {
 		kind     error
 	}{
 		{"null value", `{"value":null}`, []string{"/value"}, validator.ErrNull},
-		{"fraction", `{"value":1.5}`, []string{"/value"}, jsonschemart.ErrNoMatch},
-		{"object label", `{"value":"s","label":{}}`, []string{"/label"}, jsonschemart.ErrNoMatch},
+		{"fraction", `{"value":1.5}`, []string{"/value"}, validator.ErrOr},
+		{"object label", `{"value":"s","label":{}}`, []string{"/label"}, validator.ErrOr},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

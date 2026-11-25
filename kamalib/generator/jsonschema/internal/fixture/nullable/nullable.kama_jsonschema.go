@@ -3,14 +3,13 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:44:05Z
+// generated: 2026-11-25T03:21:02Z
 
 package nullable
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -52,31 +51,24 @@ type nullableWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w nullableWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Nullable
 	var errs []error
-	out.ReqOneOf, err = jsonschemart.RequiredNullable(w.ReqOneOf)
-	errs = append(errs, validator.Field(err, "reqOneOf"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.ReqOneOf, w.ReqOneOf), "reqOneOf"))
 	out.OptOneOf = w.OptOneOf
-	out.ReqAnyOf, err = jsonschemart.RequiredNullable(w.ReqAnyOf)
-	errs = append(errs, validator.Field(err, "reqAnyOf"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.ReqAnyOf, w.ReqAnyOf), "reqAnyOf"))
 	out.OptAnyOf = w.OptAnyOf
-	out.ReqType, err = jsonschemart.RequiredNullable(w.ReqType)
-	errs = append(errs, validator.Field(err, "reqType"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.ReqType, w.ReqType), "reqType"))
 	out.OptType = w.OptType
 	out.OptInline = w.OptInline
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -109,23 +101,18 @@ type nullableOptInlineWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w nullableOptInlineWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out NullableOptInline
 	var errs []error
-	out.S, err = jsonschemart.Required(w.S)
-	errs = append(errs, validator.Field(err, "s"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.S, w.S), "s"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -156,23 +143,18 @@ type itemWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w itemWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Item
 	var errs []error
-	out.N, err = jsonschemart.Required(w.N)
-	errs = append(errs, validator.Field(err, "n"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.N, w.N), "n"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out

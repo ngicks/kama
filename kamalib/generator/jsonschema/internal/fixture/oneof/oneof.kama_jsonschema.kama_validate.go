@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:16Z
+// generated: 2026-11-25T03:21:13Z
 
 package oneof
 
@@ -114,12 +114,30 @@ func (v ZooMixedString) Validate(stopOnFirstError bool) error {
 	return nil
 }
 
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v ZooMixedString) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
 func (v ZooMixedInteger) Validate(stopOnFirstError bool) error {
 	return nil
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v ZooMixedInteger) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -156,6 +174,15 @@ func (v ZooMixedObjectValue) Validate(stopOnFirstError bool) error {
 	return nil
 }
 
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v ZooMixedObjectValue) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -164,12 +191,30 @@ func (v ZooAmountInteger) Validate(stopOnFirstError bool) error {
 	return nil
 }
 
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v ZooAmountInteger) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
 func (v ZooAmountNumber) Validate(stopOnFirstError bool) error {
 	return nil
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v ZooAmountNumber) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -317,6 +362,15 @@ func (v Cat) Validate(stopOnFirstError bool) error {
 	return validator.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v Cat) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -330,4 +384,13 @@ func (v Dog) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	return validator.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v Dog) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
 }

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T19:40:57Z
+// generated: 2026-11-25T03:21:07Z
 
 package nullableroot
 
@@ -11,7 +11,6 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/option/opt"
 )
 
@@ -31,12 +30,8 @@ func (v Code) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Code) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out opt.Option[CodeValue]
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
 	*v = Code(out)
@@ -62,15 +57,11 @@ func (v CodeValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *CodeValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out float64
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(CodeValue(out), false); err != nil {
+	if err := CodeValue(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = CodeValue(out)

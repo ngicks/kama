@@ -777,10 +777,12 @@ func isUnion(v any) bool {
 
 const suiteModulePath = "example.invalid/suite"
 
-// suiteModule makes suiteDir an empty module that resolves this module and
-// the runtime module next to it from their directories. It writes go.mod
-// before it removes the fixtures of an earlier run, so an interrupted run
-// leaves no fixture inside this module.
+// suiteModule makes suiteDir an empty module that resolves the runtime
+// module next to this module from its directory and requires package
+// option. Generated code imports nothing of this module, so the module of
+// the fixtures does not require it. It writes go.mod before it removes the fixtures of an earlier
+// run,
+// so an interrupted run leaves no fixture inside this module.
 func suiteModule(t *testing.T) {
 	t.Helper()
 
@@ -793,21 +795,26 @@ func suiteModule(t *testing.T) {
 		First()
 	assert.Assert(t, goLine.IsSome())
 
+	// Generated code imports package option, which the fixtures require
+	// at the version this module does.
+	option := opiter.WrapSeq(strings.Lines(string(gomod))).
+		Map(strings.TrimSpace).
+		Filter(func(l string) bool { return strings.HasPrefix(l, "github.com/ngicks/option ") }).
+		First()
+	assert.Assert(t, option.IsSome())
+
 	// The sums of this module cover every module the generated code
-	// reaches through it.
+	// reaches.
 	gosum, err := os.ReadFile(filepath.FromSlash("../../go.sum"))
 	assert.NilError(t, err)
 
 	writeFile(t, filepath.Join(suiteDir, "go.mod"), []byte("module "+suiteModulePath+"\n\n"+
 		goLine.Value()+"\n"+
 		"require (\n"+
-		"\tgithub.com/ngicks/kama/kamalib v0.0.0\n"+
 		"\tgithub.com/ngicks/kama/kamaruntime v0.0.0\n"+
+		"\t"+option.Value()+"\n"+
 		")\n\n"+
-		"replace (\n"+
-		"\tgithub.com/ngicks/kama/kamalib => ../../../..\n"+
-		"\tgithub.com/ngicks/kama/kamaruntime => ../../../../../kamaruntime\n"+
-		")\n"))
+		"replace github.com/ngicks/kama/kamaruntime => ../../../../../kamaruntime\n"))
 	writeFile(t, filepath.Join(suiteDir, "go.sum"), gosum)
 
 	entries, err := os.ReadDir(suiteDir)

@@ -188,8 +188,7 @@ func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		CollectSlice()
 
 	body = append(body, lang.Stmt(
-		"return %s(enc, %s)",
-		q(runtimePath, "MarshalObjects"),
+		"return kamaJsonschemaMarshalObjects(enc, %s)",
 		lang.Join(", ", append(values, value)...),
 	))
 
@@ -228,8 +227,8 @@ func nilChecks(doc *jsonschema.Schema, ptr string) []genStep {
 }
 
 // wireSteps returns the struct the object at ptr decodes through: every
-// property as an und.Und, or as raw text where its Go type holds null
-// itself, then the members the object rejects or keeps.
+// property as an und.Und, or as a kamaJsonschemaPresent where its Go type
+// holds null itself, then the members the object keeps.
 func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -252,7 +251,7 @@ func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 
 		t := lang.Expr("%s[%s]", q(undPath, "Und"), goType(doc, opts, pp))
 		if acceptsNull(doc, pp) {
-			t = q(jsontextPath, "Value")
+			t = lang.Expr("kamaJsonschemaPresent[%s]", goType(doc, opts, pp))
 		}
 
 		steps = append(steps, lang.Stmt(
@@ -300,27 +299,43 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 	}
 
 	body := []genStep{
-		lang.Stmt("raw, err := %s(dec)", q(runtimePath, "ReadValue")),
-		lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
 		lang.Stmt("var w %s", wireName(name)),
 		lang.If(
-			lang.Expr("err := %s(raw, &w); err != nil", q(runtimePath, "UnmarshalObject")),
+			lang.Expr("err := kamaJsonschemaDecodeObject(dec, &w); err != nil"),
 			lang.Stmt("return err"),
 			nil,
 		),
+	}
+
+	if product(doc, ptr, s) {
+		// Every member decodes the whole object, so the object is read once
+		// and each decodes it from there.
+		body = []genStep{
+			lang.Stmt("raw, err := dec.ReadValue()"),
+			lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
+			lang.Stmt("var w %s", wireName(name)),
+			lang.If(
+				lang.Expr("err := kamaJsonschemaUnmarshalObject(raw, &w); err != nil"),
+				lang.Stmt("return err"),
+				nil,
+			),
+		}
+	}
+
+	body = append(body,
 		lang.Stmt("var out %s", name),
 		lang.Stmt("var errs []error"),
-	}
+	)
 
 	for i := range productOf(doc, ptr, s) {
 		body = append(body, lang.Stmt(
-			"errs = append(errs, %s(raw, &out.%s))",
-			q(runtimePath, "Unmarshal"), memberField(doc, opts, ptr, i),
+			"errs = append(errs, kamaJsonschemaUnmarshal(raw, &out.%s))",
+			memberField(doc, opts, ptr, i),
 		))
 	}
 
 	for _, n := range s.Properties {
-		body = append(body, decodeSteps(doc, opts, ptr, n.Name)...)
+		body = append(body, decodeSteps(doc, ptr, n.Name)...)
 	}
 
 	body = append(body, extraSteps(doc, opts, ptr)...)
@@ -372,7 +387,7 @@ func extraSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		args = lang.Expr("w.%s, %s", f, joinComma(names))
 	}
 
-	steps := []genStep{lang.Stmt("out.%s = %s(%s)", f, q(runtimePath, "Omit"), args)}
+	steps := []genStep{lang.Stmt("out.%s = kamaJsonschemaOmit(%s)", f, args)}
 
 	for i := range productOf(doc, ptr, s) {
 		if r, rs, err := resolved(doc, child(ptr, "allOf", strconv.Itoa(i))); err == nil &&
@@ -480,67 +495,48 @@ func declaredMembers(doc *jsonschema.Schema, ptr string, seen []string) []string
 }
 
 // decodeSteps returns the statements converting the wire field of the
-// property name of the object at ptr into its field.
-func decodeSteps(doc *jsonschema.Schema, opts Options, ptr, name string) []genStep {
+// property name of the object at ptr into its field, collecting the error
+// located at the member.
+func decodeSteps(doc *jsonschema.Schema, ptr, name string) []genStep {
 	pp := child(ptr, "properties", name)
 	f := fieldName(pp, name)
 	req, null := required(doc, ptr, name), nullable(doc, pp)
 
-	collect := lang.Stmt(
-		"errs = append(errs, %s(err, %s))",
-		q(validPath, "Field"),
-		strconv.Quote(name),
-	)
 	conv := func(fn string) []genStep {
-		return []genStep{
-			lang.Stmt("out.%s, err = %s(w.%s)", f, q(runtimePath, fn), f),
-			collect,
-		}
+		return []genStep{lang.Stmt(
+			"errs = append(errs, %s(kamaJsonschema%s(&out.%s, w.%s), %s))",
+			q(validPath, "Field"), fn, f, f, strconv.Quote(name),
+		)}
+	}
+	set := func(fn string) []genStep {
+		return []genStep{lang.Stmt("kamaJsonschema%s(&out.%s, w.%s)", fn, f, f)}
 	}
 
-	var steps []genStep
-
 	switch {
+	case acceptsNull(doc, pp) && req:
+		return conv("RequiredPresent")
 	case acceptsNull(doc, pp):
-		fn := "DecodeOptional"
-		if req {
-			fn = "DecodeRequired"
-		}
-
-		steps = []genStep{
-			lang.Stmt(
-				"out.%s, err = %s[%s](w.%s)",
-				f,
-				q(runtimePath, fn),
-				goType(doc, opts, pp),
-				f,
-			),
-			collect,
-		}
+		return set("OptionalPresent")
 	case onCycle(doc, ptr, pp):
 		switch {
 		case req && null:
-			steps = conv("RequiredNullablePointer")
+			return conv("RequiredNullablePointer")
 		case req:
-			steps = conv("RequiredPointer")
+			return conv("RequiredPointer")
 		case null:
-			steps = []genStep{lang.Stmt(
-				"out.%s = %s(w.%s)", f, q(runtimePath, "OptionalNullablePointer"), f,
-			)}
+			return set("OptionalNullablePointer")
 		default:
-			steps = conv("OptionalPointer")
+			return conv("OptionalPointer")
 		}
 	case req && null:
-		steps = conv("RequiredNullable")
+		return conv("RequiredNullable")
 	case req:
-		steps = conv("Required")
+		return conv("Required")
 	case null:
-		steps = []genStep{lang.Stmt("out.%s = w.%s", f, f)}
+		return []genStep{lang.Stmt("out.%s = w.%s", f, f)}
 	default:
-		steps = conv("Optional")
+		return conv("Optional")
 	}
-
-	return steps
 }
 
 // allowedValues returns the Go literals of the const or the enum of

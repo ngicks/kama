@@ -25,7 +25,8 @@ const shallowSrc = "package x\n\n" +
 
 // TestValidateShallow skips the values of types marked decoded, calls
 // ValidateShallow on the targets and implementors having one, and Validate
-// on the others.
+// on the others. A type marked decoded with nothing to skip gets a
+// ValidateShallow calling its Validate, since its decoder calls it.
 func TestValidateShallow(t *testing.T) {
 	out := generateAndBuild(t, map[string]string{"a.go": shallowSrc})
 	funcs := gentest.Funcs(t, out["a.kama_validate.go"])
@@ -47,10 +48,10 @@ func TestValidateShallow(t *testing.T) {
 		check(`validator.Field(v.U.Validate(stopOnFirstError), "U")`),
 	)
 
-	for _, name := range []string{"Leaf", "Plain"} {
-		_, ok := funcs[name+".ValidateShallow"]
-		assert.Assert(t, !ok, "%s has nothing to skip", name)
-	}
+	assertContains(t, funcs["Leaf.ValidateShallow"], "return v.Validate(stopOnFirstError)")
+
+	_, ok = funcs["Plain.ValidateShallow"]
+	assert.Assert(t, !ok, "Plain has nothing to skip and is not marked decoded")
 }
 
 func TestValidateShallowErrors(t *testing.T) {

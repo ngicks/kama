@@ -8,7 +8,6 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
@@ -62,7 +61,7 @@ func TestPrefilter(t *testing.T) {
 			assert.Equal(t, string(u.Value), tc.in)
 
 			err := v.Validate(false)
-			assert.ErrorIs(t, err, jsonschemart.ErrNoMatch)
+			assert.ErrorIs(t, err, validator.ErrOneOf)
 			assert.DeepEqual(t, validator.Pointers(err), []string{""})
 			assert.Assert(t, !strings.Contains(err.Error(), "member "), err.Error())
 		})

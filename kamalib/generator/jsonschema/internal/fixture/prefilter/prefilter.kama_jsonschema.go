@@ -3,15 +3,15 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:44:19Z
+// generated: 2026-11-25T03:21:15Z
 
 package prefilter
 
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"fmt"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -102,7 +102,7 @@ func (v Shape) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case ShapeUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "Shape holds no member")
+	return validator.New(validator.ErrNil, "Shape holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -112,12 +112,14 @@ func (v Shape) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v Shape) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case ShapeCircle, ShapeSquare:
-		return jsonschemart.Validate(k, stopOnFirstError)
+	case ShapeCircle:
+		return k.Validate(stopOnFirstError)
+	case ShapeSquare:
+		return k.Validate(stopOnFirstError)
 	case ShapeUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOneOf, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "Shape holds no member")
+	return validator.New(validator.ErrNil, "Shape holds no member")
 }
 
 // shapeCircleProbe is the raw value the union at # tests before decoding it
@@ -164,9 +166,9 @@ func (v Shape) ValidateShallow(stopOnFirstError bool) error {
 	case ShapeCircle, ShapeSquare:
 		return nil
 	case ShapeUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOneOf, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "Shape holds no member")
+	return validator.New(validator.ErrNil, "Shape holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
@@ -176,26 +178,26 @@ func (v Shape) ValidateShallow(stopOnFirstError bool) error {
 //
 //kama:generated kama:jsonschema
 func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
+	raw, err := dec.ReadValue()
 	if err != nil {
 		return err
 	}
 	var found ShapeKind
 	var name string
 	var errs []error
-	if jsonschemart.IsKind(raw, "object") && jsonschemart.MemberEquals(raw, "kind", "\"circle\"") && jsonschemart.HasMembers(raw, "kind", "radius") {
-		if err := jsonschemart.Validate(shapeCircleProbe(raw), false); err != nil {
-			errs = append(errs, jsonschemart.MemberError("Circle", err))
+	if raw.Kind() == jsontext.KindBeginObject && kamaJsonschemaMemberEquals(raw, "kind", "\"circle\"") && kamaJsonschemaHasMembers(raw, "kind", "radius") {
+		if err := shapeCircleProbe(raw).Validate(false); err != nil {
+			errs = append(errs, fmt.Errorf("member Circle: %w", err))
 		} else {
 			var m Circle
-			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-				errs = append(errs, jsonschemart.MemberError("Circle", err))
+			if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+				errs = append(errs, fmt.Errorf("member Circle: %w", err))
 			} else {
-				if err := jsonschemart.ValidateShallow(ShapeCircle{Circle: m}, false); err != nil {
-					errs = append(errs, jsonschemart.MemberError("Circle", err))
+				if err := (ShapeCircle{Circle: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member Circle: %w", err))
 				} else {
 					if found != nil {
-						*v = Shape{Kind: ShapeUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Circle")}}
+						*v = Shape{Kind: ShapeUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Circle", name)}}
 						return nil
 					}
 					found, name = ShapeCircle{Circle: m}, "Circle"
@@ -203,19 +205,19 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			}
 		}
 	}
-	if jsonschemart.IsKind(raw, "object") && jsonschemart.OnlyMembers(raw, "side") {
-		if err := jsonschemart.Validate(shapeSquareProbe(raw), false); err != nil {
-			errs = append(errs, jsonschemart.MemberError("Square", err))
+	if raw.Kind() == jsontext.KindBeginObject && kamaJsonschemaOnlyMembers(raw, "side") {
+		if err := shapeSquareProbe(raw).Validate(false); err != nil {
+			errs = append(errs, fmt.Errorf("member Square: %w", err))
 		} else {
 			var m Square
-			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-				errs = append(errs, jsonschemart.MemberError("Square", err))
+			if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+				errs = append(errs, fmt.Errorf("member Square: %w", err))
 			} else {
-				if err := jsonschemart.ValidateShallow(ShapeSquare{Square: m}, false); err != nil {
-					errs = append(errs, jsonschemart.MemberError("Square", err))
+				if err := (ShapeSquare{Square: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member Square: %w", err))
 				} else {
 					if found != nil {
-						*v = Shape{Kind: ShapeUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Square")}}
+						*v = Shape{Kind: ShapeUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Square", name)}}
 						return nil
 					}
 					found, name = ShapeSquare{Square: m}, "Square"
@@ -224,7 +226,7 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
-		*v = Shape{Kind: ShapeUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+		*v = Shape{Kind: ShapeUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
 	*v = Shape{Kind: found}
@@ -257,25 +259,19 @@ type circleWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w circleWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Circle
 	var errs []error
-	out.Kind, err = jsonschemart.Required(w.Kind)
-	errs = append(errs, validator.Field(err, "kind"))
-	out.Radius, err = jsonschemart.Required(w.Radius)
-	errs = append(errs, validator.Field(err, "radius"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Kind, w.Kind), "kind"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Radius, w.Radius), "radius"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -302,15 +298,11 @@ const (
 //
 //kama:generated kama:jsonschema
 func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var s CircleKind
-	if err := jsonschemart.Unmarshal(raw, (*string)(&s)); err != nil {
+	if err := kamaJsonschemaDecode(dec, (*string)(&s)); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(s, false); err != nil {
+	if err := s.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = s
@@ -342,23 +334,18 @@ type squareWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w squareWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Square
 	var errs []error
-	out.Side, err = jsonschemart.Optional(w.Side)
-	errs = append(errs, validator.Field(err, "side"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Side, w.Side), "side"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out

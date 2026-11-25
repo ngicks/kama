@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:25Z
+// generated: 2026-11-25T03:21:21Z
 
 package recursive
 

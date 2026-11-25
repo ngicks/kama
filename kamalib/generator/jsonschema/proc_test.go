@@ -308,7 +308,9 @@ func TestProcRun(t *testing.T) {
 
 	r := runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now())
 	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
-	assert.DeepEqual(t, r.Messages, []string{"1 file written, 0 files unchanged"})
+	// The declarations, their helpers and the stubs of their Validate
+	// methods.
+	assert.DeepEqual(t, r.Messages, []string{"3 files written, 0 files unchanged"})
 
 	var doc jsonschema.Schema
 	assert.NilError(t, jsonv2.Unmarshal([]byte(procSchema), &doc))
@@ -411,12 +413,14 @@ func TestProcRunStale(t *testing.T) {
 
 	runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now())
 
+	// The stubs exist and the declarations are those they were written for,
+	// so the second run leaves them alone.
 	r := runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now().Add(time.Hour))
 	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
-	assert.DeepEqual(t, r.Messages, []string{"0 files written, 1 file unchanged"})
+	assert.DeepEqual(t, r.Messages, []string{"0 files written, 2 files unchanged"})
 
 	r = runProc(t, f, procParam("api/schema.json", "", "pets", ""), gentest.Now())
-	assert.DeepEqual(t, r.Messages, []string{"1 file written, 0 files unchanged"})
+	assert.DeepEqual(t, r.Messages, []string{"3 files written, 0 files unchanged"})
 	assert.Equal(t, len(r.Warnings), 1, "%v", r.Warnings)
 	assert.ErrorIs(t, r.Warnings[0], base.ErrStale)
 	assert.ErrorContains(

@@ -3,14 +3,13 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:44:21Z
+// generated: 2026-11-25T03:21:17Z
 
 package productcycle
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -40,7 +39,7 @@ func (v Product) MarshalJSONTo(enc *jsontext.Encoder) error {
 		return validator.Field(validator.New(validator.ErrNil, "required member is nil"), "req")
 	}
 	type plain Product
-	return jsonschemart.MarshalObjects(enc, v.A, v.B, plain(v))
+	return kamaJsonschemaMarshalObjects(enc, v.A, v.B, plain(v))
 }
 
 // productWire keeps a missing member of Product apart from null.
@@ -58,27 +57,26 @@ type productWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Product) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
+	raw, err := dec.ReadValue()
 	if err != nil {
 		return err
 	}
 	var w productWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaUnmarshalObject(raw, &w); err != nil {
 		return err
 	}
 	var out Product
 	var errs []error
-	errs = append(errs, jsonschemart.Unmarshal(raw, &out.A))
-	errs = append(errs, jsonschemart.Unmarshal(raw, &out.B))
-	out.Req, err = jsonschemart.RequiredPointer(w.Req)
-	errs = append(errs, validator.Field(err, "req"))
-	out.AdditionalProperties = jsonschemart.Omit(w.AdditionalProperties, "shared", "a", "b", "req")
+	errs = append(errs, kamaJsonschemaUnmarshal(raw, &out.A))
+	errs = append(errs, kamaJsonschemaUnmarshal(raw, &out.B))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredPointer(&out.Req, w.Req), "req"))
+	out.AdditionalProperties = kamaJsonschemaOmit(w.AdditionalProperties, "shared", "a", "b", "req")
 	out.A.AdditionalProperties = nil
 	out.B.AdditionalProperties = nil
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -112,25 +110,19 @@ type aWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w aWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out A
 	var errs []error
-	out.Shared, err = jsonschemart.Optional(w.Shared)
-	errs = append(errs, validator.Field(err, "shared"))
-	out.A, err = jsonschemart.Optional(w.A)
-	errs = append(errs, validator.Field(err, "a"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Shared, w.Shared), "shared"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.A, w.A), "a"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -164,25 +156,19 @@ type bWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w bWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out B
 	var errs []error
-	out.Shared, err = jsonschemart.Optional(w.Shared)
-	errs = append(errs, validator.Field(err, "shared"))
-	out.B, err = jsonschemart.Optional(w.B)
-	errs = append(errs, validator.Field(err, "b"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Shared, w.Shared), "shared"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.B, w.B), "b"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -213,23 +199,18 @@ type backWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Back) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w backWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Back
 	var errs []error
-	out.Product, err = jsonschemart.OptionalPointer(w.Product)
-	errs = append(errs, validator.Field(err, "product"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalPointer(&out.Product, w.Product), "product"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out

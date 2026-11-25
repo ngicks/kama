@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:06Z
+// generated: 2026-11-25T03:21:03Z
 
 package nullable
 
@@ -60,10 +60,28 @@ func (v NullableOptInline) Validate(stopOnFirstError bool) error {
 	return nil
 }
 
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v NullableOptInline) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
 func (v Item) Validate(stopOnFirstError bool) error {
 	return nil
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v Item) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
 }

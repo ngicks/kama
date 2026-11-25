@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:44:08Z
+// generated: 2026-11-25T03:21:05Z
 
 package nullableenum
 
@@ -11,7 +11,6 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -48,12 +47,8 @@ type levelsWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w levelsWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Levels
@@ -61,13 +56,12 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	out.Ref = w.Ref
 	out.Const = w.Const
 	out.Big = w.Big
-	out.Number, err = jsonschemart.Optional(w.Number)
-	errs = append(errs, validator.Field(err, "number"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Number, w.Number), "number"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -93,15 +87,11 @@ func (v LevelsConst) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *LevelsConst) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out string
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(LevelsConst(out), false); err != nil {
+	if err := LevelsConst(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = LevelsConst(out)
@@ -127,15 +117,11 @@ func (v LevelsBig) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *LevelsBig) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out float64
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(LevelsBig(out), false); err != nil {
+	if err := LevelsBig(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = LevelsBig(out)
@@ -161,15 +147,11 @@ func (v Level) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Level) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out int64
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Level(out), false); err != nil {
+	if err := Level(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Level(out)

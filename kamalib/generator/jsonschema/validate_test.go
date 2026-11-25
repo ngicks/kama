@@ -96,7 +96,8 @@ func TestGenerateDirectives(t *testing.T) {
 					"\tAdditionalProperties   opt.Option[int64]         " +
 					"`json:\"additionalProperties,omitzero\"`\n" +
 					"\tAdditionalProperties_2 map[string]jsontext.Value `json:\",embed\"`\n}\n",
-				"out.ValidateField, err = jsonschemart.Required(w.ValidateField)",
+				"errs = append(errs, validator.Field(" +
+					"kamaJsonschemaRequired(&out.ValidateField, w.ValidateField), \"validate\"))",
 				"out.AdditionalProperties_2 = w.AdditionalProperties_2\n",
 			},
 		},
@@ -106,7 +107,7 @@ func TestGenerateDirectives(t *testing.T) {
 				"a":{"type":"object","properties":{"additionalProperties":{"type":"integer"}}}
 			}}`,
 			[]string{
-				"out.AdditionalProperties = jsonschemart.Omit(" +
+				"out.AdditionalProperties = kamaJsonschemaOmit(" +
 					"w.AdditionalProperties, \"additionalProperties\", \"b\")\n",
 				"out.A.AdditionalProperties_2 = nil\n",
 				"type plain Root\n",
@@ -181,7 +182,7 @@ func TestGenerateDirectives(t *testing.T) {
 					"type rootAProbe jsontext.Value\n",
 				"//kama:generated kama:jsonschema\n//kama:validate members=\">=2\"\n" +
 					"type rootBProbe jsontext.Value\n",
-				"if err := jsonschemart.Validate(rootAProbe(raw), false); err != nil {",
+				"if err := rootAProbe(raw).Validate(false); err != nil {",
 			},
 		},
 		{
@@ -189,7 +190,7 @@ func TestGenerateDirectives(t *testing.T) {
 			`{"$ref":"#/$defs/u","$defs":{"u":{"oneOf":[{"type":"string"},{"type":"integer"}]}}}`,
 			[]string{
 				"type Root U\n",
-				"if err := jsonschemart.ValidateShallow(out, false); err != nil {",
+				"if err := out.ValidateShallow(false); err != nil {",
 			},
 		},
 	}

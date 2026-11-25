@@ -5,8 +5,10 @@ import (
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 	"iter"
+	"math/big"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -187,6 +189,34 @@ func Required[T ~[]byte](v T, stopOnFirstError bool, names ...string) error {
 	}
 
 	return validator.Join(errs...)
+}
+
+// Int64 returns the value of num, the text of a JSON number, when it is an
+// integer in the range of int64, as 1.0 and 1e2 are. It converts the text
+// exactly, never through float64, so 9007199254740993.0 gives
+// 9007199254740993.
+func Int64(num string) (int64, bool) {
+	d, ok := parseDecimal(num)
+
+	switch {
+	case !ok || !d.isInt():
+		return 0, false
+	case d.digits == "":
+		return 0, true
+	// 19 digits hold every int64, so a longer integer needs no zeros written out.
+	case d.point.Cmp(big.NewInt(20)) > 0:
+		return 0, false
+	}
+
+	sign := ""
+	if d.neg {
+		sign = "-"
+	}
+
+	text := sign + d.digits + strings.Repeat("0", int(d.point.Int64())-len(d.digits))
+	n, err := strconv.ParseInt(text, 10, 64)
+
+	return n, err == nil
 }
 
 // Equal reports whether a and b are the same JSON value: numbers of equal

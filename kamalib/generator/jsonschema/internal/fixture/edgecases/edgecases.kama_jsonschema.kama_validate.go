@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:00Z
+// generated: 2026-11-25T03:20:57Z
 
 package edgecases
 
@@ -420,6 +420,15 @@ func (v RootMembersStruct) Validate(stopOnFirstError bool) error {
 	return validator.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v RootMembersStruct) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
 //
@@ -433,6 +442,15 @@ func (v CE) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	return validator.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v CE) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -457,4 +475,13 @@ func (v CE) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) erro
 //kama:generated kama:validate
 func (v O) Validate(stopOnFirstError bool) error {
 	return nil
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v O) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
 }

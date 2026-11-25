@@ -8,7 +8,6 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
@@ -111,7 +110,7 @@ func TestDecodeInvalid(t *testing.T) {
 			"no member of a oneOf",
 			`{"id":"ABC","items":["a"],"pick":"abc"}`,
 			[]string{"/pick"},
-			jsonschemart.ErrNoMatch,
+			validator.ErrOneOf,
 		},
 	}
 	for _, tc := range cases {
@@ -140,7 +139,7 @@ func TestUnknownMember(t *testing.T) {
 	assert.Equal(t, string(u.Value), `"abc"`)
 
 	err := p.Validate(false)
-	assert.ErrorIs(t, err, jsonschemart.ErrNoMatch)
+	assert.ErrorIs(t, err, validator.ErrOneOf)
 	assert.ErrorContains(t, err, "member Option1")
 	assert.ErrorContains(t, err, "member Option2")
 
@@ -149,8 +148,8 @@ func TestUnknownMember(t *testing.T) {
 	assert.Equal(t, string(out), `"abc"`)
 
 	assert.ErrorIs(t, OrderPick{Kind: OrderPickUnknown{Value: jsontext.Value(`1`)}}.Validate(false),
-		jsonschemart.ErrNoMatch)
-	assert.ErrorIs(t, OrderPick{}.Validate(false), jsonschemart.ErrNilKind)
+		validator.ErrOneOf)
+	assert.ErrorIs(t, OrderPick{}.Validate(false), validator.ErrNil)
 }
 
 func canonical(t *testing.T, b []byte) string {

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:43:58Z
+// generated: 2026-11-25T03:20:55Z
 
 package dynamicref
 
@@ -36,6 +36,15 @@ func (v StrictTree) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	return validator.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v StrictTree) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -109,6 +118,15 @@ func (v TreeChildrenItem) Validate(stopOnFirstError bool) error {
 	return validator.Join(errs...)
 }
 
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v TreeChildrenItem) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
 // ValidateEvaluated is Validate recording into ev the members and the
 // elements of v that its validators evaluated, as JSON Schema annotations
 // tell unevaluatedProperties and unevaluatedItems. A nil ev records nothing.
@@ -131,6 +149,15 @@ func (v TreeChildrenItem) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 //kama:generated kama:validate
 func (v ListItem) Validate(stopOnFirstError bool) error {
 	return nil
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v ListItem) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -163,6 +190,15 @@ func (v Names) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	return validator.Join(errs...)
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v Names) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the

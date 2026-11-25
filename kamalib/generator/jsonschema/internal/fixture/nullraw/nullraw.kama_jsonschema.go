@@ -3,15 +3,15 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:44:12Z
+// generated: 2026-11-25T03:21:08Z
 
 package nullraw
 
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"fmt"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -50,17 +50,17 @@ type Root struct {
 //
 //kama:generated kama:jsonschema
 type rootWire struct {
-	R                    jsontext.Value            `json:"r,omitzero"`
-	A                    jsontext.Value            `json:"a,omitzero"`
-	C                    jsontext.Value            `json:"c,omitzero"`
-	E                    jsontext.Value            `json:"e,omitzero"`
-	P                    und.Und[string]           `json:"p,omitzero"`
-	S                    jsontext.Value            `json:"s,omitzero"`
-	D                    jsontext.Value            `json:"d,omitzero"`
-	Q                    jsontext.Value            `json:"q,omitzero"`
-	L                    und.Und[[]RootLItem]      `json:"l,omitzero"`
-	M                    und.Und[map[string]N]     `json:"m,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	R                    kamaJsonschemaPresent[jsontext.Value] `json:"r,omitzero"`
+	A                    kamaJsonschemaPresent[jsontext.Value] `json:"a,omitzero"`
+	C                    kamaJsonschemaPresent[jsontext.Value] `json:"c,omitzero"`
+	E                    kamaJsonschemaPresent[jsontext.Value] `json:"e,omitzero"`
+	P                    und.Und[string]                       `json:"p,omitzero"`
+	S                    kamaJsonschemaPresent[jsontext.Value] `json:"s,omitzero"`
+	D                    kamaJsonschemaPresent[RootD]          `json:"d,omitzero"`
+	Q                    kamaJsonschemaPresent[N]              `json:"q,omitzero"`
+	L                    und.Und[[]RootLItem]                  `json:"l,omitzero"`
+	M                    und.Und[map[string]N]                 `json:"m,omitzero"`
+	AdditionalProperties map[string]jsontext.Value             `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -69,40 +69,27 @@ type rootWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w rootWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Root
 	var errs []error
-	out.R, err = jsonschemart.DecodeRequired[jsontext.Value](w.R)
-	errs = append(errs, validator.Field(err, "r"))
-	out.A, err = jsonschemart.DecodeOptional[jsontext.Value](w.A)
-	errs = append(errs, validator.Field(err, "a"))
-	out.C, err = jsonschemart.DecodeOptional[jsontext.Value](w.C)
-	errs = append(errs, validator.Field(err, "c"))
-	out.E, err = jsonschemart.DecodeOptional[jsontext.Value](w.E)
-	errs = append(errs, validator.Field(err, "e"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredPresent(&out.R, w.R), "r"))
+	kamaJsonschemaOptionalPresent(&out.A, w.A)
+	kamaJsonschemaOptionalPresent(&out.C, w.C)
+	kamaJsonschemaOptionalPresent(&out.E, w.E)
 	out.P = w.P
-	out.S, err = jsonschemart.DecodeOptional[jsontext.Value](w.S)
-	errs = append(errs, validator.Field(err, "s"))
-	out.D, err = jsonschemart.DecodeOptional[RootD](w.D)
-	errs = append(errs, validator.Field(err, "d"))
-	out.Q, err = jsonschemart.DecodeOptional[N](w.Q)
-	errs = append(errs, validator.Field(err, "q"))
-	out.L, err = jsonschemart.Optional(w.L)
-	errs = append(errs, validator.Field(err, "l"))
-	out.M, err = jsonschemart.Optional(w.M)
-	errs = append(errs, validator.Field(err, "m"))
+	kamaJsonschemaOptionalPresent(&out.S, w.S)
+	kamaJsonschemaOptionalPresent(&out.D, w.D)
+	kamaJsonschemaOptionalPresent(&out.Q, w.Q)
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.L, w.L), "l"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.M, w.M), "m"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -194,7 +181,7 @@ func (v RootD) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case RootDUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "RootD holds no member")
+	return validator.New(validator.ErrNil, "RootD holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -204,12 +191,14 @@ func (v RootD) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v RootD) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case RootDOption1, RootDInteger:
-		return jsonschemart.Validate(k, stopOnFirstError)
+	case RootDOption1:
+		return k.Validate(stopOnFirstError)
+	case RootDInteger:
+		return k.Validate(stopOnFirstError)
 	case RootDUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOr, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "RootD holds no member")
+	return validator.New(validator.ErrNil, "RootD holds no member")
 }
 
 // ValidateShallow is Validate for a decoded RootD. The decoder yields a
@@ -222,9 +211,9 @@ func (v RootD) ValidateShallow(stopOnFirstError bool) error {
 	case RootDOption1, RootDInteger:
 		return nil
 	case RootDUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOr, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "RootD holds no member")
+	return validator.New(validator.ErrNil, "RootD holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
@@ -234,38 +223,38 @@ func (v RootD) ValidateShallow(stopOnFirstError bool) error {
 //
 //kama:generated kama:jsonschema
 func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
+	raw, err := dec.ReadValue()
 	if err != nil {
 		return err
 	}
 	var errs []error
-	if jsonschemart.IsKind(raw, "null", "boolean", "object", "array", "number", "string") {
+	if raw.Kind() == jsontext.KindNull || raw.Kind() == jsontext.KindTrue || raw.Kind() == jsontext.KindFalse || raw.Kind() == jsontext.KindBeginObject || raw.Kind() == jsontext.KindBeginArray || raw.Kind() == jsontext.KindNumber || raw.Kind() == jsontext.KindString {
 		var m jsontext.Value
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-			errs = append(errs, jsonschemart.MemberError("Option1", err))
+		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			errs = append(errs, fmt.Errorf("member Option1: %w", err))
 		} else {
-			if err := jsonschemart.ValidateShallow(RootDOption1{Option1: m}, false); err != nil {
-				errs = append(errs, jsonschemart.MemberError("Option1", err))
+			if err := (RootDOption1{Option1: m}).ValidateShallow(false); err != nil {
+				errs = append(errs, fmt.Errorf("member Option1: %w", err))
 			} else {
 				*v = RootD{Kind: RootDOption1{Option1: m}}
 				return nil
 			}
 		}
 	}
-	if jsonschemart.IsKind(raw, "integer") {
+	if raw.Kind() == jsontext.KindNumber {
 		var m int64
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-			errs = append(errs, jsonschemart.MemberError("Integer", err))
+		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			errs = append(errs, fmt.Errorf("member Integer: %w", err))
 		} else {
-			if err := jsonschemart.ValidateShallow(RootDInteger{Integer: m}, false); err != nil {
-				errs = append(errs, jsonschemart.MemberError("Integer", err))
+			if err := (RootDInteger{Integer: m}).ValidateShallow(false); err != nil {
+				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
 				*v = RootD{Kind: RootDInteger{Integer: m}}
 				return nil
 			}
 		}
 	}
-	*v = RootD{Kind: RootDUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+	*v = RootD{Kind: RootDUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	return nil
 }
 
@@ -289,15 +278,11 @@ func (v RootLItem) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *RootLItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(RootLItem(out), false); err != nil {
+	if err := RootLItem(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = RootLItem(out)
@@ -332,15 +317,11 @@ func (v N) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *N) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(N(out), false); err != nil {
+	if err := N(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = N(out)

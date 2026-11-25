@@ -11,8 +11,9 @@
 // methods checking them. The decoders call Validate where a value converts
 // from its wire form to its type, as Validation describes. Errors are those
 // of package github.com/ngicks/kama/kamaruntime/validator, located by the
-// JSON path of the offending member. The generated code imports package
-// github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart. Generator
+// JSON path of the offending member, as Decoding describes. The generated
+// code imports the standard library, github.com/ngicks/option and the
+// packages of module github.com/ngicks/kama/kamaruntime only. Generator
 // is the generator of Generate in the framework of package
 // github.com/ngicks/kama/kamalib/generator/utils/base, and the proc runs it
 // as the workflow step kind jsonschema.generate.
@@ -75,14 +76,16 @@
 //	    after: validate
 //
 // A spec running the proc with validate true needs the validate.generate step.
-// Without it the decoders fail with an error wrapping
-// jsonschemart.ErrNoValidate. With validate false the directives are still
+// Without it the decoders fail on the stubs of the Validate methods, as
+// Validation describes. With validate false the directives are still
 // written, the decoders call no Validate, and decoding checks no
 // validation keyword. A union then takes the first member that decodes a
 // value, even one holding a nested union that matches none of its members.
 //
 // The header of the generated file names the schema, type_name and
-// validate params and the time of the run. The proc keeps a file that differs from the
+// validate params and the time of the run. The helpers the declarations
+// call go to zz_gen.helper.kama_jsonschema.go of the output directory, as
+// Decoding describes. The proc keeps a file that differs from the
 // existing one in the generated: line only. A Go file of the output
 // directory that holds a declaration marked by the generator and that the
 // run does not produce is stale. The proc reports a warning wrapping ErrStale
@@ -214,8 +217,9 @@
 // as JSON check.
 //
 // The struct decodes through an unexported wire struct. It holds a
-// property as an und.Und, which keeps a missing member apart from null, or
-// as a jsontext.Value where the Go type of the property holds null itself.
+// property as an und.Und, which keeps a missing member apart from null, or,
+// where the Go type of the property holds null itself, as the helper
+// kamaJsonschemaPresent, which keeps a missing member apart from any value.
 // UnmarshalJSONFrom converts each wire field and reports every member
 // missing or null against the required x nullable matrix. Once every member
 // converts, the struct must pass Validate. An enum of strings declares a
@@ -247,6 +251,45 @@
 // pointer is nil for null. An optional pointer is nil for absent and has
 // omitzero. An optional nullable pointer is nil for absent and for null,
 // so null encodes back as absent.
+//
+// # Decoding
+//
+// A decoder decodes its value straight from the jsontext.Decoder it is
+// given, so a document streams through the decoders: a struct decodes its
+// wire struct from the decoder, and its members, the elements of a slice
+// and the values of a map decode through their own decoders from the same
+// decoder. A decoder reads a whole value first only where one value must
+// be decoded more than once: a union, whose members are tried against the
+// value, and a product of allOf, whose members each decode the whole
+// object. Raw JSON text is the value itself. Such a value decodes from the
+// bytes read, and each nested value in it decodes from those bytes again.
+//
+// Decoding rejects JSON null for a string, a number, a boolean, a slice
+// and a map. Schema nullability is expressed by github.com/ngicks/option
+// types and by jsontext.Value, so a null that reaches any other Go type is
+// invalid, with an error wrapping validator.ErrNull. A number with a zero
+// fraction, such as 1.0 or 1e2, decodes into an int64, since JSON Schema
+// calls such a number an integer. A struct decoding a value that is no
+// object fails with an error wrapping validator.ErrKind. The decoders pass
+// the options doing this to every value they decode, nested values
+// included.
+//
+// An error of a decoder is located relative to the value it decodes, by
+// the path of the offending member in the lookups of the validator
+// package. json.Unmarshal reports the error of the root in a
+// json.SemanticError, whose Err holds it. A decoder below the root that
+// fails while reading its value reports the error in a json.SemanticError
+// naming the pointer of its value, so that the decoder of the enclosing
+// value locates the error in turn. The errors of several members thus keep
+// apart up to the root.
+//
+// The helpers the decoders call, such as kamaJsonschemaDecode, are
+// unexported declarations of the package in zz_gen.helper.kama_jsonschema.go
+// of the output directory. The file holds the helpers the declarations
+// call and those these call, and no file is written when none is called.
+// A declaration of a Go file of the output directory named like a helper,
+// or one in that file, that the generator did not write is an error
+// wrapping ErrConflict.
 //
 // # References
 //
@@ -387,7 +430,9 @@
 // holding the value as jsontext.Value and the error of the selection.
 // Validate of the holder returns that error, which holds the error of
 // every member tried or names the two members matching, and so does its
-// ValidateShallow. The decoder of a struct holding the union reports it
+// ValidateShallow. It wraps validator.ErrOneOf for a oneOf and
+// validator.ErrOr otherwise, as the validators oneof and or report. A nil
+// Kind is an error wrapping validator.ErrNil. The decoder of a struct holding the union reports it
 // through its ValidateShallow. A union decoded alone reports it only when
 // Validate is called. Marshaling writes the member the holder holds, the
 // value of PetUnknown as it is.
@@ -556,16 +601,32 @@
 // schema such a schema reaches through subschemas and references, is an
 // error wrapping ErrUnsupported instead.
 //
-// Decoders call ValidateShallow through jsonschemart.ValidateShallow, since
-// the generated file compiles before the validator generator runs. Every
-// type whose decoder validates carries //kama:validate decoded, so that
-// ValidateShallow skips the nested values of such a type: their own
-// decoders validated them. A struct validates once its members convert, a
-// type of a validated value once it decodes, and a union validates the
-// wrapper of each member it tries. Decoding a value nested n levels deep
-// thus validates each level once. Each level still reads its whole value
-// before decoding its members from it, and json(...) encodes the value of
-// its level, so the time grows as the square of the depth.
+// Decoders call ValidateShallow on the types they decode, and a union
+// calls Validate on its probes. Every type whose decoder validates carries
+// //kama:validate decoded, which makes the validator generator write
+// ValidateShallow for it, and ValidateShallow skips the nested values of
+// such a type: their own decoders validated them. A struct validates once
+// its members convert, a type of a validated value once it decodes, and a
+// union validates the wrapper of each member it tries. Decoding a value
+// nested n levels deep thus validates each level once, and the time grows
+// with the size of the value. json(...) encodes the value of its level, so
+// a type carrying it nested n levels deep costs time growing as the square
+// of the depth.
+//
+// The methods do not exist until the validator generator runs, and
+// packages.load, which it runs after, fails on a package calling them.
+// With validate true, Generate therefore yields stubs of them: Validate for
+// every type carrying //kama:validate and ValidateShallow for every type
+// carrying //kama:validate decoded. They go to the file the validator
+// generator writes for the generated file, <package>.kama_jsonschema.kama_validate.go,
+// and carry its generated mark, //kama:generated kama:validate, so that it
+// takes them for its own output and replaces them. A stub returns an error
+// telling to run validate.generate over the package. Generate writes the
+// stubs when the file does not exist or when the declarations of the run
+// differ from those of the existing generated file, whose methods may
+// refer to fields and types the run drops. A run giving the declarations
+// of the existing file leaves the methods the validator generator wrote
+// alone.
 //
 // A union decodes the value once per member its prefilter and probe leave,
 // and nested unions multiply that per level. Members telling a value apart

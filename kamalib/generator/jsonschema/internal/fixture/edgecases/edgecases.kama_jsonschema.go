@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:43:59Z
+// generated: 2026-11-25T03:20:57Z
 
 package edgecases
 
@@ -11,7 +11,6 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -73,30 +72,30 @@ type Root struct {
 //
 //kama:generated kama:jsonschema
 type rootWire struct {
-	ValidateField          und.Und[string]            `json:"validate,omitzero"`
-	AdditionalProperties   und.Und[int64]             `json:"additionalProperties,omitzero"`
-	Ce                     und.Und[CE]                `json:"ce,omitzero"`
-	PrefixUnique           und.Und[[]jsontext.Value]  `json:"prefixUnique,omitzero"`
-	ObjectUnique           und.Und[[]O]               `json:"objectUnique,omitzero"`
-	NumberUnique           und.Und[[]float64]         `json:"numberUnique,omitzero"`
-	EmptyName              jsontext.Value             `json:"emptyName,omitzero"`
-	RequiresEmpty          jsontext.Value             `json:"requiresEmpty,omitzero"`
-	MaxHuge                und.Und[float64]           `json:"maxHuge,omitzero"`
-	MinHuge                und.Und[int64]             `json:"minHuge,omitzero"`
-	ExclusiveHuge          und.Und[float64]           `json:"exclusiveHuge,omitzero"`
-	MultipleHuge           und.Und[int64]             `json:"multipleHuge,omitzero"`
-	MultipleHugeNumber     und.Und[float64]           `json:"multipleHugeNumber,omitzero"`
-	MultipleTiny           und.Und[float64]           `json:"multipleTiny,omitzero"`
-	LengthHuge             und.Und[string]            `json:"lengthHuge,omitzero"`
-	LengthHugeMin          und.Und[string]            `json:"lengthHugeMin,omitzero"`
-	MembersStruct          und.Und[RootMembersStruct] `json:"membersStruct,omitzero"`
-	RawMaxLength           jsontext.Value             `json:"rawMaxLength,omitzero"`
-	RawContains            jsontext.Value             `json:"rawContains,omitzero"`
-	RawMinContains         jsontext.Value             `json:"rawMinContains,omitzero"`
-	MembersHuge            und.Und[map[string]int64]  `json:"membersHuge,omitzero"`
-	TypedBig               und.Und[float64]           `json:"typedBig,omitzero"`
-	RawBig                 und.Und[jsontext.Value]    `json:"rawBig,omitzero"`
-	AdditionalProperties_2 map[string]jsontext.Value  `json:",embed"`
+	ValidateField          und.Und[string]                       `json:"validate,omitzero"`
+	AdditionalProperties   und.Und[int64]                        `json:"additionalProperties,omitzero"`
+	Ce                     und.Und[CE]                           `json:"ce,omitzero"`
+	PrefixUnique           und.Und[[]jsontext.Value]             `json:"prefixUnique,omitzero"`
+	ObjectUnique           und.Und[[]O]                          `json:"objectUnique,omitzero"`
+	NumberUnique           und.Und[[]float64]                    `json:"numberUnique,omitzero"`
+	EmptyName              kamaJsonschemaPresent[jsontext.Value] `json:"emptyName,omitzero"`
+	RequiresEmpty          kamaJsonschemaPresent[jsontext.Value] `json:"requiresEmpty,omitzero"`
+	MaxHuge                und.Und[float64]                      `json:"maxHuge,omitzero"`
+	MinHuge                und.Und[int64]                        `json:"minHuge,omitzero"`
+	ExclusiveHuge          und.Und[float64]                      `json:"exclusiveHuge,omitzero"`
+	MultipleHuge           und.Und[int64]                        `json:"multipleHuge,omitzero"`
+	MultipleHugeNumber     und.Und[float64]                      `json:"multipleHugeNumber,omitzero"`
+	MultipleTiny           und.Und[float64]                      `json:"multipleTiny,omitzero"`
+	LengthHuge             und.Und[string]                       `json:"lengthHuge,omitzero"`
+	LengthHugeMin          und.Und[string]                       `json:"lengthHugeMin,omitzero"`
+	MembersStruct          und.Und[RootMembersStruct]            `json:"membersStruct,omitzero"`
+	RawMaxLength           kamaJsonschemaPresent[jsontext.Value] `json:"rawMaxLength,omitzero"`
+	RawContains            kamaJsonschemaPresent[jsontext.Value] `json:"rawContains,omitzero"`
+	RawMinContains         kamaJsonschemaPresent[jsontext.Value] `json:"rawMinContains,omitzero"`
+	MembersHuge            und.Und[map[string]int64]             `json:"membersHuge,omitzero"`
+	TypedBig               und.Und[float64]                      `json:"typedBig,omitzero"`
+	RawBig                 und.Und[jsontext.Value]               `json:"rawBig,omitzero"`
+	AdditionalProperties_2 map[string]jsontext.Value             `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -105,67 +104,40 @@ type rootWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w rootWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Root
 	var errs []error
-	out.ValidateField, err = jsonschemart.Optional(w.ValidateField)
-	errs = append(errs, validator.Field(err, "validate"))
-	out.AdditionalProperties, err = jsonschemart.Optional(w.AdditionalProperties)
-	errs = append(errs, validator.Field(err, "additionalProperties"))
-	out.Ce, err = jsonschemart.Optional(w.Ce)
-	errs = append(errs, validator.Field(err, "ce"))
-	out.PrefixUnique, err = jsonschemart.Optional(w.PrefixUnique)
-	errs = append(errs, validator.Field(err, "prefixUnique"))
-	out.ObjectUnique, err = jsonschemart.Optional(w.ObjectUnique)
-	errs = append(errs, validator.Field(err, "objectUnique"))
-	out.NumberUnique, err = jsonschemart.Optional(w.NumberUnique)
-	errs = append(errs, validator.Field(err, "numberUnique"))
-	out.EmptyName, err = jsonschemart.DecodeOptional[jsontext.Value](w.EmptyName)
-	errs = append(errs, validator.Field(err, "emptyName"))
-	out.RequiresEmpty, err = jsonschemart.DecodeOptional[jsontext.Value](w.RequiresEmpty)
-	errs = append(errs, validator.Field(err, "requiresEmpty"))
-	out.MaxHuge, err = jsonschemart.Optional(w.MaxHuge)
-	errs = append(errs, validator.Field(err, "maxHuge"))
-	out.MinHuge, err = jsonschemart.Optional(w.MinHuge)
-	errs = append(errs, validator.Field(err, "minHuge"))
-	out.ExclusiveHuge, err = jsonschemart.Optional(w.ExclusiveHuge)
-	errs = append(errs, validator.Field(err, "exclusiveHuge"))
-	out.MultipleHuge, err = jsonschemart.Optional(w.MultipleHuge)
-	errs = append(errs, validator.Field(err, "multipleHuge"))
-	out.MultipleHugeNumber, err = jsonschemart.Optional(w.MultipleHugeNumber)
-	errs = append(errs, validator.Field(err, "multipleHugeNumber"))
-	out.MultipleTiny, err = jsonschemart.Optional(w.MultipleTiny)
-	errs = append(errs, validator.Field(err, "multipleTiny"))
-	out.LengthHuge, err = jsonschemart.Optional(w.LengthHuge)
-	errs = append(errs, validator.Field(err, "lengthHuge"))
-	out.LengthHugeMin, err = jsonschemart.Optional(w.LengthHugeMin)
-	errs = append(errs, validator.Field(err, "lengthHugeMin"))
-	out.MembersStruct, err = jsonschemart.Optional(w.MembersStruct)
-	errs = append(errs, validator.Field(err, "membersStruct"))
-	out.RawMaxLength, err = jsonschemart.DecodeOptional[jsontext.Value](w.RawMaxLength)
-	errs = append(errs, validator.Field(err, "rawMaxLength"))
-	out.RawContains, err = jsonschemart.DecodeOptional[jsontext.Value](w.RawContains)
-	errs = append(errs, validator.Field(err, "rawContains"))
-	out.RawMinContains, err = jsonschemart.DecodeOptional[jsontext.Value](w.RawMinContains)
-	errs = append(errs, validator.Field(err, "rawMinContains"))
-	out.MembersHuge, err = jsonschemart.Optional(w.MembersHuge)
-	errs = append(errs, validator.Field(err, "membersHuge"))
-	out.TypedBig, err = jsonschemart.Optional(w.TypedBig)
-	errs = append(errs, validator.Field(err, "typedBig"))
-	out.RawBig, err = jsonschemart.Optional(w.RawBig)
-	errs = append(errs, validator.Field(err, "rawBig"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.ValidateField, w.ValidateField), "validate"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.AdditionalProperties, w.AdditionalProperties), "additionalProperties"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Ce, w.Ce), "ce"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.PrefixUnique, w.PrefixUnique), "prefixUnique"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.ObjectUnique, w.ObjectUnique), "objectUnique"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.NumberUnique, w.NumberUnique), "numberUnique"))
+	kamaJsonschemaOptionalPresent(&out.EmptyName, w.EmptyName)
+	kamaJsonschemaOptionalPresent(&out.RequiresEmpty, w.RequiresEmpty)
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.MaxHuge, w.MaxHuge), "maxHuge"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.MinHuge, w.MinHuge), "minHuge"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.ExclusiveHuge, w.ExclusiveHuge), "exclusiveHuge"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.MultipleHuge, w.MultipleHuge), "multipleHuge"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.MultipleHugeNumber, w.MultipleHugeNumber), "multipleHugeNumber"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.MultipleTiny, w.MultipleTiny), "multipleTiny"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.LengthHuge, w.LengthHuge), "lengthHuge"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.LengthHugeMin, w.LengthHugeMin), "lengthHugeMin"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.MembersStruct, w.MembersStruct), "membersStruct"))
+	kamaJsonschemaOptionalPresent(&out.RawMaxLength, w.RawMaxLength)
+	kamaJsonschemaOptionalPresent(&out.RawContains, w.RawContains)
+	kamaJsonschemaOptionalPresent(&out.RawMinContains, w.RawMinContains)
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.MembersHuge, w.MembersHuge), "membersHuge"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.TypedBig, w.TypedBig), "typedBig"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.RawBig, w.RawBig), "rawBig"))
 	out.AdditionalProperties_2 = w.AdditionalProperties_2
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -189,8 +161,8 @@ type RootMembersStruct struct {
 //
 //kama:generated kama:jsonschema
 type rootMembersStructWire struct {
-	A                    jsontext.Value            `json:"a,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	A                    kamaJsonschemaPresent[jsontext.Value] `json:"a,omitzero"`
+	AdditionalProperties map[string]jsontext.Value             `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -199,23 +171,18 @@ type rootMembersStructWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *RootMembersStruct) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w rootMembersStructWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out RootMembersStruct
 	var errs []error
-	out.A, err = jsonschemart.DecodeOptional[jsontext.Value](w.A)
-	errs = append(errs, validator.Field(err, "a"))
+	kamaJsonschemaOptionalPresent(&out.A, w.A)
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -241,15 +208,11 @@ func (v CE) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *CE) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(CE(out), false); err != nil {
+	if err := CE(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = CE(out)
@@ -288,23 +251,18 @@ type oWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *O) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w oWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out O
 	var errs []error
-	out.X, err = jsonschemart.Optional(w.X)
-	errs = append(errs, validator.Field(err, "x"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.X, w.X), "x"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out

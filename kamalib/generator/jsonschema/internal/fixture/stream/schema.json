@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stream",
+  "description": "Stream is a root array of objects, decoded as the elements arrive.",
+  "type": "array",
+  "items": { "$ref": "#/$defs/Item" },
+  "$defs": {
+    "Item": {
+      "type": "object",
+      "required": ["n"],
+      "properties": { "n": { "type": "integer", "minimum": 0 } }
+    }
+  }
+}

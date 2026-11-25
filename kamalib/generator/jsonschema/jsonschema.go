@@ -86,7 +86,11 @@ type Options struct {
 // Generate yields the Go declarations of the schema of in, one file
 // holding a type for the root schema and for every schema under it that
 // needs one. The path of the file is <Package>.kama_jsonschema.go in
-// Options.Dir.
+// Options.Dir. The helpers the declarations call go to the file
+// zz_gen.helper.kama_jsonschema.go of that directory, and the stubs of the
+// Validate methods the decoders call, as described under Validation in the
+// package documentation, to the file the validator generator writes for
+// the file of the declarations.
 //
 // Generate warns about each unknown keyword of a schema the generator
 // reads with an error wrapping ErrUnknownKeyword, in the order of the
@@ -96,7 +100,7 @@ type Options struct {
 // ErrOptions, and names Options.Schema unless it is empty.
 func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, error] {
 	return func(yield func(base.Output, error) bool) {
-		out, warnings, err := generate(in.Doc, in.Options)
+		outs, warnings, err := generate(env, in.Doc, in.Options)
 		if err != nil {
 			if in.Options.Schema != "" {
 				err = fmt.Errorf("jsonschema: %s: %w", in.Options.Schema, err)
@@ -111,37 +115,41 @@ func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, 
 			env.Reporter.Warn(w)
 		}
 
-		yield(out, nil)
+		for _, o := range outs {
+			if !yield(o, nil) {
+				return
+			}
+		}
 	}
 }
 
-// generate returns the file of Generate and the warnings.
-func generate(doc *jsonschema.Schema, opts Options) (base.Composed, []error, error) {
+// generate returns the files of Generate and the warnings.
+func generate(env base.Env, doc *jsonschema.Schema, opts Options) ([]base.Output, []error, error) {
 	if err := checkPackage(opts.Package); err != nil {
-		return base.Composed{}, nil, err
+		return nil, nil, err
 	}
 
 	if err := checkTypeName(opts.TypeName); err != nil {
-		return base.Composed{}, nil, err
+		return nil, nil, err
 	}
 
 	doc, err := withVocabularies(doc, opts)
 	if err != nil {
-		return base.Composed{}, nil, err
+		return nil, nil, err
 	}
 
 	doc, err = bundle(doc, opts)
 	if err != nil {
-		return base.Composed{}, nil, err
+		return nil, nil, err
 	}
 
 	if err := check(doc, opts); err != nil {
-		return base.Composed{}, nil, err
+		return nil, nil, err
 	}
 
 	parts, imports, err := render(doc, opts)
 	if err != nil {
-		return base.Composed{}, nil, err
+		return nil, nil, err
 	}
 
 	dir := opts.Dir
@@ -155,19 +163,63 @@ func generate(doc *jsonschema.Schema, opts Options) (base.Composed, []error, err
 		typeName = opts.TypeName
 	}
 
-	out := base.Composed{
-		Path: filepath.ToSlash(naming.SourceFile(path.Join(dir, opts.Package+".go"))),
-		Params: map[string]any{
-			"schema":    opts.Schema,
-			"type_name": typeName,
-			"validate":  opts.Validate,
-		},
+	params := map[string]any{
+		"schema":    opts.Schema,
+		"type_name": typeName,
+		"validate":  opts.Validate,
+	}
+
+	main := base.Composed{
+		Path:    filepath.ToSlash(naming.SourceFile(path.Join(dir, opts.Package+".go"))),
+		Params:  params,
 		Package: opts.Package,
 		Imports: imports,
 		Parts:   parts,
 	}
+	outs := []base.Output{main}
 
-	return out, slices.Concat(unknownKeywords(doc), unenforcedKeywords(doc, opts)), nil
+	helpers, ok, err := helpersFile(opts, dir, partsText(parts))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if ok {
+		helpers.Params = params
+
+		names := helperRef.FindAllString(partsText(helpers.Parts), -1)
+		if err := checkHelperNames(env.Out, env.Registry, dir, names); err != nil {
+			return nil, nil, err
+		}
+
+		outs = append(outs, helpers)
+	}
+
+	stubs, ok, err := stubsFile(env, opts, main)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if ok {
+		outs = append(outs, stubs)
+	}
+
+	return outs, slices.Concat(unknownKeywords(doc), unenforcedKeywords(doc, opts)), nil
+}
+
+// partsText returns the source text of parts.
+func partsText(parts []base.Part) string {
+	return strings.Join(
+		opiter.WrapSeq(slices.Values(parts)).
+			Map(func(p base.Part) string {
+				if d, ok := p.(base.Decl); ok {
+					return string(d)
+				}
+
+				return ""
+			}).
+			CollectSlice(),
+		"\n",
+	)
 }
 
 // unknownKeywords returns a warning for each unknown keyword of the

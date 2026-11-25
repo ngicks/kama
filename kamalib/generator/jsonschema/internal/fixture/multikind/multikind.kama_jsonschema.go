@@ -3,15 +3,15 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:44:01Z
+// generated: 2026-11-25T03:20:58Z
 
 package multikind
 
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"fmt"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -32,9 +32,9 @@ type Cell struct {
 //
 //kama:generated kama:jsonschema
 type cellWire struct {
-	Value                und.Und[CellValue]        `json:"value,omitzero"`
-	Label                jsontext.Value            `json:"label,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Value                und.Und[CellValue]               `json:"value,omitzero"`
+	Label                kamaJsonschemaPresent[CellLabel] `json:"label,omitzero"`
+	AdditionalProperties map[string]jsontext.Value        `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -43,25 +43,19 @@ type cellWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w cellWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Cell
 	var errs []error
-	out.Value, err = jsonschemart.Required(w.Value)
-	errs = append(errs, validator.Field(err, "value"))
-	out.Label, err = jsonschemart.DecodeOptional[CellLabel](w.Label)
-	errs = append(errs, validator.Field(err, "label"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Value, w.Value), "value"))
+	kamaJsonschemaOptionalPresent(&out.Label, w.Label)
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -176,7 +170,7 @@ func (v CellValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case CellValueUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "CellValue holds no member")
+	return validator.New(validator.ErrNil, "CellValue holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -186,12 +180,16 @@ func (v CellValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v CellValue) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case CellValueString, CellValueInteger, CellValueBoolean:
-		return jsonschemart.Validate(k, stopOnFirstError)
+	case CellValueString:
+		return k.Validate(stopOnFirstError)
+	case CellValueInteger:
+		return k.Validate(stopOnFirstError)
+	case CellValueBoolean:
+		return k.Validate(stopOnFirstError)
 	case CellValueUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOr, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "CellValue holds no member")
+	return validator.New(validator.ErrNil, "CellValue holds no member")
 }
 
 // ValidateShallow is Validate for a decoded CellValue. The decoder yields a
@@ -204,9 +202,9 @@ func (v CellValue) ValidateShallow(stopOnFirstError bool) error {
 	case CellValueString, CellValueInteger, CellValueBoolean:
 		return nil
 	case CellValueUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOr, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "CellValue holds no member")
+	return validator.New(validator.ErrNil, "CellValue holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
@@ -216,51 +214,51 @@ func (v CellValue) ValidateShallow(stopOnFirstError bool) error {
 //
 //kama:generated kama:jsonschema
 func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
+	raw, err := dec.ReadValue()
 	if err != nil {
 		return err
 	}
 	var errs []error
-	if jsonschemart.IsKind(raw, "string") {
+	if raw.Kind() == jsontext.KindString {
 		var m string
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-			errs = append(errs, jsonschemart.MemberError("String", err))
+		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			errs = append(errs, fmt.Errorf("member String: %w", err))
 		} else {
-			if err := jsonschemart.ValidateShallow(CellValueString{String: m}, false); err != nil {
-				errs = append(errs, jsonschemart.MemberError("String", err))
+			if err := (CellValueString{String: m}).ValidateShallow(false); err != nil {
+				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
 				*v = CellValue{Kind: CellValueString{String: m}}
 				return nil
 			}
 		}
 	}
-	if jsonschemart.IsKind(raw, "integer") {
+	if raw.Kind() == jsontext.KindNumber {
 		var m int64
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-			errs = append(errs, jsonschemart.MemberError("Integer", err))
+		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			errs = append(errs, fmt.Errorf("member Integer: %w", err))
 		} else {
-			if err := jsonschemart.ValidateShallow(CellValueInteger{Integer: m}, false); err != nil {
-				errs = append(errs, jsonschemart.MemberError("Integer", err))
+			if err := (CellValueInteger{Integer: m}).ValidateShallow(false); err != nil {
+				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
 				*v = CellValue{Kind: CellValueInteger{Integer: m}}
 				return nil
 			}
 		}
 	}
-	if jsonschemart.IsKind(raw, "boolean") {
+	if raw.Kind() == jsontext.KindTrue || raw.Kind() == jsontext.KindFalse {
 		var m bool
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-			errs = append(errs, jsonschemart.MemberError("Boolean", err))
+		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			errs = append(errs, fmt.Errorf("member Boolean: %w", err))
 		} else {
-			if err := jsonschemart.ValidateShallow(CellValueBoolean{Boolean: m}, false); err != nil {
-				errs = append(errs, jsonschemart.MemberError("Boolean", err))
+			if err := (CellValueBoolean{Boolean: m}).ValidateShallow(false); err != nil {
+				errs = append(errs, fmt.Errorf("member Boolean: %w", err))
 			} else {
 				*v = CellValue{Kind: CellValueBoolean{Boolean: m}}
 				return nil
 			}
 		}
 	}
-	*v = CellValue{Kind: CellValueUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+	*v = CellValue{Kind: CellValueUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	return nil
 }
 
@@ -370,7 +368,7 @@ func (v CellLabel) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case CellLabelUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "CellLabel holds no member")
+	return validator.New(validator.ErrNil, "CellLabel holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -380,12 +378,16 @@ func (v CellLabel) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v CellLabel) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case CellLabelString, CellLabelNumber, CellLabelNull:
-		return jsonschemart.Validate(k, stopOnFirstError)
+	case CellLabelString:
+		return k.Validate(stopOnFirstError)
+	case CellLabelNumber:
+		return k.Validate(stopOnFirstError)
+	case CellLabelNull:
+		return k.Validate(stopOnFirstError)
 	case CellLabelUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOr, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "CellLabel holds no member")
+	return validator.New(validator.ErrNil, "CellLabel holds no member")
 }
 
 // ValidateShallow is Validate for a decoded CellLabel. The decoder yields a
@@ -398,9 +400,9 @@ func (v CellLabel) ValidateShallow(stopOnFirstError bool) error {
 	case CellLabelString, CellLabelNumber, CellLabelNull:
 		return nil
 	case CellLabelUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOr, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "CellLabel holds no member")
+	return validator.New(validator.ErrNil, "CellLabel holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
@@ -410,41 +412,41 @@ func (v CellLabel) ValidateShallow(stopOnFirstError bool) error {
 //
 //kama:generated kama:jsonschema
 func (v *CellLabel) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
+	raw, err := dec.ReadValue()
 	if err != nil {
 		return err
 	}
 	var errs []error
-	if jsonschemart.IsKind(raw, "string") {
+	if raw.Kind() == jsontext.KindString {
 		var m string
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-			errs = append(errs, jsonschemart.MemberError("String", err))
+		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			errs = append(errs, fmt.Errorf("member String: %w", err))
 		} else {
-			if err := jsonschemart.ValidateShallow(CellLabelString{String: m}, false); err != nil {
-				errs = append(errs, jsonschemart.MemberError("String", err))
+			if err := (CellLabelString{String: m}).ValidateShallow(false); err != nil {
+				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
 				*v = CellLabel{Kind: CellLabelString{String: m}}
 				return nil
 			}
 		}
 	}
-	if jsonschemart.IsKind(raw, "number") {
+	if raw.Kind() == jsontext.KindNumber {
 		var m float64
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-			errs = append(errs, jsonschemart.MemberError("Number", err))
+		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			errs = append(errs, fmt.Errorf("member Number: %w", err))
 		} else {
-			if err := jsonschemart.ValidateShallow(CellLabelNumber{Number: m}, false); err != nil {
-				errs = append(errs, jsonschemart.MemberError("Number", err))
+			if err := (CellLabelNumber{Number: m}).ValidateShallow(false); err != nil {
+				errs = append(errs, fmt.Errorf("member Number: %w", err))
 			} else {
 				*v = CellLabel{Kind: CellLabelNumber{Number: m}}
 				return nil
 			}
 		}
 	}
-	if jsonschemart.IsKind(raw, "null") {
+	if raw.Kind() == jsontext.KindNull {
 		*v = CellLabel{Kind: CellLabelNull{}}
 		return nil
 	}
-	*v = CellLabel{Kind: CellLabelUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+	*v = CellLabel{Kind: CellLabelUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	return nil
 }

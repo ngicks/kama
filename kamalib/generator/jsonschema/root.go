@@ -26,11 +26,9 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 
 	decodeDoc := "UnmarshalJSONFrom decodes v as its underlying type."
 	decode := []genStep{
-		lang.Stmt("raw, err := %s(dec)", q(runtimePath, "ReadValue")),
-		lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
 		lang.Stmt("var out %s", underlying),
 		lang.If(
-			lang.Expr("err := %s(raw, &out); err != nil", q(runtimePath, "Unmarshal")),
+			lang.Expr("err := kamaJsonschemaDecode(dec, &out); err != nil"),
 			lang.Stmt("return err"),
 			nil,
 		),

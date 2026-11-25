@@ -35,8 +35,8 @@ var lang genhelper.Lang[genCtx]
 const (
 	jsontextPath = "encoding/json/jsontext"
 	jsonPath     = "encoding/json/v2"
-	runtimePath  = "github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	validPath    = "github.com/ngicks/kama/kamaruntime/validator"
+	rawjsonPath  = "github.com/ngicks/kama/kamaruntime/validator/rawjson"
 	optPath      = "github.com/ngicks/option/opt"
 	undPath      = "github.com/ngicks/option/und"
 )
@@ -151,17 +151,24 @@ func declSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 // knows the packages generated code imports. Spelling a name of one
 // records it as used.
 func newImports(pkgName string) (*importdecl.Map, error) {
-	pkg := types.NewPackage(pkgName, pkgName)
-	pkg.SetImports([]*types.Package{
-		types.NewPackage(jsontextPath, "jsontext"),
-		types.NewPackage(jsonPath, "json"),
-		types.NewPackage(runtimePath, "jsonschemart"),
-		types.NewPackage(validPath, "validator"),
-		types.NewPackage(optPath, "opt"),
-		types.NewPackage(undPath, "und"),
-	})
+	p := types.NewPackage(pkgName, pkgName)
+	p.SetImports(slices.Concat(
+		opiter.WrapSeq(slices.Values([]string{
+			"bytes", "errors", "fmt", "io", "iter", "reflect", "slices", "strconv", "strings",
+		})).
+			Map(func(path string) *types.Package { return types.NewPackage(path, path) }).
+			CollectSlice(),
+		[]*types.Package{
+			types.NewPackage(jsontextPath, "jsontext"),
+			types.NewPackage(jsonPath, "json"),
+			types.NewPackage(validPath, "validator"),
+			types.NewPackage(rawjsonPath, "rawjson"),
+			types.NewPackage(optPath, "opt"),
+			types.NewPackage(undPath, "und"),
+		},
+	))
 
-	return importdecl.NewParser(pkg).ParseAst(nil)
+	return importdecl.NewParser(p).ParseAst(nil)
 }
 
 // q spells name of the package at path, recording the import.
@@ -191,14 +198,16 @@ func validatedDoc(text string, args []string) genExpr {
 // ValidateShallow of the value v when the decoders validate, else nothing.
 // The nested values of v decoded through decoders that validated them, so
 // validating them again would cost each level of a recursive value the
-// whole value below it.
+// whole value below it. The method is called on the type of v, which the
+// validator generator gives it for the directive decoded, so no interface
+// boxes v.
 func validateStep(opts Options, v genExpr) genStep {
 	if !opts.Validate {
 		return lang.Steps()
 	}
 
 	return lang.If(
-		lang.Expr("err := %s(%s, false); err != nil", q(runtimePath, "ValidateShallow"), v),
+		lang.Expr("err := %s.ValidateShallow(false); err != nil", v),
 		lang.Stmt("return err"),
 		nil,
 	)

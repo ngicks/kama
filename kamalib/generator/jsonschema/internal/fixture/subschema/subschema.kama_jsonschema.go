@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:44:28Z
+// generated: 2026-11-25T03:21:26Z
 
 package subschema
 
@@ -11,7 +11,6 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -40,15 +39,11 @@ func (v Tree) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Tree(out), false); err != nil {
+	if err := Tree(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Tree(out)
@@ -82,15 +77,11 @@ func (v Small) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Small) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Small(out), false); err != nil {
+	if err := Small(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Small(out)
@@ -125,15 +116,11 @@ func (v Address) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Address) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Address(out), false); err != nil {
+	if err := Address(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Address(out)
@@ -171,12 +158,8 @@ type labelsWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Labels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w labelsWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Labels
@@ -185,7 +168,7 @@ func (v *Labels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -211,15 +194,11 @@ func (v Point) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out []jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Point(out), false); err != nil {
+	if err := Point(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Point(out)
@@ -245,15 +224,11 @@ func (v Tags) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Tags) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out []jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Tags(out), false); err != nil {
+	if err := Tags(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Tags(out)
@@ -283,12 +258,8 @@ type keysWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w keysWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Keys
@@ -297,7 +268,7 @@ func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -327,12 +298,8 @@ type paymentWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Payment) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w paymentWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Payment
@@ -341,7 +308,7 @@ func (v *Payment) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -367,15 +334,11 @@ func (v Strict) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Strict) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Strict(out), false); err != nil {
+	if err := Strict(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Strict(out)
@@ -409,15 +372,11 @@ func (v Mixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Mixed(out), false); err != nil {
+	if err := Mixed(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Mixed(out)
@@ -448,10 +407,10 @@ type Node struct {
 //
 //kama:generated kama:jsonschema
 type nodeWire struct {
-	V                    und.Und[int64]            `json:"v,omitzero"`
-	Kids                 und.Und[[]Node]           `json:"kids,omitzero"`
-	Up                   jsontext.Value            `json:"up,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	V                    und.Und[int64]              `json:"v,omitzero"`
+	Kids                 und.Und[[]Node]             `json:"kids,omitzero"`
+	Up                   kamaJsonschemaPresent[Tree] `json:"up,omitzero"`
+	AdditionalProperties map[string]jsontext.Value   `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -460,27 +419,20 @@ type nodeWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w nodeWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Node
 	var errs []error
-	out.V, err = jsonschemart.Optional(w.V)
-	errs = append(errs, validator.Field(err, "v"))
-	out.Kids, err = jsonschemart.Optional(w.Kids)
-	errs = append(errs, validator.Field(err, "kids"))
-	out.Up, err = jsonschemart.DecodeOptional[Tree](w.Up)
-	errs = append(errs, validator.Field(err, "up"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.V, w.V), "v"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Kids, w.Kids), "kids"))
+	kamaJsonschemaOptionalPresent(&out.Up, w.Up)
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -506,15 +458,11 @@ func (v Holder) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Holder) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Holder(out), false); err != nil {
+	if err := Holder(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Holder(out)

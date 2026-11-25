@@ -11,7 +11,6 @@ import (
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
@@ -92,26 +91,26 @@ func TestDecodeError(t *testing.T) {
 			"no member",
 			`{"label":{"name":"a"},"value":true}`,
 			[]string{"/value"},
-			jsonschemart.ErrNoMatch,
+			validator.ErrOr,
 		},
 		{
 			"member fails",
 			`{"label":{"name":"a"},"value":1.5}`,
 			[]string{"/value"},
-			jsonschemart.ErrNoMatch,
+			validator.ErrOr,
 		},
 		{
 			"object member fails",
 			`{"label":{"name":5},"value":null}`,
 			[]string{"/label", "/label/name"},
-			jsonschemart.ErrNoMatch,
+			validator.ErrOr,
 		},
-		{"empty object", `{"label":{},"value":null}`, []string{"/label"}, jsonschemart.ErrNoMatch},
+		{"empty object", `{"label":{},"value":null}`, []string{"/label"}, validator.ErrOr},
 		{
 			"optional union",
 			`{"label":{"name":"a"},"value":null,"alt":[]}`,
 			[]string{"/alt"},
-			jsonschemart.ErrNoMatch,
+			validator.ErrOr,
 		},
 	}
 	for _, tc := range cases {
@@ -131,7 +130,7 @@ func TestDecodeError(t *testing.T) {
 
 func TestMarshalNilKind(t *testing.T) {
 	_, err := json.Marshal(Doc{Label: Label{Kind: LabelNamed{}}})
-	assert.ErrorIs(t, err, jsonschemart.ErrNilKind)
+	assert.ErrorIs(t, err, validator.ErrNil)
 }
 
 func canonical(t *testing.T, b []byte) string {

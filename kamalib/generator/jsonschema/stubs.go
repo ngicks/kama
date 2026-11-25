@@ -1,0 +1,229 @@
+package jsonschema
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"go/ast"
+	"go/format"
+	"go/parser"
+	"go/printer"
+	"go/token"
+	"io/fs"
+	"path/filepath"
+	"slices"
+	"strings"
+
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/pkg/genheader"
+)
+
+// validatorId is the identity of the validator generator of package
+// github.com/ngicks/kama/kamalib/generator/validator, which writes the
+// Validate methods of the types carrying //kama:validate. It is spelled
+// here, as the directive is, so that this generator does not depend on the
+// validator generator.
+var validatorId = base.Id{Namespace: "kama", Name: "validate"}
+
+// stubsFile returns the file of the stubs of the Validate methods the
+// decoders of main call, which the validator generator writes for main, or
+// false when no stub is needed.
+//
+// The decoders call ValidateShallow and Validate on the types themselves,
+// and packages.load fails on the package until the methods exist. The
+// stubs carry the mark of the validator generator in the file it writes for
+// main, so that it takes them for its own output and replaces them. A run
+// whose declarations equal those of the existing file keeps the methods the
+// validator generator wrote for them. A run changing them replaces those
+// methods by stubs too, since the methods may refer to fields and types the
+// run drops. A stub reports that the validator generator has not run.
+func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool, error) {
+	if !opts.Validate {
+		return base.Whole{}, false, nil
+	}
+
+	path := filepath.ToSlash(validatorId.Naming().SourceFile(main.Path))
+
+	if env.Out != nil {
+		_, err := fs.Stat(env.Out, path)
+		switch {
+		case err == nil:
+			same, err := sameDecls(env.Out, main)
+			if err != nil || same {
+				return base.Whole{}, false, err
+			}
+		case !errors.Is(err, fs.ErrNotExist):
+			return base.Whole{}, false, fmt.Errorf("jsonschema: %w", err)
+		}
+	}
+
+	hdr, err := genheader.GeneratorParams{
+		Name:      GeneratorId().String(),
+		Params:    main.Params,
+		Generated: env.Now,
+	}.Comment()
+	if err != nil {
+		return base.Whole{}, false, fmt.Errorf("jsonschema: %w", err)
+	}
+
+	_, f, err := parseParts(main.Parts)
+	if err != nil {
+		return base.Whole{}, false, err
+	}
+
+	var b strings.Builder
+
+	b.WriteString(hdr + "\n\npackage " + main.Package + "\n\nimport \"errors\"\n")
+
+	for _, d := range f.Decls {
+		g, ok := d.(*ast.GenDecl)
+		if !ok || g.Tok != token.TYPE {
+			continue
+		}
+
+		lines := directives(g.Doc)
+		if lines == nil {
+			continue
+		}
+
+		name := g.Specs[0].(*ast.TypeSpec).Name.Name
+
+		b.WriteString(stub(name, "Validate"))
+
+		if slices.Contains(lines, "decoded") {
+			b.WriteString(stub(name, "ValidateShallow"))
+		}
+	}
+
+	return base.Whole{Path: path, Content: []byte(b.String())}, true, nil
+}
+
+// stub returns the stub of the method of the type name.
+func stub(name, method string) string {
+	return fmt.Sprintf(`
+// %[2]s is a stub of the method the validator generator writes. It
+// reports that the generator has not run.
+//
+%[3]s
+func (v %[1]s) %[2]s(stopOnFirstError bool) error {
+	return errors.New("%[1]s.%[2]s is a stub; run validate.generate over the package")
+}
+`, name, method, validatorId.Marker())
+}
+
+// directives returns the args of the //kama:validate lines of doc, one
+// string per line, or nil when doc has none.
+func directives(doc *ast.CommentGroup) []string {
+	if doc == nil {
+		return nil
+	}
+
+	var args []string
+
+	for _, c := range doc.List {
+		if rest, ok := strings.CutPrefix(c.Text, validateDirective); ok &&
+			(rest == "" || rest[0] == ' ') {
+			args = append(args, strings.TrimSpace(rest))
+		}
+	}
+
+	return args
+}
+
+// sameDecls reports whether the file of main in fsys holds the
+// declarations of main. Both sides are printed by go/printer, so the
+// formatting of the existing file does not matter.
+func sameDecls(fsys fs.FS, main base.Composed) (bool, error) {
+	src, err := fs.ReadFile(fsys, main.Path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, fmt.Errorf("jsonschema: %w", err)
+	}
+
+	fset := token.NewFileSet()
+
+	existing, err := parser.ParseFile(fset, main.Path, src, parser.ParseComments)
+	if err != nil {
+		return false, nil
+	}
+
+	stamped := make([]base.Part, 0, len(main.Parts))
+	for _, p := range main.Parts {
+		if d, ok := p.(base.Decl); ok {
+			p = base.Decl(base.Stamp(GeneratorId(), d))
+		}
+
+		stamped = append(stamped, p)
+	}
+
+	mineSet, mine, err := parseParts(stamped)
+	if err != nil {
+		return false, err
+	}
+
+	a, err := printDecls(fset, existing)
+	if err != nil {
+		return false, err
+	}
+
+	b, err := printDecls(mineSet, mine)
+	if err != nil {
+		return false, err
+	}
+
+	return slices.Equal(a, b), nil
+}
+
+// parseParts parses parts, the declarations of a file, into a file of the
+// file set it returns.
+func parseParts(parts []base.Part) (*token.FileSet, *ast.File, error) {
+	var b bytes.Buffer
+
+	b.WriteString("package p\n")
+
+	// render yields declarations only.
+	for _, p := range parts {
+		if d, ok := p.(base.Decl); ok {
+			b.WriteString("\n")
+			b.Write(d)
+			b.WriteString("\n")
+		}
+	}
+
+	fset := token.NewFileSet()
+
+	f, err := parser.ParseFile(fset, "", b.Bytes(), parser.ParseComments)
+	if err != nil {
+		return nil, nil, fmt.Errorf("jsonschema: parse declarations: %w", err)
+	}
+
+	return fset, f, nil
+}
+
+// printDecls returns the declarations of f but its imports as go/printer
+// prints them.
+func printDecls(fset *token.FileSet, f *ast.File) ([]string, error) {
+	var out []string
+
+	for _, d := range f.Decls {
+		if g, ok := d.(*ast.GenDecl); ok && g.Tok == token.IMPORT {
+			continue
+		}
+
+		var b bytes.Buffer
+		if err := format.Node(
+			&b,
+			fset,
+			&printer.CommentedNode{Node: d, Comments: f.Comments},
+		); err != nil {
+			return nil, fmt.Errorf("jsonschema: print declaration: %w", err)
+		}
+
+		out = append(out, b.String())
+	}
+
+	return out, nil
+}

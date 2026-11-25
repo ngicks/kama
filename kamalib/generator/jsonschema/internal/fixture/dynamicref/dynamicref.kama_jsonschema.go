@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:43:57Z
+// generated: 2026-11-25T03:20:55Z
 
 package dynamicref
 
@@ -11,7 +11,6 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -39,15 +38,11 @@ func (v StrictTree) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *StrictTree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(StrictTree(out), false); err != nil {
+	if err := StrictTree(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = StrictTree(out)
@@ -77,9 +72,9 @@ type Tree struct {
 //
 //kama:generated kama:jsonschema
 type treeWire struct {
-	Data                 jsontext.Value              `json:"data,omitzero"`
-	Children             und.Und[[]TreeChildrenItem] `json:"children,omitzero"`
-	AdditionalProperties map[string]jsontext.Value   `json:",embed"`
+	Data                 kamaJsonschemaPresent[jsontext.Value] `json:"data,omitzero"`
+	Children             und.Und[[]TreeChildrenItem]           `json:"children,omitzero"`
+	AdditionalProperties map[string]jsontext.Value             `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -88,25 +83,19 @@ type treeWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w treeWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Tree
 	var errs []error
-	out.Data, err = jsonschemart.DecodeOptional[jsontext.Value](w.Data)
-	errs = append(errs, validator.Field(err, "data"))
-	out.Children, err = jsonschemart.Optional(w.Children)
-	errs = append(errs, validator.Field(err, "children"))
+	kamaJsonschemaOptionalPresent(&out.Data, w.Data)
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Children, w.Children), "children"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -133,15 +122,11 @@ func (v TreeChildrenItem) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *TreeChildrenItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(TreeChildrenItem(out), false); err != nil {
+	if err := TreeChildrenItem(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = TreeChildrenItem(out)
@@ -174,15 +159,11 @@ func (v ListItem) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *ListItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(ListItem(out), false); err != nil {
+	if err := ListItem(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = ListItem(out)
@@ -217,15 +198,11 @@ func (v Names) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Names) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out jsontext.Value
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Names(out), false); err != nil {
+	if err := Names(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Names(out)

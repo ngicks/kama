@@ -270,12 +270,13 @@
 // ValidateShallow on its value receiver with the signature of its
 // Validate. A target gets one when its walk reaches a value of a type
 // marked decoded or of a type having a ValidateShallow, directly or through
-// the walk of another target. Any other target would get a ValidateShallow
-// equal to its Validate, so it gets none, and a caller asking such a type
-// for its shallow form calls Validate instead, as
-// jsonschemart.ValidateShallow does. A generic target takes the
-// parameters of its Validate, and the function given for a type parameter
-// validates in full.
+// the walk of another target. A target marked decoded gets one too, since
+// its decoder calls it on the type itself; where its walk reaches no such
+// value, its ValidateShallow calls its Validate. Any other target would
+// get a ValidateShallow equal to its Validate, so it gets none, and a
+// caller asking such a type for its shallow form calls Validate instead. A
+// generic target takes the parameters of its Validate, and the function
+// given for a type parameter validates in full.
 //
 // ValidateShallow is meant for a value a decoder produced. A value built in
 // Go may hold values of a type marked decoded that no decoder validated, so

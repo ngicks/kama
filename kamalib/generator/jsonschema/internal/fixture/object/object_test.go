@@ -9,7 +9,6 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
@@ -113,7 +112,7 @@ func TestDecodeError(t *testing.T) {
 			validator.ErrRequired,
 		},
 		{"nested null", doc("optPoint", `null`), []string{"/optPoint"}, validator.ErrNull},
-		{"nested not object", doc("reqPoint", `[]`), []string{"/reqPoint"}, jsonschemart.ErrType},
+		{"nested not object", doc("reqPoint", `[]`), []string{"/reqPoint"}, validator.ErrKind},
 		{"enum", doc("color", `"blue"`), []string{"/color"}, validator.ErrConst},
 		{"enum null", doc("color", `null`), []string{"/color"}, validator.ErrNull},
 		{"null item", doc("tags", `["a",null]`), []string{"/tags/1"}, validator.ErrNull},
@@ -138,7 +137,7 @@ func TestDecodeError(t *testing.T) {
 			[]string{"/inline/x"},
 			validator.ErrRequired,
 		},
-		{"not object", `[]`, []string{""}, jsonschemart.ErrType},
+		{"not object", `[]`, []string{""}, validator.ErrKind},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

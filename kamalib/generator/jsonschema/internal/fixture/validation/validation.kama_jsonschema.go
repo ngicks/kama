@@ -3,15 +3,15 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:44:31Z
+// generated: 2026-11-25T03:21:27Z
 
 package validation
 
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"fmt"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -74,43 +74,28 @@ type orderWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w orderWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Order
 	var errs []error
-	out.Id, err = jsonschemart.Required(w.Id)
-	errs = append(errs, validator.Field(err, "id"))
-	out.Count, err = jsonschemart.Optional(w.Count)
-	errs = append(errs, validator.Field(err, "count"))
-	out.Ratio, err = jsonschemart.Optional(w.Ratio)
-	errs = append(errs, validator.Field(err, "ratio"))
-	out.Items, err = jsonschemart.Required(w.Items)
-	errs = append(errs, validator.Field(err, "items"))
-	out.Labels, err = jsonschemart.Optional(w.Labels)
-	errs = append(errs, validator.Field(err, "labels"))
-	out.Level, err = jsonschemart.Optional(w.Level)
-	errs = append(errs, validator.Field(err, "level"))
-	out.Coupon, err = jsonschemart.Optional(w.Coupon)
-	errs = append(errs, validator.Field(err, "coupon"))
-	out.Discount, err = jsonschemart.Optional(w.Discount)
-	errs = append(errs, validator.Field(err, "discount"))
-	out.Closed, err = jsonschemart.Optional(w.Closed)
-	errs = append(errs, validator.Field(err, "closed"))
-	out.Typed, err = jsonschemart.Optional(w.Typed)
-	errs = append(errs, validator.Field(err, "typed"))
-	out.Pick, err = jsonschemart.Optional(w.Pick)
-	errs = append(errs, validator.Field(err, "pick"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Id, w.Id), "id"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Count, w.Count), "count"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Ratio, w.Ratio), "ratio"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Items, w.Items), "items"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Labels, w.Labels), "labels"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Level, w.Level), "level"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Coupon, w.Coupon), "coupon"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Discount, w.Discount), "discount"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Closed, w.Closed), "closed"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Typed, w.Typed), "typed"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Pick, w.Pick), "pick"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -137,15 +122,11 @@ func (v OrderLabelsValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *OrderLabelsValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out string
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(OrderLabelsValue(out), false); err != nil {
+	if err := OrderLabelsValue(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = OrderLabelsValue(out)
@@ -177,23 +158,18 @@ type orderClosedWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *OrderClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w orderClosedWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out OrderClosed
 	var errs []error
-	out.A, err = jsonschemart.Optional(w.A)
-	errs = append(errs, validator.Field(err, "a"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.A, w.A), "a"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -224,23 +200,18 @@ type orderTypedWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *OrderTyped) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w orderTypedWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out OrderTyped
 	var errs []error
-	out.N, err = jsonschemart.Optional(w.N)
-	errs = append(errs, validator.Field(err, "n"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.N, w.N), "n"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -267,15 +238,11 @@ func (v OrderTypedValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *OrderTypedValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out int64
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(OrderTypedValue(out), false); err != nil {
+	if err := OrderTypedValue(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = OrderTypedValue(out)
@@ -368,7 +335,7 @@ func (v OrderPick) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case OrderPickUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
+	return validator.New(validator.ErrNil, "OrderPick holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -378,12 +345,14 @@ func (v OrderPick) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v OrderPick) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case OrderPickOption1, OrderPickOption2:
-		return jsonschemart.Validate(k, stopOnFirstError)
+	case OrderPickOption1:
+		return k.Validate(stopOnFirstError)
+	case OrderPickOption2:
+		return k.Validate(stopOnFirstError)
 	case OrderPickUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOneOf, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
+	return validator.New(validator.ErrNil, "OrderPick holds no member")
 }
 
 // ValidateShallow is Validate for a decoded OrderPick. The decoder yields a
@@ -396,9 +365,9 @@ func (v OrderPick) ValidateShallow(stopOnFirstError bool) error {
 	case OrderPickOption1, OrderPickOption2:
 		return nil
 	case OrderPickUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOneOf, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
+	return validator.New(validator.ErrNil, "OrderPick holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
@@ -408,39 +377,39 @@ func (v OrderPick) ValidateShallow(stopOnFirstError bool) error {
 //
 //kama:generated kama:jsonschema
 func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
+	raw, err := dec.ReadValue()
 	if err != nil {
 		return err
 	}
 	var found OrderPickKind
 	var name string
 	var errs []error
-	if jsonschemart.IsKind(raw, "string") {
+	if raw.Kind() == jsontext.KindString {
 		var m OrderPickOption1Value
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-			errs = append(errs, jsonschemart.MemberError("Option1", err))
+		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			errs = append(errs, fmt.Errorf("member Option1: %w", err))
 		} else {
-			if err := jsonschemart.ValidateShallow(OrderPickOption1{Option1: m}, false); err != nil {
-				errs = append(errs, jsonschemart.MemberError("Option1", err))
+			if err := (OrderPickOption1{Option1: m}).ValidateShallow(false); err != nil {
+				errs = append(errs, fmt.Errorf("member Option1: %w", err))
 			} else {
 				if found != nil {
-					*v = OrderPick{Kind: OrderPickUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Option1")}}
+					*v = OrderPick{Kind: OrderPickUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Option1", name)}}
 					return nil
 				}
 				found, name = OrderPickOption1{Option1: m}, "Option1"
 			}
 		}
 	}
-	if jsonschemart.IsKind(raw, "string") {
+	if raw.Kind() == jsontext.KindString {
 		var m OrderPickOption2Value
-		if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-			errs = append(errs, jsonschemart.MemberError("Option2", err))
+		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			errs = append(errs, fmt.Errorf("member Option2: %w", err))
 		} else {
-			if err := jsonschemart.ValidateShallow(OrderPickOption2{Option2: m}, false); err != nil {
-				errs = append(errs, jsonschemart.MemberError("Option2", err))
+			if err := (OrderPickOption2{Option2: m}).ValidateShallow(false); err != nil {
+				errs = append(errs, fmt.Errorf("member Option2: %w", err))
 			} else {
 				if found != nil {
-					*v = OrderPick{Kind: OrderPickUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Option2")}}
+					*v = OrderPick{Kind: OrderPickUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Option2", name)}}
 					return nil
 				}
 				found, name = OrderPickOption2{Option2: m}, "Option2"
@@ -448,7 +417,7 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
-		*v = OrderPick{Kind: OrderPickUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+		*v = OrderPick{Kind: OrderPickUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
 	*v = OrderPick{Kind: found}
@@ -475,15 +444,11 @@ func (v OrderPickOption1Value) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *OrderPickOption1Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out string
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(OrderPickOption1Value(out), false); err != nil {
+	if err := OrderPickOption1Value(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = OrderPickOption1Value(out)
@@ -510,15 +475,11 @@ func (v OrderPickOption2Value) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *OrderPickOption2Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out string
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(OrderPickOption2Value(out), false); err != nil {
+	if err := OrderPickOption2Value(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = OrderPickOption2Value(out)
@@ -544,15 +505,11 @@ func (v Sku) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Sku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var out string
-	if err := jsonschemart.Unmarshal(raw, &out); err != nil {
+	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(Sku(out), false); err != nil {
+	if err := Sku(out).ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = Sku(out)

@@ -64,11 +64,9 @@ func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 				name,
 				q(jsontextPath, "Decoder"),
 			),
-			lang.Stmt("raw, err := %s(dec)", q(runtimePath, "ReadValue")),
-			lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
 			lang.Stmt("var s %s", name),
 			lang.If(
-				lang.Expr("err := %s(raw, (*string)(&s)); err != nil", q(runtimePath, "Unmarshal")),
+				lang.Expr("err := kamaJsonschemaDecode(dec, (*string)(&s)); err != nil"),
 				lang.Stmt("return err"),
 				nil,
 			),

@@ -63,19 +63,27 @@ func (s *selection) decoded(named *types.Named) bool {
 	return to.Type.Decoded || to.Group.Decoded
 }
 
-// hasShallow reports whether generated code calls ValidateShallow on a
-// value of named, which callable accepts: an implementor declaring
-// ValidateShallow of the shape of its Validate, or a target whose walk
-// reaches a value ValidateShallow treats otherwise than Validate does. That
-// is a value of a type marked decoded or of another type with a
-// ValidateShallow, directly or through the walk of another target. Any
-// other target would get a ValidateShallow equal to its Validate, so it
-// gets none.
+// hasShallow reports whether named, which callable accepts, has a
+// ValidateShallow: an implementor declaring ValidateShallow of the shape of
+// its Validate, a target whose ValidateShallow differs from its Validate,
+// as shallowDiffers tells, or a target marked decoded. The decoder of a
+// type marked decoded calls the method on the type itself, so such a
+// target gets one even where it equals its Validate.
 func (s *selection) hasShallow(named *types.Named) bool {
 	if s.implementor(named) {
 		return s.shallowImplementor(named)
 	}
 
+	return s.decoded(named) || s.shallowDiffers(named)
+}
+
+// shallowDiffers reports whether the target named reaches a value its
+// ValidateShallow treats otherwise than its Validate does. That is a value
+// of a type marked decoded or of another type with a ValidateShallow that
+// differs, directly or through the walk of another target. Any other
+// target gets no ValidateShallow, or one calling its Validate when it is
+// marked decoded.
+func (s *selection) shallowDiffers(named *types.Named) bool {
 	// seen holds the targets the search entered, so that a cycle of types
 	// and types reached on several paths cost one walk each.
 	seen := []*types.Named{named}

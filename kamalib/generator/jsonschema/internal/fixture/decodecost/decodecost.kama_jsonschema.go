@@ -3,15 +3,15 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:43:59Z
+// generated: 2026-11-25T03:20:55Z
 
 package decodecost
 
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"fmt"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -47,29 +47,21 @@ type costsWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Costs) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w costsWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Costs
 	var errs []error
-	out.Plain, err = jsonschemart.Optional(w.Plain)
-	errs = append(errs, validator.Field(err, "plain"))
-	out.Negated, err = jsonschemart.Optional(w.Negated)
-	errs = append(errs, validator.Field(err, "negated"))
-	out.Chosen, err = jsonschemart.Optional(w.Chosen)
-	errs = append(errs, validator.Field(err, "chosen"))
-	out.Closed, err = jsonschemart.Optional(w.Closed)
-	errs = append(errs, validator.Field(err, "closed"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Plain, w.Plain), "plain"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Negated, w.Negated), "negated"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Chosen, w.Chosen), "chosen"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Closed, w.Closed), "closed"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -102,25 +94,19 @@ type plainWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Plain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w plainWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Plain
 	var errs []error
-	out.Next, err = jsonschemart.OptionalPointer(w.Next)
-	errs = append(errs, validator.Field(err, "next"))
-	out.V, err = jsonschemart.Optional(w.V)
-	errs = append(errs, validator.Field(err, "v"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalPointer(&out.Next, w.Next), "next"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.V, w.V), "v"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -154,25 +140,19 @@ type negatedWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Negated) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w negatedWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Negated
 	var errs []error
-	out.Next, err = jsonschemart.OptionalPointer(w.Next)
-	errs = append(errs, validator.Field(err, "next"))
-	out.V, err = jsonschemart.Optional(w.V)
-	errs = append(errs, validator.Field(err, "v"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalPointer(&out.Next, w.Next), "next"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.V, w.V), "v"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -264,7 +244,7 @@ func (v Chosen) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case ChosenUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "Chosen holds no member")
+	return validator.New(validator.ErrNil, "Chosen holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -274,12 +254,14 @@ func (v Chosen) MarshalJSONTo(enc *jsontext.Encoder) error {
 //kama:generated kama:jsonschema
 func (v Chosen) Validate(stopOnFirstError bool) error {
 	switch k := v.Kind.(type) {
-	case ChosenNonNegative, ChosenNegative:
-		return jsonschemart.Validate(k, stopOnFirstError)
+	case ChosenNonNegative:
+		return k.Validate(stopOnFirstError)
+	case ChosenNegative:
+		return k.Validate(stopOnFirstError)
 	case ChosenUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOneOf, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "Chosen holds no member")
+	return validator.New(validator.ErrNil, "Chosen holds no member")
 }
 
 // chosenNonNegativeProbe is the raw value the union at #/$defs/Chosen tests
@@ -326,9 +308,9 @@ func (v Chosen) ValidateShallow(stopOnFirstError bool) error {
 	case ChosenNonNegative, ChosenNegative:
 		return nil
 	case ChosenUnknown:
-		return jsonschemart.UnknownMember(k.err)
+		return kamaJsonschemaUnknownMember(validator.ErrOneOf, k.err)
 	}
-	return validator.New(jsonschemart.ErrNilKind, "Chosen holds no member")
+	return validator.New(validator.ErrNil, "Chosen holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
@@ -338,26 +320,26 @@ func (v Chosen) ValidateShallow(stopOnFirstError bool) error {
 //
 //kama:generated kama:jsonschema
 func (v *Chosen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
+	raw, err := dec.ReadValue()
 	if err != nil {
 		return err
 	}
 	var found ChosenKind
 	var name string
 	var errs []error
-	if jsonschemart.IsKind(raw, "object") && jsonschemart.HasMembers(raw, "a") {
-		if err := jsonschemart.Validate(chosenNonNegativeProbe(raw), false); err != nil {
-			errs = append(errs, jsonschemart.MemberError("NonNegative", err))
+	if raw.Kind() == jsontext.KindBeginObject && kamaJsonschemaHasMembers(raw, "a") {
+		if err := chosenNonNegativeProbe(raw).Validate(false); err != nil {
+			errs = append(errs, fmt.Errorf("member NonNegative: %w", err))
 		} else {
 			var m NonNegative
-			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-				errs = append(errs, jsonschemart.MemberError("NonNegative", err))
+			if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+				errs = append(errs, fmt.Errorf("member NonNegative: %w", err))
 			} else {
-				if err := jsonschemart.ValidateShallow(ChosenNonNegative{NonNegative: m}, false); err != nil {
-					errs = append(errs, jsonschemart.MemberError("NonNegative", err))
+				if err := (ChosenNonNegative{NonNegative: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member NonNegative: %w", err))
 				} else {
 					if found != nil {
-						*v = Chosen{Kind: ChosenUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "NonNegative")}}
+						*v = Chosen{Kind: ChosenUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, NonNegative", name)}}
 						return nil
 					}
 					found, name = ChosenNonNegative{NonNegative: m}, "NonNegative"
@@ -365,19 +347,19 @@ func (v *Chosen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			}
 		}
 	}
-	if jsonschemart.IsKind(raw, "object") && jsonschemart.HasMembers(raw, "a") {
-		if err := jsonschemart.Validate(chosenNegativeProbe(raw), false); err != nil {
-			errs = append(errs, jsonschemart.MemberError("Negative", err))
+	if raw.Kind() == jsontext.KindBeginObject && kamaJsonschemaHasMembers(raw, "a") {
+		if err := chosenNegativeProbe(raw).Validate(false); err != nil {
+			errs = append(errs, fmt.Errorf("member Negative: %w", err))
 		} else {
 			var m Negative
-			if err := jsonschemart.Unmarshal(raw, &m); err != nil {
-				errs = append(errs, jsonschemart.MemberError("Negative", err))
+			if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+				errs = append(errs, fmt.Errorf("member Negative: %w", err))
 			} else {
-				if err := jsonschemart.ValidateShallow(ChosenNegative{Negative: m}, false); err != nil {
-					errs = append(errs, jsonschemart.MemberError("Negative", err))
+				if err := (ChosenNegative{Negative: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member Negative: %w", err))
 				} else {
 					if found != nil {
-						*v = Chosen{Kind: ChosenUnknown{Value: raw, err: jsonschemart.MultipleMatch(name, "Negative")}}
+						*v = Chosen{Kind: ChosenUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Negative", name)}}
 						return nil
 					}
 					found, name = ChosenNegative{Negative: m}, "Negative"
@@ -386,7 +368,7 @@ func (v *Chosen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if found == nil {
-		*v = Chosen{Kind: ChosenUnknown{Value: raw, err: jsonschemart.NoMatch(errs)}}
+		*v = Chosen{Kind: ChosenUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
 	*v = Chosen{Kind: found}
@@ -420,25 +402,19 @@ type nonNegativeWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *NonNegative) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w nonNegativeWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out NonNegative
 	var errs []error
-	out.Next, err = jsonschemart.Optional(w.Next)
-	errs = append(errs, validator.Field(err, "next"))
-	out.A, err = jsonschemart.Required(w.A)
-	errs = append(errs, validator.Field(err, "a"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Next, w.Next), "next"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.A, w.A), "a"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -472,25 +448,19 @@ type negativeWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Negative) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w negativeWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Negative
 	var errs []error
-	out.Next, err = jsonschemart.Optional(w.Next)
-	errs = append(errs, validator.Field(err, "next"))
-	out.A, err = jsonschemart.Required(w.A)
-	errs = append(errs, validator.Field(err, "a"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Next, w.Next), "next"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.A, w.A), "a"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -524,25 +494,19 @@ type closedWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Closed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w closedWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Closed
 	var errs []error
-	out.Next, err = jsonschemart.OptionalPointer(w.Next)
-	errs = append(errs, validator.Field(err, "next"))
-	out.V, err = jsonschemart.Optional(w.V)
-	errs = append(errs, validator.Field(err, "v"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalPointer(&out.Next, w.Next), "next"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.V, w.V), "v"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out

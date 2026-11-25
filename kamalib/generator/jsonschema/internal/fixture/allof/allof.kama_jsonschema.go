@@ -3,14 +3,13 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:43:55Z
+// generated: 2026-11-25T03:20:52Z
 
 package allof
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
@@ -37,7 +36,7 @@ type Employee struct {
 //kama:generated kama:jsonschema
 func (v Employee) MarshalJSONTo(enc *jsontext.Encoder) error {
 	type plain Employee
-	return jsonschemart.MarshalObjects(enc, v.Person, v.Contract, plain(v))
+	return kamaJsonschemaMarshalObjects(enc, v.Person, v.Contract, plain(v))
 }
 
 // employeeWire keeps a missing member of Employee apart from null.
@@ -56,29 +55,27 @@ type employeeWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
+	raw, err := dec.ReadValue()
 	if err != nil {
 		return err
 	}
 	var w employeeWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaUnmarshalObject(raw, &w); err != nil {
 		return err
 	}
 	var out Employee
 	var errs []error
-	errs = append(errs, jsonschemart.Unmarshal(raw, &out.Person))
-	errs = append(errs, jsonschemart.Unmarshal(raw, &out.Contract))
-	out.Badge, err = jsonschemart.Required(w.Badge)
-	errs = append(errs, validator.Field(err, "badge"))
-	out.Manager, err = jsonschemart.Optional(w.Manager)
-	errs = append(errs, validator.Field(err, "manager"))
-	out.AdditionalProperties = jsonschemart.Omit(w.AdditionalProperties, "name", "age", "salary", "remote", "badge", "manager")
+	errs = append(errs, kamaJsonschemaUnmarshal(raw, &out.Person))
+	errs = append(errs, kamaJsonschemaUnmarshal(raw, &out.Contract))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Badge, w.Badge), "badge"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Manager, w.Manager), "manager"))
+	out.AdditionalProperties = kamaJsonschemaOmit(w.AdditionalProperties, "name", "age", "salary", "remote", "badge", "manager")
 	out.Person.AdditionalProperties = nil
 	out.Contract.AdditionalProperties = nil
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -111,25 +108,19 @@ type personWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w personWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Person
 	var errs []error
-	out.Name, err = jsonschemart.Required(w.Name)
-	errs = append(errs, validator.Field(err, "name"))
-	out.Age, err = jsonschemart.Optional(w.Age)
-	errs = append(errs, validator.Field(err, "age"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Name, w.Name), "name"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Age, w.Age), "age"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
@@ -162,25 +153,19 @@ type contractWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Contract) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w contractWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Contract
 	var errs []error
-	out.Salary, err = jsonschemart.Required(w.Salary)
-	errs = append(errs, validator.Field(err, "salary"))
-	out.Remote, err = jsonschemart.Optional(w.Remote)
-	errs = append(errs, validator.Field(err, "remote"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Salary, w.Salary), "salary"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Remote, w.Remote), "remote"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out

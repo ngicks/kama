@@ -3,14 +3,13 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T02:44:07Z
+// generated: 2026-11-25T03:21:04Z
 
 package nullablecycle
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/und"
 )
@@ -43,26 +42,20 @@ type nodeWire struct {
 //
 //kama:generated kama:jsonschema
 func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	raw, err := jsonschemart.ReadValue(dec)
-	if err != nil {
-		return err
-	}
 	var w nodeWire
-	if err := jsonschemart.UnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 	var out Node
 	var errs []error
-	out.Value, err = jsonschemart.Required(w.Value)
-	errs = append(errs, validator.Field(err, "value"))
-	out.Parent, err = jsonschemart.RequiredNullablePointer(w.Parent)
-	errs = append(errs, validator.Field(err, "parent"))
-	out.Next = jsonschemart.OptionalNullablePointer(w.Next)
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Value, w.Value), "value"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullablePointer(&out.Parent, w.Parent), "parent"))
+	kamaJsonschemaOptionalNullablePointer(&out.Next, w.Next)
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
-	if err := jsonschemart.ValidateShallow(out, false); err != nil {
+	if err := out.ValidateShallow(false); err != nil {
 		return err
 	}
 	*v = out
