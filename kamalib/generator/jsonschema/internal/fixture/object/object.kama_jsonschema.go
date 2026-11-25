@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:09Z
+// generated: 2026-11-25T10:01:25Z
 
 package object
 
@@ -133,7 +133,6 @@ func (w *objectWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w objectWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Object{}
 		return err
 	}
 	var out Object
@@ -244,7 +243,6 @@ func (w *objectInlineWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w objectInlineWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = ObjectInline{}
 		return err
 	}
 	var out ObjectInline
@@ -310,7 +308,6 @@ func (w *objectClosedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w objectClosedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = ObjectClosed{}
 		return err
 	}
 	var out ObjectClosed
@@ -375,7 +372,6 @@ func (w *objectOpenWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w objectOpenWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = ObjectOpen{}
 		return err
 	}
 	var out ObjectOpen
@@ -444,7 +440,6 @@ func (w *pointWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w pointWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Point{}
 		return err
 	}
 	var out Point

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:30:07Z
+// generated: 2026-11-25T10:01:27Z
 
 package oneof
 
@@ -88,7 +88,6 @@ func (w *zooWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Zoo) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w zooWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Zoo{}
 		return err
 	}
 	var out Zoo
@@ -391,7 +390,6 @@ func (w *zooMixedObjectValueWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error
 func (v *ZooMixedObjectValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w zooMixedObjectValueWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = ZooMixedObjectValue{}
 		return err
 	}
 	var out ZooMixedObjectValue
@@ -878,7 +876,6 @@ func (w *catWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w catWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Cat{}
 		return err
 	}
 	var out Cat
@@ -949,7 +946,6 @@ func (w *dogWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Dog) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w dogWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Dog{}
 		return err
 	}
 	var out Dog

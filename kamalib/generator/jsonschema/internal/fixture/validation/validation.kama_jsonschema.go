@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:30:31Z
+// generated: 2026-11-25T10:01:51Z
 
 package validation
 
@@ -125,7 +125,6 @@ func (w *orderWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w orderWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Order{}
 		return err
 	}
 	var out Order
@@ -230,7 +229,6 @@ func (w *orderClosedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *OrderClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w orderClosedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = OrderClosed{}
 		return err
 	}
 	var out OrderClosed
@@ -295,7 +293,6 @@ func (w *orderTypedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *OrderTyped) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w orderTypedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = OrderTyped{}
 		return err
 	}
 	var out OrderTyped

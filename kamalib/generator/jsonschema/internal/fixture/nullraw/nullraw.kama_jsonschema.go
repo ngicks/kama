@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:30:02Z
+// generated: 2026-11-25T10:01:23Z
 
 package nullraw
 
@@ -118,7 +118,6 @@ func (w *rootWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w rootWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Root{}
 		return err
 	}
 	var out Root

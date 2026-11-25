@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:30:11Z
+// generated: 2026-11-25T10:01:31Z
 
 package prefilter
 
@@ -305,7 +305,6 @@ func (w *circleWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w circleWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Circle{}
 		return err
 	}
 	var out Circle
@@ -402,7 +401,6 @@ func (w *squareWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w squareWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Square{}
 		return err
 	}
 	var out Square

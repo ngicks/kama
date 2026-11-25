@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:18Z
+// generated: 2026-11-25T10:01:33Z
 
 package productcycle
 
@@ -92,7 +92,6 @@ func (v *Product) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var w productWire
 	if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
-		*v = Product{}
 		return err
 	}
 	var out Product
@@ -166,7 +165,6 @@ func (w *aWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w aWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = A{}
 		return err
 	}
 	var out A
@@ -237,7 +235,6 @@ func (w *bWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w bWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = B{}
 		return err
 	}
 	var out B
@@ -303,7 +300,6 @@ func (w *backWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Back) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w backWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Back{}
 		return err
 	}
 	var out Back

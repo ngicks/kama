@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:29:51Z
+// generated: 2026-11-25T10:01:11Z
 
 package multikind
 
@@ -76,7 +76,6 @@ func (w *cellWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w cellWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Cell{}
 		return err
 	}
 	var out Cell

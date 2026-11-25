@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:29:39Z
+// generated: 2026-11-25T10:01:00Z
 
 package anyof
 
@@ -80,7 +80,6 @@ func (w *docWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Doc) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w docWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Doc{}
 		return err
 	}
 	var out Doc
@@ -564,7 +563,6 @@ func (w *namedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w namedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Named{}
 		return err
 	}
 	var out Named
@@ -633,7 +631,6 @@ func (w *taggedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w taggedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Tagged{}
 		return err
 	}
 	var out Tagged

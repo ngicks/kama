@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:12:53Z
+// generated: 2026-11-25T10:01:09Z
 
 package edgecases
 
@@ -179,7 +179,6 @@ func (w *rootWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w rootWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Root{}
 		return err
 	}
 	var out Root
@@ -269,7 +268,6 @@ func (w *rootMembersStructWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *RootMembersStruct) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w rootMembersStructWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = RootMembersStruct{}
 		return err
 	}
 	var out RootMembersStruct
@@ -370,7 +368,6 @@ func (w *oWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *O) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w oWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = O{}
 		return err
 	}
 	var out O

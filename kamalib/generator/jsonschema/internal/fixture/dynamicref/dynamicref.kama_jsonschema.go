@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:12:51Z
+// generated: 2026-11-25T10:01:07Z
 
 package dynamicref
 
@@ -114,7 +114,6 @@ func (w *treeWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w treeWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Tree{}
 		return err
 	}
 	var out Tree

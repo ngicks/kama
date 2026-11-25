@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:30:09Z
+// generated: 2026-11-25T10:01:29Z
 
 package oneofoverlap
 
@@ -260,7 +260,6 @@ func (w *eitherLeftValueWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w eitherLeftValueWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = EitherLeftValue{}
 		return err
 	}
 	var out EitherLeftValue
@@ -326,7 +325,6 @@ func (w *eitherRightValueWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *EitherRightValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w eitherRightValueWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = EitherRightValue{}
 		return err
 	}
 	var out EitherRightValue

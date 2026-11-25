@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:12:42Z
+// generated: 2026-11-25T10:00:58Z
 
 package allof
 
@@ -92,7 +92,6 @@ func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var w employeeWire
 	if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
-		*v = Employee{}
 		return err
 	}
 	var out Employee
@@ -166,7 +165,6 @@ func (w *personWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w personWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Person{}
 		return err
 	}
 	var out Person
@@ -236,7 +234,6 @@ func (w *contractWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Contract) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w contractWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Contract{}
 		return err
 	}
 	var out Contract

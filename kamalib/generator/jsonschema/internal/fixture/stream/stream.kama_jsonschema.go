@@ -3,7 +3,7 @@
 //	schema: "kama_jsonschema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:29Z
+// generated: 2026-11-25T10:01:45Z
 
 package stream
 
@@ -100,7 +100,6 @@ func (w *itemWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w itemWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Item{}
 		return err
 	}
 	var out Item

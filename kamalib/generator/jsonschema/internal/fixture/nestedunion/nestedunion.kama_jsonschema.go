@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:29:54Z
+// generated: 2026-11-25T10:01:13Z
 
 package nestedunion
 
@@ -80,7 +80,6 @@ func (w *chainsWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Chains) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w chainsWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Chains{}
 		return err
 	}
 	var out Chains
@@ -366,7 +365,6 @@ func (w *anyLeftWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w anyLeftWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = AnyLeft{}
 		return err
 	}
 	var out AnyLeft
@@ -436,7 +434,6 @@ func (w *anyRightWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *AnyRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w anyRightWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = AnyRight{}
 		return err
 	}
 	var out AnyRight
@@ -736,7 +733,6 @@ func (w *taggedLeftWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w taggedLeftWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = TaggedLeft{}
 		return err
 	}
 	var out TaggedLeft
@@ -807,7 +803,6 @@ func (w *taggedRightWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *TaggedRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w taggedRightWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = TaggedRight{}
 		return err
 	}
 	var out TaggedRight
@@ -1107,7 +1102,6 @@ func (w *overlapLeftWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w overlapLeftWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = OverlapLeft{}
 		return err
 	}
 	var out OverlapLeft
@@ -1177,7 +1171,6 @@ func (w *overlapRightWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *OverlapRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w overlapRightWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = OverlapRight{}
 		return err
 	}
 	var out OverlapRight

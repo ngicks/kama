@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:29:41Z
+// generated: 2026-11-25T10:01:02Z
 
 package decodecost
 
@@ -84,7 +84,6 @@ func (w *costsWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Costs) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w costsWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Costs{}
 		return err
 	}
 	var out Costs
@@ -156,7 +155,6 @@ func (w *plainWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Plain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w plainWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Plain{}
 		return err
 	}
 	var out Plain
@@ -227,7 +225,6 @@ func (w *negatedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Negated) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w negatedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Negated{}
 		return err
 	}
 	var out Negated
@@ -527,7 +524,6 @@ func (w *nonNegativeWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *NonNegative) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w nonNegativeWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = NonNegative{}
 		return err
 	}
 	var out NonNegative
@@ -598,7 +594,6 @@ func (w *negativeWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Negative) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w negativeWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Negative{}
 		return err
 	}
 	var out Negative
@@ -669,7 +664,6 @@ func (w *closedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Closed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w closedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Closed{}
 		return err
 	}
 	var out Closed

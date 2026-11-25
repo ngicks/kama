@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:12:58Z
+// generated: 2026-11-25T10:01:15Z
 
 package nullable
 
@@ -94,7 +94,6 @@ func (w *nullableWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w nullableWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Nullable{}
 		return err
 	}
 	var out Nullable
@@ -167,7 +166,6 @@ func (w *nullableOptInlineWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w nullableOptInlineWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = NullableOptInline{}
 		return err
 	}
 	var out NullableOptInline
@@ -232,7 +230,6 @@ func (w *itemWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w itemWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Item{}
 		return err
 	}
 	var out Item

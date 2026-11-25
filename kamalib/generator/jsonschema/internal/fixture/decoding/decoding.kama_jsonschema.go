@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:29:44Z
+// generated: 2026-11-25T10:01:04Z
 
 package decoding
 
@@ -210,7 +210,6 @@ func (w *rootWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w rootWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Root{}
 		return err
 	}
 	var out Root
@@ -530,7 +529,6 @@ func (v *RootAll) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var w rootAllWire
 	if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
-		*v = RootAll{}
 		return err
 	}
 	var out RootAll
@@ -599,7 +597,6 @@ func (w *rootAllOption1Wire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *RootAllOption1) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w rootAllOption1Wire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = RootAllOption1{}
 		return err
 	}
 	var out RootAllOption1
@@ -665,7 +662,6 @@ func (w *rootAllOption2Wire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *RootAllOption2) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w rootAllOption2Wire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = RootAllOption2{}
 		return err
 	}
 	var out RootAllOption2
@@ -919,7 +915,6 @@ func (w *rootTwiceObjectValueWire) UnmarshalJSONFrom(dec *jsontext.Decoder) erro
 func (v *RootTwiceObjectValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w rootTwiceObjectValueWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = RootTwiceObjectValue{}
 		return err
 	}
 	var out RootTwiceObjectValue
@@ -989,7 +984,6 @@ func (w *pointWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w pointWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Point{}
 		return err
 	}
 	var out Point

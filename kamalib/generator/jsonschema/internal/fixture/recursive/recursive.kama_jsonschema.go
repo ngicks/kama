@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:23Z
+// generated: 2026-11-25T10:01:37Z
 
 package recursive
 
@@ -83,7 +83,6 @@ func (w *forestWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w forestWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Forest{}
 		return err
 	}
 	var out Forest
@@ -155,7 +154,6 @@ func (w *treeWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w treeWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Tree{}
 		return err
 	}
 	var out Tree
@@ -225,7 +223,6 @@ func (w *listWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w listWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = List{}
 		return err
 	}
 	var out List
@@ -307,7 +304,6 @@ func (w *chainWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w chainWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Chain{}
 		return err
 	}
 	var out Chain
@@ -377,7 +373,6 @@ func (w *linkWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w linkWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Link{}
 		return err
 	}
 	var out Link
@@ -455,7 +450,6 @@ func (w *ouroborosWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Ouroboros) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w ouroborosWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Ouroboros{}
 		return err
 	}
 	var out Ouroboros

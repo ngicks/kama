@@ -548,7 +548,7 @@ func TestEveryProblemAtOnce(t *testing.T) {
 }
 
 // TestPartialValue keeps in the value what decoded of a document that
-// fails.
+// fails, and leaves the value alone for a document that stops decoding.
 func TestPartialValue(t *testing.T) {
 	var r Root
 
@@ -569,8 +569,13 @@ func TestPartialValue(t *testing.T) {
 
 	r = Root{S: "kept", I: 1}
 	assert.Assert(t, json.Unmarshal([]byte(`"x"`), &r) != nil)
-	assert.Equal(t, r.S, "")
-	assert.Equal(t, r.I, int64(0))
+	assert.Equal(t, r.S, "kept")
+	assert.Equal(t, r.I, int64(1))
+
+	r = Root{S: "kept", I: 1}
+	assert.Assert(t, json.Unmarshal([]byte(`{"s":"x",`), &r) != nil)
+	assert.Equal(t, r.S, "kept")
+	assert.Equal(t, r.I, int64(1))
 }
 
 // TestDecoderUsable reads a valid document from the stream a document

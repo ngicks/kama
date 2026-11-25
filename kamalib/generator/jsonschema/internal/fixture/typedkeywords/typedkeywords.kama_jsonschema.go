@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:30:28Z
+// generated: 2026-11-25T10:01:49Z
 
 package typedkeywords
 
@@ -93,7 +93,6 @@ func (w *orderWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w orderWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Order{}
 		return err
 	}
 	var out Order
@@ -424,7 +423,6 @@ func (w *circleWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w circleWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Circle{}
 		return err
 	}
 	var out Circle
@@ -490,7 +488,6 @@ func (w *squareWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w squareWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Square{}
 		return err
 	}
 	var out Square
@@ -555,7 +552,6 @@ func (w *namedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w namedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Named{}
 		return err
 	}
 	var out Named
@@ -620,7 +616,6 @@ func (w *agedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Aged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w agedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Aged{}
 		return err
 	}
 	var out Aged
@@ -699,7 +694,6 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var w personWire
 	if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
-		*v = Person{}
 		return err
 	}
 	var out Person
@@ -772,7 +766,6 @@ func (w *boundedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Bounded) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w boundedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Bounded{}
 		return err
 	}
 	var out Bounded
@@ -839,7 +832,6 @@ func (w *sealedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Sealed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w sealedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Sealed{}
 		return err
 	}
 	var out Sealed
@@ -905,7 +897,6 @@ func (w *taggedWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w taggedWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Tagged{}
 		return err
 	}
 	var out Tagged

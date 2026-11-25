@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:00Z
+// generated: 2026-11-25T10:01:17Z
 
 package nullablecycle
 
@@ -77,7 +77,6 @@ func (w *nodeWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w nodeWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Node{}
 		return err
 	}
 	var out Node

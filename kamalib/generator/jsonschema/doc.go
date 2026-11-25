@@ -329,8 +329,10 @@
 // UTF-8 or a duplicate member name the options of the caller reject, an
 // error of the reader, and an error of an unmarshaler of the caller. Such
 // an error leaves the decoder of the caller inside the value, as any
-// json.UnmarshalerFrom failing midway does. Every other problem is
-// recorded where it happens and reported by the decoder of the root, after
+// json.UnmarshalerFrom failing midway does. The decoder then returns
+// before it stores anything, so the destination keeps what it held before
+// the call, as encoding/json leaves it. Every other problem is recorded
+// where it happens and reported by the decoder of the root, after
 // it read its whole value, so a caller decoding a stream of documents reads
 // the next one after a document that failed. A value of the wrong kind is
 // skipped without being kept, and its error quotes at most the first bytes
@@ -343,9 +345,10 @@
 // On an error a decoder still stores what it decoded: a member or an
 // element that failed holds its zero value, or for a slice or a map the
 // elements that decoded, a nested value of a declared type holds what its
-// own decoder stored, and a union holds its unknown member. A value that
-// is no object leaves a struct empty. That value is a best-effort partial
-// value, never to be trusted as valid.
+// own decoder stored, and a union holds its unknown member. A struct
+// given a value that is no object stores nothing, so a nested one holds
+// its zero value and the destination of the caller keeps what it held.
+// That value is a best-effort partial value, never to be trusted as valid.
 //
 // A decoder decodes with the options of the decoder it is given, which
 // json.Unmarshal, json.UnmarshalDecode and json v1 fill from the options of

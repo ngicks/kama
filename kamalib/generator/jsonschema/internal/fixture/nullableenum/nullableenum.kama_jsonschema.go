@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:02Z
+// generated: 2026-11-25T10:01:19Z
 
 package nullableenum
 
@@ -84,7 +84,6 @@ func (w *levelsWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w levelsWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Levels{}
 		return err
 	}
 	var out Levels

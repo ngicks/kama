@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:31Z
+// generated: 2026-11-25T10:01:47Z
 
 package subschema
 
@@ -181,7 +181,6 @@ func (w *labelsWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Labels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w labelsWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Labels{}
 		return err
 	}
 	var out Labels
@@ -298,7 +297,6 @@ func (w *keysWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w keysWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Keys{}
 		return err
 	}
 	var out Keys
@@ -359,7 +357,6 @@ func (w *paymentWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Payment) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w paymentWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Payment{}
 		return err
 	}
 	var out Payment
@@ -503,7 +500,6 @@ func (w *nodeWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w nodeWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Node{}
 		return err
 	}
 	var out Node

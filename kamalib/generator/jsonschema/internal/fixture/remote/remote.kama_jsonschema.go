@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:25Z
+// generated: 2026-11-25T10:01:39Z
 
 package remote
 
@@ -81,7 +81,6 @@ func (w *invoiceWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Invoice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w invoiceWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Invoice{}
 		return err
 	}
 	var out Invoice
@@ -154,7 +153,6 @@ func (w *moneyWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Money) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w moneyWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Money{}
 		return err
 	}
 	var out Money
@@ -258,7 +256,6 @@ func (w *partyWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Party) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w partyWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Party{}
 		return err
 	}
 	var out Party

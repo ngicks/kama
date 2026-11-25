@@ -361,7 +361,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 			"failed to decode."
 	}
 
-	failed := lang.Steps(lang.Stmt("*v = %s{}", name), lang.Stmt("return err"))
+	failed := lang.Stmt("return err")
 	body := []genStep{
 		lang.Stmt("var w %s", wireName(name)),
 		lang.If(lang.Expr("err := w.UnmarshalJSONFrom(dec); err != nil"), failed, nil),

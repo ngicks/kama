@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:25Z
+// generated: 2026-11-25T10:01:41Z
 
 package resources
 
@@ -85,7 +85,6 @@ func (w *orderWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w orderWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Order{}
 		return err
 	}
 	var out Order
@@ -157,7 +156,6 @@ func (w *customerWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Customer) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w customerWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Customer{}
 		return err
 	}
 	var out Customer
@@ -255,7 +253,6 @@ func (w *addressWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Address) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w addressWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Address{}
 		return err
 	}
 	var out Address
@@ -354,7 +351,6 @@ func (w *lineWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (v *Line) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w lineWire
 	if err := w.UnmarshalJSONFrom(dec); err != nil {
-		*v = Line{}
 		return err
 	}
 	var out Line
