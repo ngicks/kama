@@ -33,7 +33,8 @@ func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		return []genStep{lang.Fail(err)}
 	}
 
-	decodeDoc := "UnmarshalJSONFrom decodes v from one JSON string."
+	decodeDoc := "UnmarshalJSONFrom decodes v from one JSON string. A value of another " +
+		"kind leaves v empty."
 	if opts.Validate {
 		decodeDoc += " The value must pass ValidateShallow, which rejects a value the schema " +
 			"does not list."
@@ -65,18 +66,15 @@ func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 				name,
 				q(jsontextPath, "Decoder"),
 			),
-			lang.Stmt("var w %s[string]", q(wirePath, "NonNull")),
+			lang.Stmt("var w %s", q(wirePath, "String")),
 			lang.If(
-				lang.Expr("err := kamaJsonschemaDecode(dec, &w); err != nil"),
+				lang.Expr("err := w.UnmarshalJSONFrom(dec); err != nil"),
 				lang.Stmt("return err"),
 				nil,
 			),
 			lang.Stmt("str, err := w.Value()"),
-			lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
-			lang.Stmt("s := %s(str)", name),
-			validateStep(opts, lang.Expr("s")),
-			lang.Stmt("*v = s"),
-			lang.Stmt("return nil"),
+			lang.Stmt("*v = %s(str)", name),
+			checkedReturn(opts, lang.Expr("err"), lang.Expr("(*v)")),
 		),
 	)
 }

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T08:18:07Z
+// generated: 2026-11-25T09:29:52Z
 
 package multikind
 

@@ -97,7 +97,8 @@ func TestGenerateDirectives(t *testing.T) {
 					"`json:\"additionalProperties,omitzero\"`\n" +
 					"\tAdditionalProperties_2 map[string]jsontext.Value `json:\",embed\"`\n}\n",
 				"errs = append(errs, validator.Field(" +
-					"kamaJsonschemaRequired(&out.ValidateField, w.ValidateField), \"validate\"))",
+					"kamaJsonschemaRequiredOf(&out.ValidateField, w.ValidateField, wire.String.Value), " +
+					"\"validate\"))",
 				"out.AdditionalProperties_2 = w.AdditionalProperties_2\n",
 			},
 		},
@@ -190,7 +191,7 @@ func TestGenerateDirectives(t *testing.T) {
 			`{"$ref":"#/$defs/u","$defs":{"u":{"oneOf":[{"type":"string"},{"type":"integer"}]}}}`,
 			[]string{
 				"type Root U\n",
-				"if err := out.ValidateShallow(false); err != nil {",
+				"return kamaJsonschemaChecked(err, out.ValidateShallow(false))",
 			},
 		},
 	}

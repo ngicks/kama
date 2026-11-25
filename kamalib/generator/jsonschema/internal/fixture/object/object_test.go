@@ -87,8 +87,6 @@ func TestAdditionalProperties(t *testing.T) {
 }
 
 func TestDecodeError(t *testing.T) {
-	var errSemantic = errors.New("json semantic error")
-
 	cases := []struct {
 		name     string
 		in       string
@@ -104,7 +102,7 @@ func TestDecodeError(t *testing.T) {
 			[]string{"/reqNullName"},
 			validator.ErrRequired,
 		},
-		{"wrong type", doc("reqName", `5`), []string{"/reqName"}, errSemantic},
+		{"wrong type", doc("reqName", `5`), []string{"/reqName"}, validator.ErrKind},
 		{
 			"nested missing",
 			doc("reqPoint", `{"x":1}`),
@@ -123,7 +121,12 @@ func TestDecodeError(t *testing.T) {
 			[]string{"/closed/b", "/closed/c"},
 			validator.ErrClosed,
 		},
-		{"additional property type", doc("open", `{"z":5}`), []string{"/open/z"}, errSemantic},
+		{
+			"additional property type",
+			doc("open", `{"z":5}`),
+			[]string{"/open/z"},
+			validator.ErrKind,
+		},
 		{"missing raw", doc("anything", ""), []string{"/anything"}, validator.ErrRequired},
 		{
 			"every failing member",
@@ -132,9 +135,9 @@ func TestDecodeError(t *testing.T) {
 			validator.ErrRequired,
 		},
 		{
-			"nested failure stops decoding",
+			"nested failure beside others",
 			doc("reqName", "", "inline", `{}`),
-			[]string{"/inline/x"},
+			[]string{"/inline/x", "/reqName"},
 			validator.ErrRequired,
 		},
 		{"not object", `[]`, []string{""}, validator.ErrKind},
@@ -145,12 +148,7 @@ func TestDecodeError(t *testing.T) {
 
 			assert.DeepEqual(t, validator.Pointers(err), tc.pointers)
 
-			if tc.kind == errSemantic {
-				_, ok := errors.AsType[*json.SemanticError](err)
-				assert.Assert(t, ok, "%v", err)
-			} else {
-				assert.ErrorIs(t, err, tc.kind)
-			}
+			assert.ErrorIs(t, err, tc.kind)
 		})
 	}
 }

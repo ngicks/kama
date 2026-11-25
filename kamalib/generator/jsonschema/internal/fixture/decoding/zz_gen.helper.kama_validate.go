@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T05:55:31Z
+// generated: 2026-11-25T09:12:23Z
 
 package decoding
 

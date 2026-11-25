@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T08:18:39Z
+// generated: 2026-11-25T09:13:27Z
 
 package rootscalar
 
@@ -28,8 +28,8 @@ func (v Port) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, int64(v))
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// ValidateShallow.
+// UnmarshalJSONFrom decodes v as its underlying type. It leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Port) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -38,12 +38,6 @@ func (v *Port) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		return err
 	}
 	out, err := wire.Int64.Value(w)
-	if err != nil {
-		return err
-	}
-	if err := Port(out).ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = Port(out)
-	return nil
+	return kamaJsonschemaChecked(err, Port(out).ValidateShallow(false))
 }

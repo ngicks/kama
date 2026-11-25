@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T08:18:11Z
+// generated: 2026-11-25T09:12:58Z
 
 package nullable
 
@@ -36,44 +36,79 @@ type Nullable struct {
 //
 //kama:generated kama:jsonschema
 type nullableWire struct {
-	ReqOneOf             und.Und[Item]              `json:"reqOneOf,omitzero"`
-	OptOneOf             und.Und[Item]              `json:"optOneOf,omitzero"`
-	ReqAnyOf             und.Und[wire.Int64]        `json:"reqAnyOf,omitzero"`
-	OptAnyOf             und.Und[wire.Int64]        `json:"optAnyOf,omitzero"`
-	ReqType              und.Und[string]            `json:"reqType,omitzero"`
-	OptType              und.Und[string]            `json:"optType,omitzero"`
-	OptInline            und.Und[NullableOptInline] `json:"optInline,omitzero"`
-	AdditionalProperties map[string]jsontext.Value  `json:",embed"`
+	ReqOneOf             und.Und[wire.Decoded[Item]]
+	OptOneOf             und.Und[wire.Decoded[Item]]
+	ReqAnyOf             und.Und[wire.Int64]
+	OptAnyOf             und.Und[wire.Int64]
+	ReqType              und.Und[wire.String]
+	OptType              und.Und[wire.String]
+	OptInline            und.Und[wire.Decoded[NullableOptInline]]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *nullableWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "reqOneOf":
+			err = w.ReqOneOf.UnmarshalJSONFrom(dec)
+		case "optOneOf":
+			err = w.OptOneOf.UnmarshalJSONFrom(dec)
+		case "reqAnyOf":
+			err = w.ReqAnyOf.UnmarshalJSONFrom(dec)
+		case "optAnyOf":
+			err = w.OptAnyOf.UnmarshalJSONFrom(dec)
+		case "reqType":
+			err = w.ReqType.UnmarshalJSONFrom(dec)
+		case "optType":
+			err = w.OptType.UnmarshalJSONFrom(dec)
+		case "optInline":
+			err = w.OptInline.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w nullableWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = Nullable{}
 		return err
 	}
 	var out Nullable
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.ReqOneOf, w.ReqOneOf), "reqOneOf"))
-	out.OptOneOf = w.OptOneOf
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullableOf(&out.ReqOneOf, w.ReqOneOf, wire.Decoded[Item].Value), "reqOneOf"))
+	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.OptOneOf, w.OptOneOf, wire.Decoded[Item].Value), "optOneOf"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullableOf(&out.ReqAnyOf, w.ReqAnyOf, wire.Int64.Value), "reqAnyOf"))
 	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.OptAnyOf, w.OptAnyOf, wire.Int64.Value), "optAnyOf"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.ReqType, w.ReqType), "reqType"))
-	out.OptType = w.OptType
-	out.OptInline = w.OptInline
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullableOf(&out.ReqType, w.ReqType, wire.String.Value), "reqType"))
+	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.OptType, w.OptType, wire.String.Value), "optType"))
+	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.OptInline, w.OptInline, wire.Decoded[NullableOptInline].Value), "optInline"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // NullableOptInline is generated from the schema at
@@ -92,32 +127,55 @@ type NullableOptInline struct {
 //
 //kama:generated kama:jsonschema
 type nullableOptInlineWire struct {
-	S                    und.Und[string]           `json:"s,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	S                    und.Und[wire.String]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *nullableOptInlineWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "s":
+			err = w.S.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w nullableOptInlineWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = NullableOptInline{}
 		return err
 	}
 	var out NullableOptInline
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.S, w.S), "s"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.S, w.S, wire.String.Value), "s"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // Item is generated from the schema at #/$defs/Item.
@@ -134,30 +192,53 @@ type Item struct {
 //
 //kama:generated kama:jsonschema
 type itemWire struct {
-	N                    und.Und[wire.Int64]       `json:"n,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	N                    und.Und[wire.Int64]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *itemWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "n":
+			err = w.N.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w itemWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = Item{}
 		return err
 	}
 	var out Item
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.N, w.N, wire.Int64.Value), "n"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }

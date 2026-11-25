@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T08:18:24Z
+// generated: 2026-11-25T09:30:07Z
 
 package oneof
 
@@ -36,40 +36,71 @@ type Zoo struct {
 //
 //kama:generated kama:jsonschema
 type zooWire struct {
-	Star                 und.Und[Pet]              `json:"star,omitzero"`
-	Pets                 und.Und[[]Pet]            `json:"pets,omitzero"`
-	Favorite             und.Und[Pet]              `json:"favorite,omitzero"`
-	Mixed                und.Und[ZooMixed]         `json:"mixed,omitzero"`
-	Amount               und.Und[ZooAmount]        `json:"amount,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Star                 und.Und[wire.Decoded[Pet]]
+	Pets                 und.Und[wire.NonNullSlice[Pet]]
+	Favorite             und.Und[wire.Decoded[Pet]]
+	Mixed                und.Und[wire.Decoded[ZooMixed]]
+	Amount               und.Und[wire.Decoded[ZooAmount]]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *zooWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "star":
+			err = w.Star.UnmarshalJSONFrom(dec)
+		case "pets":
+			err = w.Pets.UnmarshalJSONFrom(dec)
+		case "favorite":
+			err = w.Favorite.UnmarshalJSONFrom(dec)
+		case "mixed":
+			err = w.Mixed.UnmarshalJSONFrom(dec)
+		case "amount":
+			err = w.Amount.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Zoo) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w zooWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = Zoo{}
 		return err
 	}
 	var out Zoo
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Star, w.Star), "star"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Pets, w.Pets), "pets"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Favorite, w.Favorite), "favorite"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Mixed, w.Mixed), "mixed"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Amount, w.Amount), "amount"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Star, w.Star, wire.Decoded[Pet].Value), "star"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Pets, w.Pets, wire.NonNullSlice[Pet].Value), "pets"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Favorite, w.Favorite, wire.Decoded[Pet].Value), "favorite"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Mixed, w.Mixed, wire.Decoded[ZooMixed].Value), "mixed"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Amount, w.Amount, wire.Decoded[ZooAmount].Value), "amount"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // ZooMixed is exactly one of String, Integer, Object. It is generated from
@@ -221,8 +252,8 @@ func (v ZooMixed) ValidateShallow(stopOnFirstError bool) error {
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
 // ZooMixedUnknown, which Validate reports. A member failing on a stub of
-// the validator generator fails the decoding, since the stub tells nothing
-// of the value.
+// the validator generator gives the error of the stub, since the stub tells
+// nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -234,18 +265,22 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var name string
 	var errs []error
 	if raw.Kind() == jsontext.KindString {
-		var m string
-		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+		var w wire.String
+		if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 			errs = append(errs, fmt.Errorf("member String: %w", err))
 		} else {
-			if err := (ZooMixedString{String: m}).ValidateShallow(false); err != nil {
+			if m, err := wire.String.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
-				if found != nil {
-					*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, String", name)}}
-					return nil
+				if err := (ZooMixedString{String: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member String: %w", err))
+				} else {
+					if found != nil {
+						*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, String", name)}}
+						return nil
+					}
+					found, name = ZooMixedString{String: m}, "String"
 				}
-				found, name = ZooMixedString{String: m}, "String"
 			}
 		}
 	}
@@ -270,26 +305,30 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if raw.Kind() == jsontext.KindBeginObject && kamaJsonschemaHasMembers(raw, "note") {
-		var m ZooMixedObjectValue
-		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+		var w wire.Decoded[ZooMixedObjectValue]
+		if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 			errs = append(errs, fmt.Errorf("member Object: %w", err))
 		} else {
-			if err := (ZooMixedObject{Object: m}).ValidateShallow(false); err != nil {
+			if m, err := wire.Decoded[ZooMixedObjectValue].Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Object: %w", err))
 			} else {
-				if found != nil {
-					*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Object", name)}}
-					return nil
+				if err := (ZooMixedObject{Object: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member Object: %w", err))
+				} else {
+					if found != nil {
+						*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Object", name)}}
+						return nil
+					}
+					found, name = ZooMixedObject{Object: m}, "Object"
 				}
-				found, name = ZooMixedObject{Object: m}, "Object"
 			}
 		}
 	}
 	if found == nil {
+		*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		if err := kamaJsonschemaStubbed(errs); err != nil {
 			return err
 		}
-		*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
 	*v = ZooMixed{Kind: found}
@@ -312,32 +351,55 @@ type ZooMixedObjectValue struct {
 //
 //kama:generated kama:jsonschema
 type zooMixedObjectValueWire struct {
-	Note                 und.Und[string]           `json:"note,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Note                 und.Und[wire.String]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *zooMixedObjectValueWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "note":
+			err = w.Note.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *ZooMixedObjectValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w zooMixedObjectValueWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = ZooMixedObjectValue{}
 		return err
 	}
 	var out ZooMixedObjectValue
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Note, w.Note), "note"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Note, w.Note, wire.String.Value), "note"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // ZooAmount is exactly one of Integer, Number. It is generated from the
@@ -465,8 +527,8 @@ func (v ZooAmount) ValidateShallow(stopOnFirstError bool) error {
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
 // ZooAmountUnknown, which Validate reports. A member failing on a stub of
-// the validator generator fails the decoding, since the stub tells nothing
-// of the value.
+// the validator generator gives the error of the stub, since the stub tells
+// nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -498,26 +560,30 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if raw.Kind() == jsontext.KindNumber {
-		var m float64
-		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+		var w wire.Float64
+		if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 			errs = append(errs, fmt.Errorf("member Number: %w", err))
 		} else {
-			if err := (ZooAmountNumber{Number: m}).ValidateShallow(false); err != nil {
+			if m, err := wire.Float64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Number: %w", err))
 			} else {
-				if found != nil {
-					*v = ZooAmount{Kind: ZooAmountUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Number", name)}}
-					return nil
+				if err := (ZooAmountNumber{Number: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member Number: %w", err))
+				} else {
+					if found != nil {
+						*v = ZooAmount{Kind: ZooAmountUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Number", name)}}
+						return nil
+					}
+					found, name = ZooAmountNumber{Number: m}, "Number"
 				}
-				found, name = ZooAmountNumber{Number: m}, "Number"
 			}
 		}
 	}
 	if found == nil {
+		*v = ZooAmount{Kind: ZooAmountUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		if err := kamaJsonschemaStubbed(errs); err != nil {
 			return err
 		}
-		*v = ZooAmount{Kind: ZooAmountUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
 	*v = ZooAmount{Kind: found}
@@ -682,8 +748,8 @@ func (v Pet) ValidateShallow(stopOnFirstError bool) error {
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
 // PetUnknown, which Validate reports. A member failing on a stub of the
-// validator generator fails the decoding, since the stub tells nothing of
-// the value.
+// validator generator gives the error of the stub, since the stub tells
+// nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -698,18 +764,22 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := petCatProbe(raw).Validate(false); err != nil {
 			errs = append(errs, fmt.Errorf("member Cat: %w", err))
 		} else {
-			var m Cat
-			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+			var w wire.Decoded[Cat]
+			if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 				errs = append(errs, fmt.Errorf("member Cat: %w", err))
 			} else {
-				if err := (PetCat{Cat: m}).ValidateShallow(false); err != nil {
+				if m, err := wire.Decoded[Cat].Value(w); err != nil {
 					errs = append(errs, fmt.Errorf("member Cat: %w", err))
 				} else {
-					if found != nil {
-						*v = Pet{Kind: PetUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Cat", name)}}
-						return nil
+					if err := (PetCat{Cat: m}).ValidateShallow(false); err != nil {
+						errs = append(errs, fmt.Errorf("member Cat: %w", err))
+					} else {
+						if found != nil {
+							*v = Pet{Kind: PetUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Cat", name)}}
+							return nil
+						}
+						found, name = PetCat{Cat: m}, "Cat"
 					}
-					found, name = PetCat{Cat: m}, "Cat"
 				}
 			}
 		}
@@ -718,27 +788,31 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := petDogProbe(raw).Validate(false); err != nil {
 			errs = append(errs, fmt.Errorf("member Dog: %w", err))
 		} else {
-			var m Dog
-			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+			var w wire.Decoded[Dog]
+			if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 				errs = append(errs, fmt.Errorf("member Dog: %w", err))
 			} else {
-				if err := (PetDog{Dog: m}).ValidateShallow(false); err != nil {
+				if m, err := wire.Decoded[Dog].Value(w); err != nil {
 					errs = append(errs, fmt.Errorf("member Dog: %w", err))
 				} else {
-					if found != nil {
-						*v = Pet{Kind: PetUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Dog", name)}}
-						return nil
+					if err := (PetDog{Dog: m}).ValidateShallow(false); err != nil {
+						errs = append(errs, fmt.Errorf("member Dog: %w", err))
+					} else {
+						if found != nil {
+							*v = Pet{Kind: PetUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Dog", name)}}
+							return nil
+						}
+						found, name = PetDog{Dog: m}, "Dog"
 					}
-					found, name = PetDog{Dog: m}, "Dog"
 				}
 			}
 		}
 	}
 	if found == nil {
+		*v = Pet{Kind: PetUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		if err := kamaJsonschemaStubbed(errs); err != nil {
 			return err
 		}
-		*v = Pet{Kind: PetUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
 	*v = Pet{Kind: found}
@@ -761,34 +835,59 @@ type Cat struct {
 //
 //kama:generated kama:jsonschema
 type catWire struct {
-	Kind                 und.Und[string]           `json:"kind,omitzero"`
-	Lives                und.Und[wire.Int64]       `json:"lives,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Kind                 und.Und[wire.String]
+	Lives                und.Und[wire.Int64]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *catWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "kind":
+			err = w.Kind.UnmarshalJSONFrom(dec)
+		case "lives":
+			err = w.Lives.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w catWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = Cat{}
 		return err
 	}
 	var out Cat
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Kind, w.Kind), "kind"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Kind, w.Kind, wire.String.Value), "kind"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Lives, w.Lives, wire.Int64.Value), "lives"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // Dog is generated from the schema at #/$defs/Dog.
@@ -807,32 +906,57 @@ type Dog struct {
 //
 //kama:generated kama:jsonschema
 type dogWire struct {
-	Kind                 und.Und[string]           `json:"kind,omitzero"`
-	Good                 und.Und[bool]             `json:"good,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Kind                 und.Und[wire.String]
+	Good                 und.Und[wire.Bool]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *dogWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "kind":
+			err = w.Kind.UnmarshalJSONFrom(dec)
+		case "good":
+			err = w.Good.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Dog) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w dogWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = Dog{}
 		return err
 	}
 	var out Dog
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Kind, w.Kind), "kind"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Good, w.Good), "good"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Kind, w.Kind, wire.String.Value), "kind"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Good, w.Good, wire.Bool.Value), "good"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }

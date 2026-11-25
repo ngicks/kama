@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T08:18:15Z
+// generated: 2026-11-25T09:13:02Z
 
 package nullableenum
 
@@ -35,38 +35,67 @@ type Levels struct {
 //
 //kama:generated kama:jsonschema
 type levelsWire struct {
-	Ref                  und.Und[Level]            `json:"ref,omitzero"`
-	Const                und.Und[LevelsConst]      `json:"const,omitzero"`
-	Big                  und.Und[LevelsBig]        `json:"big,omitzero"`
-	Number               und.Und[float64]          `json:"number,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Ref                  und.Und[wire.Decoded[Level]]
+	Const                und.Und[wire.Decoded[LevelsConst]]
+	Big                  und.Und[wire.Decoded[LevelsBig]]
+	Number               und.Und[wire.Float64]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *levelsWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "ref":
+			err = w.Ref.UnmarshalJSONFrom(dec)
+		case "const":
+			err = w.Const.UnmarshalJSONFrom(dec)
+		case "big":
+			err = w.Big.UnmarshalJSONFrom(dec)
+		case "number":
+			err = w.Number.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w levelsWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = Levels{}
 		return err
 	}
 	var out Levels
 	var errs []error
-	out.Ref = w.Ref
-	out.Const = w.Const
-	out.Big = w.Big
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Number, w.Number), "number"))
+	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.Ref, w.Ref, wire.Decoded[Level].Value), "ref"))
+	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.Const, w.Const, wire.Decoded[LevelsConst].Value), "const"))
+	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.Big, w.Big, wire.Decoded[LevelsBig].Value), "big"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Number, w.Number, wire.Float64.Value), "number"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // LevelsConst is generated from the schema at #/properties/const/oneOf/0.
@@ -83,24 +112,18 @@ func (v LevelsConst) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, string(v))
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// ValidateShallow.
+// UnmarshalJSONFrom decodes v as its underlying type. It leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *LevelsConst) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var w wire.NonNull[string]
+	var w wire.String
 	if err := kamaJsonschemaDecode(dec, &w); err != nil {
 		return err
 	}
-	out, err := wire.NonNull[string].Value(w)
-	if err != nil {
-		return err
-	}
-	if err := LevelsConst(out).ValidateShallow(false); err != nil {
-		return err
-	}
+	out, err := wire.String.Value(w)
 	*v = LevelsConst(out)
-	return nil
+	return kamaJsonschemaChecked(err, LevelsConst(out).ValidateShallow(false))
 }
 
 // LevelsBig is generated from the schema at #/properties/big/oneOf/0.
@@ -117,24 +140,18 @@ func (v LevelsBig) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, float64(v))
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// ValidateShallow.
+// UnmarshalJSONFrom decodes v as its underlying type. It leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *LevelsBig) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var w wire.NonNull[float64]
+	var w wire.Float64
 	if err := kamaJsonschemaDecode(dec, &w); err != nil {
 		return err
 	}
-	out, err := wire.NonNull[float64].Value(w)
-	if err != nil {
-		return err
-	}
-	if err := LevelsBig(out).ValidateShallow(false); err != nil {
-		return err
-	}
+	out, err := wire.Float64.Value(w)
 	*v = LevelsBig(out)
-	return nil
+	return kamaJsonschemaChecked(err, LevelsBig(out).ValidateShallow(false))
 }
 
 // Level is generated from the schema at #/$defs/Level.
@@ -151,8 +168,8 @@ func (v Level) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, int64(v))
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// ValidateShallow.
+// UnmarshalJSONFrom decodes v as its underlying type. It leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Level) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -161,12 +178,6 @@ func (v *Level) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		return err
 	}
 	out, err := wire.Int64.Value(w)
-	if err != nil {
-		return err
-	}
-	if err := Level(out).ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = Level(out)
-	return nil
+	return kamaJsonschemaChecked(err, Level(out).ValidateShallow(false))
 }

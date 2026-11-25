@@ -10,6 +10,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
@@ -110,8 +111,8 @@ func extraType(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	return q(jsontextPath, "Value")
 }
 
-// extraWire is extraType for the wire struct: the wire type of a value
-// that nothing around rejects null for.
+// extraWire is extraType for the wire struct: the wire type of a value on
+// its own.
 func extraWire(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	return func(c genCtx) (string, error) {
 		conv, err := extraConv(doc, opts, ptr)(c)
@@ -119,7 +120,7 @@ func extraWire(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 			return extraType(doc, opts, ptr)(c)
 		}
 
-		return elemWireType(doc, opts, child(ptr, "additionalProperties"), slotAlone)(c)
+		return elemWireType(doc, opts, child(ptr, "additionalProperties"), slotMember)(c)
 	}
 }
 
@@ -136,7 +137,7 @@ func extraConv(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 			return "", nil
 		}
 
-		return elemWireConv(doc, opts, child(ptr, "additionalProperties"), slotAlone)(c)
+		return elemWireConv(doc, opts, child(ptr, "additionalProperties"), slotMember)(c)
 	}
 }
 
@@ -256,9 +257,11 @@ func nilChecks(doc *jsonschema.Schema, ptr string) []genStep {
 	return body
 }
 
-// wireSteps returns the struct the object at ptr decodes through: every
-// property as an und.Und of its wire type, or as a kamaJsonschemaPresent
-// where its Go type holds null itself, then the members the object keeps.
+// wireSteps returns the struct the object at ptr decodes through, every
+// property as an und.Und of its wire type and then the members the object
+// keeps, and its UnmarshalJSONFrom. The wire struct reads its members
+// itself: json/v2 decoding it as a struct would stop checking the names of
+// the object once a nested value returned the error it recorded.
 func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -276,26 +279,55 @@ func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		lang.Stmt("type %s struct {", wireName(name)),
 	}
 
+	cases := make([]genhelper.Case[genCtx], 0, len(s.Properties)+1)
+
 	for _, n := range s.Properties {
 		pp := child(ptr, "properties", n.Name)
 
-		t := lang.Expr("%s[%s]", q(undPath, "Und"), wireType(doc, opts, pp, slotMember))
-		if acceptsNull(doc, pp) {
-			t = lang.Expr("kamaJsonschemaPresent[%s]", goType(doc, opts, pp))
-		}
-
 		steps = append(steps, lang.Stmt(
-			"%s %s `json:%s`", fieldName(pp, n.Name), t, strconv.Quote(n.Name+",omitzero"),
+			"%s %s[%s]",
+			fieldName(pp, n.Name),
+			q(undPath, "Und"),
+			wireType(doc, opts, pp, slotMember),
+		))
+		cases = append(cases, lang.Case(
+			lang.Expr("%s", strconv.Quote(n.Name)),
+			lang.Stmt("err = w.%s.UnmarshalJSONFrom(dec)", fieldName(pp, n.Name)),
 		))
 	}
 
+	f := fallbackField(doc, opts, ptr)
+	cases = append(cases, lang.Default(lang.Stmt(
+		"err = kamaJsonschemaExtra(dec, &w.%s, string(name))", f,
+	)))
+
 	return append(steps,
-		lang.Stmt(
-			"%s map[string]%s `json:\",embed\"`",
-			fallbackField(doc, opts, ptr),
-			extraWire(doc, opts, ptr),
-		),
+		lang.Stmt("%s map[string]%s", f, extraWire(doc, opts, ptr)),
 		lang.Stmt("}"),
+		lang.DocFunc(
+			docComment("UnmarshalJSONFrom decodes the members of one JSON object into w. A "+
+				"value of another kind is skipped and returned as the error."),
+			lang.Expr(
+				"func (w *%s) UnmarshalJSONFrom(dec *%s) error",
+				wireName(name),
+				q(jsontextPath, "Decoder"),
+			),
+			lang.If(
+				lang.Expr("err := kamaJsonschemaBeginObject(dec); err != nil"),
+				lang.Stmt("return err"),
+				nil,
+			),
+			lang.For(nil, lang.Expr("dec.PeekKind() != %s", q(jsontextPath, "KindEndObject")), nil,
+				lang.Steps(
+					lang.Stmt("name, err := kamaJsonschemaName(dec)"),
+					lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
+					lang.Switch(lang.Expr("string(name)"), cases...),
+					lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
+				),
+			),
+			lang.Stmt("_, err := dec.ReadToken()"),
+			lang.Stmt("return err"),
+		),
 	)
 }
 
@@ -322,19 +354,17 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 		text += strings.Replace(parts, "its own", "the own", 1) + " decode from the same object. "
 	}
 
-	text += "A member that fails to decode stops it. Otherwise it reports every member the " +
-		"schema rejects."
+	text += "It reports every member the schema rejects together, and leaves in v " +
+		"what decoded of a value it rejects."
 	if opts.Validate {
-		text += " A value whose members all convert must pass ValidateShallow."
+		text += " The value must pass ValidateShallow, which skips the members that " +
+			"failed to decode."
 	}
 
+	failed := lang.Steps(lang.Stmt("*v = %s{}", name), lang.Stmt("return err"))
 	body := []genStep{
 		lang.Stmt("var w %s", wireName(name)),
-		lang.If(
-			lang.Expr("err := kamaJsonschemaDecodeObject(dec, &w); err != nil"),
-			lang.Stmt("return err"),
-			nil,
-		),
+		lang.If(lang.Expr("err := w.UnmarshalJSONFrom(dec); err != nil"), failed, nil),
 	}
 
 	if product(doc, ptr, s) {
@@ -345,8 +375,8 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 			lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
 			lang.Stmt("var w %s", wireName(name)),
 			lang.If(
-				lang.Expr("err := kamaJsonschemaUnmarshalObject(dec, raw, &w); err != nil"),
-				lang.Stmt("return err"),
+				lang.Expr("err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil"),
+				failed,
 				nil,
 			),
 		}
@@ -371,14 +401,8 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 	body = append(body, extraSteps(doc, opts, ptr)...)
 
 	body = append(body,
-		lang.If(
-			lang.Expr("err := %s(errs...); err != nil", q(validPath, "Join")),
-			lang.Stmt("return err"),
-			nil,
-		),
-		validateStep(opts, lang.Expr("out")),
 		lang.Stmt("*v = out"),
-		lang.Stmt("return nil"),
+		checkedReturn(opts, lang.Expr("%s(errs...)", q(validPath, "Join")), lang.Expr("out")),
 	)
 
 	return []genStep{
@@ -541,9 +565,6 @@ func decodeStep(doc *jsonschema.Schema, opts Options, ptr, name string) genStep 
 	f := fieldName(pp, name)
 	req, null := required(doc, ptr, name), nullable(doc, pp)
 
-	set := func(fn string) genStep {
-		return lang.Stmt("kamaJsonschema%s(&out.%s, w.%s)", fn, f, f)
-	}
 	conv := func(fn string) genStep {
 		return converted(
 			wireConv(doc, opts, pp, slotMember),
@@ -561,20 +582,31 @@ func decodeStep(doc *jsonschema.Schema, opts Options, ptr, name string) genStep 
 			},
 		)
 	}
-	// Without conversion, the helpers setting a nullable value find no error.
-	maybeSet := func(fn string) genStep {
+	// A member whose Go type holds null decodes null itself, as und.Und
+	// consumed it.
+	takesNull := func(fn string) genStep {
 		return converted(
 			wireConv(doc, opts, pp, slotMember),
-			func(genExpr) genStep { return conv(fn) },
-			func(genExpr) genStep { return set(fn) },
+			func(conv genExpr) genStep {
+				return lang.Stmt(
+					"errs = append(errs, %s(kamaJsonschema%sOf(&out.%s, dec, w.%s, %s), %s))",
+					q(validPath, "Field"), fn, f, f, conv, strconv.Quote(name),
+				)
+			},
+			func(genExpr) genStep {
+				return lang.Stmt(
+					"errs = append(errs, %s(kamaJsonschema%s(&out.%s, dec, w.%s), %s))",
+					q(validPath, "Field"), fn, f, f, strconv.Quote(name),
+				)
+			},
 		)
 	}
 
 	switch {
 	case acceptsNull(doc, pp) && req:
-		return conv("RequiredPresent")
+		return takesNull("RequiredTakesNull")
 	case acceptsNull(doc, pp):
-		return set("OptionalPresent")
+		return takesNull("OptionalTakesNull")
 	case onCycle(doc, ptr, pp):
 		switch {
 		case req && null:
@@ -582,7 +614,7 @@ func decodeStep(doc *jsonschema.Schema, opts Options, ptr, name string) genStep 
 		case req:
 			return conv("RequiredPointer")
 		case null:
-			return maybeSet("OptionalNullablePointer")
+			return conv("OptionalNullablePointer")
 		default:
 			return conv("OptionalPointer")
 		}

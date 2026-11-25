@@ -4,13 +4,13 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
-	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
-func TestNonNull(t *testing.T) {
+func TestInt64(t *testing.T) {
 	for _, tc := range []struct {
 		in   string
 		want int64
@@ -34,6 +34,8 @@ func TestNonNull(t *testing.T) {
 		{"1.5", validator.ErrKind},
 		{"9223372036854775808", validator.ErrKind},
 		{"1e19", validator.ErrKind},
+		{`"1"`, validator.ErrKind},
+		{`{"a":1}`, validator.ErrKind},
 		{"null", validator.ErrNull},
 	} {
 		var n Int64
@@ -43,50 +45,118 @@ func TestNonNull(t *testing.T) {
 		_, err := n.Value()
 		errorIs(t, err, tc.kind, tc.in)
 	}
+}
+
+func TestScalarKinds(t *testing.T) {
+	for _, tc := range []struct {
+		in, msg string
+		value   func([]byte) error
+	}{
+		{`1`, "want string, got number 1", func(b []byte) error {
+			var s String
+			nilError(t, json.Unmarshal(b, &s))
+			_, err := s.Value()
+
+			return err
+		}},
+		{`[1,2]`, "want string, got array", func(b []byte) error {
+			var s String
+			nilError(t, json.Unmarshal(b, &s))
+			_, err := s.Value()
+
+			return err
+		}},
+		{`"x"`, `want number, got string "x"`, func(b []byte) error {
+			var f Float64
+			nilError(t, json.Unmarshal(b, &f))
+			_, err := f.Value()
+
+			return err
+		}},
+		{`1e400`, "want number in the range of float64, got 1e400", func(b []byte) error {
+			var f Float64
+			nilError(t, json.Unmarshal(b, &f))
+			_, err := f.Value()
+
+			return err
+		}},
+		{`{}`, "want boolean, got object", func(b []byte) error {
+			var v Bool
+			nilError(t, json.Unmarshal(b, &v))
+			_, err := v.Value()
+
+			return err
+		}},
+		{`true`, "want integer, got boolean true", func(b []byte) error {
+			var n Int64
+			nilError(t, json.Unmarshal(b, &n))
+			_, err := n.Value()
+
+			return err
+		}},
+	} {
+		err := tc.value([]byte(tc.in))
+		errorIs(t, err, validator.ErrKind, tc.in)
+		equal(t, strings.HasSuffix(err.Error(), tc.msg), true, "%s: %v", tc.in, err)
+	}
+
+	var s String
+
+	nilError(t, json.Unmarshal([]byte(`"ok"`), &s))
+
+	got, err := s.Value()
+	nilError(t, err)
+	equal(t, got, "ok")
+
+	var b Bool
+
+	nilError(t, json.Unmarshal([]byte(`null`), &b))
+
+	_, err = b.Value()
+	errorIs(t, err, validator.ErrNull)
+}
+
+func TestExcerpt(t *testing.T) {
+	long := `"` + strings.Repeat("é", 40) + `"`
 
 	var n Int64
 
-	err := json.Unmarshal([]byte(`"1"`), &n)
-	_, ok := errors.AsType[*json.SemanticError](err)
-	equal(t, ok, true, "%T: %v", err, err)
+	nilError(t, json.Unmarshal([]byte(long), &n))
 
-	var s NonNull[string]
-
-	nilError(t, json.Unmarshal([]byte(`null`), &s))
-
-	_, err = s.Value()
-	errorIs(t, err, validator.ErrNull)
+	_, err := n.Value()
+	msg := err.Error()
+	equal(t, strings.HasSuffix(msg, "..."), true, msg)
+	equal(t, strings.Contains(msg, strings.Repeat("é", 20)), false, msg)
+	equal(t, strings.ContainsRune(msg, '�'), false, msg)
 }
 
 func TestNonNullSlice(t *testing.T) {
 	var s NonNullSlice[string]
 
-	nilError(t, json.Unmarshal([]byte(`["a",null,"c",null]`), &s))
+	nilError(t, json.Unmarshal([]byte(`["a",null,"c",1,{}]`), &s))
 
 	got, err := s.Value()
-	deepEqual(t, got, []string{"a", "", "c", ""})
+	deepEqual(t, got, []string{"a", "", "c", "", ""})
 	errorIs(t, err, validator.ErrNull)
-	deepEqual(t, validator.Pointers(err), []string{"/1", "/3"})
+	errorIs(t, err, validator.ErrKind)
+	deepEqual(t, validator.Pointers(err), []string{"/1", "/3", "/4"})
 
 	again, _ := s.Value()
 	equal(t, &again[0], &got[0])
 
-	nilError(t, json.Unmarshal([]byte(`null`), &s))
+	for _, in := range []string{`null`, `{"a":1}`, `"a"`} {
+		nilError(t, json.Unmarshal([]byte(in), &s), in)
 
-	got, err = s.Value()
-	equal(t, got == nil, true)
-	errorIs(t, err, validator.ErrNull)
-	deepEqual(t, validator.Pointers(err), []string{""})
+		got, err = s.Value()
+		equal(t, got == nil, true, in)
+		deepEqual(t, validator.Pointers(err), []string{""})
+	}
 
 	nilError(t, json.Unmarshal([]byte(`[]`), &s))
 
 	got, err = s.Value()
 	nilError(t, err)
 	equal(t, got != nil && len(got) == 0, true)
-
-	err = json.Unmarshal([]byte(`{}`), &s)
-	_, ok := errors.AsType[*json.SemanticError](err)
-	equal(t, ok, true, "%T: %v", err, err)
 
 	var ints NonNullSlice[int64]
 
@@ -100,45 +170,104 @@ func TestNonNullSlice(t *testing.T) {
 func TestNonNullMap(t *testing.T) {
 	var m NonNullMap[string, int64]
 
-	nilError(t, json.Unmarshal([]byte(`{"a":1,"b":null,"c":2.0,"d":2.5}`), &m))
+	nilError(t, json.Unmarshal([]byte(`{"a":1,"b":null,"c":2.0,"d":2.5,"e":"x"}`), &m))
 
 	got, err := m.Value()
-	deepEqual(t, got, map[string]int64{"a": 1, "b": 0, "c": 2, "d": 0})
-	deepEqual(t, validator.Pointers(err), []string{"/b", "/d"})
+	deepEqual(t, got, map[string]int64{"a": 1, "b": 0, "c": 2, "d": 0, "e": 0})
+	deepEqual(t, validator.Pointers(err), []string{"/b", "/d", "/e"})
 
-	nilError(t, json.Unmarshal([]byte(`null`), &m))
+	for _, in := range []string{`null`, `[1]`} {
+		nilError(t, json.Unmarshal([]byte(in), &m), in)
 
-	_, err = m.Value()
-	errorIs(t, err, validator.ErrNull)
+		_, err = m.Value()
+		deepEqual(t, validator.Pointers(err), []string{""})
+	}
+
+	err = json.Unmarshal([]byte(`{"a":1,"a":2}`), &m)
+	_, ok := errors.AsType[*jsontext.SyntacticError](err)
+	equal(t, ok, true, "%T: %v", err, err)
 }
 
-// holder decodes null itself, as a generated type or an opt.Option does.
-type holder struct {
-	null bool
+// checked decodes as a generated type does: it reads its whole value, keeps what it read and
+// returns an error of package validator for a value other than 1.
+type checked struct {
+	raw string
 }
 
-func (h *holder) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	h.null = dec.PeekKind() == jsontext.KindNull
+func (c *checked) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	raw, err := dec.ReadValue()
+	if err != nil {
+		return err
+	}
 
-	return dec.SkipValue()
+	c.raw = string(raw)
+	if c.raw != "1" {
+		return validator.Field(validator.New(validator.ErrConst, "want 1"), "inner")
+	}
+
+	return nil
 }
 
-func TestElementDecidesNull(t *testing.T) {
-	var hs NonNullSlice[holder]
+func TestDecoded(t *testing.T) {
+	var v NonNullMap[string, Decoded[checked]]
 
-	nilError(t, json.Unmarshal([]byte(`[null,1]`), &hs))
+	nilError(t, json.Unmarshal([]byte(`{"a":2,"b":1}`), &v))
 
-	got, err := hs.Value()
-	nilError(t, err)
-	deepEqual(t, got, []holder{{null: true}, {}})
+	m, err := MapOf[string](Decoded[checked].Value)(v)
+	deepEqual(t, m, map[string]checked{"a": {raw: "2"}, "b": {raw: "1"}})
+	deepEqual(t, validator.Pointers(err), []string{"/a/inner"})
 
-	var raws NonNullSlice[jsontext.Value]
+	var b NonNullSlice[checked]
 
-	nilError(t, json.Unmarshal([]byte(`[null,1]`), &raws))
+	nilError(t, json.Unmarshal([]byte(`[1,3]`), &b))
 
-	gotRaws, err := raws.Value()
-	nilError(t, err)
-	deepEqual(t, gotRaws, []jsontext.Value{jsontext.Value("null"), jsontext.Value("1")})
+	got, err := b.Value()
+	deepEqual(t, got, []checked{{raw: "1"}, {raw: "3"}})
+	deepEqual(t, validator.Pointers(err), []string{"/1/inner"})
+
+	var n Decoded[checked]
+
+	nilError(t, json.Unmarshal([]byte(`null`), &n))
+
+	one, err := n.Value()
+	equal(t, one.raw, "null")
+	errorIs(t, err, validator.ErrConst)
+}
+
+// failing returns an error of no package validator after reading its value.
+type failing struct{}
+
+func (*failing) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := dec.SkipValue(); err != nil {
+		return err
+	}
+
+	return errors.New("foreign")
+}
+
+// early returns an error of package validator before reading its value.
+type early struct{}
+
+func (*early) UnmarshalJSONFrom(*jsontext.Decoder) error {
+	return validator.New(validator.ErrKind, "early")
+}
+
+func TestDecodedFails(t *testing.T) {
+	var f Decoded[failing]
+
+	err := json.Unmarshal([]byte(`1`), &f)
+	equal(t, err != nil && strings.Contains(err.Error(), "foreign"), true, "%v", err)
+
+	var e NonNullSlice[early]
+
+	err = json.Unmarshal([]byte(`[1]`), &e)
+	equal(t, err != nil && strings.Contains(err.Error(), "early"), true, "%v", err)
+
+	var s NonNullSlice[string]
+
+	err = json.Unmarshal([]byte(`["a",`), &s)
+	_, ok := errors.AsType[*jsontext.SyntacticError](err)
+	equal(t, ok, true, "%T: %v", err, err)
 }
 
 func TestNested(t *testing.T) {
@@ -159,6 +288,32 @@ func TestNested(t *testing.T) {
 	deepEqual(t, validator.Pointers(err), []string{"/k/1", "/n"})
 }
 
+func TestMaxErrors(t *testing.T) {
+	const n = 3 * MaxErrors
+
+	in := "[" + strings.Repeat(`"x",`, n-1) + `"x"]`
+
+	var s NonNullSlice[int64]
+
+	nilError(t, json.Unmarshal([]byte(in), &s))
+
+	got, err := s.Value()
+	equal(t, len(got), n)
+	equal(t, len(validator.Under(err, "")), MaxErrors+1)
+
+	omitted := validator.At(err, "")
+	equal(t, len(omitted), 1)
+	errorIs(t, omitted[0], validator.ErrOmitted)
+	equal(t, strings.Contains(omitted[0].Error(), "200 more"), true, "%v", omitted[0])
+
+	var nested NonNullSlice[NonNullSlice[int64]]
+
+	nilError(t, json.Unmarshal([]byte(`[`+in+`]`), &nested))
+
+	_, err = SliceOf(NonNullSlice[int64].Value)(nested)
+	equal(t, len(validator.Under(err, "")), MaxErrors+1)
+}
+
 // TestKeepsDecoding decodes past every recorded value, so that an error after them in the
 // document is reported as well.
 func TestKeepsDecoding(t *testing.T) {
@@ -167,7 +322,7 @@ func TestKeepsDecoding(t *testing.T) {
 		B int
 	}
 
-	err := json.Unmarshal([]byte(`{"A":[null,null],"B":"x"}`), &v)
+	err := json.Unmarshal([]byte(`{"A":[null,2],"B":"x"}`), &v)
 	se, ok := errors.AsType[*json.SemanticError](err)
 	equal(t, ok, true, "%T: %v", err, err)
 	equal(t, string(se.JSONPointer), "/B")
@@ -194,9 +349,10 @@ func TestCallerOptions(t *testing.T) {
 	nilError(t, json.Unmarshal([]byte(`{"k":["a",1]}`), &m, opts))
 
 	got, err := MapOf[string](NonNullSlice[string].Value)(m)
-	nilError(t, err)
-	// The name decodes through the unmarshalers too, as the key of a map does.
-	deepEqual(t, got, map[string][]string{"caller": {"caller", "caller"}})
+	// The name decodes through the unmarshalers too, as the key of a map does. A value of
+	// another kind is recorded before the unmarshaler sees it.
+	deepEqual(t, got, map[string][]string{"caller": {"caller", ""}})
+	deepEqual(t, validator.Pointers(err), []string{"/caller/1"})
 
 	// The container reads the slice itself, so an unmarshaler of the slice does not see it.
 	slices := json.WithUnmarshalers(json.UnmarshalFromFunc(
@@ -214,9 +370,22 @@ func TestCallerOptions(t *testing.T) {
 	nilError(t, err)
 	deepEqual(t, gotSlice, []string{"a"})
 
-	err = json.Unmarshal([]byte(`["a",1]`), &s)
-	se, ok := errors.AsType[*json.SemanticError](err)
-	equal(t, ok, true, "%T: %v", err, err)
-	equal(t, string(se.JSONPointer), "/1")
-	equal(t, reflect.TypeFor[string](), se.GoType)
+	points := 0
+	caller := json.WithUnmarshalers(json.UnmarshalFromFunc(
+		func(dec *jsontext.Decoder, c *checked) error {
+			points++
+			c.raw = "caller"
+
+			return dec.SkipValue()
+		},
+	))
+
+	var d Decoded[checked]
+
+	nilError(t, json.Unmarshal([]byte(`5`), &d, caller))
+
+	gotChecked, err := d.Value()
+	nilError(t, err)
+	equal(t, gotChecked.raw, "caller")
+	equal(t, points, 1)
 }

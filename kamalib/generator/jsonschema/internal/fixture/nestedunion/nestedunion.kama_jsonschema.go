@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T08:18:09Z
+// generated: 2026-11-25T09:29:54Z
 
 package nestedunion
 
@@ -34,36 +34,63 @@ type Chains struct {
 //
 //kama:generated kama:jsonschema
 type chainsWire struct {
-	Any                  und.Und[Any]              `json:"any,omitzero"`
-	Tagged               und.Und[Tagged]           `json:"tagged,omitzero"`
-	Overlap              und.Und[Overlap]          `json:"overlap,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Any                  und.Und[wire.Decoded[Any]]
+	Tagged               und.Und[wire.Decoded[Tagged]]
+	Overlap              und.Und[wire.Decoded[Overlap]]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *chainsWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "any":
+			err = w.Any.UnmarshalJSONFrom(dec)
+		case "tagged":
+			err = w.Tagged.UnmarshalJSONFrom(dec)
+		case "overlap":
+			err = w.Overlap.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Chains) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w chainsWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = Chains{}
 		return err
 	}
 	var out Chains
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Any, w.Any), "any"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Tagged, w.Tagged), "tagged"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Overlap, w.Overlap), "overlap"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Any, w.Any, wire.Decoded[Any].Value), "any"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Tagged, w.Tagged, wire.Decoded[Tagged].Value), "tagged"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Overlap, w.Overlap, wire.Decoded[Overlap].Value), "overlap"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // Any is the first of AnyLeft, AnyRight that the value matches. It is
@@ -223,7 +250,7 @@ func (v Any) ValidateShallow(stopOnFirstError bool) error {
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches gives AnyUnknown, which
 // Validate reports. A member failing on a stub of the validator generator
-// fails the decoding, since the stub tells nothing of the value.
+// gives the error of the stub, since the stub tells nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -236,15 +263,19 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := anyAnyLeftProbe(raw).Validate(false); err != nil {
 			errs = append(errs, fmt.Errorf("member AnyLeft: %w", err))
 		} else {
-			var m AnyLeft
-			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+			var w wire.Decoded[AnyLeft]
+			if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 				errs = append(errs, fmt.Errorf("member AnyLeft: %w", err))
 			} else {
-				if err := (AnyAnyLeft{AnyLeft: m}).ValidateShallow(false); err != nil {
+				if m, err := wire.Decoded[AnyLeft].Value(w); err != nil {
 					errs = append(errs, fmt.Errorf("member AnyLeft: %w", err))
 				} else {
-					*v = Any{Kind: AnyAnyLeft{AnyLeft: m}}
-					return nil
+					if err := (AnyAnyLeft{AnyLeft: m}).ValidateShallow(false); err != nil {
+						errs = append(errs, fmt.Errorf("member AnyLeft: %w", err))
+					} else {
+						*v = Any{Kind: AnyAnyLeft{AnyLeft: m}}
+						return nil
+					}
 				}
 			}
 		}
@@ -253,23 +284,27 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := anyAnyRightProbe(raw).Validate(false); err != nil {
 			errs = append(errs, fmt.Errorf("member AnyRight: %w", err))
 		} else {
-			var m AnyRight
-			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+			var w wire.Decoded[AnyRight]
+			if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 				errs = append(errs, fmt.Errorf("member AnyRight: %w", err))
 			} else {
-				if err := (AnyAnyRight{AnyRight: m}).ValidateShallow(false); err != nil {
+				if m, err := wire.Decoded[AnyRight].Value(w); err != nil {
 					errs = append(errs, fmt.Errorf("member AnyRight: %w", err))
 				} else {
-					*v = Any{Kind: AnyAnyRight{AnyRight: m}}
-					return nil
+					if err := (AnyAnyRight{AnyRight: m}).ValidateShallow(false); err != nil {
+						errs = append(errs, fmt.Errorf("member AnyRight: %w", err))
+					} else {
+						*v = Any{Kind: AnyAnyRight{AnyRight: m}}
+						return nil
+					}
 				}
 			}
 		}
 	}
+	*v = Any{Kind: AnyUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	if err := kamaJsonschemaStubbed(errs); err != nil {
 		return err
 	}
-	*v = Any{Kind: AnyUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	return nil
 }
 
@@ -288,34 +323,59 @@ type AnyLeft struct {
 //
 //kama:generated kama:jsonschema
 type anyLeftWire struct {
-	C                    und.Und[Any]              `json:"c,omitzero"`
-	L                    und.Und[string]           `json:"l,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	C                    und.Und[wire.Decoded[Any]]
+	L                    und.Und[wire.String]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *anyLeftWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "c":
+			err = w.C.UnmarshalJSONFrom(dec)
+		case "l":
+			err = w.L.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w anyLeftWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = AnyLeft{}
 		return err
 	}
 	var out AnyLeft
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.C, w.C), "c"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.L, w.L), "l"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.C, w.C, wire.Decoded[Any].Value), "c"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.L, w.L, wire.String.Value), "l"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // AnyRight is generated from the schema at #/$defs/AnyRight.
@@ -333,34 +393,59 @@ type AnyRight struct {
 //
 //kama:generated kama:jsonschema
 type anyRightWire struct {
-	C                    und.Und[Any]              `json:"c,omitzero"`
-	R                    und.Und[string]           `json:"r,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	C                    und.Und[wire.Decoded[Any]]
+	R                    und.Und[wire.String]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *anyRightWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "c":
+			err = w.C.UnmarshalJSONFrom(dec)
+		case "r":
+			err = w.R.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *AnyRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w anyRightWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = AnyRight{}
 		return err
 	}
 	var out AnyRight
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.C, w.C), "c"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.R, w.R), "r"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.C, w.C, wire.Decoded[Any].Value), "c"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.R, w.R, wire.String.Value), "r"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // Tagged is exactly one of TaggedLeft, TaggedRight. It is generated from
@@ -521,8 +606,8 @@ func (v Tagged) ValidateShallow(stopOnFirstError bool) error {
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
 // TaggedUnknown, which Validate reports. A member failing on a stub of the
-// validator generator fails the decoding, since the stub tells nothing of
-// the value.
+// validator generator gives the error of the stub, since the stub tells
+// nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -537,18 +622,22 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := taggedTaggedLeftProbe(raw).Validate(false); err != nil {
 			errs = append(errs, fmt.Errorf("member TaggedLeft: %w", err))
 		} else {
-			var m TaggedLeft
-			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+			var w wire.Decoded[TaggedLeft]
+			if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 				errs = append(errs, fmt.Errorf("member TaggedLeft: %w", err))
 			} else {
-				if err := (TaggedTaggedLeft{TaggedLeft: m}).ValidateShallow(false); err != nil {
+				if m, err := wire.Decoded[TaggedLeft].Value(w); err != nil {
 					errs = append(errs, fmt.Errorf("member TaggedLeft: %w", err))
 				} else {
-					if found != nil {
-						*v = Tagged{Kind: TaggedUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, TaggedLeft", name)}}
-						return nil
+					if err := (TaggedTaggedLeft{TaggedLeft: m}).ValidateShallow(false); err != nil {
+						errs = append(errs, fmt.Errorf("member TaggedLeft: %w", err))
+					} else {
+						if found != nil {
+							*v = Tagged{Kind: TaggedUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, TaggedLeft", name)}}
+							return nil
+						}
+						found, name = TaggedTaggedLeft{TaggedLeft: m}, "TaggedLeft"
 					}
-					found, name = TaggedTaggedLeft{TaggedLeft: m}, "TaggedLeft"
 				}
 			}
 		}
@@ -557,27 +646,31 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := taggedTaggedRightProbe(raw).Validate(false); err != nil {
 			errs = append(errs, fmt.Errorf("member TaggedRight: %w", err))
 		} else {
-			var m TaggedRight
-			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+			var w wire.Decoded[TaggedRight]
+			if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 				errs = append(errs, fmt.Errorf("member TaggedRight: %w", err))
 			} else {
-				if err := (TaggedTaggedRight{TaggedRight: m}).ValidateShallow(false); err != nil {
+				if m, err := wire.Decoded[TaggedRight].Value(w); err != nil {
 					errs = append(errs, fmt.Errorf("member TaggedRight: %w", err))
 				} else {
-					if found != nil {
-						*v = Tagged{Kind: TaggedUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, TaggedRight", name)}}
-						return nil
+					if err := (TaggedTaggedRight{TaggedRight: m}).ValidateShallow(false); err != nil {
+						errs = append(errs, fmt.Errorf("member TaggedRight: %w", err))
+					} else {
+						if found != nil {
+							*v = Tagged{Kind: TaggedUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, TaggedRight", name)}}
+							return nil
+						}
+						found, name = TaggedTaggedRight{TaggedRight: m}, "TaggedRight"
 					}
-					found, name = TaggedTaggedRight{TaggedRight: m}, "TaggedRight"
 				}
 			}
 		}
 	}
 	if found == nil {
+		*v = Tagged{Kind: TaggedUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		if err := kamaJsonschemaStubbed(errs); err != nil {
 			return err
 		}
-		*v = Tagged{Kind: TaggedUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
 	*v = Tagged{Kind: found}
@@ -600,34 +693,59 @@ type TaggedLeft struct {
 //
 //kama:generated kama:jsonschema
 type taggedLeftWire struct {
-	Kind                 und.Und[string]           `json:"kind,omitzero"`
-	C                    und.Und[Tagged]           `json:"c,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Kind                 und.Und[wire.String]
+	C                    und.Und[wire.Decoded[Tagged]]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *taggedLeftWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "kind":
+			err = w.Kind.UnmarshalJSONFrom(dec)
+		case "c":
+			err = w.C.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w taggedLeftWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = TaggedLeft{}
 		return err
 	}
 	var out TaggedLeft
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Kind, w.Kind), "kind"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.C, w.C), "c"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Kind, w.Kind, wire.String.Value), "kind"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.C, w.C, wire.Decoded[Tagged].Value), "c"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // TaggedRight is generated from the schema at #/$defs/TaggedRight.
@@ -646,34 +764,59 @@ type TaggedRight struct {
 //
 //kama:generated kama:jsonschema
 type taggedRightWire struct {
-	Kind                 und.Und[string]           `json:"kind,omitzero"`
-	C                    und.Und[Tagged]           `json:"c,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Kind                 und.Und[wire.String]
+	C                    und.Und[wire.Decoded[Tagged]]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *taggedRightWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "kind":
+			err = w.Kind.UnmarshalJSONFrom(dec)
+		case "c":
+			err = w.C.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *TaggedRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w taggedRightWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = TaggedRight{}
 		return err
 	}
 	var out TaggedRight
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Kind, w.Kind), "kind"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.C, w.C), "c"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Kind, w.Kind, wire.String.Value), "kind"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.C, w.C, wire.Decoded[Tagged].Value), "c"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // Overlap is exactly one of OverlapLeft, OverlapRight. It is generated from
@@ -835,8 +978,8 @@ func (v Overlap) ValidateShallow(stopOnFirstError bool) error {
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
 // OverlapUnknown, which Validate reports. A member failing on a stub of the
-// validator generator fails the decoding, since the stub tells nothing of
-// the value.
+// validator generator gives the error of the stub, since the stub tells
+// nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -851,18 +994,22 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := overlapOverlapLeftProbe(raw).Validate(false); err != nil {
 			errs = append(errs, fmt.Errorf("member OverlapLeft: %w", err))
 		} else {
-			var m OverlapLeft
-			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+			var w wire.Decoded[OverlapLeft]
+			if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 				errs = append(errs, fmt.Errorf("member OverlapLeft: %w", err))
 			} else {
-				if err := (OverlapOverlapLeft{OverlapLeft: m}).ValidateShallow(false); err != nil {
+				if m, err := wire.Decoded[OverlapLeft].Value(w); err != nil {
 					errs = append(errs, fmt.Errorf("member OverlapLeft: %w", err))
 				} else {
-					if found != nil {
-						*v = Overlap{Kind: OverlapUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, OverlapLeft", name)}}
-						return nil
+					if err := (OverlapOverlapLeft{OverlapLeft: m}).ValidateShallow(false); err != nil {
+						errs = append(errs, fmt.Errorf("member OverlapLeft: %w", err))
+					} else {
+						if found != nil {
+							*v = Overlap{Kind: OverlapUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, OverlapLeft", name)}}
+							return nil
+						}
+						found, name = OverlapOverlapLeft{OverlapLeft: m}, "OverlapLeft"
 					}
-					found, name = OverlapOverlapLeft{OverlapLeft: m}, "OverlapLeft"
 				}
 			}
 		}
@@ -871,27 +1018,31 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := overlapOverlapRightProbe(raw).Validate(false); err != nil {
 			errs = append(errs, fmt.Errorf("member OverlapRight: %w", err))
 		} else {
-			var m OverlapRight
-			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+			var w wire.Decoded[OverlapRight]
+			if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 				errs = append(errs, fmt.Errorf("member OverlapRight: %w", err))
 			} else {
-				if err := (OverlapOverlapRight{OverlapRight: m}).ValidateShallow(false); err != nil {
+				if m, err := wire.Decoded[OverlapRight].Value(w); err != nil {
 					errs = append(errs, fmt.Errorf("member OverlapRight: %w", err))
 				} else {
-					if found != nil {
-						*v = Overlap{Kind: OverlapUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, OverlapRight", name)}}
-						return nil
+					if err := (OverlapOverlapRight{OverlapRight: m}).ValidateShallow(false); err != nil {
+						errs = append(errs, fmt.Errorf("member OverlapRight: %w", err))
+					} else {
+						if found != nil {
+							*v = Overlap{Kind: OverlapUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, OverlapRight", name)}}
+							return nil
+						}
+						found, name = OverlapOverlapRight{OverlapRight: m}, "OverlapRight"
 					}
-					found, name = OverlapOverlapRight{OverlapRight: m}, "OverlapRight"
 				}
 			}
 		}
 	}
 	if found == nil {
+		*v = Overlap{Kind: OverlapUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		if err := kamaJsonschemaStubbed(errs); err != nil {
 			return err
 		}
-		*v = Overlap{Kind: OverlapUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
 	*v = Overlap{Kind: found}
@@ -913,34 +1064,59 @@ type OverlapLeft struct {
 //
 //kama:generated kama:jsonschema
 type overlapLeftWire struct {
-	C                    und.Und[Overlap]          `json:"c,omitzero"`
-	L                    und.Und[string]           `json:"l,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	C                    und.Und[wire.Decoded[Overlap]]
+	L                    und.Und[wire.String]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *overlapLeftWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "c":
+			err = w.C.UnmarshalJSONFrom(dec)
+		case "l":
+			err = w.L.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w overlapLeftWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = OverlapLeft{}
 		return err
 	}
 	var out OverlapLeft
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.C, w.C), "c"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.L, w.L), "l"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.C, w.C, wire.Decoded[Overlap].Value), "c"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.L, w.L, wire.String.Value), "l"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // OverlapRight is generated from the schema at #/$defs/OverlapRight.
@@ -958,32 +1134,57 @@ type OverlapRight struct {
 //
 //kama:generated kama:jsonschema
 type overlapRightWire struct {
-	C                    und.Und[Overlap]          `json:"c,omitzero"`
-	L                    und.Und[wire.Int64]       `json:"l,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	C                    und.Und[wire.Decoded[Overlap]]
+	L                    und.Und[wire.Int64]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *overlapRightWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "c":
+			err = w.C.UnmarshalJSONFrom(dec)
+		case "l":
+			err = w.L.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *OverlapRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w overlapRightWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = OverlapRight{}
 		return err
 	}
 	var out OverlapRight
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.C, w.C), "c"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.C, w.C, wire.Decoded[Overlap].Value), "c"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.L, w.L, wire.Int64.Value), "l"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }

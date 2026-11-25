@@ -151,8 +151,7 @@ func buffers(body *ast.BlockStmt) bool {
 		case *ast.SelectorExpr:
 			found = found || fn.Sel.Name == "ReadValue" || fn.Sel.Name == "Unmarshal"
 		case *ast.Ident:
-			found = found || fn.Name == "kamaJsonschemaUnmarshal" ||
-				fn.Name == "kamaJsonschemaUnmarshalObject"
+			found = found || fn.Name == "kamaJsonschemaUnmarshal"
 		}
 
 		return true

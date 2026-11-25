@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T08:18:17Z
+// generated: 2026-11-25T09:13:04Z
 
 package nullableroot
 
@@ -27,16 +27,18 @@ func (v Code) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, opt.Option[CodeValue](v))
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type.
+// UnmarshalJSONFrom decodes v as its underlying type. It leaves in v what
+// decoded of a value it rejects.
 //
 //kama:generated kama:jsonschema
 func (v *Code) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out opt.Option[CodeValue]
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w opt.Option[wire.Decoded[CodeValue]]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
 		return err
 	}
+	out, err := kamaJsonschemaOptionOf(wire.Decoded[CodeValue].Value)(w)
 	*v = Code(out)
-	return nil
+	return err
 }
 
 // CodeValue is generated from the schema at #/anyOf/0.
@@ -53,22 +55,16 @@ func (v CodeValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, float64(v))
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// ValidateShallow.
+// UnmarshalJSONFrom decodes v as its underlying type. It leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *CodeValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var w wire.NonNull[float64]
+	var w wire.Float64
 	if err := kamaJsonschemaDecode(dec, &w); err != nil {
 		return err
 	}
-	out, err := wire.NonNull[float64].Value(w)
-	if err != nil {
-		return err
-	}
-	if err := CodeValue(out).ValidateShallow(false); err != nil {
-		return err
-	}
+	out, err := wire.Float64.Value(w)
 	*v = CodeValue(out)
-	return nil
+	return kamaJsonschemaChecked(err, CodeValue(out).ValidateShallow(false))
 }

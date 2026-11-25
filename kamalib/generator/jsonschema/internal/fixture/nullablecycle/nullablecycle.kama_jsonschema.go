@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T08:18:13Z
+// generated: 2026-11-25T09:13:00Z
 
 package nullablecycle
 
@@ -31,34 +31,61 @@ type Node struct {
 //
 //kama:generated kama:jsonschema
 type nodeWire struct {
-	Value                und.Und[wire.Int64]       `json:"value,omitzero"`
-	Parent               und.Und[Node]             `json:"parent,omitzero"`
-	Next                 und.Und[Node]             `json:"next,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Value                und.Und[wire.Int64]
+	Parent               und.Und[wire.Decoded[Node]]
+	Next                 und.Und[wire.Decoded[Node]]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *nodeWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "value":
+			err = w.Value.UnmarshalJSONFrom(dec)
+		case "parent":
+			err = w.Parent.UnmarshalJSONFrom(dec)
+		case "next":
+			err = w.Next.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w nodeWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = Node{}
 		return err
 	}
 	var out Node
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Value, w.Value, wire.Int64.Value), "value"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullablePointer(&out.Parent, w.Parent), "parent"))
-	kamaJsonschemaOptionalNullablePointer(&out.Next, w.Next)
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullablePointerOf(&out.Parent, w.Parent, wire.Decoded[Node].Value), "parent"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalNullablePointerOf(&out.Next, w.Next, wire.Decoded[Node].Value), "next"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }

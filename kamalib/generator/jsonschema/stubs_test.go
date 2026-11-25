@@ -105,7 +105,7 @@ func TestStubsWithoutValidate(t *testing.T) {
 // helper the generated decoders call, and one standing in the helpers file.
 func TestHelperNameConflict(t *testing.T) {
 	for _, files := range []map[string]string{
-		{"api/hand.go": "package api\n\nfunc kamaJsonschemaDecodeObject() {}\n"},
+		{"api/hand.go": "package api\n\nfunc kamaJsonschemaBeginObject() {}\n"},
 		{"api/zz_gen.helper.kama_jsonschema.go": "package api\n\nfunc hand() {}\n"},
 	} {
 		files["api/api.go"] = "package api\n"
@@ -122,7 +122,7 @@ func TestHelperNameOtherPackage(t *testing.T) {
 	f := procFs(t, map[string]string{
 		"api/api.go":               "package api\n",
 		"api/kama_jsonschema.json": procSchema,
-		"api/x_test.go":            "package api_test\n\nfunc kamaJsonschemaDecodeObject() {}\n",
+		"api/x_test.go":            "package api_test\n\nfunc kamaJsonschemaBeginObject() {}\n",
 	})
 
 	runProc(t, f, ProcParamPartial{}, gentest.Now())

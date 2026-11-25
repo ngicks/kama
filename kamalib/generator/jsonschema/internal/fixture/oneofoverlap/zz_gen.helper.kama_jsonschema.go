@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T08:18:24Z
+// generated: 2026-11-25T09:30:09Z
 
 package oneofoverlap
 
@@ -23,44 +23,61 @@ import (
 	"github.com/ngicks/option/und"
 )
 
-// kamaJsonschemaDecode decodes the next value of dec into v. An error is
-// located relative to that value. Below the root it comes in a
-// json.SemanticError naming the pointer of the value, as json names it only
-// for a method that failed before or after reading the whole value, so that
-// the decoder of the enclosing value locates it in turn.
+// kamaJsonschemaBeginObject reads the token starting an object. A value of
+// another kind is skipped without being kept and returned as a validation
+// error.
 //
 //kama:generated kama:jsonschema
-func kamaJsonschemaDecode(dec *jsontext.Decoder, v any) error {
-	depth := dec.StackDepth()
-	err := json.UnmarshalDecode(dec, v, kamaJsonschemaPinned)
-	se, ok := err.(*json.SemanticError)
-	if !ok || depth == 0 {
-		return kamaJsonschemaLocate(err, depth)
+func kamaJsonschemaBeginObject(dec *jsontext.Decoder) error {
+	k := dec.PeekKind()
+	if k == jsontext.KindBeginObject {
+		_, err := dec.ReadToken()
+		return err
 	}
-	var base jsontext.Pointer
-	n := 0
-	for tok := range se.JSONPointer.Tokens() {
-		if n == depth {
-			break
-		}
-		base = base.AppendToken(tok)
-		n++
+	if err := dec.SkipValue(); err != nil {
+		return err
 	}
-	return &json.SemanticError{JSONPointer: base, Err: kamaJsonschemaLocate(err, depth)}
+	return validator.New(validator.ErrKind, "want object, got %s", kamaJsonschemaKindName(k))
 }
 
-// kamaJsonschemaDecodeObject is kamaJsonschemaDecode for a value that must
-// be a JSON object.
+// kamaJsonschemaChecked joins err, the problems decoding a value recorded,
+// with verr, the error of ValidateShallow of the value, leaving out what
+// verr reports at or below a value that failed to decode. Such a value
+// holds no value of its own, so its validation tells nothing. A value that
+// failed to decode as a whole keeps no validation error.
 //
 //kama:generated kama:jsonschema
-func kamaJsonschemaDecodeObject(dec *jsontext.Decoder, v any) error {
-	if k := dec.PeekKind(); k != jsontext.KindBeginObject {
-		if err := dec.SkipValue(); err != nil {
-			return err
-		}
-		return validator.New(validator.ErrKind, "want object, got %s", kamaJsonschemaKindName(k))
+func kamaJsonschemaChecked(err, verr error) error {
+	if err == nil || verr == nil {
+		return validator.Join(err, verr)
 	}
-	return kamaJsonschemaDecode(dec, v)
+	failed := validator.Pointers(err)
+	kept := []error{err}
+	for _, e := range validator.Under(verr, "") {
+		p := validator.Pointers(e)[0]
+		if !slices.ContainsFunc(failed, func(f string) bool {
+			return p == f || strings.HasPrefix(p, f+"/")
+		}) {
+			kept = append(kept, e)
+		}
+	}
+	return validator.Join(kept...)
+}
+
+// kamaJsonschemaExtra decodes the next value of dec into the member name of
+// *m, a member no property declares.
+//
+//kama:generated kama:jsonschema
+func kamaJsonschemaExtra[V any](dec *jsontext.Decoder, m *map[string]V, name string) error {
+	var v V
+	if err := json.UnmarshalDecode(dec, &v, kamaJsonschemaPinned); err != nil {
+		return err
+	}
+	if *m == nil {
+		*m = map[string]V{}
+	}
+	(*m)[name] = v
+	return nil
 }
 
 // kamaJsonschemaKindName names the JSON type of a value of kind k.
@@ -115,6 +132,24 @@ func kamaJsonschemaLocate(err error, depth int) error {
 	return leaf
 }
 
+// kamaJsonschemaName reads the name of an object member. The name is valid
+// until dec reads again. Only a name holding an escape is copied.
+//
+//kama:generated kama:jsonschema
+func kamaJsonschemaName(dec *jsontext.Decoder) ([]byte, error) {
+	raw, err := dec.ReadValue()
+	if err != nil {
+		return nil, err
+	}
+	if bytes.IndexByte(raw, '\\') < 0 {
+		return raw[1 : len(raw)-1], nil
+	}
+	// dec has read the name, so the only error left is invalid UTF-8 its options allow,
+	// which the name holds replaced as json/v2 holds it.
+	name, _ := jsontext.AppendUnquote(nil, raw)
+	return name, nil
+}
+
 // kamaJsonschemaNoMatch reports a value no member of a union decodes. kind
 // tells a oneOf from an anyOf, and errs holds why each member failed.
 //
@@ -123,16 +158,24 @@ func kamaJsonschemaNoMatch(kind error, errs []error) error {
 	return validator.Join(append([]error{validator.New(kind, "value matches no member")}, errs...)...)
 }
 
-// kamaJsonschemaOptional sets dst to the value of an optional, non-nullable
-// member. None means absent.
+// kamaJsonschemaOptionalOf is kamaJsonschemaOptional for a member whose
+// wire field conv converts.
 //
 //kama:generated kama:jsonschema
-func kamaJsonschemaOptional[T any](dst *opt.Option[T], u und.Und[T]) error {
+func kamaJsonschemaOptionalOf[W, T any](
+	dst *opt.Option[T],
+	u und.Und[W],
+	conv func(W) (T, error),
+) error {
 	if u.IsNull() {
 		return validator.New(validator.ErrNull, "member is null")
 	}
-	*dst = u.Flatten()
-	return nil
+	if !u.IsDefined() {
+		return nil
+	}
+	v, err := conv(u.Value())
+	*dst = opt.Some(v)
+	return err
 }
 
 // kamaJsonschemaPinned are the options a generated decoder decodes with

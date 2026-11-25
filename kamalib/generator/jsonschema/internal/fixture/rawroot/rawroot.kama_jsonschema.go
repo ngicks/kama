@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:58:03Z
+// generated: 2026-11-25T09:13:21Z
 
 package rawroot
 
@@ -34,8 +34,8 @@ func (v Loose) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, jsontext.Value(v))
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// ValidateShallow.
+// UnmarshalJSONFrom decodes v as its underlying type. It leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Loose) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -43,11 +43,9 @@ func (v *Loose) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := Loose(out).ValidateShallow(false); err != nil {
-		return err
-	}
+	var err error
 	*v = Loose(out)
-	return nil
+	return kamaJsonschemaChecked(err, Loose(out).ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -72,8 +70,8 @@ func (v Mixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, jsontext.Value(v))
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// ValidateShallow.
+// UnmarshalJSONFrom decodes v as its underlying type. It leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -81,11 +79,9 @@ func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := Mixed(out).ValidateShallow(false); err != nil {
-		return err
-	}
+	var err error
 	*v = Mixed(out)
-	return nil
+	return kamaJsonschemaChecked(err, Mixed(out).ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -111,8 +107,8 @@ func (v Pair) MarshalJSONTo(enc *jsontext.Encoder) error {
 	return json.MarshalEncode(enc, jsontext.Value(v))
 }
 
-// UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// ValidateShallow.
+// UnmarshalJSONFrom decodes v as its underlying type. It leaves in v what
+// decoded of a value it rejects. The value must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Pair) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -120,11 +116,9 @@ func (v *Pair) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if err := kamaJsonschemaDecode(dec, &out); err != nil {
 		return err
 	}
-	if err := Pair(out).ValidateShallow(false); err != nil {
-		return err
-	}
+	var err error
 	*v = Pair(out)
-	return nil
+	return kamaJsonschemaChecked(err, Pair(out).ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v

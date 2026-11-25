@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:11:27Z
+// generated: 2026-11-25T09:30:09Z
 
 package oneofoverlap
 
@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -141,8 +142,8 @@ func (v Either) ValidateShallow(stopOnFirstError bool) error {
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches, or two members match, gives
 // EitherUnknown, which Validate reports. A member failing on a stub of the
-// validator generator fails the decoding, since the stub tells nothing of
-// the value.
+// validator generator gives the error of the stub, since the stub tells
+// nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -154,42 +155,50 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var name string
 	var errs []error
 	if raw.Kind() == jsontext.KindBeginObject {
-		var m EitherLeftValue
-		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+		var w wire.Decoded[EitherLeftValue]
+		if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 			errs = append(errs, fmt.Errorf("member Left: %w", err))
 		} else {
-			if err := (EitherLeft{Left: m}).ValidateShallow(false); err != nil {
+			if m, err := wire.Decoded[EitherLeftValue].Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Left: %w", err))
 			} else {
-				if found != nil {
-					*v = Either{Kind: EitherUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Left", name)}}
-					return nil
+				if err := (EitherLeft{Left: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member Left: %w", err))
+				} else {
+					if found != nil {
+						*v = Either{Kind: EitherUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Left", name)}}
+						return nil
+					}
+					found, name = EitherLeft{Left: m}, "Left"
 				}
-				found, name = EitherLeft{Left: m}, "Left"
 			}
 		}
 	}
 	if raw.Kind() == jsontext.KindBeginObject {
-		var m EitherRightValue
-		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+		var w wire.Decoded[EitherRightValue]
+		if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 			errs = append(errs, fmt.Errorf("member Right: %w", err))
 		} else {
-			if err := (EitherRight{Right: m}).ValidateShallow(false); err != nil {
+			if m, err := wire.Decoded[EitherRightValue].Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Right: %w", err))
 			} else {
-				if found != nil {
-					*v = Either{Kind: EitherUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Right", name)}}
-					return nil
+				if err := (EitherRight{Right: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member Right: %w", err))
+				} else {
+					if found != nil {
+						*v = Either{Kind: EitherUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Right", name)}}
+						return nil
+					}
+					found, name = EitherRight{Right: m}, "Right"
 				}
-				found, name = EitherRight{Right: m}, "Right"
 			}
 		}
 	}
 	if found == nil {
+		*v = Either{Kind: EitherUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		if err := kamaJsonschemaStubbed(errs); err != nil {
 			return err
 		}
-		*v = Either{Kind: EitherUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOneOf, errs)}}
 		return nil
 	}
 	*v = Either{Kind: found}
@@ -211,32 +220,55 @@ type EitherLeftValue struct {
 //
 //kama:generated kama:jsonschema
 type eitherLeftValueWire struct {
-	L                    und.Und[string]           `json:"l,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	L                    und.Und[wire.String]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *eitherLeftValueWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "l":
+			err = w.L.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w eitherLeftValueWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = EitherLeftValue{}
 		return err
 	}
 	var out EitherLeftValue
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.L, w.L), "l"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.L, w.L, wire.String.Value), "l"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // EitherRightValue is generated from the schema at #/oneOf/1.
@@ -254,30 +286,53 @@ type EitherRightValue struct {
 //
 //kama:generated kama:jsonschema
 type eitherRightValueWire struct {
-	R                    und.Und[string]           `json:"r,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	R                    und.Und[wire.String]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *eitherRightValueWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "r":
+			err = w.R.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *EitherRightValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w eitherRightValueWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = EitherRightValue{}
 		return err
 	}
 	var out EitherRightValue
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.R, w.R), "r"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.R, w.R, wire.String.Value), "r"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }

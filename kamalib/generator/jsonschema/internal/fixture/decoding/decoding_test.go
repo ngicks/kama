@@ -227,14 +227,20 @@ func TestCallerUnmarshalers(t *testing.T) {
 	))
 
 	r = Root{}
-	assert.NilError(t, json.Unmarshal(doc(map[string]string{"arr": `["a",1]`}), &r, strs))
+	assert.NilError(t, json.Unmarshal(doc(map[string]string{"arr": `["a","b"]`}), &r, strs))
 	assert.DeepEqual(t, r.Arr, []string{"caller", "caller"})
 	assert.Equal(t, r.S, "caller")
 
-	// A null the schema rejects is recorded before an unmarshaler sees it.
-	err := decodeErr(doc(map[string]string{"arr": `["a",null]`}), strs)
-	assert.ErrorIs(t, err, validator.ErrNull)
-	assert.DeepEqual(t, validator.Pointers(err), []string{"/arr/1"})
+	// A null and a value of another kind the schema rejects are recorded before an
+	// unmarshaler sees them.
+	for _, c := range []struct {
+		arr string
+		is  error
+	}{{`["a",null]`, validator.ErrNull}, {`["a",1]`, validator.ErrKind}} {
+		err := decodeErr(doc(map[string]string{"arr": c.arr}), strs)
+		assert.ErrorIs(t, err, c.is)
+		assert.DeepEqual(t, validator.Pointers(err), []string{"/arr/1"})
+	}
 }
 
 // TestReportsEveryNull reports every null in a position that rejects it
@@ -474,4 +480,158 @@ func TestRequiredTwice(t *testing.T) {
 
 	_, ok := r.Twice.Value().Kind.(RootTwiceObject)
 	assert.Assert(t, ok, "%T", r.Twice.Value().Kind)
+}
+
+// problems is a document holding a value of the wrong kind in every
+// position, nulls, a missing required member and failing validations.
+var problems = doc(map[string]string{
+	"s":     `5`,
+	"n":     "",
+	"b":     `null`,
+	"arr":   `["a",2,null]`,
+	"m":     `{"k":"x","j":1}`,
+	"obj":   `{"x":"bad","y":1}`,
+	"nobj":  `{"x":-1,"y":1}`,
+	"items": `[{"x":1,"y":1},{"x":-1,"y":[1]}]`,
+	"dict":  `{"k":3}`,
+	"u":     `[1]`,
+	"all":   `{"p":{"x":"z","y":1},"q":1}`,
+	"twice": `true`,
+})
+
+// problemPointers locates every problem of problems.
+var problemPointers = []string{
+	"/all/p/x", "/all/q", "/arr/1", "/arr/2", "/b", "/dict/k", "/items/1/x", "/items/1/y",
+	"/m/k", "/n", "/nobj/x", "/obj/x", "/s", "/twice", "/u",
+}
+
+// TestEveryProblemAtOnce reports every problem of a document in one error,
+// each at its path, whatever its depth and kind.
+func TestEveryProblemAtOnce(t *testing.T) {
+	err := decodeErr(problems)
+	assert.DeepEqual(t, sortedPointers(err), problemPointers)
+
+	for _, c := range []struct {
+		ptr string
+		is  error
+	}{
+		{"/s", validator.ErrKind}, {"/n", validator.ErrRequired}, {"/b", validator.ErrNull},
+		{"/arr/1", validator.ErrKind}, {"/arr/2", validator.ErrNull}, {"/m/k", validator.ErrKind},
+		{"/obj/x", validator.ErrKind}, {"/nobj/x", validator.ErrCompare},
+		{"/items/1/x", validator.ErrCompare}, {"/items/1/y", validator.ErrKind},
+		{"/dict/k", validator.ErrKind}, {"/u", validator.ErrOneOf},
+		{"/all/p/x", validator.ErrKind}, {"/all/q", validator.ErrKind},
+		{"/twice", validator.ErrOneOf},
+	} {
+		at := validator.At(err, c.ptr)
+		assert.Equal(t, len(at), 1, c.ptr)
+		assert.ErrorIs(t, at[0], c.is, c.ptr)
+	}
+
+	for _, opts := range []json.Options{
+		jsonv1.DefaultOptionsV1(),
+		json.MatchCaseInsensitiveNames(true),
+	} {
+		assert.DeepEqual(t, sortedPointers(decodeErr(problems, opts)), problemPointers)
+	}
+
+	var r Root
+
+	err = jsonv1.Unmarshal(problems, &r)
+	_, ok := errors.AsType[*validator.Error](err)
+	assert.Assert(t, ok, "%T: %v", err, err)
+	assert.DeepEqual(t, sortedPointers(err), problemPointers)
+
+	err = decodeErr([]byte(`[1]`))
+	assert.ErrorIs(t, err, validator.ErrKind)
+	assert.DeepEqual(t, validator.Pointers(err), []string{""})
+}
+
+// TestPartialValue keeps in the value what decoded of a document that
+// fails.
+func TestPartialValue(t *testing.T) {
+	var r Root
+
+	assert.Assert(t, json.Unmarshal(problems, &r) != nil)
+
+	assert.Equal(t, r.S, "")
+	assert.DeepEqual(t, r.Arr, []string{"a", "", ""})
+	assert.DeepEqual(t, r.M, map[string]int64{"k": 0, "j": 1})
+	assert.Equal(t, r.Obj.Y, int64(1))
+	assert.Equal(t, r.Nobj.Value().X, int64(-1))
+	assert.Equal(t, r.Items.Value()[1].X, int64(-1))
+	assert.Equal(t, r.All.Value().Option1.P.Value().Y, int64(1))
+	assert.Equal(t, r.I, int64(1))
+
+	unknown, ok := r.U.Value().Kind.(RootUUnknown)
+	assert.Assert(t, ok, "%T", r.U.Value().Kind)
+	assert.Equal(t, string(unknown.Value), `[1]`)
+
+	r = Root{S: "kept", I: 1}
+	assert.Assert(t, json.Unmarshal([]byte(`"x"`), &r) != nil)
+	assert.Equal(t, r.S, "")
+	assert.Equal(t, r.I, int64(0))
+}
+
+// TestDecoderUsable reads a valid document from the stream a document
+// with problems failed on.
+func TestDecoderUsable(t *testing.T) {
+	dec := jsontext.NewDecoder(strings.NewReader(string(problems) + string(doc(nil))))
+
+	var r Root
+
+	assert.Assert(t, json.UnmarshalDecode(dec, &r) != nil)
+	assert.NilError(t, json.UnmarshalDecode(dec, &r))
+	assert.Equal(t, r.S, "x")
+}
+
+// TestMalformedFails fails on input it cannot read past with the error of
+// json, whichever value it stands in, a value skipped for its kind
+// included.
+func TestMalformedFails(t *testing.T) {
+	for _, in := range []string{
+		`{"s":"x",`,
+		`{"s":[1,}`,
+		`{"obj":{"x":1,"y":}}`,
+		`{"u":{"x":1`,
+		`{"s":"x","s":"y"}`,
+		`{"arr":["a",]}`,
+	} {
+		var r Root
+
+		err := json.Unmarshal([]byte(in), &r)
+		_, ok := errors.AsType[*jsontext.SyntacticError](err)
+		assert.Assert(t, ok, "%s: %T: %v", in, err, err)
+	}
+}
+
+// TestUnionMemberRecorded rejects a union member whose value decodes only
+// with problems recorded, and keeps the reason of the member.
+func TestUnionMemberRecorded(t *testing.T) {
+	var r Root
+
+	err := json.Unmarshal(doc(map[string]string{"twice": `{"x":"bad"}`}), &r)
+	assert.Assert(t, err != nil)
+
+	unknown, ok := r.Twice.Value().Kind.(RootTwiceUnknown)
+	assert.Assert(t, ok, "%T", r.Twice.Value().Kind)
+	assert.Equal(t, string(unknown.Value), `{"x":"bad"}`)
+
+	err = decodeErr(doc(map[string]string{"twice": `{"x":"bad"}`}))
+	assert.ErrorIs(t, err, validator.ErrOneOf)
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/twice", "/twice/x"})
+	assert.ErrorContains(t, err, "member Object")
+	assert.ErrorContains(t, err, "want integer, got string")
+}
+
+// TestInvalidUTF8Name keeps a member whose name holds an escape and
+// invalid UTF-8 when the caller allows invalid UTF-8.
+func TestInvalidUTF8Name(t *testing.T) {
+	base := doc(nil)
+	b := append(append(base[:len(base)-1:len(base)-1], ",\"a\\n\xff\":1"...), '}')
+
+	var r Root
+
+	assert.NilError(t, json.Unmarshal(b, &r, jsontext.AllowInvalidUTF8(true)))
+	assert.Equal(t, len(r.AdditionalProperties), 1)
 }

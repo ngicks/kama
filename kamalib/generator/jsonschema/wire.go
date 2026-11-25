@@ -9,29 +9,27 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
-// A decoder decodes a value into a type of package wire where its Go type cannot tell what the
-// schema rejects: a null where encoding/json/v2 decodes it into the zero value, and a number
-// such as 1.0 for an int64. The wire type records such a value, and the conversion to the Go
-// type reports it with the other errors of the value. wireType spells the type a value decodes
-// into and wireConv the function converting it into the Go type of the value.
+// A decoder decodes a value into a type of package wire, which records what the schema
+// rejects instead of failing: a value of a kind the Go type cannot hold, a null where
+// encoding/json/v2 decodes it into the zero value, a number such as 1.5 for an int64, and the
+// error of a nested value of a generated type. The conversion to the Go type reports what it
+// recorded with the other errors of the value. wireType spells the type a value decodes into
+// and wireConv the function converting it into the Go type of the value.
 
-// slot is where a decoded value sits, which decides who tells its null apart.
+// slot is where a decoded value sits, which decides who records its problems.
 type slot int
 
 const (
-	// slotMember is a value inside und.Und or opt.Option, or the member of a union, which never
-	// sees null unless the member admits it.
+	// slotMember is a value on its own: inside und.Und or opt.Option, the member of a union,
+	// the value of a defined type or of a member no property declares. Its wire type records
+	// its problems.
 	slotMember slot = iota
-	// slotAlone is a value nothing around rejects null for: the value of a defined type and
-	// of a member no property declares.
-	slotAlone
 	// slotElem is an element of a wire.NonNullSlice or a value of a wire.NonNullMap, which the
-	// container decodes and records null for.
+	// container decodes and records the problems of.
 	slotElem
 )
 
-// wireType spells the type the schema at ptr decodes into at the slot at. It is the Go type of
-// the schema where that type tells everything the schema rejects.
+// wireType spells the type the schema at ptr decodes into at the slot at.
 func wireType(doc *jsonschema.Schema, opts Options, ptr string, at slot) genExpr {
 	return func(c genCtx) (string, error) { return wireTypeSeen(c, doc, opts, ptr, at, nil) }
 }
@@ -53,26 +51,26 @@ func elemWireConv(doc *jsonschema.Schema, opts Options, ptr string, at slot) gen
 }
 
 // builtinWire is wireType for the built-in Go type builtinType spells.
-func builtinWire(doc *jsonschema.Schema, opts Options, ptr string, at slot) genExpr {
+func builtinWire(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	return func(c genCtx) (string, error) {
 		r, s, err := resolved(doc, ptr)
 		if err != nil {
 			return "", err
 		}
 
-		return builtinWireSeen(c, doc, opts, r, s, at, []string{r})
+		return builtinWireSeen(c, doc, opts, r, s, slotMember, []string{r})
 	}
 }
 
 // builtinConv is wireConv for builtinWire.
-func builtinConv(doc *jsonschema.Schema, opts Options, ptr string, at slot) genExpr {
+func builtinConv(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	return func(c genCtx) (string, error) {
 		r, s, err := resolved(doc, ptr)
 		if err != nil {
 			return "", err
 		}
 
-		return builtinConvSeen(c, doc, opts, r, s, at, []string{r})
+		return builtinConvSeen(c, doc, opts, r, s, slotMember, []string{r})
 	}
 }
 
@@ -114,8 +112,15 @@ func wireTypeSeen(
 	seen = append(seen, r)
 
 	switch {
-	case s.Bool.IsSome() || declares(doc, r) || r == "" && raw(doc, r):
+	case s.Bool.IsSome():
 		return goTypeSeen(c, doc, opts, r, seen[:len(seen)-1])
+	case declares(doc, r) || r == "" && raw(doc, r):
+		t, err := goTypeSeen(c, doc, opts, r, seen[:len(seen)-1])
+		if err != nil || at == slotElem {
+			return t, err
+		}
+
+		return lang.Expr("%s[%s]", q(wirePath, "Decoded"), t)(c)
 	case nullableUnion(doc, r):
 		return wireTypeSeen(c, doc, opts, valueMember(doc, r), at, seen)
 	}
@@ -143,8 +148,16 @@ func convSeen(
 	seen = append(seen, r)
 
 	switch {
-	case s.Bool.IsSome() || declares(doc, r) || r == "" && raw(doc, r):
+	case s.Bool.IsSome():
 		return "", nil
+	case declares(doc, r) || r == "" && raw(doc, r):
+		if at == slotElem {
+			return "", nil
+		}
+
+		t, err := wireTypeSeen(c, doc, opts, r, at, seen[:len(seen)-1])
+
+		return t + ".Value", err
 	case nullableUnion(doc, r):
 		return convSeen(c, doc, opts, valueMember(doc, r), at, seen)
 	}
@@ -192,7 +205,8 @@ func elemConvSeen(
 	return "kamaJsonschemaOptionOf(" + conv + ")", nil
 }
 
-// builtinWireSeen is wireType for the built-in Go type of the schema s at r.
+// builtinWireSeen is wireType for the built-in Go type of the schema s at r. An element of a
+// container is of the built-in type itself, since the container records its problems.
 func builtinWireSeen(
 	c genCtx,
 	doc *jsonschema.Schema,
@@ -208,26 +222,14 @@ func builtinWireSeen(
 	}
 
 	switch kind {
-	case "string", "number", "boolean":
-		t, err := builtinTypeSeen(c, doc, opts, r, s, seen)
-		if err != nil || at != slotAlone {
-			return t, err
-		}
-
-		return lang.Expr("%s[%s]", q(wirePath, "NonNull"), t)(c)
-	case "integer":
+	case "string", "number", "boolean", "integer":
 		if at == slotElem {
-			return "int64", nil
-		}
-
-		return q(wirePath, "Int64")(c)
-	case "array", "object":
-		elem, ok := containerElem(doc, r, s, kind)
-
-		wired, err := containerWired(c, doc, opts, elem, ok, at, seen)
-		if err != nil || !wired {
 			return builtinTypeSeen(c, doc, opts, r, s, seen)
 		}
+
+		return q(wirePath, scalarWire(kind))(c)
+	case "array", "object":
+		elem, ok := containerElem(doc, r, s, kind)
 
 		e, err := q(jsontextPath, "Value")(c)
 		if ok {
@@ -248,6 +250,20 @@ func builtinWireSeen(
 	return builtinTypeSeen(c, doc, opts, r, s, seen)
 }
 
+// scalarWire names the type of package wire of a scalar of the JSON type kind.
+func scalarWire(kind string) string {
+	switch kind {
+	case "string":
+		return "String"
+	case "number":
+		return "Float64"
+	case "boolean":
+		return "Bool"
+	}
+
+	return "Int64"
+}
+
 // builtinConvSeen is wireConv for builtinWireSeen.
 func builtinConvSeen(
 	c genCtx,
@@ -264,21 +280,12 @@ func builtinConvSeen(
 	}
 
 	switch kind {
-	case "string", "number", "boolean":
-		if at != slotAlone {
-			return "", nil
-		}
-	case "integer":
+	case "string", "number", "boolean", "integer":
 		if at == slotElem {
 			return "", nil
 		}
 	case "array", "object":
 		elem, ok := containerElem(doc, r, s, kind)
-
-		wired, err := containerWired(c, doc, opts, elem, ok, at, seen)
-		if err != nil || !wired {
-			return "", err
-		}
 
 		conv := ""
 		if ok {
@@ -345,40 +352,4 @@ func containerElem(
 	}
 
 	return child(r, "items"), true
-}
-
-// containerWired reports whether a slice or a map of the elements of the schema at elem, or
-// of raw JSON text when typed is false, decodes into a wire container at the slot at: where
-// nothing around rejects a null container, where its elements cannot tell null apart, or where
-// they decode into a wire type.
-func containerWired(
-	c genCtx,
-	doc *jsonschema.Schema,
-	opts Options,
-	elem string,
-	typed bool,
-	at slot,
-	seen []string,
-) (bool, error) {
-	switch {
-	case at == slotAlone:
-		return true, nil
-	case !typed:
-		return false, nil
-	case !decidesNull(doc, elem):
-		return true, nil
-	}
-
-	conv, err := elemConvSeen(c, doc, opts, elem, slotElem, seen)
-
-	return conv != "", err
-}
-
-// decidesNull reports whether the Go type of a value of the schema at ptr outside an object
-// property tells null apart itself: an opt.Option, raw JSON text or a type the generator
-// declares, whose decoder rejects or keeps null.
-func decidesNull(doc *jsonschema.Schema, ptr string) bool {
-	r, s, err := resolved(doc, ptr)
-
-	return err == nil && (s.Bool.IsSome() || nullable(doc, ptr) || declares(doc, r) || raw(doc, r))
 }

@@ -199,23 +199,15 @@ func validatedDoc(text string, args []string) genExpr {
 	)
 }
 
-// validateStep returns the statement returning the error of
-// ValidateShallow of the value v when the decoders validate, else nothing.
-// The nested values of v decoded through decoders that validated them, so
-// validating them again would cost each level of a recursive value the
-// whole value below it. The method is called on the type of v, which the
-// validator generator gives it for the directive decoded, so no interface
-// boxes v.
-func validateStep(opts Options, v genExpr) genStep {
+// checkedReturn returns the statement of a decoder returning err, the
+// problems decoding recorded, and with Options.Validate those
+// ValidateShallow of v reports outside the values that failed to decode.
+func checkedReturn(opts Options, err, v genExpr) genStep {
 	if !opts.Validate {
-		return lang.Steps()
+		return lang.Stmt("return %s", err)
 	}
 
-	return lang.If(
-		lang.Expr("err := %s.ValidateShallow(false); err != nil", v),
-		lang.Stmt("return err"),
-		nil,
-	)
+	return lang.Stmt("return kamaJsonschemaChecked(%s, %s.ValidateShallow(false))", err, v)
 }
 
 // decodedArgs returns args followed by decoded when the decoders validate.

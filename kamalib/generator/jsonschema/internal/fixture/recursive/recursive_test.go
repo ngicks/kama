@@ -172,3 +172,21 @@ func canonical(t *testing.T, b []byte) string {
 
 	return string(v)
 }
+
+// TestPartialRequiredPointer keeps a required member held by pointer that
+// failed to decode, so that the partial value marshals.
+func TestPartialRequiredPointer(t *testing.T) {
+	var v Forest
+
+	err := json.Unmarshal([]byte(`{"trees":[],"chain":{"name":"c","link":{"label":1}}}`), &v)
+
+	se, ok := errors.AsType[*json.SemanticError](err)
+	assert.Assert(t, ok, "%T: %v", err, err)
+	assert.DeepEqual(t, validator.Pointers(se.Err), []string{"/chain/link/label"})
+	assert.ErrorIs(t, se.Err, validator.ErrKind)
+	assert.Assert(t, v.Chain.Link != nil)
+	assert.Equal(t, v.Chain.Link.Label, "")
+
+	_, err = json.Marshal(v)
+	assert.NilError(t, err)
+}

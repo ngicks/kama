@@ -24,7 +24,8 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	underlying := definedType(doc, opts, ptr)
 	args, marked := definedArgs(doc, opts, ptr)
 
-	decodeDoc := "UnmarshalJSONFrom decodes v as its underlying type."
+	decodeDoc := "UnmarshalJSONFrom decodes v as its underlying type. It leaves in v what " +
+		"decoded of a value it rejects."
 	decode := []genStep{converted(
 		definedConv(doc, opts, ptr),
 		func(conv genExpr) genStep {
@@ -36,7 +37,6 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 					nil,
 				),
 				lang.Stmt("out, err := %s(w)", conv),
-				lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
 			)
 		},
 		func(genExpr) genStep {
@@ -47,6 +47,7 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 					lang.Stmt("return err"),
 					nil,
 				),
+				lang.Stmt("var err error"),
 			)
 		},
 	)}
@@ -54,21 +55,20 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	text := typeDoc(doc, ptr, name+" is generated from the schema at #"+ptr+".")
 	declDoc := docComment(text)
 
+	// checks holds the validations of the value, which kamaJsonschemaChecked
+	// joins with the problems of decoding.
+	var checks []genExpr
+
 	if opts.Validate && rootUnion(doc, ptr) {
 		decodeDoc += " The union it holds must pass ValidateShallow, since decoding a union " +
 			"fails on no value."
-		value := lang.Expr("out")
 
-		check := validateStep(opts, value)
+		holder := lang.Expr("out.ValidateShallow(false)")
 		if nullable(doc, ptr) {
-			check = lang.If(
-				lang.Expr("out.IsSome()"),
-				validateStep(opts, lang.Expr("out.Value()")),
-				nil,
-			)
+			holder = lang.Expr("kamaJsonschemaSomeValid(out)")
 		}
 
-		decode = append(decode, check)
+		checks = append(checks, holder)
 	}
 
 	if marked {
@@ -77,8 +77,22 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		if opts.Validate {
 			decodeDoc += " The value must pass ValidateShallow."
 
-			decode = append(decode, validateStep(opts, lang.Expr("%s(out)", name)))
+			checks = append(checks, lang.Expr("%s(out).ValidateShallow(false)", name))
 		}
+	}
+
+	decode = append(decode, lang.Stmt("*v = %s(out)", name))
+
+	switch len(checks) {
+	case 0:
+		decode = append(decode, lang.Stmt("return err"))
+	case 1:
+		decode = append(decode, lang.Stmt("return kamaJsonschemaChecked(err, %s)", checks[0]))
+	default:
+		decode = append(decode, lang.Stmt(
+			"return kamaJsonschemaChecked(err, %s(%s))",
+			q(validPath, "Join"), lang.Join(", ", checks...),
+		))
 	}
 
 	steps := []genStep{
@@ -96,7 +110,7 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 			lang.Expr(
 				"func (v *%s) UnmarshalJSONFrom(dec *%s) error", name, q(jsontextPath, "Decoder"),
 			),
-			append(decode, lang.Stmt("*v = %s(out)", name), lang.Stmt("return nil"))...,
+			decode...,
 		),
 	}
 
@@ -164,16 +178,16 @@ func definedType(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 }
 
 // definedWire is definedType for the wire type the defined type of the
-// schema at ptr decodes into, which rejects null itself unless the root is
-// nullable.
+// schema at ptr decodes into, which records null itself unless the root
+// is nullable.
 func definedWire(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	return func(c genCtx) (string, error) {
 		if ptr != "" || raw(doc, ptr) {
-			return builtinWire(doc, opts, ptr, slotAlone)(c)
+			return builtinWire(doc, opts, ptr)(c)
 		}
 
 		if !nullable(doc, "") {
-			return wireType(doc, opts, "", slotAlone)(c)
+			return wireType(doc, opts, "", slotMember)(c)
 		}
 
 		t, err := wireType(doc, opts, "", slotMember)(c)
@@ -189,11 +203,11 @@ func definedWire(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 func definedConv(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	return func(c genCtx) (string, error) {
 		if ptr != "" || raw(doc, ptr) {
-			return builtinConv(doc, opts, ptr, slotAlone)(c)
+			return builtinConv(doc, opts, ptr)(c)
 		}
 
 		if !nullable(doc, "") {
-			return wireConv(doc, opts, "", slotAlone)(c)
+			return wireConv(doc, opts, "", slotMember)(c)
 		}
 
 		conv, err := wireConv(doc, opts, "", slotMember)(c)

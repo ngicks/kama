@@ -330,40 +330,96 @@ func helperDecl(name string) (genStep, bool) {
 			jsonv1Path,
 		), true
 	case helperPrefix + "Decode":
-		return helper(name+" decodes the next value of dec into v. An error is located "+
-			"relative to that value. Below the root it comes in a json.SemanticError "+
-			"naming the pointer of the value, as json names it only for a method that "+
-			"failed before or after reading the whole value, so that the decoder of the "+
-			"enclosing value locates it in turn.",
-			`func kamaJsonschemaDecode(dec *%[2]s.Decoder, v any) error {
-	depth := dec.StackDepth()
-	err := %[1]s.UnmarshalDecode(dec, v, kamaJsonschemaPinned)
-	se, ok := err.(*%[1]s.SemanticError)
-	if !ok || depth == 0 {
-		return kamaJsonschemaLocate(err, depth)
+		return helper(name+" decodes the next value of dec into v, a value of a type that "+
+			"records what the schema rejects, so that the error is one decoding cannot go on "+
+			"past.",
+			`func kamaJsonschemaDecode(dec *%[1]s.Decoder, v any) error {
+	return %[2]s.UnmarshalDecode(dec, v, kamaJsonschemaPinned)
+}`, jt, j), true
+	case helperPrefix + "BeginObject":
+		return helper(name+" reads the token starting an object. A value of another kind is "+
+			"skipped without being kept and returned as a validation error.",
+			`func kamaJsonschemaBeginObject(dec *%[1]s.Decoder) error {
+	k := dec.PeekKind()
+	if k == %[1]s.KindBeginObject {
+		_, err := dec.ReadToken()
+		return err
 	}
-	var base %[2]s.Pointer
-	n := 0
-	for tok := range se.JSONPointer.Tokens() {
-		if n == depth {
-			break
-		}
-		base = base.AppendToken(tok)
-		n++
+	if err := dec.SkipValue(); err != nil {
+		return err
 	}
-	return &%[1]s.SemanticError{JSONPointer: base, Err: kamaJsonschemaLocate(err, depth)}
-}`, j, jt), true
-	case helperPrefix + "DecodeObject":
-		return helper(name+" is kamaJsonschemaDecode for a value that must be a JSON object.",
-			`func kamaJsonschemaDecodeObject(dec *%[1]s.Decoder, v any) error {
-	if k := dec.PeekKind(); k != %[1]s.KindBeginObject {
-		if err := dec.SkipValue(); err != nil {
-			return err
-		}
-		return %[2]s.New(%[2]s.ErrKind, "want object, got %%s", kamaJsonschemaKindName(k))
-	}
-	return kamaJsonschemaDecode(dec, v)
+	return %[2]s.New(%[2]s.ErrKind, "want object, got %%s", kamaJsonschemaKindName(k))
 }`, jt, v), true
+	case helperPrefix + "Name":
+		return helper(name+" reads the name of an object member. The name is valid until dec "+
+			"reads again. Only a name holding an escape is copied.",
+			`func kamaJsonschemaName(dec *%[1]s.Decoder) ([]byte, error) {
+	raw, err := dec.ReadValue()
+	if err != nil {
+		return nil, err
+	}
+	if %[2]s.IndexByte(raw, '\\') < 0 {
+		return raw[1 : len(raw)-1], nil
+	}
+	// dec has read the name, so the only error left is invalid UTF-8 its options allow,
+	// which the name holds replaced as json/v2 holds it.
+	name, _ := %[1]s.AppendUnquote(nil, raw)
+	return name, nil
+}`, jt, "bytes"), true
+	case helperPrefix + "Extra":
+		return helper(
+			name+" decodes the next value of dec into the member name of *m, a "+
+				"member no property declares.",
+			`func kamaJsonschemaExtra[V any](dec *%[1]s.Decoder, m *map[string]V, name string) error {
+	var v V
+	if err := %[2]s.UnmarshalDecode(dec, &v, kamaJsonschemaPinned); err != nil {
+		return err
+	}
+	if *m == nil {
+		*m = map[string]V{}
+	}
+	(*m)[name] = v
+	return nil
+}`,
+			jt,
+			j,
+		), true
+	case helperPrefix + "Checked":
+		return helper(name+" joins err, the problems decoding a value recorded, with verr, "+
+			"the error of ValidateShallow of the value, leaving out what verr reports at or "+
+			"below a value that failed to decode. Such a value holds no value of its own, so "+
+			"its validation tells nothing. A value that failed to decode as a whole keeps no "+
+			"validation error.",
+			`func kamaJsonschemaChecked(err, verr error) error {
+	if err == nil || verr == nil {
+		return %[1]s.Join(err, verr)
+	}
+	failed := %[1]s.Pointers(err)
+	kept := []error{err}
+	for _, e := range %[1]s.Under(verr, "") {
+		p := %[1]s.Pointers(e)[0]
+		if !%[3]s.ContainsFunc(failed, func(f string) bool {
+			return p == f || %[2]s.HasPrefix(p, f+"/")
+		}) {
+			kept = append(kept, e)
+		}
+	}
+	return %[1]s.Join(kept...)
+}`, v, "strings", "slices"), true
+	case helperPrefix + "SomeValid":
+		return helper(
+			name+" returns the error of ValidateShallow of the value o holds, or nil "+
+				"for None.",
+			`func kamaJsonschemaSomeValid[T interface{ ValidateShallow(bool) error }](
+	o %[1]s.Option[T],
+) error {
+	if o.IsNone() {
+		return nil
+	}
+	return o.Value().ValidateShallow(false)
+}`,
+			optPath,
+		), true
 	case helperPrefix + "Unmarshal":
 		return helper(name+" decodes raw, a value dec read, into v with the options of dec, "+
 			"so that it decodes as a value dec decodes. An error is located relative to raw. "+
@@ -378,14 +434,6 @@ func helperDecl(name string) (genStep, bool) {
 	}
 	return kamaJsonschemaLocate(%[2]s.UnmarshalDecode(d, v, kamaJsonschemaPinned), 1)
 }`, jt, j, "io", "strings", "bytes"), true
-	case helperPrefix + "UnmarshalObject":
-		return helper(name+" is kamaJsonschemaUnmarshal for a value that must be a JSON object.",
-			`func kamaJsonschemaUnmarshalObject(dec *%[1]s.Decoder, raw %[1]s.Value, v any) error {
-	if raw.Kind() != %[1]s.KindBeginObject {
-		return %[2]s.New(%[2]s.ErrKind, "want object, got %%s", kamaJsonschemaKindName(raw.Kind()))
-	}
-	return kamaJsonschemaUnmarshal(dec, raw, v)
-}`, jt, v), true
 	case helperPrefix + "Locate":
 		return helper(name+" returns err, a json.SemanticError of a decoder depth values "+
 			"deep, as a validation error located relative to the value at that depth. It "+
@@ -486,45 +534,6 @@ func conversionDecl(name string) (genStep, bool) {
 			o,
 			u,
 		), true
-	case helperPrefix + "RequiredPointer":
-		return helper(name+" is kamaJsonschemaRequired for a member held by pointer.",
-			`func kamaJsonschemaRequiredPointer[T any](dst **T, u %[1]s.Und[T]) error {
-	var v T
-	if err := kamaJsonschemaRequired(&v, u); err != nil {
-		return err
-	}
-	*dst = &v
-	return nil
-}`, u), true
-	case helperPrefix + "OptionalPointer":
-		return helper(name+" is kamaJsonschemaOptional for a member held by pointer. Nil "+
-			"means absent.",
-			`func kamaJsonschemaOptionalPointer[T any](dst **T, u %[2]s.Und[T]) error {
-	if u.IsNull() {
-		return %[1]s.New(%[1]s.ErrNull, "member is null")
-	}
-	kamaJsonschemaOptionalNullablePointer(dst, u)
-	return nil
-}`, v, u), true
-	case helperPrefix + "RequiredNullablePointer":
-		return helper(name+" is kamaJsonschemaRequiredNullable for a member held by "+
-			"pointer. Nil means null.",
-			`func kamaJsonschemaRequiredNullablePointer[T any](dst **T, u %[2]s.Und[T]) error {
-	if u.IsUndefined() {
-		return %[1]s.New(%[1]s.ErrRequired, "member is missing")
-	}
-	kamaJsonschemaOptionalNullablePointer(dst, u)
-	return nil
-}`, v, u), true
-	case helperPrefix + "OptionalNullablePointer":
-		return helper(name+" sets dst to the value of an optional, nullable member held by "+
-			"pointer. Nil means absent or null.",
-			`func kamaJsonschemaOptionalNullablePointer[T any](dst **T, u %[1]s.Und[T]) {
-	if u.IsDefined() {
-		v := u.Value()
-		*dst = &v
-	}
-}`, u), true
 	case helperPrefix + "RequiredOf":
 		return helper(
 			name+" is kamaJsonschemaRequired for a member whose wire field conv "+
@@ -613,11 +622,11 @@ func conversionDecl(name string) (genStep, bool) {
 	conv func(W) (T, error),
 ) error {
 	var v T
-	if err := kamaJsonschemaRequiredOf(&v, u, conv); err != nil {
-		return err
+	err := kamaJsonschemaRequiredOf(&v, u, conv)
+	if u.IsDefined() {
+		*dst = &v
 	}
-	*dst = &v
-	return nil
+	return err
 }`,
 			u,
 		), true
@@ -704,41 +713,84 @@ func conversionDecl(name string) (genStep, bool) {
 	*dst = out
 	return %[1]s.Join(errs...)
 }`, v), true
-	case helperPrefix + "Present":
-		return helper(name+" is the wire field of a member whose Go type holds null "+
-			"itself, such as raw JSON text or a union with a member of type null. It tells "+
-			"a missing member from one holding null, which decodes into value.",
-			`type kamaJsonschemaPresent[T any] struct {
-	ok    bool
-	value T
-}
-
-// UnmarshalJSONFrom decodes the value of p.
-func (p *kamaJsonschemaPresent[T]) UnmarshalJSONFrom(dec *%[1]s.Decoder) error {
-	p.ok = true
-	return %[2]s.UnmarshalDecode(dec, &p.value)
-}`, jsontextPath, jsonPath), true
-	case helperPrefix + "RequiredPresent":
-		return helper(name+" sets dst to the value of a required member whose Go type holds "+
-			"null itself.",
-			`func kamaJsonschemaRequiredPresent[T any](dst *T, p kamaJsonschemaPresent[T]) error {
-	if !p.ok {
-		return %[1]s.New(%[1]s.ErrRequired, "member is missing")
-	}
-	*dst = p.value
-	return nil
-}`, v), true
-	case helperPrefix + "OptionalPresent":
+	case helperPrefix + "NullTo":
 		return helper(
-			name+" sets dst to the value of an optional member whose Go type holds "+
-				"null itself. None means absent.",
-			`func kamaJsonschemaOptionalPresent[T any](dst *%[1]s.Option[T], p kamaJsonschemaPresent[T]) {
-	if p.ok {
-		*dst = %[1]s.Some(p.value)
+			name+" turns the null u holds into the value null decodes into, for a "+
+				"member whose Go type holds null itself, such as raw JSON text or a union with a "+
+				"member of type null. The member decides about null as it does inside a value.",
+			`func kamaJsonschemaNullTo[W any](dec *%[1]s.Decoder, u %[2]s.Und[W]) (%[2]s.Und[W], error) {
+	if !u.IsNull() {
+		return u, nil
 	}
+	var w W
+	err := kamaJsonschemaUnmarshal(dec, %[1]s.Value("null"), &w)
+	return %[2]s.Defined(w), err
 }`,
-			o,
+			jsontextPath,
+			u,
 		), true
+	case helperPrefix + "RequiredTakesNull":
+		return helper(
+			name+" is kamaJsonschemaRequired for a member whose Go type holds null "+
+				"itself.",
+			`func kamaJsonschemaRequiredTakesNull[T any](
+	dst *T,
+	dec *%[1]s.Decoder,
+	u %[2]s.Und[T],
+) error {
+	u, err := kamaJsonschemaNullTo(dec, u)
+	if err != nil {
+		return err
+	}
+	return kamaJsonschemaRequired(dst, u)
+}`,
+			jsontextPath,
+			u,
+		), true
+	case helperPrefix + "OptionalTakesNull":
+		return helper(name+" is kamaJsonschemaOptional for a member whose Go type holds null "+
+			"itself.",
+			`func kamaJsonschemaOptionalTakesNull[T any](
+	dst *%[3]s.Option[T],
+	dec *%[1]s.Decoder,
+	u %[2]s.Und[T],
+) error {
+	u, err := kamaJsonschemaNullTo(dec, u)
+	if err != nil {
+		return err
+	}
+	return kamaJsonschemaOptional(dst, u)
+}`, jsontextPath, u, o), true
+	case helperPrefix + "RequiredTakesNullOf":
+		return helper(name+" is kamaJsonschemaRequiredOf for a member whose Go type holds null "+
+			"itself.",
+			`func kamaJsonschemaRequiredTakesNullOf[W, T any](
+	dst *T,
+	dec *%[1]s.Decoder,
+	u %[2]s.Und[W],
+	conv func(W) (T, error),
+) error {
+	u, err := kamaJsonschemaNullTo(dec, u)
+	if err != nil {
+		return err
+	}
+	return kamaJsonschemaRequiredOf(dst, u, conv)
+}`, jsontextPath, u), true
+	case helperPrefix + "OptionalTakesNullOf":
+		return helper(name+" is kamaJsonschemaOptionalOf for a member whose Go type holds null "+
+			"itself.",
+			`func kamaJsonschemaOptionalTakesNullOf[W, T any](
+	dst *%[3]s.Option[T],
+	dec *%[1]s.Decoder,
+	u %[2]s.Und[W],
+	conv func(W) (T, error),
+) error {
+	u, err := kamaJsonschemaNullTo(dec, u)
+	if err != nil {
+		return err
+	}
+	return kamaJsonschemaOptionalOf(dst, u, conv)
+}`, jsontextPath, u, o), true
 	}
 
 	return unionHelperDecl(name)

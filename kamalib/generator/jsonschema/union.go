@@ -319,12 +319,12 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 	noMatch := setUnknown(lang.Expr("kamaJsonschemaNoMatch(%s, errs)", noMatchKind(s)))
 	if opts.Validate {
 		noMatch = lang.Steps(
+			noMatch,
 			lang.If(
 				lang.Expr("err := kamaJsonschemaStubbed(errs); err != nil"),
 				lang.Stmt("return err"),
 				nil,
 			),
-			noMatch,
 		)
 	}
 
@@ -360,8 +360,8 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 		"Unknown, which Validate reports."
 
 	if opts.Validate {
-		text += " A member failing on a stub of the validator generator fails the decoding, " +
-			"since the stub tells nothing of the value."
+		text += " A member failing on a stub of the validator generator gives the error of " +
+			"the stub, since the stub tells nothing of the value."
 	}
 
 	return lang.DocFunc(

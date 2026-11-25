@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T08:18:06Z
+// generated: 2026-11-25T09:29:51Z
 
 package multikind
 
@@ -33,34 +33,59 @@ type Cell struct {
 //
 //kama:generated kama:jsonschema
 type cellWire struct {
-	Value                und.Und[CellValue]               `json:"value,omitzero"`
-	Label                kamaJsonschemaPresent[CellLabel] `json:"label,omitzero"`
-	AdditionalProperties map[string]jsontext.Value        `json:",embed"`
+	Value                und.Und[wire.Decoded[CellValue]]
+	Label                und.Und[wire.Decoded[CellLabel]]
+	AdditionalProperties map[string]jsontext.Value
 }
 
-// UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
-// decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass ValidateShallow.
+// UnmarshalJSONFrom decodes the members of one JSON object into w. A value
+// of another kind is skipped and returned as the error.
+//
+//kama:generated kama:jsonschema
+func (w *cellWire) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	if err := kamaJsonschemaBeginObject(dec); err != nil {
+		return err
+	}
+	for dec.PeekKind() != jsontext.KindEndObject {
+		name, err := kamaJsonschemaName(dec)
+		if err != nil {
+			return err
+		}
+		switch string(name) {
+		case "value":
+			err = w.Value.UnmarshalJSONFrom(dec)
+		case "label":
+			err = w.Label.UnmarshalJSONFrom(dec)
+		default:
+			err = kamaJsonschemaExtra(dec, &w.AdditionalProperties, string(name))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err := dec.ReadToken()
+	return err
+}
+
+// UnmarshalJSONFrom decodes v from one JSON object. It reports every member
+// the schema rejects together, and leaves in v what decoded of a value it
+// rejects. The value must pass ValidateShallow, which skips the members
+// that failed to decode.
 //
 //kama:generated kama:jsonschema
 func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var w cellWire
-	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
+	if err := w.UnmarshalJSONFrom(dec); err != nil {
+		*v = Cell{}
 		return err
 	}
 	var out Cell
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Value, w.Value), "value"))
-	kamaJsonschemaOptionalPresent(&out.Label, w.Label)
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Value, w.Value, wire.Decoded[CellValue].Value), "value"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalTakesNullOf(&out.Label, dec, w.Label, wire.Decoded[CellLabel].Value), "label"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validator.Join(errs...); err != nil {
-		return err
-	}
-	if err := out.ValidateShallow(false); err != nil {
-		return err
-	}
 	*v = out
-	return nil
+	return kamaJsonschemaChecked(validator.Join(errs...), out.ValidateShallow(false))
 }
 
 // CellValue is the first of String, Integer, Boolean that the value
@@ -212,7 +237,7 @@ func (v CellValue) ValidateShallow(stopOnFirstError bool) error {
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches gives CellValueUnknown, which
 // Validate reports. A member failing on a stub of the validator generator
-// fails the decoding, since the stub tells nothing of the value.
+// gives the error of the stub, since the stub tells nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -264,10 +289,10 @@ func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			}
 		}
 	}
+	*v = CellValue{Kind: CellValueUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	if err := kamaJsonschemaStubbed(errs); err != nil {
 		return err
 	}
-	*v = CellValue{Kind: CellValueUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	return nil
 }
 
@@ -418,7 +443,7 @@ func (v CellLabel) ValidateShallow(stopOnFirstError bool) error {
 // member matches when it decodes the value and its wrapper passes
 // ValidateShallow. A value no member matches gives CellLabelUnknown, which
 // Validate reports. A member failing on a stub of the validator generator
-// fails the decoding, since the stub tells nothing of the value.
+// gives the error of the stub, since the stub tells nothing of the value.
 //
 //kama:generated kama:jsonschema
 func (v *CellLabel) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -457,9 +482,9 @@ func (v *CellLabel) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		*v = CellLabel{Kind: CellLabelNull{}}
 		return nil
 	}
+	*v = CellLabel{Kind: CellLabelUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	if err := kamaJsonschemaStubbed(errs); err != nil {
 		return err
 	}
-	*v = CellLabel{Kind: CellLabelUnknown{Value: raw.Clone(), err: kamaJsonschemaNoMatch(validator.ErrOr, errs)}}
 	return nil
 }
