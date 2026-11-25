@@ -295,7 +295,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 	text += "A member that fails to decode stops it. Otherwise it reports every member the " +
 		"schema rejects."
 	if opts.Validate {
-		text += " A value whose members all convert must pass Validate."
+		text += " A value whose members all convert must pass ValidateShallow."
 	}
 
 	body := []genStep{
@@ -315,7 +315,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 			lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
 			lang.Stmt("var w %s", wireName(name)),
 			lang.If(
-				lang.Expr("err := kamaJsonschemaUnmarshalObject(raw, &w); err != nil"),
+				lang.Expr("err := kamaJsonschemaUnmarshalObject(dec, raw, &w); err != nil"),
 				lang.Stmt("return err"),
 				nil,
 			),
@@ -329,7 +329,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 
 	for i := range productOf(doc, ptr, s) {
 		body = append(body, lang.Stmt(
-			"errs = append(errs, kamaJsonschemaUnmarshal(raw, &out.%s))",
+			"errs = append(errs, kamaJsonschemaUnmarshal(dec, raw, &out.%s))",
 			memberField(doc, opts, ptr, i),
 		))
 	}

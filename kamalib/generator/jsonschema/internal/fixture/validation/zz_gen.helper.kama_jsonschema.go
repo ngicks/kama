@@ -3,12 +3,13 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:36:15Z
+// generated: 2026-11-25T06:03:53Z
 
 package validation
 
 import (
 	"bytes"
+	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
@@ -17,6 +18,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
@@ -33,7 +35,9 @@ import (
 //kama:generated kama:jsonschema
 func kamaJsonschemaDecode(dec *jsontext.Decoder, v any) error {
 	depth := dec.StackDepth()
-	err := json.UnmarshalDecode(dec, v, kamaJsonschemaDecodeOptions)
+	err := json.UnmarshalDecode(
+		dec, v, json.WithUnmarshalers(kamaJsonschemaUnmarshalers(dec.Options())), kamaJsonschemaPinned,
+	)
 	se, ok := err.(*json.SemanticError)
 	if !ok || depth == 0 {
 		return kamaJsonschemaLocate(err, depth)
@@ -64,14 +68,6 @@ func kamaJsonschemaDecodeObject(dec *jsontext.Decoder, v any) error {
 	return kamaJsonschemaDecode(dec, v)
 }
 
-// kamaJsonschemaDecodeOptions are the options every generated decoder
-// decodes with.
-//
-//kama:generated kama:jsonschema
-var kamaJsonschemaDecodeOptions = json.WithUnmarshalers(
-	json.JoinUnmarshalers(kamaJsonschemaRejectNull, kamaJsonschemaIntegerNumber),
-)
-
 // kamaJsonschemaIntegerNumber decodes a number with a zero fraction, such
 // as 1.0 or 1e2, into an int64, since JSON Schema calls such a number an
 // integer.
@@ -94,6 +90,15 @@ var kamaJsonschemaIntegerNumber = json.UnmarshalFromFunc(
 		return nil
 	},
 )
+
+// kamaJsonschemaJoined holds the last unmarshalers of a caller and those
+// joined with kamaJsonschemaOwn from them. A decoder nested in another sees
+// the joined ones, and recognizing them keeps it from joining
+// kamaJsonschemaOwn once more per level of nesting, each join starting with
+// empty caches.
+//
+//kama:generated kama:jsonschema
+var kamaJsonschemaJoined atomic.Pointer[[2]*json.Unmarshalers]
 
 // kamaJsonschemaKindName names the JSON type of a value of kind k.
 //
@@ -167,6 +172,27 @@ func kamaJsonschemaOptional[T any](dst *opt.Option[T], u und.Und[T]) error {
 	return nil
 }
 
+// kamaJsonschemaOwn are the unmarshalers every generated decoder adds to
+// those of its caller.
+//
+//kama:generated kama:jsonschema
+var kamaJsonschemaOwn = json.JoinUnmarshalers(
+	kamaJsonschemaRejectNull,
+	kamaJsonschemaIntegerNumber,
+)
+
+// kamaJsonschemaPinned are the options a generated decoder decodes with
+// whatever its caller passes. Member names match exactly, as JSON Schema
+// compares them. Errors come as json/v2 reports them, since a method error
+// a legacy report passes on bare loses the location of the value that
+// failed.
+//
+//kama:generated kama:jsonschema
+var kamaJsonschemaPinned = json.JoinOptions(
+	json.MatchCaseInsensitiveNames(false),
+	jsonv1.ReportErrorsWithLegacySemantics(false),
+)
+
 // kamaJsonschemaRejectNull rejects JSON null for a string, a number, a
 // boolean, a slice and a map, since nullability is expressed by the types
 // of package option. It leaves raw JSON text alone, which carries null as
@@ -215,18 +241,39 @@ func kamaJsonschemaUnknownMember(kind, err error) error {
 	return err
 }
 
-// kamaJsonschemaUnmarshal decodes raw into v. An error is located relative
-// to raw. raw decodes as the element of an array, so that a decoder failing
-// in it names the pointer of raw, as kamaJsonschemaDecode does below the
-// root.
+// kamaJsonschemaUnmarshal decodes raw, a value dec read, into v with the
+// options of dec, so that it decodes as a value dec decodes. An error is
+// located relative to raw. raw decodes as the element of an array, so that
+// a decoder failing in it names the pointer of raw, as kamaJsonschemaDecode
+// does below the root.
 //
 //kama:generated kama:jsonschema
-func kamaJsonschemaUnmarshal(raw jsontext.Value, v any) error {
-	dec := jsontext.NewDecoder(io.MultiReader(
+func kamaJsonschemaUnmarshal(dec *jsontext.Decoder, raw jsontext.Value, v any) error {
+	d := jsontext.NewDecoder(io.MultiReader(
 		strings.NewReader("["), bytes.NewReader(raw), strings.NewReader("]"),
-	))
-	if _, err := dec.ReadToken(); err != nil {
+	), dec.Options())
+	if _, err := d.ReadToken(); err != nil {
 		return err
 	}
-	return kamaJsonschemaLocate(json.UnmarshalDecode(dec, v, kamaJsonschemaDecodeOptions), 1)
+	return kamaJsonschemaLocate(json.UnmarshalDecode(
+		d, v, json.WithUnmarshalers(kamaJsonschemaUnmarshalers(d.Options())), kamaJsonschemaPinned,
+	), 1)
+}
+
+// kamaJsonschemaUnmarshalers returns the unmarshalers of opts, the options
+// of a caller, followed by kamaJsonschemaOwn. An unmarshaler of the caller
+// thus takes precedence for the types it handles, at every depth.
+//
+//kama:generated kama:jsonschema
+func kamaJsonschemaUnmarshalers(opts json.Options) *json.Unmarshalers {
+	caller, _ := json.GetOption(opts, json.WithUnmarshalers)
+	if caller == nil || caller == kamaJsonschemaOwn {
+		return kamaJsonschemaOwn
+	}
+	if last := kamaJsonschemaJoined.Load(); last != nil && (caller == last[0] || caller == last[1]) {
+		return last[1]
+	}
+	joined := json.JoinUnmarshalers(caller, kamaJsonschemaOwn)
+	kamaJsonschemaJoined.Store(&[2]*json.Unmarshalers{caller, joined})
+	return joined
 }

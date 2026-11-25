@@ -279,7 +279,7 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 			then = lang.Steps(
 				lang.Stmt("var m %s", unionMemberType(doc, opts, ptr, i)),
 				lang.If(
-					lang.Expr("err := kamaJsonschemaUnmarshal(raw, &m); err != nil"),
+					lang.Expr("err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil"),
 					failed,
 					decoded,
 				),

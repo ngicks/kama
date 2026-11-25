@@ -38,7 +38,8 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	declDoc := docComment(text)
 
 	if opts.Validate && rootUnion(doc, ptr) {
-		decodeDoc += " The union it holds must pass Validate, since decoding a union fails on no value."
+		decodeDoc += " The union it holds must pass ValidateShallow, since decoding a union " +
+			"fails on no value."
 		value := lang.Expr("out")
 
 		check := validateStep(opts, value)
@@ -57,7 +58,7 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		declDoc = validatedDoc(text, decodedArgs(opts, args))
 
 		if opts.Validate {
-			decodeDoc += " The value must pass Validate."
+			decodeDoc += " The value must pass ValidateShallow."
 
 			decode = append(decode, validateStep(opts, lang.Expr("%s(out)", name)))
 		}

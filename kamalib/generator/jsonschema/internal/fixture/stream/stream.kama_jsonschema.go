@@ -3,7 +3,7 @@
 //	schema: "kama_jsonschema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T04:17:27Z
+// generated: 2026-11-25T05:58:14Z
 
 package stream
 
@@ -31,7 +31,7 @@ func (v Stream) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Stream) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -67,7 +67,7 @@ type itemWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

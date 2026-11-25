@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:20:55Z
+// generated: 2026-11-25T05:57:29Z
 
 package decodecost
 
@@ -43,7 +43,7 @@ type costsWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Costs) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -90,7 +90,7 @@ type plainWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Plain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -136,7 +136,7 @@ type negatedWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Negated) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -332,7 +332,7 @@ func (v *Chosen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			errs = append(errs, fmt.Errorf("member NonNegative: %w", err))
 		} else {
 			var m NonNegative
-			if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member NonNegative: %w", err))
 			} else {
 				if err := (ChosenNonNegative{NonNegative: m}).ValidateShallow(false); err != nil {
@@ -352,7 +352,7 @@ func (v *Chosen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			errs = append(errs, fmt.Errorf("member Negative: %w", err))
 		} else {
 			var m Negative
-			if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Negative: %w", err))
 			} else {
 				if err := (ChosenNegative{Negative: m}).ValidateShallow(false); err != nil {
@@ -398,7 +398,7 @@ type nonNegativeWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *NonNegative) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -444,7 +444,7 @@ type negativeWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Negative) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -490,7 +490,7 @@ type closedWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Closed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

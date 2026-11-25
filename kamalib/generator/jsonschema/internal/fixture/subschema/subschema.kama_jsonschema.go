@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:26Z
+// generated: 2026-11-25T05:58:17Z
 
 package subschema
 
@@ -35,7 +35,7 @@ func (v Tree) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -73,7 +73,7 @@ func (v Small) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Small) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -112,7 +112,7 @@ func (v Address) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Address) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -154,7 +154,7 @@ type labelsWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Labels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -190,7 +190,7 @@ func (v Point) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -220,7 +220,7 @@ func (v Tags) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Tags) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -254,7 +254,7 @@ type keysWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -294,7 +294,7 @@ type paymentWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Payment) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -330,7 +330,7 @@ func (v Strict) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Strict) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -368,7 +368,7 @@ func (v Mixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -415,7 +415,7 @@ type nodeWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -454,7 +454,7 @@ func (v Holder) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Holder) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

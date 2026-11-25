@@ -35,7 +35,8 @@ func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 
 	decodeDoc := "UnmarshalJSONFrom decodes v from one JSON string."
 	if opts.Validate {
-		decodeDoc += " The value must pass Validate, which rejects a value the schema does not list."
+		decodeDoc += " The value must pass ValidateShallow, which rejects a value the schema " +
+			"does not list."
 	}
 
 	steps := []genStep{

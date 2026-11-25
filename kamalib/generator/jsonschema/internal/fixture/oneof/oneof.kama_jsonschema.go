@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:12Z
+// generated: 2026-11-25T05:57:54Z
 
 package oneof
 
@@ -45,7 +45,7 @@ type zooWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Zoo) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -232,7 +232,7 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	if raw.Kind() == jsontext.KindString {
 		var m string
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member String: %w", err))
 		} else {
 			if err := (ZooMixedString{String: m}).ValidateShallow(false); err != nil {
@@ -248,7 +248,7 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	if raw.Kind() == jsontext.KindNumber {
 		var m int64
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Integer: %w", err))
 		} else {
 			if err := (ZooMixedInteger{Integer: m}).ValidateShallow(false); err != nil {
@@ -264,7 +264,7 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	if raw.Kind() == jsontext.KindBeginObject && kamaJsonschemaHasMembers(raw, "note") {
 		var m ZooMixedObjectValue
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Object: %w", err))
 		} else {
 			if err := (ZooMixedObject{Object: m}).ValidateShallow(false); err != nil {
@@ -308,7 +308,7 @@ type zooMixedObjectValueWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *ZooMixedObjectValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -467,7 +467,7 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	if raw.Kind() == jsontext.KindNumber {
 		var m int64
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Integer: %w", err))
 		} else {
 			if err := (ZooAmountInteger{Integer: m}).ValidateShallow(false); err != nil {
@@ -483,7 +483,7 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	if raw.Kind() == jsontext.KindNumber {
 		var m float64
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Number: %w", err))
 		} else {
 			if err := (ZooAmountNumber{Number: m}).ValidateShallow(false); err != nil {
@@ -678,7 +678,7 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			errs = append(errs, fmt.Errorf("member Cat: %w", err))
 		} else {
 			var m Cat
-			if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Cat: %w", err))
 			} else {
 				if err := (PetCat{Cat: m}).ValidateShallow(false); err != nil {
@@ -698,7 +698,7 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			errs = append(errs, fmt.Errorf("member Dog: %w", err))
 		} else {
 			var m Dog
-			if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Dog: %w", err))
 			} else {
 				if err := (PetDog{Dog: m}).ValidateShallow(false); err != nil {
@@ -744,7 +744,7 @@ type catWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -790,7 +790,7 @@ type dogWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Dog) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

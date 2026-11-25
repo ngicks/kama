@@ -248,7 +248,7 @@
 // kamaJsonschemaPresent, which keeps a missing member apart from any value.
 // UnmarshalJSONFrom converts each wire field and reports every member
 // missing or null against the required x nullable matrix. Once every member
-// converts, the struct must pass Validate. An enum of strings declares a
+// converts, the struct must pass ValidateShallow. An enum of strings declares a
 // string type with a constant per value, whose Validate rejects any other
 // value.
 //
@@ -299,6 +299,24 @@
 // object fails with an error wrapping validator.ErrKind. The decoders pass
 // the options doing this to every value they decode, nested values
 // included.
+//
+// A decoder decodes with the options of the decoder it is given, which
+// json.Unmarshal, json.UnmarshalDecode and json v1 fill from the options of
+// their caller. The unmarshalers of the caller come before those rejecting
+// null and decoding integers, so an unmarshaler of the caller decodes every
+// value of its type, at any depth. Two options are pinned whatever the
+// caller passes: member names match exactly, as JSON Schema compares them,
+// and errors below the root are reported as json/v2 reports them, which
+// locates them, even under the legacy semantics of json v1. A value a union
+// or an allOf reads whole decodes again with the options of the caller, so
+// AllowDuplicateNames and AllowInvalidUTF8 of the caller hold there as on
+// the stream: a member name an object repeats fails the decoding unless the
+// caller allows it.
+//
+// A decoder reads straight from the decoder of its caller. A member that
+// fails to decode leaves that decoder inside the value, as any
+// json.UnmarshalerFrom failing midway does, so the caller cannot read on
+// from it.
 //
 // An error of a decoder is located relative to the value it decodes, by
 // the path of the offending member in the lookups of the validator

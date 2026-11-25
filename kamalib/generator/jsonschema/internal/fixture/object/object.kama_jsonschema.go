@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:20:09Z
+// generated: 2026-11-25T05:57:55Z
 
 package object
 
@@ -68,7 +68,7 @@ type objectWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -122,7 +122,7 @@ const (
 )
 
 // UnmarshalJSONFrom decodes v from one JSON string. The value must pass
-// Validate, which rejects a value the schema does not list.
+// ValidateShallow, which rejects a value the schema does not list.
 //
 //kama:generated kama:jsonschema
 func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -157,7 +157,7 @@ type objectInlineWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -200,7 +200,7 @@ type objectClosedWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -242,7 +242,7 @@ type objectOpenWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -286,7 +286,7 @@ type pointWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

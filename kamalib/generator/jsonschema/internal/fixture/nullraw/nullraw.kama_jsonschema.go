@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:08Z
+// generated: 2026-11-25T05:57:52Z
 
 package nullraw
 
@@ -65,7 +65,7 @@ type rootWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -230,7 +230,7 @@ func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	if raw.Kind() == jsontext.KindNull || raw.Kind() == jsontext.KindTrue || raw.Kind() == jsontext.KindFalse || raw.Kind() == jsontext.KindBeginObject || raw.Kind() == jsontext.KindBeginArray || raw.Kind() == jsontext.KindNumber || raw.Kind() == jsontext.KindString {
 		var m jsontext.Value
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Option1: %w", err))
 		} else {
 			if err := (RootDOption1{Option1: m}).ValidateShallow(false); err != nil {
@@ -243,7 +243,7 @@ func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	if raw.Kind() == jsontext.KindNumber {
 		var m int64
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Integer: %w", err))
 		} else {
 			if err := (RootDInteger{Integer: m}).ValidateShallow(false); err != nil {
@@ -274,7 +274,7 @@ func (v RootLItem) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *RootLItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -313,7 +313,7 @@ func (v N) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *N) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

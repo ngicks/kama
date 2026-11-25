@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:22Z
+// generated: 2026-11-25T05:58:08Z
 
 package remote
 
@@ -42,7 +42,7 @@ type invoiceWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Invoice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -90,7 +90,7 @@ type moneyWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Money) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -129,7 +129,7 @@ func (v MoneyCurrency) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *MoneyCurrency) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -169,7 +169,7 @@ type partyWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Party) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

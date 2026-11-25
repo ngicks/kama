@@ -35,6 +35,7 @@ var lang genhelper.Lang[genCtx]
 const (
 	jsontextPath = "encoding/json/jsontext"
 	jsonPath     = "encoding/json/v2"
+	jsonv1Path   = "encoding/json"
 	validPath    = "github.com/ngicks/kama/kamaruntime/validator"
 	rawjsonPath  = "github.com/ngicks/kama/kamaruntime/validator/rawjson"
 	optPath      = "github.com/ngicks/option/opt"
@@ -159,8 +160,11 @@ func newImports(pkgName string) (*importdecl.Map, error) {
 			Map(func(path string) *types.Package { return types.NewPackage(path, path) }).
 			CollectSlice(),
 		[]*types.Package{
+			types.NewPackage("sync/atomic", "atomic"),
 			types.NewPackage(jsontextPath, "jsontext"),
 			types.NewPackage(jsonPath, "json"),
+			// encoding/json is named json too, which jsonPath takes.
+			types.NewPackage(jsonv1Path, "jsonv1"),
 			types.NewPackage(validPath, "validator"),
 			types.NewPackage(rawjsonPath, "rawjson"),
 			types.NewPackage(optPath, "opt"),

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:20:55Z
+// generated: 2026-11-25T05:57:33Z
 
 package dynamicref
 
@@ -34,7 +34,7 @@ func (v StrictTree) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *StrictTree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -79,7 +79,7 @@ type treeWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -118,7 +118,7 @@ func (v TreeChildrenItem) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *TreeChildrenItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -155,7 +155,7 @@ func (v ListItem) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *ListItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -194,7 +194,7 @@ func (v Names) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Names) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:04Z
+// generated: 2026-11-25T05:57:45Z
 
 package nullablecycle
 
@@ -38,7 +38,7 @@ type nodeWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

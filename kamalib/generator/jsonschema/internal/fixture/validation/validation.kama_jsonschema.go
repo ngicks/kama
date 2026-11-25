@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:27Z
+// generated: 2026-11-25T05:58:21Z
 
 package validation
 
@@ -70,7 +70,7 @@ type orderWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -118,7 +118,7 @@ func (v OrderLabelsValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *OrderLabelsValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -154,7 +154,7 @@ type orderClosedWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *OrderClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -196,7 +196,7 @@ type orderTypedWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *OrderTyped) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -234,7 +234,7 @@ func (v OrderTypedValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *OrderTypedValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -386,7 +386,7 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	if raw.Kind() == jsontext.KindString {
 		var m OrderPickOption1Value
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Option1: %w", err))
 		} else {
 			if err := (OrderPickOption1{Option1: m}).ValidateShallow(false); err != nil {
@@ -402,7 +402,7 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	if raw.Kind() == jsontext.KindString {
 		var m OrderPickOption2Value
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Option2: %w", err))
 		} else {
 			if err := (OrderPickOption2{Option2: m}).ValidateShallow(false); err != nil {
@@ -440,7 +440,7 @@ func (v OrderPickOption1Value) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *OrderPickOption1Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -471,7 +471,7 @@ func (v OrderPickOption2Value) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *OrderPickOption2Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -501,7 +501,7 @@ func (v Sku) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Sku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

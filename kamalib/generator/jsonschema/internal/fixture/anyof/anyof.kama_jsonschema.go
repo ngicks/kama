@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:20:54Z
+// generated: 2026-11-25T05:57:26Z
 
 package anyof
 
@@ -41,7 +41,7 @@ type docWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Doc) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -222,7 +222,7 @@ func (v *DocValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	if raw.Kind() == jsontext.KindString {
 		var m string
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member String: %w", err))
 		} else {
 			if err := (DocValueString{String: m}).ValidateShallow(false); err != nil {
@@ -239,7 +239,7 @@ func (v *DocValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	if raw.Kind() == jsontext.KindNumber {
 		var m int64
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Integer: %w", err))
 		} else {
 			if err := (DocValueInteger{Integer: m}).ValidateShallow(false); err != nil {
@@ -425,7 +425,7 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			errs = append(errs, fmt.Errorf("member Named: %w", err))
 		} else {
 			var m Named
-			if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Named: %w", err))
 			} else {
 				if err := (LabelNamed{Named: m}).ValidateShallow(false); err != nil {
@@ -442,7 +442,7 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			errs = append(errs, fmt.Errorf("member Tagged: %w", err))
 		} else {
 			var m Tagged
-			if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Tagged: %w", err))
 			} else {
 				if err := (LabelTagged{Tagged: m}).ValidateShallow(false); err != nil {
@@ -478,7 +478,7 @@ type namedWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -522,7 +522,7 @@ type taggedWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

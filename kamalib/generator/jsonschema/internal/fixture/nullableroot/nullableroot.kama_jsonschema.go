@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:07Z
+// generated: 2026-11-25T05:57:50Z
 
 package nullableroot
 
@@ -53,7 +53,7 @@ func (v CodeValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *CodeValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

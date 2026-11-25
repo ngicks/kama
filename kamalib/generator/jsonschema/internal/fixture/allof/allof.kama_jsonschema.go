@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:20:52Z
+// generated: 2026-11-25T05:57:24Z
 
 package allof
 
@@ -51,7 +51,7 @@ type employeeWire struct {
 // UnmarshalJSONFrom decodes v from one JSON object. Person, Contract and
 // the own properties decode from the same object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -60,13 +60,13 @@ func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		return err
 	}
 	var w employeeWire
-	if err := kamaJsonschemaUnmarshalObject(raw, &w); err != nil {
+	if err := kamaJsonschemaUnmarshalObject(dec, raw, &w); err != nil {
 		return err
 	}
 	var out Employee
 	var errs []error
-	errs = append(errs, kamaJsonschemaUnmarshal(raw, &out.Person))
-	errs = append(errs, kamaJsonschemaUnmarshal(raw, &out.Contract))
+	errs = append(errs, kamaJsonschemaUnmarshal(dec, raw, &out.Person))
+	errs = append(errs, kamaJsonschemaUnmarshal(dec, raw, &out.Contract))
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Badge, w.Badge), "badge"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Manager, w.Manager), "manager"))
 	out.AdditionalProperties = kamaJsonschemaOmit(w.AdditionalProperties, "name", "age", "salary", "remote", "badge", "manager")
@@ -104,7 +104,7 @@ type personWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -149,7 +149,7 @@ type contractWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Contract) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

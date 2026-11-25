@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:05Z
+// generated: 2026-11-25T05:57:48Z
 
 package nullableenum
 
@@ -43,7 +43,7 @@ type levelsWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -83,7 +83,7 @@ func (v LevelsConst) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *LevelsConst) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -113,7 +113,7 @@ func (v LevelsBig) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *LevelsBig) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -143,7 +143,7 @@ func (v Level) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Level) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

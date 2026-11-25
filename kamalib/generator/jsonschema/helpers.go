@@ -250,11 +250,56 @@ func helperDecl(name string) (genStep, bool) {
 	)
 
 	switch name {
-	case helperPrefix + "DecodeOptions":
-		return helper(name+" are the options every generated decoder decodes with.",
-			`var kamaJsonschemaDecodeOptions = %[1]s.WithUnmarshalers(
-	%[1]s.JoinUnmarshalers(kamaJsonschemaRejectNull, kamaJsonschemaIntegerNumber),
-)`, j), true
+	case helperPrefix + "Pinned":
+		return helper(
+			name+" are the options a generated decoder decodes with whatever its caller "+
+				"passes. Member names match exactly, as JSON Schema compares them. Errors "+
+				"come as json/v2 reports them, since a method error a legacy report passes "+
+				"on bare loses the location of the value that failed.",
+			`var kamaJsonschemaPinned = %[1]s.JoinOptions(
+	%[1]s.MatchCaseInsensitiveNames(false),
+	%[2]s.ReportErrorsWithLegacySemantics(false),
+)`,
+			j,
+			jsonv1Path,
+		), true
+	case helperPrefix + "Own":
+		return helper(name+" are the unmarshalers every generated decoder adds to those of "+
+			"its caller.",
+			`var kamaJsonschemaOwn = %[1]s.JoinUnmarshalers(
+	kamaJsonschemaRejectNull,
+	kamaJsonschemaIntegerNumber,
+)`,
+			j), true
+	case helperPrefix + "Joined":
+		return helper(
+			name+" holds the last unmarshalers of a caller and those joined with "+
+				"kamaJsonschemaOwn from them. A decoder nested in another sees the joined "+
+				"ones, and recognizing them keeps it from joining kamaJsonschemaOwn once "+
+				"more per level of nesting, each join starting with empty caches.",
+			`var kamaJsonschemaJoined %[1]s.Pointer[[2]*%[2]s.Unmarshalers]`,
+			"sync/atomic",
+			j,
+		), true
+	case helperPrefix + "Unmarshalers":
+		return helper(
+			name+" returns the unmarshalers of opts, the options of a caller, "+
+				"followed by kamaJsonschemaOwn. An unmarshaler of the caller thus takes "+
+				"precedence for the types it handles, at every depth.",
+			`func kamaJsonschemaUnmarshalers(opts %[1]s.Options) *%[1]s.Unmarshalers {
+	caller, _ := %[1]s.GetOption(opts, %[1]s.WithUnmarshalers)
+	if caller == nil || caller == kamaJsonschemaOwn {
+		return kamaJsonschemaOwn
+	}
+	if last := kamaJsonschemaJoined.Load(); last != nil && (caller == last[0] || caller == last[1]) {
+		return last[1]
+	}
+	joined := %[1]s.JoinUnmarshalers(caller, kamaJsonschemaOwn)
+	kamaJsonschemaJoined.Store(&[2]*%[1]s.Unmarshalers{caller, joined})
+	return joined
+}`,
+			j,
+		), true
 	case helperPrefix + "RejectNull":
 		return helper(
 			name+" rejects JSON null for a string, a number, a boolean, a slice "+
@@ -315,7 +360,9 @@ func helperDecl(name string) (genStep, bool) {
 			"enclosing value locates it in turn.",
 			`func kamaJsonschemaDecode(dec *%[2]s.Decoder, v any) error {
 	depth := dec.StackDepth()
-	err := %[1]s.UnmarshalDecode(dec, v, kamaJsonschemaDecodeOptions)
+	err := %[1]s.UnmarshalDecode(
+		dec, v, %[1]s.WithUnmarshalers(kamaJsonschemaUnmarshalers(dec.Options())), kamaJsonschemaPinned,
+	)
 	se, ok := err.(*%[1]s.SemanticError)
 	if !ok || depth == 0 {
 		return kamaJsonschemaLocate(err, depth)
@@ -343,25 +390,28 @@ func helperDecl(name string) (genStep, bool) {
 	return kamaJsonschemaDecode(dec, v)
 }`, jt, v), true
 	case helperPrefix + "Unmarshal":
-		return helper(name+" decodes raw into v. An error is located relative to raw. "+
+		return helper(name+" decodes raw, a value dec read, into v with the options of dec, "+
+			"so that it decodes as a value dec decodes. An error is located relative to raw. "+
 			"raw decodes as the element of an array, so that a decoder failing in it "+
 			"names the pointer of raw, as kamaJsonschemaDecode does below the root.",
-			`func kamaJsonschemaUnmarshal(raw %[1]s.Value, v any) error {
-	dec := %[1]s.NewDecoder(%[3]s.MultiReader(
+			`func kamaJsonschemaUnmarshal(dec *%[1]s.Decoder, raw %[1]s.Value, v any) error {
+	d := %[1]s.NewDecoder(%[3]s.MultiReader(
 		%[4]s.NewReader("["), %[5]s.NewReader(raw), %[4]s.NewReader("]"),
-	))
-	if _, err := dec.ReadToken(); err != nil {
+	), dec.Options())
+	if _, err := d.ReadToken(); err != nil {
 		return err
 	}
-	return kamaJsonschemaLocate(%[2]s.UnmarshalDecode(dec, v, kamaJsonschemaDecodeOptions), 1)
+	return kamaJsonschemaLocate(%[2]s.UnmarshalDecode(
+		d, v, %[2]s.WithUnmarshalers(kamaJsonschemaUnmarshalers(d.Options())), kamaJsonschemaPinned,
+	), 1)
 }`, jt, j, "io", "strings", "bytes"), true
 	case helperPrefix + "UnmarshalObject":
 		return helper(name+" is kamaJsonschemaUnmarshal for a value that must be a JSON object.",
-			`func kamaJsonschemaUnmarshalObject(raw %[1]s.Value, v any) error {
+			`func kamaJsonschemaUnmarshalObject(dec *%[1]s.Decoder, raw %[1]s.Value, v any) error {
 	if raw.Kind() != %[1]s.KindBeginObject {
 		return %[2]s.New(%[2]s.ErrKind, "want object, got %%s", kamaJsonschemaKindName(raw.Kind()))
 	}
-	return kamaJsonschemaUnmarshal(raw, v)
+	return kamaJsonschemaUnmarshal(dec, raw, v)
 }`, jt, v), true
 	case helperPrefix + "Locate":
 		return helper(name+" returns err, a json.SemanticError of a decoder depth values "+
@@ -570,10 +620,14 @@ func unionHelperDecl(name string) (genStep, bool) {
 }`, v), true
 	case helperPrefix + "Members":
 		return helper(name+" yields the members of raw, an object. It stops silently at "+
-			"malformed input, since raw is read whole and checked by the decoder before.",
+			"malformed input, since raw is read whole and checked by the decoder before. "+
+			"That decoder may allow duplicate names and invalid UTF-8, so the scan allows "+
+			"them too.",
 			`func kamaJsonschemaMembers(raw %[1]s.Value) %[2]s.Seq2[string, %[1]s.Value] {
 	return func(yield func(string, %[1]s.Value) bool) {
-		dec := %[1]s.NewDecoder(%[3]s.NewReader(raw))
+		dec := %[1]s.NewDecoder(
+			%[3]s.NewReader(raw), %[1]s.AllowDuplicateNames(true), %[1]s.AllowInvalidUTF8(true),
+		)
 		if tok, err := dec.ReadToken(); err != nil || tok.Kind() != %[1]s.KindBeginObject {
 			return
 		}
@@ -597,13 +651,15 @@ func unionHelperDecl(name string) (genStep, bool) {
 	case helperPrefix + "HasMembers":
 		return helper(name+" reports whether raw is an object with every member of names.",
 			`func kamaJsonschemaHasMembers(raw %[1]s.Value, names ...string) bool {
-	found := 0
+	found := make([]bool, len(names))
 	for name := range kamaJsonschemaMembers(raw) {
-		if %[2]s.Contains(names, name) {
-			found++
+		for i, n := range names {
+			if n == name {
+				found[i] = true
+			}
 		}
 	}
-	return raw.Kind() == %[1]s.KindBeginObject && found >= len(names)
+	return raw.Kind() == %[1]s.KindBeginObject && !%[2]s.Contains(found, false)
 }`, jt, "slices"), true
 	case helperPrefix + "OnlyMembers":
 		return helper(name+" reports whether raw is an object whose every member is one of "+

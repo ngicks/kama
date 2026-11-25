@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:02Z
+// generated: 2026-11-25T05:57:43Z
 
 package nullable
 
@@ -47,7 +47,7 @@ type nullableWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -97,7 +97,7 @@ type nullableOptInlineWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -139,7 +139,7 @@ type itemWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

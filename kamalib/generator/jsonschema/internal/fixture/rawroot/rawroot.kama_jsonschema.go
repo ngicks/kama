@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:18Z
+// generated: 2026-11-25T05:58:03Z
 
 package rawroot
 
@@ -35,7 +35,7 @@ func (v Loose) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Loose) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -73,7 +73,7 @@ func (v Mixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -112,7 +112,7 @@ func (v Pair) MarshalJSONTo(enc *jsontext.Encoder) error {
 }
 
 // UnmarshalJSONFrom decodes v as its underlying type. The value must pass
-// Validate.
+// ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *Pair) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

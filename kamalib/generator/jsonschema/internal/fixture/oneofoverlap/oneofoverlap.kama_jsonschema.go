@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T03:21:14Z
+// generated: 2026-11-25T05:57:57Z
 
 package oneofoverlap
 
@@ -153,7 +153,7 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	if raw.Kind() == jsontext.KindBeginObject {
 		var m EitherLeftValue
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Left: %w", err))
 		} else {
 			if err := (EitherLeft{Left: m}).ValidateShallow(false); err != nil {
@@ -169,7 +169,7 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	if raw.Kind() == jsontext.KindBeginObject {
 		var m EitherRightValue
-		if err := kamaJsonschemaUnmarshal(raw, &m); err != nil {
+		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Right: %w", err))
 		} else {
 			if err := (EitherRight{Right: m}).ValidateShallow(false); err != nil {
@@ -212,7 +212,7 @@ type eitherLeftValueWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
@@ -255,7 +255,7 @@ type eitherRightValueWire struct {
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
 // decode stops it. Otherwise it reports every member the schema rejects. A
-// value whose members all convert must pass Validate.
+// value whose members all convert must pass ValidateShallow.
 //
 //kama:generated kama:jsonschema
 func (v *EitherRightValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {

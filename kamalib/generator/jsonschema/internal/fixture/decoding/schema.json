@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Root",
+  "description": "Root holds a member of each kind, required or optional, nullable or not.",
+  "type": "object",
+  "required": [
+    "s", "n", "i", "b", "arr", "m", "obj",
+    "ns", "nn", "ni", "nb", "narr", "nm", "nobj"
+  ],
+  "properties": {
+    "s": { "type": "string" },
+    "n": { "type": "number" },
+    "i": { "type": "integer" },
+    "b": { "type": "boolean" },
+    "arr": { "type": "array", "items": { "type": "string" } },
+    "m": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "obj": { "$ref": "#/$defs/Point" },
+    "os": { "type": "string" },
+    "on": { "type": "number" },
+    "oi": { "type": "integer" },
+    "ob": { "type": "boolean" },
+    "oarr": { "type": "array", "items": { "type": "string" } },
+    "om": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "oobj": { "$ref": "#/$defs/Point" },
+    "ns": { "type": ["string", "null"] },
+    "nn": { "type": ["number", "null"] },
+    "ni": { "type": ["integer", "null"] },
+    "nb": { "type": ["boolean", "null"] },
+    "narr": { "type": ["array", "null"], "items": { "type": "string" } },
+    "nm": { "type": ["object", "null"], "additionalProperties": { "type": "integer" } },
+    "nobj": { "oneOf": [{ "$ref": "#/$defs/Point" }, { "type": "null" }] },
+    "ons": { "type": ["string", "null"] },
+    "onn": { "type": ["number", "null"] },
+    "oni": { "type": ["integer", "null"] },
+    "onb": { "type": ["boolean", "null"] },
+    "onarr": { "type": ["array", "null"], "items": { "type": "string" } },
+    "onm": { "type": ["object", "null"], "additionalProperties": { "type": "integer" } },
+    "onobj": { "oneOf": [{ "$ref": "#/$defs/Point" }, { "type": "null" }] },
+    "items": { "type": "array", "items": { "$ref": "#/$defs/Point" } },
+    "dict": { "type": "object", "additionalProperties": { "$ref": "#/$defs/Point" } },
+    "u": { "oneOf": [{ "$ref": "#/$defs/Point" }, { "type": "string" }] },
+    "all": {
+      "allOf": [
+        { "type": "object", "properties": { "p": { "$ref": "#/$defs/Point" } } },
+        { "type": "object", "properties": { "q": { "type": "string" } } }
+      ]
+    },
+    "twice": {
+      "oneOf": [
+        { "type": "object", "required": ["x", "x"], "properties": { "x": { "type": "integer" } } },
+        { "type": "string" }
+      ]
+    }
+  },
+  "$defs": {
+    "Point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer" }
+      }
+    }
+  }
+}
