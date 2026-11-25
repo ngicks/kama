@@ -16,12 +16,14 @@ It fails while unmarshaling only when it cannot continue, or when continuing wou
   - A forbidden `null` is recorded.
   - A number that is not an integer is recorded for an integer field.
   - A missing required member is recorded.
-  - A nested value that fails is recorded. It does not stop the value that holds it.
+- Do not catch the error of a nested unmarshal call. A nested generated value that fails stops the value that holds it, as `encoding/json` behaves.
 - Report every recorded problem at the conversion from the wire form to the model, in one error, with the path of each.
 - Fail while unmarshaling only in these cases:
   - The input is malformed, such as a syntax error or a truncated document.
   - The reader returns an error.
+  - A nested generated value returns an error.
   - Recording would cost performance. Name the cost in a comment at that place.
+- Do not work around the behavior of `encoding/json`. A wire struct is decoded by `encoding/json` through struct tags.
 - Do not keep a value only to report it. Skip a value of the wrong kind, and put its kind and a short bounded excerpt in the error.
 - Store what was converted in the destination, then return the error. The caller reads a partial value beside the error.
 - Express a rule that `encoding/json` cannot judge as a type of the wire form, such as `wire.NonNullSlice[T]`. Do not pass unmarshalers through options for it.
@@ -38,26 +40,26 @@ It fails while unmarshaling only when it cannot continue, or when continuing wou
 #### Shape
 
 ```go
-type itemWire struct {
-	Name und.Und[wire.NonNull[string]]      `json:"name,omitzero"`
-	Tags und.Und[wire.NonNullSlice[string]] `json:"tags,omitzero"`
+type orderWire struct {
+	Name  und.Und[wire.String]               `json:"name,omitzero"`
+	Tags  und.Und[wire.NonNullSlice[string]] `json:"tags,omitzero"`
+	Point und.Und[Point]                     `json:"point,omitzero"`
 }
 
-func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var w itemWire
+func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	var w orderWire
 
-	// Only malformed input returns here.
-	if err := decode(dec, &w); err != nil {
+	// Malformed input and a failing nested Point return here.
+	if err := kamaJsonschemaDecodeObject(dec, &w); err != nil {
 		return err
 	}
 
-	var (
-		out  Item
-		errs []error
-	)
+	var out Order
+	var errs []error
 
-	errs = append(errs, validator.Field(required(&out.Name, w.Name), "name"))
-	errs = append(errs, validator.Field(required(&out.Tags, w.Tags), "tags"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Name, w.Name, wire.String.Value), "name"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Tags, w.Tags, wire.NonNullSlice[string].Value), "tags"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Point, w.Point), "point"))
 
 	// The destination holds what was converted, beside the error.
 	*v = out
