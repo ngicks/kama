@@ -30,11 +30,7 @@ func (s *selection) checkHook(n *typegraph.Node, v *types.Var) error {
 
 	recv := named.Obj().Name()
 	if named.TypeParams().Len() > 0 {
-		tps := opiter.WrapSeq(named.TypeParams().TypeParams()).
-			Map(func(tp *types.TypeParam) string { return tp.Obj().Name() }).
-			CollectSlice()
-
-		recv += "[" + strings.Join(tps, ", ") + "]"
+		recv += "[" + strings.Join(typeParamNames(named), ", ") + "]"
 	}
 
 	fail := func(problem string) error {
@@ -61,4 +57,91 @@ func (s *selection) checkHook(n *typegraph.Node, v *types.Var) error {
 	}
 
 	return nil
+}
+
+// typeOptions returns the options of the doc comment or the option file
+// entry of the type id, without those of its type group.
+func (s *selection) typeOptions(id typegraph.QualifiedType) TypeOptions {
+	to, _ := s.loadedOptions.Option.Type(id)
+	return to.Type
+}
+
+// checkTypeFunc reports the function name that pre or post of the target n
+// names, set at src, when Validate cannot call it: a missing one and one of
+// another signature than func(T, bool) error, with T the type of n. A
+// generic n needs a function with type parameters of the same number that
+// takes n instantiated with them.
+func (s *selection) checkTypeFunc(n *typegraph.Node, name string, src optionSource) error {
+	named := n.Detail.Type
+	pkg := named.Obj().Pkg()
+	tps := opiter.WrapSeq(named.TypeParams().TypeParams()).
+		Map(func(tp *types.TypeParam) string {
+			return tp.Obj().Name() + " " + types.TypeString(tp.Constraint(), types.RelativeTo(pkg))
+		}).
+		CollectSlice()
+
+	want := "func " + name
+	recv := named.Obj().Name()
+
+	if len(tps) > 0 {
+		want += "[" + strings.Join(tps, ", ") + "]"
+		recv += "[" + strings.Join(typeParamNames(named), ", ") + "]"
+	}
+
+	fail := func(problem string) error {
+		return fmt.Errorf(
+			"%w: %s: %s on %s %s; declare %s(v %s, stopOnFirstError bool) error",
+			ErrHook, src.origin(), src.spelling(), n.Id, problem, want, recv,
+		)
+	}
+
+	fn, ok := pkg.Scope().Lookup(name).(*types.Func)
+	if !ok {
+		return fail("names no package-level function " + name)
+	}
+
+	sig := fn.Type().(*types.Signature)
+	if !takesValue(sig, named) {
+		return fail(fmt.Sprintf("names %s with signature %s", name, sig))
+	}
+
+	return nil
+}
+
+// takesValue reports whether sig is func(named, bool) error. For a generic
+// named, sig declares as many type parameters, and named instantiated with
+// them is its first parameter.
+func takesValue(sig *types.Signature, named *types.Named) bool {
+	if sig.Variadic() || sig.Params().Len() != 2 || !returnsError(sig) ||
+		!types.Identical(sig.Params().At(1).Type(), types.Typ[types.Bool]) ||
+		sig.TypeParams().Len() != named.TypeParams().Len() {
+		return false
+	}
+
+	if named.TypeParams().Len() == 0 {
+		return types.Identical(sig.Params().At(0).Type(), named)
+	}
+
+	args := opiter.WrapSeq(named.TypeParams().TypeParams()).
+		Map(func(tp *types.TypeParam) types.Type { return tp }).
+		CollectSlice()
+
+	inst, err := types.Instantiate(nil, sig, args, true)
+	if err != nil {
+		return false
+	}
+
+	value, err := types.Instantiate(nil, named.Origin(), args, false)
+	if err != nil {
+		return false
+	}
+
+	return types.Identical(inst.(*types.Signature).Params().At(0).Type(), value)
+}
+
+// typeParamNames returns the names of the type parameters of named.
+func typeParamNames(named *types.Named) []string {
+	return opiter.WrapSeq(named.TypeParams().TypeParams()).
+		Map(func(tp *types.TypeParam) string { return tp.Obj().Name() }).
+		CollectSlice()
 }

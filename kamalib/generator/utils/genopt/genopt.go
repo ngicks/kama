@@ -106,7 +106,10 @@
 // file, and a central option file before the directive comments. Of several
 // central option files, the later one in name order comes first. The
 // options of a source that comes later are dropped with a warning naming
-// both sources. The package entry P follows the same rule among the option
+// both sources. An entry naming no field whose leaf implements Overlayer
+// adds to them instead when its OverlayOn says so, without a warning. The
+// type then keeps the source, the group and the fields of the source that
+// comes later. The package entry P follows the same rule among the option
 // files. The free-floating directives of the files of a package are kept
 // beside it.
 package genopt
@@ -313,6 +316,16 @@ type KeyValueUnmarshaler interface {
 type SourceSetter interface {
 	// SetSource is called after the entry of src is decoded into the leaf.
 	SetSource(src Source)
+}
+
+// Overlayer is implemented by leaf option types T of types whose entry in
+// a source that comes first may add to the options of a source that comes
+// later instead of dropping them.
+type Overlayer[T any] interface {
+	// OverlayOn returns lower with the options of the receiver set on it. It
+	// returns false when the receiver holds an option that does not add to
+	// lower, and the receiver then drops lower as Precedence describes.
+	OverlayOn(lower T) (T, bool)
 }
 
 // UnknownKeyer is implemented by the pointer types of leaf option types
@@ -546,16 +559,48 @@ func overlayTypes[T, F any](
 	var warnings []error
 
 	for _, name := range slices.Sorted(maps.Keys(upper)) {
-		if prev, ok := out[name]; ok {
-			warnings = append(warnings, overridden(
-				"type "+pkgPath+"."+name, upper[name].Source, prev.Source,
-			))
+		prev, ok := out[name]
+		if !ok {
+			out[name] = upper[name]
+			continue
 		}
 
+		if added, ok := addTo(prev, upper[name]); ok {
+			out[name] = added
+			continue
+		}
+
+		warnings = append(warnings, overridden(
+			"type "+pkgPath+"."+name, upper[name].Source, prev.Source,
+		))
 		out[name] = upper[name]
 	}
 
 	return out, warnings
+}
+
+// addTo returns lower with the type options of upper set on it, when upper
+// names no field and its leaf adds to the type options of lower as
+// Overlayer tells. The result keeps the source, the group and the fields
+// of lower.
+func addTo[T, F any](lower, upper TypeOption[T, F]) (TypeOption[T, F], bool) {
+	if fields, _ := upper.Fields.Unpack(); len(fields) > 0 {
+		return TypeOption[T, F]{}, false
+	}
+
+	o, ok := any(upper.Type).(Overlayer[T])
+	if !ok {
+		return TypeOption[T, F]{}, false
+	}
+
+	t, ok := o.OverlayOn(lower.Type)
+	if !ok {
+		return TypeOption[T, F]{}, false
+	}
+
+	lower.Type = t
+
+	return lower, true
 }
 
 func overridden(what string, winner, loser Source) error {

@@ -194,3 +194,23 @@ func unwrapAll(t *testing.T, err error) []error {
 
 	return u.Unwrap()
 }
+
+func TestRoot(t *testing.T) {
+	nilError(t, Root(nil))
+
+	plain := errors.New("plain")
+	located := Field(New(ErrZero, "x"), "a")
+
+	root := mustError(t, Root(plain))
+	equal(t, root.Pointer(), "")
+	equal(t, errors.Is(root, plain), true)
+	equal(t, Root(located), located)
+
+	joined := Root(Join(located, plain))
+	deepEqual(t, Pointers(joined), []string{"", "/a"})
+
+	for _, e := range joined.(interface{ Unwrap() []error }).Unwrap() {
+		_, ok := e.(*Error)
+		equal(t, ok, true)
+	}
+}

@@ -736,6 +736,23 @@
 // in a declaration without a generated mark, gets no stub, which would
 // declare it twice.
 //
+// The validator generator rejects a hand-written Validate on a type
+// carrying //kama:validate, since writing that Validate is the purpose of
+// the directive. A package adds checks of its own to a generated type
+// through the option file of the validator generator instead. An entry of
+// the type giving only pre and post adds those functions to the directives
+// the type carries, as package validator describes:
+//
+//	version: 1
+//	types:
+//	  Order:
+//	    pre: validateOrderPre
+//	    post: validateOrderPost
+//
+// The functions run once per call of Validate or ValidateShallow, so once
+// per value a decoder decodes. A union decodes its value once per member it
+// tries, and the functions of a member type run on each try.
+//
 // A union decodes the value once per member its prefilter and probe leave,
 // and nested unions multiply that per level. Members telling a value apart
 // only by something below a nested reference, as two members whose

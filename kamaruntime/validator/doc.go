@@ -48,7 +48,9 @@
 // therefore one leaf. A value of the standard errors.Join is one leaf as well. Aggregate with
 // [Join] to keep every leaf addressable.
 //
-// A plain error that carries no path is located at the root pointer "". [Error.Pointer]
+// A plain error that carries no path is located at the root pointer "". [Root] wraps such a
+// leaf in an [*Error] at that pointer, for a caller that tells the errors of this package from
+// the others, such as a decoder recording the errors of validation. [Error.Pointer]
 // computes the same location as the lookups. A leaf of At(err, p) that is an [*Error] reports p
 // from its Pointer method.
 //

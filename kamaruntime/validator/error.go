@@ -101,6 +101,28 @@ func Key(err error, key any) error {
 	return wrap(err, segment{kind: keySegment, text: fmt.Sprint(key)})
 }
 
+// Root returns err with each leaf that is no [*Error] wrapped in an [*Error] at the root path,
+// so that a caller telling the errors of this package from the others finds every leaf of an
+// error a function outside this package returned. The lookups locate the leaves where they
+// located them before.
+func Root(err error) error {
+	switch x := err.(type) {
+	case nil:
+		return nil
+	case *joinError:
+		errs := make([]error, len(x.errs))
+		for i, e := range x.errs {
+			errs[i] = Root(e)
+		}
+
+		return &joinError{errs: errs}
+	case *Error:
+		return x
+	default:
+		return &Error{err: err}
+	}
+}
+
 // Error formats the path of e itself, as in "validation failed at .a[5].b: message". A path
 // recorded deeper on the unwrap chain shows up in the message of the wrapped error.
 func (e *Error) Error() string {

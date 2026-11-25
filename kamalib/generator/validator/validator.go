@@ -155,7 +155,9 @@ func reservedNames(reg *rule.Registry) error {
 	reserved := opiter.WrapSeq(slices.Values(reg.Names())).
 		Filter(func(name string) bool {
 			return slices.Contains(
-				[]string{hookWord, ignoreWord, decodedWord, fileWord, packageWord},
+				[]string{
+					hookWord, preWord, postWord, ignoreWord, decodedWord, fileWord, packageWord,
+				},
 				name,
 			)
 		}).
@@ -166,8 +168,8 @@ func reservedNames(reg *rule.Registry) error {
 	}
 
 	return fmt.Errorf(
-		"%w: validators registered as %s; hook, ignore, decoded, file and package name"+
-			" no validator",
+		"%w: validators registered as %s; hook, pre, post, ignore, decoded, file and"+
+			" package name no validator",
 		ErrConflict, strings.Join(reserved, ", "),
 	)
 }

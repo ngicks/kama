@@ -68,6 +68,8 @@
 //     ignore exempts the type instead. The arg hook=on or hook=off sets the
 //     default hook of the fields of the type. The arg decoded tells that
 //     decoding a value of the type validates it, as Shallow validation
+//     describes. The args pre=<func> and post=<func> name functions
+//     Validate calls before and after its checks, as Pre and post functions
 //     describes. Every other arg names a
 //     validator of the value of the type. Targets, Hooks and Type validators
 //     describe them.
@@ -78,9 +80,9 @@
 //     of the file or of the package. Targets describes them.
 //
 // Several //kama:validate lines on one type or one field count as one
-// directive. Their args are joined in source order. hook given twice on one
-// type or field is an error wrapping ErrDirective. The words hook, ignore,
-// decoded, file and package name no validator.
+// directive. Their args are joined in source order. hook, pre or post given
+// twice on one type or field is an error wrapping ErrDirective. The words
+// hook, pre, post, ignore, decoded, file and package name no validator.
 //
 // A sub-directive //kama:validate:<name> is an error wrapping ErrDirective.
 // The error shows the args of //kama:validate standing for it. For
@@ -181,7 +183,9 @@
 // type is never an implementor. Its nil value would panic.
 //
 // An implementor of a loaded package gets no Validate, and marking it is an
-// error wrapping ErrConflict. The types holding it become dependants. An
+// error wrapping ErrConflict. To keep both the generated checks and checks
+// of its own, a type drops its Validate and moves those checks into pre and
+// post functions or field hooks. The types holding it become dependants. An
 // implementor of a package outside the run makes the types of the run
 // holding it targets in the same way. A type whose Validate of that shape
 // is declared on the pointer receiver only is an error wrapping
@@ -250,7 +254,8 @@
 //
 // The validators of the type itself, described under Type validators, run
 // first in every Validate, before the steps of the fields and the walk of
-// the elements.
+// the elements. Only the function pre, described under Pre and post
+// functions, runs before them.
 //
 // # Shallow validation
 //
@@ -329,6 +334,43 @@
 // target when it no longer holds anything to validate. hook on a type or on a field of
 // a type that gets no Validate, as in //kama:validate ignore hook=on, is an
 // error wrapping ErrDirective.
+//
+// # Pre and post functions
+//
+// The args pre=<func> and post=<func> in the doc comment of a target name
+// package-level functions of its package that take the value of the type:
+//
+//	//kama:validate pre=validatePointPre post=validatePointPost
+//	type Point struct {
+//		X, Y int
+//	}
+//
+//	func validatePointPre(v Point, stopOnFirstError bool) error
+//	func validatePointPost(v Point, stopOnFirstError bool) error
+//
+// A generic target G[T any] takes generic functions with type parameters
+// of the same number, as in func validateGPre[T any](v G[T], stopOnFirstError
+// bool) error. Validate calls pre first, before the validators of the type.
+// It calls post in a deferred call, so post runs after every return,
+// whether pre or a validator failed or not. With stopOnFirstError true, an
+// error of pre skips the rest of the checks, and post still runs. With
+// stopOnFirstError false, Validate joins the error of pre, the errors of
+// the checks and the error of post. The errors of pre and post carry no
+// path segment of their own, so a plain error is located at the value.
+// validator.Root wraps it in a *validator.Error, so that a decoder records
+// it as a problem of the value.
+//
+// ValidateShallow and ValidateEvaluated call the functions as Validate
+// does. A ValidateShallow passing its call on to Validate leaves them to
+// Validate, so every call of one of the methods runs each function once.
+// The nested Validate of a value of the type runs them for that value.
+//
+// A type whose only args are pre and post gets a Validate, a type of
+// another kind than struct, slice and map included. A function missing,
+// not declared at package level, or of another signature is a generation
+// error wrapping ErrHook. The error names the expected signature. pre or
+// post on a field, on a type group or on a type that gets no Validate is
+// an error wrapping ErrDirective.
 //
 // # Validators
 //
@@ -518,9 +560,9 @@
 // # Registry
 //
 // Validators are entries of a rule.Registry, and Options.Registry selects
-// it. A validator named hook, ignore, file or package makes Generate fail
-// with an error wrapping ErrConflict. Package rule documents the registry
-// and how to write a validator.
+// it. A validator named hook, pre, post, ignore, decoded, file or package
+// makes Generate fail with an error wrapping ErrConflict. Package rule
+// documents the registry and how to write a validator.
 //
 // The kind validate.generate of workflow.DefaultRegistry generates with
 // rule.DefaultRegistry(). NewProcWith returns the constructor of a proc with
@@ -575,6 +617,9 @@
 //	        ignore: true            # //kama:validate ignore on Draft
 //	      Event:
 //	        decoded: true           # //kama:validate decoded on Event
+//	      Point:
+//	        pre: validatePointPre   # pre=validatePointPre on Point
+//	        post: validatePointPost # post=validatePointPost on Point
 //	      Level:
 //	        validators:             # //kama:validate cmp=">=1" on Level
 //	          - name: cmp
@@ -594,8 +639,12 @@
 // misspelt ignore leaves the directives in effect. The entry of a
 // type replaces every directive on the type and its fields, and the proc
 // reports a warning wrapping genopt.ErrOverridden for a type whose
-// directives are replaced. The free-floating directives stay in effect
-// beside the file.
+// directives are replaced. An entry giving pre, post or both and nothing
+// else adds those functions to the directives of the type instead, without
+// a warning, unless a directive of the type gives one of them too. A type
+// another generator wrote, which carries directives the user cannot edit,
+// gets functions of its own that way. The free-floating directives stay in
+// effect beside the file.
 //
 // A package option file gives the options of a single package. Its
 // document has no packages level: version, all_types and types sit at the
@@ -606,7 +655,8 @@
 // A package without that directive gets kama_validate.toml, .yaml, .yml or
 // .json in its directory, the first one present in that order. The entry of
 // a type in the package option file replaces its entry in the option file
-// and its directives, with a warning for each.
+// and its directives, with a warning for each. An entry giving only pre and
+// post adds them to the entry it comes before in the same way.
 //
 // # Output
 //

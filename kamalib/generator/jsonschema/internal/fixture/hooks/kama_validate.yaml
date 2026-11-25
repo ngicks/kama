@@ -1,0 +1,13 @@
+# The generated types carry the directives jsonschema.generate writes. The
+# entries add pre and post functions beside them.
+version: 1
+types:
+  Order:
+    pre: validateOrderPre
+    post: validateOrderPost
+  Line:
+    pre: validateLinePre
+    post: validateLinePost
+  Sku:
+    pre: validateSkuPre
+    post: validateSkuPost

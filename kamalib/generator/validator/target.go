@@ -151,17 +151,19 @@ func (s *selection) generates(n *typegraph.Node) bool {
 		!s.ignored(n.Id) && !s.implementor(n.Detail.Type)
 }
 
-// validatesValue reports whether the directive of n names validators for
-// the value of n and n can declare Validate: its underlying type is no
-// pointer and no interface. Without validators, a type of another kind than
-// struct, slice and map has nothing to validate.
+// validatesValue reports whether the directive of n names validators, pre
+// or post for the value of n and n can declare Validate: its underlying
+// type is no pointer and no interface. Without them, a type of another kind
+// than struct, slice and map has nothing to validate.
 func (s *selection) validatesValue(n *typegraph.Node) bool {
 	switch n.Detail.Type.Underlying().(type) {
 	case *types.Pointer, *types.Interface:
 		return false
 	}
 
-	return len(s.typeValidators(n.Id)) > 0
+	o := s.typeOptions(n.Id)
+
+	return len(s.typeValidators(n.Id)) > 0 || o.Pre != "" || o.Post != ""
 }
 
 // reaches reports whether a value of type t holds a value of a named type

@@ -133,7 +133,9 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 
 		if ok && s.implementor(n.Detail.Type) {
 			errs = append(errs, fmt.Errorf(
-				"%w: %s: %s declares Validate itself; remove the mark",
+				"%w: %s: %s declares Validate itself; remove the method and move its checks"+
+					" into a function named by pre=<func> or post=<func> of //kama:validate"+
+					" on the type, or into a field hook",
 				ErrConflict, mark.origin(), id,
 			))
 		}
@@ -159,6 +161,8 @@ func (s *selection) checkFieldOptions() error {
 				))
 			}
 		}
+
+		errs = append(errs, funcOptionErrors(id, to, isTarget)...)
 
 		vs := s.typeValidators(id)
 		if !isTarget {
@@ -205,6 +209,33 @@ func (s *selection) fieldOptionErrors(
 			"%w: %s: %s on field %s.%s, whose type gets no Validate; mark the type",
 			ErrDirective, v.src.origin(), v.src.spelling(), id, field,
 		))
+	}
+
+	return errs
+}
+
+// funcOptionErrors reports pre and post of the type id, whose options are
+// to, on its type group or on a type that gets no Validate. A function
+// takes the value of one type, so a type group cannot share it.
+func funcOptionErrors(id typegraph.QualifiedType, to typeOptions, isTarget bool) []error {
+	var errs []error
+
+	for _, src := range []optionSource{to.Group.preSrc, to.Group.postSrc} {
+		if src.arg != "" {
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: %s on a type group; write it in the doc comment of each type",
+				ErrDirective, src.origin(), src.spelling(),
+			))
+		}
+	}
+
+	for _, src := range []optionSource{to.Type.preSrc, to.Type.postSrc} {
+		if src.arg != "" && !isTarget {
+			errs = append(errs, fmt.Errorf(
+				"%w: %s: %s on %s, which gets no Validate",
+				ErrDirective, src.origin(), src.spelling(), id,
+			))
+		}
 	}
 
 	return errs

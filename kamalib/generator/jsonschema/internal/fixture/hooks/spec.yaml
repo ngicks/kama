@@ -1,0 +1,33 @@
+version: 1
+steps:
+  root:
+    proc: overlayfs.open
+  # The proc reads the schema file the package names, so the packages load
+  # before it.
+  load:
+    proc: packages.load
+    in: root
+    # The proc reads the syntax trees only, so generated files that do not
+    # compile yet or any more do not stop it.
+    param:
+      allow_type_errors: true
+  generate:
+    proc: jsonschema.generate
+    in: load
+    out: root
+  # The generated decoders call the Validate methods validate.generate
+  # writes from the generated types.
+  load_generated:
+    proc: packages.load
+    in: root
+    # packages.load reads root but does not wait for steps writing into it.
+    after: generate
+  validate:
+    proc: validate.generate
+    in: load_generated
+    out: root
+  final:
+    proc: overlayfs.copy_down
+    in: root
+    # copy_down reads root but does not wait for steps writing into it.
+    after: validate

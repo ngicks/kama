@@ -5,6 +5,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"go/token"
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
@@ -37,6 +38,8 @@ func NewLoader(
 // registry holding a validator named by one of them.
 const (
 	hookWord    = "hook"
+	preWord     = "pre"
+	postWord    = "post"
 	ignoreWord  = "ignore"
 	decodedWord = "decoded"
 	fileWord    = "file"
@@ -103,6 +106,13 @@ type TypeOptions struct {
 	// Hook stands for //kama:validate hook=on (true) or hook=off (false). Nil
 	// leaves the default.
 	Hook *bool `json:"hook"`
+	// Pre stands for //kama:validate pre=<func>: the package-level function
+	// Validate calls first. Empty stands for none.
+	Pre string `json:"pre"`
+	// Post stands for //kama:validate post=<func>: the package-level
+	// function Validate calls last, whatever happened before. Empty stands
+	// for none.
+	Post string `json:"post"`
 	// Validators stand for the validators //kama:validate names in the doc
 	// comment of the type, in the order written. They validate the value of
 	// the type itself.
@@ -112,15 +122,16 @@ type TypeOptions struct {
 	// marked stands for //kama:validate without ignore, or for an option
 	// file entry of the type without ignore.
 	marked bool
-	// markSrc locates marked or Ignore, and hookSrc Hook.
-	markSrc, hookSrc optionSource
+	// markSrc locates marked or Ignore, hookSrc Hook, preSrc Pre and postSrc
+	// Post.
+	markSrc, hookSrc, preSrc, postSrc optionSource
 }
 
 // UnmarshalKeyValue decodes a directive on a type or a type group. Every
 // directive without ignore marks the type, as an option file entry does.
 // genopt joins the lines of a target into one directive, so a line holding
 // only hook=on cannot be told from one following a bare //kama:validate.
-// Each arg other than ignore, decoded and hook names a validator.
+// Each arg other than ignore, decoded, hook, pre and post names a validator.
 func (o *TypeOptions) UnmarshalKeyValue(
 	src genopt.Source,
 	sub string,
@@ -157,6 +168,14 @@ func (o *TypeOptions) UnmarshalKeyValue(
 
 			o.Hook = &on
 			o.hookSrc = optionSource{src: src, arg: a.String()}
+		case a.Key == preWord:
+			if err := setFunc(&o.Pre, &o.preSrc, src, a); err != nil {
+				return err
+			}
+		case a.Key == postWord:
+			if err := setFunc(&o.Post, &o.postSrc, src, a); err != nil {
+				return err
+			}
 		default:
 			o.Validators = append(o.Validators, ValidatorOptions{
 				Name: a.Key,
@@ -186,7 +205,38 @@ func (o *TypeOptions) SetSource(src genopt.Source) {
 		o.hookSrc = optionSource{src: src, arg: hookWord}
 	}
 
+	if o.Pre != "" {
+		o.preSrc = optionSource{src: src, arg: preWord}
+	}
+
+	if o.Post != "" {
+		o.postSrc = optionSource{src: src, arg: postWord}
+	}
+
 	setValidatorSources(o.Validators, src)
+}
+
+// OverlayOn returns lower with the functions of o set on it when o, an
+// option file entry, sets pre or post and nothing else, and lower sets
+// neither of those o sets. A type then keeps the validators a generator
+// wrote into its doc comment, and an option file adds its own checks
+// beside them.
+func (o TypeOptions) OverlayOn(lower TypeOptions) (TypeOptions, bool) {
+	onlyFuncs := !o.Ignore && !o.Decoded && o.Hook == nil && len(o.Validators) == 0 &&
+		(o.Pre != "" || o.Post != "")
+	if !onlyFuncs || o.Pre != "" && lower.Pre != "" || o.Post != "" && lower.Post != "" {
+		return TypeOptions{}, false
+	}
+
+	if o.Pre != "" {
+		lower.Pre, lower.preSrc = o.Pre, o.preSrc
+	}
+
+	if o.Post != "" {
+		lower.Post, lower.postSrc = o.Post, o.postSrc
+	}
+
+	return lower, true
 }
 
 // UnknownKeys returns the keys of the option file entry that name no
@@ -228,6 +278,13 @@ func (o *FieldOptions) UnmarshalKeyValue(
 	}
 
 	for _, a := range kv {
+		if a.Key == preWord || a.Key == postWord {
+			return fmt.Errorf(
+				"%w: %s: %s on field %s; write it in the doc comment of the type",
+				ErrDirective, src.Pos, a.Key, src.Target.FieldName(),
+			)
+		}
+
 		if a.Key != hookWord {
 			o.Validators = append(o.Validators, ValidatorOptions{
 				Name: a.Key,
@@ -328,6 +385,28 @@ func (o *ValidatorOptions) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 
 	*o = ValidatorOptions(v)
+
+	return nil
+}
+
+// setFunc sets *dst, the function the arg a of the directive at src names,
+// and *dstSrc, its source. a names one function, given once on the type.
+func setFunc(dst *string, dstSrc *optionSource, src genopt.Source, a dircmnt.KeyValue) error {
+	if *dst != "" {
+		return fmt.Errorf(
+			"%w: %s: %s given twice on %s", ErrDirective, src.Pos, a.Key, src.Target.Describe(),
+		)
+	}
+
+	if !a.HasValue || a.Call || !token.IsIdentifier(a.Value) {
+		return fmt.Errorf(
+			"%w: %s: arg %q of //kama:validate on %s; want %s=<function name>",
+			ErrDirective, src.Pos, a.String(), src.Target.Describe(), a.Key,
+		)
+	}
+
+	*dst = a.Value
+	*dstSrc = optionSource{src: src, arg: a.String()}
 
 	return nil
 }

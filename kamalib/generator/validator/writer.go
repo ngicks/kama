@@ -61,6 +61,12 @@ func (w *writer) method() (string, error) {
 	recv := named.Obj().Name()
 	params := []genExpr{lang.Expr("%s bool", decl("stopOnFirstError"))}
 	tparams := w.tparams()
+	// post runs in a deferred call, which reports through the named result.
+	result := lang.Expr("error")
+
+	if !delegates && w.sel.typeOptions(w.n.Id).Post != "" {
+		result = lang.Expr("(%s error)", decl("err"))
+	}
 
 	if len(tparams) > 0 {
 		recv += "[" + strings.Join(tparams, ", ") + "]"
@@ -125,8 +131,8 @@ func (w *writer) method() (string, error) {
 		w.scope.FuncContext(tparams),
 		lang.DocFunc(
 			docComment(text, names...),
-			lang.Expr("func (%s %s) %s(%s) error",
-				decl("v"), recv, name, lang.Join(", ", params...)),
+			lang.Expr("func (%s %s) %s(%s) %s",
+				decl("v"), recv, name, lang.Join(", ", params...), result),
 			body...,
 		),
 	)
@@ -160,13 +166,29 @@ func (w *writer) local(name string) any {
 func validateRole(tp string) string { return "validate" + tp }
 
 // body returns the statements of Validate for a target of the underlying
-// type u: the validators of the type, then those of the fields and the
-// walk of the values u holds. It reports every error of them.
+// type u: the function pre of the type names, the validators of the type,
+// then those of the fields and the walk of the values u holds. The
+// function post of the type names runs in a deferred call, so that it runs
+// after every return. validator.Root locates a plain error of pre or post
+// at the value, so that a decoder records it as an error of validation
+// rather than failing on it. It reports every error of them.
 func (w *writer) body(u types.Type) ([]genStep, error) {
 	var (
 		steps []genStep
 		errs  []error
 	)
+
+	o := w.sel.typeOptions(w.n.Id)
+	if o.Pre != "" {
+		if err := w.sel.checkTypeFunc(w.n, o.Pre, o.preSrc); err != nil {
+			errs = append(errs, err)
+		} else {
+			steps = append(steps, w.check(lang.Expr(
+				"%s.Root(%s(%s, %s))",
+				w.Import(rule.ValidationPath), o.Pre, lang.Name("v"), lang.Name("stopOnFirstError"),
+			)))
+		}
+	}
 
 	for _, vo := range w.sel.typeValidators(w.n.Id) {
 		s, err := w.typeValidator(u, vo)
@@ -194,11 +216,26 @@ func (w *writer) body(u types.Type) ([]genStep, error) {
 		errs = append(errs, err)
 	}
 
+	var post []genStep
+
+	if o.Post != "" {
+		if err := w.sel.checkTypeFunc(w.n, o.Post, o.postSrc); err != nil {
+			errs = append(errs, err)
+		} else {
+			vp := w.Import(rule.ValidationPath)
+			post = append(post, lang.Stmt(
+				"defer func() { %s = %s.Join(%s, %s.Root(%s(%s, %s))) }()",
+				lang.Name("err"), vp, lang.Name("err"),
+				vp, o.Post, lang.Name("v"), lang.Name("stopOnFirstError"),
+			))
+		}
+	}
+
 	if err := errors.Join(errs...); err != nil {
 		return nil, err
 	}
 
-	return w.collect(steps), nil
+	return append(post, w.collect(steps)...), nil
 }
 
 // collect returns steps between the declaration of the errors they collect

@@ -12,7 +12,7 @@ import (
 // Validator is one kind of validator //kama:validate can name.
 type Validator interface {
 	// Name is the word naming the validator in the args of //kama:validate.
-	// It must not be hook, ignore, file or package.
+	// It must not be hook, pre, post, ignore, decoded, file or package.
 	Name() string
 	// Parse decodes arg into the rule to apply.
 	//
