@@ -19,7 +19,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
-	"github.com/ngicks/kama/kamalib/pkg/genheader"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
 
@@ -72,7 +72,7 @@ func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool
 		return base.Whole{}, false, nil
 	}
 
-	hdr, err := genheader.GeneratorParams{
+	hdr, err := genhelper.GeneratorParams{
 		Name:      GeneratorId().String(),
 		Params:    main.Params,
 		Generated: env.Now,
@@ -118,14 +118,16 @@ func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool
 		}
 	}
 
-	imports := ""
+	p := genhelper.NewPrinter(nil)
+	genhelper.PrintFileHeader(p, []string{hdr}, main.Package)
+
 	if b.Len() > 0 {
-		imports = "\nimport \"" + validPath + "\"\n"
+		p.Printf("import %q\n", validPath)
 	}
 
-	content := hdr + "\n\npackage " + main.Package + "\n" + imports + b.String()
+	p.Printf("%s", b.String())
 
-	return base.Whole{Path: file, Content: []byte(content)}, true, nil
+	return base.Whole{Path: file, Content: p.Bytes()}, true, nil
 }
 
 // stub returns the stub of the method of the type name.

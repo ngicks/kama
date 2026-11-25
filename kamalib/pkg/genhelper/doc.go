@@ -6,6 +6,11 @@
 // declarations. [WrapFile] turns declarations into a whole file, and
 // AppendDecls of package dstgen adds them to an existing dst file.
 //
+// [GeneratorParams.Comment] builds the standard header of a generated
+// file, which [WrapFile] and [PrintFileHeader] print before the package
+// clause. [SameExceptGenerated] compares two generated files ignoring the
+// time of the run the header records.
+//
 // Steps share a [Context]. Its [Scope] hands out identifiers by role, so
 // independently written steps declare locals without duplicating or
 // shadowing names. Its [Package] spells package qualifiers and types for

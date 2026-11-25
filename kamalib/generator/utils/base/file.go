@@ -13,7 +13,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ngicks/kama/kamalib/pkg/genheader"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -52,7 +52,7 @@ func stage(ctx context.Context, fsys *overlayfs.Fs, files []File, r workflow.Rep
 			return fmt.Errorf("base: read %q: %w", f.Path, err)
 		}
 
-		if err == nil && genheader.SameExceptGenerated(existing, f.Content) {
+		if err == nil && genhelper.SameExceptGenerated(existing, f.Content) {
 			kept++
 			continue
 		}
@@ -173,7 +173,7 @@ func replaceable(fsys fs.FS, id Id, reg *genmark.Registry, name string) error {
 		return fmt.Errorf("read %q: %w", name, err)
 	}
 
-	if bytes.HasPrefix(src, []byte(genheader.GeneratedComment(id.String())+"\n")) {
+	if bytes.HasPrefix(src, []byte(genhelper.GeneratedComment(id.String())+"\n")) {
 		return nil
 	}
 

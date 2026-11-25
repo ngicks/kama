@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ngicks/kama/kamalib/pkg/genheader"
-
 	"github.com/dave/dst/decorator"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl/dstimport"
@@ -102,6 +100,40 @@ func TestPrintComment(t *testing.T) {
 	}
 }
 
+func TestPrintCommentGroup(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		parts []string
+		want  string
+	}{
+		{name: "no part"},
+		{
+			name:  "parts are not separated",
+			parts: []string{"plain", "//\tcommented", "more\nlines\n"},
+			want:  "// plain\n//\tcommented\n// more\n// lines\n",
+		},
+		{
+			name:  "empty part separates paragraphs",
+			parts: []string{"first", "", "second", "\n"},
+			want:  "// first\n//\n// second\n//\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := genhelper.NewPrinter(nil)
+			genhelper.PrintCommentGroup(p, tc.parts)
+			assert.Equal(t, string(p.Bytes()), tc.want)
+		})
+	}
+}
+
+func TestIndentComment(t *testing.T) {
+	assert.Equal(t, genhelper.IndentComment("a: 1\n\nb: 2"), "//\ta: 1\n//\n//\tb: 2")
+
+	p := genhelper.NewPrinter(nil)
+	genhelper.PrintCommentGroup(p, []string{"params:", genhelper.IndentComment("a: 1")})
+	assert.Equal(t, string(p.Bytes()), "// params:\n//\ta: 1\n")
+}
+
 func TestWrapComment(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -187,7 +219,7 @@ var _ = f.A + bar.B
 }
 
 func TestGeneratorParamsHeader(t *testing.T) {
-	comment, err := genheader.GeneratorParams{
+	comment, err := genhelper.GeneratorParams{
 		Name:      "example.invalid/gen",
 		Argv:      []string{"-type", "T"},
 		Params:    map[string]any{"version": "v1"},

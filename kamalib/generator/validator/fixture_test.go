@@ -121,7 +121,7 @@ func TestFixtureFileParity(t *testing.T) {
 
 	runParams := regexp.MustCompile(`(?m)^//\t(option_file|package_option_file): .*\n`)
 	normalize := func(src string) string {
-		return withoutGenerated(runParams.ReplaceAllString(src, ""))
+		return gentest.WithoutGenerated(runParams.ReplaceAllString(src, ""))
 	}
 
 	for _, name := range names {

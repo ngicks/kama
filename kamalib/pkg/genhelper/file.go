@@ -5,12 +5,15 @@ import (
 	"go/token"
 	"strings"
 
+	"github.com/ngicks/opiter"
+
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 )
 
 // PrintFileHeader prints header with [PrintComment], then the package
 // clause of pkgName. header holds the comment sections before the package
-// clause, such as the generated-code line and a build constraint.
+// clause, such as the text of [GeneratorParams.Comment] and a build
+// constraint.
 func PrintFileHeader(p Printer, header []string, pkgName string) {
 	if printComment(p, header) {
 		p.Printf("\n")
@@ -27,9 +30,52 @@ func PrintFileHeader(p Printer, header []string, pkgName string) {
 // comments, is printed as it is. Any other section is taken as plain text,
 // and every line of it is printed after "// ".
 //
-// [Comment] prints its parts as one comment group instead.
+// [PrintCommentGroup] prints its parts as one comment group instead.
 func PrintComment(p Printer, sections []string) {
 	printComment(p, sections)
+}
+
+// PrintCommentGroup prints parts as the lines of one comment group, in the
+// order of parts. Each part follows the rules of one section of
+// [PrintComment]: text that is Go comments as a whole stays as it is, and
+// every line of other text gets "// ". No empty line separates the parts,
+// so a directive line given as the last part stays in the group. An empty
+// part gives one "//" line, which separates paragraphs.
+//
+// [Comment] is its counterpart for the texts of steps.
+func PrintCommentGroup(p Printer, parts []string) {
+	for _, part := range parts {
+		if strings.TrimSuffix(part, "\n") == "" {
+			p.Printf("//\n")
+			continue
+		}
+
+		printSection(p, part)
+	}
+}
+
+// IndentComment returns text as line comments whose text is indented by a
+// tab, as in "//\tline", the form of a code block in a doc comment. An
+// empty line of text gives a "//" line. The result is Go comments as a
+// whole, so [PrintComment] and [PrintCommentGroup] keep it as it is.
+//
+// Plain text given to them gets "// " before each line instead, which
+// leaves a space before the tab.
+func IndentComment(text string) string {
+	lines := opiter.WrapSeq(strings.SplitSeq(text, "\n")).
+		Map(indentLine).
+		CollectSlice()
+
+	return strings.Join(lines, "\n")
+}
+
+// indentLine returns line as one line of [IndentComment].
+func indentLine(line string) string {
+	if line == "" {
+		return "//"
+	}
+
+	return "//\t" + line
 }
 
 // WrapComment wraps text into lines that stay within width bytes once

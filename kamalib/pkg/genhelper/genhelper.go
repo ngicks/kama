@@ -60,7 +60,7 @@ func (c BaseContext) Scope() *Scope { return c.scope }
 func (c BaseContext) Package() *Package { return c.pkg }
 
 func (c BaseContext) Printer(b []byte) Printer {
-	return newBufPrinter(b)
+	return NewPrinter(b)
 }
 
 func (c BaseContext) WithScope(s *Scope) BaseContext {

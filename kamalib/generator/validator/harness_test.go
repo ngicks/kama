@@ -5,7 +5,6 @@ import (
 	"go/format"
 	"maps"
 	"path"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
-	"github.com/ngicks/kama/kamalib/pkg/genheader"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -193,11 +191,6 @@ func validateOf(t *testing.T, files map[string]string, file, typeName string) st
 
 	return fn
 }
-
-var generatedLine = regexp.MustCompile(`(?m)^` + genheader.GeneratedTimePrefix + `.*\n`)
-
-// withoutGenerated returns src without its generated: line.
-func withoutGenerated(src string) string { return generatedLine.ReplaceAllString(src, "") }
 
 // assertContains fails unless src holds every one of subs.
 func assertContains(t *testing.T, src string, subs ...string) {

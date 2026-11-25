@@ -53,7 +53,10 @@
 //  3. Assemble: a Composed becomes the header naming the Id, its Params and
 //     the time of the run, its build constraint, its package clause, the
 //     import declaration of Imports, and its parts with an empty line
-//     between each two. [Stamp] prepends the generated mark to each Decl.
+//     between each two. The header and the package clause are those of
+//     genhelper.GeneratorParams and genhelper.PrintFileHeader, which a
+//     generator writing files without the framework uses too. [Stamp]
+//     prepends the generated mark to each Decl.
 //  4. Format: the formatter of the output formats each Go file once, a
 //     Whole named *.go included, and the framework stages exactly those
 //     bytes.
@@ -252,5 +255,7 @@
 // Package github.com/ngicks/kama/kamalib/generator/utils/base/filescope
 // spells types for a generator building declarations as dst nodes and
 // prints them as Decl parts. The framework itself does not import dst,
-// directly or not.
+// directly or not. It imports package
+// github.com/ngicks/kama/kamalib/pkg/genhelper, which leaves dst to its
+// subpackage dstgen.
 package base

@@ -24,6 +24,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
@@ -211,6 +212,12 @@ func Write(t *testing.T, f *overlayfs.Fs, files []base.File) {
 func Build(f *overlayfs.Fs, opts gopackages.Options) error {
 	_, err := gopackages.Load(context.Background(), f, opts)
 	return err
+}
+
+// WithoutGenerated returns src, a generated file, without the generated:
+// line of its header, which changes on every run.
+func WithoutGenerated(src string) string {
+	return string(genhelper.WithoutGenerated([]byte(src)))
 }
 
 // ByBase returns the content of files keyed by base name.

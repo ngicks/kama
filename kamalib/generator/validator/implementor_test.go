@@ -148,7 +148,12 @@ type R struct {
 	together := generateAndBuild(t, files)
 
 	for _, file := range []string{"a.kama_validate.go", HelpersFile} {
-		assert.Equal(t, withoutGenerated(alone[file]), withoutGenerated(together[file]), file)
+		assert.Equal(
+			t,
+			gentest.WithoutGenerated(alone[file]),
+			gentest.WithoutGenerated(together[file]),
+			file,
+		)
 	}
 
 	fs := gentest.Funcs(t, alone["a.kama_validate.go"])

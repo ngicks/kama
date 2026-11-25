@@ -24,7 +24,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
-	"github.com/ngicks/kama/kamalib/pkg/genheader"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
@@ -40,7 +40,7 @@ func registry(t *testing.T) *genmark.Registry {
 }
 
 // header is the first line of every generated file.
-var header = genheader.GeneratedComment(GeneratorId().String())
+var header = genhelper.GeneratedComment(GeneratorId().String())
 
 // testHeader is the header of the files generate gives with default options.
 var testHeader = header + `
@@ -51,20 +51,13 @@ var testHeader = header + `
 //	package_option_file: null
 // generated: 2026-11-04T10:12:33Z`
 
-var (
-	optionFileParam = regexp.MustCompile(`(?m)^(//\t(?:package_)?option_file: ).*$`)
-	generatedLine   = regexp.MustCompile(`(?m)^` + genheader.GeneratedTimePrefix + `.*\n`)
-)
+var optionFileParam = regexp.MustCompile(`(?m)^(//\t(?:package_)?option_file: ).*$`)
 
 // withoutRunParams returns src, a generated file, without the generated:
 // line and with a null option_file and package_option_file, the header
 // fields that tell how a run was made rather than what it generated.
 func withoutRunParams(src string) string {
-	if loc := generatedLine.FindStringIndex(src); loc != nil {
-		src = src[:loc[0]] + src[loc[1]:]
-	}
-
-	return optionFileParam.ReplaceAllString(src, "${1}null")
+	return optionFileParam.ReplaceAllString(gentest.WithoutGenerated(src), "${1}null")
 }
 
 // testRun configures a run of Generator in a test. Registry is a registry

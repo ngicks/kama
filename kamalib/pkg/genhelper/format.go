@@ -113,13 +113,8 @@ func FailGen[C Context[C]](err error) Gen[C] {
 	}
 }
 
-// Comment returns the text of parts as the lines of one comment group, in
-// the order of parts. Each part follows the rules of one section of
-// [PrintComment]: text that is Go comments as a whole stays as it is, and
-// every line of other text gets "// ". No empty line separates the parts,
-// so a directive line given as the last part stays in the group. A part
-// with empty text gives one "//" line, which separates paragraphs. A nil
-// part is skipped.
+// Comment returns the texts of parts printed by [PrintCommentGroup], as
+// the lines of one comment group. A nil part is skipped.
 //
 // The text ends in a newline unless it is empty. It is Go comments as a
 // whole, so a doc of [DocFunc] keeps it as it is.
@@ -127,25 +122,17 @@ func FailGen[C Context[C]](err error) Gen[C] {
 // The returned Gen returns the error of the first failing part as it is.
 func Comment[C Context[C]](parts ...Gen[C]) Gen[C] {
 	return func(c C) (string, error) {
-		p := c.Printer(nil)
-
-		for _, part := range parts {
-			if part == nil {
-				continue
-			}
-
-			s, err := part(c)
-			if err != nil {
-				return "", err
-			}
-
-			if strings.TrimSuffix(s, "\n") == "" {
-				p.Printf("//\n")
-				continue
-			}
-
-			printSection(p, s)
+		texts, err := opiter.TryCollect(
+			opiter.WrapSeq(slices.Values(parts)).
+				Filter(func(part Gen[C]) bool { return part != nil }).
+				Disassemble(func(part Gen[C]) (string, error) { return part(c) }),
+		)
+		if err != nil {
+			return "", err
 		}
+
+		p := c.Printer(nil)
+		PrintCommentGroup(p, texts)
 
 		return string(p.Bytes()), nil
 	}

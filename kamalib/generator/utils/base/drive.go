@@ -13,6 +13,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
@@ -236,23 +237,22 @@ func validPath(p string) bool { return fs.ValidPath(p) && p != "." }
 
 // compose prints the unformatted content of c.
 func compose(id Id, env Env, c Composed) ([]byte, error) {
-	hdr, err := header(id.String(), c.Params, env.Now)
+	hdr, err := genhelper.GeneratorParams{
+		Name:      id.String(),
+		Params:    c.Params,
+		Generated: env.Now,
+	}.Comment()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("base: file header: %w", err)
 	}
 
-	var b bytes.Buffer
+	head := genhelper.NewPrinter(nil)
+	genhelper.PrintFileHeader(head, []string{hdr, c.BuildConstraint}, c.Package)
 
-	b.WriteString(strings.Join(hdr, "\n") + "\n\n")
-
-	if c.BuildConstraint != "" {
-		b.WriteString(c.BuildConstraint + "\n\n")
-	}
-
-	b.WriteString("package " + c.Package + "\n\n")
+	b := bytes.NewBuffer(head.Bytes())
 
 	if c.Imports != nil {
-		writeImports(&b, c.Imports)
+		writeImports(b, c.Imports)
 	}
 
 	for i, part := range c.Parts {
