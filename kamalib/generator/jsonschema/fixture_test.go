@@ -21,8 +21,9 @@ import (
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
-// fixtures are the directories under internal/fixture. Each holds
-// schema.json, the spec.yaml generating from it and the files the
+// fixtures are the directories under internal/fixture. Each holds a
+// package naming its schema file, schema.json or kama_jsonschema.json, the
+// spec.yaml generating from it and the files the
 // generators produce: the file of this generator, named after the
 // directory, which is also the package name, and the files of the
 // validator generator.
@@ -57,8 +58,9 @@ type validateInstance interface {
 	Run(ctx context.Context, r workflow.Reporter) error
 }
 
-// TestFixtureUpToDate runs the steps of each spec.yaml, the proc and then
-// validate.generate over the packages loaded with its output, and compares
+// TestFixtureUpToDate runs the steps of each spec.yaml, the proc over the
+// packages loaded before it and then validate.generate over the packages
+// loaded with its output, and compares
 // the files they produce, as the merged view holds them after Run, with the
 // files on disk. Run stages only a file that changed beyond the generated:
 // line, so a staged file differs from disk and fails the comparison.
@@ -73,23 +75,27 @@ func TestFixtureUpToDate(t *testing.T) {
 
 			defer f.Close()
 
+			load := gopackages.Options{Patterns: []string{"./..."}}
+
+			pkgs, err := gopackages.Load(ctx, f, load)
+			assert.NilError(t, err)
+
 			i := newInstance(t, gentest.Now())
 
-			param := procParam("schema.json", "", "", "")
+			var param ProcParamPartial
 			if remotes, ok := fixtureRemotes[name]; ok {
 				param.Remotes = und.Defined(remotes)
 			}
 
 			assert.NilError(t, i.Param(param))
+			i.In(&procpackages.Packages{Pkgs: pkgs})
 			i.Out(f)
 
 			r := &gentest.RecordReporter{}
 			assert.NilError(t, i.Run(ctx, r))
 			assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
 
-			load := gopackages.Options{Patterns: []string{"./..."}}
-
-			pkgs, err := gopackages.Load(ctx, f, load)
+			pkgs, err = gopackages.Load(ctx, f, load)
 			assert.NilError(t, err)
 
 			inst, err := validator.NewProc().Instantiate(ctx, false)

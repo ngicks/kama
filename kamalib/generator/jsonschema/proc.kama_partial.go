@@ -4,7 +4,7 @@
 //	merge_nested: "recursive"
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:02Z
+// generated: 2026-11-25T04:15:00Z
 
 package jsonschema
 
@@ -14,9 +14,6 @@ import "github.com/ngicks/option/und"
 //
 //kama:generated kama:partial
 type ProcParamPartial struct {
-	Schema        und.Und[string]   `json:"schema,omitzero"`
-	Dir           und.Und[string]   `json:"dir,omitzero"`
-	Package       und.Und[string]   `json:"package,omitzero"`
 	TypeName      und.Und[string]   `json:"type_name,omitzero"`
 	Remotes       und.Und[[]Remote] `json:"remotes,omitzero"`
 	AssertFormats und.Und[bool]     `json:"assert_formats,omitzero"`
@@ -29,9 +26,6 @@ type ProcParamPartial struct {
 //
 //kama:generated kama:partial
 func (p *ProcParamPartial) FromValue(v ProcParam) {
-	p.Schema = und.Defined(v.Schema)
-	p.Dir = und.Defined(v.Dir)
-	p.Package = und.Defined(v.Package)
 	p.TypeName = und.Defined(v.TypeName)
 	p.Remotes = und.WrapSlice(v.Remotes).CollapseToNull()
 	p.AssertFormats = und.Defined(v.AssertFormats)
@@ -45,9 +39,6 @@ func (p *ProcParamPartial) FromValue(v ProcParam) {
 //kama:generated kama:partial
 func (p ProcParamPartial) ToValue() ProcParam {
 	var v ProcParam
-	v.Schema = p.Schema.Value()
-	v.Dir = p.Dir.Value()
-	v.Package = p.Package.Value()
 	v.TypeName = p.TypeName.Value()
 	v.Remotes = p.Remotes.Value()
 	v.AssertFormats = p.AssertFormats.Value()
@@ -61,15 +52,6 @@ func (p ProcParamPartial) ToValue() ProcParam {
 //
 //kama:generated kama:partial
 func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
-	if !r.Schema.IsUndefined() {
-		p.Schema = r.Schema
-	}
-	if !r.Dir.IsUndefined() {
-		p.Dir = r.Dir
-	}
-	if !r.Package.IsUndefined() {
-		p.Package = r.Package
-	}
 	if !r.TypeName.IsUndefined() {
 		p.TypeName = r.TypeName
 	}

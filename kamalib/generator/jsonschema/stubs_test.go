@@ -20,14 +20,14 @@ const stubsFilePath = "api/api.kama_jsonschema.kama_validate.go"
 // carrying //kama:validate and ValidateShallow for those decoding
 // validated values.
 func TestStubs(t *testing.T) {
-	f := procFs(t, map[string]string{"api/schema.json": `{
+	f := procFs(t, map[string]string{"api/api.go": "package api\n", "api/kama_jsonschema.json": `{
 		"title": "pet", "type": "object",
 		"properties": {"tag": {"type": "string", "enum": ["a", "b"]}}
 	}`})
 
-	runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now())
+	runProc(t, f, ProcParamPartial{}, gentest.Now())
 
-	got, err := fs.ReadFile(f.FS(), stubsFilePath)
+	got, err := fs.ReadFile(f.FS(), inline(t, stubsFilePath))
 	assert.NilError(t, err)
 
 	for _, want := range []string{
@@ -46,27 +46,33 @@ func TestStubs(t *testing.T) {
 // by stubs once they change, since its methods may refer to what the run
 // drops.
 func TestStubsReplaceStaleMethods(t *testing.T) {
+	// The methods the decoders call, so that the package loads.
 	const methods = "package api\n\n//kama:generated kama:validate\n" +
-		"func (v Pet) Validate(stopOnFirstError bool) error { return nil }\n"
+		"func (v Pet) Validate(stopOnFirstError bool) error { return nil }\n\n" +
+		"//kama:generated kama:validate\n" +
+		"func (v Pet) ValidateShallow(stopOnFirstError bool) error { return nil }\n"
 
-	f := procFs(t, map[string]string{"api/schema.json": procSchema})
+	f := procFs(
+		t,
+		map[string]string{"api/api.go": "package api\n", "api/kama_jsonschema.json": procSchema},
+	)
 
-	runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now())
-	assert.NilError(t, f.Write(context.Background(), stubsFilePath, []byte(methods)))
+	runProc(t, f, ProcParamPartial{}, gentest.Now())
+	assert.NilError(t, f.Write(context.Background(), inline(t, stubsFilePath), []byte(methods)))
 
-	runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now().Add(time.Hour))
+	runProc(t, f, ProcParamPartial{}, gentest.Now().Add(time.Hour))
 
-	got, err := fs.ReadFile(f.FS(), stubsFilePath)
+	got, err := fs.ReadFile(f.FS(), inline(t, stubsFilePath))
 	assert.NilError(t, err)
 	assert.Equal(t, string(got), methods)
 
-	assert.NilError(t, f.Write(context.Background(), "api/schema.json", []byte(
+	assert.NilError(t, f.Write(context.Background(), inline(t, "api/kama_jsonschema.json"), []byte(
 		strings.Replace(procSchema, `"required"`, `"description": "A pet.", "required"`, 1),
 	)))
 
-	runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now())
+	runProc(t, f, ProcParamPartial{}, gentest.Now())
 
-	got, err = fs.ReadFile(f.FS(), stubsFilePath)
+	got, err = fs.ReadFile(f.FS(), inline(t, stubsFilePath))
 	assert.NilError(t, err)
 	assert.Assert(t, strings.Contains(string(got), "is a stub"), "%s", got)
 }
@@ -74,14 +80,14 @@ func TestStubsReplaceStaleMethods(t *testing.T) {
 // TestStubsWithoutValidate writes no stub for decoders calling no
 // Validate.
 func TestStubsWithoutValidate(t *testing.T) {
-	f := procFs(t, map[string]string{"api/schema.json": procSchema})
+	f := procFs(
+		t,
+		map[string]string{"api/api.go": "package api\n", "api/kama_jsonschema.json": procSchema},
+	)
 
-	param := procParam("api/schema.json", "", "", "")
-	param.Validate = und.Defined(false)
+	runProc(t, f, ProcParamPartial{Validate: und.Defined(false)}, gentest.Now())
 
-	runProc(t, f, param, gentest.Now())
-
-	_, err := fs.Stat(f.FS(), stubsFilePath)
+	_, err := fs.Stat(f.FS(), inline(t, stubsFilePath))
 	assert.ErrorIs(t, err, fs.ErrNotExist)
 }
 
@@ -92,14 +98,10 @@ func TestHelperNameConflict(t *testing.T) {
 		{"api/hand.go": "package api\n\nfunc kamaJsonschemaDecodeObject() {}\n"},
 		{"api/zz_gen.helper.kama_jsonschema.go": "package api\n\nfunc hand() {}\n"},
 	} {
-		files["api/schema.json"] = procSchema
-		f := procFs(t, files)
+		files["api/api.go"] = "package api\n"
+		files["api/kama_jsonschema.json"] = procSchema
 
-		i := newInstance(t, gentest.Now())
-		assert.NilError(t, i.Param(procParam("api/schema.json", "", "", "")))
-		i.Out(f)
-
-		err := i.Run(context.Background(), &gentest.RecordReporter{})
+		_, err := runProcErr(t, procFs(t, files), ProcParamPartial{}, gentest.Now())
 		assert.ErrorIs(t, err, ErrConflict)
 	}
 }

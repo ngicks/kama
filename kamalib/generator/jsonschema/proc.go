@@ -7,18 +7,21 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"iter"
 	"net/url"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/ngicks/option/und"
+	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
+	"github.com/ngicks/kama/kamalib/proc/gopackages"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
@@ -29,20 +32,9 @@ func init() { workflow.Register(GeneratorId().ProcKind(), NewProc) }
 //
 //kama:partial
 type ProcParam struct {
-	// Schema is the path of the schema file, slash-separated and relative
-	// to the root of the out of the proc. The file holds JSON. The path may be
-	// followed by # and a JSON pointer, as in a.json#/0/schema, to take
-	// the value it points to in the file as the schema document.
-	Schema string `json:"schema"`
-	// Dir is the output directory, slash-separated and relative to the
-	// root of the out of the proc. Empty means the directory of Schema.
-	Dir string `json:"dir"`
-	// Package is the package clause of the generated file. Empty means the
-	// base name of Dir.
-	Package string `json:"package"`
-	// TypeName names the Go type of the root schema as it is written, so it
-	// must be an exported Go identifier. Empty takes the title of the root
-	// schema.
+	// TypeName names the Go type of the root schema of every package as it
+	// is written, so it must be an exported Go identifier. Empty takes the
+	// title of each root schema.
 	TypeName string `json:"type_name"`
 	// Remotes map the URIs of other documents a reference may name to the
 	// files of the out of the proc holding them. The generator never fetches a
@@ -63,8 +55,9 @@ type ProcParam struct {
 
 // Remote maps a URI to a file of the out of the proc. With File, the URI
 // names that file, or the value of the file a JSON pointer names when File
-// is followed by # and the pointer, as Schema is. With Dir, the URI is a
-// prefix: a URI starting with it names the file of Dir at the rest of the
+// is followed by # and the pointer, as in a.json#/0/schema. The pointer is
+// percent-decoded first, as the fragment of a $ref is. With Dir, the URI is
+// a prefix: a URI starting with it names the file of Dir at the rest of the
 // URI, as http://example.com/schemas/ with schemas names
 // schemas/pet.json for http://example.com/schemas/pet.json. The paths are
 // slash-separated and relative to the root of the out.
@@ -93,117 +86,142 @@ func (p *ProcParamPartial) UnknownKeys() [][]string {
 	return paths
 }
 
-// proc runs Generator on the schema file its param names and stages the
-// file in its out, as base.Proc does. The schema file is read from its
-// out, so a file staged by an earlier step is read too. Its stale check
-// covers the Go files of the output directory.
+// proc runs Generator on the schema file of each package its in loaded and
+// stages the files in the directory of the package in its out, as
+// base.Proc does. The schema files are read from its out, so a file staged
+// by an earlier step is read too. Its stale check covers the Go files of
+// the directories of the packages.
 //
 //	Param(ProcParamPartial) error
-//	In()
+//	In(*gopackages.Packages)
 //	Out(*overlayfs.Fs)
-var proc = base.Proc[ProcParamPartial, ProcParam, base.None, Input]{
-	Generator: Generator(),
+var proc = base.Proc[ProcParamPartial, ProcParam, *gopackages.Packages, procIn]{
+	Generator: base.Generator[procIn]{Id: GeneratorId(), Generate: generatePackages},
 	Default:   DefaultProcParam,
-	Check: func(p ProcParam) error {
-		_, err := procOptions(p)
-		return err
-	},
-	Input: procInput,
+	Check:     checkParam,
+	Input:     procInput,
 }
 
 // NewProc returns the proc of the generator. It is the constructor of the kind
 // jsonschema.generate in workflow.DefaultRegistry.
 func NewProc() workflow.Proc { return proc }
 
-// procOptions returns the options of p, with Schema and Dir set. Its
-// Package is empty when the base name of the root of the out gives it,
-// which is not known before the run.
-func procOptions(p ProcParam) (Options, error) {
-	file, _, err := splitSchema(p.Schema)
-	if err != nil {
-		return Options{}, fmt.Errorf("%w: invalid schema %q: %w", ErrOptions, p.Schema, err)
-	}
+// documents finds the schema file of a package. The file is decoded from
+// its raw bytes, so it holds JSON whatever its name.
+var documents = base.NewDocumentLoader(GeneratorId(), fileloader.FormatJson)
 
-	if file == "" || !fs.ValidPath(file) {
-		return Options{}, fmt.Errorf("%w: invalid schema %q", ErrOptions, p.Schema)
-	}
-
-	dir := p.Dir
-	if dir == "" {
-		dir = path.Dir(file)
-	}
-
-	if !fs.ValidPath(dir) {
-		return Options{}, fmt.Errorf("%w: invalid dir %q", ErrOptions, dir)
-	}
-
-	pkg := p.Package
-
-	switch {
-	case pkg != "":
-		if err := checkPackage(pkg); err != nil {
-			return Options{}, err
-		}
-	case dir != ".":
-		pkg = path.Base(dir)
-		if err := checkPackage(pkg); err != nil {
-			return Options{}, fmt.Errorf("%w; set package", err)
-		}
-	}
-
-	if err := checkTypeName(p.TypeName); err != nil {
-		return Options{}, err
-	}
-
-	if err := checkRemotes(p.Remotes); err != nil {
-		return Options{}, err
-	}
-
-	return Options{
-		Package:       pkg,
-		TypeName:      p.TypeName,
-		Schema:        p.Schema,
-		Dir:           dir,
-		Validate:      p.Validate,
-		AssertFormats: p.AssertFormats,
-	}, nil
+// procIn is the input of a run of the proc.
+type procIn struct {
+	// pkgs are the packages the run reads, as base.SourcePackages picks
+	// them.
+	pkgs []*packages.Package
+	// root is the absolute directory of the root of the out.
+	root  string
+	param ProcParam
 }
 
-// procInput decodes the schema of p from out.
+func checkParam(p ProcParam) error {
+	if err := checkTypeName(p.TypeName); err != nil {
+		return err
+	}
+
+	return checkRemotes(p.Remotes)
+}
+
 func procInput(
 	_ context.Context,
 	p ProcParam,
-	_ base.None,
+	pkgs *gopackages.Packages,
 	out *overlayfs.Fs,
-) (Input, base.Scope, error) {
-	opts, err := procOptions(p)
-	if err != nil {
-		return Input{}, base.Scope{}, err
-	}
+) (procIn, base.Scope, error) {
+	in := procIn{pkgs: base.SourcePackages(pkgs.Pkgs), root: out.Root(), param: p}
 
-	src, err := schemaValue(out.FS(), opts.Schema)
-	if err != nil {
-		return Input{}, base.Scope{}, fmt.Errorf("jsonschema: %w", err)
-	}
+	var scope base.Scope
 
-	// The document is decoded from the raw bytes rather than taken from
-	// file.load, whose decoded values lose the order of members and the
-	// text of numbers.
-	var doc jsonschema.Schema
-	if err := jsonv2.Unmarshal(src, &doc); err != nil {
-		return Input{}, base.Scope{}, fmt.Errorf("jsonschema: %s: %w", opts.Schema, err)
-	}
-
-	opts.Load = remoteLoader(out.FS(), p.Remotes)
-
-	if opts.Package == "" {
-		opts.Package = filepath.Base(out.Root())
-		if err := checkPackage(opts.Package); err != nil {
-			return Input{}, base.Scope{}, fmt.Errorf("%w; set package", err)
+	// A package without a schema file still counts, so that the files
+	// generated from a schema file it dropped are stale.
+	for _, pkg := range in.pkgs {
+		if dir, err := base.PackageDir(in.root, pkg); err == nil {
+			scope.Dirs = append(scope.Dirs, dir)
 		}
 	}
 
-	return Input{Doc: &doc, Options: opts}, base.Scope{Dirs: []string{opts.Dir}}, nil
+	return in, scope, nil
+}
+
+// generatePackages runs Generate on the schema file of each package of in.
+func generatePackages(
+	ctx context.Context,
+	env base.Env,
+	in procIn,
+) iter.Seq2[base.Output, error] {
+	return func(yield func(base.Output, error) bool) {
+		for _, pkg := range in.pkgs {
+			for out, err := range generatePackage(ctx, env, in, pkg) {
+				if !yield(out, err) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// generatePackage runs Generate on the schema file of pkg, generating into
+// the directory of pkg in the package of pkg. A package has one schema
+// file at most, since its declarations go to one file named after the
+// package.
+func generatePackage(
+	ctx context.Context,
+	env base.Env,
+	in procIn,
+	pkg *packages.Package,
+) iter.Seq2[base.Output, error] {
+	return func(yield func(base.Output, error) bool) {
+		docs, err := documents.Documents(env.Out, in.root, pkg)
+
+		switch {
+		case err != nil:
+			yield(nil, fmt.Errorf("jsonschema: %w", err))
+			return
+		case len(docs) == 0:
+			return
+		case len(docs) > 1:
+			yield(nil, fmt.Errorf(
+				"%w: package %s has %d schema files; want one", ErrOptions, pkg.PkgPath, len(docs),
+			))
+
+			return
+		}
+
+		dir, err := base.PackageDir(in.root, pkg)
+		if err != nil {
+			yield(nil, fmt.Errorf("jsonschema: %w", err))
+			return
+		}
+
+		// The document is decoded from the raw bytes rather than through
+		// fileloader, whose decoded values lose the order of members and the
+		// text of numbers.
+		var doc jsonschema.Schema
+		if err := jsonv2.Unmarshal(docs[0].Content, &doc); err != nil {
+			yield(nil, fmt.Errorf("jsonschema: %s: %w", docs[0].Name, err))
+			return
+		}
+
+		for out, err := range Generate(ctx, env, Input{Doc: &doc, Options: Options{
+			Package:       pkg.Name,
+			TypeName:      in.param.TypeName,
+			Schema:        docs[0].Name,
+			Dir:           dir,
+			Load:          remoteLoader(env.Out, in.param.Remotes),
+			AssertFormats: in.param.AssertFormats,
+			Validate:      in.param.Validate,
+		}}) {
+			if !yield(out, err) {
+				return
+			}
+		}
+	}
 }
 
 // checkRemotes reports a remote without a URI, or naming not exactly one of
@@ -285,8 +303,7 @@ func remoteLoader(fsys fs.FS, remotes []Remote) func(string) (*jsonschema.Schema
 }
 
 // remoteValue reads the value of file of fsys, which is the File of a
-// remote when ref is true and may then hold a pointer as a schema param
-// does.
+// remote when ref is true and may then hold a pointer.
 func remoteValue(fsys fs.FS, file string, ref bool) ([]byte, error) {
 	if ref {
 		return schemaValue(fsys, file)
@@ -299,9 +316,9 @@ func remoteValue(fsys fs.FS, file string, ref bool) ([]byte, error) {
 	return fs.ReadFile(fsys, file)
 }
 
-// splitSchema splits a schema param at its first # into the path of the
-// file and the JSON pointer of its fragment. The fragment is
-// percent-decoded, as the fragment of a $ref is. A param without # points
+// splitSchema splits the File of a remote at its first # into the path of
+// the file and the JSON pointer of its fragment. The fragment is
+// percent-decoded, as the fragment of a $ref is. A File without # points
 // to the whole file.
 func splitSchema(schema string) (string, jsontext.Pointer, error) {
 	file, frag, _ := strings.Cut(schema, "#")
@@ -319,7 +336,7 @@ func splitSchema(schema string) (string, jsontext.Pointer, error) {
 	return file, ptr, nil
 }
 
-// schemaValue reads the file of a schema param from fsys and returns the
+// schemaValue reads the file of the File of a remote from fsys and returns the
 // raw value its pointer points to. The value is a slice of the file, so the
 // order of members and the text of numbers survive.
 func schemaValue(fsys fs.FS, schema string) (jsontext.Value, error) {

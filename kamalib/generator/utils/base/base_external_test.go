@@ -107,6 +107,24 @@ func TestPackageFile(t *testing.T) {
 	})
 }
 
+func TestPackageDir(t *testing.T) {
+	pkgs := gentest.Load(t, map[string]string{"a/a.go": "package a\n"})
+	assert.Equal(t, len(pkgs), 1)
+
+	root, err := filepath.Abs(".")
+	assert.NilError(t, err)
+
+	dir, err := base.PackageDir(root, pkgs[0])
+	assert.NilError(t, err)
+	assert.Equal(t, dir, gentest.InlineDir(t)+"/a")
+
+	_, err = base.PackageDir(filepath.Join(root, "testdata", "other"), pkgs[0])
+	assert.ErrorContains(t, err, "lies outside")
+
+	_, err = base.PackageDir(root, &packages.Package{PkgPath: "x"})
+	assert.ErrorContains(t, err, "directory of package x is unknown")
+}
+
 func TestBuildConstraint(t *testing.T) {
 	pkgs := gentest.Load(t, map[string]string{
 		"a.go": "// Package x.\npackage x\n\ntype A int\n",

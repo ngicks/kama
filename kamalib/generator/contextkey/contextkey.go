@@ -30,6 +30,10 @@
 // files. Several packages may name one file. A package without a template
 // file generates nothing.
 //
+// The packages load before the proc runs, and packages.load fails on any
+// error, so the Go files of a package must compile without the files the
+// proc has not generated yet.
+//
 // The param of the proc has one key, key_type_func, which is the
 // key_type_func of a template file leaving it out.
 //

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json/jsontext"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"iter"
@@ -17,12 +18,17 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 	"unicode"
 
 	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/internal/suitetest"
+	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
+	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
 
@@ -288,8 +294,8 @@ var suiteSets = []suiteSet{
 }
 
 // TestSuiteBehavior generates every group of suiteSets that Generate
-// accepts as a fixture under suiteDir, through the proc as a workflow spec
-// runs it, and checks the instances of the suite against them. Each group
+// accepts as a fixture under suiteDir, driving Generator as the proc
+// drives it, and checks the instances of the suite against them. Each group
 // of the suite that applies to draft 2020-12 belongs to exactly one set.
 // Run it with
 //
@@ -380,7 +386,7 @@ func TestSuiteBehavior(t *testing.T) {
 		}
 
 		for _, file := range slices.Sorted(maps.Keys(accepted)) {
-			runSuiteSpec(t, file, accepted[file], set.assertFormats)
+			runSuiteGenerate(t, file, accepted[file], set.assertFormats)
 		}
 
 		checkGenerated(t, set.generated, generated)
@@ -555,13 +561,15 @@ func suiteStem(file string) string { return strings.TrimSuffix(file, ".json") }
 // suiteGroupDir returns the name of the directory and package of group gi.
 func suiteGroupDir(gi int) string { return fmt.Sprintf("g%03d", gi) }
 
-// runSuiteSpec generates the groups accepted of file into suiteDir with a
-// workflow running one jsonschema.generate step per group, asserting
-// formats as assertFormats tells. The overlay is rooted at this module,
-// which holds both the suite and suiteDir. The copy down skips its compile
-// check: the packages under suiteDir belong to another module, and
-// building the driver checks them.
-func runSuiteSpec(t *testing.T, file string, accepted []suitetest.Group, assertFormats bool) {
+// runSuiteGenerate generates the groups accepted of file into suiteDir,
+// driving Generator once per group as the proc drives it, asserting formats
+// as assertFormats tells. The schema of a group is a value inside a file of
+// the suite, which no package names as its schema file, so the proc itself
+// cannot generate it. The overlay is rooted at this module, which holds
+// both the suite and suiteDir. The packages under suiteDir belong to
+// another module and are copied down without a compile check: building the
+// driver checks them.
+func runSuiteGenerate(t *testing.T, file string, accepted []suitetest.Group, assertFormats bool) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -569,48 +577,39 @@ func runSuiteSpec(t *testing.T, file string, accepted []suitetest.Group, assertF
 	module, err := filepath.Abs(moduleRoot)
 	assert.NilError(t, err)
 
+	f, err := overlayfs.New(module)
+	assert.NilError(t, err)
+
+	defer f.Close()
+
 	out := path.Join("generator/jsonschema", filepath.ToSlash(suiteDir), suiteStem(file))
-
-	steps := map[string]workflow.Step{
-		"root": {Proc: "overlayfs.open", Param: map[string]any{"root": module}},
+	env := base.Env{
+		Reporter: gentest.NopReporter{},
+		Now:      time.Now(),
+		Registry: base.DefaultRegistry(),
+		Out:      f.FS(),
 	}
-
-	var names workflow.Names
 
 	for _, g := range accepted {
+		var doc jsonschema.Schema
+		assert.NilError(t, jsonv2.Unmarshal(g.Schema, &doc), "%s: %s", file, g.Description)
+
 		name := suiteGroupDir(g.Index)
-		names = append(names, name)
+		dir := path.Join(out, name)
 
-		remotes := opiter.WrapSeq(slices.Values(suiteRemotes(g))).
-			Map(func(r Remote) any { return map[string]any{"uri": r.Uri, "dir": r.Dir, "file": r.File} }).
-			CollectSlice()
-
-		steps[name] = workflow.Step{
-			Proc: "jsonschema.generate",
-			Out:  workflow.Names{"root"},
-			Param: map[string]any{
-				"schema":         g.SchemaRef(),
-				"dir":            path.Join(out, name),
-				"type_name":      "Root",
-				"remotes":        remotes,
-				"assert_formats": assertFormats,
-			},
-		}
+		err := base.Drive(ctx, Generator(), env, Input{Doc: &doc, Options: Options{
+			Package:       name,
+			TypeName:      "Root",
+			Schema:        g.SchemaRef(),
+			Dir:           dir,
+			Load:          remoteLoader(f.FS(), suiteRemotes(g)),
+			AssertFormats: assertFormats,
+			Validate:      true,
+		}}, base.Scope{Dirs: []string{dir}}, f)
+		assert.NilError(t, err, "%s: %s", file, g.Description)
 	}
 
-	steps["final"] = workflow.Step{
-		Proc:  "overlayfs.copy_down",
-		In:    workflow.Names{"root"},
-		After: names,
-		Param: map[string]any{"fast_ignore_compile_errors": true},
-	}
-
-	spec := workflow.Spec{Version: workflow.SpecVersion, Steps: steps}
-
-	g, err := spec.Build(ctx, workflow.DefaultRegistry)
-	assert.NilError(t, err, file)
-	assert.Equal(t, len(g.Warnings()), 0, "%s: %v", file, g.Warnings())
-	assert.NilError(t, g.Run(ctx, workflow.ProgressControl{}), file)
+	assert.NilError(t, f.CopyDown(ctx), file)
 }
 
 // runSuiteValidate runs validate.generate over the packages of the module

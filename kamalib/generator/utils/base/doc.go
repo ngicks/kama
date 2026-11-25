@@ -22,6 +22,14 @@
 // packages, the options of their directives overlaid with those of the
 // option files, the options of the step and the root of the output.
 //
+// A generator may also find its documents through the loaded packages: a
+// package names its document with //<namespace>:option-file <name>=<path>,
+// or holds the default file <namespace>_<name> in its directory, and the
+// generator reads it with the loader [NewDocumentLoader] returns and
+// generates into the directory [PackageDir] tells. Such a generator is a
+// [Proc] whose in is the loaded packages; the generators contextkey and
+// jsonschema of kamalib are.
+//
 // Generate yields [Output] values. A [Whole] is a file the generator
 // finished, such as a file edited in place or a file in another language.
 // A [Composed] is a Go file the framework assembles from [Part] values,
@@ -226,8 +234,8 @@
 //
 //   - [Naming] names generated files, and [HostShared] places declarations
 //     several generated files share.
-//   - [SourcePackages], [DeclaringPackage], [PackageFile] and
-//     [BuildConstraint] read loaded packages. SourceProc picks its packages
+//   - [SourcePackages], [DeclaringPackage], [PackageFile], [PackageDir]
+//     and [BuildConstraint] read loaded packages. SourceProc picks its packages
 //     with SourcePackages.
 //   - [Generated], [UnownedDecls], [DeclDocs] and [AstDeclDocs] read the
 //     generated marks of declarations, and [ExplainConflict] explains a

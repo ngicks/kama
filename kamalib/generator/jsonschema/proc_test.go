@@ -4,11 +4,11 @@ import (
 	"context"
 	jsonv2 "encoding/json/v2"
 	"io/fs"
-	"os"
-	"path/filepath"
+	"path"
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/ngicks/opiter"
@@ -18,8 +18,10 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
+	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
+	procpackages "github.com/ngicks/kama/kamalib/proc/gopackages"
 	_ "github.com/ngicks/kama/kamalib/proc/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
@@ -28,133 +30,47 @@ func TestProcParam(t *testing.T) {
 	cases := []struct {
 		name  string
 		param ProcParamPartial
-		want  Options
 		err   string
 	}{
-		{
-			name:  "schema only",
-			param: procParam("api/schema.json", "", "", ""),
-			want:  Options{Package: "api", Schema: "api/schema.json", Dir: "api", Validate: true},
-		},
-		{
-			name:  "schema at the root",
-			param: procParam("schema.json", "", "", ""),
-			want:  Options{Schema: "schema.json", Dir: ".", Validate: true},
-		},
-		{
-			name:  "everything set",
-			param: procParam("schema/a.json", "gen/types", "model", "Root"),
-			want: Options{
-				Package:  "model",
-				TypeName: "Root",
-				Schema:   "schema/a.json",
-				Dir:      "gen/types",
-				Validate: true,
-			},
-		},
-		{
-			name:  "package from dir",
-			param: procParam("a.json", "gen/types", "", ""),
-			want:  Options{Package: "types", Schema: "a.json", Dir: "gen/types", Validate: true},
-		},
-		{
-			name:  "schema with a pointer",
-			param: procParam("tests/a.json#/0/schema", "", "", ""),
-			want: Options{
-				Package:  "tests",
-				Schema:   "tests/a.json#/0/schema",
-				Dir:      "tests",
-				Validate: true,
-			},
-		},
-		{
-			name:  "schema with an empty pointer",
-			param: procParam("api/a.json#", "", "", ""),
-			want:  Options{Package: "api", Schema: "api/a.json#", Dir: "api", Validate: true},
-		},
-		{
-			name:  "validate off",
-			param: withValidate(procParam("a.json", "", "p", ""), false),
-			want:  Options{Package: "p", Schema: "a.json", Dir: "."},
-		},
-		{name: "no schema", param: procParam("", "", "", ""), err: `invalid schema ""`},
-		{name: "pointer only", param: procParam("#/0", "", "", ""), err: `invalid schema "#/0"`},
-		{
-			name:  "pointer without a slash",
-			param: procParam("a.json#0", "", "", ""),
-			err:   `invalid schema "a.json#0": invalid JSON pointer "0"`,
-		},
-		{
-			name:  "pointer with a bad escape",
-			param: procParam("a.json#/~2", "", "", ""),
-			err:   `invalid JSON pointer "/~2"`,
-		},
-		{
-			name:  "pointer with a bad percent escape",
-			param: procParam("a.json#/%zz", "", "", ""),
-			err:   `invalid schema "a.json#/%zz"`,
-		},
-		{name: "schema outside", param: procParam("../a.json", "", "", ""), err: "invalid schema"},
-		{
-			name:  "dir outside",
-			param: procParam("a.json", "../x", "", ""),
-			err:   `invalid dir "../x"`,
-		},
-		{
-			name:  "dir not a package name",
-			param: procParam("my-api/a.json", "", "", ""),
-			err:   `package name "my-api"; set package`,
-		},
-		{
-			name:  "package not a package name",
-			param: procParam("a.json", "", "a.b", ""),
-			err:   `package name "a.b"`,
-		},
-		{
-			name:  "type name not exported",
-			param: procParam("a.json", "", "", "pet"),
-			err:   `type name "pet"`,
-		},
-		{
-			name:  "type name not an identifier",
-			param: procParam("a.json", "", "", "a b"),
-			err:   `type name "a b"`,
-		},
+		{name: "defaults"},
+		{name: "type name", param: typeNameParam("Root")},
+		{name: "type name not exported", param: typeNameParam("pet"), err: `type name "pet"`},
+		{name: "type name not an identifier", param: typeNameParam("a b"), err: `type name "a b"`},
 		{
 			name:  "type name starting with a digit",
-			param: procParam("a.json", "", "", "1x"),
+			param: typeNameParam("1x"),
 			err:   `type name "1x"`,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			p := DefaultProcParam().Merge(tc.param).ToValue()
-			assert.Equal(t, newInstance(t, gentest.Now()).Param(tc.param) == nil, tc.err == "")
-
-			opts, err := procOptions(p)
-			if tc.err != "" {
-				assert.ErrorIs(t, err, ErrOptions)
-				assert.ErrorContains(t, err, tc.err)
-
+			err := newInstance(t, gentest.Now()).Param(tc.param)
+			if tc.err == "" {
+				assert.NilError(t, err)
 				return
 			}
 
-			assert.NilError(t, err)
-			assert.DeepEqual(t, opts, tc.want)
+			assert.ErrorIs(t, err, ErrOptions)
+			assert.ErrorContains(t, err, tc.err)
 		})
 	}
 }
 
 // TestProcParamUnknownKeys builds a spec as the workflow does: a key no
-// field names is a warning of the build.
+// field names is a warning of the build, a key of a remote included.
 func TestProcParamUnknownKeys(t *testing.T) {
 	var spec workflow.Spec
 	assert.NilError(t, yaml.Unmarshal([]byte(`
 version: 1
 steps:
   root: {proc: overlayfs.open}
-  types: {proc: jsonschema.generate, out: root, param: {schema: a.json, tpye_name: X}}
+  load: {proc: packages.load, in: root}
+  types:
+    proc: jsonschema.generate
+    in: load
+    out: root
+    param: {tpye_name: X, remotes: [{uri: "http://x.test/", dir: a, flie: b}]}
 `), &spec))
 
 	g, err := spec.Build(context.Background(), workflow.DefaultRegistry)
@@ -162,9 +78,12 @@ steps:
 
 	got := opiter.WrapSeq(slices.Values(g.Warnings())).
 		Map(error.Error).
-		CollectSlice()
+		Collect(slices.Sorted)
 
-	assert.DeepEqual(t, got, []string{"workflow: unknown key: steps.types.param.tpye_name"})
+	assert.DeepEqual(t, got, []string{
+		"workflow: unknown key: steps.types.param.remotes.0.flie",
+		"workflow: unknown key: steps.types.param.tpye_name",
+	})
 }
 
 func TestProcParamRemotes(t *testing.T) {
@@ -179,44 +98,18 @@ func TestProcParamRemotes(t *testing.T) {
 		{Remote{Uri: "http://x.test/", File: "../a.json#/b"}, `invalid path "../a.json"`},
 		{Remote{Uri: "http://x.test/", File: "a.json#b"}, `invalid JSON pointer "b"`},
 	} {
-		param := procParam("a.json", "", "p", "")
-		param.Remotes = und.Defined([]Remote{tc.remote})
-
-		err := newInstance(t, gentest.Now()).Param(param)
+		err := newInstance(t, gentest.Now()).Param(remotesParam(tc.remote))
 		assert.ErrorIs(t, err, ErrOptions)
 		assert.ErrorContains(t, err, tc.err)
 	}
-}
-
-// TestProcParamRemotesUnknownKeys checks that a key a remote does not know
-// is a warning naming its place in the param.
-func TestProcParamRemotesUnknownKeys(t *testing.T) {
-	var spec workflow.Spec
-	assert.NilError(t, yaml.Unmarshal([]byte(`
-version: 1
-steps:
-  root: {proc: overlayfs.open}
-  types:
-    proc: jsonschema.generate
-    out: root
-    param: {schema: a.json, remotes: [{uri: "http://x.test/", dir: a, flie: b}]}
-`), &spec))
-
-	g, err := spec.Build(context.Background(), workflow.DefaultRegistry)
-	assert.NilError(t, err)
-
-	got := opiter.WrapSeq(slices.Values(g.Warnings())).
-		Map(error.Error).
-		CollectSlice()
-
-	assert.DeepEqual(t, got, []string{"workflow: unknown key: steps.types.param.remotes.0.flie"})
 }
 
 // TestProcRunRemotes generates a schema referring to three other
 // documents, two of which remotes with dir map and one a remote with file.
 func TestProcRunRemotes(t *testing.T) {
 	f := procFs(t, map[string]string{
-		"api/schema.json": `{"title": "pet", "type": "object", "properties": {
+		"api/api.go": "package api\n",
+		"api/kama_jsonschema.json": `{"title": "pet", "type": "object", "properties": {
 			"tag": {"$ref": "http://x.test/schemas/tag.json"},
 			"owner": {"$ref": "http://y.test/owner#/$defs/name"},
 			"kind": {"$ref": "kind.json"}}}`,
@@ -225,18 +118,15 @@ func TestProcRunRemotes(t *testing.T) {
 		"local/kind.json":         `{"type": "string", "enum": ["cat", "dog"]}`,
 	})
 
-	param := procParam("api/schema.json", "", "", "")
-	param.Remotes = und.Defined([]Remote{
-		{Uri: "http://x.test/", Dir: "remote"},
-		{Uri: "http://y.test/owner", File: "owner.json"},
+	r := runProc(t, f, remotesParam(
+		Remote{Uri: "http://x.test/", Dir: inline(t, "remote")},
+		Remote{Uri: "http://y.test/owner", File: inline(t, "owner.json")},
 		// The root has no $id, so kind.json resolves to /kind.json.
-		{Uri: "/", Dir: "local"},
-	})
-
-	r := runProc(t, f, param, gentest.Now())
+		Remote{Uri: "/", Dir: inline(t, "local")},
+	), gentest.Now())
 	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
 
-	got, err := fs.ReadFile(f.FS(), "api/api.kama_jsonschema.go")
+	got, err := fs.ReadFile(f.FS(), inline(t, "api/api.kama_jsonschema.go"))
 	assert.NilError(t, err)
 
 	// gofmt aligns the fields of a struct, so runs of spaces compare as one.
@@ -253,20 +143,19 @@ func TestProcRunRemotes(t *testing.T) {
 // holding / and a space.
 func TestProcRunRemotePointer(t *testing.T) {
 	f := procFs(t, map[string]string{
-		"api/schema.json": `{"title": "pet", "type": "object", "properties": {
+		"api/api.go": "package api\n",
+		"api/kama_jsonschema.json": `{"title": "pet", "type": "object", "properties": {
 			"tag": {"$ref": "http://x.test/tag.json"}}}`,
 		"remote.json": `{"docs": {"http://x.test/tag json": {"type": "string", "maxLength": 3}}}`,
 	})
 
-	param := procParam("api/schema.json", "", "", "")
-	param.Remotes = und.Defined([]Remote{
-		{Uri: "http://x.test/tag.json", File: "remote.json#/docs/http:~1~1x.test~1tag%20json"},
-	})
-
-	r := runProc(t, f, param, gentest.Now())
+	r := runProc(t, f, remotesParam(Remote{
+		Uri:  "http://x.test/tag.json",
+		File: inline(t, "remote.json") + "#/docs/http:~1~1x.test~1tag%20json",
+	}), gentest.Now())
 	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
 
-	got, err := fs.ReadFile(f.FS(), "api/api.kama_jsonschema.go")
+	got, err := fs.ReadFile(f.FS(), inline(t, "api/api.kama_jsonschema.go"))
 	assert.NilError(t, err)
 
 	spaced := strings.Join(strings.Fields(string(got)), " ")
@@ -277,17 +166,14 @@ func TestProcRunRemotePointer(t *testing.T) {
 // naming the reference and the place holding it.
 func TestProcRunRemoteMissing(t *testing.T) {
 	f := procFs(t, map[string]string{
-		"api/schema.json": `{"title": "pet", "properties": {"a": {"$ref": "http://z.test/a.json"}}}`,
+		"api/api.go": "package api\n",
+		"api/kama_jsonschema.json": `{"title": "pet", "properties": {
+			"a": {"$ref": "http://z.test/a.json"}}}`,
 	})
 
-	param := procParam("api/schema.json", "", "", "")
-	param.Remotes = und.Defined([]Remote{{Uri: "http://x.test/", Dir: "remote"}})
-
-	i := newInstance(t, gentest.Now())
-	assert.NilError(t, i.Param(param))
-	i.Out(f)
-
-	err := i.Run(context.Background(), &gentest.RecordReporter{})
+	_, err := runProcErr(
+		t, f, remotesParam(Remote{Uri: "http://x.test/", Dir: "remote"}), gentest.Now(),
+	)
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err,
 		`#/properties/a/$ref: reference "http://z.test/a.json" to "http://z.test/a.json": `+
@@ -301,221 +187,142 @@ const procSchema = `{
   "required": ["name"]
 }`
 
-// TestProcRun generates from a schema file staged in the overlay and
-// writes the file Generate gives into the directory of the schema.
+// TestProcRun generates from the schema file of each package into the
+// directory of the package: the default file of one, the file a directive
+// names for the other. A package without a schema file generates nothing.
 func TestProcRun(t *testing.T) {
-	f := procFs(t, map[string]string{"api/schema.json": procSchema})
+	f := procFs(t, map[string]string{
+		"api/api.go":               "package api\n",
+		"api/kama_jsonschema.json": procSchema,
+		"named/named.go": "//kama:option-file jsonschema=../schemas/pet.schema.json\n\n" +
+			"package named\n",
+		"schemas/pet.schema.json": procSchema,
+		"none/none.go":            "package none\n",
+	})
 
-	r := runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now())
+	r := runProc(t, f, ProcParamPartial{}, gentest.Now())
 	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
 	// The declarations, their helpers and the stubs of their Validate
-	// methods.
-	assert.DeepEqual(t, r.Messages, []string{"3 files written, 0 files unchanged"})
+	// methods, for each package.
+	assert.DeepEqual(t, r.Messages, []string{"6 files written, 0 files unchanged"})
 
 	var doc jsonschema.Schema
 	assert.NilError(t, jsonv2.Unmarshal([]byte(procSchema), &doc))
 
-	want, _, err := generateFiles(&doc, Options{
-		Package: "api", Schema: "api/schema.json", Validate: true,
-	})
-	assert.NilError(t, err)
+	for _, c := range []struct{ pkg, schema string }{
+		{"api", "api/kama_jsonschema.json"},
+		{"named", "schemas/pet.schema.json"},
+	} {
+		want, _, err := generateFiles(&doc, Options{
+			Package: c.pkg, Schema: inline(t, c.schema), Validate: true,
+		})
+		assert.NilError(t, err)
 
-	got, err := fs.ReadFile(f.FS(), "api/api.kama_jsonschema.go")
-	assert.NilError(t, err)
-	assert.Equal(t, string(got), string(want[0].Content))
+		got, err := fs.ReadFile(f.FS(), inline(t, c.pkg+"/"+c.pkg+".kama_jsonschema.go"))
+		assert.NilError(t, err)
+		assert.Equal(t, string(got), string(want[0].Content))
+	}
 }
 
-// TestProcRunPointer generates from the schema a pointer names inside a
-// larger document. The header records the param as given.
-func TestProcRunPointer(t *testing.T) {
+// TestProcRunPackageName takes the name of the package, which the base name
+// of its directory need not be.
+func TestProcRunPackageName(t *testing.T) {
 	f := procFs(t, map[string]string{
-		"tests/doc.json": `[{"description": "x", "schemas": {"a/b": {"~c d": ` + procSchema + `}}}]`,
+		"my-api/api.go":               "package api\n",
+		"my-api/kama_jsonschema.json": procSchema,
 	})
 
-	const schema = "tests/doc.json#/0/schemas/a~1b/~0c%20d"
+	runProc(t, f, ProcParamPartial{}, gentest.Now())
 
-	r := runProc(t, f, procParam(schema, "", "", ""), gentest.Now())
-	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
-
-	var doc jsonschema.Schema
-	assert.NilError(t, jsonv2.Unmarshal([]byte(procSchema), &doc))
-
-	want, _, err := generateFiles(&doc, Options{
-		Package: "tests", Schema: schema, Validate: true,
-	})
+	got, err := fs.ReadFile(f.FS(), inline(t, "my-api/api.kama_jsonschema.go"))
 	assert.NilError(t, err)
-
-	assert.Equal(t, want[0].Path, "tests/tests.kama_jsonschema.go")
-
-	got, err := fs.ReadFile(f.FS(), "tests/tests.kama_jsonschema.go")
-	assert.NilError(t, err)
-	assert.Equal(t, string(got), string(want[0].Content))
-	assert.Assert(t, strings.Contains(string(got), `schema: "`+schema+`"`))
+	assert.Assert(t, strings.Contains(string(got), "\npackage api\n"))
 }
 
 // TestSchemaValueKeepsText takes the value a pointer names from the raw
 // file, so the order of members and the text of numbers survive.
 func TestSchemaValueKeepsText(t *testing.T) {
-	f := procFs(t, map[string]string{
-		"a.json": `{"s": {"type": "number", "minimum": 1.0, "$comment": "x"}, "t": true}`,
-	})
+	fsys := fstest.MapFS{"a.json": {
+		Data: []byte(`{"s": {"type": "number", "minimum": 1.0, "$comment": "x"}, "t": true}`),
+	}}
 
-	got, err := schemaValue(f.FS(), "a.json#/s")
+	got, err := schemaValue(fsys, "a.json#/s")
 	assert.NilError(t, err)
 	assert.Equal(t, string(got), `{"type": "number", "minimum": 1.0, "$comment": "x"}`)
 
-	got, err = schemaValue(f.FS(), "a.json#/t")
+	got, err = schemaValue(fsys, "a.json#/t")
 	assert.NilError(t, err)
 	assert.Equal(t, string(got), "true")
-}
 
-// TestProcRunWarnsUnknownKeywords passes the warnings of Generate to the
-// reporter.
-func TestProcRunWarnsUnknownKeywords(t *testing.T) {
-	f := procFs(t, map[string]string{
-		"api/schema.json": `{"title": "pet", "type": "object", "propertys": {}}`,
-	})
-
-	r := runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now())
-	assert.Equal(t, len(r.Warnings), 1, "%v", r.Warnings)
-	assert.ErrorIs(t, r.Warnings[0], ErrUnknownKeyword)
-	assert.ErrorContains(t, r.Warnings[0], "#/propertys")
-}
-
-// TestProcRunPackageFromRoot takes the base name of the root of the out
-// for a schema at the root.
-func TestProcRunPackageFromRoot(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "petstore")
-	assert.NilError(t, os.Mkdir(root, 0o755))
-
-	f, err := overlayfs.New(root)
+	got, err = schemaValue(fsys, "a.json#")
 	assert.NilError(t, err)
-	t.Cleanup(func() { _ = f.Close() })
-
-	assert.NilError(t, f.Write(context.Background(), "schema.json", []byte(procSchema)))
-
-	runProc(t, f, procParam("schema.json", "", "", ""), gentest.Now())
-
-	got, err := fs.ReadFile(f.FS(), "petstore.kama_jsonschema.go")
-	assert.NilError(t, err)
-	assert.Assert(t, strings.Contains(string(got), "\npackage petstore\n"))
+	assert.Equal(t, string(got), string(fsys["a.json"].Data))
 }
 
-// TestProcRunStale runs the proc twice. The second run at a later time
-// keeps the file whose header alone would change. A run writing another
-// package reports the file of the first as stale.
-func TestProcRunStale(t *testing.T) {
-	f := procFs(t, map[string]string{
-		"api/schema.json": procSchema,
-		// A file written by hand in the output directory is never stale.
-		"api/hand.go": "package api\n\nfunc hand() {}\n",
-	})
-
-	runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now())
-
-	// The stubs exist and the declarations are those they were written for,
-	// so the second run leaves them alone.
-	r := runProc(t, f, procParam("api/schema.json", "", "", ""), gentest.Now().Add(time.Hour))
-	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
-	assert.DeepEqual(t, r.Messages, []string{"0 files written, 2 files unchanged"})
-
-	r = runProc(t, f, procParam("api/schema.json", "", "pets", ""), gentest.Now())
-	assert.DeepEqual(t, r.Messages, []string{"3 files written, 0 files unchanged"})
-	assert.Equal(t, len(r.Warnings), 1, "%v", r.Warnings)
-	assert.ErrorIs(t, r.Warnings[0], base.ErrStale)
-	assert.ErrorContains(
-		t,
-		r.Warnings[0],
-		"api/api.kama_jsonschema.go holds declarations generated by kama:jsonschema",
-	)
-}
-
-func TestProcRunFails(t *testing.T) {
+func TestSchemaValueErrors(t *testing.T) {
 	cases := []struct {
 		name    string
-		schema  string
+		file    string
 		pointer string
 		is      error
 		msg     string
 	}{
-		{
-			name:   "unsupported",
-			schema: `{"title": "a", "type": "object", "properties": {"x": {"$dynamicRef": "#a"}}}`,
-			is:     ErrUnsupported,
-			msg: "jsonschema: api/schema.json: jsonschema: unsupported schema: " +
-				"#/properties/x/$dynamicRef:",
-		},
-		{name: "invalid json", schema: `{"title": `, msg: "jsonschema: api/schema.json: "},
-		{name: "missing", is: fs.ErrNotExist, msg: "api/schema.json"},
-		{
-			name:    "missing with a pointer",
-			pointer: "/0",
-			is:      fs.ErrNotExist,
-			msg:     "api/schema.json",
-		},
-		{
-			name:    "no member",
-			schema:  `{"a": {}}`,
-			pointer: "/b",
-			msg:     `jsonschema: api/schema.json#/b: no member "b"`,
-		},
+		{name: "missing", pointer: "/0", is: fs.ErrNotExist, msg: "a.json"},
+		{name: "no member", file: `{"a": {}}`, pointer: "/b", msg: `a.json#/b: no member "b"`},
 		{
 			name:    "index out of range",
-			schema:  `[{}]`,
+			file:    `[{}]`,
 			pointer: "/1",
-			msg:     "api/schema.json#/1: index 1 out of range of 1 elements",
+			msg:     "a.json#/1: index 1 out of range of 1 elements",
 		},
 		{
 			name:    "index with a leading zero",
-			schema:  `[{}]`,
+			file:    `[{}]`,
 			pointer: "/00",
-			msg:     `api/schema.json#/00: "00" is no array index`,
+			msg:     `a.json#/00: "00" is no array index`,
 		},
 		{
 			name:    "name into an array",
-			schema:  `[{}]`,
+			file:    `[{}]`,
 			pointer: "/a",
-			msg:     `api/schema.json#/a: "a" is no array index`,
+			msg:     `a.json#/a: "a" is no array index`,
 		},
 		{
 			name:    "step into a scalar",
-			schema:  `{"a": 1}`,
+			file:    `{"a": 1}`,
 			pointer: "/a/b",
-			msg:     `api/schema.json#/a/b: token "b" steps into a value of kind number`,
+			msg:     `a.json#/a/b: token "b" steps into a value of kind number`,
 		},
 		{
 			name:    "no schema",
-			schema:  `[{"description": "x"}]`,
+			file:    `[{"description": "x"}]`,
 			pointer: "/0/description",
-			msg:     "api/schema.json#/0/description: points to a value of kind string, not to a schema",
+			msg:     "a.json#/0/description: points to a value of kind string, not to a schema",
+		},
+		{name: "invalid json under a pointer", file: `{"a": `, pointer: "/a", msg: "a.json#/a: "},
+		{
+			name:    "pointer without a slash",
+			file:    `{}`,
+			pointer: "0",
+			msg:     `invalid JSON pointer "0"`,
 		},
 		{
-			name:    "invalid json under a pointer",
-			schema:  `{"a": `,
-			pointer: "/a",
-			msg:     "jsonschema: api/schema.json#/a: ",
+			name:    "pointer with a bad escape",
+			file:    `{}`,
+			pointer: "/~2",
+			msg:     `invalid JSON pointer "/~2"`,
 		},
+		{name: "pointer with a bad percent escape", file: `{}`, pointer: "/%zz", msg: `"%zz"`},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			files := map[string]string{}
-			if tc.schema != "" {
-				files["api/schema.json"] = tc.schema
+			fsys := fstest.MapFS{}
+			if tc.file != "" {
+				fsys["a.json"] = &fstest.MapFile{Data: []byte(tc.file)}
 			}
 
-			f := procFs(t, files)
-
-			schema := "api/schema.json"
-			if tc.pointer != "" {
-				schema += "#" + tc.pointer
-			}
-
-			i := newInstance(t, gentest.Now())
-			assert.NilError(t, i.Param(procParam(schema, "", "", "")))
-			i.Out(f)
-
-			err := i.Run(context.Background(), gentest.NopReporter{})
+			_, err := schemaValue(fsys, "a.json#"+tc.pointer)
 			if tc.is != nil {
 				assert.ErrorIs(t, err, tc.is)
 			}
@@ -525,31 +332,127 @@ func TestProcRunFails(t *testing.T) {
 	}
 }
 
-// procParam returns the param a spec holding these keys decodes into. An
-// empty argument leaves its key out.
-func withValidate(p ProcParamPartial, on bool) ProcParamPartial {
-	p.Validate = und.Defined(on)
-	return p
+// TestProcRunWarnsUnknownKeywords passes the warnings of Generate to the
+// reporter.
+func TestProcRunWarnsUnknownKeywords(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"api/api.go":               "package api\n",
+		"api/kama_jsonschema.json": `{"title": "pet", "type": "object", "propertys": {}}`,
+	})
+
+	r := runProc(t, f, ProcParamPartial{}, gentest.Now())
+	assert.Equal(t, len(r.Warnings), 1, "%v", r.Warnings)
+	assert.ErrorIs(t, r.Warnings[0], ErrUnknownKeyword)
+	assert.ErrorContains(t, r.Warnings[0], "#/propertys")
 }
 
-func procParam(schema, dir, pkg, typeName string) ProcParamPartial {
-	set := func(s string) und.Und[string] {
-		if s == "" {
-			return und.Undefined[string]()
-		}
+// TestProcRunStale runs the proc three times. The second run at a later
+// time keeps the file whose header alone would change. A run on the
+// package once it names no schema file reports the files of the first as
+// stale.
+func TestProcRunStale(t *testing.T) {
+	// A file written by hand in the directory of the package is never
+	// stale.
+	const hand = "package api\n\nfunc hand() {}\n"
 
-		return und.Defined(s)
+	f := procFs(t, map[string]string{
+		"api/schema.json": procSchema,
+		"api/hand.go":     "//kama:option-file jsonschema=schema.json\n\n" + hand,
+	})
+
+	runProc(t, f, ProcParamPartial{}, gentest.Now())
+
+	// The stubs exist and the declarations are those they were written for,
+	// so the second run leaves them alone.
+	r := runProc(t, f, ProcParamPartial{}, gentest.Now().Add(time.Hour))
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+	assert.DeepEqual(t, r.Messages, []string{"0 files written, 2 files unchanged"})
+
+	assert.NilError(t, f.Write(context.Background(), inline(t, "api/hand.go"), []byte(hand)))
+
+	r = runProc(t, f, ProcParamPartial{}, gentest.Now())
+
+	got := opiter.WrapSeq(slices.Values(r.Warnings)).
+		Map(func(w error) string {
+			assert.ErrorIs(t, w, base.ErrStale)
+
+			name, _, _ := strings.Cut(w.Error(), " holds declarations generated by kama:jsonschema")
+
+			return path.Base(name)
+		}).
+		CollectSlice()
+
+	assert.DeepEqual(t, got, []string{"api.kama_jsonschema.go", "zz_gen.helper.kama_jsonschema.go"})
+}
+
+func TestProcRunFails(t *testing.T) {
+	cases := []struct {
+		name  string
+		files map[string]string
+		is    error
+		msg   string
+	}{
+		{
+			name: "unsupported",
+			files: map[string]string{"api/kama_jsonschema.json": `{"title": "a", "type": "object",
+				"properties": {"x": {"$dynamicRef": "#a"}}}`},
+			is: ErrUnsupported,
+			msg: "/api/kama_jsonschema.json: jsonschema: unsupported schema: " +
+				"#/properties/x/$dynamicRef:",
+		},
+		{
+			name:  "invalid json",
+			files: map[string]string{"api/kama_jsonschema.json": `{"title": `},
+			msg:   "/api/kama_jsonschema.json: ",
+		},
+		{
+			name: "missing",
+			files: map[string]string{
+				"api/api.go": "//kama:option-file jsonschema=schema.json\n\npackage api\n",
+			},
+			is:  fs.ErrNotExist,
+			msg: "api.go:1:1",
+		},
+		{
+			name: "two schema files",
+			files: map[string]string{
+				"api/api.go": "//kama:option-file jsonschema=a.json jsonschema=b.json\n\npackage api\n",
+				"api/a.json": procSchema,
+				"api/b.json": procSchema,
+			},
+			is:  ErrOptions,
+			msg: "/api has 2 schema files; want one",
+		},
 	}
 
-	return ProcParamPartial{
-		Schema: set(schema), Dir: set(dir), Package: set(pkg), TypeName: set(typeName),
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, ok := tc.files["api/api.go"]; !ok {
+				tc.files["api/api.go"] = "package api\n"
+			}
+
+			_, err := runProcErr(t, procFs(t, tc.files), ProcParamPartial{}, gentest.Now())
+			if tc.is != nil {
+				assert.ErrorIs(t, err, tc.is)
+			}
+
+			assert.ErrorContains(t, err, tc.msg)
+		})
 	}
+}
+
+func typeNameParam(name string) ProcParamPartial {
+	return ProcParamPartial{TypeName: und.Defined(name)}
+}
+
+func remotesParam(remotes ...Remote) ProcParamPartial {
+	return ProcParamPartial{Remotes: und.Defined(remotes)}
 }
 
 // procInstance is an instance of the proc of NewProc.
 type procInstance interface {
 	Param(p ProcParamPartial) error
-	In()
+	In(pkgs *procpackages.Packages)
 	Out(f *overlayfs.Fs)
 	Run(ctx context.Context, r workflow.Reporter) error
 }
@@ -570,22 +473,22 @@ func newInstance(t *testing.T, now time.Time) procInstance {
 	return i
 }
 
-// procFs returns an overlay over a new directory holding files.
+// inline returns name, a slash-separated path relative to the directory
+// procFs stages the files of t in, relative to the root of the overlay.
+func inline(t *testing.T, name string) string { return path.Join(gentest.InlineDir(t), name) }
+
+// procFs stages files as gentest.Stage does. They lie in this module, so
+// that the packages the proc generates load with the modules the generated
+// code imports.
 func procFs(t *testing.T, files map[string]string) *overlayfs.Fs {
 	t.Helper()
 
-	f, err := overlayfs.New(t.TempDir())
-	assert.NilError(t, err)
-	t.Cleanup(func() { _ = f.Close() })
-
-	for name, src := range files {
-		assert.NilError(t, f.Write(context.Background(), name, []byte(src)))
-	}
+	f, _ := gentest.Stage(t, files)
 
 	return f
 }
 
-// runProc runs the proc with param over f at now.
+// runProc runs the proc as runProcErr does, which must succeed.
 func runProc(
 	t *testing.T,
 	f *overlayfs.Fs,
@@ -594,12 +497,47 @@ func runProc(
 ) *gentest.RecordReporter {
 	t.Helper()
 
+	r, err := runProcErr(t, f, param, now)
+	assert.NilError(t, err)
+
+	return r
+}
+
+// runProcErr loads the packages procFs staged for t from f and runs the
+// proc with param over them into f at now.
+func runProcErr(
+	t *testing.T,
+	f *overlayfs.Fs,
+	param ProcParamPartial,
+	now time.Time,
+) (*gentest.RecordReporter, error) {
+	t.Helper()
+
+	ctx := context.Background()
+
+	// The go command matches no package of ./... in a directory the
+	// overlay holds alone, so each one is named.
+	var patterns []string
+
+	assert.NilError(t, fs.WalkDir(f.FS(), gentest.InlineDir(t), func(
+		name string, d fs.DirEntry, err error,
+	) error {
+		if err == nil && !d.IsDir() && path.Ext(name) == ".go" {
+			patterns = append(patterns, "./"+path.Dir(name))
+		}
+
+		return err
+	}))
+
+	pkgs, err := gopackages.Load(ctx, f, gopackages.Options{Patterns: slices.Compact(patterns)})
+	assert.NilError(t, err)
+
 	i := newInstance(t, now)
 	assert.NilError(t, i.Param(param))
+	i.In(&procpackages.Packages{Pkgs: pkgs})
 	i.Out(f)
 
 	r := &gentest.RecordReporter{}
-	assert.NilError(t, i.Run(context.Background(), r))
 
-	return r
+	return r, i.Run(ctx, r)
 }

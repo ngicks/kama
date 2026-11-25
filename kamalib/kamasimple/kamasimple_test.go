@@ -179,7 +179,7 @@ steps:
   validate: {proc: validate.generate, in: load, out: root}
   template: {proc: file.load, in: root, param: {base: keys}}
   keys: {proc: contextkey.generate, in: load, out: root, param: {key_type_func: keyTypeFunc}}
-  types: {proc: jsonschema.generate, out: root, param: {schema: types/schema.json}}
+  types: {proc: jsonschema.generate, in: load, out: root, param: {type_name: Root}}
   final: {proc: overlayfs.copy_down, in: root, after: [partial, validate, keys, types]}
 `), 0o644))
 
@@ -208,10 +208,7 @@ steps:
   validate: {proc: validate.generate, in: load, out: root, param: {option_flie: x}}
   template: {proc: file.load, in: root, param: {base: keys, fromats: [yaml]}}
   keys: {proc: contextkey.generate, in: load, out: root, param: {key_type_func: k, dri: x}}
-  types:
-    proc: jsonschema.generate
-    out: root
-    param: {schema: types/schema.json, tpye_name: x}
+  types: {proc: jsonschema.generate, in: load, out: root, param: {tpye_name: x}}
   final:
     proc: overlayfs.copy_down
     in: root

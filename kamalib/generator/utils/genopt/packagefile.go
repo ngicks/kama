@@ -151,7 +151,8 @@ func (l Loader[P, T, F]) packageFile(
 	)
 
 	// Every default file is read so that a file the last one overrides
-	// still fails to load when it does not decode.
+	// still fails to load when it does not decode. Of the files directives
+	// name, the last one alone is read.
 	for _, f := range read {
 		doc, err = loadDocument(fsys, f.name)
 		if err != nil {
@@ -220,7 +221,7 @@ func (l DocumentLoader) locate(fsys fs.FS, root string, w walked) ([]namedFile, 
 		return l.defaultFiles(fsys, root, w.pkg)
 	}
 
-	dir, dirErr := packageDir(root, w.pkg)
+	dir, dirErr := PackageDir(root, w.pkg)
 
 	for i, n := range named {
 		if dirErr != nil {
@@ -253,7 +254,7 @@ func (l DocumentLoader) defaultFiles(
 		return nil, nil
 	}
 
-	dir, err := packageDir(root, pkg)
+	dir, err := PackageDir(root, pkg)
 	if err != nil {
 		// A package outside root cannot hold a file of fsys, which a
 		// default file does not require.
@@ -363,9 +364,10 @@ func resolve(dir, p string) (string, error) {
 	return name, nil
 }
 
-// packageDir returns the directory of pkg as a slash-separated path
-// relative to root.
-func packageDir(root string, pkg *packages.Package) (string, error) {
+// PackageDir returns the directory of pkg as a slash-separated path
+// relative to root, an absolute directory. A package outside root, or one
+// whose directory is unknown, is an error.
+func PackageDir(root string, pkg *packages.Package) (string, error) {
 	dir := pkg.Dir
 	// CompiledGoFiles are not consulted: a file cgo processed lies in the
 	// build cache, outside the package directory.

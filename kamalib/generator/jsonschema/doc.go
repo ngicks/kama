@@ -16,19 +16,29 @@
 // packages of module github.com/ngicks/kama/kamaruntime only. Generator
 // is the generator of Generate in the framework of package
 // github.com/ngicks/kama/kamalib/generator/utils/base, and the proc runs it
-// as the workflow step kind jsonschema.generate.
+// on the schema file of each package as the workflow step kind
+// jsonschema.generate.
 //
 // # Proc
 //
-// The proc reads the schema file from the overlay of its out and stages the
-// generated file in it. It takes no in. Its param has these keys:
+// The proc takes the packages a packages.load step loaded as its in and
+// generates from the schema file of each package into the directory of the
+// package, in the package of the package, staging the files in its out. A
+// package names its schema file with the directive
+// //kama:option-file jsonschema=<path> in a free-floating comment, the path
+// being slash-separated and relative to the package directory. A package
+// naming none has the schema file kama_jsonschema.json in its directory, or
+// none. A package without a schema file generates nothing. A package has
+// one schema file at most, since its declarations go to one file named
+// after the package. Several packages may name one file. The proc reads
+// the schema files from the overlay of its out, so a file staged by an
+// earlier step is read too. A schema file holds JSON whatever its
+// extension. The proc decodes it from its raw bytes, so the order of its
+// members and the text of its numbers survive.
 //
-//	schema     the path of the schema file, slash-separated and relative
-//	           to the root of the out, optionally followed by # and a
-//	           JSON pointer; required
-//	dir        the output directory, relative to the root of the out;
-//	           the directory of the schema file when left out
-//	package    the package clause; the base name of dir when left out
+// The param of the proc applies to every package of the step. It has
+// these keys:
+//
 //	type_name  the name of the root type, an exported Go identifier
 //	           used as written; the title of the root schema when left
 //	           out
@@ -36,44 +46,58 @@
 //	remotes    a list mapping the URIs of other documents to files of
 //	           the out, as References describes; each entry has uri and
 //	           either file, the file of that URI, or dir, the directory
-//	           a URI starting with uri continues into; a file may be
-//	           followed by # and a JSON pointer, as a schema may
+//	           a URI starting with uri continues into; the paths are
+//	           slash-separated and relative to the root of the out; a
+//	           file may be followed by # and an RFC 6901 JSON pointer,
+//	           percent-decoded as the fragment of a $ref is, naming the
+//	           document inside the file
 //	assert_formats
 //	           whether format asserts the formats the validator
 //	           generator checks; false when left out
 //
-// The schema file holds JSON. A schema param with a fragment, such as
-// tests/minimum.json#/tests/0/schema, takes the value the RFC 6901
-// pointer of the fragment points to as the schema document. The fragment
-// is percent-decoded first, as the fragment of a $ref is. The value must be
-// an object or a boolean, and it is the root that "#" refers to in a $ref.
-// The proc reads it from the raw bytes of the file, so the order of its members
-// and the text of its numbers survive. A spec generating the types of
-// api/schema.json into api/api.kama_jsonschema.go of package api, then
-// their Validate methods:
+// The packages must load before the proc runs, and the generated decoders
+// call the Validate methods the validator generator writes, so a spec loads
+// the packages twice: once for the proc and once, after it, for
+// validate.generate. A spec generating the types of api/schema.json into
+// api/api.kama_jsonschema.go of the package of api/api.go, which holds
+// //kama:option-file jsonschema=schema.json, then their Validate methods:
 //
 //	version: 1
 //	steps:
 //	  root:
 //	    proc: overlayfs.open
-//	  generate:
-//	    proc: jsonschema.generate
-//	    out: root
-//	    param:
-//	      schema: api/schema.json
-//	      type_name: Pet
 //	  load:
 //	    proc: packages.load
 //	    in: root
+//	    param:
+//	      patterns: [./api]
+//	  generate:
+//	    proc: jsonschema.generate
+//	    in: load
+//	    out: root
+//	    param:
+//	      type_name: Pet
+//	  load_generated:
+//	    proc: packages.load
+//	    in: root
 //	    after: generate
+//	    param:
+//	      patterns: [./api]
 //	  validate:
 //	    proc: validate.generate
-//	    in: load
+//	    in: load_generated
 //	    out: root
 //	  final:
 //	    proc: overlayfs.copy_down
 //	    in: root
 //	    after: validate
+//
+// The first load type-checks every Go file of a package, and packages.load
+// fails on any error. A package whose generated files do not exist yet
+// loads when its other Go files compile without them. A generated file of
+// an earlier run that no longer compiles, such as one of an older version
+// of the generator importing a package that is gone, fails the first load
+// and is deleted by hand before the run.
 //
 // A spec running the proc with validate true needs the validate.generate step.
 // Without it the decoders fail on the stubs of the Validate methods, as
@@ -82,18 +106,18 @@
 // validation keyword. A union then takes the first member that decodes a
 // value, even one holding a nested union that matches none of its members.
 //
-// The header of the generated file names the schema, type_name and
-// validate params and the time of the run. The helpers the declarations
-// call go to zz_gen.helper.kama_jsonschema.go of the output directory, as
-// Decoding describes. The proc keeps a file that differs from the
-// existing one in the generated: line only. A Go file of the output
-// directory that holds a declaration marked by the generator and that the
-// run does not produce is stale. The proc reports a warning wrapping ErrStale
-// of package github.com/ngicks/kama/kamalib/generator/utils/base for it
-// and leaves it in place. Every file the generator marks in one directory
-// must therefore come from one step. Two steps writing one package into
-// one directory write the same file, named after the package, and the
-// later one replaces the file of the earlier one.
+// The header of the generated file names the schema file, relative to the
+// root of the out, the type_name and validate params and the time of the
+// run. The helpers the declarations call go to
+// zz_gen.helper.kama_jsonschema.go of the output directory, as Decoding
+// describes. The proc keeps a file that differs from the existing one in
+// the generated: line only. A Go file of the directory of a package the
+// proc loaded that holds a declaration marked by the generator and that the
+// run does not produce is stale, a package that dropped its schema file
+// included. The proc reports a warning wrapping ErrStale of package
+// github.com/ngicks/kama/kamalib/generator/utils/base for it and leaves it
+// in place. Every file the generator marks in one directory must therefore
+// come from one step.
 //
 // A member of a schema that names no keyword of draft 2020-12, such as a
 // typo or a keyword of an older draft, gives a warning wrapping

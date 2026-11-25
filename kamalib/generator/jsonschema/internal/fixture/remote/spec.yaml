@@ -2,11 +2,16 @@ version: 1
 steps:
   root:
     proc: overlayfs.open
+  # The proc reads the schema file the package names, so the packages load
+  # before it.
+  load:
+    proc: packages.load
+    in: root
   generate:
     proc: jsonschema.generate
+    in: load
     out: root
     param:
-      schema: schema.json
       # The references to https://example.com/schemas/ load the files of
       # schemas.
       remotes:
@@ -14,14 +19,14 @@ steps:
           dir: schemas
   # The generated decoders call the Validate methods validate.generate
   # writes from the generated types.
-  load:
+  load_generated:
     proc: packages.load
     in: root
     # packages.load reads root but does not wait for steps writing into it.
     after: generate
   validate:
     proc: validate.generate
-    in: load
+    in: load_generated
     out: root
   final:
     proc: overlayfs.copy_down
