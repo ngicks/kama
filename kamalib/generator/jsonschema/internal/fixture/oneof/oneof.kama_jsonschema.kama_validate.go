@@ -2,15 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:07Z
+// generated: 2026-11-25T02:44:16Z
 
 package oneof
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
-	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -19,14 +19,14 @@ import (
 //kama:generated kama:validate
 func (v Zoo) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Star.Validate(stopOnFirstError), "star"); err != nil {
+	if err := validator.Field(v.Star.Validate(stopOnFirstError), "star"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	for i, e := range v.Pets {
-		if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "pets"); err != nil {
+		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "pets"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -34,28 +34,28 @@ func (v Zoo) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Favorite.IsSome() {
-		if err := validation.Field(v.Favorite.Value().Validate(stopOnFirstError), "favorite"); err != nil {
+		if err := validator.Field(v.Favorite.Value().Validate(stopOnFirstError), "favorite"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(v.Mixed.Validate(stopOnFirstError), "mixed"); err != nil {
+	if err := validator.Field(v.Mixed.Validate(stopOnFirstError), "mixed"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Amount.IsSome() {
-		if err := validation.Field(v.Amount.Value().Validate(stopOnFirstError), "amount"); err != nil {
+		if err := validator.Field(v.Amount.Value().Validate(stopOnFirstError), "amount"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -67,14 +67,14 @@ func (v Zoo) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Zoo) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Star.ValidateShallow(stopOnFirstError), "star"); err != nil {
+	if err := validator.Field(v.Star.ValidateShallow(stopOnFirstError), "star"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	for i, e := range v.Pets {
-		if err := validation.Field(validation.Index(e.ValidateShallow(stopOnFirstError), i), "pets"); err != nil {
+		if err := validator.Field(validator.Index(e.ValidateShallow(stopOnFirstError), i), "pets"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -82,28 +82,28 @@ func (v Zoo) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.Favorite.IsSome() {
-		if err := validation.Field(v.Favorite.Value().ValidateShallow(stopOnFirstError), "favorite"); err != nil {
+		if err := validator.Field(v.Favorite.Value().ValidateShallow(stopOnFirstError), "favorite"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(v.Mixed.ValidateShallow(stopOnFirstError), "mixed"); err != nil {
+	if err := validator.Field(v.Mixed.ValidateShallow(stopOnFirstError), "mixed"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Amount.IsSome() {
-		if err := validation.Field(v.Amount.Value().ValidateShallow(stopOnFirstError), "amount"); err != nil {
+		if err := validator.Field(v.Amount.Value().ValidateShallow(stopOnFirstError), "amount"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -128,13 +128,13 @@ func (v ZooMixedInteger) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v ZooMixedObject) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Object.Validate(stopOnFirstError), "Object"); err != nil {
+	if err := validator.Field(v.Object.Validate(stopOnFirstError), "Object"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -178,13 +178,13 @@ func (v ZooAmountNumber) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v PetCat) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Cat.Validate(stopOnFirstError), "Cat"); err != nil {
+	if err := validator.Field(v.Cat.Validate(stopOnFirstError), "Cat"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -204,13 +204,13 @@ func (v PetCat) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v PetDog) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Dog.Validate(stopOnFirstError), "Dog"); err != nil {
+	if err := validator.Field(v.Dog.Validate(stopOnFirstError), "Dog"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -240,7 +240,7 @@ func (v petCatProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -260,7 +260,7 @@ func (v petCatProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evalua
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -279,7 +279,7 @@ func (v petDogProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -299,7 +299,7 @@ func (v petDogProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evalua
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -308,13 +308,13 @@ func (v petDogProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evalua
 //kama:generated kama:validate
 func (v Cat) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateConst(v.Kind, "cat"), "kind"); err != nil {
+	if err := validator.Field(kamaValidateConst(v.Kind, "cat"), "kind"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -323,11 +323,11 @@ func (v Cat) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Dog) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateConst(v.Kind, "dog"), "kind"); err != nil {
+	if err := validator.Field(kamaValidateConst(v.Kind, "dog"), "kind"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

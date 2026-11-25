@@ -2,15 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:11Z
+// generated: 2026-11-25T02:44:20Z
 
 package prefilter
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
-	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -19,13 +19,13 @@ import (
 //kama:generated kama:validate
 func (v ShapeCircle) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Circle.Validate(stopOnFirstError), "Circle"); err != nil {
+	if err := validator.Field(v.Circle.Validate(stopOnFirstError), "Circle"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -45,13 +45,13 @@ func (v ShapeCircle) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v ShapeSquare) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Square.Validate(stopOnFirstError), "Square"); err != nil {
+	if err := validator.Field(v.Square.Validate(stopOnFirstError), "Square"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -81,7 +81,7 @@ func (v shapeCircleProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -101,7 +101,7 @@ func (v shapeCircleProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -118,7 +118,7 @@ func (v shapeSquareProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -136,7 +136,7 @@ func (v shapeSquareProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -145,13 +145,13 @@ func (v shapeSquareProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 //kama:generated kama:validate
 func (v Circle) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Kind.Validate(stopOnFirstError), "kind"); err != nil {
+	if err := validator.Field(v.Kind.Validate(stopOnFirstError), "kind"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -177,7 +177,7 @@ func (v CircleKind) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -192,5 +192,5 @@ func (v Square) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

@@ -6,7 +6,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func TestInvoice(t *testing.T) {
@@ -23,11 +23,11 @@ func TestInvoice(t *testing.T) {
 	total := `"total": {"amount": 1, "currency": "EUR"}`
 
 	for text, kind := range map[string]error{
-		`{}`: validation.ErrRequired,
-		`{"total": {"amount": -1, "currency": "EUR"}}`:           validation.ErrCompare,
-		`{"total": {"amount": 1, "currency": "eur"}}`:            validation.ErrPattern,
-		`{` + total + `, "currency": "x"}`:                       validation.ErrPattern,
-		`{` + total + `, "payer": {"name": "a", "partner": {}}}`: validation.ErrRequired,
+		`{}`: validator.ErrRequired,
+		`{"total": {"amount": -1, "currency": "EUR"}}`:           validator.ErrCompare,
+		`{"total": {"amount": 1, "currency": "eur"}}`:            validator.ErrPattern,
+		`{` + total + `, "currency": "x"}`:                       validator.ErrPattern,
+		`{` + total + `, "payer": {"name": "a", "partner": {}}}`: validator.ErrRequired,
 	} {
 		var v Invoice
 		assert.ErrorIs(t, json.Unmarshal([]byte(text), &v), kind, text)

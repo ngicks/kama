@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:51Z
+// generated: 2026-11-25T02:44:00Z
 
 package edgecases
 
@@ -10,8 +10,8 @@ import (
 	"encoding/json/jsontext"
 	"unicode/utf8"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
-	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -21,7 +21,7 @@ import (
 func (v Root) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Ce.IsSome() {
-		if err := validation.Field(v.Ce.Value().Validate(stopOnFirstError), "ce"); err != nil {
+		if err := validator.Field(v.Ce.Value().Validate(stopOnFirstError), "ce"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -29,7 +29,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.PrefixUnique.IsSome() {
-		if err := validation.Field(rawjson.Encoded(v.PrefixUnique.Value(), func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Encoded(v.PrefixUnique.Value(), func(m jsontext.Value) error {
 			return kamaValidateAll(stopOnFirstError, rawjson.Unique(m), rawjson.Elements(m, stopOnFirstError, nil, nil, func(m2 jsontext.Value) error {
 				return rawjson.Kind(m2, "number")
 			}))
@@ -41,7 +41,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.ObjectUnique.IsSome() {
-		if err := validation.Field(rawjson.Encoded(v.ObjectUnique.Value(), func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Encoded(v.ObjectUnique.Value(), func(m jsontext.Value) error {
 			return rawjson.Unique(m)
 		}), "objectUnique"); err != nil {
 			if stopOnFirstError {
@@ -52,7 +52,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 	}
 	if v.ObjectUnique.IsSome() {
 		for i, e := range v.ObjectUnique.Value() {
-			if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "objectUnique"); err != nil {
+			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "objectUnique"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -61,7 +61,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.NumberUnique.IsSome() {
-		if err := validation.Field(kamaValidateUnique(v.NumberUnique.Value()), "numberUnique"); err != nil {
+		if err := validator.Field(kamaValidateUnique(v.NumberUnique.Value()), "numberUnique"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -69,7 +69,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.EmptyName.IsSome() {
-		if err := validation.Field(kamaValidateNot(rawjson.Properties(v.EmptyName.Value(), stopOnFirstError, nil, rawjson.Property("", func(m jsontext.Value) error {
+		if err := validator.Field(kamaValidateNot(rawjson.Properties(v.EmptyName.Value(), stopOnFirstError, nil, rawjson.Property("", func(m jsontext.Value) error {
 			return rawjson.Unique(m)
 		})), "props(field(\"\", unique))"), "emptyName"); err != nil {
 			if stopOnFirstError {
@@ -79,7 +79,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.RequiresEmpty.IsSome() {
-		if err := validation.Field(rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, ""), "requiresEmpty"); err != nil {
+		if err := validator.Field(rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, ""), "requiresEmpty"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -87,7 +87,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.RequiresEmpty.IsSome() {
-		if err := validation.Field(kamaValidateIf(rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, ""), rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, "a"), nil), "requiresEmpty"); err != nil {
+		if err := validator.Field(kamaValidateIf(rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, ""), rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, "a"), nil), "requiresEmpty"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -95,7 +95,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.MaxHuge.IsSome() {
-		if err := validation.Field(kamaValidateCmp(v.MaxHuge.Value(), "<=", 1.7976931348623157e+308), "maxHuge"); err != nil {
+		if err := validator.Field(kamaValidateCmp(v.MaxHuge.Value(), "<=", 1.7976931348623157e+308), "maxHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -103,7 +103,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.MinHuge.IsSome() {
-		if err := validation.Field(kamaValidateNever(v.MinHuge.Value(), ">=", "1e400"), "minHuge"); err != nil {
+		if err := validator.Field(kamaValidateNever(v.MinHuge.Value(), ">=", "1e400"), "minHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -111,7 +111,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.ExclusiveHuge.IsSome() {
-		if err := validation.Field(kamaValidateCmp(v.ExclusiveHuge.Value(), ">=", -1.7976931348623157e+308), "exclusiveHuge"); err != nil {
+		if err := validator.Field(kamaValidateCmp(v.ExclusiveHuge.Value(), ">=", -1.7976931348623157e+308), "exclusiveHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -119,7 +119,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.MultipleHuge.IsSome() {
-		if err := validation.Field(kamaValidateMultipleZero(v.MultipleHuge.Value(), "1e30"), "multipleHuge"); err != nil {
+		if err := validator.Field(kamaValidateMultipleZero(v.MultipleHuge.Value(), "1e30"), "multipleHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -127,7 +127,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.MultipleHugeNumber.IsSome() {
-		if err := validation.Field(kamaValidateMultipleZero(v.MultipleHugeNumber.Value(), "1e100000"), "multipleHugeNumber"); err != nil {
+		if err := validator.Field(kamaValidateMultipleZero(v.MultipleHugeNumber.Value(), "1e100000"), "multipleHugeNumber"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -135,7 +135,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.MultipleTiny.IsSome() {
-		if err := validation.Field(kamaValidateMultipleFloat(v.MultipleTiny.Value(), 64, "1/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "1e-400"), "multipleTiny"); err != nil {
+		if err := validator.Field(kamaValidateMultipleFloat(v.MultipleTiny.Value(), 64, "1/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "1e-400"), "multipleTiny"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -143,7 +143,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.LengthHuge.IsSome() {
-		if err := validation.Field(error(nil), "lengthHuge"); err != nil {
+		if err := validator.Field(error(nil), "lengthHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -151,7 +151,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.LengthHugeMin.IsSome() {
-		if err := validation.Field(kamaValidateRunes(utf8.RuneCountInString(v.LengthHugeMin.Value()), ">", 9223372036854775807), "lengthHugeMin"); err != nil {
+		if err := validator.Field(kamaValidateRunes(utf8.RuneCountInString(v.LengthHugeMin.Value()), ">", 9223372036854775807), "lengthHugeMin"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -159,7 +159,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.MembersStruct.IsSome() {
-		if err := validation.Field(v.MembersStruct.Value().Validate(stopOnFirstError), "membersStruct"); err != nil {
+		if err := validator.Field(v.MembersStruct.Value().Validate(stopOnFirstError), "membersStruct"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -167,7 +167,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.RawMaxLength.IsSome() {
-		if err := validation.Field(error(nil), "rawMaxLength"); err != nil {
+		if err := validator.Field(error(nil), "rawMaxLength"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -175,7 +175,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.RawContains.IsSome() {
-		if err := validation.Field(rawjson.Contains(v.RawContains.Value(), nil, func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Contains(v.RawContains.Value(), nil, func(m jsontext.Value) error {
 			return rawjson.Kind(m, "integer")
 		}, rawjson.Count{Op: ">=", N: 1}), "rawContains"); err != nil {
 			if stopOnFirstError {
@@ -185,7 +185,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.RawMinContains.IsSome() {
-		if err := validation.Field(rawjson.Contains(v.RawMinContains.Value(), nil, func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Contains(v.RawMinContains.Value(), nil, func(m jsontext.Value) error {
 			return rawjson.Kind(m, "integer")
 		}, rawjson.Count{Op: ">", N: 9223372036854775807}), "rawMinContains"); err != nil {
 			if stopOnFirstError {
@@ -195,7 +195,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.MembersHuge.IsSome() {
-		if err := validation.Field(error(nil), "membersHuge"); err != nil {
+		if err := validator.Field(error(nil), "membersHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -203,7 +203,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.TypedBig.IsSome() {
-		if err := validation.Field(kamaValidateConst(v.TypedBig.Value(), 18446744073709551617), "typedBig"); err != nil {
+		if err := validator.Field(kamaValidateConst(v.TypedBig.Value(), 18446744073709551617), "typedBig"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -211,14 +211,14 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.RawBig.IsSome() {
-		if err := validation.Field(rawjson.Const(v.RawBig.Value(), "18446744073709551617", "\"x\""), "rawBig"); err != nil {
+		if err := validator.Field(rawjson.Const(v.RawBig.Value(), "18446744073709551617", "\"x\""), "rawBig"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -231,7 +231,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 func (v Root) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.PrefixUnique.IsSome() {
-		if err := validation.Field(rawjson.Encoded(v.PrefixUnique.Value(), func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Encoded(v.PrefixUnique.Value(), func(m jsontext.Value) error {
 			return kamaValidateAll(stopOnFirstError, rawjson.Unique(m), rawjson.Elements(m, stopOnFirstError, nil, nil, func(m2 jsontext.Value) error {
 				return rawjson.Kind(m2, "number")
 			}))
@@ -243,7 +243,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.ObjectUnique.IsSome() {
-		if err := validation.Field(rawjson.Encoded(v.ObjectUnique.Value(), func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Encoded(v.ObjectUnique.Value(), func(m jsontext.Value) error {
 			return rawjson.Unique(m)
 		}), "objectUnique"); err != nil {
 			if stopOnFirstError {
@@ -253,7 +253,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.NumberUnique.IsSome() {
-		if err := validation.Field(kamaValidateUnique(v.NumberUnique.Value()), "numberUnique"); err != nil {
+		if err := validator.Field(kamaValidateUnique(v.NumberUnique.Value()), "numberUnique"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -261,7 +261,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.EmptyName.IsSome() {
-		if err := validation.Field(kamaValidateNot(rawjson.Properties(v.EmptyName.Value(), stopOnFirstError, nil, rawjson.Property("", func(m jsontext.Value) error {
+		if err := validator.Field(kamaValidateNot(rawjson.Properties(v.EmptyName.Value(), stopOnFirstError, nil, rawjson.Property("", func(m jsontext.Value) error {
 			return rawjson.Unique(m)
 		})), "props(field(\"\", unique))"), "emptyName"); err != nil {
 			if stopOnFirstError {
@@ -271,7 +271,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.RequiresEmpty.IsSome() {
-		if err := validation.Field(rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, ""), "requiresEmpty"); err != nil {
+		if err := validator.Field(rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, ""), "requiresEmpty"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -279,7 +279,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.RequiresEmpty.IsSome() {
-		if err := validation.Field(kamaValidateIf(rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, ""), rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, "a"), nil), "requiresEmpty"); err != nil {
+		if err := validator.Field(kamaValidateIf(rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, ""), rawjson.Required(v.RequiresEmpty.Value(), stopOnFirstError, "a"), nil), "requiresEmpty"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -287,7 +287,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.MaxHuge.IsSome() {
-		if err := validation.Field(kamaValidateCmp(v.MaxHuge.Value(), "<=", 1.7976931348623157e+308), "maxHuge"); err != nil {
+		if err := validator.Field(kamaValidateCmp(v.MaxHuge.Value(), "<=", 1.7976931348623157e+308), "maxHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -295,7 +295,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.MinHuge.IsSome() {
-		if err := validation.Field(kamaValidateNever(v.MinHuge.Value(), ">=", "1e400"), "minHuge"); err != nil {
+		if err := validator.Field(kamaValidateNever(v.MinHuge.Value(), ">=", "1e400"), "minHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -303,7 +303,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.ExclusiveHuge.IsSome() {
-		if err := validation.Field(kamaValidateCmp(v.ExclusiveHuge.Value(), ">=", -1.7976931348623157e+308), "exclusiveHuge"); err != nil {
+		if err := validator.Field(kamaValidateCmp(v.ExclusiveHuge.Value(), ">=", -1.7976931348623157e+308), "exclusiveHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -311,7 +311,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.MultipleHuge.IsSome() {
-		if err := validation.Field(kamaValidateMultipleZero(v.MultipleHuge.Value(), "1e30"), "multipleHuge"); err != nil {
+		if err := validator.Field(kamaValidateMultipleZero(v.MultipleHuge.Value(), "1e30"), "multipleHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -319,7 +319,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.MultipleHugeNumber.IsSome() {
-		if err := validation.Field(kamaValidateMultipleZero(v.MultipleHugeNumber.Value(), "1e100000"), "multipleHugeNumber"); err != nil {
+		if err := validator.Field(kamaValidateMultipleZero(v.MultipleHugeNumber.Value(), "1e100000"), "multipleHugeNumber"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -327,7 +327,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.MultipleTiny.IsSome() {
-		if err := validation.Field(kamaValidateMultipleFloat(v.MultipleTiny.Value(), 64, "1/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "1e-400"), "multipleTiny"); err != nil {
+		if err := validator.Field(kamaValidateMultipleFloat(v.MultipleTiny.Value(), 64, "1/10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "1e-400"), "multipleTiny"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -335,7 +335,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.LengthHuge.IsSome() {
-		if err := validation.Field(error(nil), "lengthHuge"); err != nil {
+		if err := validator.Field(error(nil), "lengthHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -343,7 +343,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.LengthHugeMin.IsSome() {
-		if err := validation.Field(kamaValidateRunes(utf8.RuneCountInString(v.LengthHugeMin.Value()), ">", 9223372036854775807), "lengthHugeMin"); err != nil {
+		if err := validator.Field(kamaValidateRunes(utf8.RuneCountInString(v.LengthHugeMin.Value()), ">", 9223372036854775807), "lengthHugeMin"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -351,7 +351,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.RawMaxLength.IsSome() {
-		if err := validation.Field(error(nil), "rawMaxLength"); err != nil {
+		if err := validator.Field(error(nil), "rawMaxLength"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -359,7 +359,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.RawContains.IsSome() {
-		if err := validation.Field(rawjson.Contains(v.RawContains.Value(), nil, func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Contains(v.RawContains.Value(), nil, func(m jsontext.Value) error {
 			return rawjson.Kind(m, "integer")
 		}, rawjson.Count{Op: ">=", N: 1}), "rawContains"); err != nil {
 			if stopOnFirstError {
@@ -369,7 +369,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.RawMinContains.IsSome() {
-		if err := validation.Field(rawjson.Contains(v.RawMinContains.Value(), nil, func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Contains(v.RawMinContains.Value(), nil, func(m jsontext.Value) error {
 			return rawjson.Kind(m, "integer")
 		}, rawjson.Count{Op: ">", N: 9223372036854775807}), "rawMinContains"); err != nil {
 			if stopOnFirstError {
@@ -379,7 +379,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.MembersHuge.IsSome() {
-		if err := validation.Field(error(nil), "membersHuge"); err != nil {
+		if err := validator.Field(error(nil), "membersHuge"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -387,7 +387,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.TypedBig.IsSome() {
-		if err := validation.Field(kamaValidateConst(v.TypedBig.Value(), 18446744073709551617), "typedBig"); err != nil {
+		if err := validator.Field(kamaValidateConst(v.TypedBig.Value(), 18446744073709551617), "typedBig"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -395,14 +395,14 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.RawBig.IsSome() {
-		if err := validation.Field(rawjson.Const(v.RawBig.Value(), "18446744073709551617", "\"x\""), "rawBig"); err != nil {
+		if err := validator.Field(rawjson.Const(v.RawBig.Value(), "18446744073709551617", "\"x\""), "rawBig"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -417,7 +417,7 @@ func (v RootMembersStruct) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -432,7 +432,7 @@ func (v CE) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -448,7 +448,7 @@ func (v CE) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) erro
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first

@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:02Z
+// generated: 2026-11-25T02:44:13Z
 
 package nullraw
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // kamaValidateIf is a helper of the generated Validate methods.
 //
@@ -25,7 +25,7 @@ func kamaValidateNot(err error, operand string) error {
 	if err != nil {
 		return nil
 	}
-	return validation.New(validation.ErrNot, "want the value to fail %s", operand)
+	return validator.New(validator.ErrNot, "want the value to fail %s", operand)
 }
 
 // kamaValidateOr is a helper of the generated Validate methods.
@@ -37,5 +37,5 @@ func kamaValidateOr(errs ...error) error {
 			return nil
 		}
 	}
-	return validation.Compose(validation.ErrOr, errs, "none of %d alternatives holds", len(errs))
+	return validator.Compose(validator.ErrOr, errs, "none of %d alternatives holds", len(errs))
 }

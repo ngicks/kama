@@ -2,15 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:45Z
+// generated: 2026-11-25T02:43:58Z
 
 package anyof
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
-	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -19,27 +19,27 @@ import (
 //kama:generated kama:validate
 func (v Doc) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Label.Validate(stopOnFirstError), "label"); err != nil {
+	if err := validator.Field(v.Label.Validate(stopOnFirstError), "label"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Value.Validate(stopOnFirstError), "value"); err != nil {
+	if err := validator.Field(v.Value.Validate(stopOnFirstError), "value"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Alt.IsSome() {
-		if err := validation.Field(v.Alt.Value().Validate(stopOnFirstError), "alt"); err != nil {
+		if err := validator.Field(v.Alt.Value().Validate(stopOnFirstError), "alt"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -51,27 +51,27 @@ func (v Doc) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Doc) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Label.ValidateShallow(stopOnFirstError), "label"); err != nil {
+	if err := validator.Field(v.Label.ValidateShallow(stopOnFirstError), "label"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Value.ValidateShallow(stopOnFirstError), "value"); err != nil {
+	if err := validator.Field(v.Value.ValidateShallow(stopOnFirstError), "value"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Alt.IsSome() {
-		if err := validation.Field(v.Alt.Value().ValidateShallow(stopOnFirstError), "alt"); err != nil {
+		if err := validator.Field(v.Alt.Value().ValidateShallow(stopOnFirstError), "alt"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -104,13 +104,13 @@ func (v DocValueInteger) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v LabelNamed) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Named.Validate(stopOnFirstError), "Named"); err != nil {
+	if err := validator.Field(v.Named.Validate(stopOnFirstError), "Named"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -130,13 +130,13 @@ func (v LabelNamed) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v LabelTagged) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Tagged.Validate(stopOnFirstError), "Tagged"); err != nil {
+	if err := validator.Field(v.Tagged.Validate(stopOnFirstError), "Tagged"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -164,7 +164,7 @@ func (v labelNamedProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -182,7 +182,7 @@ func (v labelNamedProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Ev
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -201,7 +201,7 @@ func (v labelTaggedProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -221,7 +221,7 @@ func (v labelTaggedProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:33Z
+// generated: 2026-11-25T02:44:08Z
 
 package nullableenum
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -62,9 +62,9 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	out.Const = w.Const
 	out.Big = w.Big
 	out.Number, err = jsonschemart.Optional(w.Number)
-	errs = append(errs, validation.Field(err, "number"))
+	errs = append(errs, validator.Field(err, "number"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

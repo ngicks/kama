@@ -13,7 +13,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/validator/internal/fixture/model"
 	"github.com/ngicks/kama/kamalib/internal/suitetest"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // TestMultipleOfSuite runs the numeric cases of multipleOf.json of the
@@ -86,7 +86,7 @@ func TestMultipleOfSuite(t *testing.T) {
 				assert.ErrorIs(
 					t,
 					err,
-					validation.ErrMultiple,
+					validator.ErrMultiple,
 					"%s: %s",
 					g.Description,
 					c.Description,
@@ -114,6 +114,6 @@ func TestMultipleOfFloat32(t *testing.T) {
 func TestMultipleOfNonFinite(t *testing.T) {
 	for _, f := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
 		err := model.MultipleOf{ByNumber: f}.Validate(false)
-		assert.ErrorIs(t, err, validation.ErrMultiple, f)
+		assert.ErrorIs(t, err, validator.ErrMultiple, f)
 	}
 }

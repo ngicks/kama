@@ -11,7 +11,7 @@ import (
 
 // RawJsonPath is the import path of the package whose functions the
 // built-in validators call on raw JSON text.
-const RawJsonPath = "github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+const RawJsonPath = "github.com/ngicks/kama/kamaruntime/validator/rawjson"
 
 // IsRawJson reports whether a value of t is raw JSON text, which a
 // validator checks with the semantics of JSON Schema: t is jsontext.Value

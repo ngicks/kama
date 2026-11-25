@@ -10,7 +10,7 @@ import (
 // fails, as JSON Schema not tests.
 //
 // It applies to a type its operand applies to. Its error wraps
-// validation.ErrNot and spells the operand.
+// validator.ErrNot and spells the operand.
 type Not struct{}
 
 // Name returns "not".

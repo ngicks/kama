@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:20Z
+// generated: 2026-11-25T02:43:57Z
 
 package dynamicref
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -99,11 +99,11 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Tree
 	var errs []error
 	out.Data, err = jsonschemart.DecodeOptional[jsontext.Value](w.Data)
-	errs = append(errs, validation.Field(err, "data"))
+	errs = append(errs, validator.Field(err, "data"))
 	out.Children, err = jsonschemart.Optional(w.Children)
-	errs = append(errs, validation.Field(err, "children"))
+	errs = append(errs, validator.Field(err, "children"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

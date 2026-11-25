@@ -7,8 +7,8 @@ import "go/types"
 // holds, as the JSON Schema false does.
 //
 // It applies to a type every operand applies to. Its error wraps
-// validation.ErrOr and carries the error of every operand as a cause,
-// which validation.Causes returns.
+// validator.ErrOr and carries the error of every operand as a cause,
+// which validator.Causes returns.
 type Or struct{}
 
 // Name returns "or".

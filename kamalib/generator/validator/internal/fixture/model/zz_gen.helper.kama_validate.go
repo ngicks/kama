@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:41Z
+// generated: 2026-11-25T02:44:40Z
 
 package model
 
@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // kamaValidateAll is a helper of the generated Validate methods.
@@ -28,7 +28,7 @@ import (
 //kama:generated kama:validate
 func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 	if !stopOnFirstError {
-		return validation.Join(errs...)
+		return validator.Join(errs...)
 	}
 	for _, err := range errs {
 		if err != nil {
@@ -44,13 +44,13 @@ func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 func kamaValidateClosed[K ~string, V any](m map[K]V, stopOnFirstError bool) error {
 	var errs []error
 	for _, k := range slices.Sorted(maps.Keys(m)) {
-		err := validation.Field(validation.New(validation.ErrClosed, "member is not allowed"), string(k))
+		err := validator.Field(validator.New(validator.ErrClosed, "member is not allowed"), string(k))
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // kamaValidateCmp is a helper of the generated Validate methods.
@@ -58,7 +58,7 @@ func kamaValidateClosed[K ~string, V any](m map[K]V, stopOnFirstError bool) erro
 //kama:generated kama:validate
 func kamaValidateCmp[T cmp.Ordered](got T, op string, want T) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrCompare, "want %s %s, got %s",
+		return validator.New(validator.ErrCompare, "want %s %s, got %s",
 			op, kamaValidateSpell(want), kamaValidateSpell(got))
 	}
 	return nil
@@ -94,7 +94,7 @@ func kamaValidateConst[T comparable](got T, want ...T) error {
 		for i, w := range want {
 			spelled[i] = kamaValidateSpell(w)
 		}
-		return validation.New(validation.ErrConst, "want one of %s, got %s",
+		return validator.New(validator.ErrConst, "want one of %s, got %s",
 			strings.Join(spelled, ", "), kamaValidateSpell(got))
 	}
 	return nil
@@ -125,7 +125,7 @@ func kamaValidateCount(present ...bool) int {
 //kama:generated kama:validate
 func kamaValidateEqual[T comparable](got T, op string, want T) error {
 	if (got == want) != (op == "==") {
-		return validation.New(validation.ErrCompare, "want %s %s, got %s",
+		return validator.New(validator.ErrCompare, "want %s %s, got %s",
 			op, kamaValidateSpell(want), kamaValidateSpell(got))
 	}
 	return nil
@@ -136,7 +136,7 @@ func kamaValidateEqual[T comparable](got T, op string, want T) error {
 //kama:generated kama:validate
 func kamaValidateFormatDate(got string) error {
 	if _, err := time.Parse(time.DateOnly, got); err != nil {
-		return validation.New(validation.ErrFormat, "want format date (2006-01-02), got %q", got)
+		return validator.New(validator.ErrFormat, "want format date (2006-01-02), got %q", got)
 	}
 	return nil
 }
@@ -146,7 +146,7 @@ func kamaValidateFormatDate(got string) error {
 //kama:generated kama:validate
 func kamaValidateFormatDateTime(got string) error {
 	if _, err := time.Parse(time.RFC3339, got); err != nil {
-		return validation.New(validation.ErrFormat, "want format date-time (RFC 3339), got %q", got)
+		return validator.New(validator.ErrFormat, "want format date-time (RFC 3339), got %q", got)
 	}
 	return nil
 }
@@ -156,7 +156,7 @@ func kamaValidateFormatDateTime(got string) error {
 //kama:generated kama:validate
 func kamaValidateFormatIpv4(got string) error {
 	if a, err := netip.ParseAddr(got); err != nil || !a.Is4() {
-		return validation.New(validation.ErrFormat, "want format ipv4, got %q", got)
+		return validator.New(validator.ErrFormat, "want format ipv4, got %q", got)
 	}
 	return nil
 }
@@ -166,7 +166,7 @@ func kamaValidateFormatIpv4(got string) error {
 //kama:generated kama:validate
 func kamaValidateFormatIpv6(got string) error {
 	if a, err := netip.ParseAddr(got); err != nil || !a.Is6() || a.Zone() != "" {
-		return validation.New(validation.ErrFormat, "want format ipv6, got %q", got)
+		return validator.New(validator.ErrFormat, "want format ipv6, got %q", got)
 	}
 	return nil
 }
@@ -176,7 +176,7 @@ func kamaValidateFormatIpv6(got string) error {
 //kama:generated kama:validate
 func kamaValidateFormatUrl(got string) error {
 	if u, err := url.Parse(got); err != nil || u.Scheme == "" || u.Host == "" {
-		return validation.New(validation.ErrFormat, "want format url with a scheme and a host, got %q", got)
+		return validator.New(validator.ErrFormat, "want format url with a scheme and a host, got %q", got)
 	}
 	return nil
 }
@@ -186,7 +186,7 @@ func kamaValidateFormatUrl(got string) error {
 //kama:generated kama:validate
 func kamaValidateFormatUuid(got string) error {
 	if len(got) != 36 || strings.Count(got, "-") != 4 || got[8] != '-' || got[13] != '-' || got[18] != '-' || got[23] != '-' || strings.Trim(got, "-0123456789abcdefABCDEF") != "" {
-		return validation.New(validation.ErrFormat, "want format uuid, got %q", got)
+		return validator.New(validator.ErrFormat, "want format uuid, got %q", got)
 	}
 	return nil
 }
@@ -206,7 +206,7 @@ func kamaValidateIf(cond, then, otherwise error) error {
 //kama:generated kama:validate
 func kamaValidateLength(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrLength, "want length %s %d, got %d", op, want, got)
+		return validator.New(validator.ErrLength, "want length %s %d, got %d", op, want, got)
 	}
 	return nil
 }
@@ -216,7 +216,7 @@ func kamaValidateLength(got int, op string, want int) error {
 //kama:generated kama:validate
 func kamaValidateMembers(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrLength, "want member count %s %d, got %d", op, want, got)
+		return validator.New(validator.ErrLength, "want member count %s %d, got %d", op, want, got)
 	}
 	return nil
 }
@@ -232,7 +232,7 @@ func kamaValidateMultipleFloat(got float64, bitSize int, step, want string) erro
 		ok = r.Quo(r, s).IsInt()
 	}
 	if !ok {
-		return validation.New(validation.ErrMultiple, "want a multiple of %s, got %s", want, spelled)
+		return validator.New(validator.ErrMultiple, "want a multiple of %s, got %s", want, spelled)
 	}
 	return nil
 }
@@ -243,7 +243,7 @@ func kamaValidateMultipleFloat(got float64, bitSize int, step, want string) erro
 func kamaValidateMultipleInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 |
 	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr](got, step T, want string) error {
 	if got%step != 0 {
-		return validation.New(validation.ErrMultiple, "want a multiple of %s, got %d", want, got)
+		return validator.New(validator.ErrMultiple, "want a multiple of %s, got %d", want, got)
 	}
 	return nil
 }
@@ -252,7 +252,7 @@ func kamaValidateMultipleInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 |
 //
 //kama:generated kama:validate
 func kamaValidateNever(got any, op, want string) error {
-	return validation.New(validation.ErrCompare, "want %s %s, got %s",
+	return validator.New(validator.ErrCompare, "want %s %s, got %s",
 		op, want, kamaValidateSpell(got))
 }
 
@@ -261,7 +261,7 @@ func kamaValidateNever(got any, op, want string) error {
 //kama:generated kama:validate
 func kamaValidateNil(ok bool) error {
 	if !ok {
-		return validation.New(validation.ErrNil, "want nil, got a non-nil value")
+		return validator.New(validator.ErrNil, "want nil, got a non-nil value")
 	}
 	return nil
 }
@@ -281,7 +281,7 @@ func kamaValidateNot(err error, operand string) error {
 	if err != nil {
 		return nil
 	}
-	return validation.New(validation.ErrNot, "want the value to fail %s", operand)
+	return validator.New(validator.ErrNot, "want the value to fail %s", operand)
 }
 
 // kamaValidateNull is a helper of the generated Validate methods.
@@ -289,7 +289,7 @@ func kamaValidateNot(err error, operand string) error {
 //kama:generated kama:validate
 func kamaValidateNull(ok bool) error {
 	if !ok {
-		return validation.New(validation.ErrNull, "want null, got a non-null value")
+		return validator.New(validator.ErrNull, "want null, got a non-null value")
 	}
 	return nil
 }
@@ -308,9 +308,9 @@ func kamaValidateOneOf(operands []string, errs ...error) error {
 		return nil
 	}
 	if len(held) == 0 {
-		return validation.Compose(validation.ErrOneOf, errs, "none of %d alternatives holds", len(errs))
+		return validator.Compose(validator.ErrOneOf, errs, "none of %d alternatives holds", len(errs))
 	}
-	return validation.New(validation.ErrOneOf,
+	return validator.New(validator.ErrOneOf,
 		"want exactly one of %d alternatives to hold, got %d: %s",
 		len(errs), len(held), strings.Join(held, ", "))
 }
@@ -324,7 +324,7 @@ func kamaValidateOr(errs ...error) error {
 			return nil
 		}
 	}
-	return validation.Compose(validation.ErrOr, errs, "none of %d alternatives holds", len(errs))
+	return validator.Compose(validator.ErrOr, errs, "none of %d alternatives holds", len(errs))
 }
 
 // kamaValidateRegexpBytes is a helper of the generated Validate methods.
@@ -332,7 +332,7 @@ func kamaValidateOr(errs ...error) error {
 //kama:generated kama:validate
 func kamaValidateRegexpBytes(re *regexp.Regexp, got []byte) error {
 	if !re.Match(got) {
-		return validation.New(validation.ErrPattern, "want a match of %q, got %q", re.String(), got)
+		return validator.New(validator.ErrPattern, "want a match of %q, got %q", re.String(), got)
 	}
 	return nil
 }
@@ -342,7 +342,7 @@ func kamaValidateRegexpBytes(re *regexp.Regexp, got []byte) error {
 //kama:generated kama:validate
 func kamaValidateRegexpString(re *regexp.Regexp, got string) error {
 	if !re.MatchString(got) {
-		return validation.New(validation.ErrPattern, "want a match of %q, got %q", re.String(), got)
+		return validator.New(validator.ErrPattern, "want a match of %q, got %q", re.String(), got)
 	}
 	return nil
 }
@@ -372,7 +372,7 @@ var kamaValidateRegexp_9c5b6217da = regexp.MustCompile("^x")
 //kama:generated kama:validate
 func kamaValidateRequired(ok bool, got string) error {
 	if !ok {
-		return validation.New(validation.ErrRequired, "want a value, got %s", got)
+		return validator.New(validator.ErrRequired, "want a value, got %s", got)
 	}
 	return nil
 }
@@ -387,14 +387,14 @@ func kamaValidateRequires(stopOnFirstError bool, field string, present bool, nam
 	var errs []error
 	for i, ok := range siblings {
 		if !ok {
-			err := validation.Field(validation.New(validation.ErrRequired, "want a value, as %q has one", field), names[i])
+			err := validator.Field(validator.New(validator.ErrRequired, "want a value, as %q has one", field), names[i])
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // kamaValidateRunes is a helper of the generated Validate methods.
@@ -402,7 +402,7 @@ func kamaValidateRequires(stopOnFirstError bool, field string, present bool, nam
 //kama:generated kama:validate
 func kamaValidateRunes(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrLength, "want rune count %s %d, got %d", op, want, got)
+		return validator.New(validator.ErrLength, "want rune count %s %d, got %d", op, want, got)
 	}
 	return nil
 }
@@ -424,7 +424,7 @@ func kamaValidateUnique[T comparable](got []T) error {
 	seen := make(map[T]int, len(got))
 	for i, x := range got {
 		if j, ok := seen[x]; ok {
-			return validation.New(validation.ErrUnique, "want unique elements, got equal elements at %d and %d", j, i)
+			return validator.New(validator.ErrUnique, "want unique elements, got equal elements at %d and %d", j, i)
 		}
 		seen[x] = i
 	}
@@ -438,7 +438,7 @@ func kamaValidateUniqueDeep[T any](got []T) error {
 	for i := range got {
 		for j := range i {
 			if reflect.DeepEqual(got[j], got[i]) {
-				return validation.New(validation.ErrUnique, "want unique elements, got equal elements at %d and %d", j, i)
+				return validator.New(validator.ErrUnique, "want unique elements, got equal elements at %d and %d", j, i)
 			}
 		}
 	}
@@ -450,7 +450,7 @@ func kamaValidateUniqueDeep[T any](got []T) error {
 //kama:generated kama:validate
 func kamaValidateZero(ok bool, got string) error {
 	if !ok {
-		return validation.New(validation.ErrZero, "want the zero value, got %s", got)
+		return validator.New(validator.ErrZero, "want the zero value, got %s", got)
 	}
 	return nil
 }
@@ -461,7 +461,7 @@ func kamaValidateZero(ok bool, got string) error {
 func kamaValidateZeroComparable[T comparable](t T) error {
 	var zero T
 	if t != zero {
-		return validation.New(validation.ErrZero, "want the zero value, got %#v", t)
+		return validator.New(validator.ErrZero, "want the zero value, got %#v", t)
 	}
 	return nil
 }
@@ -472,7 +472,7 @@ func kamaValidateZeroComparable[T comparable](t T) error {
 func requiredComparable[T comparable](t T) error {
 	var zero T
 	if t == zero {
-		return validation.New(validation.ErrRequired, "want a non-zero value, got %#v", t)
+		return validator.New(validator.ErrRequired, "want a non-zero value, got %#v", t)
 	}
 	return nil
 }

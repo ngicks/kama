@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:54Z
+// generated: 2026-11-25T02:44:28Z
 
 package resources
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -60,15 +60,15 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Order
 	var errs []error
 	out.Customer, err = jsonschemart.Required(w.Customer)
-	errs = append(errs, validation.Field(err, "customer"))
+	errs = append(errs, validator.Field(err, "customer"))
 	out.ShipTo, err = jsonschemart.Optional(w.ShipTo)
-	errs = append(errs, validation.Field(err, "shipTo"))
+	errs = append(errs, validator.Field(err, "shipTo"))
 	out.Lines, err = jsonschemart.Optional(w.Lines)
-	errs = append(errs, validation.Field(err, "lines"))
+	errs = append(errs, validator.Field(err, "lines"))
 	out.Note, err = jsonschemart.Optional(w.Note)
-	errs = append(errs, validation.Field(err, "note"))
+	errs = append(errs, validator.Field(err, "note"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -115,11 +115,11 @@ func (v *Customer) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Customer
 	var errs []error
 	out.Name, err = jsonschemart.Required(w.Name)
-	errs = append(errs, validation.Field(err, "name"))
+	errs = append(errs, validator.Field(err, "name"))
 	out.Address, err = jsonschemart.Optional(w.Address)
-	errs = append(errs, validation.Field(err, "address"))
+	errs = append(errs, validator.Field(err, "address"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -200,11 +200,11 @@ func (v *Address) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Address
 	var errs []error
 	out.City, err = jsonschemart.Optional(w.City)
-	errs = append(errs, validation.Field(err, "city"))
+	errs = append(errs, validator.Field(err, "city"))
 	out.Zip, err = jsonschemart.Optional(w.Zip)
-	errs = append(errs, validation.Field(err, "zip"))
+	errs = append(errs, validator.Field(err, "zip"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -286,11 +286,11 @@ func (v *Line) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Line
 	var errs []error
 	out.Sku, err = jsonschemart.Required(w.Sku)
-	errs = append(errs, validation.Field(err, "sku"))
+	errs = append(errs, validator.Field(err, "sku"))
 	out.Count, err = jsonschemart.Optional(w.Count)
-	errs = append(errs, validation.Field(err, "count"))
+	errs = append(errs, validator.Field(err, "count"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

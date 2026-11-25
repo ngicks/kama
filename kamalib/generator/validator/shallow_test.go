@@ -33,18 +33,18 @@ func TestValidateShallow(t *testing.T) {
 	shallow, ok := funcs["Root.ValidateShallow"]
 	assert.Assert(t, ok, "%v", out["a.kama_validate.go"])
 	assertContains(t, shallow,
-		check(`validation.Field(kamaValidateCmp(v.A, ">", 0), "A")`),
-		check(`validation.Field(v.Ls.ValidateShallow(stopOnFirstError), "Ls")`),
-		check(`validation.Field(v.U.ValidateShallow(stopOnFirstError), "U")`),
-		check(`validation.Field(v.Us.ValidateShallow(stopOnFirstError), "Us")`),
-		check(`validation.Field(v.Plain.Validate(stopOnFirstError), "Plain")`),
+		check(`validator.Field(kamaValidateCmp(v.A, ">", 0), "A")`),
+		check(`validator.Field(v.Ls.ValidateShallow(stopOnFirstError), "Ls")`),
+		check(`validator.Field(v.U.ValidateShallow(stopOnFirstError), "U")`),
+		check(`validator.Field(v.Us.ValidateShallow(stopOnFirstError), "Us")`),
+		check(`validator.Field(v.Plain.Validate(stopOnFirstError), "Plain")`),
 	)
 	assertNotContains(t, shallow, "v.L.", "v.P.", "(*v.P)", "v.S", "v.M", "v.Self")
 
 	assertContains(t, funcs["Root.Validate"],
-		check(`validation.Field(v.L.Validate(stopOnFirstError), "L")`),
-		check(`validation.Field(v.Ls.Validate(stopOnFirstError), "Ls")`),
-		check(`validation.Field(v.U.Validate(stopOnFirstError), "U")`),
+		check(`validator.Field(v.L.Validate(stopOnFirstError), "L")`),
+		check(`validator.Field(v.Ls.Validate(stopOnFirstError), "Ls")`),
+		check(`validator.Field(v.U.Validate(stopOnFirstError), "U")`),
 	)
 
 	for _, name := range []string{"Leaf", "Plain"} {

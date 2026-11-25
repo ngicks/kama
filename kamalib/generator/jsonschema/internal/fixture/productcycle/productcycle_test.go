@@ -9,7 +9,7 @@ import (
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // allFields compares unexported fields too, such as those of opt.Option.
@@ -17,8 +17,8 @@ var allFields = gocmp.Exporter(func(reflect.Type) bool { return true })
 
 func TestMarshalNilRequiredPointer(t *testing.T) {
 	_, err := json.Marshal(Product{})
-	assert.ErrorIs(t, err, validation.ErrNil)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/req"})
+	assert.ErrorIs(t, err, validator.ErrNil)
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/req"})
 }
 
 // TestSharedMember checks a property two members declare: both decode it,

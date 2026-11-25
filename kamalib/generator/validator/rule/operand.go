@@ -260,7 +260,7 @@ type atField struct {
 // Check accepts the types rule accepts.
 func (a atField) Check(t types.Type) error { return a.rule.Check(t) }
 
-// Emit wraps the expression of rule with validation.Field.
+// Emit wraps the expression of rule with validator.Field.
 func (a atField) Emit(e Emitter, t types.Type, v Gen) (Gen, error) {
 	g, err := a.rule.Emit(e, t, v)
 	if err != nil {

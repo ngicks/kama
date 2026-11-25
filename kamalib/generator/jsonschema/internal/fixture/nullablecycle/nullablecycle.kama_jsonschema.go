@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:30Z
+// generated: 2026-11-25T02:44:07Z
 
 package nullablecycle
 
@@ -11,7 +11,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/und"
 )
 
@@ -54,12 +54,12 @@ func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Node
 	var errs []error
 	out.Value, err = jsonschemart.Required(w.Value)
-	errs = append(errs, validation.Field(err, "value"))
+	errs = append(errs, validator.Field(err, "value"))
 	out.Parent, err = jsonschemart.RequiredNullablePointer(w.Parent)
-	errs = append(errs, validation.Field(err, "parent"))
+	errs = append(errs, validator.Field(err, "parent"))
 	out.Next = jsonschemart.OptionalNullablePointer(w.Next)
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

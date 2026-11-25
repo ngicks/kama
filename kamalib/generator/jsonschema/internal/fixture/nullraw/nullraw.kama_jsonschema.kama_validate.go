@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:02Z
+// generated: 2026-11-25T02:44:13Z
 
 package nullraw
 
@@ -10,8 +10,8 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
-	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -20,20 +20,20 @@ import (
 //kama:generated kama:validate
 func (v Root) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(rawjson.Kind(v.R, "integer", "null"), "r"); err != nil {
+	if err := validator.Field(rawjson.Kind(v.R, "integer", "null"), "r"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateNot(rawjson.Kind(v.R, "null"), "kind=\"null\""), "r"); err != nil {
+	if err := validator.Field(kamaValidateNot(rawjson.Kind(v.R, "null"), "kind=\"null\""), "r"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.A.IsSome() {
-		if err := validation.Field(rawjson.Kind(v.A.Value(), "string", "null"), "a"); err != nil {
+		if err := validator.Field(rawjson.Kind(v.A.Value(), "string", "null"), "a"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -41,7 +41,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.A.IsSome() {
-		if err := validation.Field(kamaValidateNot(rawjson.Kind(v.A.Value(), "null"), "kind=\"null\""), "a"); err != nil {
+		if err := validator.Field(kamaValidateNot(rawjson.Kind(v.A.Value(), "null"), "kind=\"null\""), "a"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -49,7 +49,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.C.IsSome() {
-		if err := validation.Field(rawjson.Kind(v.C.Value(), "string", "null"), "c"); err != nil {
+		if err := validator.Field(rawjson.Kind(v.C.Value(), "string", "null"), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -57,7 +57,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.C.IsSome() {
-		if err := validation.Field(rawjson.Const(v.C.Value(), "\"x\""), "c"); err != nil {
+		if err := validator.Field(rawjson.Const(v.C.Value(), "\"x\""), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -65,7 +65,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.E.IsSome() {
-		if err := validation.Field(rawjson.Kind(v.E.Value(), "string", "null"), "e"); err != nil {
+		if err := validator.Field(rawjson.Kind(v.E.Value(), "string", "null"), "e"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -73,7 +73,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.E.IsSome() {
-		if err := validation.Field(kamaValidateIf(rawjson.Kind(v.E.Value(), "null"), kamaValidateOr(), nil), "e"); err != nil {
+		if err := validator.Field(kamaValidateIf(rawjson.Kind(v.E.Value(), "null"), kamaValidateOr(), nil), "e"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -81,7 +81,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.S.IsSome() {
-		if err := validation.Field(rawjson.Kind(v.S.Value(), "string", "null"), "s"); err != nil {
+		if err := validator.Field(rawjson.Kind(v.S.Value(), "string", "null"), "s"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -89,7 +89,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.S.IsSome() {
-		if err := validation.Field(rawjson.Kind(v.S.Value(), "string"), "s"); err != nil {
+		if err := validator.Field(rawjson.Kind(v.S.Value(), "string"), "s"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -97,7 +97,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.D.IsSome() {
-		if err := validation.Field(v.D.Value().Validate(stopOnFirstError), "d"); err != nil {
+		if err := validator.Field(v.D.Value().Validate(stopOnFirstError), "d"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -105,7 +105,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Q.IsSome() {
-		if err := validation.Field(v.Q.Value().Validate(stopOnFirstError), "q"); err != nil {
+		if err := validator.Field(v.Q.Value().Validate(stopOnFirstError), "q"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -114,7 +114,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 	}
 	if v.L.IsSome() {
 		for i, e := range v.L.Value() {
-			if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "l"); err != nil {
+			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "l"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -125,7 +125,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 	if v.M.IsSome() {
 		for _, k := range slices.Sorted(maps.Keys(v.M.Value())) {
 			e := v.M.Value()[k]
-			if err := validation.Field(validation.Key(e.Validate(stopOnFirstError), k), "m"); err != nil {
+			if err := validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "m"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -133,7 +133,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 			}
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -145,20 +145,20 @@ func (v Root) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Root) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(rawjson.Kind(v.R, "integer", "null"), "r"); err != nil {
+	if err := validator.Field(rawjson.Kind(v.R, "integer", "null"), "r"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateNot(rawjson.Kind(v.R, "null"), "kind=\"null\""), "r"); err != nil {
+	if err := validator.Field(kamaValidateNot(rawjson.Kind(v.R, "null"), "kind=\"null\""), "r"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.A.IsSome() {
-		if err := validation.Field(rawjson.Kind(v.A.Value(), "string", "null"), "a"); err != nil {
+		if err := validator.Field(rawjson.Kind(v.A.Value(), "string", "null"), "a"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -166,7 +166,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.A.IsSome() {
-		if err := validation.Field(kamaValidateNot(rawjson.Kind(v.A.Value(), "null"), "kind=\"null\""), "a"); err != nil {
+		if err := validator.Field(kamaValidateNot(rawjson.Kind(v.A.Value(), "null"), "kind=\"null\""), "a"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -174,7 +174,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.C.IsSome() {
-		if err := validation.Field(rawjson.Kind(v.C.Value(), "string", "null"), "c"); err != nil {
+		if err := validator.Field(rawjson.Kind(v.C.Value(), "string", "null"), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -182,7 +182,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.C.IsSome() {
-		if err := validation.Field(rawjson.Const(v.C.Value(), "\"x\""), "c"); err != nil {
+		if err := validator.Field(rawjson.Const(v.C.Value(), "\"x\""), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -190,7 +190,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.E.IsSome() {
-		if err := validation.Field(rawjson.Kind(v.E.Value(), "string", "null"), "e"); err != nil {
+		if err := validator.Field(rawjson.Kind(v.E.Value(), "string", "null"), "e"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -198,7 +198,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.E.IsSome() {
-		if err := validation.Field(kamaValidateIf(rawjson.Kind(v.E.Value(), "null"), kamaValidateOr(), nil), "e"); err != nil {
+		if err := validator.Field(kamaValidateIf(rawjson.Kind(v.E.Value(), "null"), kamaValidateOr(), nil), "e"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -206,7 +206,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.S.IsSome() {
-		if err := validation.Field(rawjson.Kind(v.S.Value(), "string", "null"), "s"); err != nil {
+		if err := validator.Field(rawjson.Kind(v.S.Value(), "string", "null"), "s"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -214,7 +214,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.S.IsSome() {
-		if err := validation.Field(rawjson.Kind(v.S.Value(), "string"), "s"); err != nil {
+		if err := validator.Field(rawjson.Kind(v.S.Value(), "string"), "s"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -222,14 +222,14 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.D.IsSome() {
-		if err := validation.Field(v.D.Value().ValidateShallow(stopOnFirstError), "d"); err != nil {
+		if err := validator.Field(v.D.Value().ValidateShallow(stopOnFirstError), "d"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -266,7 +266,7 @@ func (v RootLItem) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -288,7 +288,7 @@ func (v RootLItem) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluate
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -309,7 +309,7 @@ func (v N) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -331,5 +331,5 @@ func (v N) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

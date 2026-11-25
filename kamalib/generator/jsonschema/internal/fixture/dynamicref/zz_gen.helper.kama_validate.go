@@ -2,18 +2,18 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:49Z
+// generated: 2026-11-25T02:43:58Z
 
 package dynamicref
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // kamaValidateAll is a helper of the generated Validate methods.
 //
 //kama:generated kama:validate
 func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 	if !stopOnFirstError {
-		return validation.Join(errs...)
+		return validator.Join(errs...)
 	}
 	for _, err := range errs {
 		if err != nil {
@@ -32,5 +32,5 @@ func kamaValidateOr(errs ...error) error {
 			return nil
 		}
 	}
-	return validation.Compose(validation.ErrOr, errs, "none of %d alternatives holds", len(errs))
+	return validator.Compose(validator.ErrOr, errs, "none of %d alternatives holds", len(errs))
 }

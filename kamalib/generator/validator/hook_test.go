@@ -23,8 +23,8 @@ func TestHooks(t *testing.T) {
 				"func (A) validateAge(bool) error { return nil }\n",
 			typeName: "A",
 			want: []string{
-				check(`validation.Field(v.validateName(stopOnFirstError), "name")`),
-				check(`validation.Field(v.validateAge(stopOnFirstError), "age")`),
+				check(`validator.Field(v.validateName(stopOnFirstError), "name")`),
+				check(`validator.Field(v.validateAge(stopOnFirstError), "age")`),
 			},
 		},
 		{
@@ -58,8 +58,8 @@ func TestHooks(t *testing.T) {
 				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
 			typeName: "P",
 			want: []string{
-				check(`validation.Field(v.C.Validate(stopOnFirstError), "C")`),
-				check(`validation.Field(v.validateC(stopOnFirstError), "C")`),
+				check(`validator.Field(v.C.Validate(stopOnFirstError), "C")`),
+				check(`validator.Field(v.validateC(stopOnFirstError), "C")`),
 			},
 		},
 		{
@@ -91,7 +91,7 @@ func TestHooks(t *testing.T) {
 				"func (A) validateName(bool) error { return nil }\n",
 			typeName: "A",
 			want: []string{
-				check(`validation.Field(v.validateName(stopOnFirstError), "Name2")`),
+				check(`validator.Field(v.validateName(stopOnFirstError), "Name2")`),
 			},
 		},
 		{
@@ -115,9 +115,9 @@ func TestHooks(t *testing.T) {
 				"func (A) validateM(bool) error { return nil }\n",
 			typeName: "A",
 			want: []string{
-				check(`validation.Field(requiredComparable(v.M), "M")`),
-				check(`validation.Field(kamaValidateCmp(v.M, ">", 0), "M")`),
-				check(`validation.Field(v.validateM(stopOnFirstError), "M")`),
+				check(`validator.Field(requiredComparable(v.M), "M")`),
+				check(`validator.Field(kamaValidateCmp(v.M, ">", 0), "M")`),
+				check(`validator.Field(v.validateM(stopOnFirstError), "M")`),
 			},
 			notWant: []string{"validateN"},
 		},

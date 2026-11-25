@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:52Z
+// generated: 2026-11-25T02:44:04Z
 
 package nestedunion
 
@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // kamaValidateConst is a helper of the generated Validate methods.
@@ -25,7 +25,7 @@ func kamaValidateConst[T comparable](got T, want ...T) error {
 		for i, w := range want {
 			spelled[i] = kamaValidateSpell(w)
 		}
-		return validation.New(validation.ErrConst, "want one of %s, got %s",
+		return validator.New(validator.ErrConst, "want one of %s, got %s",
 			strings.Join(spelled, ", "), kamaValidateSpell(got))
 	}
 	return nil

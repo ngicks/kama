@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:56Z
+// generated: 2026-11-25T02:44:07Z
 
 package nullablecycle
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -15,7 +15,7 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 func (v Node) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Parent != nil {
-		if err := validation.Field((*v.Parent).Validate(stopOnFirstError), "parent"); err != nil {
+		if err := validator.Field((*v.Parent).Validate(stopOnFirstError), "parent"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -23,14 +23,14 @@ func (v Node) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Next != nil {
-		if err := validation.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
+		if err := validator.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the

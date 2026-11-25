@@ -2,15 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:47Z
+// generated: 2026-11-25T02:43:59Z
 
 package decodecost
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
-	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -20,7 +20,7 @@ import (
 func (v Costs) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Plain.IsSome() {
-		if err := validation.Field(v.Plain.Value().Validate(stopOnFirstError), "plain"); err != nil {
+		if err := validator.Field(v.Plain.Value().Validate(stopOnFirstError), "plain"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -28,7 +28,7 @@ func (v Costs) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Negated.IsSome() {
-		if err := validation.Field(v.Negated.Value().Validate(stopOnFirstError), "negated"); err != nil {
+		if err := validator.Field(v.Negated.Value().Validate(stopOnFirstError), "negated"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -36,7 +36,7 @@ func (v Costs) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Chosen.IsSome() {
-		if err := validation.Field(v.Chosen.Value().Validate(stopOnFirstError), "chosen"); err != nil {
+		if err := validator.Field(v.Chosen.Value().Validate(stopOnFirstError), "chosen"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -44,14 +44,14 @@ func (v Costs) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Closed.IsSome() {
-		if err := validation.Field(v.Closed.Value().Validate(stopOnFirstError), "closed"); err != nil {
+		if err := validator.Field(v.Closed.Value().Validate(stopOnFirstError), "closed"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -64,14 +64,14 @@ func (v Costs) Validate(stopOnFirstError bool) error {
 func (v Costs) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.Chosen.IsSome() {
-		if err := validation.Field(v.Chosen.Value().ValidateShallow(stopOnFirstError), "chosen"); err != nil {
+		if err := validator.Field(v.Chosen.Value().ValidateShallow(stopOnFirstError), "chosen"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -81,14 +81,14 @@ func (v Costs) ValidateShallow(stopOnFirstError bool) error {
 func (v Plain) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Next != nil {
-		if err := validation.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
+		if err := validator.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -117,14 +117,14 @@ func (v Negated) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if v.Next != nil {
-		if err := validation.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
+		if err := validator.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -144,7 +144,7 @@ func (v Negated) ValidateShallow(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -153,13 +153,13 @@ func (v Negated) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v ChosenNonNegative) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.NonNegative.Validate(stopOnFirstError), "NonNegative"); err != nil {
+	if err := validator.Field(v.NonNegative.Validate(stopOnFirstError), "NonNegative"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -179,13 +179,13 @@ func (v ChosenNonNegative) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v ChosenNegative) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Negative.Validate(stopOnFirstError), "Negative"); err != nil {
+	if err := validator.Field(v.Negative.Validate(stopOnFirstError), "Negative"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -213,7 +213,7 @@ func (v chosenNonNegativeProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -231,7 +231,7 @@ func (v chosenNonNegativeProbe) ValidateEvaluated(stopOnFirstError bool, ev *raw
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -248,7 +248,7 @@ func (v chosenNegativeProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -266,7 +266,7 @@ func (v chosenNegativeProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjso
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -276,20 +276,20 @@ func (v chosenNegativeProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjso
 func (v NonNegative) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Next.IsSome() {
-		if err := validation.Field(v.Next.Value().Validate(stopOnFirstError), "next"); err != nil {
+		if err := validator.Field(v.Next.Value().Validate(stopOnFirstError), "next"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(kamaValidateCmp(v.A, ">=", 0), "a"); err != nil {
+	if err := validator.Field(kamaValidateCmp(v.A, ">=", 0), "a"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -302,20 +302,20 @@ func (v NonNegative) Validate(stopOnFirstError bool) error {
 func (v NonNegative) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.Next.IsSome() {
-		if err := validation.Field(v.Next.Value().ValidateShallow(stopOnFirstError), "next"); err != nil {
+		if err := validator.Field(v.Next.Value().ValidateShallow(stopOnFirstError), "next"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(kamaValidateCmp(v.A, ">=", 0), "a"); err != nil {
+	if err := validator.Field(kamaValidateCmp(v.A, ">=", 0), "a"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -325,20 +325,20 @@ func (v NonNegative) ValidateShallow(stopOnFirstError bool) error {
 func (v Negative) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Next.IsSome() {
-		if err := validation.Field(v.Next.Value().Validate(stopOnFirstError), "next"); err != nil {
+		if err := validator.Field(v.Next.Value().Validate(stopOnFirstError), "next"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(kamaValidateCmp(v.A, "<=", -1), "a"); err != nil {
+	if err := validator.Field(kamaValidateCmp(v.A, "<=", -1), "a"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -351,20 +351,20 @@ func (v Negative) Validate(stopOnFirstError bool) error {
 func (v Negative) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.Next.IsSome() {
-		if err := validation.Field(v.Next.Value().ValidateShallow(stopOnFirstError), "next"); err != nil {
+		if err := validator.Field(v.Next.Value().ValidateShallow(stopOnFirstError), "next"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(kamaValidateCmp(v.A, "<=", -1), "a"); err != nil {
+	if err := validator.Field(kamaValidateCmp(v.A, "<=", -1), "a"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -390,14 +390,14 @@ func (v Closed) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if v.Next != nil {
-		if err := validation.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
+		if err := validator.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -425,5 +425,5 @@ func (v Closed) ValidateShallow(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

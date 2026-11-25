@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:24Z
+// generated: 2026-11-25T02:44:30Z
 
 package typedkeywords
 
@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // kamaValidateAll is a helper of the generated Validate methods.
@@ -23,7 +23,7 @@ import (
 //kama:generated kama:validate
 func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 	if !stopOnFirstError {
-		return validation.Join(errs...)
+		return validator.Join(errs...)
 	}
 	for _, err := range errs {
 		if err != nil {
@@ -39,13 +39,13 @@ func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 func kamaValidateClosed[K ~string, V any](m map[K]V, stopOnFirstError bool) error {
 	var errs []error
 	for _, k := range slices.Sorted(maps.Keys(m)) {
-		err := validation.Field(validation.New(validation.ErrClosed, "member is not allowed"), string(k))
+		err := validator.Field(validator.New(validator.ErrClosed, "member is not allowed"), string(k))
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // kamaValidateConst is a helper of the generated Validate methods.
@@ -57,7 +57,7 @@ func kamaValidateConst[T comparable](got T, want ...T) error {
 		for i, w := range want {
 			spelled[i] = kamaValidateSpell(w)
 		}
-		return validation.New(validation.ErrConst, "want one of %s, got %s",
+		return validator.New(validator.ErrConst, "want one of %s, got %s",
 			strings.Join(spelled, ", "), kamaValidateSpell(got))
 	}
 	return nil
@@ -80,7 +80,7 @@ func kamaValidateNot(err error, operand string) error {
 	if err != nil {
 		return nil
 	}
-	return validation.New(validation.ErrNot, "want the value to fail %s", operand)
+	return validator.New(validator.ErrNot, "want the value to fail %s", operand)
 }
 
 // kamaValidateOr is a helper of the generated Validate methods.
@@ -92,7 +92,7 @@ func kamaValidateOr(errs ...error) error {
 			return nil
 		}
 	}
-	return validation.Compose(validation.ErrOr, errs, "none of %d alternatives holds", len(errs))
+	return validator.Compose(validator.ErrOr, errs, "none of %d alternatives holds", len(errs))
 }
 
 // kamaValidateRegexp_5f8f9cdb3f is a helper of the generated Validate methods.

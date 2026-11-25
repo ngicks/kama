@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:52Z
+// generated: 2026-11-25T02:44:26Z
 
 package remote
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -58,13 +58,13 @@ func (v *Invoice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Invoice
 	var errs []error
 	out.Total, err = jsonschemart.Required(w.Total)
-	errs = append(errs, validation.Field(err, "total"))
+	errs = append(errs, validator.Field(err, "total"))
 	out.Currency, err = jsonschemart.Optional(w.Currency)
-	errs = append(errs, validation.Field(err, "currency"))
+	errs = append(errs, validator.Field(err, "currency"))
 	out.Payer, err = jsonschemart.Optional(w.Payer)
-	errs = append(errs, validation.Field(err, "payer"))
+	errs = append(errs, validator.Field(err, "payer"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -113,11 +113,11 @@ func (v *Money) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Money
 	var errs []error
 	out.Amount, err = jsonschemart.Required(w.Amount)
-	errs = append(errs, validation.Field(err, "amount"))
+	errs = append(errs, validator.Field(err, "amount"))
 	out.Currency, err = jsonschemart.Required(w.Currency)
-	errs = append(errs, validation.Field(err, "currency"))
+	errs = append(errs, validator.Field(err, "currency"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -202,13 +202,13 @@ func (v *Party) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Party
 	var errs []error
 	out.Name, err = jsonschemart.Required(w.Name)
-	errs = append(errs, validation.Field(err, "name"))
+	errs = append(errs, validator.Field(err, "name"))
 	out.Balance, err = jsonschemart.Optional(w.Balance)
-	errs = append(errs, validation.Field(err, "balance"))
+	errs = append(errs, validator.Field(err, "balance"))
 	out.Partner, err = jsonschemart.OptionalPointer(w.Partner)
-	errs = append(errs, validation.Field(err, "partner"))
+	errs = append(errs, validator.Field(err, "partner"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

@@ -10,7 +10,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func TestRoundTrip(t *testing.T) {
@@ -47,7 +47,7 @@ func TestDecodeError(t *testing.T) {
 		pointers []string
 		kind     error
 	}{
-		{"null value", `{"value":null}`, []string{"/value"}, validation.ErrNull},
+		{"null value", `{"value":null}`, []string{"/value"}, validator.ErrNull},
 		{"fraction", `{"value":1.5}`, []string{"/value"}, jsonschemart.ErrNoMatch},
 		{"object label", `{"value":"s","label":{}}`, []string{"/label"}, jsonschemart.ErrNoMatch},
 	}
@@ -59,7 +59,7 @@ func TestDecodeError(t *testing.T) {
 
 			se, ok := errors.AsType[*json.SemanticError](err)
 			assert.Assert(t, ok, "%T: %v", err, err)
-			assert.DeepEqual(t, validation.Pointers(se.Err), tc.pointers)
+			assert.DeepEqual(t, validator.Pointers(se.Err), tc.pointers)
 			assert.ErrorIs(t, se.Err, tc.kind)
 		})
 	}

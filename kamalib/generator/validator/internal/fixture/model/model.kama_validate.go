@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:41Z
+// generated: 2026-11-25T02:44:40Z
 
 package model
 
@@ -10,7 +10,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -19,26 +19,26 @@ import (
 //kama:generated kama:validate
 func (v User) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(requiredComparable(v.Name), "name"); err != nil {
+	if err := validator.Field(requiredComparable(v.Name), "name"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateRequired(v.Email != nil, "nil"), "email"); err != nil {
+	if err := validator.Field(kamaValidateRequired(v.Email != nil, "nil"), "email"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Address.Validate(stopOnFirstError), "address"); err != nil {
+	if err := validator.Field(v.Address.Validate(stopOnFirstError), "address"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	for i, e := range v.Tags {
-		if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "tags"); err != nil {
+		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "tags"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -48,7 +48,7 @@ func (v User) Validate(stopOnFirstError bool) error {
 	for _, k := range slices.Sorted(maps.Keys(v.Pets)) {
 		e := v.Pets[k]
 		if e != nil {
-			if err := validation.Field(validation.Key((*e).Validate(stopOnFirstError), k), "Pets"); err != nil {
+			if err := validator.Field(validator.Key((*e).Validate(stopOnFirstError), k), "Pets"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -56,13 +56,13 @@ func (v User) Validate(stopOnFirstError bool) error {
 			}
 		}
 	}
-	if err := validation.Field(kamaValidateRequired(v.Nick.IsSome(), "none"), "nick"); err != nil {
+	if err := validator.Field(kamaValidateRequired(v.Nick.IsSome(), "none"), "nick"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Box.Validate(stopOnFirstError, func(v Tag, stopOnFirstError bool) error {
+	if err := validator.Field(v.Box.Validate(stopOnFirstError, func(v Tag, stopOnFirstError bool) error {
 		return v.Validate(stopOnFirstError)
 	}), "box"); err != nil {
 		if stopOnFirstError {
@@ -70,13 +70,13 @@ func (v User) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.validateAge(stopOnFirstError), "age"); err != nil {
+	if err := validator.Field(v.validateAge(stopOnFirstError), "age"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -85,13 +85,13 @@ func (v User) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Address) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(requiredComparable(v.City), "city"); err != nil {
+	if err := validator.Field(requiredComparable(v.City), "city"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -100,13 +100,13 @@ func (v Address) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Tag) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(requiredComparable(v.Name), "name"); err != nil {
+	if err := validator.Field(requiredComparable(v.Name), "name"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -115,13 +115,13 @@ func (v Tag) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Pet) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(requiredComparable(v.Name), "name"); err != nil {
+	if err := validator.Field(requiredComparable(v.Name), "name"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -134,7 +134,7 @@ func (v Box[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstE
 	var errs []error
 	for i, e := range v.Items {
 		if validateT != nil {
-			if err := validation.Field(validation.Index(validateT(e, stopOnFirstError), i), "items"); err != nil {
+			if err := validator.Field(validator.Index(validateT(e, stopOnFirstError), i), "items"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -144,7 +144,7 @@ func (v Box[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstE
 	}
 	if v.One.IsDefined() {
 		if validateT != nil {
-			if err := validation.Field(validateT(v.One.Value(), stopOnFirstError), "one"); err != nil {
+			if err := validator.Field(validateT(v.One.Value(), stopOnFirstError), "one"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -152,7 +152,7 @@ func (v Box[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstE
 			}
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -162,7 +162,7 @@ func (v Box[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstE
 func (v Team) Validate(stopOnFirstError bool) error {
 	var errs []error
 	for i, e := range v.Members {
-		if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "members"); err != nil {
+		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "members"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -170,14 +170,14 @@ func (v Team) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Lead != nil {
-		if err := validation.Field((*v.Lead).Validate(stopOnFirstError), "lead"); err != nil {
+		if err := validator.Field((*v.Lead).Validate(stopOnFirstError), "lead"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -187,12 +187,12 @@ func (v Team) Validate(stopOnFirstError bool) error {
 func (v Roster) Validate(stopOnFirstError bool) error {
 	var errs []error
 	for i, e := range v {
-		if err := validation.Index(e.Validate(stopOnFirstError), i); err != nil {
+		if err := validator.Index(e.Validate(stopOnFirstError), i); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

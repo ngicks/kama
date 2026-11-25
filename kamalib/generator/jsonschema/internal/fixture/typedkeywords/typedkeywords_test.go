@@ -8,7 +8,7 @@ import (
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // check decodes each instance of ok into a T and each of bad into a T,
@@ -34,14 +34,14 @@ func TestOrder(t *testing.T) {
 			`{"kind": "card", "id": 1, "card": "c", "note": "n", "lines": [0, 1], "x-a": "s"}`,
 		},
 		map[string]error{
-			`{"kind": "cash"}`:                                     validation.ErrRequired,
-			`{"kind": "card", "id": 1}`:                            validation.ErrRequired,
-			`{"kind": "cash", "id": 1, "card": "c"}`:               validation.ErrNot,
-			`{"kind": "cash", "id": 1, "note": "x", "lines": [0]}`: validation.ErrNot,
-			`{"kind": "cash", "id": 1, "note": "n"}`:               validation.ErrRequired,
-			`{"kind": "cash", "id": 1, "lines": [1]}`:              validation.ErrContains,
-			`{"kind": "cash", "id": 1, "x-a": 1}`:                  validation.ErrKind,
-			`{"kind": "cash", "id": 1, "toolongname": 1}`:          validation.ErrLength,
+			`{"kind": "cash"}`:                                     validator.ErrRequired,
+			`{"kind": "card", "id": 1}`:                            validator.ErrRequired,
+			`{"kind": "cash", "id": 1, "card": "c"}`:               validator.ErrNot,
+			`{"kind": "cash", "id": 1, "note": "x", "lines": [0]}`: validator.ErrNot,
+			`{"kind": "cash", "id": 1, "note": "n"}`:               validator.ErrRequired,
+			`{"kind": "cash", "id": 1, "lines": [1]}`:              validator.ErrContains,
+			`{"kind": "cash", "id": 1, "x-a": 1}`:                  validator.ErrKind,
+			`{"kind": "cash", "id": 1, "toolongname": 1}`:          validator.ErrLength,
 		},
 	)
 
@@ -55,23 +55,23 @@ func TestOrder(t *testing.T) {
 	assert.NilError(t, order.Validate(false))
 
 	order.Card = opt.None[string]()
-	assert.ErrorIs(t, order.Validate(false), validation.ErrRequired)
+	assert.ErrorIs(t, order.Validate(false), validator.ErrRequired)
 
 	order.Card = opt.Some("c")
 	order.Lines = opt.Some([]int64{0, 0})
 	err := order.Validate(false)
-	assert.ErrorIs(t, err, validation.ErrContains)
-	assert.Assert(t, len(validation.At(err, "/lines")) > 0, "%v", err)
+	assert.ErrorIs(t, err, validator.ErrContains)
+	assert.Assert(t, len(validator.At(err, "/lines")) > 0, "%v", err)
 
 	order.Lines = opt.None[[]int64]()
 	order.AdditionalProperties["x-b"] = jsontext.Value("2")
 	err = order.Validate(false)
-	assert.ErrorIs(t, err, validation.ErrKind)
-	assert.Assert(t, len(validation.At(err, "/x-b")) > 0, "%v", err)
+	assert.ErrorIs(t, err, validator.ErrKind)
+	assert.Assert(t, len(validator.At(err, "/x-b")) > 0, "%v", err)
 
 	delete(order.AdditionalProperties, "id")
 	delete(order.AdditionalProperties, "x-b")
-	assert.ErrorIs(t, order.Validate(false), validation.ErrRequired)
+	assert.ErrorIs(t, order.Validate(false), validator.ErrRequired)
 }
 
 func TestShape(t *testing.T) {
@@ -94,21 +94,21 @@ func TestShape(t *testing.T) {
 	assert.ErrorIs(
 		t,
 		Shape{Kind: ShapeCircle{Circle: Circle{R: 0}}}.Validate(false),
-		validation.ErrNot,
+		validator.ErrNot,
 	)
 }
 
 func TestPerson(t *testing.T) {
 	check[Person](t,
 		[]string{`{"name": "a", "age": 1}`, `{"name": "a"}`},
-		map[string]error{`{"name": "a", "nick": "b"}`: validation.ErrNot},
+		map[string]error{`{"name": "a", "nick": "b"}`: validator.ErrNot},
 	)
 
 	p := Person{Named: Named{Name: "a"}, Aged: Aged{Age: opt.Some[int64](3)}}
 	assert.NilError(t, p.Validate(false))
 
 	p.AdditionalProperties = map[string]jsontext.Value{"nick": jsontext.Value(`"b"`)}
-	assert.ErrorIs(t, p.Validate(false), validation.ErrNot)
+	assert.ErrorIs(t, p.Validate(false), validator.ErrNot)
 }
 
 func TestBounded(t *testing.T) {
@@ -116,19 +116,19 @@ func TestBounded(t *testing.T) {
 		t,
 		[]string{`{"lo": 1}`, `{"lo": 1, "hi": 2}`},
 		map[string]error{
-			`{"hi": 2}`:         validation.ErrRequired,
-			`{"lo": 1, "x": 0}`: validation.ErrNot,
+			`{"hi": 2}`:         validator.ErrRequired,
+			`{"lo": 1, "x": 0}`: validator.ErrNot,
 		},
 	)
 
 	assert.NilError(t, Bounded{Lo: opt.Some[int64](1)}.Validate(false))
-	assert.ErrorIs(t, Bounded{Hi: opt.Some[int64](1)}.Validate(false), validation.ErrRequired)
+	assert.ErrorIs(t, Bounded{Hi: opt.Some[int64](1)}.Validate(false), validator.ErrRequired)
 }
 
 func TestSealed(t *testing.T) {
 	check[Sealed](t,
 		[]string{`{}`, `{"a": 1, "x-b": [true]}`},
-		map[string]error{`{"a": 1, "b": 2}`: validation.ErrOr},
+		map[string]error{`{"a": 1, "b": 2}`: validator.ErrOr},
 	)
 
 	s := Sealed{
@@ -136,14 +136,14 @@ func TestSealed(t *testing.T) {
 		AdditionalProperties: map[string]jsontext.Value{"b": jsontext.Value("2")},
 	}
 	err := s.Validate(false)
-	assert.ErrorIs(t, err, validation.ErrOr)
-	assert.Assert(t, len(validation.At(err, "/b")) > 0, "%v", err)
+	assert.ErrorIs(t, err, validator.ErrOr)
+	assert.Assert(t, len(validator.At(err, "/b")) > 0, "%v", err)
 }
 
 func TestTagged(t *testing.T) {
 	check[Tagged](t,
 		[]string{`{}`, `{"a": 1, "x-b": "s"}`},
-		map[string]error{`{"a": 1, "b": 2}`: validation.ErrOr, `{"x-b": 1}`: validation.ErrKind},
+		map[string]error{`{"a": 1, "b": 2}`: validator.ErrOr, `{"x-b": 1}`: validator.ErrKind},
 	)
 
 	v := Tagged{
@@ -154,8 +154,8 @@ func TestTagged(t *testing.T) {
 
 	v.AdditionalProperties["b"] = jsontext.Value("2")
 	err := v.Validate(false)
-	assert.ErrorIs(t, err, validation.ErrOr)
-	assert.Assert(t, len(validation.At(err, "/b")) > 0, "%v", err)
+	assert.ErrorIs(t, err, validator.ErrOr)
+	assert.Assert(t, len(validator.At(err, "/b")) > 0, "%v", err)
 }
 
 func TestCounts(t *testing.T) {

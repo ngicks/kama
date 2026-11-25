@@ -82,31 +82,31 @@ type Holder struct {
 	inners := fs["Inners.Validate"]
 	assert.Assert(t,
 		strings.Index(inners, check(`kamaValidateLength(len(v), "<=", 2)`)) <
-			strings.Index(inners, check(`validation.Key(e.Validate(stopOnFirstError), k)`)),
+			strings.Index(inners, check(`validator.Key(e.Validate(stopOnFirstError), k)`)),
 		inners,
 	)
 
 	pair := fs["Pair.Validate"]
 	assert.Assert(t,
 		strings.Index(pair, check(`kamaValidateUnique(kamaValidateCopy(v)[:])`)) <
-			strings.Index(pair, check(`validation.Index(e.Validate(stopOnFirstError), i)`)),
+			strings.Index(pair, check(`validator.Index(e.Validate(stopOnFirstError), i)`)),
 		pair,
 	)
 
 	assertContains(t, fs["Holder.Validate"],
-		check(`validation.Field(v.L.Validate(stopOnFirstError), "L")`),
+		check(`validator.Field(v.L.Validate(stopOnFirstError), "L")`),
 		"if v.P != nil {",
-		check(`validation.Field((*v.P).Validate(stopOnFirstError), "P")`),
-		check(`validation.Field(v.O.Value().Validate(stopOnFirstError), "O")`),
-		check(`validation.Field(v.U.Value().Validate(stopOnFirstError), "U")`),
-		check(`validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "S")`),
-		check(`validation.Field(validation.Key(e.Validate(stopOnFirstError), k), "M")`),
+		check(`validator.Field((*v.P).Validate(stopOnFirstError), "P")`),
+		check(`validator.Field(v.O.Value().Validate(stopOnFirstError), "O")`),
+		check(`validator.Field(v.U.Value().Validate(stopOnFirstError), "U")`),
+		check(`validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "S")`),
+		check(`validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "M")`),
 		"v.B.Validate(stopOnFirstError, func(v Level, stopOnFirstError bool) error {\n"+
 			"\t\treturn v.Validate(stopOnFirstError)",
-		check(`validation.Field(kamaValidateCmp(v.F, "<=", 9), "F")`),
-		check(`validation.Field(v.F.Validate(stopOnFirstError), "F")`),
-		check(`validation.Field(v.Pa.Validate(stopOnFirstError), "Pa")`),
-		check(`validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "H")`),
+		check(`validator.Field(kamaValidateCmp(v.F, "<=", 9), "F")`),
+		check(`validator.Field(v.F.Validate(stopOnFirstError), "F")`),
+		check(`validator.Field(v.Pa.Validate(stopOnFirstError), "Pa")`),
+		check(`validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "H")`),
 	)
 
 	_, ok := fs["Hand.Validate"]
@@ -325,7 +325,7 @@ func TestCmpIntegerBounds(t *testing.T) {
 		fn,
 		`kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.A, ">=", 2), `+
 			`kamaValidateCmp(v.A, "<=", 2))`,
-		check(`validation.Field(error(nil), "B")`),
+		check(`validator.Field(error(nil), "B")`),
 		`kamaValidateNever(v.C, ">", "300")`,
 	)
 }
@@ -352,7 +352,7 @@ func TestBoundsBeyondType(t *testing.T) {
 		`kamaValidateCmp(v.A, "<=", 1.7976931348623157e+308), `+
 			`kamaValidateCmp(v.A, ">=", -1.7976931348623157e+308)`,
 		`kamaValidateCmp(v.B, ">", 3.4028234663852886e+38)`,
-		check(`validation.Field(error(nil), "C")`),
+		check(`validator.Field(error(nil), "C")`),
 		`kamaValidateRunes(utf8.RuneCountInString(v.D), ">", 9223372036854775807)`,
 		`kamaValidateMultipleZero(v.E, "1e30")`,
 		`kamaValidateMultipleZero(v.F, "1e100000")`,

@@ -2,15 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:49Z
+// generated: 2026-11-25T02:43:58Z
 
 package dynamicref
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
-	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -35,7 +35,7 @@ func (v StrictTree) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -61,7 +61,7 @@ func (v StrictTree) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluat
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -72,7 +72,7 @@ func (v Tree) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Children.IsSome() {
 		for i, e := range v.Children.Value() {
-			if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "children"); err != nil {
+			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "children"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -80,7 +80,7 @@ func (v Tree) Validate(stopOnFirstError bool) error {
 			}
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -106,7 +106,7 @@ func (v TreeChildrenItem) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -122,7 +122,7 @@ func (v TreeChildrenItem) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -162,7 +162,7 @@ func (v Names) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -186,5 +186,5 @@ func (v Names) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) e
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

@@ -9,7 +9,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/internal/fixture/model"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func validUser() model.User {
@@ -48,7 +48,7 @@ func TestValid(t *testing.T) {
 func TestCollectEveryError(t *testing.T) {
 	err := invalidUser().Validate(false)
 
-	assert.DeepEqual(t, validation.Pointers(err), []string{
+	assert.DeepEqual(t, validator.Pointers(err), []string{
 		"/Pets/cat/name",
 		"/address/city",
 		"/age",
@@ -59,31 +59,31 @@ func TestCollectEveryError(t *testing.T) {
 		"/nick",
 		"/tags/1/name",
 	})
-	assert.ErrorIs(t, err, validation.ErrRequired)
+	assert.ErrorIs(t, err, validator.ErrRequired)
 	assert.ErrorIs(t, err, model.ErrNegative)
 
-	at := validation.At(err, "/age")
+	at := validator.At(err, "/age")
 	assert.Equal(t, len(at), 1)
 	assert.ErrorIs(t, at[0], model.ErrNegative)
 
-	assert.Equal(t, len(validation.Under(err, "/box")), 2)
-	assert.ErrorContains(t, validation.At(err, "/email")[0], "want a value, got nil")
-	assert.ErrorContains(t, validation.At(err, "/name")[0], `want a non-zero value, got ""`)
+	assert.Equal(t, len(validator.Under(err, "/box")), 2)
+	assert.ErrorContains(t, validator.At(err, "/email")[0], "want a value, got nil")
+	assert.ErrorContains(t, validator.At(err, "/name")[0], `want a non-zero value, got ""`)
 }
 
 func TestStopOnFirstError(t *testing.T) {
 	err := invalidUser().Validate(true)
 
 	// The first error is the one of the first field.
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/name"})
-	assert.ErrorIs(t, err, validation.ErrRequired)
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/name"})
+	assert.ErrorIs(t, err, validator.ErrRequired)
 
 	u := validUser()
 	u.Tags = append(u.Tags, model.Tag{}, model.Tag{})
-	assert.DeepEqual(t, validation.Pointers(u.Validate(true)), []string{"/tags/1/name"})
+	assert.DeepEqual(t, validator.Pointers(u.Validate(true)), []string{"/tags/1/name"})
 	assert.DeepEqual(
 		t,
-		validation.Pointers(u.Validate(false)),
+		validator.Pointers(u.Validate(false)),
 		[]string{"/tags/1/name", "/tags/2/name"},
 	)
 }
@@ -94,7 +94,7 @@ func TestGeneric(t *testing.T) {
 
 	assert.DeepEqual(
 		t,
-		validation.Pointers(box.Validate(false, validateTag)),
+		validator.Pointers(box.Validate(false, validateTag)),
 		[]string{"/items/1/name"},
 	)
 	// A nil function leaves the values of the type parameter unchecked.
@@ -110,7 +110,7 @@ func TestGeneric(t *testing.T) {
 	}
 	assert.DeepEqual(
 		t,
-		validation.Pointers(ints.Validate(false, notNegative)),
+		validator.Pointers(ints.Validate(false, notNegative)),
 		[]string{"/items/1"},
 	)
 }
@@ -120,14 +120,14 @@ func TestDependants(t *testing.T) {
 	team := model.Team{Members: []model.User{validUser(), bad}, Lead: &bad}
 
 	err := team.Validate(false)
-	assert.Equal(t, len(validation.Under(err, "/members/1")), 9)
-	assert.Equal(t, len(validation.Under(err, "/lead")), 9)
-	assert.Equal(t, len(validation.Under(err, "/members/0")), 0)
+	assert.Equal(t, len(validator.Under(err, "/members/1")), 9)
+	assert.Equal(t, len(validator.Under(err, "/lead")), 9)
+	assert.Equal(t, len(validator.Under(err, "/members/0")), 0)
 
 	assert.NilError(t, model.Team{}.Validate(false))
 	assert.DeepEqual(
 		t,
-		validation.Pointers(model.Roster{validUser(), {Name: "x"}}.Validate(true)),
+		validator.Pointers(model.Roster{validUser(), {Name: "x"}}.Validate(true)),
 		[]string{"/1/email"},
 	)
 }

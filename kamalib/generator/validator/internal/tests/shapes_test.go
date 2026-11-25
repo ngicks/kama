@@ -10,7 +10,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/internal/fixture/model"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func TestShapes(t *testing.T) {
@@ -34,7 +34,7 @@ func TestShapes(t *testing.T) {
 		BP: model.Box[*model.Tag]{Items: []*model.Tag{{}}},
 	}
 
-	assert.DeepEqual(t, validation.Pointers(invalid.Validate(false, nil)), []string{
+	assert.DeepEqual(t, validator.Pointers(invalid.Validate(false, nil)), []string{
 		"/a/0/name",
 		"/a/1/name",
 		"/at",
@@ -44,7 +44,7 @@ func TestShapes(t *testing.T) {
 		"/n/0/k/1/name",
 		"/s/t/name",
 	})
-	assert.DeepEqual(t, validation.Pointers(invalid.Validate(true, nil)), []string{"/e/1/name"})
+	assert.DeepEqual(t, validator.Pointers(invalid.Validate(true, nil)), []string{"/e/1/name"})
 }
 
 // TestElasticElements walks the options of elastic.Elastic elements of a
@@ -69,12 +69,12 @@ func TestElasticElements(t *testing.T) {
 		A: [2]elastic.Elastic[model.Tag]{bad, ok},
 	}
 
-	assert.DeepEqual(t, validation.Pointers(invalid.Validate(false)), []string{
+	assert.DeepEqual(t, validator.Pointers(invalid.Validate(false)), []string{
 		"/a/0/1/name",
 		"/m/k/1/name",
 		"/s/1/1/name",
 	})
-	assert.DeepEqual(t, validation.Pointers(invalid.Validate(true)), []string{"/s/1/1/name"})
+	assert.DeepEqual(t, validator.Pointers(invalid.Validate(true)), []string{"/s/1/1/name"})
 }
 
 // TestTypeValidators runs the validators of Rank and Ranks, written on
@@ -106,7 +106,7 @@ func TestTypeValidators(t *testing.T) {
 	}
 
 	err := invalid.Validate(false)
-	assert.DeepEqual(t, validation.Pointers(err), []string{
+	assert.DeepEqual(t, validator.Pointers(err), []string{
 		"/b/items/1",
 		"/b/one",
 		"/f",
@@ -119,9 +119,9 @@ func TestTypeValidators(t *testing.T) {
 		"/u",
 	})
 	// The validators of Ranks run before those of its elements.
-	assert.Equal(t, len(validation.At(err, "/s")), 2)
-	assert.ErrorIs(t, validation.At(err, "/s")[0], validation.ErrLength)
-	assert.ErrorIs(t, validation.At(err, "/s")[1], validation.ErrUnique)
-	assert.Equal(t, len(validation.At(err, "/f")), 2)
-	assert.DeepEqual(t, validation.Pointers(invalid.Validate(true)), []string{"/l"})
+	assert.Equal(t, len(validator.At(err, "/s")), 2)
+	assert.ErrorIs(t, validator.At(err, "/s")[0], validator.ErrLength)
+	assert.ErrorIs(t, validator.At(err, "/s")[1], validator.ErrUnique)
+	assert.Equal(t, len(validator.At(err, "/f")), 2)
+	assert.DeepEqual(t, validator.Pointers(invalid.Validate(true)), []string{"/l"})
 }

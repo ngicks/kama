@@ -2,13 +2,13 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:41Z
+// generated: 2026-11-25T02:44:40Z
 
 package model
 
 import (
-	"github.com/ngicks/kama/kamalib/pkg/validation"
-	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -35,7 +35,7 @@ func (v Loose) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -63,7 +63,7 @@ func (v Loose) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) e
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -72,77 +72,77 @@ func (v Loose) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) e
 //kama:generated kama:validate
 func (v RawBag) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(rawjson.MultipleOf(v.Mixed, "0.5"), "mixed"); err != nil {
+	if err := validator.Field(rawjson.MultipleOf(v.Mixed, "0.5"), "mixed"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(rawjson.Pattern(v.Mixed, kamaValidateRegexp_5cd67a1734), "mixed"); err != nil {
+	if err := validator.Field(rawjson.Pattern(v.Mixed, kamaValidateRegexp_5cd67a1734), "mixed"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(rawjson.Items(v.Mixed, "<=", 2), "mixed"); err != nil {
+	if err := validator.Field(rawjson.Items(v.Mixed, "<=", 2), "mixed"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(rawjson.Unique(v.Mixed), "mixed"); err != nil {
+	if err := validator.Field(rawjson.Unique(v.Mixed), "mixed"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(rawjson.Members(v.Object, "<=", 1), "object"); err != nil {
+	if err := validator.Field(rawjson.Members(v.Object, "<=", 1), "object"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(rawjson.Required(v.Object, stopOnFirstError, "a"), "object"); err != nil {
+	if err := validator.Field(rawjson.Required(v.Object, stopOnFirstError, "a"), "object"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(rawjson.Const(v.Fixed, "1", "null", "\"a\"", "{\"b\":[]}"), "fixed"); err != nil {
+	if err := validator.Field(rawjson.Const(v.Fixed, "1", "null", "\"a\"", "{\"b\":[]}"), "fixed"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateNot(rawjson.Compare(v.Below, ">=", "5"), "cmp=\">=5\""), "below"); err != nil {
+	if err := validator.Field(kamaValidateNot(rawjson.Compare(v.Below, ">=", "5"), "cmp=\">=5\""), "below"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Below.Validate(stopOnFirstError), "below"); err != nil {
+	if err := validator.Field(v.Below.Validate(stopOnFirstError), "below"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(rawjson.Format(v.Id, kamaValidateFormatUuid), "id"); err != nil {
+	if err := validator.Field(rawjson.Format(v.Id, kamaValidateFormatUuid), "id"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(rawjson.Format(v.Ipv4, kamaValidateFormatIpv4), "ipv4"); err != nil {
+	if err := validator.Field(rawjson.Format(v.Ipv4, kamaValidateFormatIpv4), "ipv4"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(rawjson.Format(v.Ipv6, kamaValidateFormatIpv6), "ipv6"); err != nil {
+	if err := validator.Field(rawjson.Format(v.Ipv6, kamaValidateFormatIpv6), "ipv6"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

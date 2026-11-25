@@ -12,7 +12,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // allFields compares unexported fields too, such as those of opt.Option.
@@ -101,7 +101,7 @@ func TestDecodeError(t *testing.T) {
 			"null union",
 			`{"star":{"kind":"cat","lives":9},"pets":[],"mixed":null}`,
 			[]string{"/mixed"},
-			validation.ErrNull,
+			validator.ErrNull,
 		},
 		{
 			"kind excluded",
@@ -113,14 +113,14 @@ func TestDecodeError(t *testing.T) {
 			"null optional union",
 			`{"star":{"kind":"cat","lives":9},` + pets + `,"favorite":null}`,
 			[]string{"/favorite"},
-			validation.ErrNull,
+			validator.ErrNull,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := decodeError(t, tc.in)
 
-			assert.DeepEqual(t, validation.Pointers(err), tc.pointers)
+			assert.DeepEqual(t, validator.Pointers(err), tc.pointers)
 			assert.ErrorIs(t, err, tc.kind)
 		})
 	}

@@ -12,7 +12,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // allFields compares unexported fields too, such as those of opt.Option.
@@ -87,7 +87,7 @@ func TestDecodeError(t *testing.T) {
 		pointers []string
 		kind     error
 	}{
-		{"missing", `{"label":{"name":"a"}}`, []string{"/value"}, validation.ErrRequired},
+		{"missing", `{"label":{"name":"a"}}`, []string{"/value"}, validator.ErrRequired},
 		{
 			"no member",
 			`{"label":{"name":"a"},"value":true}`,
@@ -123,7 +123,7 @@ func TestDecodeError(t *testing.T) {
 
 			se, ok := errors.AsType[*json.SemanticError](err)
 			assert.Assert(t, ok, "%T: %v", err, err)
-			assert.DeepEqual(t, validation.Pointers(se.Err), tc.pointers)
+			assert.DeepEqual(t, validator.Pointers(se.Err), tc.pointers)
 			assert.ErrorIs(t, se.Err, tc.kind)
 		})
 	}

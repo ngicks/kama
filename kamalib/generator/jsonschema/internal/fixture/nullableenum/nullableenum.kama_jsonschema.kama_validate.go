@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:58Z
+// generated: 2026-11-25T02:44:09Z
 
 package nullableenum
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -15,7 +15,7 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 func (v Levels) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Ref.IsDefined() {
-		if err := validation.Field(v.Ref.Value().Validate(stopOnFirstError), "ref"); err != nil {
+		if err := validator.Field(v.Ref.Value().Validate(stopOnFirstError), "ref"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -23,7 +23,7 @@ func (v Levels) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Const.IsDefined() {
-		if err := validation.Field(v.Const.Value().Validate(stopOnFirstError), "const"); err != nil {
+		if err := validator.Field(v.Const.Value().Validate(stopOnFirstError), "const"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -31,7 +31,7 @@ func (v Levels) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Big.IsDefined() {
-		if err := validation.Field(v.Big.Value().Validate(stopOnFirstError), "big"); err != nil {
+		if err := validator.Field(v.Big.Value().Validate(stopOnFirstError), "big"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -39,14 +39,14 @@ func (v Levels) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Number.IsSome() {
-		if err := validation.Field(kamaValidateConst(v.Number.Value(), 1.5, 18446744073709551616), "number"); err != nil {
+		if err := validator.Field(kamaValidateConst(v.Number.Value(), 1.5, 18446744073709551616), "number"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -59,14 +59,14 @@ func (v Levels) Validate(stopOnFirstError bool) error {
 func (v Levels) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.Number.IsSome() {
-		if err := validation.Field(kamaValidateConst(v.Number.Value(), 1.5, 18446744073709551616), "number"); err != nil {
+		if err := validator.Field(kamaValidateConst(v.Number.Value(), 1.5, 18446744073709551616), "number"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -81,7 +81,7 @@ func (v LevelsConst) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -96,7 +96,7 @@ func (v LevelsBig) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -111,5 +111,5 @@ func (v Level) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

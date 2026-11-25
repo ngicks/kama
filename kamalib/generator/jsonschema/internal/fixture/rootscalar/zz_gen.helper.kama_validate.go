@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:23Z
+// generated: 2026-11-25T02:44:27Z
 
 package rootscalar
 
@@ -12,7 +12,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // kamaValidateAll is a helper of the generated Validate methods.
@@ -20,7 +20,7 @@ import (
 //kama:generated kama:validate
 func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 	if !stopOnFirstError {
-		return validation.Join(errs...)
+		return validator.Join(errs...)
 	}
 	for _, err := range errs {
 		if err != nil {
@@ -35,7 +35,7 @@ func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 //kama:generated kama:validate
 func kamaValidateCmp[T cmp.Ordered](got T, op string, want T) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrCompare, "want %s %s, got %s",
+		return validator.New(validator.ErrCompare, "want %s %s, got %s",
 			op, kamaValidateSpell(want), kamaValidateSpell(got))
 	}
 	return nil

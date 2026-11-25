@@ -2,15 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:52Z
+// generated: 2026-11-25T02:44:04Z
 
 package nestedunion
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
-	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -20,7 +20,7 @@ import (
 func (v Chains) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Any.IsSome() {
-		if err := validation.Field(v.Any.Value().Validate(stopOnFirstError), "any"); err != nil {
+		if err := validator.Field(v.Any.Value().Validate(stopOnFirstError), "any"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -28,7 +28,7 @@ func (v Chains) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Tagged.IsSome() {
-		if err := validation.Field(v.Tagged.Value().Validate(stopOnFirstError), "tagged"); err != nil {
+		if err := validator.Field(v.Tagged.Value().Validate(stopOnFirstError), "tagged"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -36,14 +36,14 @@ func (v Chains) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Overlap.IsSome() {
-		if err := validation.Field(v.Overlap.Value().Validate(stopOnFirstError), "overlap"); err != nil {
+		if err := validator.Field(v.Overlap.Value().Validate(stopOnFirstError), "overlap"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -56,7 +56,7 @@ func (v Chains) Validate(stopOnFirstError bool) error {
 func (v Chains) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.Any.IsSome() {
-		if err := validation.Field(v.Any.Value().ValidateShallow(stopOnFirstError), "any"); err != nil {
+		if err := validator.Field(v.Any.Value().ValidateShallow(stopOnFirstError), "any"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -64,7 +64,7 @@ func (v Chains) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.Tagged.IsSome() {
-		if err := validation.Field(v.Tagged.Value().ValidateShallow(stopOnFirstError), "tagged"); err != nil {
+		if err := validator.Field(v.Tagged.Value().ValidateShallow(stopOnFirstError), "tagged"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -72,14 +72,14 @@ func (v Chains) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.Overlap.IsSome() {
-		if err := validation.Field(v.Overlap.Value().ValidateShallow(stopOnFirstError), "overlap"); err != nil {
+		if err := validator.Field(v.Overlap.Value().ValidateShallow(stopOnFirstError), "overlap"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -88,13 +88,13 @@ func (v Chains) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v AnyAnyLeft) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.AnyLeft.Validate(stopOnFirstError), "AnyLeft"); err != nil {
+	if err := validator.Field(v.AnyLeft.Validate(stopOnFirstError), "AnyLeft"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -114,13 +114,13 @@ func (v AnyAnyLeft) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v AnyAnyRight) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.AnyRight.Validate(stopOnFirstError), "AnyRight"); err != nil {
+	if err := validator.Field(v.AnyRight.Validate(stopOnFirstError), "AnyRight"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -148,7 +148,7 @@ func (v anyAnyLeftProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -166,7 +166,7 @@ func (v anyAnyLeftProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Ev
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -183,7 +183,7 @@ func (v anyAnyRightProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -201,7 +201,7 @@ func (v anyAnyRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -211,14 +211,14 @@ func (v anyAnyRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 func (v AnyLeft) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -231,14 +231,14 @@ func (v AnyLeft) Validate(stopOnFirstError bool) error {
 func (v AnyLeft) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -248,14 +248,14 @@ func (v AnyLeft) ValidateShallow(stopOnFirstError bool) error {
 func (v AnyRight) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -268,14 +268,14 @@ func (v AnyRight) Validate(stopOnFirstError bool) error {
 func (v AnyRight) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -284,13 +284,13 @@ func (v AnyRight) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v TaggedTaggedLeft) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.TaggedLeft.Validate(stopOnFirstError), "TaggedLeft"); err != nil {
+	if err := validator.Field(v.TaggedLeft.Validate(stopOnFirstError), "TaggedLeft"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -310,13 +310,13 @@ func (v TaggedTaggedLeft) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v TaggedTaggedRight) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.TaggedRight.Validate(stopOnFirstError), "TaggedRight"); err != nil {
+	if err := validator.Field(v.TaggedRight.Validate(stopOnFirstError), "TaggedRight"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -344,7 +344,7 @@ func (v taggedTaggedLeftProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -362,7 +362,7 @@ func (v taggedTaggedLeftProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawj
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -379,7 +379,7 @@ func (v taggedTaggedRightProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -397,7 +397,7 @@ func (v taggedTaggedRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *raw
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -406,21 +406,21 @@ func (v taggedTaggedRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *raw
 //kama:generated kama:validate
 func (v TaggedLeft) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateConst(v.Kind, "left"), "kind"); err != nil {
+	if err := validator.Field(kamaValidateConst(v.Kind, "left"), "kind"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -432,21 +432,21 @@ func (v TaggedLeft) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v TaggedLeft) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateConst(v.Kind, "left"), "kind"); err != nil {
+	if err := validator.Field(kamaValidateConst(v.Kind, "left"), "kind"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -455,21 +455,21 @@ func (v TaggedLeft) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v TaggedRight) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateConst(v.Kind, "right"), "kind"); err != nil {
+	if err := validator.Field(kamaValidateConst(v.Kind, "right"), "kind"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -481,21 +481,21 @@ func (v TaggedRight) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v TaggedRight) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateConst(v.Kind, "right"), "kind"); err != nil {
+	if err := validator.Field(kamaValidateConst(v.Kind, "right"), "kind"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -504,13 +504,13 @@ func (v TaggedRight) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v OverlapOverlapLeft) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.OverlapLeft.Validate(stopOnFirstError), "OverlapLeft"); err != nil {
+	if err := validator.Field(v.OverlapLeft.Validate(stopOnFirstError), "OverlapLeft"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -530,13 +530,13 @@ func (v OverlapOverlapLeft) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v OverlapOverlapRight) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.OverlapRight.Validate(stopOnFirstError), "OverlapRight"); err != nil {
+	if err := validator.Field(v.OverlapRight.Validate(stopOnFirstError), "OverlapRight"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -564,7 +564,7 @@ func (v overlapOverlapLeftProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -582,7 +582,7 @@ func (v overlapOverlapLeftProbe) ValidateEvaluated(stopOnFirstError bool, ev *ra
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -599,7 +599,7 @@ func (v overlapOverlapRightProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -617,7 +617,7 @@ func (v overlapOverlapRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *r
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -627,14 +627,14 @@ func (v overlapOverlapRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *r
 func (v OverlapLeft) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -647,14 +647,14 @@ func (v OverlapLeft) Validate(stopOnFirstError bool) error {
 func (v OverlapLeft) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -664,14 +664,14 @@ func (v OverlapLeft) ValidateShallow(stopOnFirstError bool) error {
 func (v OverlapRight) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -684,12 +684,12 @@ func (v OverlapRight) Validate(stopOnFirstError bool) error {
 func (v OverlapRight) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.C.IsSome() {
-		if err := validation.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
+		if err := validator.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

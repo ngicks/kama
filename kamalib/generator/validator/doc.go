@@ -7,7 +7,7 @@
 // Validate runs the validators that //kama:validate directives name on T
 // and on the fields of T, validates the values the fields hold through
 // their own Validate, and calls a hook method per field. It returns errors of
-// package github.com/ngicks/kama/kamalib/pkg/validation, located by the
+// package github.com/ngicks/kama/kamaruntime/validator, located by the
 // json names of the fields. Generator is the generator of the framework
 // of package base, and the proc of NewProc runs it as the workflow step
 // kind validate.generate. Shallow validation and Raw JSON
@@ -233,7 +233,7 @@
 // field. Nested validation adds an index segment per slice, array and
 // elastic.Elastic element and a key segment per map value. With
 // stopOnFirstError true, Validate returns the first error. Otherwise it runs
-// every step and returns the errors joined by validation.Join, or nil when
+// every step and returns the errors joined by validator.Join, or nil when
 // there are none. It passes stopOnFirstError unchanged to nested Validate
 // calls, to hooks and to the validateT functions.
 //
@@ -503,13 +503,13 @@
 // # Errors of Validate
 //
 // The errors carry a path from the outermost value to the failing one. The
-// functions of package validation query them by RFC 6901 JSON pointer:
+// functions of package validator query them by RFC 6901 JSON pointer:
 //
 //	err := user.Validate(false)
-//	validation.Pointers(err)               // ["/address/city", "/tags/1/name"]
-//	validation.At(err, "/tags/1/name")     // the errors at that field
-//	validation.Under(err, "/tags")         // the errors at or below it
-//	errors.Is(err, validation.ErrRequired) // true
+//	validator.Pointers(err)               // ["/address/city", "/tags/1/name"]
+//	validator.At(err, "/tags/1/name")     // the errors at that field
+//	validator.Under(err, "/tags")         // the errors at or below it
+//	errors.Is(err, validator.ErrRequired) // true
 //
 // An error prints as validation failed at .tags[1].name: required: want a
 // non-zero value, got "".

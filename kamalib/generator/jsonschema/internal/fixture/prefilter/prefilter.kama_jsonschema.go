@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:43Z
+// generated: 2026-11-25T02:44:19Z
 
 package prefilter
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -102,7 +102,7 @@ func (v Shape) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case ShapeUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Shape holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Shape holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -117,7 +117,7 @@ func (v Shape) Validate(stopOnFirstError bool) error {
 	case ShapeUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Shape holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Shape holds no member")
 }
 
 // shapeCircleProbe is the raw value the union at # tests before decoding it
@@ -166,7 +166,7 @@ func (v Shape) ValidateShallow(stopOnFirstError bool) error {
 	case ShapeUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Shape holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Shape holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
@@ -268,11 +268,11 @@ func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Circle
 	var errs []error
 	out.Kind, err = jsonschemart.Required(w.Kind)
-	errs = append(errs, validation.Field(err, "kind"))
+	errs = append(errs, validator.Field(err, "kind"))
 	out.Radius, err = jsonschemart.Required(w.Radius)
-	errs = append(errs, validation.Field(err, "radius"))
+	errs = append(errs, validator.Field(err, "radius"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -353,9 +353,9 @@ func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Square
 	var errs []error
 	out.Side, err = jsonschemart.Optional(w.Side)
-	errs = append(errs, validation.Field(err, "side"))
+	errs = append(errs, validator.Field(err, "side"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

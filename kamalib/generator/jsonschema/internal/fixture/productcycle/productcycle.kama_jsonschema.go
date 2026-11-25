@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:45Z
+// generated: 2026-11-25T02:44:21Z
 
 package productcycle
 
@@ -11,7 +11,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -37,7 +37,7 @@ type Product struct {
 //kama:generated kama:jsonschema
 func (v Product) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if v.Req == nil {
-		return validation.Field(validation.New(validation.ErrNil, "required member is nil"), "req")
+		return validator.Field(validator.New(validator.ErrNil, "required member is nil"), "req")
 	}
 	type plain Product
 	return jsonschemart.MarshalObjects(enc, v.A, v.B, plain(v))
@@ -71,11 +71,11 @@ func (v *Product) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, jsonschemart.Unmarshal(raw, &out.A))
 	errs = append(errs, jsonschemart.Unmarshal(raw, &out.B))
 	out.Req, err = jsonschemart.RequiredPointer(w.Req)
-	errs = append(errs, validation.Field(err, "req"))
+	errs = append(errs, validator.Field(err, "req"))
 	out.AdditionalProperties = jsonschemart.Omit(w.AdditionalProperties, "shared", "a", "b", "req")
 	out.A.AdditionalProperties = nil
 	out.B.AdditionalProperties = nil
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -123,11 +123,11 @@ func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out A
 	var errs []error
 	out.Shared, err = jsonschemart.Optional(w.Shared)
-	errs = append(errs, validation.Field(err, "shared"))
+	errs = append(errs, validator.Field(err, "shared"))
 	out.A, err = jsonschemart.Optional(w.A)
-	errs = append(errs, validation.Field(err, "a"))
+	errs = append(errs, validator.Field(err, "a"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -175,11 +175,11 @@ func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out B
 	var errs []error
 	out.Shared, err = jsonschemart.Optional(w.Shared)
-	errs = append(errs, validation.Field(err, "shared"))
+	errs = append(errs, validator.Field(err, "shared"))
 	out.B, err = jsonschemart.Optional(w.B)
-	errs = append(errs, validation.Field(err, "b"))
+	errs = append(errs, validator.Field(err, "b"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -224,9 +224,9 @@ func (v *Back) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Back
 	var errs []error
 	out.Product, err = jsonschemart.OptionalPointer(w.Product)
-	errs = append(errs, validation.Field(err, "product"))
+	errs = append(errs, validator.Field(err, "product"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

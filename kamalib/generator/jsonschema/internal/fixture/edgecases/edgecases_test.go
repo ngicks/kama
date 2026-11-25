@@ -7,7 +7,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // check decodes each instance of ok into a Root and each of bad into a
@@ -47,8 +47,8 @@ func TestPropertiesNamedLikeMethods(t *testing.T) {
 // TestConstNextToEnum applies both: no value equals {"a":1} and {"a":2}.
 func TestConstNextToEnum(t *testing.T) {
 	check(t, nil, map[string]error{
-		`{"ce": {"a": 1}}`: validation.ErrConst,
-		`{"ce": {"a": 2}}`: validation.ErrConst,
+		`{"ce": {"a": 1}}`: validator.ErrConst,
+		`{"ce": {"a": 2}}`: validator.ErrConst,
 	})
 }
 
@@ -62,11 +62,11 @@ func TestUniqueAsJson(t *testing.T) {
 			`{"numberUnique": [1, 2]}`,
 		},
 		map[string]error{
-			`{"prefixUnique": [1, {"a": 1, "b": 2}, {"b": 2, "a": 1}]}`: validation.ErrUnique,
-			`{"prefixUnique": [1, [1], [ 1 ]]}`:                         validation.ErrUnique,
-			`{"objectUnique": [{"x": 1}, {"x": 1.0}]}`:                  validation.ErrUnique,
-			`{"objectUnique": [{"y": [1]}, {"y": [1.0]}]}`:              validation.ErrUnique,
-			`{"numberUnique": [1, 1.0]}`:                                validation.ErrUnique,
+			`{"prefixUnique": [1, {"a": 1, "b": 2}, {"b": 2, "a": 1}]}`: validator.ErrUnique,
+			`{"prefixUnique": [1, [1], [ 1 ]]}`:                         validator.ErrUnique,
+			`{"objectUnique": [{"x": 1}, {"x": 1.0}]}`:                  validator.ErrUnique,
+			`{"objectUnique": [{"y": [1]}, {"y": [1.0]}]}`:              validator.ErrUnique,
+			`{"numberUnique": [1, 1.0]}`:                                validator.ErrUnique,
 		},
 	)
 }
@@ -81,11 +81,11 @@ func TestEmptyMemberName(t *testing.T) {
 			`{"requiresEmpty": 1}`,
 		},
 		map[string]error{
-			`{"emptyName": {"": [1, 2]}}`:    validation.ErrNot,
-			`{"emptyName": 1}`:               validation.ErrNot,
-			`{"emptyName": {"unique": [1]}}`: validation.ErrNot,
-			`{"requiresEmpty": {"a": 1}}`:    validation.ErrRequired,
-			`{"requiresEmpty": {"": 1}}`:     validation.ErrRequired,
+			`{"emptyName": {"": [1, 2]}}`:    validator.ErrNot,
+			`{"emptyName": 1}`:               validator.ErrNot,
+			`{"emptyName": {"unique": [1]}}`: validator.ErrNot,
+			`{"requiresEmpty": {"a": 1}}`:    validator.ErrRequired,
+			`{"requiresEmpty": {"": 1}}`:     validator.ErrRequired,
 		},
 	)
 }
@@ -108,11 +108,11 @@ func TestBoundsBeyondTheGoType(t *testing.T) {
 			`{"rawMinContains": "not an array"}`,
 		},
 		map[string]error{
-			`{"minHuge": 9223372036854775807}`: validation.ErrCompare,
-			`{"multipleHuge": 1000000000}`:     validation.ErrMultiple,
-			`{"multipleHugeNumber": 1e300}`:    validation.ErrMultiple,
-			`{"lengthHugeMin": "abc"}`:         validation.ErrLength,
-			`{"rawMinContains": [1]}`:          validation.ErrContains,
+			`{"minHuge": 9223372036854775807}`: validator.ErrCompare,
+			`{"multipleHuge": 1000000000}`:     validator.ErrMultiple,
+			`{"multipleHugeNumber": 1e300}`:    validator.ErrMultiple,
+			`{"lengthHugeMin": "abc"}`:         validator.ErrLength,
+			`{"rawMinContains": [1]}`:          validator.ErrContains,
 		},
 	)
 }
@@ -129,8 +129,8 @@ func TestNumberEnumAbove2To53(t *testing.T) {
 			`{"rawBig": 18446744073709551617}`,
 		},
 		map[string]error{
-			`{"typedBig": 1}`:                  validation.ErrConst,
-			`{"rawBig": 18446744073709551616}`: validation.ErrConst,
+			`{"typedBig": 1}`:                  validator.ErrConst,
+			`{"rawBig": 18446744073709551616}`: validator.ErrConst,
 		},
 	)
 }

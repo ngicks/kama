@@ -777,9 +777,10 @@ func isUnion(v any) bool {
 
 const suiteModulePath = "example.invalid/suite"
 
-// suiteModule makes suiteDir an empty module that resolves this module
-// from its directory. It writes go.mod before it removes the fixtures of an
-// earlier run, so an interrupted run leaves no fixture inside this module.
+// suiteModule makes suiteDir an empty module that resolves this module and
+// the runtime module next to it from their directories. It writes go.mod
+// before it removes the fixtures of an earlier run, so an interrupted run
+// leaves no fixture inside this module.
 func suiteModule(t *testing.T) {
 	t.Helper()
 
@@ -799,8 +800,14 @@ func suiteModule(t *testing.T) {
 
 	writeFile(t, filepath.Join(suiteDir, "go.mod"), []byte("module "+suiteModulePath+"\n\n"+
 		goLine.Value()+"\n"+
-		"require github.com/ngicks/kama/kamalib v0.0.0\n\n"+
-		"replace github.com/ngicks/kama/kamalib => ../../../..\n"))
+		"require (\n"+
+		"\tgithub.com/ngicks/kama/kamalib v0.0.0\n"+
+		"\tgithub.com/ngicks/kama/kamaruntime v0.0.0\n"+
+		")\n\n"+
+		"replace (\n"+
+		"\tgithub.com/ngicks/kama/kamalib => ../../../..\n"+
+		"\tgithub.com/ngicks/kama/kamaruntime => ../../../../../kamaruntime\n"+
+		")\n"))
 	writeFile(t, filepath.Join(suiteDir, "go.sum"), gosum)
 
 	entries, err := os.ReadDir(suiteDir)

@@ -19,7 +19,7 @@ import (
 // least 1, as in contains(kind=string).
 //
 // It applies to raw JSON text only, as IsRawJson tells, and passes a value
-// of another kind. Its error wraps validation.ErrContains. As an Annotator
+// of another kind. Its error wraps validator.ErrContains. As an Annotator
 // it records each element passing the operands.
 type Contains struct{}
 

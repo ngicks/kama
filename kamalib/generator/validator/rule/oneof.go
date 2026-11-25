@@ -10,8 +10,8 @@ import (
 // never holds.
 //
 // It applies to a type every operand applies to. Its error wraps
-// validation.ErrOneOf. When no operand holds, it carries the error of
-// every operand as a cause, which validation.Causes returns. When several
+// validator.ErrOneOf. When no operand holds, it carries the error of
+// every operand as a cause, which validator.Causes returns. When several
 // hold, it spells them.
 type OneOf struct{}
 

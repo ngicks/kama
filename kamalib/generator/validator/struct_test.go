@@ -51,29 +51,29 @@ type Inner struct{ X int }
 	assertContains(
 		t,
 		fn,
-		check(`validation.Field(v.Inner.Validate(stopOnFirstError), "Inner")`),
+		check(`validator.Field(v.Inner.Validate(stopOnFirstError), "Inner")`),
 		"if v.P != nil {",
-		check(`validation.Field((*v.P).Validate(stopOnFirstError), "P")`),
+		check(`validator.Field((*v.P).Validate(stopOnFirstError), "P")`),
 		"if (*v.PP) != nil {",
-		check(`validation.Field((*(*v.PP)).Validate(stopOnFirstError), "PP")`),
+		check(`validator.Field((*(*v.PP)).Validate(stopOnFirstError), "PP")`),
 		"for i, e := range v.S {",
-		check(`validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "S")`),
+		check(`validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "S")`),
 		"for i, e := range v.Arr {",
 		"for _, k := range slices.Sorted(maps.Keys(v.M)) {\n\t\te := v.M[k]\n",
-		check(`validation.Field(validation.Key(e.Validate(stopOnFirstError), k), "M")`),
+		check(`validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "M")`),
 		"for i, e := range v.SM {",
 		"for _, k2 := range slices.Sorted(maps.Keys(e)) {\n\t\t\te2 := e[k2]\n",
 		check(
-			`validation.Field(validation.Index(validation.Key(`+
+			`validator.Field(validator.Index(validator.Key(`+
 				`(*e2).Validate(stopOnFirstError), k2), i), "SM")`,
 		),
 		"if v.O.IsSome() {",
-		check(`validation.Field(v.O.Value().Validate(stopOnFirstError), "O")`),
+		check(`validator.Field(v.O.Value().Validate(stopOnFirstError), "O")`),
 		"if v.U.IsDefined() {",
 		"for i, e := range v.U.Value() {",
 		"for i, e := range v.E.Options() {",
 		"if e.IsSome() {",
-		check(`validation.Field(validation.Index(e.Value().Validate(stopOnFirstError), i), "E")`),
+		check(`validator.Field(validator.Index(e.Value().Validate(stopOnFirstError), i), "E")`),
 	)
 	// Fields holding nothing to validate get no step.
 	assertNotContains(t, fn, "v.N", "v.Ints", "v.Plain")
@@ -91,7 +91,7 @@ func TestStopOnFirstError(t *testing.T) {
 		"var errs []error",
 		"if stopOnFirstError {\n\t\t\treturn err\n\t\t}",
 		"errs = append(errs, err)",
-		"return validation.Join(errs...)",
+		"return validator.Join(errs...)",
 	)
 }
 
@@ -104,7 +104,7 @@ func TestEmptyBody(t *testing.T) {
 
 	assert.Equal(t, strings.Count(src, "\treturn nil\n"), 2, src)
 	// A file that collects no error does not import the error package.
-	assertNotContains(t, src, "validation", "errs")
+	assertNotContains(t, src, "validator.", "errs")
 }
 
 func TestSliceAndMapTargets(t *testing.T) {
@@ -130,19 +130,19 @@ type Inner struct{ X int }
 
 	assertContains(t, fs["L.Validate"],
 		"for i, e := range v {",
-		check(`validation.Index(e.Validate(stopOnFirstError), i)`),
+		check(`validator.Index(e.Validate(stopOnFirstError), i)`),
 	)
 	assertContains(t, fs["M.Validate"],
 		"for _, k := range slices.Sorted(maps.Keys(v)) {\n\t\te := v[k]\n",
 		"if e != nil {",
-		check(`validation.Key((*e).Validate(stopOnFirstError), k)`),
+		check(`validator.Key((*e).Validate(stopOnFirstError), k)`),
 	)
 	assertContains(t, fs["LL.Validate"],
 		"for i2, e2 := range e {",
-		check(`validation.Index(validation.Index(e2.Validate(stopOnFirstError), i2), i)`),
+		check(`validator.Index(validator.Index(e2.Validate(stopOnFirstError), i2), i)`),
 	)
 	// A collection target has no fields, so it has no path segment of a field.
-	assertNotContains(t, fs["L.Validate"], "validation.Field")
+	assertNotContains(t, fs["L.Validate"], "validator.Field")
 }
 
 func TestPathSegments(t *testing.T) {
@@ -165,16 +165,16 @@ func TestPathSegments(t *testing.T) {
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,
-		check(`validation.Field(v.Named.Validate(stopOnFirstError), "named")`),
-		check(`validation.Field(v.Skipped.Validate(stopOnFirstError), "Skipped")`),
-		check(`validation.Field(v.Opts.Validate(stopOnFirstError), "Opts")`),
-		check(`validation.Field(v.Other.Validate(stopOnFirstError), "Other")`),
+		check(`validator.Field(v.Named.Validate(stopOnFirstError), "named")`),
+		check(`validator.Field(v.Skipped.Validate(stopOnFirstError), "Skipped")`),
+		check(`validator.Field(v.Opts.Validate(stopOnFirstError), "Opts")`),
+		check(`validator.Field(v.Other.Validate(stopOnFirstError), "Other")`),
 		// Encoders inline an embedded struct without json name.
 		check(`v.Embedded.Validate(stopOnFirstError)`),
 		check(`(*v.PtrEmbedded).Validate(stopOnFirstError)`),
-		check(`validation.Field(v.Tagged.Validate(stopOnFirstError), "tagged")`),
+		check(`validator.Field(v.Tagged.Validate(stopOnFirstError), "tagged")`),
 		// An embedded type other than a struct is a field named after it.
-		check(`validation.Field(v.List.Validate(stopOnFirstError), "List")`),
+		check(`validator.Field(v.List.Validate(stopOnFirstError), "List")`),
 	)
 }
 
@@ -204,10 +204,10 @@ func TestAnonymousStruct(t *testing.T) {
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,
-		check(`validation.Field(validation.Field(v.S.I.Validate(stopOnFirstError), "i"), "s")`),
+		check(`validator.Field(validator.Field(v.S.I.Validate(stopOnFirstError), "i"), "s")`),
 		"for i, e := range v.L {",
 		"if e.I != nil {",
-		check(`validation.Field(validation.Index(validation.Field(`+
+		check(`validator.Field(validator.Index(validator.Field(`+
 			`(*e.I).Validate(stopOnFirstError), "I"), i), "L")`),
 	)
 	assertNotContains(t, fn, "v.S.N")
@@ -278,10 +278,10 @@ type Inner struct{ X int }
 
 	assertContains(t, fn,
 		"for i, e := range v.S {\n\t\tfor i2, e2 := range e.Options() {\n\t\t\tif e2.IsSome() {",
-		check(`validation.Field(validation.Index(validation.Index(`+
+		check(`validator.Field(validator.Index(validator.Index(`+
 			`e2.Value().Validate(stopOnFirstError), i2), i), "S")`),
 		"e := v.M[k]\n\t\tfor i2, e2 := range e.Options() {",
-		check(`validation.Field(validation.Key(validation.Index(`+
+		check(`validator.Field(validator.Key(validator.Index(`+
 			`e2.Value().Validate(stopOnFirstError), i2), k), "M")`),
 		"for i, e := range v.R {\n\t\tfor i2, e2 := range e.Options() {",
 		"for i, e := range v.E.Options() {\n\t\tif e.IsSome() {",
@@ -299,6 +299,6 @@ func TestStructFallbackSegment(t *testing.T) {
 			"//kama:validate hook=off\ntype Inner struct{ X int }\n",
 	}, "a.kama_validate.go", "A")
 
-	assertContains(t, fn, check(`validation.Key(e.Validate(stopOnFirstError), k)`))
+	assertContains(t, fn, check(`validator.Key(e.Validate(stopOnFirstError), k)`))
 	assertNotContains(t, fn, `"extra"`)
 }

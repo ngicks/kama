@@ -11,7 +11,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 type named jsontext.Value
@@ -40,7 +40,7 @@ func TestKind(t *testing.T) {
 		assert.Equal(t, err == nil, tc.ok, "%s %v: %v", tc.v, tc.kinds, err)
 
 		if !tc.ok {
-			assert.ErrorIs(t, err, validation.ErrKind)
+			assert.ErrorIs(t, err, validator.ErrKind)
 		}
 	}
 
@@ -76,7 +76,7 @@ func TestCompare(t *testing.T) {
 		assert.Equal(t, err == nil, tc.ok, "%s %s %s: %v", tc.v, tc.op, tc.num, err)
 	}
 
-	assert.ErrorIs(t, Compare(jsontext.Value(`1`), ">", "1"), validation.ErrCompare)
+	assert.ErrorIs(t, Compare(jsontext.Value(`1`), ">", "1"), validator.ErrCompare)
 	assert.ErrorContains(t, Compare(jsontext.Value(`1`), ">", "1"), "want > 1, got 1")
 }
 
@@ -110,12 +110,12 @@ func TestMultipleOf(t *testing.T) {
 		assert.Equal(t, err == nil, tc.ok, "%s %s: %v", tc.v, tc.num, err)
 	}
 
-	assert.ErrorIs(t, MultipleOf(jsontext.Value(`3`), "2"), validation.ErrMultiple)
+	assert.ErrorIs(t, MultipleOf(jsontext.Value(`3`), "2"), validator.ErrMultiple)
 }
 
 func TestLengths(t *testing.T) {
 	assert.NilError(t, Runes(jsontext.Value(`"💩💩"`), "<=", 2))
-	assert.ErrorIs(t, Runes(jsontext.Value(`"abc"`), "<=", 2), validation.ErrLength)
+	assert.ErrorIs(t, Runes(jsontext.Value(`"abc"`), "<=", 2), validator.ErrLength)
 	assert.NilError(t, Runes(jsontext.Value(`100`), "<=", 2))
 
 	assert.NilError(t, Items(jsontext.Value(`[1, 2]`), "<=", 2))
@@ -130,7 +130,7 @@ func TestLengths(t *testing.T) {
 func TestPattern(t *testing.T) {
 	re := regexp.MustCompile("^a+$")
 	assert.NilError(t, Pattern(jsontext.Value(`"aa"`), re))
-	assert.ErrorIs(t, Pattern(jsontext.Value(`"ab"`), re), validation.ErrPattern)
+	assert.ErrorIs(t, Pattern(jsontext.Value(`"ab"`), re), validator.ErrPattern)
 	assert.NilError(t, Pattern(jsontext.Value(`true`), re))
 }
 
@@ -174,7 +174,7 @@ func TestUniqueConst(t *testing.T) {
 	assert.NilError(t, Const(jsontext.Value(`{"b":null,"a":[]}`), `{"a":[],"b":null}`))
 
 	err := Const(jsontext.Value(`2`), `"a"`, `1`)
-	assert.ErrorIs(t, err, validation.ErrConst)
+	assert.ErrorIs(t, err, validator.ErrConst)
 	assert.ErrorContains(t, err, `want one of "a", 1, got 2`)
 }
 
@@ -184,10 +184,10 @@ func TestRequired(t *testing.T) {
 	assert.NilError(t, Required(jsontext.Value(`[]`), false, "a"))
 
 	err := Required(v, false, "a", "b", "c")
-	assert.ErrorIs(t, err, validation.ErrRequired)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/b", "/c"})
-	assert.DeepEqual(t, validation.Pointers(Required(v, true, "b", "c")), []string{"/b"})
-	assert.Assert(t, !errors.Is(Required(v, false), validation.ErrRequired))
+	assert.ErrorIs(t, err, validator.ErrRequired)
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/b", "/c"})
+	assert.DeepEqual(t, validator.Pointers(Required(v, true, "b", "c")), []string{"/b"})
+	assert.Assert(t, !errors.Is(Required(v, false), validator.ErrRequired))
 }
 
 // TestHugeExponentCost pins that the cost of a number grows with its text, not with its

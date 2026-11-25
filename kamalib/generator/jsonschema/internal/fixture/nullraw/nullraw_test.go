@@ -6,7 +6,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // TestNullReachesTheValidators decodes null into properties whose schema
@@ -25,16 +25,16 @@ func TestNullReachesTheValidators(t *testing.T) {
 	}
 
 	bad := map[string]error{
-		`{}`:                         validation.ErrRequired,
-		`{"r": null}`:                validation.ErrNot,
-		`{"r": 1, "a": null}`:        validation.ErrNot,
-		`{"r": 1, "c": null}`:        validation.ErrConst,
-		`{"r": 1, "c": "y"}`:         validation.ErrConst,
-		`{"r": 1, "e": null}`:        validation.ErrOr,
-		`{"r": 1, "s": null}`:        validation.ErrKind,
-		`{"r": 1, "q": null}`:        validation.ErrNot,
-		`{"r": 1, "l": [null]}`:      validation.ErrNot,
-		`{"r": 1, "m": {"k": null}}`: validation.ErrNot,
+		`{}`:                         validator.ErrRequired,
+		`{"r": null}`:                validator.ErrNot,
+		`{"r": 1, "a": null}`:        validator.ErrNot,
+		`{"r": 1, "c": null}`:        validator.ErrConst,
+		`{"r": 1, "c": "y"}`:         validator.ErrConst,
+		`{"r": 1, "e": null}`:        validator.ErrOr,
+		`{"r": 1, "s": null}`:        validator.ErrKind,
+		`{"r": 1, "q": null}`:        validator.ErrNot,
+		`{"r": 1, "l": [null]}`:      validator.ErrNot,
+		`{"r": 1, "m": {"k": null}}`: validator.ErrNot,
 	}
 	for text, kind := range bad {
 		var v Root

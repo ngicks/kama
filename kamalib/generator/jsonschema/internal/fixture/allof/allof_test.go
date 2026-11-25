@@ -11,7 +11,7 @@ import (
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // allFields compares unexported fields too, such as those of opt.Option.
@@ -69,24 +69,24 @@ func TestDecodeError(t *testing.T) {
 		pointers []string
 		kind     error
 	}{
-		{"member", `{"name":"a","badge":"b"}`, []string{"/salary"}, validation.ErrRequired},
+		{"member", `{"name":"a","badge":"b"}`, []string{"/salary"}, validator.ErrRequired},
 		{
 			"members and own properties",
 			`{"salary":1}`,
 			[]string{"/badge", "/name"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
 		{
 			"transparent allOf",
 			`{"name":"a","salary":1,"badge":"b","manager":{}}`,
 			[]string{"/manager/name"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
 		{
 			"member null",
 			`{"name":null,"salary":1,"badge":"b"}`,
 			[]string{"/name"},
-			validation.ErrNull,
+			validator.ErrNull,
 		},
 	}
 	for _, tc := range cases {
@@ -98,7 +98,7 @@ func TestDecodeError(t *testing.T) {
 
 			se, ok := errors.AsType[*json.SemanticError](err)
 			assert.Assert(t, ok, "%T: %v", err, err)
-			assert.DeepEqual(t, validation.Pointers(se.Err), tc.pointers)
+			assert.DeepEqual(t, validator.Pointers(se.Err), tc.pointers)
 			assert.ErrorIs(t, se.Err, tc.kind)
 		})
 	}

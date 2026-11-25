@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:21Z
+// generated: 2026-11-25T02:44:28Z
 
 package resources
 
@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // kamaValidateCmp is a helper of the generated Validate methods.
@@ -21,7 +21,7 @@ import (
 //kama:generated kama:validate
 func kamaValidateCmp[T cmp.Ordered](got T, op string, want T) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrCompare, "want %s %s, got %s",
+		return validator.New(validator.ErrCompare, "want %s %s, got %s",
 			op, kamaValidateSpell(want), kamaValidateSpell(got))
 	}
 	return nil
@@ -53,7 +53,7 @@ func kamaValidateCompare[T cmp.Ordered](got T, op string, want T) bool {
 //kama:generated kama:validate
 func kamaValidateRegexpString(re *regexp.Regexp, got string) error {
 	if !re.MatchString(got) {
-		return validation.New(validation.ErrPattern, "want a match of %q, got %q", re.String(), got)
+		return validator.New(validator.ErrPattern, "want a match of %q, got %q", re.String(), got)
 	}
 	return nil
 }
@@ -73,7 +73,7 @@ var kamaValidateRegexp_a94dc58b9a = regexp.MustCompile("^[0-9]{5}$")
 //kama:generated kama:validate
 func kamaValidateRunes(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrLength, "want rune count %s %d, got %d", op, want, got)
+		return validator.New(validator.ErrLength, "want rune count %s %d, got %d", op, want, got)
 	}
 	return nil
 }

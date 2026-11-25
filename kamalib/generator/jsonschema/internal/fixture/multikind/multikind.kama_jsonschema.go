@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:24Z
+// generated: 2026-11-25T02:44:01Z
 
 package multikind
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -54,11 +54,11 @@ func (v *Cell) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Cell
 	var errs []error
 	out.Value, err = jsonschemart.Required(w.Value)
-	errs = append(errs, validation.Field(err, "value"))
+	errs = append(errs, validator.Field(err, "value"))
 	out.Label, err = jsonschemart.DecodeOptional[CellLabel](w.Label)
-	errs = append(errs, validation.Field(err, "label"))
+	errs = append(errs, validator.Field(err, "label"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -176,7 +176,7 @@ func (v CellValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case CellValueUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "CellValue holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "CellValue holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -191,7 +191,7 @@ func (v CellValue) Validate(stopOnFirstError bool) error {
 	case CellValueUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "CellValue holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "CellValue holds no member")
 }
 
 // ValidateShallow is Validate for a decoded CellValue. The decoder yields a
@@ -206,7 +206,7 @@ func (v CellValue) ValidateShallow(stopOnFirstError bool) error {
 	case CellValueUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "CellValue holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "CellValue holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
@@ -370,7 +370,7 @@ func (v CellLabel) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case CellLabelUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "CellLabel holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "CellLabel holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -385,7 +385,7 @@ func (v CellLabel) Validate(stopOnFirstError bool) error {
 	case CellLabelUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "CellLabel holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "CellLabel holds no member")
 }
 
 // ValidateShallow is Validate for a decoded CellLabel. The decoder yields a
@@ -400,7 +400,7 @@ func (v CellLabel) ValidateShallow(stopOnFirstError bool) error {
 	case CellLabelUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "CellLabel holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "CellLabel holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the first member the value matches. A

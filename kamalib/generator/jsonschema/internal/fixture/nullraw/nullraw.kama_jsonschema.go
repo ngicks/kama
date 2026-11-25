@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:37Z
+// generated: 2026-11-25T02:44:12Z
 
 package nullraw
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -80,26 +80,26 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Root
 	var errs []error
 	out.R, err = jsonschemart.DecodeRequired[jsontext.Value](w.R)
-	errs = append(errs, validation.Field(err, "r"))
+	errs = append(errs, validator.Field(err, "r"))
 	out.A, err = jsonschemart.DecodeOptional[jsontext.Value](w.A)
-	errs = append(errs, validation.Field(err, "a"))
+	errs = append(errs, validator.Field(err, "a"))
 	out.C, err = jsonschemart.DecodeOptional[jsontext.Value](w.C)
-	errs = append(errs, validation.Field(err, "c"))
+	errs = append(errs, validator.Field(err, "c"))
 	out.E, err = jsonschemart.DecodeOptional[jsontext.Value](w.E)
-	errs = append(errs, validation.Field(err, "e"))
+	errs = append(errs, validator.Field(err, "e"))
 	out.P = w.P
 	out.S, err = jsonschemart.DecodeOptional[jsontext.Value](w.S)
-	errs = append(errs, validation.Field(err, "s"))
+	errs = append(errs, validator.Field(err, "s"))
 	out.D, err = jsonschemart.DecodeOptional[RootD](w.D)
-	errs = append(errs, validation.Field(err, "d"))
+	errs = append(errs, validator.Field(err, "d"))
 	out.Q, err = jsonschemart.DecodeOptional[N](w.Q)
-	errs = append(errs, validation.Field(err, "q"))
+	errs = append(errs, validator.Field(err, "q"))
 	out.L, err = jsonschemart.Optional(w.L)
-	errs = append(errs, validation.Field(err, "l"))
+	errs = append(errs, validator.Field(err, "l"))
 	out.M, err = jsonschemart.Optional(w.M)
-	errs = append(errs, validation.Field(err, "m"))
+	errs = append(errs, validator.Field(err, "m"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -194,7 +194,7 @@ func (v RootD) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case RootDUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "RootD holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "RootD holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -209,7 +209,7 @@ func (v RootD) Validate(stopOnFirstError bool) error {
 	case RootDUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "RootD holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "RootD holds no member")
 }
 
 // ValidateShallow is Validate for a decoded RootD. The decoder yields a
@@ -224,7 +224,7 @@ func (v RootD) ValidateShallow(stopOnFirstError bool) error {
 	case RootDUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "RootD holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "RootD holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the first member the value matches. A

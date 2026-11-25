@@ -5,7 +5,7 @@ import (
 	jsonv2 "encoding/json/v2"
 	"regexp"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // Func validates a member or an element of a JSON value.
@@ -134,7 +134,7 @@ func Properties[T ~[]byte](v T, stopOnFirstError bool, ev *Evaluated, entries ..
 			matched = true
 
 			if err := m.f(value); err != nil {
-				errs = append(errs, validation.Field(err, name))
+				errs = append(errs, validator.Field(err, name))
 				if stopOnFirstError {
 					return errs[0]
 				}
@@ -149,7 +149,7 @@ func Properties[T ~[]byte](v T, stopOnFirstError bool, ev *Evaluated, entries ..
 			matched = true
 
 			if err := m.f(value); err != nil {
-				errs = append(errs, validation.Field(err, name))
+				errs = append(errs, validator.Field(err, name))
 				if stopOnFirstError {
 					return errs[0]
 				}
@@ -161,7 +161,7 @@ func Properties[T ~[]byte](v T, stopOnFirstError bool, ev *Evaluated, entries ..
 		}
 	}
 
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Elements reports the elements of an array v that fail the function
@@ -196,14 +196,14 @@ func Elements[T ~[]byte](
 		ev.addItem(i)
 
 		if err := f(e); err != nil {
-			errs = append(errs, validation.Index(err, i))
+			errs = append(errs, validator.Index(err, i))
 			if stopOnFirstError {
 				return errs[0]
 			}
 		}
 	}
 
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Contains reports an array v whose number of elements passing f does not
@@ -228,7 +228,7 @@ func Contains[T ~[]byte](v T, ev *Evaluated, f Func, counts ...Count) error {
 
 	for _, c := range counts {
 		if !holds(compareInts(got, c.N), c.Op) {
-			return validation.New(validation.ErrContains,
+			return validator.New(validator.ErrContains,
 				"want the number of matching elements %s %d, got %d", c.Op, c.N, got)
 		}
 	}
@@ -261,14 +261,14 @@ func Keys[T ~[]byte](v T, stopOnFirstError bool, f Func) error {
 		}
 
 		if err := f(key); err != nil {
-			errs = append(errs, validation.Field(err, name))
+			errs = append(errs, validator.Field(err, name))
 			if stopOnFirstError {
 				return errs[0]
 			}
 		}
 	}
 
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // UnevaluatedMembers runs scope on v with a record of its own, then
@@ -302,15 +302,15 @@ func UnevaluatedMembers[T ~[]byte](
 			own.addMember(name)
 
 			if err := f(value); err != nil {
-				errs = append(errs, validation.Field(err, name))
+				errs = append(errs, validator.Field(err, name))
 				if stopOnFirstError {
-					return validation.Join(errs...)
+					return validator.Join(errs...)
 				}
 			}
 		}
 	}
 
-	joined := validation.Join(errs...)
+	joined := validator.Join(errs...)
 	if joined == nil {
 		ev.merge(own)
 	}
@@ -346,15 +346,15 @@ func UnevaluatedElements[T ~[]byte](
 			own.addItem(i)
 
 			if err := f(e); err != nil {
-				errs = append(errs, validation.Index(err, i))
+				errs = append(errs, validator.Index(err, i))
 				if stopOnFirstError {
-					return validation.Join(errs...)
+					return validator.Join(errs...)
 				}
 			}
 		}
 	}
 
-	joined := validation.Join(errs...)
+	joined := validator.Join(errs...)
 	if joined == nil {
 		ev.merge(own)
 	}
@@ -369,7 +369,7 @@ func UnevaluatedElements[T ~[]byte](
 func Decode[T any, V ~[]byte](v V) error {
 	var x T
 	if err := jsonv2.Unmarshal(v, &x); err != nil {
-		return validation.New(validation.ErrDecode, "want a value of %T: %v", x, err)
+		return validator.New(validator.ErrDecode, "want a value of %T: %v", x, err)
 	}
 
 	return nil
@@ -377,11 +377,11 @@ func Decode[T any, V ~[]byte](v V) error {
 
 // Encoded reports the errors f returns for v encoded as JSON, as JSON
 // Schema applies its keywords to the JSON value whatever Go type holds it.
-// A value that does not encode is an error wrapping validation.ErrEncode.
+// A value that does not encode is an error wrapping validator.ErrEncode.
 func Encoded(v any, f Func) error {
 	b, err := jsonv2.Marshal(v)
 	if err != nil {
-		return validation.New(validation.ErrEncode, "%v", err)
+		return validator.New(validator.ErrEncode, "%v", err)
 	}
 
 	return f(b)

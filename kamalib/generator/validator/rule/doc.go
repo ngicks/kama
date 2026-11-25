@@ -151,41 +151,41 @@
 //
 // # Built-in validators
 //
-// The built-in validators report leaf errors created by validation.New with
+// The built-in validators report leaf errors created by validator.New with
 // the sentinels listed here. Callers test the kind of a failure with
 // errors.Is:
 //
-//	required              validation.ErrRequired
-//	zero                  validation.ErrZero
-//	nil                   validation.ErrNil
-//	null                  validation.ErrNull
-//	regexp=<pattern>      validation.ErrPattern
-//	length="<op><n> ..."  validation.ErrLength
-//	runes="<op><n> ..."   validation.ErrLength
-//	cmp="<op><v> ..."     validation.ErrCompare
-//	const="<v> ..."       validation.ErrConst
-//	multipleof=<n>        validation.ErrMultiple
-//	unique                validation.ErrUnique
-//	format=<name>         validation.ErrFormat
-//	requires="<name> ..." validation.ErrRequired
-//	members="<op><n> ..." validation.ErrLength
-//	closed                validation.ErrClosed
-//	kind="<kind> ..."     validation.ErrKind
+//	required              validator.ErrRequired
+//	zero                  validator.ErrZero
+//	nil                   validator.ErrNil
+//	null                  validator.ErrNull
+//	regexp=<pattern>      validator.ErrPattern
+//	length="<op><n> ..."  validator.ErrLength
+//	runes="<op><n> ..."   validator.ErrLength
+//	cmp="<op><v> ..."     validator.ErrCompare
+//	const="<v> ..."       validator.ErrConst
+//	multipleof=<n>        validator.ErrMultiple
+//	unique                validator.ErrUnique
+//	format=<name>         validator.ErrFormat
+//	requires="<name> ..." validator.ErrRequired
+//	members="<op><n> ..." validator.ErrLength
+//	closed                validator.ErrClosed
+//	kind="<kind> ..."     validator.ErrKind
 //	and(<v>, ...)         the errors of the operands
-//	or(<v>, ...)          validation.ErrOr
-//	not(<v>)              validation.ErrNot
-//	oneof(<v>, ...)       validation.ErrOneOf
+//	or(<v>, ...)          validator.ErrOr
+//	not(<v>)              validator.ErrNot
+//	oneof(<v>, ...)       validator.ErrOneOf
 //	if(<c>, <t>[, <e>])   the errors of the operand t or e
 //	ref=<type>            the errors of Validate of type
-//	decode=<type>         validation.ErrDecode
+//	decode=<type>         validator.ErrDecode
 //	props(<entry>, ...)   the errors of the operands, at their members
 //	items(<v>, ...)       the errors of the operands, at their elements
 //	prefix(<v>, ...)      the errors of the operands, at their elements
-//	contains(<n>, <v>...) validation.ErrContains
+//	contains(<n>, <v>...) validator.ErrContains
 //	keys(<v>, ...)        the errors of the operands, at their members
 //	unevalprops(<s>, ...) the errors of s and of the operands
 //	unevalitems(<s>, ...) the errors of s and of the operands
-//	json(<v>, ...)        the errors of the operands, validation.ErrEncode
+//	json(<v>, ...)        the errors of the operands, validator.ErrEncode
 //
 // required takes no arg, except member names on raw JSON text, as told
 // below. The value is not the zero value: an opt.Option
@@ -315,7 +315,7 @@
 // when every operand holds and returns their errors, joined or with
 // stopOnFirstError the first one. and() always holds. or holds when an
 // operand holds. Its error, none of n alternatives holds, carries the
-// error of every operand as a cause, which validation.Causes returns.
+// error of every operand as a cause, which validator.Causes returns.
 // errors.Is does not reach the causes. or() never holds. not takes one
 // operand and holds when it fails. Its error spells the operand. oneof
 // holds when exactly one operand holds. When none does, its error carries
@@ -358,7 +358,7 @@
 // a struct. It applies to the value a pointer, an opt.Option or an und.Und
 // holds, so a value holding none is not checked. It is a StructRule too, so
 // the doc comment of a struct type takes it. A value that does not encode
-// is an error wrapping validation.ErrEncode.
+// is an error wrapping validator.ErrEncode.
 //
 // A validator with several comparisons, as length, runes, cmp and members
 // take, checks them all. With stopOnFirstError true it returns the first

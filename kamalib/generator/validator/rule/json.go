@@ -16,7 +16,7 @@ import (
 // und.Und, so the generator applies it to the value one holds, and the
 // encoding of an absent value, null, is never checked. Its operands apply
 // to jsontext.Value. It returns the errors of the operands. A value that
-// does not encode is an error wrapping validation.ErrEncode. It is a
+// does not encode is an error wrapping validator.ErrEncode. It is a
 // StructRule too, written in the doc comment of a struct type as well as on
 // a field.
 type Json struct{}

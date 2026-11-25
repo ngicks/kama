@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:13Z
+// generated: 2026-11-25T02:43:55Z
 
 package allof
 
@@ -11,7 +11,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -69,13 +69,13 @@ func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, jsonschemart.Unmarshal(raw, &out.Person))
 	errs = append(errs, jsonschemart.Unmarshal(raw, &out.Contract))
 	out.Badge, err = jsonschemart.Required(w.Badge)
-	errs = append(errs, validation.Field(err, "badge"))
+	errs = append(errs, validator.Field(err, "badge"))
 	out.Manager, err = jsonschemart.Optional(w.Manager)
-	errs = append(errs, validation.Field(err, "manager"))
+	errs = append(errs, validator.Field(err, "manager"))
 	out.AdditionalProperties = jsonschemart.Omit(w.AdditionalProperties, "name", "age", "salary", "remote", "badge", "manager")
 	out.Person.AdditionalProperties = nil
 	out.Contract.AdditionalProperties = nil
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -122,11 +122,11 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Person
 	var errs []error
 	out.Name, err = jsonschemart.Required(w.Name)
-	errs = append(errs, validation.Field(err, "name"))
+	errs = append(errs, validator.Field(err, "name"))
 	out.Age, err = jsonschemart.Optional(w.Age)
-	errs = append(errs, validation.Field(err, "age"))
+	errs = append(errs, validator.Field(err, "age"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -173,11 +173,11 @@ func (v *Contract) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Contract
 	var errs []error
 	out.Salary, err = jsonschemart.Required(w.Salary)
-	errs = append(errs, validation.Field(err, "salary"))
+	errs = append(errs, validator.Field(err, "salary"))
 	out.Remote, err = jsonschemart.Optional(w.Remote)
-	errs = append(errs, validation.Field(err, "remote"))
+	errs = append(errs, validator.Field(err, "remote"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

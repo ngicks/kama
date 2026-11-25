@@ -10,7 +10,7 @@
 // github.com/ngicks/kama/kamalib/generator/validator writes the Validate
 // methods checking them. The decoders call Validate where a value converts
 // from its wire form to its type, as Validation describes. Errors are those
-// of package github.com/ngicks/kama/kamalib/pkg/validation, located by the
+// of package github.com/ngicks/kama/kamaruntime/validator, located by the
 // JSON path of the offending member. The generated code imports package
 // github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart. Generator
 // is the generator of Generate in the framework of package
@@ -229,7 +229,7 @@
 // is a map[string]T for an additionalProperties schema T, whose values
 // decode as T, and a map[string]jsontext.Value otherwise.
 // additionalProperties false makes Validate report each member of the
-// fallback field, with an error wrapping validation.ErrClosed located at
+// fallback field, with an error wrapping validator.ErrClosed located at
 // the member. Next to patternProperties, which takes some of those members
 // from additionalProperties, the fallback field is a
 // map[string]jsontext.Value and both keywords check the value encoded as

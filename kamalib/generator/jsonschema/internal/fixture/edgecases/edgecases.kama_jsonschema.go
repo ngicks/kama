@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:22Z
+// generated: 2026-11-25T02:43:59Z
 
 package edgecases
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -116,53 +116,53 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Root
 	var errs []error
 	out.ValidateField, err = jsonschemart.Optional(w.ValidateField)
-	errs = append(errs, validation.Field(err, "validate"))
+	errs = append(errs, validator.Field(err, "validate"))
 	out.AdditionalProperties, err = jsonschemart.Optional(w.AdditionalProperties)
-	errs = append(errs, validation.Field(err, "additionalProperties"))
+	errs = append(errs, validator.Field(err, "additionalProperties"))
 	out.Ce, err = jsonschemart.Optional(w.Ce)
-	errs = append(errs, validation.Field(err, "ce"))
+	errs = append(errs, validator.Field(err, "ce"))
 	out.PrefixUnique, err = jsonschemart.Optional(w.PrefixUnique)
-	errs = append(errs, validation.Field(err, "prefixUnique"))
+	errs = append(errs, validator.Field(err, "prefixUnique"))
 	out.ObjectUnique, err = jsonschemart.Optional(w.ObjectUnique)
-	errs = append(errs, validation.Field(err, "objectUnique"))
+	errs = append(errs, validator.Field(err, "objectUnique"))
 	out.NumberUnique, err = jsonschemart.Optional(w.NumberUnique)
-	errs = append(errs, validation.Field(err, "numberUnique"))
+	errs = append(errs, validator.Field(err, "numberUnique"))
 	out.EmptyName, err = jsonschemart.DecodeOptional[jsontext.Value](w.EmptyName)
-	errs = append(errs, validation.Field(err, "emptyName"))
+	errs = append(errs, validator.Field(err, "emptyName"))
 	out.RequiresEmpty, err = jsonschemart.DecodeOptional[jsontext.Value](w.RequiresEmpty)
-	errs = append(errs, validation.Field(err, "requiresEmpty"))
+	errs = append(errs, validator.Field(err, "requiresEmpty"))
 	out.MaxHuge, err = jsonschemart.Optional(w.MaxHuge)
-	errs = append(errs, validation.Field(err, "maxHuge"))
+	errs = append(errs, validator.Field(err, "maxHuge"))
 	out.MinHuge, err = jsonschemart.Optional(w.MinHuge)
-	errs = append(errs, validation.Field(err, "minHuge"))
+	errs = append(errs, validator.Field(err, "minHuge"))
 	out.ExclusiveHuge, err = jsonschemart.Optional(w.ExclusiveHuge)
-	errs = append(errs, validation.Field(err, "exclusiveHuge"))
+	errs = append(errs, validator.Field(err, "exclusiveHuge"))
 	out.MultipleHuge, err = jsonschemart.Optional(w.MultipleHuge)
-	errs = append(errs, validation.Field(err, "multipleHuge"))
+	errs = append(errs, validator.Field(err, "multipleHuge"))
 	out.MultipleHugeNumber, err = jsonschemart.Optional(w.MultipleHugeNumber)
-	errs = append(errs, validation.Field(err, "multipleHugeNumber"))
+	errs = append(errs, validator.Field(err, "multipleHugeNumber"))
 	out.MultipleTiny, err = jsonschemart.Optional(w.MultipleTiny)
-	errs = append(errs, validation.Field(err, "multipleTiny"))
+	errs = append(errs, validator.Field(err, "multipleTiny"))
 	out.LengthHuge, err = jsonschemart.Optional(w.LengthHuge)
-	errs = append(errs, validation.Field(err, "lengthHuge"))
+	errs = append(errs, validator.Field(err, "lengthHuge"))
 	out.LengthHugeMin, err = jsonschemart.Optional(w.LengthHugeMin)
-	errs = append(errs, validation.Field(err, "lengthHugeMin"))
+	errs = append(errs, validator.Field(err, "lengthHugeMin"))
 	out.MembersStruct, err = jsonschemart.Optional(w.MembersStruct)
-	errs = append(errs, validation.Field(err, "membersStruct"))
+	errs = append(errs, validator.Field(err, "membersStruct"))
 	out.RawMaxLength, err = jsonschemart.DecodeOptional[jsontext.Value](w.RawMaxLength)
-	errs = append(errs, validation.Field(err, "rawMaxLength"))
+	errs = append(errs, validator.Field(err, "rawMaxLength"))
 	out.RawContains, err = jsonschemart.DecodeOptional[jsontext.Value](w.RawContains)
-	errs = append(errs, validation.Field(err, "rawContains"))
+	errs = append(errs, validator.Field(err, "rawContains"))
 	out.RawMinContains, err = jsonschemart.DecodeOptional[jsontext.Value](w.RawMinContains)
-	errs = append(errs, validation.Field(err, "rawMinContains"))
+	errs = append(errs, validator.Field(err, "rawMinContains"))
 	out.MembersHuge, err = jsonschemart.Optional(w.MembersHuge)
-	errs = append(errs, validation.Field(err, "membersHuge"))
+	errs = append(errs, validator.Field(err, "membersHuge"))
 	out.TypedBig, err = jsonschemart.Optional(w.TypedBig)
-	errs = append(errs, validation.Field(err, "typedBig"))
+	errs = append(errs, validator.Field(err, "typedBig"))
 	out.RawBig, err = jsonschemart.Optional(w.RawBig)
-	errs = append(errs, validation.Field(err, "rawBig"))
+	errs = append(errs, validator.Field(err, "rawBig"))
 	out.AdditionalProperties_2 = w.AdditionalProperties_2
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -210,9 +210,9 @@ func (v *RootMembersStruct) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out RootMembersStruct
 	var errs []error
 	out.A, err = jsonschemart.DecodeOptional[jsontext.Value](w.A)
-	errs = append(errs, validation.Field(err, "a"))
+	errs = append(errs, validator.Field(err, "a"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -299,9 +299,9 @@ func (v *O) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out O
 	var errs []error
 	out.X, err = jsonschemart.Optional(w.X)
-	errs = append(errs, validation.Field(err, "x"))
+	errs = append(errs, validator.Field(err, "x"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

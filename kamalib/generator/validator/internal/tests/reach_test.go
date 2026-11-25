@@ -8,7 +8,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/internal/fixture/model"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func TestReachShape(t *testing.T) {
@@ -26,19 +26,19 @@ func TestReachShape(t *testing.T) {
 		pointer string
 		kind    error
 	}{
-		{`{"a": 1.5}`, "/a", validation.ErrKind},
-		{`{"xy": 1}`, "/xy", validation.ErrKind},
-		{`{"z": 1}`, "/z", validation.ErrOr},
-		{`{"abcd": "x"}`, "/abcd", validation.ErrLength},
-		{`[1]`, "/0", validation.ErrKind},
-		{`["a", -1]`, "/1", validation.ErrCompare},
-		{`["a", 1]`, "", validation.ErrContains},
-		{`["a", 0, 0, 0]`, "", validation.ErrContains},
+		{`{"a": 1.5}`, "/a", validator.ErrKind},
+		{`{"xy": 1}`, "/xy", validator.ErrKind},
+		{`{"z": 1}`, "/z", validator.ErrOr},
+		{`{"abcd": "x"}`, "/abcd", validator.ErrLength},
+		{`[1]`, "/0", validator.ErrKind},
+		{`["a", -1]`, "/1", validator.ErrCompare},
+		{`["a", 1]`, "", validator.ErrContains},
+		{`["a", 0, 0, 0]`, "", validator.ErrContains},
 	}
 	for _, tc := range cases {
 		err := model.Shape(tc.text).Validate(false)
 		assert.ErrorIs(t, err, tc.kind, tc.text)
-		assert.Assert(t, len(validation.At(err, tc.pointer)) > 0, "%s: %v", tc.text, err)
+		assert.Assert(t, len(validator.At(err, tc.pointer)) > 0, "%s: %v", tc.text, err)
 	}
 }
 
@@ -46,8 +46,8 @@ func TestReachDecode(t *testing.T) {
 	assert.NilError(t, model.Holder(`{"bag": {"mixed": 1}}`).Validate(false))
 
 	err := model.Holder(`{"bag": 1}`).Validate(false)
-	assert.ErrorIs(t, err, validation.ErrDecode)
-	assert.Assert(t, len(validation.At(err, "/bag")) > 0, "%v", err)
+	assert.ErrorIs(t, err, validator.ErrDecode)
+	assert.Assert(t, len(validator.At(err, "/bag")) > 0, "%v", err)
 }
 
 func TestReachTree(t *testing.T) {
@@ -67,15 +67,15 @@ func TestReachTree(t *testing.T) {
 		kind    error
 	}{
 		// No branch of or evaluates x, which must then be null.
-		{`{"a": 1, "x": 1}`, "/x", validation.ErrKind},
-		{`{"n": {"a": 1, "x": 1}}`, "/n/x", validation.ErrKind},
-		{`["a", 1]`, "/1", validation.ErrKind},
-		{`[1, null]`, "/0", validation.ErrKind},
+		{`{"a": 1, "x": 1}`, "/x", validator.ErrKind},
+		{`{"n": {"a": 1, "x": 1}}`, "/n/x", validator.ErrKind},
+		{`["a", 1]`, "/1", validator.ErrKind},
+		{`[1, null]`, "/0", validator.ErrKind},
 	}
 	for _, tc := range cases {
 		err := model.Tree(tc.text).Validate(false)
 		assert.ErrorIs(t, err, tc.kind, tc.text)
-		assert.Assert(t, len(validation.At(err, tc.pointer)) > 0, "%s: %v", tc.text, err)
+		assert.Assert(t, len(validator.At(err, tc.pointer)) > 0, "%s: %v", tc.text, err)
 	}
 }
 
@@ -98,7 +98,7 @@ func TestReachEncoded(t *testing.T) {
 		pointer string
 		kind    error
 	}{
-		{"field", model.Encoded{A: opt.Some("b"), X: nil}.Validate(false), "/a", validation.ErrNot},
+		{"field", model.Encoded{A: opt.Some("b"), X: nil}.Validate(false), "/a", validator.ErrNot},
 		{
 			"rest",
 			model.Encoded{
@@ -109,7 +109,7 @@ func TestReachEncoded(t *testing.T) {
 					false,
 				),
 			"/n",
-			validation.ErrKind,
+			validator.ErrKind,
 		},
 		{
 			"not",
@@ -121,12 +121,12 @@ func TestReachEncoded(t *testing.T) {
 					false,
 				),
 			"",
-			validation.ErrNot,
+			validator.ErrNot,
 		},
-		{"slice", model.Pairs{0, 0}.Validate(false), "", validation.ErrContains},
+		{"slice", model.Pairs{0, 0}.Validate(false), "", validator.ErrContains},
 	}
 	for _, tc := range cases {
 		assert.ErrorIs(t, tc.err, tc.kind, tc.name)
-		assert.Assert(t, len(validation.At(tc.err, tc.pointer)) > 0, "%s: %v", tc.name, tc.err)
+		assert.Assert(t, len(validator.At(tc.err, tc.pointer)) > 0, "%s: %v", tc.name, tc.err)
 	}
 }

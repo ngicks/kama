@@ -7,7 +7,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/internal/fixture/model"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func TestRawKinds(t *testing.T) {
@@ -16,10 +16,10 @@ func TestRawKinds(t *testing.T) {
 	}
 
 	for text, kind := range map[string]error{
-		`0.5`:    validation.ErrCompare,
-		`"abcd"`: validation.ErrLength,
-		`null`:   validation.ErrKind,
-		`[]`:     validation.ErrKind,
+		`0.5`:    validator.ErrCompare,
+		`"abcd"`: validator.ErrLength,
+		`null`:   validator.ErrKind,
+		`[]`:     validator.ErrKind,
 	} {
 		assert.ErrorIs(t, model.Loose(text).Validate(false), kind, text)
 	}
@@ -69,7 +69,7 @@ func TestRawFields(t *testing.T) {
 	} {
 		b := validRawBag()
 		set(&b)
-		assert.ErrorIs(t, b.Validate(false), validation.ErrFormat)
+		assert.ErrorIs(t, b.Validate(false), validator.ErrFormat)
 	}
 
 	b := validRawBag()
@@ -80,7 +80,7 @@ func TestRawFields(t *testing.T) {
 	// minimum does in JSON Schema.
 	b = validRawBag()
 	b.Below = model.Loose(`"ab"`)
-	assert.ErrorIs(t, b.Validate(false), validation.ErrNot)
+	assert.ErrorIs(t, b.Validate(false), validator.ErrNot)
 
 	cases := []struct {
 		set     func(b *model.RawBag)
@@ -90,35 +90,35 @@ func TestRawFields(t *testing.T) {
 		{
 			func(b *model.RawBag) { b.Mixed = jsontext.Value(`1.25`) },
 			"/mixed",
-			validation.ErrMultiple,
+			validator.ErrMultiple,
 		},
 		{
 			func(b *model.RawBag) { b.Mixed = jsontext.Value(`"b"`) },
 			"/mixed",
-			validation.ErrPattern,
+			validator.ErrPattern,
 		},
 		{
 			func(b *model.RawBag) { b.Mixed = jsontext.Value(`[1, 2, 3]`) },
 			"/mixed",
-			validation.ErrLength,
+			validator.ErrLength,
 		},
 		{
 			func(b *model.RawBag) { b.Mixed = jsontext.Value(`[1, 1.0]`) },
 			"/mixed",
-			validation.ErrUnique,
+			validator.ErrUnique,
 		},
 		{
 			func(b *model.RawBag) { b.Object = jsontext.Value(`{"a": 1, "b": 2}`) },
 			"/object",
-			validation.ErrLength,
+			validator.ErrLength,
 		},
 		{
 			func(b *model.RawBag) { b.Object = jsontext.Value(`{"b": 2}`) },
 			"/object/a",
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
-		{func(b *model.RawBag) { b.Fixed = jsontext.Value(`"b"`) }, "/fixed", validation.ErrConst},
-		{func(b *model.RawBag) { b.Below = model.Loose(`7`) }, "/below", validation.ErrNot},
+		{func(b *model.RawBag) { b.Fixed = jsontext.Value(`"b"`) }, "/fixed", validator.ErrConst},
+		{func(b *model.RawBag) { b.Below = model.Loose(`7`) }, "/below", validator.ErrNot},
 	}
 
 	for _, c := range cases {
@@ -126,7 +126,7 @@ func TestRawFields(t *testing.T) {
 		c.set(&b)
 
 		err := b.Validate(false)
-		assert.DeepEqual(t, validation.Pointers(err), []string{c.pointer})
+		assert.DeepEqual(t, validator.Pointers(err), []string{c.pointer})
 		assert.ErrorIs(t, err, c.kind, c.pointer)
 	}
 }

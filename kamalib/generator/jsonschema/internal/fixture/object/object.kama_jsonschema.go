@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:36Z
+// generated: 2026-11-25T02:44:14Z
 
 package object
 
@@ -11,7 +11,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -84,37 +84,37 @@ func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Object
 	var errs []error
 	out.ReqName, err = jsonschemart.Required(w.ReqName)
-	errs = append(errs, validation.Field(err, "reqName"))
+	errs = append(errs, validator.Field(err, "reqName"))
 	out.OptName, err = jsonschemart.Optional(w.OptName)
-	errs = append(errs, validation.Field(err, "optName"))
+	errs = append(errs, validator.Field(err, "optName"))
 	out.ReqNullName, err = jsonschemart.RequiredNullable(w.ReqNullName)
-	errs = append(errs, validation.Field(err, "reqNullName"))
+	errs = append(errs, validator.Field(err, "reqNullName"))
 	out.OptNullName = w.OptNullName
 	out.ReqPoint, err = jsonschemart.Required(w.ReqPoint)
-	errs = append(errs, validation.Field(err, "reqPoint"))
+	errs = append(errs, validator.Field(err, "reqPoint"))
 	out.OptPoint, err = jsonschemart.Optional(w.OptPoint)
-	errs = append(errs, validation.Field(err, "optPoint"))
+	errs = append(errs, validator.Field(err, "optPoint"))
 	out.ReqNullPoint, err = jsonschemart.RequiredNullable(w.ReqNullPoint)
-	errs = append(errs, validation.Field(err, "reqNullPoint"))
+	errs = append(errs, validator.Field(err, "reqNullPoint"))
 	out.OptNullPoint = w.OptNullPoint
 	out.Color, err = jsonschemart.Required(w.Color)
-	errs = append(errs, validation.Field(err, "color"))
+	errs = append(errs, validator.Field(err, "color"))
 	out.Tags, err = jsonschemart.Required(w.Tags)
-	errs = append(errs, validation.Field(err, "tags"))
+	errs = append(errs, validator.Field(err, "tags"))
 	out.Counts, err = jsonschemart.Optional(w.Counts)
-	errs = append(errs, validation.Field(err, "counts"))
+	errs = append(errs, validator.Field(err, "counts"))
 	out.Inline, err = jsonschemart.Required(w.Inline)
-	errs = append(errs, validation.Field(err, "inline"))
+	errs = append(errs, validator.Field(err, "inline"))
 	out.Closed, err = jsonschemart.Optional(w.Closed)
-	errs = append(errs, validation.Field(err, "closed"))
+	errs = append(errs, validator.Field(err, "closed"))
 	out.Open, err = jsonschemart.Optional(w.Open)
-	errs = append(errs, validation.Field(err, "open"))
+	errs = append(errs, validator.Field(err, "open"))
 	out.Anything, err = jsonschemart.DecodeRequired[jsontext.Value](w.Anything)
-	errs = append(errs, validation.Field(err, "anything"))
+	errs = append(errs, validator.Field(err, "anything"))
 	out.Extra, err = jsonschemart.DecodeOptional[jsontext.Value](w.Extra)
-	errs = append(errs, validation.Field(err, "extra"))
+	errs = append(errs, validator.Field(err, "extra"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -195,9 +195,9 @@ func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out ObjectInline
 	var errs []error
 	out.X, err = jsonschemart.Required(w.X)
-	errs = append(errs, validation.Field(err, "x"))
+	errs = append(errs, validator.Field(err, "x"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -243,9 +243,9 @@ func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out ObjectClosed
 	var errs []error
 	out.A, err = jsonschemart.Optional(w.A)
-	errs = append(errs, validation.Field(err, "a"))
+	errs = append(errs, validator.Field(err, "a"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -290,9 +290,9 @@ func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out ObjectOpen
 	var errs []error
 	out.Id, err = jsonschemart.Optional(w.Id)
-	errs = append(errs, validation.Field(err, "id"))
+	errs = append(errs, validator.Field(err, "id"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -339,11 +339,11 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Point
 	var errs []error
 	out.X, err = jsonschemart.Required(w.X)
-	errs = append(errs, validation.Field(err, "x"))
+	errs = append(errs, validator.Field(err, "x"))
 	out.Y, err = jsonschemart.Required(w.Y)
-	errs = append(errs, validation.Field(err, "y"))
+	errs = append(errs, validator.Field(err, "y"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

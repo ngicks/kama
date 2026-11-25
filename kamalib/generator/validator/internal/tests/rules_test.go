@@ -13,7 +13,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/internal/fixture/model"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func validRules() model.Rules {
@@ -100,32 +100,32 @@ func TestRulesInvalid(t *testing.T) {
 		kind    error
 		msg     string
 	}{
-		{"/zero", validation.ErrZero, "want the zero value, got 1"},
-		{"/zero_ptr", validation.ErrZero, "want the zero value, got a non-nil value"},
-		{"/nil", validation.ErrNil, "want nil"},
-		{"/null", validation.ErrNull, "want null"},
-		{"/null_ptr", validation.ErrNull, "want null"},
-		{"/slug", validation.ErrPattern, `want a match of "^[a-z]+$", got "ABC"`},
-		{"/slug_bytes", validation.ErrPattern, `got "a-b"`},
-		{"/items", validation.ErrLength, "want length <= 3, got 4"},
-		{"/code", validation.ErrLength, "want length == 2, got 3"},
-		{"/kana", validation.ErrLength, "want rune count == 2, got 3"},
-		{"/tags", validation.ErrUnique, "want unique elements, got equal elements at 0 and 2"},
-		{"/triple", validation.ErrUnique, "want unique elements, got equal elements at 0 and 2"},
-		{"/refs", validation.ErrUnique, "want unique elements, got equal elements at 0 and 1"},
-		{"/level", validation.ErrCompare, "want < 100, got 100"},
-		{"/name", validation.ErrCompare, `want > "b", got "b"`},
-		{"/ratio", validation.ErrCompare, "want >= 0.5, got 0.25"},
-		{"/score", validation.ErrCompare, "want > 10, got 0"},
-		{"/step", validation.ErrMultiple, "want a multiple of 3, got 4"},
-		{"/quarter", validation.ErrMultiple, "want a multiple of 0.25, got 0.3"},
-		{"/agreed", validation.ErrCompare, "want == true, got false"},
-		{"/color", validation.ErrConst, `want one of "red", "dark blue", got "green"`},
-		{"/pick", validation.ErrConst, "want one of 1, 2, 3, got 4"},
-		{"/date", validation.ErrFormat, `want format date (2006-01-02), got "2026/11/22"`},
-		{"/at", validation.ErrFormat, "want format date-time"},
-		{"/url", validation.ErrFormat, "want format url"},
-		{"/elastic", validation.ErrNull, "want null"},
+		{"/zero", validator.ErrZero, "want the zero value, got 1"},
+		{"/zero_ptr", validator.ErrZero, "want the zero value, got a non-nil value"},
+		{"/nil", validator.ErrNil, "want nil"},
+		{"/null", validator.ErrNull, "want null"},
+		{"/null_ptr", validator.ErrNull, "want null"},
+		{"/slug", validator.ErrPattern, `want a match of "^[a-z]+$", got "ABC"`},
+		{"/slug_bytes", validator.ErrPattern, `got "a-b"`},
+		{"/items", validator.ErrLength, "want length <= 3, got 4"},
+		{"/code", validator.ErrLength, "want length == 2, got 3"},
+		{"/kana", validator.ErrLength, "want rune count == 2, got 3"},
+		{"/tags", validator.ErrUnique, "want unique elements, got equal elements at 0 and 2"},
+		{"/triple", validator.ErrUnique, "want unique elements, got equal elements at 0 and 2"},
+		{"/refs", validator.ErrUnique, "want unique elements, got equal elements at 0 and 1"},
+		{"/level", validator.ErrCompare, "want < 100, got 100"},
+		{"/name", validator.ErrCompare, `want > "b", got "b"`},
+		{"/ratio", validator.ErrCompare, "want >= 0.5, got 0.25"},
+		{"/score", validator.ErrCompare, "want > 10, got 0"},
+		{"/step", validator.ErrMultiple, "want a multiple of 3, got 4"},
+		{"/quarter", validator.ErrMultiple, "want a multiple of 0.25, got 0.3"},
+		{"/agreed", validator.ErrCompare, "want == true, got false"},
+		{"/color", validator.ErrConst, `want one of "red", "dark blue", got "green"`},
+		{"/pick", validator.ErrConst, "want one of 1, 2, 3, got 4"},
+		{"/date", validator.ErrFormat, `want format date (2006-01-02), got "2026/11/22"`},
+		{"/at", validator.ErrFormat, "want format date-time"},
+		{"/url", validator.ErrFormat, "want format url"},
+		{"/elastic", validator.ErrNull, "want null"},
 	}
 
 	var want []string
@@ -133,17 +133,17 @@ func TestRulesInvalid(t *testing.T) {
 	for _, tc := range cases {
 		want = append(want, tc.pointer)
 
-		at := validation.At(err, tc.pointer)
+		at := validator.At(err, tc.pointer)
 		assert.Equal(t, len(at), 1, tc.pointer)
 		assert.ErrorIs(t, at[0], tc.kind)
 		assert.ErrorContains(t, at[0], tc.msg)
 	}
 
-	assert.DeepEqual(t, validation.Pointers(err), slices.Sorted(slices.Values(want)))
+	assert.DeepEqual(t, validator.Pointers(err), slices.Sorted(slices.Values(want)))
 
 	first := invalidRules().Validate(true)
-	assert.DeepEqual(t, validation.Pointers(first), []string{"/zero"})
-	assert.ErrorIs(t, first, validation.ErrZero)
+	assert.DeepEqual(t, validator.Pointers(first), []string{"/zero"})
+	assert.ErrorIs(t, first, validator.ErrZero)
 }
 
 // TestRulesLengthBounds fails the lower bound of a length with several
@@ -152,7 +152,7 @@ func TestRulesLengthBounds(t *testing.T) {
 	r := validRules()
 	r.Items = nil
 
-	at := validation.At(r.Validate(false), "/items")
+	at := validator.At(r.Validate(false), "/items")
 	assert.Equal(t, len(at), 1)
 	assert.ErrorContains(t, at[0], "want length >= 1, got 0")
 }
@@ -163,12 +163,12 @@ func TestRulesStopWithinDirective(t *testing.T) {
 	r := validRules()
 	r.Score = 5
 
-	all := validation.At(r.Validate(false), "/score")
+	all := validator.At(r.Validate(false), "/score")
 	assert.Equal(t, len(all), 2)
 	assert.ErrorContains(t, all[0], "want > 10, got 5")
 	assert.ErrorContains(t, all[1], "want != 5, got 5")
 
-	first := validation.At(r.Validate(true), "/score")
+	first := validator.At(r.Validate(true), "/score")
 	assert.Equal(t, len(first), 1)
 	assert.ErrorContains(t, first[0], "want > 10, got 5")
 }
@@ -182,7 +182,7 @@ func TestMapOrder(t *testing.T) {
 	}
 
 	for range 10 {
-		assert.DeepEqual(t, validation.Pointers(o.Validate(true)), []string{"/by_name/a/name"})
+		assert.DeepEqual(t, validator.Pointers(o.Validate(true)), []string{"/by_name/a/name"})
 	}
 
 	var multi interface{ Unwrap() []error }
@@ -192,7 +192,7 @@ func TestMapOrder(t *testing.T) {
 	var got []string
 
 	for _, err := range multi.Unwrap() {
-		got = append(got, validation.Pointers(err)...)
+		got = append(got, validator.Pointers(err)...)
 	}
 
 	assert.DeepEqual(t, got, []string{
@@ -209,10 +209,10 @@ func TestMapOrder(t *testing.T) {
 // NaN key is validated.
 func TestMapFloatKey(t *testing.T) {
 	o := model.Ordered{ByRatio: map[float64]model.Tag{math.NaN(): {Name: "ok"}, 0.5: {}}}
-	assert.DeepEqual(t, validation.Pointers(o.Validate(false)), []string{"/by_ratio/0.5/name"})
+	assert.DeepEqual(t, validator.Pointers(o.Validate(false)), []string{"/by_ratio/0.5/name"})
 
 	o = model.Ordered{ByRatio: map[float64]model.Tag{math.NaN(): {}}}
-	assert.DeepEqual(t, validation.Pointers(o.Validate(false)), []string{"/by_ratio/NaN/name"})
+	assert.DeepEqual(t, validator.Pointers(o.Validate(false)), []string{"/by_ratio/NaN/name"})
 }
 
 // TestStampPromotedIsZero compares a type promoting IsZero through an
@@ -221,15 +221,15 @@ func TestStampPromotedIsZero(t *testing.T) {
 	now := time.Unix(1, 0)
 
 	err := model.Stamped{}.Validate(false)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/at"})
-	assert.ErrorIs(t, err, validation.ErrRequired)
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/at"})
+	assert.ErrorIs(t, err, validator.ErrRequired)
 
 	// A non-nil pointer to the zero time is not the zero value of Stamp.
 	assert.NilError(t, model.Stamped{At: model.Stamp{Time: &time.Time{}}}.Validate(false))
 
 	err = model.Stamped{At: model.Stamp{Time: &now}, Zero: model.Stamp{Time: &now}}.Validate(false)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/zero"})
-	assert.ErrorIs(t, err, validation.ErrZero)
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/zero"})
+	assert.ErrorIs(t, err, validator.ErrZero)
 }
 
 // TestRequires reports each sibling a present field requires and lacks, at
@@ -250,17 +250,17 @@ func TestRequires(t *testing.T) {
 	// A null Zip is present, as a JSON member holding null is.
 	err := model.Shipping{Street: opt.Some(""), Zip: und.Null[string](), Express: true}.
 		Validate(false)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/city"})
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/city"})
 
 	invalid := model.Shipping{Street: opt.Some(""), Express: true}
 	err = invalid.Validate(false)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/city", "/zip"})
-	assert.ErrorIs(t, validation.At(err, "/city")[0], validation.ErrRequired)
-	assert.ErrorContains(t, validation.At(err, "/zip")[0], `want a value, as "street" has one`)
-	assert.DeepEqual(t, validation.Pointers(invalid.Validate(true)), []string{"/city"})
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/city", "/zip"})
+	assert.ErrorIs(t, validator.At(err, "/city")[0], validator.ErrRequired)
+	assert.ErrorContains(t, validator.At(err, "/zip")[0], `want a value, as "street" has one`)
+	assert.DeepEqual(t, validator.Pointers(invalid.Validate(true)), []string{"/city"})
 
 	err = model.Shipping{Express: true}.Validate(false)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/street"})
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/street"})
 	assert.ErrorContains(t, err, `want a value, as "express" has one`)
 }
 
@@ -279,8 +279,8 @@ func TestMembers(t *testing.T) {
 	}
 
 	err := model.Contact{}.Validate(false)
-	assert.DeepEqual(t, validation.Pointers(err), []string{""})
-	assert.ErrorIs(t, err, validation.ErrLength)
+	assert.DeepEqual(t, validator.Pointers(err), []string{""})
+	assert.ErrorIs(t, err, validator.ErrLength)
 	assert.ErrorContains(t, err, "want member count >= 2, got 1")
 
 	err = model.Contact{Email: opt.Some("e"), Phone: &phone, Extra: map[string]any{"x": 1}}.
@@ -295,11 +295,11 @@ func TestClosed(t *testing.T) {
 	strict := model.Strict{Extra: map[string]any{"b": 1, "a": 2}}
 
 	err := strict.Validate(false)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/a", "/b"})
-	assert.ErrorIs(t, err, validation.ErrClosed)
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/a", "/b"})
+	assert.ErrorIs(t, err, validator.ErrClosed)
 	assert.ErrorContains(t, err, "member is not allowed")
 
-	assert.DeepEqual(t, validation.Pointers(strict.Validate(true)), []string{"/a"})
+	assert.DeepEqual(t, validator.Pointers(strict.Validate(true)), []string{"/a"})
 }
 
 // TestBoundsOfIntegers compares integers exactly with numbers their types
@@ -311,13 +311,13 @@ func TestBoundsOfIntegers(t *testing.T) {
 
 	for _, half := range []int{1, 4} {
 		err := model.Bounds{Half: half}.Validate(false)
-		assert.DeepEqual(t, validation.Pointers(err), []string{"/half"})
-		assert.ErrorIs(t, err, validation.ErrCompare)
+		assert.DeepEqual(t, validator.Pointers(err), []string{"/half"})
+		assert.ErrorIs(t, err, validator.ErrCompare)
 	}
 
 	n := 0
 
 	err := model.Bounds{Half: 2, Never: &n}.Validate(false)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/never"})
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/never"})
 	assert.ErrorContains(t, err, "want == 0.5, got 0")
 }

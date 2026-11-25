@@ -279,12 +279,12 @@ type A struct {
 
 	fn := gentest.Funcs(t, out["a.kama_validate.go"])["A.Validate"]
 	assertContains(t, fn,
-		check(`validation.Field(kamaValidatePositive(int64(v.N)), "N")`),
-		check(`validation.Field(kamaValidateRequired(v.P != nil, "nil"), "P")`),
+		check(`validator.Field(kamaValidatePositive(int64(v.N)), "N")`),
+		check(`validator.Field(kamaValidateRequired(v.P != nil, "nil"), "P")`),
 		"if v.P != nil {",
-		check(`validation.Field(kamaValidatePositive(int64((*v.P))), "P")`),
+		check(`validator.Field(kamaValidatePositive(int64((*v.P))), "P")`),
 		"if v.O.IsSome() {",
-		check(`validation.Field(kamaValidatePositive(int64(v.O.Value())), "O")`),
+		check(`validator.Field(kamaValidatePositive(int64(v.O.Value())), "O")`),
 		"if v.U.IsDefined() {",
 		"if v.U.Value() != nil {",
 	)

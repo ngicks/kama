@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:04Z
+// generated: 2026-11-25T02:44:14Z
 
 package object
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -14,14 +14,14 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 //kama:generated kama:validate
 func (v Object) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.ReqPoint.Validate(stopOnFirstError), "reqPoint"); err != nil {
+	if err := validator.Field(v.ReqPoint.Validate(stopOnFirstError), "reqPoint"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.OptPoint.IsSome() {
-		if err := validation.Field(v.OptPoint.Value().Validate(stopOnFirstError), "optPoint"); err != nil {
+		if err := validator.Field(v.OptPoint.Value().Validate(stopOnFirstError), "optPoint"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -29,7 +29,7 @@ func (v Object) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.ReqNullPoint.IsSome() {
-		if err := validation.Field(v.ReqNullPoint.Value().Validate(stopOnFirstError), "reqNullPoint"); err != nil {
+		if err := validator.Field(v.ReqNullPoint.Value().Validate(stopOnFirstError), "reqNullPoint"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -37,27 +37,27 @@ func (v Object) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.OptNullPoint.IsDefined() {
-		if err := validation.Field(v.OptNullPoint.Value().Validate(stopOnFirstError), "optNullPoint"); err != nil {
+		if err := validator.Field(v.OptNullPoint.Value().Validate(stopOnFirstError), "optNullPoint"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(v.Color.Validate(stopOnFirstError), "color"); err != nil {
+	if err := validator.Field(v.Color.Validate(stopOnFirstError), "color"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Inline.Validate(stopOnFirstError), "inline"); err != nil {
+	if err := validator.Field(v.Inline.Validate(stopOnFirstError), "inline"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Closed.IsSome() {
-		if err := validation.Field(v.Closed.Value().Validate(stopOnFirstError), "closed"); err != nil {
+		if err := validator.Field(v.Closed.Value().Validate(stopOnFirstError), "closed"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -65,14 +65,14 @@ func (v Object) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Open.IsSome() {
-		if err := validation.Field(v.Open.Value().Validate(stopOnFirstError), "open"); err != nil {
+		if err := validator.Field(v.Open.Value().Validate(stopOnFirstError), "open"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -98,7 +98,7 @@ func (v ObjectColor) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -121,7 +121,7 @@ func (v ObjectClosed) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first

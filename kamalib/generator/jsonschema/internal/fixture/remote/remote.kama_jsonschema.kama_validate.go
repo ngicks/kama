@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:19Z
+// generated: 2026-11-25T02:44:27Z
 
 package remote
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -14,14 +14,14 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 //kama:generated kama:validate
 func (v Invoice) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Total.Validate(stopOnFirstError), "total"); err != nil {
+	if err := validator.Field(v.Total.Validate(stopOnFirstError), "total"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Currency.IsSome() {
-		if err := validation.Field(v.Currency.Value().Validate(stopOnFirstError), "currency"); err != nil {
+		if err := validator.Field(v.Currency.Value().Validate(stopOnFirstError), "currency"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -29,14 +29,14 @@ func (v Invoice) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Payer.IsSome() {
-		if err := validation.Field(v.Payer.Value().Validate(stopOnFirstError), "payer"); err != nil {
+		if err := validator.Field(v.Payer.Value().Validate(stopOnFirstError), "payer"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -56,19 +56,19 @@ func (v Invoice) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Money) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateCmp(v.Amount, ">=", 0), "amount"); err != nil {
+	if err := validator.Field(kamaValidateCmp(v.Amount, ">=", 0), "amount"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Currency.Validate(stopOnFirstError), "currency"); err != nil {
+	if err := validator.Field(v.Currency.Validate(stopOnFirstError), "currency"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -80,13 +80,13 @@ func (v Money) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Money) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateCmp(v.Amount, ">=", 0), "amount"); err != nil {
+	if err := validator.Field(kamaValidateCmp(v.Amount, ">=", 0), "amount"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -101,7 +101,7 @@ func (v MoneyCurrency) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -111,7 +111,7 @@ func (v MoneyCurrency) Validate(stopOnFirstError bool) error {
 func (v Party) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Balance.IsSome() {
-		if err := validation.Field(v.Balance.Value().Validate(stopOnFirstError), "balance"); err != nil {
+		if err := validator.Field(v.Balance.Value().Validate(stopOnFirstError), "balance"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -119,14 +119,14 @@ func (v Party) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Partner != nil {
-		if err := validation.Field((*v.Partner).Validate(stopOnFirstError), "partner"); err != nil {
+		if err := validator.Field((*v.Partner).Validate(stopOnFirstError), "partner"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the

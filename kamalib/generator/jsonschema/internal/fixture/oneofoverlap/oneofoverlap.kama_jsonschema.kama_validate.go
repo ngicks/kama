@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:09Z
+// generated: 2026-11-25T02:44:18Z
 
 package oneofoverlap
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -14,13 +14,13 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 //kama:generated kama:validate
 func (v EitherLeft) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Left.Validate(stopOnFirstError), "Left"); err != nil {
+	if err := validator.Field(v.Left.Validate(stopOnFirstError), "Left"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -40,13 +40,13 @@ func (v EitherLeft) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v EitherRight) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Right.Validate(stopOnFirstError), "Right"); err != nil {
+	if err := validator.Field(v.Right.Validate(stopOnFirstError), "Right"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the

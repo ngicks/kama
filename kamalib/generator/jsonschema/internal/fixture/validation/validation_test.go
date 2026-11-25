@@ -9,7 +9,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 const valid = `{"id":"AB1","items":["a","b"],"count":4,"ratio":0.5,"labels":{"x":"y"},
@@ -36,76 +36,76 @@ func TestDecodeInvalid(t *testing.T) {
 		pointers []string
 		kind     error
 	}{
-		{"minLength", `{"id":"AB","items":["a"]}`, []string{"/id"}, validation.ErrLength},
-		{"pattern", `{"id":"ab1","items":["a"]}`, []string{"/id"}, validation.ErrPattern},
+		{"minLength", `{"id":"AB","items":["a"]}`, []string{"/id"}, validator.ErrLength},
+		{"pattern", `{"id":"ab1","items":["a"]}`, []string{"/id"}, validator.ErrPattern},
 		{
 			"minimum of an integer",
 			`{"id":"ABC","items":["a"],"count":0}`,
 			[]string{"/count"},
-			validation.ErrCompare,
+			validator.ErrCompare,
 		},
 		{
 			"exclusiveMaximum",
 			`{"id":"ABC","items":["a"],"count":100}`,
 			[]string{"/count"},
-			validation.ErrCompare,
+			validator.ErrCompare,
 		},
 		{
 			"multipleOf",
 			`{"id":"ABC","items":["a"],"count":3}`,
 			[]string{"/count"},
-			validation.ErrMultiple,
+			validator.ErrMultiple,
 		},
 		{
 			"exclusiveMinimum",
 			`{"id":"ABC","items":["a"],"ratio":0}`,
 			[]string{"/ratio"},
-			validation.ErrCompare,
+			validator.ErrCompare,
 		},
-		{"minItems", `{"id":"ABC","items":[]}`, []string{"/items"}, validation.ErrLength},
-		{"uniqueItems", `{"id":"ABC","items":["a","a"]}`, []string{"/items"}, validation.ErrUnique},
+		{"minItems", `{"id":"ABC","items":[]}`, []string{"/items"}, validator.ErrLength},
+		{"uniqueItems", `{"id":"ABC","items":["a","a"]}`, []string{"/items"}, validator.ErrUnique},
 		{
 			"pattern of items",
 			`{"id":"ABC","items":["A"]}`,
 			[]string{"/items/0"},
-			validation.ErrPattern,
+			validator.ErrPattern,
 		},
 		{
 			"maxProperties of a map",
 			`{"id":"ABC","items":["a"],"labels":{"a":"1","b":"2","c":"3"}}`,
 			[]string{"/labels"},
-			validation.ErrLength,
+			validator.ErrLength,
 		},
 		{
 			"minLength of map values",
 			`{"id":"ABC","items":["a"],"labels":{"a":""}}`,
 			[]string{"/labels/a"},
-			validation.ErrLength,
+			validator.ErrLength,
 		},
-		{"enum", `{"id":"ABC","items":["a"],"level":4}`, []string{"/level"}, validation.ErrConst},
+		{"enum", `{"id":"ABC","items":["a"],"level":4}`, []string{"/level"}, validator.ErrConst},
 		{
 			"dependentRequired",
 			`{"id":"ABC","items":["a"],"coupon":"c"}`,
 			[]string{"/discount"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
 		{
 			"maxProperties",
 			`{"id":"ABC","items":["a"],"a":1,"b":2,"c":3,"d":4,"e":5,"f":6,"g":7,"h":8,"i":9,"j":10}`,
 			[]string{""},
-			validation.ErrLength,
+			validator.ErrLength,
 		},
 		{
 			"additionalProperties false",
 			`{"id":"ABC","items":["a"],"closed":{"b":1}}`,
 			[]string{"/closed/b"},
-			validation.ErrClosed,
+			validator.ErrClosed,
 		},
 		{
 			"additionalProperties schema",
 			`{"id":"ABC","items":["a"],"typed":{"m":-1}}`,
 			[]string{"/typed/m"},
-			validation.ErrCompare,
+			validator.ErrCompare,
 		},
 		{
 			"no member of a oneOf",
@@ -122,7 +122,7 @@ func TestDecodeInvalid(t *testing.T) {
 
 			se, ok := errors.AsType[*json.SemanticError](err)
 			assert.Assert(t, ok, "%T: %v", err, err)
-			assert.DeepEqual(t, validation.Pointers(se.Err), tc.pointers)
+			assert.DeepEqual(t, validator.Pointers(se.Err), tc.pointers)
 			assert.ErrorIs(t, se.Err, tc.kind)
 		})
 	}

@@ -105,12 +105,15 @@ func TestFileNames(t *testing.T) {
 }
 
 // procProject writes files into a new module example.invalid/x that
-// resolves this module from its directory, and returns the root.
+// resolves this module and the runtime module next to it from their
+// directories, and returns the root.
 func procProject(t *testing.T, files map[string]string) string {
 	t.Helper()
 
 	kamalib, err := filepath.Abs("../..")
 	assert.NilError(t, err)
+
+	kamaruntime := filepath.Join(kamalib, "..", "kamaruntime")
 
 	// A go line below that of this module would need go mod tidy.
 	gomod, err := os.ReadFile(filepath.Join(kamalib, "go.mod"))
@@ -123,8 +126,14 @@ func procProject(t *testing.T, files map[string]string) string {
 
 	root := t.TempDir()
 	files["go.mod"] = "module example.invalid/x\n\n" + goLine.Value() + "\n" +
-		"require github.com/ngicks/kama/kamalib v0.0.0\n\n" +
-		"replace github.com/ngicks/kama/kamalib => " + kamalib + "\n"
+		"require (\n" +
+		"\tgithub.com/ngicks/kama/kamalib v0.0.0\n" +
+		"\tgithub.com/ngicks/kama/kamaruntime v0.0.0\n" +
+		")\n\n" +
+		"replace (\n" +
+		"\tgithub.com/ngicks/kama/kamalib => " + kamalib + "\n" +
+		"\tgithub.com/ngicks/kama/kamaruntime => " + kamaruntime + "\n" +
+		")\n"
 
 	for name, src := range files {
 		p := filepath.Join(root, filepath.FromSlash(name))

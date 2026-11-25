@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:43Z
+// generated: 2026-11-25T02:43:56Z
 
 package allof
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -14,27 +14,27 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 //kama:generated kama:validate
 func (v Employee) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Person.Validate(stopOnFirstError), "Person"); err != nil {
+	if err := validator.Field(v.Person.Validate(stopOnFirstError), "Person"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Contract.Validate(stopOnFirstError), "Contract"); err != nil {
+	if err := validator.Field(v.Contract.Validate(stopOnFirstError), "Contract"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Manager.IsSome() {
-		if err := validation.Field(v.Manager.Value().Validate(stopOnFirstError), "manager"); err != nil {
+		if err := validator.Field(v.Manager.Value().Validate(stopOnFirstError), "manager"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the

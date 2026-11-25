@@ -6,7 +6,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // check decodes each instance of ok into a T and each of bad into a T,
@@ -31,10 +31,10 @@ func TestStrictTree(t *testing.T) {
 	check[StrictTree](t,
 		[]string{`{}`, `{"data": 1, "children": [{"children": [{"data": "x"}]}]}`},
 		map[string]error{
-			`{"daat": 1}`:                                 validation.ErrOr,
-			`{"children": [{"daat": 1}]}`:                 validation.ErrOr,
-			`{"children": [{"children": [{"daat": 1}]}]}`: validation.ErrOr,
-			`{"children": {}}`:                            validation.ErrKind,
+			`{"daat": 1}`:                                 validator.ErrOr,
+			`{"children": [{"daat": 1}]}`:                 validator.ErrOr,
+			`{"children": [{"children": [{"daat": 1}]}]}`: validator.ErrOr,
+			`{"children": {}}`:                            validator.ErrKind,
 		},
 	)
 }
@@ -43,8 +43,8 @@ func TestNames(t *testing.T) {
 	// names declares the $dynamicAnchor item, the outermost one its
 	// reference to list enters.
 	check[Names](t, []string{`[]`, `["a", "b"]`}, map[string]error{
-		`[1]`: validation.ErrKind,
-		`{}`:  validation.ErrKind,
+		`[1]`: validator.ErrKind,
+		`{}`:  validator.ErrKind,
 	})
 
 	var items []ListItem

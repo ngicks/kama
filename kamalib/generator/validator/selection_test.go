@@ -140,7 +140,7 @@ func TestSelectionImplementorCalled(t *testing.T) {
 			"func (H) Validate(bool) error { return nil }\n",
 	}, "a.kama_validate.go", "P")
 
-	assertContains(t, fn, check(`validation.Field(v.H.Validate(stopOnFirstError), "H")`))
+	assertContains(t, fn, check(`validator.Field(v.H.Validate(stopOnFirstError), "H")`))
 }
 
 func TestSelectionErrors(t *testing.T) {
@@ -696,7 +696,7 @@ func TestSelectionOptionForeignImplementor(t *testing.T) {
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn, "if v.H.IsSome() {",
-		check(`validation.Field(v.H.Value().Validate(stopOnFirstError), "H")`))
+		check(`validator.Field(v.H.Value().Validate(stopOnFirstError), "H")`))
 }
 
 // TestSelectionMarkedGeneric passes validation on through marked generic
@@ -747,8 +747,8 @@ type C struct{ X int }
 		"(*v.P).Validate(stopOnFirstError, func(v C, stopOnFirstError bool) error {",
 	)
 	assertContains(t, fs["Box.Validate"],
-		check(`validation.Field(v.L.Validate(stopOnFirstError, validateT), "L")`),
-		check(`validation.Field(v.W.Validate(stopOnFirstError, validateT), "W")`),
+		check(`validator.Field(v.L.Validate(stopOnFirstError, validateT), "L")`),
+		check(`validator.Field(v.W.Validate(stopOnFirstError, validateT), "W")`),
 	)
 }
 
@@ -825,14 +825,14 @@ type Inner struct {
 		[]string{"D.Validate", "Inner.Validate", "S.Validate"})
 	assertContains(t, fs["S.Validate"],
 		"if v.P != nil {",
-		check(`validation.Field((*v.P).Validate(stopOnFirstError), "P")`),
+		check(`validator.Field((*v.P).Validate(stopOnFirstError), "P")`),
 		"for i, e := range v.A {",
-		check(`validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "A")`),
-		check(`validation.Field(validation.Key(validation.Index(`+
+		check(`validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "A")`),
+		check(`validator.Field(validator.Key(validator.Index(`+
 			`e2.Validate(stopOnFirstError), i2), k), "M")`),
 		"if v.G != nil {",
-		check(`validation.Field((*v.G).Validate(stopOnFirstError), "G")`),
-		check(`validation.Field(v.V.Validate(stopOnFirstError), "V")`),
+		check(`validator.Field((*v.G).Validate(stopOnFirstError), "G")`),
+		check(`validator.Field(v.V.Validate(stopOnFirstError), "V")`),
 	)
 	assertNotContains(t, fs["S.Validate"], "v.N", "v.AN", "v.LN")
 }

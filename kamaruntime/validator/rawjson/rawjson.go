@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // Kind reports v holding none of kinds, the JSON types null, boolean,
@@ -22,7 +22,7 @@ func Kind[T ~[]byte](v T, kinds ...string) error {
 		return nil
 	}
 
-	return validation.New(validation.ErrKind, "want %s, got %s", strings.Join(kinds, " or "), got)
+	return validator.New(validator.ErrKind, "want %s, got %s", strings.Join(kinds, " or "), got)
 }
 
 // Compare reports a number v that does not compare to num, the text of a
@@ -38,7 +38,7 @@ func Compare[T ~[]byte](v T, op, num string) error {
 		return nil
 	}
 
-	return validation.New(validation.ErrCompare, "want %s %s, got %s", op, num, raw)
+	return validator.New(validator.ErrCompare, "want %s %s, got %s", op, num, raw)
 }
 
 // MultipleOf reports a number v that num, the text of a positive JSON
@@ -49,7 +49,7 @@ func MultipleOf[T ~[]byte](v T, num string) error {
 		return nil
 	}
 
-	return validation.New(validation.ErrMultiple, "want a multiple of %s, got %s", num, raw)
+	return validator.New(validator.ErrMultiple, "want a multiple of %s, got %s", num, raw)
 }
 
 // Runes reports a string v whose number of code points does not compare
@@ -61,7 +61,7 @@ func Runes[T ~[]byte](v T, op string, n int) error {
 	}
 
 	if got := utf8.RuneCountInString(s); !holds(compareInts(got, n), op) {
-		return validation.New(validation.ErrLength, "want rune count %s %d, got %d", op, n, got)
+		return validator.New(validator.ErrLength, "want rune count %s %d, got %d", op, n, got)
 	}
 
 	return nil
@@ -75,7 +75,7 @@ func Pattern[T ~[]byte](v T, re *regexp.Regexp) error {
 		return nil
 	}
 
-	return validation.New(validation.ErrPattern, "want a match of %q, got %q", re.String(), s)
+	return validator.New(validator.ErrPattern, "want a match of %q, got %q", re.String(), s)
 }
 
 // Format reports a string v that check, a helper testing one format,
@@ -98,7 +98,7 @@ func Items[T ~[]byte](v T, op string, n int) error {
 	}
 
 	if got := len(elements(raw)); !holds(compareInts(got, n), op) {
-		return validation.New(validation.ErrLength, "want length %s %d, got %d", op, n, got)
+		return validator.New(validator.ErrLength, "want length %s %d, got %d", op, n, got)
 	}
 
 	return nil
@@ -113,7 +113,7 @@ func Members[T ~[]byte](v T, op string, n int) error {
 	}
 
 	if got := len(members(raw)); !holds(compareInts(got, n), op) {
-		return validation.New(validation.ErrLength, "want member count %s %d, got %d", op, n, got)
+		return validator.New(validator.ErrLength, "want member count %s %d, got %d", op, n, got)
 	}
 
 	return nil
@@ -132,7 +132,7 @@ func Unique[T ~[]byte](v T) error {
 	for i := range elems {
 		for j := i + 1; j < len(elems); j++ {
 			if Equal(elems[i], elems[j]) {
-				return validation.New(validation.ErrUnique,
+				return validator.New(validator.ErrUnique,
 					"want unique elements, got equal elements at %d and %d", i, j)
 			}
 		}
@@ -153,8 +153,8 @@ func Const[T ~[]byte](v T, values ...string) error {
 		return nil
 	}
 
-	return validation.New(
-		validation.ErrConst,
+	return validator.New(
+		validator.ErrConst,
 		"want one of %s, got %s",
 		strings.Join(values, ", "),
 		raw,
@@ -178,7 +178,7 @@ func Required[T ~[]byte](v T, stopOnFirstError bool, names ...string) error {
 			continue
 		}
 
-		err := validation.Field(validation.New(validation.ErrRequired, "want a member"), name)
+		err := validator.Field(validator.New(validator.ErrRequired, "want a member"), name)
 		if stopOnFirstError {
 			return err
 		}
@@ -186,7 +186,7 @@ func Required[T ~[]byte](v T, stopOnFirstError bool, names ...string) error {
 		errs = append(errs, err)
 	}
 
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Equal reports whether a and b are the same JSON value: numbers of equal

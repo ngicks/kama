@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:15Z
+// generated: 2026-11-25T02:43:57Z
 
 package anyof
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -56,13 +56,13 @@ func (v *Doc) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Doc
 	var errs []error
 	out.Label, err = jsonschemart.Required(w.Label)
-	errs = append(errs, validation.Field(err, "label"))
+	errs = append(errs, validator.Field(err, "label"))
 	out.Value, err = jsonschemart.DecodeRequired[DocValue](w.Value)
-	errs = append(errs, validation.Field(err, "value"))
+	errs = append(errs, validator.Field(err, "value"))
 	out.Alt, err = jsonschemart.DecodeOptional[DocValue](w.Alt)
-	errs = append(errs, validation.Field(err, "alt"))
+	errs = append(errs, validator.Field(err, "alt"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -178,7 +178,7 @@ func (v DocValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case DocValueUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "DocValue holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "DocValue holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -193,7 +193,7 @@ func (v DocValue) Validate(stopOnFirstError bool) error {
 	case DocValueUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "DocValue holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "DocValue holds no member")
 }
 
 // ValidateShallow is Validate for a decoded DocValue. The decoder yields a
@@ -208,7 +208,7 @@ func (v DocValue) ValidateShallow(stopOnFirstError bool) error {
 	case DocValueUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "DocValue holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "DocValue holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
@@ -342,7 +342,7 @@ func (v Label) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case LabelUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Label holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Label holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -357,7 +357,7 @@ func (v Label) Validate(stopOnFirstError bool) error {
 	case LabelUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Label holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Label holds no member")
 }
 
 // labelNamedProbe is the raw value the union at #/$defs/Label tests before
@@ -406,7 +406,7 @@ func (v Label) ValidateShallow(stopOnFirstError bool) error {
 	case LabelUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Label holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Label holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the first member the value matches. A
@@ -494,9 +494,9 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Named
 	var errs []error
 	out.Name, err = jsonschemart.Required(w.Name)
-	errs = append(errs, validation.Field(err, "name"))
+	errs = append(errs, validator.Field(err, "name"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -543,11 +543,11 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Tagged
 	var errs []error
 	out.Name, err = jsonschemart.Optional(w.Name)
-	errs = append(errs, validation.Field(err, "name"))
+	errs = append(errs, validator.Field(err, "name"))
 	out.Tag, err = jsonschemart.Required(w.Tag)
-	errs = append(errs, validation.Field(err, "tag"))
+	errs = append(errs, validator.Field(err, "tag"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

@@ -2,15 +2,15 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:24Z
+// generated: 2026-11-25T02:44:30Z
 
 package typedkeywords
 
 import (
 	"encoding/json/jsontext"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
-	"github.com/ngicks/kama/kamalib/pkg/validation/rawjson"
+	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/validator/rawjson"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -33,14 +33,14 @@ func (v Order) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Kind.Validate(stopOnFirstError), "kind"); err != nil {
+	if err := validator.Field(v.Kind.Validate(stopOnFirstError), "kind"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Note.IsSome() {
-		if err := validation.Field(rawjson.Encoded(v.Note.Value(), func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Encoded(v.Note.Value(), func(m jsontext.Value) error {
 			return kamaValidateNot(rawjson.Const(m, "\"x\""), "const=\"`\\\"x\\\"`\"")
 		}), "note"); err != nil {
 			if stopOnFirstError {
@@ -50,7 +50,7 @@ func (v Order) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Lines.IsSome() {
-		if err := validation.Field(rawjson.Encoded(v.Lines.Value(), func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Encoded(v.Lines.Value(), func(m jsontext.Value) error {
 			return rawjson.Contains(m, nil, func(m2 jsontext.Value) error {
 				return rawjson.Const(m2, "0")
 			}, rawjson.Count{Op: ">=", N: 1}, rawjson.Count{Op: "<=", N: 1})
@@ -61,7 +61,7 @@ func (v Order) Validate(stopOnFirstError bool) error {
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -88,7 +88,7 @@ func (v Order) ValidateShallow(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if v.Note.IsSome() {
-		if err := validation.Field(rawjson.Encoded(v.Note.Value(), func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Encoded(v.Note.Value(), func(m jsontext.Value) error {
 			return kamaValidateNot(rawjson.Const(m, "\"x\""), "const=\"`\\\"x\\\"`\"")
 		}), "note"); err != nil {
 			if stopOnFirstError {
@@ -98,7 +98,7 @@ func (v Order) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.Lines.IsSome() {
-		if err := validation.Field(rawjson.Encoded(v.Lines.Value(), func(m jsontext.Value) error {
+		if err := validator.Field(rawjson.Encoded(v.Lines.Value(), func(m jsontext.Value) error {
 			return rawjson.Contains(m, nil, func(m2 jsontext.Value) error {
 				return rawjson.Const(m2, "0")
 			}, rawjson.Count{Op: ">=", N: 1}, rawjson.Count{Op: "<=", N: 1})
@@ -109,7 +109,7 @@ func (v Order) ValidateShallow(stopOnFirstError bool) error {
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -124,7 +124,7 @@ func (v OrderKind) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -143,13 +143,13 @@ func (v ShapeCircle) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Circle.Validate(stopOnFirstError), "Circle"); err != nil {
+	if err := validator.Field(v.Circle.Validate(stopOnFirstError), "Circle"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -171,7 +171,7 @@ func (v ShapeCircle) ValidateShallow(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -190,13 +190,13 @@ func (v ShapeSquare) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Square.Validate(stopOnFirstError), "Square"); err != nil {
+	if err := validator.Field(v.Square.Validate(stopOnFirstError), "Square"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -218,7 +218,7 @@ func (v ShapeSquare) ValidateShallow(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -235,7 +235,7 @@ func (v shapeCircleProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -253,7 +253,7 @@ func (v shapeCircleProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -270,7 +270,7 @@ func (v shapeSquareProbe) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateEvaluated is Validate recording into ev the members and the
@@ -288,7 +288,7 @@ func (v shapeSquareProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -303,7 +303,7 @@ func (v Circle) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -318,7 +318,7 @@ func (v Square) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -351,19 +351,19 @@ func (v Person) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Named.Validate(stopOnFirstError), "Named"); err != nil {
+	if err := validator.Field(v.Named.Validate(stopOnFirstError), "Named"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.Aged.Validate(stopOnFirstError), "Aged"); err != nil {
+	if err := validator.Field(v.Aged.Validate(stopOnFirstError), "Aged"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -383,7 +383,7 @@ func (v Person) ValidateShallow(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -400,7 +400,7 @@ func (v Bounded) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -425,7 +425,7 @@ func (v Sealed) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -448,5 +448,5 @@ func (v Tagged) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

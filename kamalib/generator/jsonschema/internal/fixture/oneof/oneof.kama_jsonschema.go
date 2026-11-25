@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:39Z
+// generated: 2026-11-25T02:44:16Z
 
 package oneof
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -60,17 +60,17 @@ func (v *Zoo) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Zoo
 	var errs []error
 	out.Star, err = jsonschemart.Required(w.Star)
-	errs = append(errs, validation.Field(err, "star"))
+	errs = append(errs, validator.Field(err, "star"))
 	out.Pets, err = jsonschemart.Required(w.Pets)
-	errs = append(errs, validation.Field(err, "pets"))
+	errs = append(errs, validator.Field(err, "pets"))
 	out.Favorite, err = jsonschemart.Optional(w.Favorite)
-	errs = append(errs, validation.Field(err, "favorite"))
+	errs = append(errs, validator.Field(err, "favorite"))
 	out.Mixed, err = jsonschemart.Required(w.Mixed)
-	errs = append(errs, validation.Field(err, "mixed"))
+	errs = append(errs, validator.Field(err, "mixed"))
 	out.Amount, err = jsonschemart.Optional(w.Amount)
-	errs = append(errs, validation.Field(err, "amount"))
+	errs = append(errs, validator.Field(err, "amount"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -188,7 +188,7 @@ func (v ZooMixed) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case ZooMixedUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "ZooMixed holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "ZooMixed holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -203,7 +203,7 @@ func (v ZooMixed) Validate(stopOnFirstError bool) error {
 	case ZooMixedUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "ZooMixed holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "ZooMixed holds no member")
 }
 
 // ValidateShallow is Validate for a decoded ZooMixed. The decoder yields a
@@ -218,7 +218,7 @@ func (v ZooMixed) ValidateShallow(stopOnFirstError bool) error {
 	case ZooMixedUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "ZooMixed holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "ZooMixed holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
@@ -328,9 +328,9 @@ func (v *ZooMixedObjectValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out ZooMixedObjectValue
 	var errs []error
 	out.Note, err = jsonschemart.Required(w.Note)
-	errs = append(errs, validation.Field(err, "note"))
+	errs = append(errs, validator.Field(err, "note"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -426,7 +426,7 @@ func (v ZooAmount) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case ZooAmountUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "ZooAmount holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "ZooAmount holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -441,7 +441,7 @@ func (v ZooAmount) Validate(stopOnFirstError bool) error {
 	case ZooAmountUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "ZooAmount holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "ZooAmount holds no member")
 }
 
 // ValidateShallow is Validate for a decoded ZooAmount. The decoder yields a
@@ -456,7 +456,7 @@ func (v ZooAmount) ValidateShallow(stopOnFirstError bool) error {
 	case ZooAmountUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "ZooAmount holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "ZooAmount holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
@@ -598,7 +598,7 @@ func (v Pet) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case PetUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Pet holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Pet holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -613,7 +613,7 @@ func (v Pet) Validate(stopOnFirstError bool) error {
 	case PetUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Pet holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Pet holds no member")
 }
 
 // petCatProbe is the raw value the union at #/$defs/Pet tests before
@@ -662,7 +662,7 @@ func (v Pet) ValidateShallow(stopOnFirstError bool) error {
 	case PetUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Pet holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Pet holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
@@ -765,11 +765,11 @@ func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Cat
 	var errs []error
 	out.Kind, err = jsonschemart.Required(w.Kind)
-	errs = append(errs, validation.Field(err, "kind"))
+	errs = append(errs, validator.Field(err, "kind"))
 	out.Lives, err = jsonschemart.Required(w.Lives)
-	errs = append(errs, validation.Field(err, "lives"))
+	errs = append(errs, validator.Field(err, "lives"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -817,11 +817,11 @@ func (v *Dog) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Dog
 	var errs []error
 	out.Kind, err = jsonschemart.Required(w.Kind)
-	errs = append(errs, validation.Field(err, "kind"))
+	errs = append(errs, validator.Field(err, "kind"))
 	out.Good, err = jsonschemart.Required(w.Good)
-	errs = append(errs, validation.Field(err, "good"))
+	errs = append(errs, validator.Field(err, "good"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

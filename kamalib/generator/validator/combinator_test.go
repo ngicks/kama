@@ -26,21 +26,21 @@ func TestCombinators(t *testing.T) {
 
 	fn := gentest.Funcs(t, out["a.kama_validate.go"])["A.Validate"]
 	assertContains(t, fn,
-		check(`validation.Field(kamaValidateAll(stopOnFirstError,`+
+		check(`validator.Field(kamaValidateAll(stopOnFirstError,`+
 			` kamaValidateCmp(v.N, ">=", 1), kamaValidateMultipleInt(v.N, 2, "2")), "N")`),
-		check(`validation.Field(kamaValidateOr(kamaValidateConst(v.N, 0),`+
+		check(`validator.Field(kamaValidateOr(kamaValidateConst(v.N, 0),`+
 			` kamaValidateCmp(v.N, ">=", 10)), "N")`),
-		check(`validation.Field(kamaValidateNot(kamaValidateRegexpString(`+
+		check(`validator.Field(kamaValidateNot(kamaValidateRegexpString(`+
 			`kamaValidateRegexp_9c5b6217da, v.S), "regexp=\"^x\""), "S")`),
-		check(`validation.Field(kamaValidateOneOf([]string{"length=\"==1\"", "length=\"==3\""},`+
+		check(`validator.Field(kamaValidateOneOf([]string{"length=\"==1\"", "length=\"==3\""},`+
 			` kamaValidateLength(len(v.S), "==", 1), kamaValidateLength(len(v.S), "==", 3)), "S")`),
-		check(`validation.Field(kamaValidateIf(kamaValidateConst(v.M, 1),`+
+		check(`validator.Field(kamaValidateIf(kamaValidateConst(v.M, 1),`+
 			` kamaValidateCmp(v.M, "<=", 10), error(nil)), "M")`),
-		check(`validation.Field(kamaValidateOr(kamaValidateAll(stopOnFirstError,`+
+		check(`validator.Field(kamaValidateOr(kamaValidateAll(stopOnFirstError,`+
 			` kamaValidateCmp(v.D, ">=", 1), kamaValidateNot(kamaValidateOr(`+
 			`kamaValidateConst(v.D, 5), kamaValidateConst(v.D, 7)),`+
 			` "or(const=\"5\", const=\"7\")")), kamaValidateConst(v.D, -1)), "D")`),
-		check(`validation.Field(kamaValidateAll(stopOnFirstError,`+
+		check(`validator.Field(kamaValidateAll(stopOnFirstError,`+
 			` kamaValidateCmp(v.L, ">=", 1), kamaValidateCmp(v.L, "<=", 9)), "L")`),
 	)
 	assertContains(t, out[HelpersFile],
@@ -63,9 +63,9 @@ func TestCombinatorHeldValue(t *testing.T) {
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,
-		"if v.P != nil {\n\t\t"+check(`validation.Field(kamaValidateOr(`+
+		"if v.P != nil {\n\t\t"+check(`validator.Field(kamaValidateOr(`+
 			`kamaValidateCmp((*v.P), ">=", 10), kamaValidateConst((*v.P), 0)), "P")`),
-		"if v.O.IsSome() {\n\t\t"+check(`validation.Field(kamaValidateNot(`+
+		"if v.O.IsSome() {\n\t\t"+check(`validator.Field(kamaValidateNot(`+
 			`kamaValidateLength(len(v.O.Value()), "==", 0), "length=\"==0\""), "O")`),
 	)
 
@@ -100,9 +100,9 @@ func TestCombinatorOperandRegistry(t *testing.T) {
 	assert.NilError(t, gentest.Build(f, opts))
 
 	assertContains(t, out["a.kama_validate.go"],
-		check(`validation.Field(kamaValidateOr(kamaValidateMultiple(int64(v.N), 3),`+
+		check(`validator.Field(kamaValidateOr(kamaValidateMultiple(int64(v.N), 3),`+
 			` kamaValidateNot(kamaValidateMultiple(int64(v.N), 5), "multiple=\"5\"")), "N")`),
-		check(`validation.Field(kamaValidateLengthOne(len(v.S)), "S")`),
+		check(`validator.Field(kamaValidateLengthOne(len(v.S)), "S")`),
 	)
 
 	_, err = generate(t, files, testRun{})
@@ -130,13 +130,13 @@ func TestCombinatorSiblings(t *testing.T) {
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,
-		check(`kamaValidateIf(validation.Field(kamaValidateConst(v.A, "x"), "a"),`+
+		check(`kamaValidateIf(validator.Field(kamaValidateConst(v.A, "x"), "a"),`+
 			` kamaValidateRequires(stopOnFirstError, "a", kamaValidateNonZero(v.A),`+
 			` []string{"b"}, v.B != nil),`+
 			` kamaValidateAll(stopOnFirstError, kamaValidateRequires(stopOnFirstError, "a",`+
 			` kamaValidateNonZero(v.A), []string{"c"}, v.C != nil),`+
-			` validation.Field(kamaValidateLength(len(v.A), ">=", 2), "a")))`),
-		check(`validation.Field(kamaValidateNot(kamaValidateRequires(stopOnFirstError, "b",`+
+			` validator.Field(kamaValidateLength(len(v.A), ">=", 2), "a")))`),
+		check(`validator.Field(kamaValidateNot(kamaValidateRequires(stopOnFirstError, "b",`+
 			` v.B != nil, []string{"a"}, kamaValidateNonZero(v.A)), "requires=\"a\""), "b")`),
 	)
 	assertNotContains(t, fn, "if v.B != nil {")
@@ -153,7 +153,7 @@ func TestCombinatorSiblingsHeld(t *testing.T) {
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,
-		"kamaValidateIf(validation.Field(func() error {",
+		"kamaValidateIf(validator.Field(func() error {",
 		"if v.A != nil {",
 		`return kamaValidateCmp((*v.A), ">=", 1)`,
 		`kamaValidateRequires(stopOnFirstError, "a", v.A != nil, []string{"b"}, v.B != nil)`,

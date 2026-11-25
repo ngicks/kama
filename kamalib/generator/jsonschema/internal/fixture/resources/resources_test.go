@@ -6,7 +6,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func TestOrder(t *testing.T) {
@@ -20,13 +20,13 @@ func TestOrder(t *testing.T) {
 	}
 
 	for text, kind := range map[string]error{
-		`{}`:                         validation.ErrRequired,
-		`{"customer": {"name": ""}}`: validation.ErrLength,
-		`{"customer": {"name": "a", "address": {"zip": "1"}}}`: validation.ErrPattern,
-		`{"customer": {"name": "a"}, "shipTo": "x"}`:           validation.ErrPattern,
+		`{}`:                         validator.ErrRequired,
+		`{"customer": {"name": ""}}`: validator.ErrLength,
+		`{"customer": {"name": "a", "address": {"zip": "1"}}}`: validator.ErrPattern,
+		`{"customer": {"name": "a"}, "shipTo": "x"}`:           validator.ErrPattern,
 		// The anchor name of line.json names LineSku, not CustomerName.
-		`{"customer": {"name": "a"}, "lines": [{"sku": "ab"}]}`:           validation.ErrPattern,
-		`{"customer": {"name": "a"}, "note": "longer than twenty runes"}`: validation.ErrLength,
+		`{"customer": {"name": "a"}, "lines": [{"sku": "ab"}]}`:           validator.ErrPattern,
+		`{"customer": {"name": "a"}, "note": "longer than twenty runes"}`: validator.ErrLength,
 	} {
 		var v Order
 		assert.ErrorIs(t, json.Unmarshal([]byte(text), &v), kind, text)

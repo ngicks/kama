@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:50Z
+// generated: 2026-11-25T02:44:24Z
 
 package recursive
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -58,15 +58,15 @@ func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Forest
 	var errs []error
 	out.Trees, err = jsonschemart.Required(w.Trees)
-	errs = append(errs, validation.Field(err, "trees"))
+	errs = append(errs, validator.Field(err, "trees"))
 	out.Groves, err = jsonschemart.Optional(w.Groves)
-	errs = append(errs, validation.Field(err, "groves"))
+	errs = append(errs, validator.Field(err, "groves"))
 	out.List, err = jsonschemart.Optional(w.List)
-	errs = append(errs, validation.Field(err, "list"))
+	errs = append(errs, validator.Field(err, "list"))
 	out.Chain, err = jsonschemart.Required(w.Chain)
-	errs = append(errs, validation.Field(err, "chain"))
+	errs = append(errs, validator.Field(err, "chain"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -113,11 +113,11 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Tree
 	var errs []error
 	out.Label, err = jsonschemart.Required(w.Label)
-	errs = append(errs, validation.Field(err, "label"))
+	errs = append(errs, validator.Field(err, "label"))
 	out.Children, err = jsonschemart.Optional(w.Children)
-	errs = append(errs, validation.Field(err, "children"))
+	errs = append(errs, validator.Field(err, "children"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -164,11 +164,11 @@ func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out List
 	var errs []error
 	out.Value, err = jsonschemart.Required(w.Value)
-	errs = append(errs, validation.Field(err, "value"))
+	errs = append(errs, validator.Field(err, "value"))
 	out.Next, err = jsonschemart.OptionalPointer(w.Next)
-	errs = append(errs, validation.Field(err, "next"))
+	errs = append(errs, validator.Field(err, "next"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -195,7 +195,7 @@ type Chain struct {
 //kama:generated kama:jsonschema
 func (v Chain) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if v.Link == nil {
-		return validation.Field(validation.New(validation.ErrNil, "required member is nil"), "link")
+		return validator.Field(validator.New(validator.ErrNil, "required member is nil"), "link")
 	}
 	type plain Chain
 	return json.MarshalEncode(enc, plain(v))
@@ -227,11 +227,11 @@ func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Chain
 	var errs []error
 	out.Name, err = jsonschemart.Required(w.Name)
-	errs = append(errs, validation.Field(err, "name"))
+	errs = append(errs, validator.Field(err, "name"))
 	out.Link, err = jsonschemart.RequiredPointer(w.Link)
-	errs = append(errs, validation.Field(err, "link"))
+	errs = append(errs, validator.Field(err, "link"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -278,11 +278,11 @@ func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Link
 	var errs []error
 	out.Label, err = jsonschemart.Required(w.Label)
-	errs = append(errs, validation.Field(err, "label"))
+	errs = append(errs, validator.Field(err, "label"))
 	out.Chain, err = jsonschemart.OptionalPointer(w.Chain)
-	errs = append(errs, validation.Field(err, "chain"))
+	errs = append(errs, validator.Field(err, "chain"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -308,7 +308,7 @@ type Ouroboros struct {
 //kama:generated kama:jsonschema
 func (v Ouroboros) MarshalJSONTo(enc *jsontext.Encoder) error {
 	if v.Tail == nil {
-		return validation.Field(validation.New(validation.ErrNil, "required member is nil"), "tail")
+		return validator.Field(validator.New(validator.ErrNil, "required member is nil"), "tail")
 	}
 	type plain Ouroboros
 	return json.MarshalEncode(enc, plain(v))
@@ -339,9 +339,9 @@ func (v *Ouroboros) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Ouroboros
 	var errs []error
 	out.Tail, err = jsonschemart.RequiredPointer(w.Tail)
-	errs = append(errs, validation.Field(err, "tail"))
+	errs = append(errs, validator.Field(err, "tail"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

@@ -4,8 +4,10 @@ go 1.27.0
 
 require (
 	github.com/dave/dst v0.27.3
+	github.com/google/go-cmp v0.6.0
 	github.com/ngicks/go-fsys-helper/vroot v0.0.2
 	github.com/ngicks/go-fsys-helper/vroot-adapter/overlayfs v0.0.0-20261115192526-4e496cb4e8cc
+	github.com/ngicks/kama/kamaruntime v0.0.0
 	github.com/ngicks/opiter v0.0.0-20261123171300-a790801f0c1f
 	github.com/ngicks/option v0.0.5
 	github.com/pelletier/go-toml/v2 v2.4.3
@@ -17,7 +19,6 @@ require (
 )
 
 require (
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/ncruces/go-sqlite3 v0.35.3 // indirect
 	github.com/ncruces/go-sqlite3-wasm/v3 v3.2.35304 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
@@ -25,3 +26,6 @@ require (
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 )
+
+// The runtime module lives next to this one and is not released.
+replace github.com/ngicks/kama/kamaruntime => ../kamaruntime

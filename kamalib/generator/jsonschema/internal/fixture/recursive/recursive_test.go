@@ -9,7 +9,7 @@ import (
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 const chain = `"chain":{"name":"c","link":{"label":"l"}}`
@@ -74,31 +74,31 @@ func TestDecodeError(t *testing.T) {
 			"deep list",
 			`{"trees":[],"list":{"value":1,"next":{"value":2,"next":{}}},` + chain + `}`,
 			[]string{"/list/next/next/value"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
 		{
 			"null optional pointer",
 			`{"trees":[],"list":{"value":1,"next":null},` + chain + `}`,
 			[]string{"/list/next"},
-			validation.ErrNull,
+			validator.ErrNull,
 		},
 		{
 			"missing required pointer",
 			`{"trees":[],"chain":{"name":"c"}}`,
 			[]string{"/chain/link"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
 		{
 			"null required pointer",
 			`{"trees":[],"chain":{"name":"c","link":null}}`,
 			[]string{"/chain/link"},
-			validation.ErrNull,
+			validator.ErrNull,
 		},
 		{
 			"deep tree",
 			`{"trees":[{"label":"a"},{"label":"b","children":[{}]}],` + chain + `}`,
 			[]string{"/trees/1/children/0/label"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
 	}
 	for _, tc := range cases {
@@ -110,7 +110,7 @@ func TestDecodeError(t *testing.T) {
 
 			se, ok := errors.AsType[*json.SemanticError](err)
 			assert.Assert(t, ok, "%T: %v", err, err)
-			assert.DeepEqual(t, validation.Pointers(se.Err), tc.pointers)
+			assert.DeepEqual(t, validator.Pointers(se.Err), tc.pointers)
 			assert.ErrorIs(t, se.Err, tc.kind)
 		})
 	}
@@ -133,7 +133,7 @@ func TestMarshalNilRequiredPointer(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := json.Marshal(tc.v)
-			assert.ErrorIs(t, err, validation.ErrNil)
+			assert.ErrorIs(t, err, validator.ErrNil)
 		})
 	}
 }
@@ -147,8 +147,8 @@ func TestRequiredSelfReference(t *testing.T) {
 		pointers []string
 		kind     error
 	}{
-		{"missing", `{"tail":{"tail":{}}}`, []string{"/tail/tail/tail"}, validation.ErrRequired},
-		{"null", `{"tail":null}`, []string{"/tail"}, validation.ErrNull},
+		{"missing", `{"tail":{"tail":{}}}`, []string{"/tail/tail/tail"}, validator.ErrRequired},
+		{"null", `{"tail":null}`, []string{"/tail"}, validator.ErrNull},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -158,7 +158,7 @@ func TestRequiredSelfReference(t *testing.T) {
 
 			se, ok := errors.AsType[*json.SemanticError](err)
 			assert.Assert(t, ok, "%T: %v", err, err)
-			assert.DeepEqual(t, validation.Pointers(se.Err), tc.pointers)
+			assert.DeepEqual(t, validator.Pointers(se.Err), tc.pointers)
 			assert.ErrorIs(t, se.Err, tc.kind)
 		})
 	}

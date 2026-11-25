@@ -10,7 +10,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 var minimal = [][2]string{
@@ -96,47 +96,47 @@ func TestDecodeError(t *testing.T) {
 		pointers []string
 		kind     error
 	}{
-		{"missing required", doc("reqName", ""), []string{"/reqName"}, validation.ErrRequired},
-		{"null required", doc("reqName", `null`), []string{"/reqName"}, validation.ErrNull},
-		{"null optional", doc("optName", `null`), []string{"/optName"}, validation.ErrNull},
+		{"missing required", doc("reqName", ""), []string{"/reqName"}, validator.ErrRequired},
+		{"null required", doc("reqName", `null`), []string{"/reqName"}, validator.ErrNull},
+		{"null optional", doc("optName", `null`), []string{"/optName"}, validator.ErrNull},
 		{
 			"missing required nullable",
 			doc("reqNullName", ""),
 			[]string{"/reqNullName"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
 		{"wrong type", doc("reqName", `5`), []string{"/reqName"}, errSemantic},
 		{
 			"nested missing",
 			doc("reqPoint", `{"x":1}`),
 			[]string{"/reqPoint/y"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
-		{"nested null", doc("optPoint", `null`), []string{"/optPoint"}, validation.ErrNull},
+		{"nested null", doc("optPoint", `null`), []string{"/optPoint"}, validator.ErrNull},
 		{"nested not object", doc("reqPoint", `[]`), []string{"/reqPoint"}, jsonschemart.ErrType},
-		{"enum", doc("color", `"blue"`), []string{"/color"}, validation.ErrConst},
-		{"enum null", doc("color", `null`), []string{"/color"}, validation.ErrNull},
-		{"null item", doc("tags", `["a",null]`), []string{"/tags/1"}, validation.ErrNull},
-		{"null map value", doc("counts", `{"a":null}`), []string{"/counts/a"}, validation.ErrNull},
+		{"enum", doc("color", `"blue"`), []string{"/color"}, validator.ErrConst},
+		{"enum null", doc("color", `null`), []string{"/color"}, validator.ErrNull},
+		{"null item", doc("tags", `["a",null]`), []string{"/tags/1"}, validator.ErrNull},
+		{"null map value", doc("counts", `{"a":null}`), []string{"/counts/a"}, validator.ErrNull},
 		{
 			"unknown member of a closed object",
 			doc("closed", `{"b":1,"a":true,"c":2}`),
 			[]string{"/closed/b", "/closed/c"},
-			validation.ErrClosed,
+			validator.ErrClosed,
 		},
 		{"additional property type", doc("open", `{"z":5}`), []string{"/open/z"}, errSemantic},
-		{"missing raw", doc("anything", ""), []string{"/anything"}, validation.ErrRequired},
+		{"missing raw", doc("anything", ""), []string{"/anything"}, validator.ErrRequired},
 		{
 			"every failing member",
 			doc("reqName", "", "anything", "", "optName", `null`),
 			[]string{"/anything", "/optName", "/reqName"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
 		{
 			"nested failure stops decoding",
 			doc("reqName", "", "inline", `{}`),
 			[]string{"/inline/x"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
 		{"not object", `[]`, []string{""}, jsonschemart.ErrType},
 	}
@@ -144,7 +144,7 @@ func TestDecodeError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := decodeError(t, tc.in)
 
-			assert.DeepEqual(t, validation.Pointers(err), tc.pointers)
+			assert.DeepEqual(t, validator.Pointers(err), tc.pointers)
 
 			if tc.kind == errSemantic {
 				_, ok := errors.AsType[*json.SemanticError](err)

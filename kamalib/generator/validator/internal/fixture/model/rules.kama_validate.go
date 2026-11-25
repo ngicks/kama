@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:41Z
+// generated: 2026-11-25T02:44:40Z
 
 package model
 
@@ -11,7 +11,7 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -20,175 +20,175 @@ import (
 //kama:generated kama:validate
 func (v Rules) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateZeroComparable(v.Zero), "zero"); err != nil {
+	if err := validator.Field(kamaValidateZeroComparable(v.Zero), "zero"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateZero(v.ZeroPtr == nil, "a non-nil value"), "zero_ptr"); err != nil {
+	if err := validator.Field(kamaValidateZero(v.ZeroPtr == nil, "a non-nil value"), "zero_ptr"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateNil(v.Nil == nil), "nil"); err != nil {
+	if err := validator.Field(kamaValidateNil(v.Nil == nil), "nil"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateNull(v.Null.IsNull()), "null"); err != nil {
+	if err := validator.Field(kamaValidateNull(v.Null.IsNull()), "null"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.NullPtr != nil {
-		if err := validation.Field(kamaValidateNull((*v.NullPtr).IsNull()), "null_ptr"); err != nil {
+		if err := validator.Field(kamaValidateNull((*v.NullPtr).IsNull()), "null_ptr"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(kamaValidateRegexpString(kamaValidateRegexp_39c46b3647, v.Slug), "slug"); err != nil {
+	if err := validator.Field(kamaValidateRegexpString(kamaValidateRegexp_39c46b3647, v.Slug), "slug"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateRegexpBytes(kamaValidateRegexp_39c46b3647, v.SlugBytes), "slug_bytes"); err != nil {
+	if err := validator.Field(kamaValidateRegexpBytes(kamaValidateRegexp_39c46b3647, v.SlugBytes), "slug_bytes"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateLength(len(v.Items), ">=", 1), kamaValidateLength(len(v.Items), "<=", 3)), "items"); err != nil {
+	if err := validator.Field(kamaValidateAll(stopOnFirstError, kamaValidateLength(len(v.Items), ">=", 1), kamaValidateLength(len(v.Items), "<=", 3)), "items"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Code.IsSome() {
-		if err := validation.Field(kamaValidateLength(len(v.Code.Value()), "==", 2), "code"); err != nil {
+		if err := validator.Field(kamaValidateLength(len(v.Code.Value()), "==", 2), "code"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(kamaValidateRunes(utf8.RuneCountInString(v.Kana), "==", 2), "kana"); err != nil {
+	if err := validator.Field(kamaValidateRunes(utf8.RuneCountInString(v.Kana), "==", 2), "kana"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateUniqueDeep(v.Tags), "tags"); err != nil {
+	if err := validator.Field(kamaValidateUniqueDeep(v.Tags), "tags"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Triple.IsSome() {
-		if err := validation.Field(kamaValidateUnique(kamaValidateCopy(v.Triple.Value())[:]), "triple"); err != nil {
+		if err := validator.Field(kamaValidateUnique(kamaValidateCopy(v.Triple.Value())[:]), "triple"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(kamaValidateUniqueDeep(v.Refs), "refs"); err != nil {
+	if err := validator.Field(kamaValidateUniqueDeep(v.Refs), "refs"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Level, ">=", 0), kamaValidateCmp(v.Level, "<", 100)), "level"); err != nil {
+	if err := validator.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Level, ">=", 0), kamaValidateCmp(v.Level, "<", 100)), "level"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Name != nil {
-		if err := validation.Field(kamaValidateCmp((*v.Name), ">", "b"), "name"); err != nil {
+		if err := validator.Field(kamaValidateCmp((*v.Name), ">", "b"), "name"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(kamaValidateCmp(v.Ratio, ">=", 0.5), "ratio"); err != nil {
+	if err := validator.Field(kamaValidateCmp(v.Ratio, ">=", 0.5), "ratio"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Score, ">", 10), kamaValidateCmp(v.Score, "!=", 5)), "score"); err != nil {
+	if err := validator.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Score, ">", 10), kamaValidateCmp(v.Score, "!=", 5)), "score"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateMultipleInt(v.Step, 3, "3"), "step"); err != nil {
+	if err := validator.Field(kamaValidateMultipleInt(v.Step, 3, "3"), "step"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Quarter != nil {
-		if err := validation.Field(kamaValidateMultipleFloat(float64((*v.Quarter)), 32, "1/4", "0.25"), "quarter"); err != nil {
+		if err := validator.Field(kamaValidateMultipleFloat(float64((*v.Quarter)), 32, "1/4", "0.25"), "quarter"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(kamaValidateEqual(v.Agreed, "==", true), "agreed"); err != nil {
+	if err := validator.Field(kamaValidateEqual(v.Agreed, "==", true), "agreed"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateConst(v.Color, "red", "dark blue"), "color"); err != nil {
+	if err := validator.Field(kamaValidateConst(v.Color, "red", "dark blue"), "color"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateConst(v.Pick, 1, 2, 3), "pick"); err != nil {
+	if err := validator.Field(kamaValidateConst(v.Pick, 1, 2, 3), "pick"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateFormatDate(v.Date), "date"); err != nil {
+	if err := validator.Field(kamaValidateFormatDate(v.Date), "date"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.At.IsSome() {
-		if err := validation.Field(kamaValidateFormatDateTime(v.At.Value()), "at"); err != nil {
+		if err := validator.Field(kamaValidateFormatDateTime(v.At.Value()), "at"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(kamaValidateFormatUrl(v.Url), "url"); err != nil {
+	if err := validator.Field(kamaValidateFormatUrl(v.Url), "url"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateNull(v.Elastic.IsNull()), "elastic"); err != nil {
+	if err := validator.Field(kamaValidateNull(v.Elastic.IsNull()), "elastic"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -197,49 +197,49 @@ func (v Rules) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v MultipleOf) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateMultipleInt(v.ByInt, 2, "2"), "by_int"); err != nil {
+	if err := validator.Field(kamaValidateMultipleInt(v.ByInt, 2, "2"), "by_int"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateMultipleFloat(v.ByNumber, 64, "3/2", "1.5"), "by_number"); err != nil {
+	if err := validator.Field(kamaValidateMultipleFloat(v.ByNumber, 64, "3/2", "1.5"), "by_number"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateMultipleFloat(v.BySmallNumber, 64, "1/10000", "0.0001"), "by_small_number"); err != nil {
+	if err := validator.Field(kamaValidateMultipleFloat(v.BySmallNumber, 64, "1/10000", "0.0001"), "by_small_number"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateMultipleFloat(float64(v.BySmallNumber32), 32, "1/10000", "0.0001"), "by_small_number32"); err != nil {
+	if err := validator.Field(kamaValidateMultipleFloat(float64(v.BySmallNumber32), 32, "1/10000", "0.0001"), "by_small_number32"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateMultipleFloat(v.ByVerySmallNumber, 64, "1/100000000", "1e-8"), "by_very_small_number"); err != nil {
+	if err := validator.Field(kamaValidateMultipleFloat(v.ByVerySmallNumber, 64, "1/100000000", "1e-8"), "by_very_small_number"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateMultipleFloat(v.FloatDivisionInf, 64, "123456789/1000000000", "0.123456789"), "float_division_inf"); err != nil {
+	if err := validator.Field(kamaValidateMultipleFloat(v.FloatDivisionInf, 64, "123456789/1000000000", "0.123456789"), "float_division_inf"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateMultipleInt(v.SmallMultipleOfLargeInteger, 1, "1e-8"), "small_multiple_of_large_integer"); err != nil {
+	if err := validator.Field(kamaValidateMultipleInt(v.SmallMultipleOfLargeInteger, 1, "1e-8"), "small_multiple_of_large_integer"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -250,7 +250,7 @@ func (v Ordered) Validate(stopOnFirstError bool) error {
 	var errs []error
 	for _, k := range slices.Sorted(maps.Keys(v.ByName)) {
 		e := v.ByName[k]
-		if err := validation.Field(validation.Key(e.Validate(stopOnFirstError), k), "by_name"); err != nil {
+		if err := validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "by_name"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -259,7 +259,7 @@ func (v Ordered) Validate(stopOnFirstError bool) error {
 	}
 	for _, k := range slices.Sorted(maps.Keys(v.ByLevel)) {
 		e := v.ByLevel[k]
-		if err := validation.Field(validation.Key(e.Validate(stopOnFirstError), k), "by_level"); err != nil {
+		if err := validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "by_level"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -267,14 +267,14 @@ func (v Ordered) Validate(stopOnFirstError bool) error {
 		}
 	}
 	for k, e := range v.ByRatio {
-		if err := validation.Field(validation.Key(e.Validate(stopOnFirstError), k), "by_ratio"); err != nil {
+		if err := validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "by_ratio"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -283,19 +283,19 @@ func (v Ordered) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Stamped) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(requiredComparable(v.At), "at"); err != nil {
+	if err := validator.Field(requiredComparable(v.At), "at"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(kamaValidateZeroComparable(v.Zero), "zero"); err != nil {
+	if err := validator.Field(kamaValidateZeroComparable(v.Zero), "zero"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -316,7 +316,7 @@ func (v Shipping) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -331,7 +331,7 @@ func (v Contact) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -340,27 +340,27 @@ func (v Contact) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Bounds) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Half, ">=", 2), kamaValidateCmp(v.Half, "<=", 3)), "half"); err != nil {
+	if err := validator.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Half, ">=", 2), kamaValidateCmp(v.Half, "<=", 3)), "half"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(error(nil), "small"); err != nil {
+	if err := validator.Field(error(nil), "small"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Never != nil {
-		if err := validation.Field(kamaValidateNever((*v.Never), "==", "0.5"), "never"); err != nil {
+		if err := validator.Field(kamaValidateNever((*v.Never), "==", "0.5"), "never"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -375,5 +375,5 @@ func (v Strict) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

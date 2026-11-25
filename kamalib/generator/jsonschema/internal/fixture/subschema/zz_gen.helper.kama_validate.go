@@ -2,14 +2,14 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:22Z
+// generated: 2026-11-25T02:44:28Z
 
 package subschema
 
 import (
 	"regexp"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // kamaValidateAll is a helper of the generated Validate methods.
@@ -17,7 +17,7 @@ import (
 //kama:generated kama:validate
 func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 	if !stopOnFirstError {
-		return validation.Join(errs...)
+		return validator.Join(errs...)
 	}
 	for _, err := range errs {
 		if err != nil {
@@ -44,7 +44,7 @@ func kamaValidateNot(err error, operand string) error {
 	if err != nil {
 		return nil
 	}
-	return validation.New(validation.ErrNot, "want the value to fail %s", operand)
+	return validator.New(validator.ErrNot, "want the value to fail %s", operand)
 }
 
 // kamaValidateOr is a helper of the generated Validate methods.
@@ -56,7 +56,7 @@ func kamaValidateOr(errs ...error) error {
 			return nil
 		}
 	}
-	return validation.Compose(validation.ErrOr, errs, "none of %d alternatives holds", len(errs))
+	return validator.Compose(validator.ErrOr, errs, "none of %d alternatives holds", len(errs))
 }
 
 // kamaValidateRegexp_39c46b3647 is a helper of the generated Validate methods.

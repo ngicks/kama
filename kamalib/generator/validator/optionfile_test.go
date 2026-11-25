@@ -92,9 +92,9 @@ types:
 	src := out["a.kama_validate.go"]
 	assertContains(t, src,
 		"package_option_file: ",
-		check(`validation.Field(requiredComparable(v.Name), "Name")`),
-		check(`validation.Field(kamaValidateRequired(v.P != nil, "nil"), "P")`),
-		check(`validation.Field(v.validateN(stopOnFirstError), "N")`),
+		check(`validator.Field(requiredComparable(v.Name), "Name")`),
+		check(`validator.Field(kamaValidateRequired(v.P != nil, "nil"), "P")`),
+		check(`validator.Field(v.validateN(stopOnFirstError), "N")`),
 	)
 	assertNotContains(t, src, "B)")
 }
@@ -178,7 +178,7 @@ func TestOptionFileUnknownKeys(t *testing.T) {
 	}, nil)
 	assert.NilError(t, err)
 	assertContains(t, out["a.kama_validate.go"],
-		check(`validation.Field(requiredComparable(v.N), "N")`),
+		check(`validator.Field(requiredComparable(v.N), "N")`),
 	)
 
 	msgs := make([]string, len(warnings))
@@ -286,7 +286,7 @@ func TestOptionFileDirective(t *testing.T) {
 	assertContains(t, src,
 		"package_option_file: ",
 		"custom.yaml",
-		check(`validation.Field(requiredComparable(v.N), "N")`),
+		check(`validator.Field(requiredComparable(v.N), "N")`),
 	)
 	assertNotContains(t, src, "func (v B)")
 }
@@ -311,8 +311,8 @@ func TestOptionFileOverride(t *testing.T) {
 
 	src := out["a.kama_validate.go"]
 	assertContains(t, src,
-		check(`validation.Field(kamaValidateZeroComparable(v.N), "N")`),
-		check(`validation.Field(kamaValidateCmp(v.N, ">", 0), "N")`),
+		check(`validator.Field(kamaValidateZeroComparable(v.N), "N")`),
+		check(`validator.Field(kamaValidateCmp(v.N, ">", 0), "N")`),
 	)
 	assertNotContains(t, src, "requiredComparable", "validateN")
 

@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:54Z
+// generated: 2026-11-25T02:44:06Z
 
 package nullable
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -15,7 +15,7 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 func (v Nullable) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.ReqOneOf.IsSome() {
-		if err := validation.Field(v.ReqOneOf.Value().Validate(stopOnFirstError), "reqOneOf"); err != nil {
+		if err := validator.Field(v.ReqOneOf.Value().Validate(stopOnFirstError), "reqOneOf"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -23,7 +23,7 @@ func (v Nullable) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.OptOneOf.IsDefined() {
-		if err := validation.Field(v.OptOneOf.Value().Validate(stopOnFirstError), "optOneOf"); err != nil {
+		if err := validator.Field(v.OptOneOf.Value().Validate(stopOnFirstError), "optOneOf"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -31,14 +31,14 @@ func (v Nullable) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.OptInline.IsDefined() {
-		if err := validation.Field(v.OptInline.Value().Validate(stopOnFirstError), "optInline"); err != nil {
+		if err := validator.Field(v.OptInline.Value().Validate(stopOnFirstError), "optInline"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the

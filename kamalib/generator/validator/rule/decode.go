@@ -15,7 +15,7 @@ import (
 // recursive value as many times as two to the power of its depth.
 //
 // It applies to raw JSON text only, as IsRawJson tells. Its error wraps
-// validation.ErrDecode. It records no annotation.
+// validator.ErrDecode. It records no annotation.
 type Decode struct{}
 
 // Name returns "decode".

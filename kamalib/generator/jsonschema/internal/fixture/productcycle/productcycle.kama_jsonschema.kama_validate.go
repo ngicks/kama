@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:13Z
+// generated: 2026-11-25T02:44:22Z
 
 package productcycle
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -14,27 +14,27 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 //kama:generated kama:validate
 func (v Product) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.A.Validate(stopOnFirstError), "A"); err != nil {
+	if err := validator.Field(v.A.Validate(stopOnFirstError), "A"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validation.Field(v.B.Validate(stopOnFirstError), "B"); err != nil {
+	if err := validator.Field(v.B.Validate(stopOnFirstError), "B"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Req != nil {
-		if err := validation.Field((*v.Req).Validate(stopOnFirstError), "req"); err != nil {
+		if err := validator.Field((*v.Req).Validate(stopOnFirstError), "req"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -71,14 +71,14 @@ func (v B) Validate(stopOnFirstError bool) error {
 func (v Back) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Product != nil {
-		if err := validation.Field((*v.Product).Validate(stopOnFirstError), "product"); err != nil {
+		if err := validator.Field((*v.Product).Validate(stopOnFirstError), "product"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the

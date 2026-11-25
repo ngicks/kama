@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:11Z
+// generated: 2026-11-25T02:44:20Z
 
 package prefilter
 
@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // kamaValidateClosed is a helper of the generated Validate methods.
@@ -23,13 +23,13 @@ import (
 func kamaValidateClosed[K ~string, V any](m map[K]V, stopOnFirstError bool) error {
 	var errs []error
 	for _, k := range slices.Sorted(maps.Keys(m)) {
-		err := validation.Field(validation.New(validation.ErrClosed, "member is not allowed"), string(k))
+		err := validator.Field(validator.New(validator.ErrClosed, "member is not allowed"), string(k))
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // kamaValidateConst is a helper of the generated Validate methods.
@@ -41,7 +41,7 @@ func kamaValidateConst[T comparable](got T, want ...T) error {
 		for i, w := range want {
 			spelled[i] = kamaValidateSpell(w)
 		}
-		return validation.New(validation.ErrConst, "want one of %s, got %s",
+		return validator.New(validator.ErrConst, "want one of %s, got %s",
 			strings.Join(spelled, ", "), kamaValidateSpell(got))
 	}
 	return nil

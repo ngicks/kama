@@ -2,14 +2,14 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:21Z
+// generated: 2026-11-25T02:44:28Z
 
 package resources
 
 import (
 	"unicode/utf8"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -18,14 +18,14 @@ import (
 //kama:generated kama:validate
 func (v Order) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Customer.Validate(stopOnFirstError), "customer"); err != nil {
+	if err := validator.Field(v.Customer.Validate(stopOnFirstError), "customer"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.ShipTo.IsSome() {
-		if err := validation.Field(v.ShipTo.Value().Validate(stopOnFirstError), "shipTo"); err != nil {
+		if err := validator.Field(v.ShipTo.Value().Validate(stopOnFirstError), "shipTo"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -34,7 +34,7 @@ func (v Order) Validate(stopOnFirstError bool) error {
 	}
 	if v.Lines.IsSome() {
 		for i, e := range v.Lines.Value() {
-			if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "lines"); err != nil {
+			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "lines"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -43,14 +43,14 @@ func (v Order) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Note.IsSome() {
-		if err := validation.Field(v.Note.Value().Validate(stopOnFirstError), "note"); err != nil {
+		if err := validator.Field(v.Note.Value().Validate(stopOnFirstError), "note"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -70,21 +70,21 @@ func (v Order) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Customer) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Name.Validate(stopOnFirstError), "name"); err != nil {
+	if err := validator.Field(v.Name.Validate(stopOnFirstError), "name"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Address.IsSome() {
-		if err := validation.Field(v.Address.Value().Validate(stopOnFirstError), "address"); err != nil {
+		if err := validator.Field(v.Address.Value().Validate(stopOnFirstError), "address"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -110,7 +110,7 @@ func (v CustomerName) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -120,14 +120,14 @@ func (v CustomerName) Validate(stopOnFirstError bool) error {
 func (v Address) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Zip.IsSome() {
-		if err := validation.Field(v.Zip.Value().Validate(stopOnFirstError), "zip"); err != nil {
+		if err := validator.Field(v.Zip.Value().Validate(stopOnFirstError), "zip"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -153,7 +153,7 @@ func (v AddressZip) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -162,21 +162,21 @@ func (v AddressZip) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Line) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Sku.Validate(stopOnFirstError), "sku"); err != nil {
+	if err := validator.Field(v.Sku.Validate(stopOnFirstError), "sku"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Count.IsSome() {
-		if err := validation.Field(kamaValidateCmp(v.Count.Value(), ">=", 1), "count"); err != nil {
+		if err := validator.Field(kamaValidateCmp(v.Count.Value(), ">=", 1), "count"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -189,14 +189,14 @@ func (v Line) Validate(stopOnFirstError bool) error {
 func (v Line) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if v.Count.IsSome() {
-		if err := validation.Field(kamaValidateCmp(v.Count.Value(), ">=", 1), "count"); err != nil {
+		if err := validator.Field(kamaValidateCmp(v.Count.Value(), ">=", 1), "count"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -211,7 +211,7 @@ func (v LineSku) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
@@ -226,5 +226,5 @@ func (v Note) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }

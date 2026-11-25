@@ -7,7 +7,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func kindFunc(kinds ...string) Func {
@@ -26,8 +26,8 @@ func TestProperties(t *testing.T) {
 	}
 
 	err := Properties(named(`{"a": "1", "xa": 2, "b": null}`), false, nil, entries...)
-	assert.ErrorIs(t, err, validation.ErrKind)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/a", "/b", "/xa"})
+	assert.ErrorIs(t, err, validator.ErrKind)
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/a", "/b", "/xa"})
 
 	ev := &Evaluated{}
 	assert.NilError(t, Properties(named(`{"a": 1, "xy": "s", "b": true}`), false, ev,
@@ -42,7 +42,7 @@ func TestElements(t *testing.T) {
 	assert.NilError(t, Elements(named(`{"a": 1}`), false, nil, kindFunc("null")))
 
 	err := Elements(named(`["a", "b", 1, null]`), false, nil, kindFunc("null"), prefix...)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/1", "/2"})
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/1", "/2"})
 
 	ev := &Evaluated{}
 	assert.NilError(t, Elements(named(`["a", 1, true]`), false, ev, nil, prefix...))
@@ -58,7 +58,7 @@ func TestContains(t *testing.T) {
 
 	for _, bad := range []string{`[]`, `["a"]`, `[1, 1, 1]`} {
 		assert.ErrorIs(t, Contains(named(bad), nil, kindFunc("integer"), two...),
-			validation.ErrContains, bad)
+			validator.ErrContains, bad)
 	}
 
 	ev := &Evaluated{}
@@ -73,8 +73,8 @@ func TestKeys(t *testing.T) {
 	assert.NilError(t, Keys(named(`[1]`), false, short))
 
 	err := Keys(named(`{"abc": 1, "a\"b": 2}`), false, short)
-	assert.ErrorIs(t, err, validation.ErrLength)
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/a\"b", "/abc"})
+	assert.ErrorIs(t, err, validator.ErrLength)
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/a\"b", "/abc"})
 }
 
 func TestUnevaluated(t *testing.T) {
@@ -83,7 +83,7 @@ func TestUnevaluated(t *testing.T) {
 	}
 
 	err := UnevaluatedMembers(named(`{"a": 1, "b": 2}`), false, nil, scope, kindFunc("null"))
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/b"})
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/b"})
 
 	ev := &Evaluated{}
 	assert.NilError(t, UnevaluatedMembers(named(`{"a": 1, "b": 2}`), false, ev, scope,
@@ -95,7 +95,7 @@ func TestUnevaluated(t *testing.T) {
 	}
 
 	err = UnevaluatedElements(named(`["a", 1]`), false, nil, prefix, kindFunc("null"))
-	assert.DeepEqual(t, validation.Pointers(err), []string{"/1"})
+	assert.DeepEqual(t, validator.Pointers(err), []string{"/1"})
 }
 
 func TestBranch(t *testing.T) {
@@ -105,14 +105,14 @@ func TestBranch(t *testing.T) {
 			return Properties(v, false, ev, Property(name, kindFunc("integer")))
 		}
 	}
-	fails := func(*Evaluated) error { return validation.New(validation.ErrKind, "fails") }
+	fails := func(*Evaluated) error { return validator.New(validator.ErrKind, "fails") }
 
 	ev := &Evaluated{}
 	assert.NilError(t, Branch(ev, field("a")))
 	assert.ErrorIs(t, Branch(ev, func(ev *Evaluated) error {
 		_ = field("b")(ev)
 		return fails(ev)
-	}), validation.ErrKind)
+	}), validator.ErrKind)
 	assert.DeepEqual(t, ev.members, map[string]bool{"a": true})
 
 	ev = &Evaluated{}
@@ -120,7 +120,7 @@ func TestBranch(t *testing.T) {
 	assert.DeepEqual(t, ev.members, map[string]bool{"a": true, "b": true})
 
 	ev = &Evaluated{}
-	assert.ErrorIs(t, If(ev, fails, field("b"), fails), validation.ErrKind)
+	assert.ErrorIs(t, If(ev, fails, field("b"), fails), validator.ErrKind)
 	assert.NilError(t, If(ev, fails, fails, nil))
 	assert.Equal(t, len(ev.members), 0)
 }
@@ -129,7 +129,7 @@ type decoded struct{ A int }
 
 func TestDecode(t *testing.T) {
 	assert.NilError(t, Decode[decoded](named(`{"A": 1}`)))
-	assert.ErrorIs(t, Decode[decoded](named(`"a"`)), validation.ErrDecode)
+	assert.ErrorIs(t, Decode[decoded](named(`"a"`)), validator.ErrDecode)
 }
 
 type unencodable struct{ C chan int }
@@ -138,6 +138,6 @@ func TestEncoded(t *testing.T) {
 	assert.NilError(t, Encoded(decoded{A: 1}, func(v jsontext.Value) error {
 		return Required(v, false, "A")
 	}))
-	assert.ErrorIs(t, Encoded(decoded{A: 1}, kindFunc("string")), validation.ErrKind)
-	assert.ErrorIs(t, Encoded(unencodable{}, kindFunc("object")), validation.ErrEncode)
+	assert.ErrorIs(t, Encoded(decoded{A: 1}, kindFunc("string")), validator.ErrKind)
+	assert.ErrorIs(t, Encoded(unencodable{}, kindFunc("object")), validator.ErrEncode)
 }

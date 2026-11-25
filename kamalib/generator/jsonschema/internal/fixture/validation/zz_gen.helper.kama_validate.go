@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:26Z
+// generated: 2026-11-25T02:44:32Z
 
 package validation
 
@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // kamaValidateAll is a helper of the generated Validate methods.
@@ -24,7 +24,7 @@ import (
 //kama:generated kama:validate
 func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 	if !stopOnFirstError {
-		return validation.Join(errs...)
+		return validator.Join(errs...)
 	}
 	for _, err := range errs {
 		if err != nil {
@@ -40,13 +40,13 @@ func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 func kamaValidateClosed[K ~string, V any](m map[K]V, stopOnFirstError bool) error {
 	var errs []error
 	for _, k := range slices.Sorted(maps.Keys(m)) {
-		err := validation.Field(validation.New(validation.ErrClosed, "member is not allowed"), string(k))
+		err := validator.Field(validator.New(validator.ErrClosed, "member is not allowed"), string(k))
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // kamaValidateCmp is a helper of the generated Validate methods.
@@ -54,7 +54,7 @@ func kamaValidateClosed[K ~string, V any](m map[K]V, stopOnFirstError bool) erro
 //kama:generated kama:validate
 func kamaValidateCmp[T cmp.Ordered](got T, op string, want T) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrCompare, "want %s %s, got %s",
+		return validator.New(validator.ErrCompare, "want %s %s, got %s",
 			op, kamaValidateSpell(want), kamaValidateSpell(got))
 	}
 	return nil
@@ -90,7 +90,7 @@ func kamaValidateConst[T comparable](got T, want ...T) error {
 		for i, w := range want {
 			spelled[i] = kamaValidateSpell(w)
 		}
-		return validation.New(validation.ErrConst, "want one of %s, got %s",
+		return validator.New(validator.ErrConst, "want one of %s, got %s",
 			strings.Join(spelled, ", "), kamaValidateSpell(got))
 	}
 	return nil
@@ -114,7 +114,7 @@ func kamaValidateCount(present ...bool) int {
 //kama:generated kama:validate
 func kamaValidateLength(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrLength, "want length %s %d, got %d", op, want, got)
+		return validator.New(validator.ErrLength, "want length %s %d, got %d", op, want, got)
 	}
 	return nil
 }
@@ -124,7 +124,7 @@ func kamaValidateLength(got int, op string, want int) error {
 //kama:generated kama:validate
 func kamaValidateMembers(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrLength, "want member count %s %d, got %d", op, want, got)
+		return validator.New(validator.ErrLength, "want member count %s %d, got %d", op, want, got)
 	}
 	return nil
 }
@@ -135,7 +135,7 @@ func kamaValidateMembers(got int, op string, want int) error {
 func kamaValidateMultipleInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 |
 	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr](got, step T, want string) error {
 	if got%step != 0 {
-		return validation.New(validation.ErrMultiple, "want a multiple of %s, got %d", want, got)
+		return validator.New(validator.ErrMultiple, "want a multiple of %s, got %d", want, got)
 	}
 	return nil
 }
@@ -145,7 +145,7 @@ func kamaValidateMultipleInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 |
 //kama:generated kama:validate
 func kamaValidateRegexpString(re *regexp.Regexp, got string) error {
 	if !re.MatchString(got) {
-		return validation.New(validation.ErrPattern, "want a match of %q, got %q", re.String(), got)
+		return validator.New(validator.ErrPattern, "want a match of %q, got %q", re.String(), got)
 	}
 	return nil
 }
@@ -170,14 +170,14 @@ func kamaValidateRequires(stopOnFirstError bool, field string, present bool, nam
 	var errs []error
 	for i, ok := range siblings {
 		if !ok {
-			err := validation.Field(validation.New(validation.ErrRequired, "want a value, as %q has one", field), names[i])
+			err := validator.Field(validator.New(validator.ErrRequired, "want a value, as %q has one", field), names[i])
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // kamaValidateRunes is a helper of the generated Validate methods.
@@ -185,7 +185,7 @@ func kamaValidateRequires(stopOnFirstError bool, field string, present bool, nam
 //kama:generated kama:validate
 func kamaValidateRunes(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
-		return validation.New(validation.ErrLength, "want rune count %s %d, got %d", op, want, got)
+		return validator.New(validator.ErrLength, "want rune count %s %d, got %d", op, want, got)
 	}
 	return nil
 }
@@ -207,7 +207,7 @@ func kamaValidateUnique[T comparable](got []T) error {
 	seen := make(map[T]int, len(got))
 	for i, x := range got {
 		if j, ok := seen[x]; ok {
-			return validation.New(validation.ErrUnique, "want unique elements, got equal elements at %d and %d", j, i)
+			return validator.New(validator.ErrUnique, "want unique elements, got equal elements at %d and %d", j, i)
 		}
 		seen[x] = i
 	}

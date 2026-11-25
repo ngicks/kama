@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:11:03Z
+// generated: 2026-11-25T02:44:31Z
 
 package validation
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -85,29 +85,29 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Order
 	var errs []error
 	out.Id, err = jsonschemart.Required(w.Id)
-	errs = append(errs, validation.Field(err, "id"))
+	errs = append(errs, validator.Field(err, "id"))
 	out.Count, err = jsonschemart.Optional(w.Count)
-	errs = append(errs, validation.Field(err, "count"))
+	errs = append(errs, validator.Field(err, "count"))
 	out.Ratio, err = jsonschemart.Optional(w.Ratio)
-	errs = append(errs, validation.Field(err, "ratio"))
+	errs = append(errs, validator.Field(err, "ratio"))
 	out.Items, err = jsonschemart.Required(w.Items)
-	errs = append(errs, validation.Field(err, "items"))
+	errs = append(errs, validator.Field(err, "items"))
 	out.Labels, err = jsonschemart.Optional(w.Labels)
-	errs = append(errs, validation.Field(err, "labels"))
+	errs = append(errs, validator.Field(err, "labels"))
 	out.Level, err = jsonschemart.Optional(w.Level)
-	errs = append(errs, validation.Field(err, "level"))
+	errs = append(errs, validator.Field(err, "level"))
 	out.Coupon, err = jsonschemart.Optional(w.Coupon)
-	errs = append(errs, validation.Field(err, "coupon"))
+	errs = append(errs, validator.Field(err, "coupon"))
 	out.Discount, err = jsonschemart.Optional(w.Discount)
-	errs = append(errs, validation.Field(err, "discount"))
+	errs = append(errs, validator.Field(err, "discount"))
 	out.Closed, err = jsonschemart.Optional(w.Closed)
-	errs = append(errs, validation.Field(err, "closed"))
+	errs = append(errs, validator.Field(err, "closed"))
 	out.Typed, err = jsonschemart.Optional(w.Typed)
-	errs = append(errs, validation.Field(err, "typed"))
+	errs = append(errs, validator.Field(err, "typed"))
 	out.Pick, err = jsonschemart.Optional(w.Pick)
-	errs = append(errs, validation.Field(err, "pick"))
+	errs = append(errs, validator.Field(err, "pick"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -188,9 +188,9 @@ func (v *OrderClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out OrderClosed
 	var errs []error
 	out.A, err = jsonschemart.Optional(w.A)
-	errs = append(errs, validation.Field(err, "a"))
+	errs = append(errs, validator.Field(err, "a"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -235,9 +235,9 @@ func (v *OrderTyped) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out OrderTyped
 	var errs []error
 	out.N, err = jsonschemart.Optional(w.N)
-	errs = append(errs, validation.Field(err, "n"))
+	errs = append(errs, validator.Field(err, "n"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -368,7 +368,7 @@ func (v OrderPick) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case OrderPickUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -383,7 +383,7 @@ func (v OrderPick) Validate(stopOnFirstError bool) error {
 	case OrderPickUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
 }
 
 // ValidateShallow is Validate for a decoded OrderPick. The decoder yields a
@@ -398,7 +398,7 @@ func (v OrderPick) ValidateShallow(stopOnFirstError bool) error {
 	case OrderPickUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "OrderPick holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the only member the value matches. A

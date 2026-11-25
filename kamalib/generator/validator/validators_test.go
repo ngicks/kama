@@ -619,9 +619,9 @@ func TestDocExample(t *testing.T) {
 	assert.NilError(t, gentest.Build(f, opts))
 
 	assertContains(t, out["a.kama_validate.go"],
-		check(`validation.Field(kamaValidateMultiple(int64(v.N), 3), "N")`),
-		check(`validation.Field(kamaValidateMultiple(int64(v.C), 4), "C")`),
-		check(`validation.Field(kamaValidateMultiple(int64((*v.P)), 5), "P")`),
+		check(`validator.Field(kamaValidateMultiple(int64(v.N), 3), "N")`),
+		check(`validator.Field(kamaValidateMultiple(int64(v.C), 4), "C")`),
+		check(`validator.Field(kamaValidateMultiple(int64((*v.P)), 5), "P")`),
 	)
 	assertContains(t, out[HelpersFile],
 		"func kamaValidateMultiple(got, n int64) error {",

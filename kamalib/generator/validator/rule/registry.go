@@ -53,7 +53,7 @@ var ErrArgs = errors.New("validator: invalid args")
 
 // ValidationPath is the import path of the package of the errors generated
 // code returns. A rule imports it through Importer.Import to build them.
-const ValidationPath = "github.com/ngicks/kama/kamalib/pkg/validation"
+const ValidationPath = "github.com/ngicks/kama/kamaruntime/validator"
 
 // Rule is a validator with its arg decoded.
 //
@@ -103,7 +103,7 @@ type StructRule interface {
 // It never applies that rule to the value a pointer or an option of the
 // field holds, and it adds no path segment of the field to its errors. The
 // errors are located at the struct, and the rule adds the segment of each
-// error itself, as validation.Field does.
+// error itself, as validator.Field does.
 type SiblingRule interface {
 	Rule
 	// Siblings returns the rule validating the field of s named field,

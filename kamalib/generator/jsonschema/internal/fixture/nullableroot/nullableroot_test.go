@@ -7,7 +7,7 @@ import (
 	"github.com/ngicks/option/opt"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func TestDecode(t *testing.T) {
@@ -30,5 +30,5 @@ func TestDecode(t *testing.T) {
 	}
 
 	var v Code
-	assert.ErrorIs(t, json.Unmarshal([]byte(`2`), &v), validation.ErrConst)
+	assert.ErrorIs(t, json.Unmarshal([]byte(`2`), &v), validator.ErrConst)
 }

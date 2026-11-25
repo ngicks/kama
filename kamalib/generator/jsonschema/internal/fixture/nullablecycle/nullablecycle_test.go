@@ -8,7 +8,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 func TestRoundTrip(t *testing.T) {
@@ -59,12 +59,12 @@ func TestDecodeError(t *testing.T) {
 		pointers []string
 		kind     error
 	}{
-		{"missing parent", `{"value":1}`, []string{"/parent"}, validation.ErrRequired},
+		{"missing parent", `{"value":1}`, []string{"/parent"}, validator.ErrRequired},
 		{
 			"missing deep parent",
 			`{"value":1,"parent":{"value":0}}`,
 			[]string{"/parent/parent"},
-			validation.ErrRequired,
+			validator.ErrRequired,
 		},
 	}
 	for _, tc := range cases {
@@ -75,7 +75,7 @@ func TestDecodeError(t *testing.T) {
 
 			se, ok := errors.AsType[*json.SemanticError](err)
 			assert.Assert(t, ok, "%T: %v", err, err)
-			assert.DeepEqual(t, validation.Pointers(se.Err), tc.pointers)
+			assert.DeepEqual(t, validator.Pointers(se.Err), tc.pointers)
 			assert.ErrorIs(t, se.Err, tc.kind)
 		})
 	}

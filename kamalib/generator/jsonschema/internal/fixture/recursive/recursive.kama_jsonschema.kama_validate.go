@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:51:17Z
+// generated: 2026-11-25T02:44:25Z
 
 package recursive
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -15,7 +15,7 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 func (v Forest) Validate(stopOnFirstError bool) error {
 	var errs []error
 	for i, e := range v.Trees {
-		if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "trees"); err != nil {
+		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "trees"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -24,7 +24,7 @@ func (v Forest) Validate(stopOnFirstError bool) error {
 	}
 	if v.Groves.IsSome() {
 		for i, e := range v.Groves.Value() {
-			if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "groves"); err != nil {
+			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "groves"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -33,20 +33,20 @@ func (v Forest) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.List.IsSome() {
-		if err := validation.Field(v.List.Value().Validate(stopOnFirstError), "list"); err != nil {
+		if err := validator.Field(v.List.Value().Validate(stopOnFirstError), "list"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	if err := validation.Field(v.Chain.Validate(stopOnFirstError), "chain"); err != nil {
+	if err := validator.Field(v.Chain.Validate(stopOnFirstError), "chain"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -68,7 +68,7 @@ func (v Tree) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Children.IsSome() {
 		for i, e := range v.Children.Value() {
-			if err := validation.Field(validation.Index(e.Validate(stopOnFirstError), i), "children"); err != nil {
+			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "children"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -76,7 +76,7 @@ func (v Tree) Validate(stopOnFirstError bool) error {
 			}
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -97,14 +97,14 @@ func (v Tree) ValidateShallow(stopOnFirstError bool) error {
 func (v List) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Next != nil {
-		if err := validation.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
+		if err := validator.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -125,14 +125,14 @@ func (v List) ValidateShallow(stopOnFirstError bool) error {
 func (v Chain) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Link != nil {
-		if err := validation.Field((*v.Link).Validate(stopOnFirstError), "link"); err != nil {
+		if err := validator.Field((*v.Link).Validate(stopOnFirstError), "link"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -153,14 +153,14 @@ func (v Chain) ValidateShallow(stopOnFirstError bool) error {
 func (v Link) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Chain != nil {
-		if err := validation.Field((*v.Chain).Validate(stopOnFirstError), "chain"); err != nil {
+		if err := validator.Field((*v.Chain).Validate(stopOnFirstError), "chain"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -181,14 +181,14 @@ func (v Link) ValidateShallow(stopOnFirstError bool) error {
 func (v Ouroboros) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if v.Tail != nil {
-		if err := validation.Field((*v.Tail).Validate(stopOnFirstError), "tail"); err != nil {
+		if err := validator.Field((*v.Tail).Validate(stopOnFirstError), "tail"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the

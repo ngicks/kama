@@ -6,7 +6,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // TestDecode checks the validators of the root type run on decoding.
@@ -16,8 +16,8 @@ func TestDecode(t *testing.T) {
 	assert.Equal(t, p, Port(8080))
 
 	for _, in := range []string{`0`, `65536`} {
-		assert.ErrorIs(t, json.Unmarshal([]byte(in), &p), validation.ErrCompare, in)
+		assert.ErrorIs(t, json.Unmarshal([]byte(in), &p), validator.ErrCompare, in)
 	}
 
-	assert.ErrorIs(t, Port(0).Validate(false), validation.ErrCompare)
+	assert.ErrorIs(t, Port(0).Validate(false), validator.ErrCompare)
 }

@@ -36,7 +36,7 @@ const (
 	jsontextPath = "encoding/json/jsontext"
 	jsonPath     = "encoding/json/v2"
 	runtimePath  = "github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	validPath    = "github.com/ngicks/kama/kamalib/pkg/validation"
+	validPath    = "github.com/ngicks/kama/kamaruntime/validator"
 	optPath      = "github.com/ngicks/option/opt"
 	undPath      = "github.com/ngicks/option/und"
 )
@@ -156,7 +156,7 @@ func newImports(pkgName string) (*importdecl.Map, error) {
 		types.NewPackage(jsontextPath, "jsontext"),
 		types.NewPackage(jsonPath, "json"),
 		types.NewPackage(runtimePath, "jsonschemart"),
-		types.NewPackage(validPath, "validation"),
+		types.NewPackage(validPath, "validator"),
 		types.NewPackage(optPath, "opt"),
 		types.NewPackage(undPath, "und"),
 	})

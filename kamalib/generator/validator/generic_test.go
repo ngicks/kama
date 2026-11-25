@@ -78,11 +78,11 @@ func TestGenericTypeParamFields(t *testing.T) {
 	// A nil function leaves the values of the type parameter unchecked.
 	assertContains(t, fn,
 		"if validateT != nil {",
-		check(`validation.Field(validateT(v.V, stopOnFirstError), "V")`),
+		check(`validator.Field(validateT(v.V, stopOnFirstError), "V")`),
 		"if v.P != nil {",
-		check(`validation.Field(validateT((*v.P), stopOnFirstError), "P")`),
-		check(`validation.Field(validation.Index(validateT(e, stopOnFirstError), i), "S")`),
-		check(`validation.Field(validation.Key(validateT(e, stopOnFirstError), k), "M")`),
+		check(`validator.Field(validateT((*v.P), stopOnFirstError), "P")`),
+		check(`validator.Field(validator.Index(validateT(e, stopOnFirstError), i), "S")`),
+		check(`validator.Field(validator.Key(validateT(e, stopOnFirstError), k), "M")`),
 	)
 }
 
@@ -91,13 +91,13 @@ func TestGenericTypeArgs(t *testing.T) {
 
 	assertContains(t, fn,
 		// A type argument holding nothing to validate gets nil.
-		check(`validation.Field(v.I.Validate(stopOnFirstError, nil), "I")`),
-		check(`validation.Field(v.BS.Validate(stopOnFirstError, nil), "BS")`),
+		check(`validator.Field(v.I.Validate(stopOnFirstError, nil), "I")`),
+		check(`validator.Field(v.BS.Validate(stopOnFirstError, nil), "BS")`),
 		// A target gets a function calling its Validate.
 		"v.B.Validate(stopOnFirstError, func(v Target, stopOnFirstError bool) error {\n"+
 			"\t\treturn v.Validate(stopOnFirstError)\n\t})",
 		// A type parameter of the receiver gets the function of the receiver.
-		check(`validation.Field(v.BT.Validate(stopOnFirstError, validateT), "BT")`),
+		check(`validator.Field(v.BT.Validate(stopOnFirstError, validateT), "BT")`),
 		"v.BB.Validate(stopOnFirstError, func(v Box[T], stopOnFirstError bool) error {\n"+
 			"\t\treturn v.Validate(stopOnFirstError, validateT)\n\t})",
 		// A type holding a target gets a function walking to it.
@@ -153,7 +153,7 @@ func TestGenericTypeParamNamedLikeLocal(t *testing.T) {
 		{"errs", []string{"\tvar errs2 []error\n"}},
 		{
 			"err",
-			[]string{"if err2 := validation.Field(requiredComparable(v.V), \"V\"); err2 != nil {"},
+			[]string{"if err2 := validator.Field(requiredComparable(v.V), \"V\"); err2 != nil {"},
 		},
 	}
 
@@ -220,7 +220,7 @@ func TestPackageDeclNamedLikeLocal(t *testing.T) {
 		{
 			"err",
 			[]string{
-				`if err2 := validation.Field(v.F.Validate(stopOnFirstError), "F"); err2 != nil {`,
+				`if err2 := validator.Field(v.F.Validate(stopOnFirstError), "F"); err2 != nil {`,
 			},
 		},
 		{"stopOnFirstError", []string{"func (v S) Validate(stopOnFirstError2 bool) error {"}},

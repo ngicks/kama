@@ -13,13 +13,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
 
-// Sentinel errors name the kinds of failure the validation package does not define. Errors of
-// this package wrap them, or the sentinels of the validation package, through [validation.New].
+// Sentinel errors name the kinds of failure the validator package does not define. Errors of
+// this package wrap them, or the sentinels of the validator package, through [validator.New].
 var (
 	ErrType          = errors.New("type")
 	ErrNoMatch       = errors.New("no match")
@@ -51,7 +51,7 @@ func Unmarshal(raw jsontext.Value, v any) error {
 	}
 
 	leaf := se.Err
-	if _, ok := errors.AsType[*validation.Error](leaf); !ok {
+	if _, ok := errors.AsType[*validator.Error](leaf); !ok {
 		// The pointer moves to the validation path, so the copy drops it and the offset to
 		// keep it from showing twice.
 		c := *se
@@ -100,7 +100,7 @@ func ValidateShallow(v any, stopOnFirstError bool) error {
 // err, as of an unknown member built in Go, gives an error wrapping ErrNoMatch.
 func UnknownMember(err error) error {
 	if err == nil {
-		return validation.New(ErrNoMatch, "value matches no member")
+		return validator.New(ErrNoMatch, "value matches no member")
 	}
 
 	return err
@@ -109,7 +109,7 @@ func UnknownMember(err error) error {
 // UnmarshalObject is [Unmarshal] for a value that must be a JSON object.
 func UnmarshalObject(raw jsontext.Value, v any) error {
 	if raw.Kind() != '{' {
-		return validation.New(ErrType, "want object, got %s", kindName(raw.Kind()))
+		return validator.New(ErrType, "want object, got %s", kindName(raw.Kind()))
 	}
 
 	return Unmarshal(raw, v)
@@ -121,9 +121,9 @@ func Required[T any](u und.Und[T]) (T, error) {
 
 	switch {
 	case u.IsUndefined():
-		return zero, validation.New(validation.ErrRequired, "member is missing")
+		return zero, validator.New(validator.ErrRequired, "member is missing")
 	case u.IsNull():
-		return zero, validation.New(validation.ErrNull, "member is null")
+		return zero, validator.New(validator.ErrNull, "member is null")
 	}
 
 	return u.Value(), nil
@@ -132,7 +132,7 @@ func Required[T any](u und.Und[T]) (T, error) {
 // Optional returns the value of an optional, non-nullable member. None means absent.
 func Optional[T any](u und.Und[T]) (opt.Option[T], error) {
 	if u.IsNull() {
-		return opt.None[T](), validation.New(validation.ErrNull, "member is null")
+		return opt.None[T](), validator.New(validator.ErrNull, "member is null")
 	}
 
 	return u.Flatten(), nil
@@ -141,7 +141,7 @@ func Optional[T any](u und.Und[T]) (opt.Option[T], error) {
 // RequiredNullable returns the value of a required, nullable member. None means null.
 func RequiredNullable[T any](u und.Und[T]) (opt.Option[T], error) {
 	if u.IsUndefined() {
-		return opt.None[T](), validation.New(validation.ErrRequired, "member is missing")
+		return opt.None[T](), validator.New(validator.ErrRequired, "member is missing")
 	}
 
 	return u.Flatten(), nil
@@ -189,7 +189,7 @@ func OptionalNullablePointer[T any](u und.Und[T]) *T {
 func DecodeRequired[T any](raw jsontext.Value) (T, error) {
 	var v T
 	if raw == nil {
-		return v, validation.New(validation.ErrRequired, "member is missing")
+		return v, validator.New(validator.ErrRequired, "member is missing")
 	}
 
 	err := Unmarshal(raw, &v)
@@ -286,14 +286,14 @@ func MemberEquals(raw jsontext.Value, name, want string) bool {
 
 // NoMatch reports a value no member of a union decodes. errs holds why each member failed.
 func NoMatch(errs []error) error {
-	return validation.Join(
-		append([]error{validation.New(ErrNoMatch, "value matches no member")}, errs...)...,
+	return validator.Join(
+		append([]error{validator.New(ErrNoMatch, "value matches no member")}, errs...)...,
 	)
 }
 
 // MultipleMatch reports a value that the members first and second of a oneOf both decode.
 func MultipleMatch(first, second string) error {
-	return validation.New(ErrMultipleMatch, "value matches %s, %s", first, second)
+	return validator.New(ErrMultipleMatch, "value matches %s, %s", first, second)
 }
 
 // MemberError returns err annotated with the union member name.
@@ -318,7 +318,7 @@ func MarshalObjects(enc *jsontext.Encoder, values ...any) error {
 
 		raw := jsontext.Value(b)
 		if raw.Kind() != '{' {
-			return validation.New(ErrType, "want object, got %s", kindName(raw.Kind()))
+			return validator.New(ErrType, "want object, got %s", kindName(raw.Kind()))
 		}
 
 		for name, value := range members(raw) {
@@ -361,7 +361,7 @@ var rejectNull = json.UnmarshalFromFunc(func(dec *jsontext.Decoder, v any) error
 		reflect.Bool,
 		reflect.Slice,
 		reflect.Map:
-		return validation.New(validation.ErrNull, "value is null")
+		return validator.New(validator.ErrNull, "value is null")
 	default:
 		return errors.ErrUnsupported
 	}
@@ -382,12 +382,12 @@ var integerNumber = json.UnmarshalFromFunc(func(dec *jsontext.Decoder, v *int64)
 
 	text, ok := integerText(string(raw))
 	if !ok {
-		return validation.New(ErrType, "want integer in the range of int64, got %s", raw)
+		return validator.New(ErrType, "want integer in the range of int64, got %s", raw)
 	}
 
 	n, err := strconv.ParseInt(text, 10, 64)
 	if err != nil {
-		return validation.New(ErrType, "want integer in the range of int64, got %s", raw)
+		return validator.New(ErrType, "want integer in the range of int64, got %s", raw)
 	}
 
 	*v = n
@@ -467,9 +467,9 @@ func locate(err error, ptr jsontext.Pointer) error {
 	for _, tok := range slices.Backward(tokens) {
 		if i, convErr := strconv.Atoi(tok); convErr == nil && i >= 0 &&
 			strconv.Itoa(i) == tok {
-			err = validation.Index(err, i)
+			err = validator.Index(err, i)
 		} else {
-			err = validation.Field(err, tok)
+			err = validator.Field(err, tok)
 		}
 	}
 

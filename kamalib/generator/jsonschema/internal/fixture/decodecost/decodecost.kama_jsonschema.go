@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:17Z
+// generated: 2026-11-25T02:43:59Z
 
 package decodecost
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -58,15 +58,15 @@ func (v *Costs) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Costs
 	var errs []error
 	out.Plain, err = jsonschemart.Optional(w.Plain)
-	errs = append(errs, validation.Field(err, "plain"))
+	errs = append(errs, validator.Field(err, "plain"))
 	out.Negated, err = jsonschemart.Optional(w.Negated)
-	errs = append(errs, validation.Field(err, "negated"))
+	errs = append(errs, validator.Field(err, "negated"))
 	out.Chosen, err = jsonschemart.Optional(w.Chosen)
-	errs = append(errs, validation.Field(err, "chosen"))
+	errs = append(errs, validator.Field(err, "chosen"))
 	out.Closed, err = jsonschemart.Optional(w.Closed)
-	errs = append(errs, validation.Field(err, "closed"))
+	errs = append(errs, validator.Field(err, "closed"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -113,11 +113,11 @@ func (v *Plain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Plain
 	var errs []error
 	out.Next, err = jsonschemart.OptionalPointer(w.Next)
-	errs = append(errs, validation.Field(err, "next"))
+	errs = append(errs, validator.Field(err, "next"))
 	out.V, err = jsonschemart.Optional(w.V)
-	errs = append(errs, validation.Field(err, "v"))
+	errs = append(errs, validator.Field(err, "v"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -165,11 +165,11 @@ func (v *Negated) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Negated
 	var errs []error
 	out.Next, err = jsonschemart.OptionalPointer(w.Next)
-	errs = append(errs, validation.Field(err, "next"))
+	errs = append(errs, validator.Field(err, "next"))
 	out.V, err = jsonschemart.Optional(w.V)
-	errs = append(errs, validation.Field(err, "v"))
+	errs = append(errs, validator.Field(err, "v"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -264,7 +264,7 @@ func (v Chosen) MarshalJSONTo(enc *jsontext.Encoder) error {
 	case ChosenUnknown:
 		return enc.WriteValue(k.Value)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Chosen holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Chosen holds no member")
 }
 
 // Validate reports why the member v holds is invalid, through the Validate
@@ -279,7 +279,7 @@ func (v Chosen) Validate(stopOnFirstError bool) error {
 	case ChosenUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Chosen holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Chosen holds no member")
 }
 
 // chosenNonNegativeProbe is the raw value the union at #/$defs/Chosen tests
@@ -328,7 +328,7 @@ func (v Chosen) ValidateShallow(stopOnFirstError bool) error {
 	case ChosenUnknown:
 		return jsonschemart.UnknownMember(k.err)
 	}
-	return validation.New(jsonschemart.ErrNilKind, "Chosen holds no member")
+	return validator.New(jsonschemart.ErrNilKind, "Chosen holds no member")
 }
 
 // UnmarshalJSONFrom decodes v from the only member the value matches. A
@@ -431,11 +431,11 @@ func (v *NonNegative) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out NonNegative
 	var errs []error
 	out.Next, err = jsonschemart.Optional(w.Next)
-	errs = append(errs, validation.Field(err, "next"))
+	errs = append(errs, validator.Field(err, "next"))
 	out.A, err = jsonschemart.Required(w.A)
-	errs = append(errs, validation.Field(err, "a"))
+	errs = append(errs, validator.Field(err, "a"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -483,11 +483,11 @@ func (v *Negative) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Negative
 	var errs []error
 	out.Next, err = jsonschemart.Optional(w.Next)
-	errs = append(errs, validation.Field(err, "next"))
+	errs = append(errs, validator.Field(err, "next"))
 	out.A, err = jsonschemart.Required(w.A)
-	errs = append(errs, validation.Field(err, "a"))
+	errs = append(errs, validator.Field(err, "a"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -535,11 +535,11 @@ func (v *Closed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Closed
 	var errs []error
 	out.Next, err = jsonschemart.OptionalPointer(w.Next)
-	errs = append(errs, validation.Field(err, "next"))
+	errs = append(errs, validator.Field(err, "next"))
 	out.V, err = jsonschemart.Optional(w.V)
-	errs = append(errs, validation.Field(err, "v"))
+	errs = append(errs, validator.Field(err, "v"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

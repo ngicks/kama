@@ -2,11 +2,11 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:53Z
+// generated: 2026-11-25T02:44:02Z
 
 package multikind
 
-import "github.com/ngicks/kama/kamalib/pkg/validation"
+import "github.com/ngicks/kama/kamaruntime/validator"
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first
 // error found, otherwise every error joined, or nil when there is none.
@@ -14,21 +14,21 @@ import "github.com/ngicks/kama/kamalib/pkg/validation"
 //kama:generated kama:validate
 func (v Cell) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Value.Validate(stopOnFirstError), "value"); err != nil {
+	if err := validator.Field(v.Value.Validate(stopOnFirstError), "value"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Label.IsSome() {
-		if err := validation.Field(v.Label.Value().Validate(stopOnFirstError), "label"); err != nil {
+		if err := validator.Field(v.Label.Value().Validate(stopOnFirstError), "label"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // ValidateShallow is Validate for a decoded v. With stopOnFirstError it returns the
@@ -40,21 +40,21 @@ func (v Cell) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Cell) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
-	if err := validation.Field(v.Value.ValidateShallow(stopOnFirstError), "value"); err != nil {
+	if err := validator.Field(v.Value.ValidateShallow(stopOnFirstError), "value"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Label.IsSome() {
-		if err := validation.Field(v.Label.Value().ValidateShallow(stopOnFirstError), "label"); err != nil {
+		if err := validator.Field(v.Label.Value().ValidateShallow(stopOnFirstError), "label"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	return validation.Join(errs...)
+	return validator.Join(errs...)
 }
 
 // Validate reports why v is invalid. With stopOnFirstError it returns the first

@@ -1,6 +1,6 @@
 # Tasks spanning the Go modules of this repository.
 
-modules := "kamalib kamacli"
+modules := "kamaruntime kamalib kamacli"
 suite_dir := "kamalib/pkg/jsonschema/testdata/suite"
 
 default:

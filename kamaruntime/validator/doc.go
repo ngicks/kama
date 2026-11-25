@@ -1,4 +1,4 @@
-// Package validation records where a validation error happened and lets callers query errors by
+// Package validator records where a validation error happened and lets callers query errors by
 // JSON pointer.
 //
 // Validators create leaf errors with [New]. Callers that descend into a struct field, a slice
@@ -6,10 +6,10 @@
 // aggregates several errors into one. [At], [Under] and [Pointers] look the errors up by their
 // RFC 6901 JSON pointer.
 //
-//	err := validation.Join(
-//		validation.Field(validation.New(validation.ErrRequired, "value is missing"), "name"),
-//		validation.Field(
-//			validation.Index(validation.New(validation.ErrLength, "want <=3, got %d", 5), 2),
+//	err := validator.Join(
+//		validator.Field(validator.New(validator.ErrRequired, "value is missing"), "name"),
+//		validator.Field(
+//			validator.Index(validator.New(validator.ErrLength, "want <=3, got %d", 5), 2),
 //			"tags",
 //		),
 //	)
@@ -17,10 +17,10 @@
 //	err.Error()
 //	// validation failed at .name: required: value is missing
 //	// validation failed at .tags[2]: length: want <=3, got 5
-//	validation.Pointers(err)            // ["/name", "/tags/2"]
-//	validation.At(err, "/tags/2")       // the length error
-//	validation.Under(err, "/tags")      // the length error
-//	errors.Is(err, validation.ErrRequired) // true
+//	validator.Pointers(err)            // ["/name", "/tags/2"]
+//	validator.At(err, "/tags/2")       // the length error
+//	validator.Under(err, "/tags")      // the length error
+//	errors.Is(err, validator.ErrRequired) // true
 //
 // # Paths
 //
@@ -44,7 +44,7 @@
 // The lookups split a value made by [Join] into its leaves and locate each leaf on its own.
 // The location of a leaf is the concatenation of the paths of every [*Error] on its Unwrap()
 // error chain, outermost first. The chain stops at an error with an Unwrap() []error method.
-// A join behind a foreign wrapper, as in fmt.Errorf("ctx: %w", validation.Join(a, b)), is
+// A join behind a foreign wrapper, as in fmt.Errorf("ctx: %w", validator.Join(a, b)), is
 // therefore one leaf. A value of the standard errors.Join is one leaf as well. Aggregate with
 // [Join] to keep every leaf addressable.
 //
@@ -59,5 +59,6 @@
 // # Dependencies
 //
 // Generated code imports this package, so it depends on the standard library only. For that
-// reason it uses plain loops where the rest of the module uses github.com/ngicks/opiter chains.
-package validation
+// reason it uses plain loops where the generator github.com/ngicks/kama/kamalib uses
+// github.com/ngicks/opiter chains.
+package validator

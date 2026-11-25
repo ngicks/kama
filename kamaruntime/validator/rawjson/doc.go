@@ -12,5 +12,5 @@
 // with the length of its text, never with its exponent. Text that is not a
 // JSON number equals nothing and fails every comparison.
 // The errors are those of package
-// github.com/ngicks/kama/kamalib/pkg/validation.
+// github.com/ngicks/kama/kamaruntime/validator.
 package rawjson

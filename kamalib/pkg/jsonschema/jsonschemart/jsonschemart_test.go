@@ -17,7 +17,7 @@ import (
 	"github.com/ngicks/option/und"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 type failing struct{}
@@ -27,7 +27,7 @@ func (*failing) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		return err
 	}
 
-	return validation.Field(validation.New(validation.ErrRequired, "inner"), "x")
+	return validator.Field(validator.New(validator.ErrRequired, "inner"), "x")
 }
 
 func TestUnmarshalLocatesErrors(t *testing.T) {
@@ -61,7 +61,7 @@ func TestUnmarshalLocatesErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := Unmarshal(jsontext.Value(tc.in), tc.v)
 
-			e, ok := errors.AsType[*validation.Error](err)
+			e, ok := errors.AsType[*validator.Error](err)
 			assert.Assert(t, ok, "%T: %v", err, err)
 			assert.Equal(t, e.Pointer(), tc.pointer)
 			assert.Equal(t, err.Error(), tc.text)
@@ -78,7 +78,7 @@ func TestUnmarshalLocatesSemanticErrors(t *testing.T) {
 
 	err := Unmarshal(jsontext.Value(`{"a":{"7":"x"}}`), &v)
 
-	e, ok := errors.AsType[*validation.Error](err)
+	e, ok := errors.AsType[*validator.Error](err)
 	assert.Assert(t, ok, "%T: %v", err, err)
 	assert.Equal(t, e.Pointer(), "/a/7")
 	assert.Assert(t, strings.HasPrefix(err.Error(), "validation failed at .a[7]: "), err.Error())
@@ -105,7 +105,7 @@ func TestUnmarshalRejectsNull(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.ErrorIs(t, Unmarshal(jsontext.Value(`null`), tc.v), validation.ErrNull)
+			assert.ErrorIs(t, Unmarshal(jsontext.Value(`null`), tc.v), validator.ErrNull)
 		})
 	}
 
@@ -202,9 +202,9 @@ func TestConversions(t *testing.T) {
 
 	t.Run("Required", func(t *testing.T) {
 		_, err := Required(undefined)
-		assert.ErrorIs(t, err, validation.ErrRequired)
+		assert.ErrorIs(t, err, validator.ErrRequired)
 		_, err = Required(null)
-		assert.ErrorIs(t, err, validation.ErrNull)
+		assert.ErrorIs(t, err, validator.ErrNull)
 
 		v, err := Required(defined)
 		assert.NilError(t, err)
@@ -216,7 +216,7 @@ func TestConversions(t *testing.T) {
 		assert.Assert(t, o.IsNone())
 
 		_, err = Optional(null)
-		assert.ErrorIs(t, err, validation.ErrNull)
+		assert.ErrorIs(t, err, validator.ErrNull)
 
 		o, err = Optional(defined)
 		assert.NilError(t, err)
@@ -224,7 +224,7 @@ func TestConversions(t *testing.T) {
 	})
 	t.Run("RequiredNullable", func(t *testing.T) {
 		_, err := RequiredNullable(undefined)
-		assert.ErrorIs(t, err, validation.ErrRequired)
+		assert.ErrorIs(t, err, validator.ErrRequired)
 
 		o, err := RequiredNullable(null)
 		assert.NilError(t, err)
@@ -236,7 +236,7 @@ func TestConversions(t *testing.T) {
 	})
 	t.Run("RequiredPointer", func(t *testing.T) {
 		_, err := RequiredPointer(undefined)
-		assert.ErrorIs(t, err, validation.ErrRequired)
+		assert.ErrorIs(t, err, validator.ErrRequired)
 
 		p, err := RequiredPointer(defined)
 		assert.NilError(t, err)
@@ -248,7 +248,7 @@ func TestConversions(t *testing.T) {
 		assert.Assert(t, p == nil)
 
 		_, err = OptionalPointer(null)
-		assert.ErrorIs(t, err, validation.ErrNull)
+		assert.ErrorIs(t, err, validator.ErrNull)
 
 		p, err = OptionalPointer(defined)
 		assert.NilError(t, err)
@@ -256,7 +256,7 @@ func TestConversions(t *testing.T) {
 	})
 	t.Run("RequiredNullablePointer", func(t *testing.T) {
 		_, err := RequiredNullablePointer(undefined)
-		assert.ErrorIs(t, err, validation.ErrRequired)
+		assert.ErrorIs(t, err, validator.ErrRequired)
 
 		p, err := RequiredNullablePointer(null)
 		assert.NilError(t, err)
@@ -273,14 +273,14 @@ func TestConversions(t *testing.T) {
 	})
 	t.Run("DecodeRequired", func(t *testing.T) {
 		_, err := DecodeRequired[jsontext.Value](nil)
-		assert.ErrorIs(t, err, validation.ErrRequired)
+		assert.ErrorIs(t, err, validator.ErrRequired)
 
 		v, err := DecodeRequired[jsontext.Value](jsontext.Value(`null`))
 		assert.NilError(t, err)
 		assert.Equal(t, string(v), `null`)
 
 		_, err = DecodeRequired[int64](jsontext.Value(`null`))
-		assert.ErrorIs(t, err, validation.ErrNull)
+		assert.ErrorIs(t, err, validator.ErrNull)
 	})
 	t.Run("DecodeOptional", func(t *testing.T) {
 		o, err := DecodeOptional[int64](nil)
@@ -315,7 +315,7 @@ func (v validated) Validate(stopOnFirstError bool) error {
 
 func TestValidate(t *testing.T) {
 	assert.NilError(t, Validate(validated{}, false))
-	assert.ErrorIs(t, Validate(validated{err: validation.ErrConst}, false), validation.ErrConst)
+	assert.ErrorIs(t, Validate(validated{err: validator.ErrConst}, false), validator.ErrConst)
 	assert.ErrorContains(t, Validate(validated{}, true), "stopOnFirstError is true")
 
 	err := Validate(struct{}{}, false)
@@ -363,7 +363,7 @@ func TestSelection(t *testing.T) {
 }
 
 func TestNoMatchMultipleMatch(t *testing.T) {
-	memberErr := MemberError("B", validation.Field(validation.New(validation.ErrNull, "x"), "f"))
+	memberErr := MemberError("B", validator.Field(validator.New(validator.ErrNull, "x"), "f"))
 
 	err := MultipleMatch("A", "C")
 	assert.ErrorIs(t, err, ErrMultipleMatch)
@@ -371,8 +371,8 @@ func TestNoMatchMultipleMatch(t *testing.T) {
 
 	err = NoMatch([]error{memberErr})
 	assert.ErrorIs(t, err, ErrNoMatch)
-	assert.ErrorIs(t, err, validation.ErrNull)
-	assert.DeepEqual(t, validation.Pointers(validation.Field(err, "u")), []string{"/u", "/u/f"})
+	assert.ErrorIs(t, err, validator.ErrNull)
+	assert.DeepEqual(t, validator.Pointers(validator.Field(err, "u")), []string{"/u", "/u/f"})
 
 	assert.ErrorIs(t, NoMatch(nil), ErrNoMatch)
 }
@@ -412,10 +412,10 @@ func TestMarshalObjects(t *testing.T) {
 }
 
 // TestImports keeps the runtime light for generated code: the standard library, the
-// validation package and github.com/ngicks/option only.
+// validator package and github.com/ngicks/option only.
 func TestImports(t *testing.T) {
 	allowed := []string{
-		"github.com/ngicks/kama/kamalib/pkg/validation",
+		"github.com/ngicks/kama/kamaruntime/validator",
 		"github.com/ngicks/option/",
 	}
 

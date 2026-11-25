@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:28Z
+// generated: 2026-11-25T02:44:05Z
 
 package nullable
 
@@ -11,7 +11,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -63,17 +63,17 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Nullable
 	var errs []error
 	out.ReqOneOf, err = jsonschemart.RequiredNullable(w.ReqOneOf)
-	errs = append(errs, validation.Field(err, "reqOneOf"))
+	errs = append(errs, validator.Field(err, "reqOneOf"))
 	out.OptOneOf = w.OptOneOf
 	out.ReqAnyOf, err = jsonschemart.RequiredNullable(w.ReqAnyOf)
-	errs = append(errs, validation.Field(err, "reqAnyOf"))
+	errs = append(errs, validator.Field(err, "reqAnyOf"))
 	out.OptAnyOf = w.OptAnyOf
 	out.ReqType, err = jsonschemart.RequiredNullable(w.ReqType)
-	errs = append(errs, validation.Field(err, "reqType"))
+	errs = append(errs, validator.Field(err, "reqType"))
 	out.OptType = w.OptType
 	out.OptInline = w.OptInline
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -120,9 +120,9 @@ func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out NullableOptInline
 	var errs []error
 	out.S, err = jsonschemart.Required(w.S)
-	errs = append(errs, validation.Field(err, "s"))
+	errs = append(errs, validator.Field(err, "s"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -167,9 +167,9 @@ func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Item
 	var errs []error
 	out.N, err = jsonschemart.Required(w.N)
-	errs = append(errs, validation.Field(err, "n"))
+	errs = append(errs, validator.Field(err, "n"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {

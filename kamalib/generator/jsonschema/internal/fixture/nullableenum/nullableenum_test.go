@@ -11,7 +11,7 @@ import (
 	"github.com/ngicks/option/und"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
 // allFields compares unexported fields too, such as those of opt.Option.
@@ -81,8 +81,8 @@ func TestDecodeError(t *testing.T) {
 
 			se, ok := errors.AsType[*json.SemanticError](err)
 			assert.Assert(t, ok, "%T: %v", err, err)
-			assert.DeepEqual(t, validation.Pointers(se.Err), []string{tc.at})
-			assert.ErrorIs(t, se.Err, validation.ErrConst)
+			assert.DeepEqual(t, validator.Pointers(se.Err), []string{tc.at})
+			assert.ErrorIs(t, se.Err, validator.ErrConst)
 		})
 	}
 }

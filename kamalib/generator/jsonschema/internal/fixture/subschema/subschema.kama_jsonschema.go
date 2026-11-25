@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-24T20:10:59Z
+// generated: 2026-11-25T02:44:28Z
 
 package subschema
 
@@ -12,7 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema/jsonschemart"
-	"github.com/ngicks/kama/kamalib/pkg/validation"
+	"github.com/ngicks/kama/kamaruntime/validator"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -182,7 +182,7 @@ func (v *Labels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Labels
 	var errs []error
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -294,7 +294,7 @@ func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Keys
 	var errs []error
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -338,7 +338,7 @@ func (v *Payment) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Payment
 	var errs []error
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
@@ -471,13 +471,13 @@ func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Node
 	var errs []error
 	out.V, err = jsonschemart.Optional(w.V)
-	errs = append(errs, validation.Field(err, "v"))
+	errs = append(errs, validator.Field(err, "v"))
 	out.Kids, err = jsonschemart.Optional(w.Kids)
-	errs = append(errs, validation.Field(err, "kids"))
+	errs = append(errs, validator.Field(err, "kids"))
 	out.Up, err = jsonschemart.DecodeOptional[Tree](w.Up)
-	errs = append(errs, validation.Field(err, "up"))
+	errs = append(errs, validator.Field(err, "up"))
 	out.AdditionalProperties = w.AdditionalProperties
-	if err := validation.Join(errs...); err != nil {
+	if err := validator.Join(errs...); err != nil {
 		return err
 	}
 	if err := jsonschemart.ValidateShallow(out, false); err != nil {
