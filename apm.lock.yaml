@@ -474,6 +474,15 @@ deployments:
   content_hash: sha256:445fdec3644cbdaf0ba256913330c992140272c18fbac2a88202a08068664711
 - kind: project-relative
   target: claude
+  value: .claude/rules/kama.go.lenient-decode.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:2f21fccddfbd20f679e6269691bedb5d7b517f7041cd88317fdff4136048f740
+- kind: project-relative
+  target: claude
   value: .claude/rules/kama.go.pure-functions.md
   runtime: null
   scope: project
@@ -1493,9 +1502,11 @@ local_deployed_files:
 - .claude/rules/kama.go.generator-single-source.md
 - .claude/rules/kama.go.iterator-chain.md
 - .claude/rules/kama.go.json-unknown-fields.md
+- .claude/rules/kama.go.lenient-decode.md
 - .claude/rules/kama.go.pure-functions.md
 local_deployed_file_hashes:
   .claude/rules/kama.go.generator-single-source.md: sha256:ee61cda6f01bd5190f54431d38e5dee7bad9ff8a457159d6a6ecd4e7ebdb7bbd
   .claude/rules/kama.go.iterator-chain.md: sha256:bee45bd9b54df5846a42c07cbc7b9d8f4cc31e5247dbdb27233dd501db67304a
   .claude/rules/kama.go.json-unknown-fields.md: sha256:445fdec3644cbdaf0ba256913330c992140272c18fbac2a88202a08068664711
+  .claude/rules/kama.go.lenient-decode.md: sha256:2f21fccddfbd20f679e6269691bedb5d7b517f7041cd88317fdff4136048f740
   .claude/rules/kama.go.pure-functions.md: sha256:5f78500dae00f9b48ea2c8bb37bca406ab15f7ae7ee9616d05459b8979cf1166
