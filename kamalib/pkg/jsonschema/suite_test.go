@@ -5,7 +5,6 @@ import (
 	"cmp"
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,54 +12,30 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+
+	"github.com/ngicks/kama/kamalib/internal/suitetest"
 )
 
-type suiteGroup struct {
-	Description string         `json:"description"`
-	Schema      jsontext.Value `json:"schema"`
-}
-
-// TestSuiteRoundTrip decodes every schema of the draft 2020-12 test suite and encodes it again.
-// Both sides are compared in a canonical form: object members are sorted by name, except the
-// members of properties, $defs, patternProperties and dependentSchemas, which stay in source
-// order. Strings compare by their unescaped value and numbers by their literal text.
+// TestSuiteRoundTrip decodes every schema of the test suite that applies to draft 2020-12 and
+// encodes it again. Both sides are compared in a canonical form: object members are sorted by
+// name, except the members of properties, $defs, patternProperties and dependentSchemas, which
+// stay in source order. Strings compare by their unescaped value and numbers by their literal
+// text.
 func TestSuiteRoundTrip(t *testing.T) {
-	root := filepath.Join("testdata", "suite", "tests", "draft2020-12")
+	groups := suitetest.Groups(t, os.DirFS(filepath.FromSlash("../..")))
 
-	var count int
+	for _, g := range groups {
+		t.Run(g.File+"/"+g.Description, func(t *testing.T) {
+			var s Schema
+			assert.NilError(t, jsonv2.Unmarshal(g.Schema, &s))
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || filepath.Ext(path) != ".json" {
-			return err
-		}
+			out, err := jsonv2.Marshal(s)
+			assert.NilError(t, err)
+			assert.Equal(t, canonical(t, out), canonical(t, g.Schema))
+		})
+	}
 
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-
-		var groups []suiteGroup
-		if err := jsonv2.Unmarshal(b, &groups); err != nil {
-			return err
-		}
-
-		for i, g := range groups {
-			t.Run(filepath.ToSlash(path)+"/"+g.Description, func(t *testing.T) {
-				var s Schema
-				assert.NilError(t, jsonv2.Unmarshal(g.Schema, &s), "group %d", i)
-
-				out, err := jsonv2.Marshal(s)
-				assert.NilError(t, err)
-				assert.Equal(t, canonical(t, out), canonical(t, g.Schema))
-			})
-
-			count++
-		}
-
-		return nil
-	})
-	assert.NilError(t, err)
-	assert.Assert(t, count > 400, "found %d groups", count)
+	assert.Assert(t, len(groups) > 400, "found %d groups", len(groups))
 }
 
 func canonical(t *testing.T, v jsontext.Value) string {

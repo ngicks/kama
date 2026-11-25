@@ -16,6 +16,7 @@ import (
 	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/internal/suitetest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
@@ -446,7 +447,7 @@ func TestGenerateHostileAnnotations(t *testing.T) {
 
 	content := files[0].Content
 
-	assert.NilError(t, generateSuite(jsontext.Value(schema), false))
+	assert.NilError(t, generateSuite(suitetest.Group{Schema: jsontext.Value(schema)}, false))
 
 	marker := GeneratorId().Marker()
 	markers := 0

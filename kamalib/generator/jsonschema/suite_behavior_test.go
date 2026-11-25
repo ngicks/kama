@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json/jsontext"
-	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"iter"
@@ -23,16 +22,9 @@ import (
 	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/internal/suitetest"
 	"github.com/ngicks/kama/kamalib/workflow"
 )
-
-// suiteCase is a test of a group of the suite: an instance and whether
-// the schema of the group accepts it.
-type suiteCase struct {
-	Description string         `json:"description"`
-	Data        jsontext.Value `json:"data"`
-	Valid       bool           `json:"valid"`
-}
 
 // suiteKey locates a test of the suite.
 type suiteKey struct {
@@ -43,52 +35,65 @@ type suiteKey struct {
 // the suite that Generate accepts. A file generating fewer means Generate
 // rejects schemas it used to accept. A file missing here generates none.
 var suiteGenerated = map[string]int{
-	"additionalProperties.json":    9,
-	"allOf.json":                   12,
-	"anchor.json":                  4,
-	"anyOf.json":                   8,
-	"boolean_schema.json":          2,
-	"const.json":                   17,
-	"contains.json":                7,
-	"content.json":                 4,
-	"defs.json":                    1,
-	"default.json":                 3,
-	"dependentRequired.json":       4,
-	"dependentSchemas.json":        4,
-	"dynamicRef.json":              21,
-	"enum.json":                    16,
-	"exclusiveMaximum.json":        1,
-	"exclusiveMinimum.json":        1,
-	"format.json":                  19,
-	"if-then-else.json":            12,
-	"infinite-loop-detection.json": 1,
-	"items.json":                   10,
-	"maxContains.json":             5,
-	"maxItems.json":                2,
-	"maxLength.json":               2,
-	"maxProperties.json":           3,
-	"maximum.json":                 2,
-	"minContains.json":             8,
-	"minItems.json":                2,
-	"minLength.json":               2,
-	"minProperties.json":           2,
-	"minimum.json":                 2,
-	"multipleOf.json":              6,
-	"not.json":                     9,
-	"oneOf.json":                   11,
-	"pattern.json":                 3,
-	"patternProperties.json":       6,
-	"prefixItems.json":             4,
-	"properties.json":              6,
-	"propertyNames.json":           6,
-	"ref.json":                     36,
-	"refRemote.json":               15,
-	"required.json":                5,
-	"type.json":                    11,
-	"unevaluatedItems.json":        29,
-	"unevaluatedProperties.json":   44,
-	"uniqueItems.json":             6,
-	"vocabulary.json":              2,
+	"additionalProperties.json":         9,
+	"allOf.json":                        12,
+	"anchor.json":                       9,
+	"anyOf.json":                        8,
+	"boolean_schema.json":               2,
+	"const.json":                        17,
+	"contains.json":                     20,
+	"content.json":                      4,
+	"default.json":                      3,
+	"dependentRequired.json":            4,
+	"dependentSchemas.json":             4,
+	"dynamicRef.json":                   21,
+	"enum.json":                         17,
+	"format-date-time.json":             2,
+	"format-date.json":                  2,
+	"format-duration.json":              2,
+	"format-email.json":                 2,
+	"format-hostname.json":              2,
+	"format-idn-email.json":             2,
+	"format-idn-hostname.json":          2,
+	"format-ipv4.json":                  2,
+	"format-ipv6.json":                  2,
+	"format-iri-reference.json":         2,
+	"format-iri.json":                   2,
+	"format-json-pointer.json":          2,
+	"format-regex.json":                 2,
+	"format-relative-json-pointer.json": 2,
+	"format-time.json":                  2,
+	"format-unknown.json":               1,
+	"format-uri-reference.json":         2,
+	"format-uri-template.json":          2,
+	"format-uri.json":                   2,
+	"format-uuid.json":                  2,
+	"id.json":                           25,
+	"if-then-else.json":                 12,
+	"infinite-loop-detection.json":      1,
+	"items.json":                        14,
+	"maxItems.json":                     2,
+	"maxLength.json":                    2,
+	"maxProperties.json":                3,
+	"maximum.json":                      3,
+	"minItems.json":                     2,
+	"minLength.json":                    2,
+	"minProperties.json":                2,
+	"minimum.json":                      3,
+	"multipleOf.json":                   6,
+	"not.json":                          9,
+	"oneOf.json":                        11,
+	"pattern.json":                      4,
+	"patternProperties.json":            6,
+	"properties.json":                   6,
+	"propertyNames.json":                6,
+	"ref.json":                          23,
+	"required.json":                     5,
+	"type.json":                         12,
+	"unevaluatedItems.json":             29,
+	"unevaluatedProperties.json":        44,
+	"uniqueItems.json":                  6,
+	"vocabulary.json":                   2,
 }
 
 // suiteUnsupported is the number of groups of each top-level file of the
@@ -102,45 +107,42 @@ var suiteUnsupportedReasons = []string{}
 // optionalGenerated is the generated table of the optional set of
 // suiteSets.
 var optionalGenerated = map[string]int{
-	"optional/anchor.json":                       1,
-	"optional/bignum.json":                       8,
-	"optional/dependencies-compatibility.json":   7,
-	"optional/dynamicRef.json":                   1,
-	"optional/ecmascript-regex.json":             20,
-	"optional/float-overflow.json":               1,
-	"optional/format-assertion.json":             1,
-	"optional/format/date-time.json":             1,
-	"optional/format/date.json":                  1,
-	"optional/format/duration.json":              1,
-	"optional/format/ecmascript-regex.json":      6,
-	"optional/format/email.json":                 1,
-	"optional/format/hostname.json":              2,
-	"optional/format/idn-email.json":             1,
-	"optional/format/idn-hostname.json":          2,
-	"optional/format/ipv4.json":                  1,
-	"optional/format/ipv6.json":                  1,
-	"optional/format/iri-reference.json":         1,
-	"optional/format/iri.json":                   1,
-	"optional/format/json-pointer.json":          1,
-	"optional/format/regex.json":                 1,
-	"optional/format/relative-json-pointer.json": 1,
-	"optional/format/time.json":                  1,
-	"optional/format/unknown.json":               1,
-	"optional/format/uri-reference.json":         1,
-	"optional/format/uri-template.json":          1,
-	"optional/format/uri.json":                   1,
-	"optional/format/uuid.json":                  1,
-	"optional/id.json":                           1,
-	"optional/no-schema.json":                    1,
-	"optional/non-bmp-regex.json":                2,
-	"optional/unknownKeyword.json":               1,
+	"format-date-time.json":                    1,
+	"format-date.json":                         1,
+	"format-duration.json":                     1,
+	"format-email.json":                        2,
+	"format-hostname.json":                     2,
+	"format-idn-email.json":                    1,
+	"format-idn-hostname.json":                 2,
+	"format-ipv4.json":                         1,
+	"format-ipv6.json":                         1,
+	"format-iri-reference.json":                1,
+	"format-iri.json":                          1,
+	"format-json-pointer.json":                 1,
+	"format-regex.json":                        1,
+	"format-relative-json-pointer.json":        1,
+	"format-time.json":                         1,
+	"format-uri-reference.json":                1,
+	"format-uri-template.json":                 1,
+	"format-uri.json":                          1,
+	"format-uuid.json":                         1,
+	"optional/bignum.json":                     12,
+	"optional/dependencies-compatibility.json": 7,
+	"optional/dynamicRef.json":                 1,
+	"optional/ecmascript-regex.json":           20,
+	"optional/float-overflow.json":             1,
+	"optional/format-assertion.json":           1,
+	"optional/format-regex.json":               6,
+	"optional/format-time.json":                1,
+	"optional/non-bmp-regex.json":              2,
+	"optional/non-schemas.json":                3,
 }
 
 // optionalUnsupported is the unsupported table of the optional set.
 var optionalUnsupported = map[string]int{
-	"optional/cross-draft.json":         1,
-	"optional/format-assertion.json":    1,
-	"optional/refOfUnknownKeyword.json": 5,
+	"optional/cross-draft.json":      2,
+	"optional/format-assertion.json": 1,
+	"optional/non-schemas.json":      5,
 }
 
 // optionalUnsupportedReasons are the reasons of the optional set.
@@ -161,9 +163,10 @@ var optionalExceptions = map[string]string{
 		"which a bignum overflows",
 	"optional/bignum.json: integer: a negative bignum is an integer": "an integer is int64, " +
 		"which a bignum overflows",
-	"optional/float-overflow.json: all integers are multiples of 0.5, if overflow is handled: " +
-		"valid if optional overflow handling is implemented": "an integer is int64, " +
-		"which 1e308 overflows",
+	"optional/bignum.json: enum comparison with high precision": "a number is float64, " +
+		"which rounds the decimals to the value of the enum",
+	"optional/bignum.json: const comparison with high precision": "a number is float64, " +
+		"which rounds the decimals to the value of the const",
 	"optional/dependencies-compatibility.json": "dependencies is no keyword of draft 2020-12",
 	"optional/ecmascript-regex.json":           "regexp is RE2, not ECMA 262",
 	"optional/ecmascript-regex.json: ECMA 262 \\s matches whitespace: " +
@@ -177,36 +180,48 @@ var optionalExceptions = map[string]string{
 		"ASCII whitespace only",
 	"optional/ecmascript-regex.json: ECMA 262 \\s matches whitespace: " +
 		"EM SPACE matches (Space_Separator)": "regexp is RE2, whose \\s matches ASCII whitespace only",
-	"optional/format/date-time.json: validation of date-time strings: " +
+	"format-date-time.json: validation of date-time strings: " +
 		"a valid date-time with a leap second, UTC": "time.RFC3339 rejects a leap second",
-	"optional/format/date-time.json: validation of date-time strings: " +
+	"format-date-time.json: validation of date-time strings: " +
 		"a valid date-time with a leap second, with minus offset": "time.RFC3339 rejects a leap second",
-	"optional/format/date-time.json: validation of date-time strings: " +
+	"format-date-time.json: validation of date-time strings: " +
 		"an invalid offset in date-time string": "time.RFC3339 accepts an offset hour out of range",
-	"optional/format/date-time.json: validation of date-time strings: " +
+	"format-date-time.json: validation of date-time strings: " +
 		"an invalid offset minute in date-time string": "time.RFC3339 accepts an offset minute " +
 		"out of range",
-	"optional/format/date-time.json: validation of date-time strings: " +
+	"format-date-time.json: validation of date-time strings: " +
 		"case-insensitive T and Z": "time.RFC3339 rejects a lower-case t and z",
-	"optional/format/date-time.json: validation of date-time strings: " +
+	"format-date-time.json: validation of date-time strings: " +
 		"a comma decimal separator with a time-offset": "time.RFC3339 accepts a comma before " +
 		"the fraction of a second",
-	// The schemas of format/ecmascript-regex.json name the format regex.
-	"optional/format/ecmascript-regex.json":      "format regex not asserted",
-	"optional/format/duration.json":              "format duration not asserted",
-	"optional/format/email.json":                 "format email not asserted",
-	"optional/format/hostname.json":              "format hostname not asserted",
-	"optional/format/idn-email.json":             "format idn-email not asserted",
-	"optional/format/idn-hostname.json":          "format idn-hostname not asserted",
-	"optional/format/iri.json":                   "format iri not asserted",
-	"optional/format/iri-reference.json":         "format iri-reference not asserted",
-	"optional/format/json-pointer.json":          "format json-pointer not asserted",
-	"optional/format/regex.json":                 "format regex not asserted",
-	"optional/format/relative-json-pointer.json": "format relative-json-pointer not asserted",
-	"optional/format/time.json":                  "format time not asserted",
-	"optional/format/uri.json":                   "format uri not asserted",
-	"optional/format/uri-reference.json":         "format uri-reference not asserted",
-	"optional/format/uri-template.json":          "format uri-template not asserted",
+	// A group of a top-level file is named rather than the file, whose
+	// other groups belong to the main set and must agree.
+	"format-duration.json: validation of duration strings": "format duration not asserted",
+	"format-email.json: validation of e-mail addresses":    "format email not asserted",
+	"format-email.json: " +
+		"validation of e-mail addresses against the RFC 5321 Mailbox rule": "format email not asserted",
+	"format-hostname.json: validation of host names": "format hostname not asserted",
+	"format-hostname.json: " +
+		"validation of A-label (punycode) host names": "format hostname not asserted",
+	"format-idn-email.json: " +
+		"validation of an internationalized e-mail addresses": "format idn-email not asserted",
+	"format-idn-hostname.json: " +
+		"validation of internationalized host names": "format idn-hostname not asserted",
+	"format-idn-hostname.json: " +
+		"validation of separators in internationalized host names": "format idn-hostname not asserted",
+	"format-iri.json: validation of IRIs":                     "format iri not asserted",
+	"format-iri-reference.json: validation of IRI References": "format iri-reference not asserted",
+	"format-json-pointer.json: " +
+		"validation of JSON-pointers (JSON String Representation)": "format json-pointer not asserted",
+	"format-regex.json: validation of regular expressions": "format regex not asserted",
+	"format-relative-json-pointer.json: " +
+		"validation of Relative JSON Pointers (RJP)": "format relative-json-pointer not asserted",
+	"format-time.json: validation of time strings":            "format time not asserted",
+	"format-uri.json: validation of URIs":                     "format uri not asserted",
+	"format-uri-reference.json: validation of URI References": "format uri-reference not asserted",
+	"format-uri-template.json: validation of URI-Templates":   "format uri-template not asserted",
+	"optional/format-regex.json":                              "format regex not asserted",
+	"optional/format-time.json":                               "format time not asserted",
 }
 
 // suiteEnv names the environment variable that enables TestSuiteBehavior.
@@ -217,10 +232,12 @@ const suiteEnv = "KAMA_JSONSCHEMA_SUITE"
 // that no longer compiles breaks no build but the suite run.
 var suiteDir = filepath.Join("internal", "suite")
 
-// suiteSet is a set of files of the suite and the tables checking them.
+// suiteSet is a set of groups of the suite and the tables checking them.
 type suiteSet struct {
-	// patterns match the files of the set, relative to suiteRoot.
-	patterns []string
+	name string
+	// selects reports whether a group belongs to the set. Each group of the
+	// suite belongs to exactly one set.
+	selects func(g suitetest.Group) bool
 	// generated is the least number of groups of each file that Generate
 	// accepts. A file generating fewer means Generate rejects schemas it
 	// used to accept. A file missing here generates none.
@@ -240,17 +257,28 @@ type suiteSet struct {
 	assertFormats bool
 }
 
-// suiteSets are the top-level files of the suite, which the generated code
-// agrees with on every instance, and the files of its optional directory.
+// suiteSets are the groups of the top-level files of the suite, which the
+// generated code agrees with on every instance, and the optional groups:
+// those of the optional directory and those expecting format to assert,
+// which draft 2020-12 leaves to an implementation. A group expecting
+// format to annotate belongs to neither under assert_formats, which
+// changes that behavior.
 var suiteSets = []suiteSet{
 	{
-		patterns:    []string{"*.json"},
+		name: "main",
+		selects: func(g suitetest.Group) bool {
+			return path.Dir(g.File) == "." && !g.HasTag("format-assertion")
+		},
 		generated:   suiteGenerated,
 		unsupported: suiteUnsupported,
 		reasons:     suiteUnsupportedReasons,
 	},
 	{
-		patterns:      []string{"optional/*.json", "optional/format/*.json"},
+		name: "optional",
+		selects: func(g suitetest.Group) bool {
+			return (path.Dir(g.File) == "optional" || g.HasTag("format-assertion")) &&
+				!g.HasTag("format-annotation")
+		},
 		generated:     optionalGenerated,
 		unsupported:   optionalUnsupported,
 		reasons:       optionalUnsupportedReasons,
@@ -259,19 +287,18 @@ var suiteSets = []suiteSet{
 	},
 }
 
-// suiteRoot holds the tests of draft 2020-12 of the suite.
-var suiteRoot = filepath.FromSlash("../../pkg/jsonschema/testdata/suite/tests/draft2020-12")
-
-// TestSuiteBehavior generates every group of the files of suiteSets that
-// Generate accepts as a fixture under suiteDir, through the proc as a
-// workflow spec runs it, and checks the instances of the suite against
-// them. Run it with
+// TestSuiteBehavior generates every group of suiteSets that Generate
+// accepts as a fixture under suiteDir, through the proc as a workflow spec
+// runs it, and checks the instances of the suite against them. Each group
+// of the suite that applies to draft 2020-12 belongs to exactly one set.
+// Run it with
 //
 //	KAMA_JSONSCHEMA_SUITE=1 go test ./generator/jsonschema/ -run TestSuite
 //
 // The fixtures stay on disk for inspection. Group gi of file f.json, a path
-// relative to suiteRoot, is the package <f>/g<gi> of the module in suiteDir,
-// generated from the schema f.json#/<gi>/schema with the root type Root.
+// relative to suitetest.Dir and gi the index of the group in its tests
+// array, is the package <f>/g<gi> of the module in suiteDir, generated from
+// the schema f.json#/tests/<gi>/schema with the root type Root.
 //
 // A driver program in suiteDir decodes each instance of a group into the
 // root type of its package. A decode succeeds exactly when the suite calls
@@ -303,56 +330,63 @@ func TestSuiteBehavior(t *testing.T) {
 	)
 
 	exceptions := map[string]string{}
+	groups := suitetest.Groups(t, os.DirFS(moduleRoot))
+
+	for _, g := range groups {
+		sets := opiter.WrapSeq(slices.Values(suiteSets)).
+			Filter(func(set suiteSet) bool { return set.selects(g) }).
+			Map(func(set suiteSet) string { return set.name }).
+			CollectSlice()
+
+		assert.Equal(t, len(sets), 1, "%s: %s: in sets %v", g.File, g.Description, sets)
+	}
 
 	for _, set := range suiteSets {
 		maps.Copy(exceptions, set.exceptions)
 
 		generated, unsupported, reasons := map[string]int{}, map[string]int{}, map[string]int{}
+		accepted := map[string][]suitetest.Group{}
 
-		for _, file := range set.files(t) {
-			b, err := os.ReadFile(filepath.Join(suiteRoot, filepath.FromSlash(file)))
-			assert.NilError(t, err)
-
-			var gs []suiteGroup
-			assert.NilError(t, jsonv2.Unmarshal(b, &gs))
-
-			var accepted []int
-
-			for gi, g := range gs {
-				err := generateSuite(g.Schema, set.assertFormats)
-				if errors.Is(err, ErrUnsupported) || errors.Is(err, ErrConflict) {
-					unsupported[file]++
-
-					for _, r := range slices.Compact(slices.Sorted(slices.Values(rejectReasons(err)))) {
-						reasons[r]++
-					}
-
-					continue
-				}
-
-				assert.NilError(t, err, "%s: %s", file, g.Description)
-
-				accepted = append(accepted, gi)
-				generated[file]++
-
-				for _, c := range g.Tests {
-					keys = append(
-						keys,
-						suiteKey{file: file, group: g.Description, test: c.Description},
-					)
-					valid = append(valid, c.Valid)
-
-					driver.add(file, gi, c.Data)
-				}
+		for _, g := range groups {
+			if !set.selects(g) {
+				continue
 			}
 
-			runSuiteSpec(t, file, accepted, set.assertFormats)
+			err := generateSuite(g, set.assertFormats)
+			if errors.Is(err, ErrUnsupported) || errors.Is(err, ErrConflict) {
+				unsupported[g.File]++
+
+				for _, r := range slices.Compact(slices.Sorted(slices.Values(rejectReasons(err)))) {
+					reasons[r]++
+				}
+
+				continue
+			}
+
+			assert.NilError(t, err, "%s: %s", g.File, g.Description)
+
+			accepted[g.File] = append(accepted[g.File], g)
+			generated[g.File]++
+
+			for _, c := range g.Tests {
+				keys = append(
+					keys,
+					suiteKey{file: g.File, group: g.Description, test: c.Description},
+				)
+				valid = append(valid, c.Valid)
+
+				driver.add(g.File, g.Index, c.Data)
+			}
+		}
+
+		for _, file := range slices.Sorted(maps.Keys(accepted)) {
+			runSuiteSpec(t, file, accepted[file], set.assertFormats)
 		}
 
 		checkGenerated(t, set.generated, generated)
 		checkUnsupported(t, set, unsupported, reasons)
 
-		t.Logf("%v: %d groups generated, %d unsupported", set.patterns,
+		t.Logf("%s: %d groups generated, %d unsupported", set.name,
 			sumValues(generated), sumValues(unsupported))
 
 		for _, reason := range slices.Sorted(maps.Keys(reasons)) {
@@ -417,28 +451,6 @@ func (k suiteKey) exception(exceptions map[string]string, valid bool) (string, b
 		Filter(func(key string) bool { _, ok := exceptions[key]; return ok }).
 		First().
 		Unpack()
-}
-
-// files returns the files of the set, slash-separated and relative to
-// suiteRoot.
-func (s suiteSet) files(t *testing.T) []string {
-	t.Helper()
-
-	var files []string
-
-	for _, p := range s.patterns {
-		matches, err := filepath.Glob(filepath.Join(suiteRoot, filepath.FromSlash(p)))
-		assert.NilError(t, err)
-
-		for _, m := range matches {
-			rel, err := filepath.Rel(suiteRoot, m)
-			assert.NilError(t, err)
-
-			files = append(files, filepath.ToSlash(rel))
-		}
-	}
-
-	return files
 }
 
 // checkGenerated reports a file of the suite that generates fewer groups
@@ -545,44 +557,39 @@ func suiteGroupDir(gi int) string { return fmt.Sprintf("g%03d", gi) }
 
 // runSuiteSpec generates the groups accepted of file into suiteDir with a
 // workflow running one jsonschema.generate step per group, asserting
-// formats as assertFormats tells. The overlay is
-// rooted at this module, which holds both the suite and suiteDir. The
-// copy down skips its compile check: the packages under suiteDir belong
-// to another module, and building the driver checks them.
-func runSuiteSpec(t *testing.T, file string, accepted []int, assertFormats bool) {
+// formats as assertFormats tells. The overlay is rooted at this module,
+// which holds both the suite and suiteDir. The copy down skips its compile
+// check: the packages under suiteDir belong to another module, and
+// building the driver checks them.
+func runSuiteSpec(t *testing.T, file string, accepted []suitetest.Group, assertFormats bool) {
 	t.Helper()
-
-	if len(accepted) == 0 {
-		return
-	}
 
 	ctx := context.Background()
 
-	module, err := filepath.Abs("../..")
+	module, err := filepath.Abs(moduleRoot)
 	assert.NilError(t, err)
 
 	out := path.Join("generator/jsonschema", filepath.ToSlash(suiteDir), suiteStem(file))
-	schema := "pkg/jsonschema/testdata/suite/tests/draft2020-12/" + file
 
 	steps := map[string]workflow.Step{
 		"root": {Proc: "overlayfs.open", Param: map[string]any{"root": module}},
 	}
 
-	remotes := opiter.WrapSeq(slices.Values(suiteRemotes())).
-		Map(func(r Remote) any { return map[string]any{"uri": r.Uri, "dir": r.Dir, "file": r.File} }).
-		CollectSlice()
-
 	var names workflow.Names
 
-	for _, gi := range accepted {
-		name := suiteGroupDir(gi)
+	for _, g := range accepted {
+		name := suiteGroupDir(g.Index)
 		names = append(names, name)
+
+		remotes := opiter.WrapSeq(slices.Values(suiteRemotes(g))).
+			Map(func(r Remote) any { return map[string]any{"uri": r.Uri, "dir": r.Dir, "file": r.File} }).
+			CollectSlice()
 
 		steps[name] = workflow.Step{
 			Proc: "jsonschema.generate",
 			Out:  workflow.Names{"root"},
 			Param: map[string]any{
-				"schema":         fmt.Sprintf("%s#/%d/schema", schema, gi),
+				"schema":         g.SchemaRef(),
 				"dir":            path.Join(out, name),
 				"type_name":      "Root",
 				"remotes":        remotes,

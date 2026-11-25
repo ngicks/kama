@@ -42,10 +42,11 @@ check: fmt lint vet test
 test-jsonschema-suite:
     cd kamalib && KAMA_JSONSCHEMA_SUITE=1 go test -count=1 -run TestSuiteBehavior ./generator/jsonschema/
 
-# Refresh the vendored JSON-Schema-Test-Suite from a commit of upstream.
-# Upstream replaced tests/draft2020-12 and remotes with validation/tests after
-# 245a45abc90190c0bff04d97e6d2b541b4bb9f12, so later refs fail the layout check.
-refresh-jsonschema-suite ref="245a45abc90190c0bff04d97e6d2b541b4bb9f12":
+# Refresh the vendored JSON-Schema-Test-Suite from a ref of upstream. The
+# copy keeps validation/tests without proposals/, which holds only tests of
+# unreleased keywords, the README and the schema of the test files of
+# validation/, and LICENSE.
+refresh-jsonschema-suite ref="main":
     #!/bin/sh
     set -eu
     tmp="$(mktemp -d)"
@@ -53,13 +54,14 @@ refresh-jsonschema-suite ref="245a45abc90190c0bff04d97e6d2b541b4bb9f12":
     git -C "$tmp" init -q
     git -C "$tmp" fetch -q --depth 1 https://github.com/json-schema-org/JSON-Schema-Test-Suite.git "{{ref}}"
     commit="$(git -C "$tmp" rev-parse FETCH_HEAD)"
-    for p in tests/draft2020-12 remotes LICENSE; do
+    paths="validation/tests validation/README.md validation/validation-test-schema.json LICENSE"
+    for p in $paths; do
         if ! git -C "$tmp" cat-file -e "$commit:$p" 2>/dev/null; then
             echo "$commit has no $p; upstream changed its layout" >&2
             exit 1
         fi
     done
-    rm -rf "{{suite_dir}}/tests" "{{suite_dir}}/remotes" "{{suite_dir}}/LICENSE"
+    rm -rf "{{suite_dir}}/validation" "{{suite_dir}}/LICENSE"
     mkdir -p "{{suite_dir}}"
-    git -C "$tmp" archive "$commit" tests/draft2020-12 remotes LICENSE | tar -x -C "{{suite_dir}}"
+    git -C "$tmp" archive "$commit" $paths | tar -x -C "{{suite_dir}}" --exclude=validation/tests/proposals
     sed -i "s/^Commit: .*/Commit: \`$commit\`/" "{{suite_dir}}/README.md"

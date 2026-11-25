@@ -2,95 +2,74 @@ package jsonschema
 
 import (
 	"context"
-	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"go/format"
 	"go/parser"
 	"go/token"
-	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
+	"github.com/ngicks/opiter"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
+	"github.com/ngicks/kama/kamalib/internal/suitetest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 )
 
-type suiteGroup struct {
-	Description string         `json:"description"`
-	Schema      jsontext.Value `json:"schema"`
-	Tests       []suiteCase    `json:"tests"`
-}
-
-// TestSuiteNeverPanics runs Generate over every schema of the draft 2020-12
-// test suite. Each run either gives a file that parses as Go and that
-// gofmt formats, or fails with ErrUnsupported or ErrConflict. The
-// verbose output counts both outcomes per file of the suite.
+// TestSuiteNeverPanics runs Generate over every schema of the test suite
+// that applies to draft 2020-12. Each run either gives a file that parses
+// as Go and that gofmt formats, or fails with ErrUnsupported or
+// ErrConflict. The verbose output counts both outcomes per file of the
+// suite.
 func TestSuiteNeverPanics(t *testing.T) {
-	root := filepath.FromSlash("../../pkg/jsonschema/testdata/suite/tests/draft2020-12")
+	groups := suitetest.Groups(t, os.DirFS(moduleRoot))
+	generated, unsupported := map[string]int{}, map[string]int{}
 
-	var groups int
+	for _, g := range groups {
+		err := generateSuite(g, false)
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || filepath.Ext(path) != ".json" {
-			return err
+		switch {
+		case err == nil:
+			generated[g.File]++
+		case errors.Is(err, ErrUnsupported) || errors.Is(err, ErrConflict):
+			unsupported[g.File]++
+		default:
+			t.Errorf("%s: %s: %v", g.File, g.Description, err)
 		}
+	}
 
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
+	files := slices.Compact(
+		opiter.WrapSeq(slices.Values(groups)).
+			Map(func(g suitetest.Group) string { return g.File }).
+			CollectSlice(),
+	)
 
-		var gs []suiteGroup
-		if err := jsonv2.Unmarshal(b, &gs); err != nil {
-			return err
-		}
+	for _, file := range files {
+		t.Logf("%s: %d generated, %d unsupported", file, generated[file], unsupported[file])
+	}
 
-		rel, _ := filepath.Rel(root, path)
-		generated, unsupported := 0, 0
-
-		for _, g := range gs {
-			groups++
-
-			err := generateSuite(g.Schema, false)
-			if err == nil {
-				generated++
-				continue
-			}
-
-			if errors.Is(err, ErrUnsupported) || errors.Is(err, ErrConflict) {
-				unsupported++
-				continue
-			}
-
-			t.Errorf("%s: %s: %v", rel, g.Description, err)
-		}
-
-		t.Logf("%s: %d generated, %d unsupported", filepath.ToSlash(rel), generated, unsupported)
-
-		return nil
-	})
-	assert.NilError(t, err)
-	assert.Assert(t, groups > 400, "found %d groups", groups)
+	assert.Assert(t, len(groups) > 400, "found %d groups", len(groups))
 }
 
-// suiteRemotes map the URIs the suite refers to, those of its remotes
-// directory and of the meta-schemas of draft 2020-12, to their files
+// moduleRoot is the root of this module, relative to the directory of the
+// package.
+var moduleRoot = filepath.FromSlash("../..")
+
+// suiteRemotes map the URIs a group of the suite refers to, those of its
+// external schemas and of the meta-schemas of draft 2020-12, to their files
 // relative to the root of this module.
-func suiteRemotes() []Remote {
+func suiteRemotes(g suitetest.Group) []Remote {
 	meta := "https://json-schema.org/draft/2020-12/"
 	dir := "pkg/jsonschema/testdata/metaschema/draft2020-12/"
 
-	remotes := []Remote{
-		{Uri: "http://localhost:1234/", Dir: "pkg/jsonschema/testdata/suite/remotes"},
-		{Uri: meta + "schema", File: dir + "schema.json"},
-	}
+	remotes := []Remote{{Uri: meta + "schema", File: dir + "schema.json"}}
 
 	for _, v := range []string{
 		"core", "applicator", "unevaluated", "validation", "meta-data", "format-annotation",
@@ -102,12 +81,18 @@ func suiteRemotes() []Remote {
 		)
 	}
 
-	return remotes
+	return slices.AppendSeq(
+		remotes,
+		opiter.WrapSeq2(opiter.MapsSorted(g.ExternalSchemas)).
+			OmitL().
+			Map(func(uri string) Remote { return Remote{Uri: uri, File: g.ExternalSchemaRef(uri)} }).
+			Iter(),
+	)
 }
 
-// generateSuite runs Generate over raw and checks its output. A panic
-// comes back as an error wrapping neither sentinel.
-func generateSuite(raw jsontext.Value, assertFormats bool) (err error) {
+// generateSuite runs Generate over the schema of g and checks its output.
+// A panic comes back as an error wrapping neither sentinel.
+func generateSuite(g suitetest.Group, assertFormats bool) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
@@ -115,7 +100,7 @@ func generateSuite(raw jsontext.Value, assertFormats bool) (err error) {
 	}()
 
 	var doc jsonschema.Schema
-	if err := jsonv2.Unmarshal(raw, &doc); err != nil {
+	if err := jsonv2.Unmarshal(g.Schema, &doc); err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
 
@@ -124,7 +109,7 @@ func generateSuite(raw jsontext.Value, assertFormats bool) (err error) {
 		Options: Options{
 			Package:       "suite",
 			TypeName:      "Root",
-			Load:          remoteLoader(os.DirFS(filepath.FromSlash("../..")), suiteRemotes()),
+			Load:          remoteLoader(os.DirFS(moduleRoot), suiteRemotes(g)),
 			AssertFormats: assertFormats,
 		},
 	}, overlayfs.WithFormatter(gentest.AsIs{}))

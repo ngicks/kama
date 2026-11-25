@@ -62,9 +62,10 @@ type ProcParam struct {
 }
 
 // Remote maps a URI to a file of the out of the proc. With File, the URI
-// names that file. With Dir, the URI is a prefix: a URI starting with it
-// names the file of Dir at the rest of the URI, as
-// http://example.com/schemas/ with schemas names
+// names that file, or the value of the file a JSON pointer names when File
+// is followed by # and the pointer, as Schema is. With Dir, the URI is a
+// prefix: a URI starting with it names the file of Dir at the rest of the
+// URI, as http://example.com/schemas/ with schemas names
 // schemas/pet.json for http://example.com/schemas/pet.json. The paths are
 // slash-separated and relative to the root of the out.
 type Remote struct {
@@ -209,7 +210,22 @@ func procInput(
 // a file and a directory, or naming an invalid path.
 func checkRemotes(remotes []Remote) error {
 	for i, r := range remotes {
-		target := r.Dir + r.File
+		target := r.Dir
+
+		if r.File != "" {
+			file, _, err := splitSchema(r.File)
+			if err != nil {
+				return fmt.Errorf(
+					"%w: remote %q: invalid file %q: %w",
+					ErrOptions,
+					r.Uri,
+					r.File,
+					err,
+				)
+			}
+
+			target = file
+		}
 
 		switch {
 		case r.Uri == "":
@@ -233,6 +249,9 @@ func remoteLoader(fsys fs.FS, remotes []Remote) func(string) (*jsonschema.Schema
 		var (
 			file  string
 			match int
+			// ref is the File of the remote, which may hold a pointer. A #
+			// in the file of a Dir belongs to its name.
+			ref bool
 		)
 
 		for _, r := range remotes {
@@ -241,7 +260,7 @@ func remoteLoader(fsys fs.FS, remotes []Remote) func(string) (*jsonschema.Schema
 				continue
 			}
 
-			file, match = r.File, len(r.Uri)
+			file, match, ref = r.File, len(r.Uri), r.File != ""
 			if r.Dir != "" {
 				file = path.Join(r.Dir, rest)
 			}
@@ -251,11 +270,7 @@ func remoteLoader(fsys fs.FS, remotes []Remote) func(string) (*jsonschema.Schema
 			return nil, errors.New("no remote covers the URI")
 		}
 
-		if !fs.ValidPath(file) {
-			return nil, fmt.Errorf("invalid path %q", file)
-		}
-
-		b, err := fs.ReadFile(fsys, file)
+		b, err := remoteValue(fsys, file, ref)
 		if err != nil {
 			return nil, err
 		}
@@ -267,6 +282,21 @@ func remoteLoader(fsys fs.FS, remotes []Remote) func(string) (*jsonschema.Schema
 
 		return &doc, nil
 	}
+}
+
+// remoteValue reads the value of file of fsys, which is the File of a
+// remote when ref is true and may then hold a pointer as a schema param
+// does.
+func remoteValue(fsys fs.FS, file string, ref bool) ([]byte, error) {
+	if ref {
+		return schemaValue(fsys, file)
+	}
+
+	if !fs.ValidPath(file) {
+		return nil, fmt.Errorf("invalid path %q", file)
+	}
+
+	return fs.ReadFile(fsys, file)
 }
 
 // splitSchema splits a schema param at its first # into the path of the

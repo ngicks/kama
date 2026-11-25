@@ -176,6 +176,8 @@ func TestProcParamRemotes(t *testing.T) {
 		{Remote{Uri: "http://x.test/"}, `remote "http://x.test/" needs either dir or file`},
 		{Remote{Uri: "http://x.test/", Dir: "a", File: "b"}, "needs either dir or file"},
 		{Remote{Uri: "http://x.test/", Dir: "../a"}, `invalid path "../a"`},
+		{Remote{Uri: "http://x.test/", File: "../a.json#/b"}, `invalid path "../a.json"`},
+		{Remote{Uri: "http://x.test/", File: "a.json#b"}, `invalid JSON pointer "b"`},
 	} {
 		param := procParam("a.json", "", "p", "")
 		param.Remotes = und.Defined([]Remote{tc.remote})
@@ -244,6 +246,31 @@ func TestProcRunRemotes(t *testing.T) {
 	} {
 		assert.Assert(t, strings.Contains(spaced, want), "%s: %s", want, got)
 	}
+}
+
+// TestProcRunRemotePointer generates a schema referring to a document a
+// remote with file names by a pointer into a larger file, under a key
+// holding / and a space.
+func TestProcRunRemotePointer(t *testing.T) {
+	f := procFs(t, map[string]string{
+		"api/schema.json": `{"title": "pet", "type": "object", "properties": {
+			"tag": {"$ref": "http://x.test/tag.json"}}}`,
+		"remote.json": `{"docs": {"http://x.test/tag json": {"type": "string", "maxLength": 3}}}`,
+	})
+
+	param := procParam("api/schema.json", "", "", "")
+	param.Remotes = und.Defined([]Remote{
+		{Uri: "http://x.test/tag.json", File: "remote.json#/docs/http:~1~1x.test~1tag%20json"},
+	})
+
+	r := runProc(t, f, param, gentest.Now())
+	assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
+
+	got, err := fs.ReadFile(f.FS(), "api/api.kama_jsonschema.go")
+	assert.NilError(t, err)
+
+	spaced := strings.Join(strings.Fields(string(got)), " ")
+	assert.Assert(t, strings.Contains(spaced, "opt.Option[Tag]"), "%s", got)
 }
 
 // TestProcRunRemoteMissing checks that a reference no remote covers fails

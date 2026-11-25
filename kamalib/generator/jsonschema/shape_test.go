@@ -5,56 +5,44 @@ import (
 	jsonv2 "encoding/json/v2"
 	"maps"
 	"os"
-	"path/filepath"
+	"path"
 	"slices"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/internal/suitetest"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
 // TestSuiteRootShapes checks the Go shape of the root of every group of
-// the suite that generates, so that a typed shape cannot turn into raw JSON
-// text unnoticed: an object of properties is a struct or a product, a
-// oneOf or an anyOf is a union, and a schema of one kind is no raw JSON
-// text, whatever other keywords it holds. The verbose output counts the
-// roots per shape.
+// the top-level files of the suite that generates, so that a typed shape
+// cannot turn into raw JSON text unnoticed: an object of properties is a
+// struct or a product, a oneOf or an anyOf is a union, and a schema of one
+// kind is no raw JSON text, whatever other keywords it holds. The verbose
+// output counts the roots per shape.
 func TestSuiteRootShapes(t *testing.T) {
-	root := filepath.FromSlash("../../pkg/jsonschema/testdata/suite/tests/draft2020-12")
-
-	files, err := filepath.Glob(filepath.Join(root, "*.json"))
-	assert.NilError(t, err)
-
 	counts := map[string]int{}
 
-	for _, path := range files {
-		b, err := os.ReadFile(path)
-		assert.NilError(t, err)
+	for _, g := range suitetest.Groups(t, os.DirFS(moduleRoot)) {
+		if path.Dir(g.File) != "." || generateSuite(g, false) != nil {
+			continue
+		}
 
-		var gs []suiteGroup
-		assert.NilError(t, jsonv2.Unmarshal(b, &gs))
+		doc := suiteDoc(t, g.Schema)
+		shape := rootShape(doc)
+		counts[shape]++
 
-		for _, g := range gs {
-			if generateSuite(g.Schema, false) != nil {
-				continue
-			}
-
-			doc := suiteDoc(t, g.Schema)
-			shape := rootShape(doc)
-			counts[shape]++
-
-			if want := wantShapes(doc); want != nil {
-				assert.Assert(
-					t,
-					slices.Contains(want, shape),
-					"%s: %s: root is %s, want one of %v",
-					filepath.Base(path),
-					g.Description,
-					shape,
-					want,
-				)
-			}
+		if want := wantShapes(doc); want != nil {
+			assert.Assert(
+				t,
+				slices.Contains(want, shape),
+				"%s: %s: root is %s, want one of %v",
+				g.File,
+				g.Description,
+				shape,
+				want,
+			)
 		}
 	}
 

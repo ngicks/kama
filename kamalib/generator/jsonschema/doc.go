@@ -35,15 +35,16 @@
 //	remotes    a list mapping the URIs of other documents to files of
 //	           the out, as References describes; each entry has uri and
 //	           either file, the file of that URI, or dir, the directory
-//	           a URI starting with uri continues into
+//	           a URI starting with uri continues into; a file may be
+//	           followed by # and a JSON pointer, as a schema may
 //	assert_formats
 //	           whether format asserts the formats the validator
 //	           generator checks; false when left out
 //
 // The schema file holds JSON. A schema param with a fragment, such as
-// tests/minimum.json#/0/schema, takes the value the RFC 6901 pointer of the
-// fragment points to as the schema document. The fragment is
-// percent-decoded first, as the fragment of a $ref is. The value must be
+// tests/minimum.json#/tests/0/schema, takes the value the RFC 6901
+// pointer of the fragment points to as the schema document. The fragment
+// is percent-decoded first, as the fragment of a $ref is. The value must be
 // an object or a boolean, and it is the root that "#" refers to in a $ref.
 // The proc reads it from the raw bytes of the file, so the order of its members
 // and the text of its numbers survive. A spec generating the types of
