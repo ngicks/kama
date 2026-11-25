@@ -38,6 +38,7 @@ const (
 	jsonv1Path   = "encoding/json"
 	validPath    = "github.com/ngicks/kama/kamaruntime/validator"
 	rawjsonPath  = "github.com/ngicks/kama/kamaruntime/validator/rawjson"
+	wirePath     = "github.com/ngicks/kama/kamaruntime/wire"
 	optPath      = "github.com/ngicks/option/opt"
 	undPath      = "github.com/ngicks/option/und"
 )
@@ -155,18 +156,18 @@ func newImports(pkgName string) (*importdecl.Map, error) {
 	p := types.NewPackage(pkgName, pkgName)
 	p.SetImports(slices.Concat(
 		opiter.WrapSeq(slices.Values([]string{
-			"bytes", "errors", "fmt", "io", "iter", "reflect", "slices", "strconv", "strings",
+			"bytes", "errors", "fmt", "io", "iter", "slices", "strconv", "strings",
 		})).
 			Map(func(path string) *types.Package { return types.NewPackage(path, path) }).
 			CollectSlice(),
 		[]*types.Package{
-			types.NewPackage("sync/atomic", "atomic"),
 			types.NewPackage(jsontextPath, "jsontext"),
 			types.NewPackage(jsonPath, "json"),
 			// encoding/json is named json too, which jsonPath takes.
 			types.NewPackage(jsonv1Path, "jsonv1"),
 			types.NewPackage(validPath, "validator"),
 			types.NewPackage(rawjsonPath, "rawjson"),
+			types.NewPackage(wirePath, "wire"),
 			types.NewPackage(optPath, "opt"),
 			types.NewPackage(undPath, "und"),
 		},

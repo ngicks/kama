@@ -110,6 +110,36 @@ func extraType(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 	return q(jsontextPath, "Value")
 }
 
+// extraWire is extraType for the wire struct: the wire type of a value
+// that nothing around rejects null for.
+func extraWire(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
+	return func(c genCtx) (string, error) {
+		conv, err := extraConv(doc, opts, ptr)(c)
+		if err != nil || conv == "" {
+			return extraType(doc, opts, ptr)(c)
+		}
+
+		return elemWireType(doc, opts, child(ptr, "additionalProperties"), slotAlone)(c)
+	}
+}
+
+// extraConv is wireConv for a value of extraWire, or the empty string where
+// extraWire spells extraType.
+func extraConv(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
+	return func(c genCtx) (string, error) {
+		s, err := at(doc, ptr)
+		if err != nil {
+			return "", err
+		}
+
+		if !extraMembers(s) || bridged(doc, ptr, s, "additionalProperties") {
+			return "", nil
+		}
+
+		return elemWireConv(doc, opts, child(ptr, "additionalProperties"), slotAlone)(c)
+	}
+}
+
 // productParts names what the product at ptr is made of: its members
 // separated by commas, then "and its own properties" when it declares
 // any. It is empty for a struct.
@@ -227,8 +257,8 @@ func nilChecks(doc *jsonschema.Schema, ptr string) []genStep {
 }
 
 // wireSteps returns the struct the object at ptr decodes through: every
-// property as an und.Und, or as a kamaJsonschemaPresent where its Go type
-// holds null itself, then the members the object keeps.
+// property as an und.Und of its wire type, or as a kamaJsonschemaPresent
+// where its Go type holds null itself, then the members the object keeps.
 func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	s, err := at(doc, ptr)
 	if err != nil {
@@ -249,7 +279,7 @@ func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	for _, n := range s.Properties {
 		pp := child(ptr, "properties", n.Name)
 
-		t := lang.Expr("%s[%s]", q(undPath, "Und"), goType(doc, opts, pp))
+		t := lang.Expr("%s[%s]", q(undPath, "Und"), wireType(doc, opts, pp, slotMember))
 		if acceptsNull(doc, pp) {
 			t = lang.Expr("kamaJsonschemaPresent[%s]", goType(doc, opts, pp))
 		}
@@ -263,7 +293,7 @@ func wireSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		lang.Stmt(
 			"%s map[string]%s `json:\",embed\"`",
 			fallbackField(doc, opts, ptr),
-			extraType(doc, opts, ptr),
+			extraWire(doc, opts, ptr),
 		),
 		lang.Stmt("}"),
 	)
@@ -335,7 +365,7 @@ func unmarshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep 
 	}
 
 	for _, n := range s.Properties {
-		body = append(body, decodeSteps(doc, ptr, n.Name)...)
+		body = append(body, decodeStep(doc, opts, ptr, n.Name))
 	}
 
 	body = append(body, extraSteps(doc, opts, ptr)...)
@@ -379,7 +409,15 @@ func extraSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	f := fallbackField(doc, opts, ptr)
 
 	if !product(doc, ptr, s) {
-		return []genStep{lang.Stmt("out.%s = w.%s", f, f)}
+		return []genStep{converted(
+			extraConv(doc, opts, ptr),
+			func(conv genExpr) genStep {
+				return lang.Stmt(
+					"errs = append(errs, kamaJsonschemaMembersOf(&out.%s, w.%s, %s))", f, f, conv,
+				)
+			},
+			func(genExpr) genStep { return lang.Stmt("out.%s = w.%s", f, f) },
+		)}
 	}
 
 	args := lang.Expr("w.%s", f)
@@ -494,22 +532,42 @@ func declaredMembers(doc *jsonschema.Schema, ptr string, seen []string) []string
 	return slices.Collect(opiter.Unique(slices.Values(names)))
 }
 
-// decodeSteps returns the statements converting the wire field of the
+// decodeStep returns the statement converting the wire field of the
 // property name of the object at ptr into its field, collecting the error
-// located at the member.
-func decodeSteps(doc *jsonschema.Schema, ptr, name string) []genStep {
+// located at the member. A wire field of a type other than that of the
+// field converts through the variant of the helper ending in Of.
+func decodeStep(doc *jsonschema.Schema, opts Options, ptr, name string) genStep {
 	pp := child(ptr, "properties", name)
 	f := fieldName(pp, name)
 	req, null := required(doc, ptr, name), nullable(doc, pp)
 
-	conv := func(fn string) []genStep {
-		return []genStep{lang.Stmt(
-			"errs = append(errs, %s(kamaJsonschema%s(&out.%s, w.%s), %s))",
-			q(validPath, "Field"), fn, f, f, strconv.Quote(name),
-		)}
+	set := func(fn string) genStep {
+		return lang.Stmt("kamaJsonschema%s(&out.%s, w.%s)", fn, f, f)
 	}
-	set := func(fn string) []genStep {
-		return []genStep{lang.Stmt("kamaJsonschema%s(&out.%s, w.%s)", fn, f, f)}
+	conv := func(fn string) genStep {
+		return converted(
+			wireConv(doc, opts, pp, slotMember),
+			func(conv genExpr) genStep {
+				return lang.Stmt(
+					"errs = append(errs, %s(kamaJsonschema%sOf(&out.%s, w.%s, %s), %s))",
+					q(validPath, "Field"), fn, f, f, conv, strconv.Quote(name),
+				)
+			},
+			func(genExpr) genStep {
+				return lang.Stmt(
+					"errs = append(errs, %s(kamaJsonschema%s(&out.%s, w.%s), %s))",
+					q(validPath, "Field"), fn, f, f, strconv.Quote(name),
+				)
+			},
+		)
+	}
+	// Without conversion, the helpers setting a nullable value find no error.
+	maybeSet := func(fn string) genStep {
+		return converted(
+			wireConv(doc, opts, pp, slotMember),
+			func(genExpr) genStep { return conv(fn) },
+			func(genExpr) genStep { return set(fn) },
+		)
 	}
 
 	switch {
@@ -524,7 +582,7 @@ func decodeSteps(doc *jsonschema.Schema, ptr, name string) []genStep {
 		case req:
 			return conv("RequiredPointer")
 		case null:
-			return set("OptionalNullablePointer")
+			return maybeSet("OptionalNullablePointer")
 		default:
 			return conv("OptionalPointer")
 		}
@@ -533,7 +591,11 @@ func decodeSteps(doc *jsonschema.Schema, ptr, name string) []genStep {
 	case req:
 		return conv("Required")
 	case null:
-		return []genStep{lang.Stmt("out.%s = w.%s", f, f)}
+		return converted(
+			wireConv(doc, opts, pp, slotMember),
+			func(genExpr) genStep { return conv("Nullable") },
+			func(genExpr) genStep { return lang.Stmt("out.%s = w.%s", f, f) },
+		)
 	default:
 		return conv("Optional")
 	}

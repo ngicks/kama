@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:45Z
+// generated: 2026-11-25T08:18:13Z
 
 package nullablecycle
 
@@ -11,6 +11,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/und"
 )
 
@@ -30,7 +31,7 @@ type Node struct {
 //
 //kama:generated kama:jsonschema
 type nodeWire struct {
-	Value                und.Und[int64]            `json:"value,omitzero"`
+	Value                und.Und[wire.Int64]       `json:"value,omitzero"`
 	Parent               und.Und[Node]             `json:"parent,omitzero"`
 	Next                 und.Und[Node]             `json:"next,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
@@ -48,7 +49,7 @@ func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Node
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Value, w.Value), "value"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Value, w.Value, wire.Int64.Value), "value"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullablePointer(&out.Parent, w.Parent), "parent"))
 	kamaJsonschemaOptionalNullablePointer(&out.Next, w.Next)
 	out.AdditionalProperties = w.AdditionalProperties

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:48Z
+// generated: 2026-11-25T08:18:15Z
 
 package nullableenum
 
@@ -12,6 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -87,8 +88,12 @@ func (v LevelsConst) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *LevelsConst) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out string
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[string].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := LevelsConst(out).ValidateShallow(false); err != nil {
@@ -117,8 +122,12 @@ func (v LevelsBig) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *LevelsBig) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out float64
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[float64]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[float64].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := LevelsBig(out).ValidateShallow(false); err != nil {
@@ -147,8 +156,12 @@ func (v Level) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Level) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out int64
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.Int64
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.Int64.Value(w)
+	if err != nil {
 		return err
 	}
 	if err := Level(out).ValidateShallow(false); err != nil {

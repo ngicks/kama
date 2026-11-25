@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:11:05Z
+// generated: 2026-11-25T08:22:05Z
 
 package decoding
 
@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -25,80 +26,84 @@ import (
 //kama:validate hook=off
 //kama:validate decoded
 type Root struct {
-	S                    string                       `json:"s"`
-	N                    float64                      `json:"n"`
-	I                    int64                        `json:"i"`
-	B                    bool                         `json:"b"`
-	Arr                  []string                     `json:"arr"`
-	M                    map[string]int64             `json:"m"`
-	Obj                  Point                        `json:"obj"`
-	Os                   opt.Option[string]           `json:"os,omitzero"`
-	On                   opt.Option[float64]          `json:"on,omitzero"`
-	Oi                   opt.Option[int64]            `json:"oi,omitzero"`
-	Ob                   opt.Option[bool]             `json:"ob,omitzero"`
-	Oarr                 opt.Option[[]string]         `json:"oarr,omitzero"`
-	Om                   opt.Option[map[string]int64] `json:"om,omitzero"`
-	Oobj                 opt.Option[Point]            `json:"oobj,omitzero"`
-	Ns                   opt.Option[string]           `json:"ns"`
-	Nn                   opt.Option[float64]          `json:"nn"`
-	Ni                   opt.Option[int64]            `json:"ni"`
-	Nb                   opt.Option[bool]             `json:"nb"`
-	Narr                 opt.Option[[]string]         `json:"narr"`
-	Nm                   opt.Option[map[string]int64] `json:"nm"`
-	Nobj                 opt.Option[Point]            `json:"nobj"`
-	Ons                  und.Und[string]              `json:"ons,omitzero"`
-	Onn                  und.Und[float64]             `json:"onn,omitzero"`
-	Oni                  und.Und[int64]               `json:"oni,omitzero"`
-	Onb                  und.Und[bool]                `json:"onb,omitzero"`
-	Onarr                und.Und[[]string]            `json:"onarr,omitzero"`
-	Onm                  und.Und[map[string]int64]    `json:"onm,omitzero"`
-	Onobj                und.Und[Point]               `json:"onobj,omitzero"`
-	Items                opt.Option[[]Point]          `json:"items,omitzero"`
-	Dict                 opt.Option[map[string]Point] `json:"dict,omitzero"`
-	U                    opt.Option[RootU]            `json:"u,omitzero"`
-	All                  opt.Option[RootAll]          `json:"all,omitzero"`
-	Twice                opt.Option[RootTwice]        `json:"twice,omitzero"`
-	AdditionalProperties map[string]jsontext.Value    `json:",embed"`
+	S                    string                        `json:"s"`
+	N                    float64                       `json:"n"`
+	I                    int64                         `json:"i"`
+	B                    bool                          `json:"b"`
+	Arr                  []string                      `json:"arr"`
+	M                    map[string]int64              `json:"m"`
+	Obj                  Point                         `json:"obj"`
+	Os                   opt.Option[string]            `json:"os,omitzero"`
+	On                   opt.Option[float64]           `json:"on,omitzero"`
+	Oi                   opt.Option[int64]             `json:"oi,omitzero"`
+	Ob                   opt.Option[bool]              `json:"ob,omitzero"`
+	Oarr                 opt.Option[[]string]          `json:"oarr,omitzero"`
+	Om                   opt.Option[map[string]int64]  `json:"om,omitzero"`
+	Oobj                 opt.Option[Point]             `json:"oobj,omitzero"`
+	Ns                   opt.Option[string]            `json:"ns"`
+	Nn                   opt.Option[float64]           `json:"nn"`
+	Ni                   opt.Option[int64]             `json:"ni"`
+	Nb                   opt.Option[bool]              `json:"nb"`
+	Narr                 opt.Option[[]string]          `json:"narr"`
+	Nm                   opt.Option[map[string]int64]  `json:"nm"`
+	Nobj                 opt.Option[Point]             `json:"nobj"`
+	Ons                  und.Und[string]               `json:"ons,omitzero"`
+	Onn                  und.Und[float64]              `json:"onn,omitzero"`
+	Oni                  und.Und[int64]                `json:"oni,omitzero"`
+	Onb                  und.Und[bool]                 `json:"onb,omitzero"`
+	Onarr                und.Und[[]string]             `json:"onarr,omitzero"`
+	Onm                  und.Und[map[string]int64]     `json:"onm,omitzero"`
+	Onobj                und.Und[Point]                `json:"onobj,omitzero"`
+	Items                opt.Option[[]Point]           `json:"items,omitzero"`
+	Dict                 opt.Option[map[string]Point]  `json:"dict,omitzero"`
+	U                    opt.Option[RootU]             `json:"u,omitzero"`
+	All                  opt.Option[RootAll]           `json:"all,omitzero"`
+	When                 opt.Option[string]            `json:"when,omitzero"`
+	Stamps               opt.Option[map[string]string] `json:"stamps,omitzero"`
+	Twice                opt.Option[RootTwice]         `json:"twice,omitzero"`
+	AdditionalProperties map[string]jsontext.Value     `json:",embed"`
 }
 
 // rootWire keeps a missing member of Root apart from null.
 //
 //kama:generated kama:jsonschema
 type rootWire struct {
-	S                    und.Und[string]           `json:"s,omitzero"`
-	N                    und.Und[float64]          `json:"n,omitzero"`
-	I                    und.Und[int64]            `json:"i,omitzero"`
-	B                    und.Und[bool]             `json:"b,omitzero"`
-	Arr                  und.Und[[]string]         `json:"arr,omitzero"`
-	M                    und.Und[map[string]int64] `json:"m,omitzero"`
-	Obj                  und.Und[Point]            `json:"obj,omitzero"`
-	Os                   und.Und[string]           `json:"os,omitzero"`
-	On                   und.Und[float64]          `json:"on,omitzero"`
-	Oi                   und.Und[int64]            `json:"oi,omitzero"`
-	Ob                   und.Und[bool]             `json:"ob,omitzero"`
-	Oarr                 und.Und[[]string]         `json:"oarr,omitzero"`
-	Om                   und.Und[map[string]int64] `json:"om,omitzero"`
-	Oobj                 und.Und[Point]            `json:"oobj,omitzero"`
-	Ns                   und.Und[string]           `json:"ns,omitzero"`
-	Nn                   und.Und[float64]          `json:"nn,omitzero"`
-	Ni                   und.Und[int64]            `json:"ni,omitzero"`
-	Nb                   und.Und[bool]             `json:"nb,omitzero"`
-	Narr                 und.Und[[]string]         `json:"narr,omitzero"`
-	Nm                   und.Und[map[string]int64] `json:"nm,omitzero"`
-	Nobj                 und.Und[Point]            `json:"nobj,omitzero"`
-	Ons                  und.Und[string]           `json:"ons,omitzero"`
-	Onn                  und.Und[float64]          `json:"onn,omitzero"`
-	Oni                  und.Und[int64]            `json:"oni,omitzero"`
-	Onb                  und.Und[bool]             `json:"onb,omitzero"`
-	Onarr                und.Und[[]string]         `json:"onarr,omitzero"`
-	Onm                  und.Und[map[string]int64] `json:"onm,omitzero"`
-	Onobj                und.Und[Point]            `json:"onobj,omitzero"`
-	Items                und.Und[[]Point]          `json:"items,omitzero"`
-	Dict                 und.Und[map[string]Point] `json:"dict,omitzero"`
-	U                    und.Und[RootU]            `json:"u,omitzero"`
-	All                  und.Und[RootAll]          `json:"all,omitzero"`
-	Twice                und.Und[RootTwice]        `json:"twice,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	S                    und.Und[string]                          `json:"s,omitzero"`
+	N                    und.Und[float64]                         `json:"n,omitzero"`
+	I                    und.Und[wire.Int64]                      `json:"i,omitzero"`
+	B                    und.Und[bool]                            `json:"b,omitzero"`
+	Arr                  und.Und[wire.NonNullSlice[string]]       `json:"arr,omitzero"`
+	M                    und.Und[wire.NonNullMap[string, int64]]  `json:"m,omitzero"`
+	Obj                  und.Und[Point]                           `json:"obj,omitzero"`
+	Os                   und.Und[string]                          `json:"os,omitzero"`
+	On                   und.Und[float64]                         `json:"on,omitzero"`
+	Oi                   und.Und[wire.Int64]                      `json:"oi,omitzero"`
+	Ob                   und.Und[bool]                            `json:"ob,omitzero"`
+	Oarr                 und.Und[wire.NonNullSlice[string]]       `json:"oarr,omitzero"`
+	Om                   und.Und[wire.NonNullMap[string, int64]]  `json:"om,omitzero"`
+	Oobj                 und.Und[Point]                           `json:"oobj,omitzero"`
+	Ns                   und.Und[string]                          `json:"ns,omitzero"`
+	Nn                   und.Und[float64]                         `json:"nn,omitzero"`
+	Ni                   und.Und[wire.Int64]                      `json:"ni,omitzero"`
+	Nb                   und.Und[bool]                            `json:"nb,omitzero"`
+	Narr                 und.Und[wire.NonNullSlice[string]]       `json:"narr,omitzero"`
+	Nm                   und.Und[wire.NonNullMap[string, int64]]  `json:"nm,omitzero"`
+	Nobj                 und.Und[Point]                           `json:"nobj,omitzero"`
+	Ons                  und.Und[string]                          `json:"ons,omitzero"`
+	Onn                  und.Und[float64]                         `json:"onn,omitzero"`
+	Oni                  und.Und[wire.Int64]                      `json:"oni,omitzero"`
+	Onb                  und.Und[bool]                            `json:"onb,omitzero"`
+	Onarr                und.Und[wire.NonNullSlice[string]]       `json:"onarr,omitzero"`
+	Onm                  und.Und[wire.NonNullMap[string, int64]]  `json:"onm,omitzero"`
+	Onobj                und.Und[Point]                           `json:"onobj,omitzero"`
+	Items                und.Und[[]Point]                         `json:"items,omitzero"`
+	Dict                 und.Und[map[string]Point]                `json:"dict,omitzero"`
+	U                    und.Und[RootU]                           `json:"u,omitzero"`
+	All                  und.Und[RootAll]                         `json:"all,omitzero"`
+	When                 und.Und[string]                          `json:"when,omitzero"`
+	Stamps               und.Und[wire.NonNullMap[string, string]] `json:"stamps,omitzero"`
+	Twice                und.Und[RootTwice]                       `json:"twice,omitzero"`
+	AdditionalProperties map[string]jsontext.Value                `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -115,36 +120,38 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.S, w.S), "s"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.N, w.N), "n"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.I, w.I), "i"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.I, w.I, wire.Int64.Value), "i"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.B, w.B), "b"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Arr, w.Arr), "arr"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.M, w.M), "m"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Arr, w.Arr, wire.NonNullSlice[string].Value), "arr"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.M, w.M, wire.NonNullMap[string, int64].Value), "m"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Obj, w.Obj), "obj"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Os, w.Os), "os"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.On, w.On), "on"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Oi, w.Oi), "oi"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Oi, w.Oi, wire.Int64.Value), "oi"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Ob, w.Ob), "ob"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Oarr, w.Oarr), "oarr"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Om, w.Om), "om"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Oarr, w.Oarr, wire.NonNullSlice[string].Value), "oarr"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Om, w.Om, wire.NonNullMap[string, int64].Value), "om"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Oobj, w.Oobj), "oobj"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.Ns, w.Ns), "ns"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.Nn, w.Nn), "nn"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.Ni, w.Ni), "ni"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullableOf(&out.Ni, w.Ni, wire.Int64.Value), "ni"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.Nb, w.Nb), "nb"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.Narr, w.Narr), "narr"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.Nm, w.Nm), "nm"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullableOf(&out.Narr, w.Narr, wire.NonNullSlice[string].Value), "narr"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullableOf(&out.Nm, w.Nm, wire.NonNullMap[string, int64].Value), "nm"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.Nobj, w.Nobj), "nobj"))
 	out.Ons = w.Ons
 	out.Onn = w.Onn
-	out.Oni = w.Oni
+	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.Oni, w.Oni, wire.Int64.Value), "oni"))
 	out.Onb = w.Onb
-	out.Onarr = w.Onarr
-	out.Onm = w.Onm
+	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.Onarr, w.Onarr, wire.NonNullSlice[string].Value), "onarr"))
+	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.Onm, w.Onm, wire.NonNullMap[string, int64].Value), "onm"))
 	out.Onobj = w.Onobj
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Items, w.Items), "items"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Dict, w.Dict), "dict"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.U, w.U), "u"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.All, w.All), "all"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.When, w.When), "when"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Stamps, w.Stamps, wire.NonNullMap[string, string].Value), "stamps"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Twice, w.Twice), "twice"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
@@ -699,7 +706,7 @@ type RootTwiceObjectValue struct {
 //
 //kama:generated kama:jsonschema
 type rootTwiceObjectValueWire struct {
-	X                    und.Und[int64]            `json:"x,omitzero"`
+	X                    und.Und[wire.Int64]       `json:"x,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -715,7 +722,7 @@ func (v *RootTwiceObjectValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out RootTwiceObjectValue
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.X, w.X), "x"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.X, w.X, wire.Int64.Value), "x"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
@@ -743,8 +750,8 @@ type Point struct {
 //
 //kama:generated kama:jsonschema
 type pointWire struct {
-	X                    und.Und[int64]            `json:"x,omitzero"`
-	Y                    und.Und[int64]            `json:"y,omitzero"`
+	X                    und.Und[wire.Int64]       `json:"x,omitzero"`
+	Y                    und.Und[wire.Int64]       `json:"y,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -760,8 +767,8 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Point
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.X, w.X), "x"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Y, w.Y), "y"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.X, w.X, wire.Int64.Value), "x"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Y, w.Y, wire.Int64.Value), "y"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err

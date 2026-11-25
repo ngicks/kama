@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:11:44Z
+// generated: 2026-11-25T08:18:45Z
 
 package typedkeywords
 
@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -40,12 +41,12 @@ type Order struct {
 //
 //kama:generated kama:jsonschema
 type orderWire struct {
-	Kind                 und.Und[OrderKind]        `json:"kind,omitzero"`
-	Card                 und.Und[string]           `json:"card,omitzero"`
-	Note                 und.Und[string]           `json:"note,omitzero"`
-	Lines                und.Und[[]int64]          `json:"lines,omitzero"`
-	Counts               und.Und[map[string]int64] `json:"counts,omitzero"`
-	AdditionalProperties map[string]jsontext.Value `json:",embed"`
+	Kind                 und.Und[OrderKind]                      `json:"kind,omitzero"`
+	Card                 und.Und[string]                         `json:"card,omitzero"`
+	Note                 und.Und[string]                         `json:"note,omitzero"`
+	Lines                und.Und[wire.NonNullSlice[int64]]       `json:"lines,omitzero"`
+	Counts               und.Und[wire.NonNullMap[string, int64]] `json:"counts,omitzero"`
+	AdditionalProperties map[string]jsontext.Value               `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -63,8 +64,8 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Kind, w.Kind), "kind"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Card, w.Card), "card"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Note, w.Note), "note"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Lines, w.Lines), "lines"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Counts, w.Counts), "counts"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Lines, w.Lines, wire.NonNullSlice[int64].Value), "lines"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Counts, w.Counts, wire.NonNullMap[string, int64].Value), "counts"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
@@ -96,10 +97,15 @@ const (
 //
 //kama:generated kama:jsonschema
 func (v *OrderKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var s OrderKind
-	if err := kamaJsonschemaDecode(dec, (*string)(&s)); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
 		return err
 	}
+	str, err := w.Value()
+	if err != nil {
+		return err
+	}
+	s := OrderKind(str)
 	if err := s.ValidateShallow(false); err != nil {
 		return err
 	}
@@ -472,7 +478,7 @@ type Aged struct {
 //
 //kama:generated kama:jsonschema
 type agedWire struct {
-	Age                  und.Und[int64]            `json:"age,omitzero"`
+	Age                  und.Und[wire.Int64]       `json:"age,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -488,7 +494,7 @@ func (v *Aged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Aged
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Age, w.Age), "age"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Age, w.Age, wire.Int64.Value), "age"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
@@ -578,8 +584,8 @@ type Bounded struct {
 //
 //kama:generated kama:jsonschema
 type boundedWire struct {
-	Lo                   und.Und[int64]            `json:"lo,omitzero"`
-	Hi                   und.Und[int64]            `json:"hi,omitzero"`
+	Lo                   und.Und[wire.Int64]       `json:"lo,omitzero"`
+	Hi                   und.Und[wire.Int64]       `json:"hi,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -595,8 +601,8 @@ func (v *Bounded) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Bounded
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Lo, w.Lo), "lo"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Hi, w.Hi), "hi"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Lo, w.Lo, wire.Int64.Value), "lo"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Hi, w.Hi, wire.Int64.Value), "hi"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
@@ -623,7 +629,7 @@ type Sealed struct {
 //
 //kama:generated kama:jsonschema
 type sealedWire struct {
-	A                    und.Und[int64]            `json:"a,omitzero"`
+	A                    und.Und[wire.Int64]       `json:"a,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -639,7 +645,7 @@ func (v *Sealed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Sealed
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.A, w.A), "a"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.A, w.A, wire.Int64.Value), "a"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
@@ -666,7 +672,7 @@ type Tagged struct {
 //
 //kama:generated kama:jsonschema
 type taggedWire struct {
-	A                    und.Und[int64]            `json:"a,omitzero"`
+	A                    und.Und[wire.Int64]       `json:"a,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -682,7 +688,7 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Tagged
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.A, w.A), "a"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.A, w.A, wire.Int64.Value), "a"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err

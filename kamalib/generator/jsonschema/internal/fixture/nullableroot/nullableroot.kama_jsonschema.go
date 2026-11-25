@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:50Z
+// generated: 2026-11-25T08:18:17Z
 
 package nullableroot
 
@@ -11,6 +11,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 )
 
@@ -57,8 +58,12 @@ func (v CodeValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *CodeValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out float64
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[float64]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[float64].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := CodeValue(out).ValidateShallow(false); err != nil {

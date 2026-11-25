@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:58:17Z
+// generated: 2026-11-25T08:35:56Z
 
 package subschema
 
@@ -12,6 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -194,8 +195,12 @@ func (v Point) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out []jsontext.Value
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNullSlice[jsontext.Value]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNullSlice[jsontext.Value].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := Point(out).ValidateShallow(false); err != nil {
@@ -224,8 +229,12 @@ func (v Tags) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Tags) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out []jsontext.Value
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNullSlice[jsontext.Value]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNullSlice[jsontext.Value].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := Tags(out).ValidateShallow(false); err != nil {
@@ -407,7 +416,7 @@ type Node struct {
 //
 //kama:generated kama:jsonschema
 type nodeWire struct {
-	V                    und.Und[int64]              `json:"v,omitzero"`
+	V                    und.Und[wire.Int64]         `json:"v,omitzero"`
 	Kids                 und.Und[[]Node]             `json:"kids,omitzero"`
 	Up                   kamaJsonschemaPresent[Tree] `json:"up,omitzero"`
 	AdditionalProperties map[string]jsontext.Value   `json:",embed"`
@@ -425,7 +434,7 @@ func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Node
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.V, w.V), "v"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.V, w.V, wire.Int64.Value), "v"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Kids, w.Kids), "kids"))
 	kamaJsonschemaOptionalPresent(&out.Up, w.Up)
 	out.AdditionalProperties = w.AdditionalProperties

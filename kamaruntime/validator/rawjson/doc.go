@@ -3,8 +3,8 @@
 // JSON Schema. The code the validators of package
 // github.com/ngicks/kama/kamalib/generator/validator/rule emit for raw JSON
 // calls it, and so do the decoders the generator of package
-// github.com/ngicks/kama/kamalib/generator/jsonschema writes, which decode
-// an integer by Int64 and compare a member to a const by Equal.
+// github.com/ngicks/kama/kamalib/generator/jsonschema writes, which
+// compare a member to a const by Equal.
 //
 // A function testing one kind of value passes a value of another kind, as
 // a JSON Schema keyword ignores a value it does not apply to: Compare

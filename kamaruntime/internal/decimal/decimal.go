@@ -1,9 +1,66 @@
-package rawjson
+// Package decimal compares and converts the text of JSON numbers exactly, at any exponent.
+package decimal
 
 import (
+	"cmp"
 	"math/big"
+	"strconv"
 	"strings"
 )
+
+// Int64 returns the value of num, the text of a JSON number, when it is an
+// integer in the range of int64, as 1.0 and 1e2 are. It converts the text
+// exactly, never through float64, so 9007199254740993.0 gives
+// 9007199254740993.
+func Int64(num string) (int64, bool) {
+	d, ok := parseDecimal(num)
+
+	switch {
+	case !ok || !d.isInt():
+		return 0, false
+	case d.digits == "":
+		return 0, true
+	// 19 digits hold every int64, so a longer integer needs no zeros written out.
+	case d.point.Cmp(big.NewInt(20)) > 0:
+		return 0, false
+	}
+
+	sign := ""
+	if d.neg {
+		sign = "-"
+	}
+
+	text := sign + d.digits + strings.Repeat("0", int(d.point.Int64())-len(d.digits))
+	n, err := strconv.ParseInt(text, 10, 64)
+
+	return n, err == nil
+}
+
+// Compare compares the JSON number texts a and b. ok is false when either is not one.
+func Compare(a, b string) (int, bool) {
+	da, okA := parseDecimal(a)
+	db, okB := parseDecimal(b)
+
+	if !okA || !okB {
+		return 0, false
+	}
+
+	return da.cmp(db), true
+}
+
+// IsInteger reports whether text is a JSON number with no fraction, as 1.0 and 1e2 are.
+func IsInteger(text string) bool {
+	d, ok := parseDecimal(text)
+	return ok && d.isInt()
+}
+
+// Multiple reports whether num divides v to an integer. Zero divides nothing.
+func Multiple(v, num string) bool {
+	dv, okV := parseDecimal(v)
+	dn, okN := parseDecimal(num)
+
+	return okV && okN && dn.sign() != 0 && dn.divides(dv)
+}
 
 // decimal is a JSON number as the value 0.digits * 10^point.
 //
@@ -75,7 +132,7 @@ func (d decimal) sign() int {
 // cmp compares d to e as -1, 0 or +1.
 func (d decimal) cmp(e decimal) int {
 	if sd, se := d.sign(), e.sign(); sd != se || sd == 0 {
-		return compareInts(sd, se)
+		return cmp.Compare(sd, se)
 	}
 
 	c := d.point.Cmp(e.point)
@@ -140,29 +197,4 @@ func (d decimal) divides(v decimal) bool {
 	div.Mul(div, n)
 
 	return new(big.Int).Mod(m, div).Sign() == 0
-}
-
-// compareNumbers compares the JSON number texts a and b. ok is false when either is not one.
-func compareNumbers(a, b string) (int, bool) {
-	da, okA := parseDecimal(a)
-	db, okB := parseDecimal(b)
-
-	if !okA || !okB {
-		return 0, false
-	}
-
-	return da.cmp(db), true
-}
-
-func isInteger(text string) bool {
-	d, ok := parseDecimal(text)
-	return ok && d.isInt()
-}
-
-// multiple reports whether num divides v to an integer. Zero divides nothing.
-func multiple(v, num string) bool {
-	dv, okV := parseDecimal(v)
-	dn, okN := parseDecimal(num)
-
-	return okV && okN && dn.sign() != 0 && dn.divides(dv)
 }

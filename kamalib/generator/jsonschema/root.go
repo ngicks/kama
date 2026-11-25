@@ -25,14 +25,31 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	args, marked := definedArgs(doc, opts, ptr)
 
 	decodeDoc := "UnmarshalJSONFrom decodes v as its underlying type."
-	decode := []genStep{
-		lang.Stmt("var out %s", underlying),
-		lang.If(
-			lang.Expr("err := kamaJsonschemaDecode(dec, &out); err != nil"),
-			lang.Stmt("return err"),
-			nil,
-		),
-	}
+	decode := []genStep{converted(
+		definedConv(doc, opts, ptr),
+		func(conv genExpr) genStep {
+			return lang.Steps(
+				lang.Stmt("var w %s", definedWire(doc, opts, ptr)),
+				lang.If(
+					lang.Expr("err := kamaJsonschemaDecode(dec, &w); err != nil"),
+					lang.Stmt("return err"),
+					nil,
+				),
+				lang.Stmt("out, err := %s(w)", conv),
+				lang.If(lang.Expr("err != nil"), lang.Stmt("return err"), nil),
+			)
+		},
+		func(genExpr) genStep {
+			return lang.Steps(
+				lang.Stmt("var out %s", underlying),
+				lang.If(
+					lang.Expr("err := kamaJsonschemaDecode(dec, &out); err != nil"),
+					lang.Stmt("return err"),
+					nil,
+				),
+			)
+		},
+	)}
 
 	text := typeDoc(doc, ptr, name+" is generated from the schema at #"+ptr+".")
 	declDoc := docComment(text)
@@ -143,5 +160,47 @@ func definedType(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
 		}
 
 		return lang.Expr("%s[%s]", q(optPath, "Option"), t)(c)
+	}
+}
+
+// definedWire is definedType for the wire type the defined type of the
+// schema at ptr decodes into, which rejects null itself unless the root is
+// nullable.
+func definedWire(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
+	return func(c genCtx) (string, error) {
+		if ptr != "" || raw(doc, ptr) {
+			return builtinWire(doc, opts, ptr, slotAlone)(c)
+		}
+
+		if !nullable(doc, "") {
+			return wireType(doc, opts, "", slotAlone)(c)
+		}
+
+		t, err := wireType(doc, opts, "", slotMember)(c)
+		if err != nil {
+			return "", err
+		}
+
+		return lang.Expr("%s[%s]", q(optPath, "Option"), t)(c)
+	}
+}
+
+// definedConv is wireConv for definedWire.
+func definedConv(doc *jsonschema.Schema, opts Options, ptr string) genExpr {
+	return func(c genCtx) (string, error) {
+		if ptr != "" || raw(doc, ptr) {
+			return builtinConv(doc, opts, ptr, slotAlone)(c)
+		}
+
+		if !nullable(doc, "") {
+			return wireConv(doc, opts, "", slotAlone)(c)
+		}
+
+		conv, err := wireConv(doc, opts, "", slotMember)(c)
+		if err != nil || conv == "" {
+			return "", err
+		}
+
+		return "kamaJsonschemaOptionOf(" + conv + ")", nil
 	}
 }

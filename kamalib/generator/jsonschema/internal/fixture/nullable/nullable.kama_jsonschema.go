@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:43Z
+// generated: 2026-11-25T08:18:11Z
 
 package nullable
 
@@ -11,6 +11,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -37,8 +38,8 @@ type Nullable struct {
 type nullableWire struct {
 	ReqOneOf             und.Und[Item]              `json:"reqOneOf,omitzero"`
 	OptOneOf             und.Und[Item]              `json:"optOneOf,omitzero"`
-	ReqAnyOf             und.Und[int64]             `json:"reqAnyOf,omitzero"`
-	OptAnyOf             und.Und[int64]             `json:"optAnyOf,omitzero"`
+	ReqAnyOf             und.Und[wire.Int64]        `json:"reqAnyOf,omitzero"`
+	OptAnyOf             und.Und[wire.Int64]        `json:"optAnyOf,omitzero"`
 	ReqType              und.Und[string]            `json:"reqType,omitzero"`
 	OptType              und.Und[string]            `json:"optType,omitzero"`
 	OptInline            und.Und[NullableOptInline] `json:"optInline,omitzero"`
@@ -59,8 +60,8 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.ReqOneOf, w.ReqOneOf), "reqOneOf"))
 	out.OptOneOf = w.OptOneOf
-	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.ReqAnyOf, w.ReqAnyOf), "reqAnyOf"))
-	out.OptAnyOf = w.OptAnyOf
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullableOf(&out.ReqAnyOf, w.ReqAnyOf, wire.Int64.Value), "reqAnyOf"))
+	errs = append(errs, validator.Field(kamaJsonschemaNullableOf(&out.OptAnyOf, w.OptAnyOf, wire.Int64.Value), "optAnyOf"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.ReqType, w.ReqType), "reqType"))
 	out.OptType = w.OptType
 	out.OptInline = w.OptInline
@@ -133,7 +134,7 @@ type Item struct {
 //
 //kama:generated kama:jsonschema
 type itemWire struct {
-	N                    und.Und[int64]            `json:"n,omitzero"`
+	N                    und.Und[wire.Int64]       `json:"n,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -149,7 +150,7 @@ func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Item
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.N, w.N), "n"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.N, w.N, wire.Int64.Value), "n"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err

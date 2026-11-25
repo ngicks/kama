@@ -329,95 +329,6 @@ func helperDecl(name string) (genStep, bool) {
 			j,
 			jsonv1Path,
 		), true
-	case helperPrefix + "Own":
-		return helper(name+" are the unmarshalers every generated decoder adds to those of "+
-			"its caller.",
-			`var kamaJsonschemaOwn = %[1]s.JoinUnmarshalers(
-	kamaJsonschemaRejectNull,
-	kamaJsonschemaIntegerNumber,
-)`,
-			j), true
-	case helperPrefix + "Joined":
-		return helper(
-			name+" holds the last unmarshalers of a caller and those joined with "+
-				"kamaJsonschemaOwn from them. A decoder nested in another sees the joined "+
-				"ones, and recognizing them keeps it from joining kamaJsonschemaOwn once "+
-				"more per level of nesting, each join starting with empty caches.",
-			`var kamaJsonschemaJoined %[1]s.Pointer[[2]*%[2]s.Unmarshalers]`,
-			"sync/atomic",
-			j,
-		), true
-	case helperPrefix + "Unmarshalers":
-		return helper(
-			name+" returns the unmarshalers of opts, the options of a caller, "+
-				"followed by kamaJsonschemaOwn. An unmarshaler of the caller thus takes "+
-				"precedence for the types it handles, at every depth.",
-			`func kamaJsonschemaUnmarshalers(opts %[1]s.Options) *%[1]s.Unmarshalers {
-	caller, _ := %[1]s.GetOption(opts, %[1]s.WithUnmarshalers)
-	if caller == nil || caller == kamaJsonschemaOwn {
-		return kamaJsonschemaOwn
-	}
-	if last := kamaJsonschemaJoined.Load(); last != nil && (caller == last[0] || caller == last[1]) {
-		return last[1]
-	}
-	joined := %[1]s.JoinUnmarshalers(caller, kamaJsonschemaOwn)
-	kamaJsonschemaJoined.Store(&[2]*%[1]s.Unmarshalers{caller, joined})
-	return joined
-}`,
-			j,
-		), true
-	case helperPrefix + "RejectNull":
-		return helper(
-			name+" rejects JSON null for a string, a number, a boolean, a slice "+
-				"and a map, since nullability is expressed by the types of package option. It "+
-				"leaves raw JSON text alone, which carries null as data.",
-			`var kamaJsonschemaRejectNull = %[1]s.UnmarshalFromFunc(
-	func(dec *%[2]s.Decoder, v any) error {
-		_, isValue := v.(*%[2]s.Value)
-		_, isRaw := v.(interface{ RawJson() %[2]s.Value })
-		if isValue || isRaw || dec.PeekKind() != %[2]s.KindNull {
-			return %[3]s.ErrUnsupported
-		}
-		switch %[4]s.TypeOf(v).Elem().Kind() {
-		case %[4]s.String, %[4]s.Int64, %[4]s.Float64, %[4]s.Bool, %[4]s.Slice, %[4]s.Map:
-			return %[5]s.New(%[5]s.ErrNull, "value is null")
-		}
-		return %[3]s.ErrUnsupported
-	},
-)`,
-			j,
-			jt,
-			"errors",
-			"reflect",
-			v,
-		), true
-	case helperPrefix + "IntegerNumber":
-		return helper(
-			name+" decodes a number with a zero fraction, such as 1.0 or 1e2, "+
-				"into an int64, since JSON Schema calls such a number an integer.",
-			`var kamaJsonschemaIntegerNumber = %[1]s.UnmarshalFromFunc(
-	func(dec *%[2]s.Decoder, v *int64) error {
-		if dec.PeekKind() != %[2]s.KindNumber {
-			return %[3]s.ErrUnsupported
-		}
-		raw, err := dec.ReadValue()
-		if err != nil {
-			return err
-		}
-		n, ok := %[4]s.Int64(string(raw))
-		if !ok {
-			return %[5]s.New(%[5]s.ErrKind, "want integer in the range of int64, got %%s", raw)
-		}
-		*v = n
-		return nil
-	},
-)`,
-			j,
-			jt,
-			"errors",
-			rawjsonPath,
-			v,
-		), true
 	case helperPrefix + "Decode":
 		return helper(name+" decodes the next value of dec into v. An error is located "+
 			"relative to that value. Below the root it comes in a json.SemanticError "+
@@ -426,9 +337,7 @@ func helperDecl(name string) (genStep, bool) {
 			"enclosing value locates it in turn.",
 			`func kamaJsonschemaDecode(dec *%[2]s.Decoder, v any) error {
 	depth := dec.StackDepth()
-	err := %[1]s.UnmarshalDecode(
-		dec, v, %[1]s.WithUnmarshalers(kamaJsonschemaUnmarshalers(dec.Options())), kamaJsonschemaPinned,
-	)
+	err := %[1]s.UnmarshalDecode(dec, v, kamaJsonschemaPinned)
 	se, ok := err.(*%[1]s.SemanticError)
 	if !ok || depth == 0 {
 		return kamaJsonschemaLocate(err, depth)
@@ -467,9 +376,7 @@ func helperDecl(name string) (genStep, bool) {
 	if _, err := d.ReadToken(); err != nil {
 		return err
 	}
-	return kamaJsonschemaLocate(%[2]s.UnmarshalDecode(
-		d, v, %[2]s.WithUnmarshalers(kamaJsonschemaUnmarshalers(d.Options())), kamaJsonschemaPinned,
-	), 1)
+	return kamaJsonschemaLocate(%[2]s.UnmarshalDecode(d, v, kamaJsonschemaPinned), 1)
 }`, jt, j, "io", "strings", "bytes"), true
 	case helperPrefix + "UnmarshalObject":
 		return helper(name+" is kamaJsonschemaUnmarshal for a value that must be a JSON object.",
@@ -618,6 +525,185 @@ func conversionDecl(name string) (genStep, bool) {
 		*dst = &v
 	}
 }`, u), true
+	case helperPrefix + "RequiredOf":
+		return helper(
+			name+" is kamaJsonschemaRequired for a member whose wire field conv "+
+				"converts.",
+			`func kamaJsonschemaRequiredOf[W, T any](
+	dst *T,
+	u %[2]s.Und[W],
+	conv func(W) (T, error),
+) error {
+	switch {
+	case u.IsUndefined():
+		return %[1]s.New(%[1]s.ErrRequired, "member is missing")
+	case u.IsNull():
+		return %[1]s.New(%[1]s.ErrNull, "member is null")
+	}
+	v, err := conv(u.Value())
+	*dst = v
+	return err
+}`,
+			v,
+			u,
+		), true
+	case helperPrefix + "OptionalOf":
+		return helper(name+" is kamaJsonschemaOptional for a member whose wire field conv "+
+			"converts.",
+			`func kamaJsonschemaOptionalOf[W, T any](
+	dst *%[2]s.Option[T],
+	u %[3]s.Und[W],
+	conv func(W) (T, error),
+) error {
+	if u.IsNull() {
+		return %[1]s.New(%[1]s.ErrNull, "member is null")
+	}
+	if !u.IsDefined() {
+		return nil
+	}
+	v, err := conv(u.Value())
+	*dst = %[2]s.Some(v)
+	return err
+}`, v, o, u), true
+	case helperPrefix + "RequiredNullableOf":
+		return helper(name+" is kamaJsonschemaRequiredNullable for a member whose wire field "+
+			"conv converts.",
+			`func kamaJsonschemaRequiredNullableOf[W, T any](
+	dst *%[2]s.Option[T],
+	u %[3]s.Und[W],
+	conv func(W) (T, error),
+) error {
+	if u.IsUndefined() {
+		return %[1]s.New(%[1]s.ErrRequired, "member is missing")
+	}
+	if u.IsNull() {
+		return nil
+	}
+	v, err := conv(u.Value())
+	*dst = %[2]s.Some(v)
+	return err
+}`, v, o, u), true
+	case helperPrefix + "NullableOf":
+		return helper(
+			name+" sets dst to the value of an optional, nullable member whose "+
+				"wire field conv converts.",
+			`func kamaJsonschemaNullableOf[W, T any](
+	dst *%[1]s.Und[T],
+	u %[1]s.Und[W],
+	conv func(W) (T, error),
+) error {
+	switch {
+	case u.IsNull():
+		*dst = %[1]s.Null[T]()
+	case u.IsDefined():
+		v, err := conv(u.Value())
+		*dst = %[1]s.Defined(v)
+		return err
+	}
+	return nil
+}`,
+			u,
+		), true
+	case helperPrefix + "RequiredPointerOf":
+		return helper(
+			name+" is kamaJsonschemaRequiredOf for a member held by pointer.",
+			`func kamaJsonschemaRequiredPointerOf[W, T any](
+	dst **T,
+	u %[1]s.Und[W],
+	conv func(W) (T, error),
+) error {
+	var v T
+	if err := kamaJsonschemaRequiredOf(&v, u, conv); err != nil {
+		return err
+	}
+	*dst = &v
+	return nil
+}`,
+			u,
+		), true
+	case helperPrefix + "OptionalPointerOf":
+		return helper(
+			name+" is kamaJsonschemaOptionalOf for a member held by pointer. Nil "+
+				"means absent.",
+			`func kamaJsonschemaOptionalPointerOf[W, T any](
+	dst **T,
+	u %[2]s.Und[W],
+	conv func(W) (T, error),
+) error {
+	if u.IsNull() {
+		return %[1]s.New(%[1]s.ErrNull, "member is null")
+	}
+	return kamaJsonschemaOptionalNullablePointerOf(dst, u, conv)
+}`,
+			v,
+			u,
+		), true
+	case helperPrefix + "RequiredNullablePointerOf":
+		return helper(name+" is kamaJsonschemaRequiredNullableOf for a member held by "+
+			"pointer. Nil means null.",
+			`func kamaJsonschemaRequiredNullablePointerOf[W, T any](
+	dst **T,
+	u %[2]s.Und[W],
+	conv func(W) (T, error),
+) error {
+	if u.IsUndefined() {
+		return %[1]s.New(%[1]s.ErrRequired, "member is missing")
+	}
+	return kamaJsonschemaOptionalNullablePointerOf(dst, u, conv)
+}`, v, u), true
+	case helperPrefix + "OptionalNullablePointerOf":
+		return helper(name+" sets dst to the value of an optional, nullable member held by "+
+			"pointer whose wire field conv converts. Nil means absent or null.",
+			`func kamaJsonschemaOptionalNullablePointerOf[W, T any](
+	dst **T,
+	u %[1]s.Und[W],
+	conv func(W) (T, error),
+) error {
+	if !u.IsDefined() {
+		return nil
+	}
+	v, err := conv(u.Value())
+	*dst = &v
+	return err
+}`, u), true
+	case helperPrefix + "OptionOf":
+		return helper(name+" returns a function converting an opt.Option of a wire value by "+
+			"conv. None stays None.",
+			`func kamaJsonschemaOptionOf[W, T any](
+	conv func(W) (T, error),
+) func(%[1]s.Option[W]) (%[1]s.Option[T], error) {
+	return func(o %[1]s.Option[W]) (%[1]s.Option[T], error) {
+		if o.IsNone() {
+			return %[1]s.None[T](), nil
+		}
+		v, err := conv(o.Value())
+		return %[1]s.Some(v), err
+	}
+}`, o), true
+	case helperPrefix + "MembersOf":
+		return helper(name+" sets dst to members, the members no property declares, each "+
+			"converted by conv, and reports the error of each at its name. A nil members "+
+			"leaves dst nil.",
+			`func kamaJsonschemaMembersOf[W, T any](
+	dst *map[string]T,
+	members map[string]W,
+	conv func(W) (T, error),
+) error {
+	if members == nil {
+		return nil
+	}
+	out := make(map[string]T, len(members))
+	var errs []error
+	for name, w := range members {
+		v, err := conv(w)
+		if err != nil {
+			errs = append(errs, %[1]s.Field(err, name))
+		}
+		out[name] = v
+	}
+	*dst = out
+	return %[1]s.Join(errs...)
+}`, v), true
 	case helperPrefix + "Present":
 		return helper(name+" is the wire field of a member whose Go type holds null "+
 			"itself, such as raw JSON text or a union with a member of type null. It tells "+
@@ -785,15 +871,15 @@ func unionHelperDecl(name string) (genStep, bool) {
 		), true
 	case helperPrefix + "MarshalObjects":
 		return helper(name+" writes one object holding the members of every value of "+
-			"values, each of which must marshal to an object. A member name already "+
-			"written is skipped.",
+			"values, each of which must marshal to an object, with the options of enc. A member "+
+			"name already written is skipped.",
 			`func kamaJsonschemaMarshalObjects(enc *%[1]s.Encoder, values ...any) error {
 	seen := map[string]bool{}
 	if err := enc.WriteToken(%[1]s.BeginObject); err != nil {
 		return err
 	}
 	for _, v := range values {
-		b, err := %[2]s.Marshal(v)
+		b, err := %[2]s.Marshal(v, enc.Options())
 		if err != nil {
 			return err
 		}

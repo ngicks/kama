@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -57,6 +58,79 @@ func TestFixturesBufferOnlyWhereNeeded(t *testing.T) {
 				ts := types[recv]
 				assert.Assert(t, ts != nil && (holder(ts) || productStruct(ts)),
 					"%s: UnmarshalJSONFrom of %s reads a whole value", file, recv)
+			}
+		})
+	}
+}
+
+// TestFixtureHelpersHoldNoState keeps the helpers of the generated
+// decoders free of state shared by calls: of the helper files of the
+// committed fixtures, none imports package sync or sync/atomic, and no
+// generated file assigns a package-level variable of the helpers after its
+// declaration.
+func TestFixtureHelpersHoldNoState(t *testing.T) {
+	for _, name := range fixtures {
+		t.Run(name, func(t *testing.T) {
+			fset := token.NewFileSet()
+			file := filepath.Join(fixtureDir(name), "zz_gen.helper.kama_jsonschema.go")
+
+			f, err := parser.ParseFile(fset, file, nil, parser.SkipObjectResolution)
+			assert.NilError(t, err)
+
+			var vars []string
+
+			for _, imp := range f.Imports {
+				path, err := strconv.Unquote(imp.Path.Value)
+				assert.NilError(t, err)
+				assert.Assert(
+					t,
+					path != "sync" && path != "sync/atomic",
+					"%s imports %s",
+					file,
+					path,
+				)
+			}
+
+			for _, d := range f.Decls {
+				if g, ok := d.(*ast.GenDecl); ok && g.Tok == token.VAR {
+					for _, s := range g.Specs {
+						for _, n := range s.(*ast.ValueSpec).Names {
+							vars = append(vars, n.Name)
+						}
+					}
+				}
+			}
+
+			generated := []string{"zz_gen.helper.kama_jsonschema.go", name + ".kama_jsonschema.go"}
+			for _, other := range generated {
+				g, err := parser.ParseFile(
+					fset, filepath.Join(fixtureDir(name), other), nil, parser.SkipObjectResolution,
+				)
+				assert.NilError(t, err)
+
+				ast.Inspect(g, func(n ast.Node) bool {
+					var lhs []ast.Expr
+
+					switch n := n.(type) {
+					case *ast.AssignStmt:
+						lhs = n.Lhs
+					case *ast.IncDecStmt:
+						lhs = []ast.Expr{n.X}
+					case *ast.UnaryExpr:
+						if n.Op == token.AND {
+							lhs = []ast.Expr{n.X}
+						}
+					}
+
+					for _, e := range lhs {
+						if id, ok := e.(*ast.Ident); ok {
+							assert.Assert(t, !slices.Contains(vars, id.Name),
+								"%s assigns or takes the address of %s", other, id.Name)
+						}
+					}
+
+					return true
+				})
 			}
 		})
 	}

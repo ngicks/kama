@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:58:10Z
+// generated: 2026-11-25T08:18:37Z
 
 package resources
 
@@ -12,6 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -133,8 +134,12 @@ func (v CustomerName) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *CustomerName) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out string
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[string].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := CustomerName(out).ValidateShallow(false); err != nil {
@@ -208,8 +213,12 @@ func (v AddressZip) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *AddressZip) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out string
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[string].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := AddressZip(out).ValidateShallow(false); err != nil {
@@ -236,7 +245,7 @@ type Line struct {
 //kama:generated kama:jsonschema
 type lineWire struct {
 	Sku                  und.Und[LineSku]          `json:"sku,omitzero"`
-	Count                und.Und[int64]            `json:"count,omitzero"`
+	Count                und.Und[wire.Int64]       `json:"count,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -253,7 +262,7 @@ func (v *Line) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Line
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Sku, w.Sku), "sku"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Count, w.Count), "count"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Count, w.Count, wire.Int64.Value), "count"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
@@ -284,8 +293,12 @@ func (v LineSku) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *LineSku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out string
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[string].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := LineSku(out).ValidateShallow(false); err != nil {
@@ -314,8 +327,12 @@ func (v Note) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Note) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out string
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[string].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := Note(out).ValidateShallow(false); err != nil {

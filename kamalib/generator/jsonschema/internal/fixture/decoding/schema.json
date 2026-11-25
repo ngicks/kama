@@ -45,6 +45,8 @@
         { "type": "object", "properties": { "q": { "type": "string" } } }
       ]
     },
+    "when": { "type": "string", "format": "date-time" },
+    "stamps": { "type": "object", "additionalProperties": { "type": "string", "format": "date-time" } },
     "twice": {
       "oneOf": [
         { "type": "object", "required": ["x", "x"], "properties": { "x": { "type": "integer" } } },

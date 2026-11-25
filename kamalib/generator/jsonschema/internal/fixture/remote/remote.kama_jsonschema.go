@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:58:08Z
+// generated: 2026-11-25T08:18:34Z
 
 package remote
 
@@ -12,6 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -83,7 +84,7 @@ type Money struct {
 //
 //kama:generated kama:jsonschema
 type moneyWire struct {
-	Amount               und.Und[int64]            `json:"amount,omitzero"`
+	Amount               und.Und[wire.Int64]       `json:"amount,omitzero"`
 	Currency             und.Und[MoneyCurrency]    `json:"currency,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
@@ -100,7 +101,7 @@ func (v *Money) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Money
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Amount, w.Amount), "amount"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Amount, w.Amount, wire.Int64.Value), "amount"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Currency, w.Currency), "currency"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
@@ -133,8 +134,12 @@ func (v MoneyCurrency) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *MoneyCurrency) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out string
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[string].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := MoneyCurrency(out).ValidateShallow(false); err != nil {

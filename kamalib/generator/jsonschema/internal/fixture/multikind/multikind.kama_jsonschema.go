@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:11:11Z
+// generated: 2026-11-25T08:18:06Z
 
 package multikind
 
@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -234,15 +235,19 @@ func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if raw.Kind() == jsontext.KindNumber {
-		var m int64
-		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+		var w wire.Int64
+		if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 			errs = append(errs, fmt.Errorf("member Integer: %w", err))
 		} else {
-			if err := (CellValueInteger{Integer: m}).ValidateShallow(false); err != nil {
+			if m, err := wire.Int64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
-				*v = CellValue{Kind: CellValueInteger{Integer: m}}
-				return nil
+				if err := (CellValueInteger{Integer: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member Integer: %w", err))
+				} else {
+					*v = CellValue{Kind: CellValueInteger{Integer: m}}
+					return nil
+				}
 			}
 		}
 	}

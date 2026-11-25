@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:55Z
+// generated: 2026-11-25T08:18:22Z
 
 package object
 
@@ -11,6 +11,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -47,23 +48,23 @@ type Object struct {
 //
 //kama:generated kama:jsonschema
 type objectWire struct {
-	ReqName              und.Und[string]                       `json:"reqName,omitzero"`
-	OptName              und.Und[string]                       `json:"optName,omitzero"`
-	ReqNullName          und.Und[string]                       `json:"reqNullName,omitzero"`
-	OptNullName          und.Und[string]                       `json:"optNullName,omitzero"`
-	ReqPoint             und.Und[Point]                        `json:"reqPoint,omitzero"`
-	OptPoint             und.Und[Point]                        `json:"optPoint,omitzero"`
-	ReqNullPoint         und.Und[Point]                        `json:"reqNullPoint,omitzero"`
-	OptNullPoint         und.Und[Point]                        `json:"optNullPoint,omitzero"`
-	Color                und.Und[ObjectColor]                  `json:"color,omitzero"`
-	Tags                 und.Und[[]string]                     `json:"tags,omitzero"`
-	Counts               und.Und[map[string]int64]             `json:"counts,omitzero"`
-	Inline               und.Und[ObjectInline]                 `json:"inline,omitzero"`
-	Closed               und.Und[ObjectClosed]                 `json:"closed,omitzero"`
-	Open                 und.Und[ObjectOpen]                   `json:"open,omitzero"`
-	Anything             kamaJsonschemaPresent[jsontext.Value] `json:"anything,omitzero"`
-	Extra                kamaJsonschemaPresent[jsontext.Value] `json:"extra,omitzero"`
-	AdditionalProperties map[string]jsontext.Value             `json:",embed"`
+	ReqName              und.Und[string]                         `json:"reqName,omitzero"`
+	OptName              und.Und[string]                         `json:"optName,omitzero"`
+	ReqNullName          und.Und[string]                         `json:"reqNullName,omitzero"`
+	OptNullName          und.Und[string]                         `json:"optNullName,omitzero"`
+	ReqPoint             und.Und[Point]                          `json:"reqPoint,omitzero"`
+	OptPoint             und.Und[Point]                          `json:"optPoint,omitzero"`
+	ReqNullPoint         und.Und[Point]                          `json:"reqNullPoint,omitzero"`
+	OptNullPoint         und.Und[Point]                          `json:"optNullPoint,omitzero"`
+	Color                und.Und[ObjectColor]                    `json:"color,omitzero"`
+	Tags                 und.Und[wire.NonNullSlice[string]]      `json:"tags,omitzero"`
+	Counts               und.Und[wire.NonNullMap[string, int64]] `json:"counts,omitzero"`
+	Inline               und.Und[ObjectInline]                   `json:"inline,omitzero"`
+	Closed               und.Und[ObjectClosed]                   `json:"closed,omitzero"`
+	Open                 und.Und[ObjectOpen]                     `json:"open,omitzero"`
+	Anything             kamaJsonschemaPresent[jsontext.Value]   `json:"anything,omitzero"`
+	Extra                kamaJsonschemaPresent[jsontext.Value]   `json:"extra,omitzero"`
+	AdditionalProperties map[string]jsontext.Value               `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -87,8 +88,8 @@ func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	errs = append(errs, validator.Field(kamaJsonschemaRequiredNullable(&out.ReqNullPoint, w.ReqNullPoint), "reqNullPoint"))
 	out.OptNullPoint = w.OptNullPoint
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Color, w.Color), "color"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Tags, w.Tags), "tags"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Counts, w.Counts), "counts"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Tags, w.Tags, wire.NonNullSlice[string].Value), "tags"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Counts, w.Counts, wire.NonNullMap[string, int64].Value), "counts"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Inline, w.Inline), "inline"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Closed, w.Closed), "closed"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Open, w.Open), "open"))
@@ -126,10 +127,15 @@ const (
 //
 //kama:generated kama:jsonschema
 func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var s ObjectColor
-	if err := kamaJsonschemaDecode(dec, (*string)(&s)); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
 		return err
 	}
+	str, err := w.Value()
+	if err != nil {
+		return err
+	}
+	s := ObjectColor(str)
 	if err := s.ValidateShallow(false); err != nil {
 		return err
 	}
@@ -236,8 +242,8 @@ type ObjectOpen struct {
 //
 //kama:generated kama:jsonschema
 type objectOpenWire struct {
-	Id                   und.Und[int64]    `json:"id,omitzero"`
-	AdditionalProperties map[string]string `json:",embed"`
+	Id                   und.Und[wire.Int64]             `json:"id,omitzero"`
+	AdditionalProperties map[string]wire.NonNull[string] `json:",embed"`
 }
 
 // UnmarshalJSONFrom decodes v from one JSON object. A member that fails to
@@ -252,8 +258,8 @@ func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out ObjectOpen
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Id, w.Id), "id"))
-	out.AdditionalProperties = w.AdditionalProperties
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Id, w.Id, wire.Int64.Value), "id"))
+	errs = append(errs, kamaJsonschemaMembersOf(&out.AdditionalProperties, w.AdditionalProperties, wire.NonNull[string].Value))
 	if err := validator.Join(errs...); err != nil {
 		return err
 	}
@@ -279,8 +285,8 @@ type Point struct {
 //
 //kama:generated kama:jsonschema
 type pointWire struct {
-	X                    und.Und[int64]            `json:"x,omitzero"`
-	Y                    und.Und[int64]            `json:"y,omitzero"`
+	X                    und.Und[wire.Int64]       `json:"x,omitzero"`
+	Y                    und.Und[wire.Int64]       `json:"y,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -296,8 +302,8 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Point
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.X, w.X), "x"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Y, w.Y), "y"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.X, w.X, wire.Int64.Value), "x"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Y, w.Y, wire.Int64.Value), "y"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err

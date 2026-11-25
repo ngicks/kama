@@ -249,11 +249,13 @@
 // as JSON check.
 //
 // The struct decodes through an unexported wire struct. It holds a
-// property as an und.Und, which keeps a missing member apart from null, or,
+// property as an und.Und of its wire type, as Decoding describes, which
+// keeps a missing member apart from null, or,
 // where the Go type of the property holds null itself, as the helper
 // kamaJsonschemaPresent, which keeps a missing member apart from any value.
 // UnmarshalJSONFrom converts each wire field and reports every member
-// missing or null against the required x nullable matrix. Once every member
+// missing or null against the required x nullable matrix, together with
+// what the wire types recorded. Once every member
 // converts, the struct must pass ValidateShallow. An enum of strings declares a
 // string type with a constant per value, whose Validate rejects any other
 // value.
@@ -296,21 +298,37 @@
 // object. Raw JSON text is the value itself. Such a value decodes from the
 // bytes read, and each nested value in it decodes from those bytes again.
 //
-// Decoding rejects JSON null for a string, a number, a boolean, a slice
-// and a map. Schema nullability is expressed by github.com/ngicks/option
-// types and by jsontext.Value, so a null that reaches any other Go type is
-// invalid, with an error wrapping validator.ErrNull. A number with a zero
-// fraction, such as 1.0 or 1e2, decodes into an int64, since JSON Schema
-// calls such a number an integer. A struct decoding a value that is no
-// object fails with an error wrapping validator.ErrKind. The decoders pass
-// the options doing this to every value they decode, nested values
-// included.
+// A value encoding/json/v2 would decode without telling what the schema
+// rejects decodes through a type of package
+// github.com/ngicks/kama/kamaruntime/wire, which the wire struct and the
+// other decoders name: wire.NonNullSlice and wire.NonNullMap for a slice
+// and a map, wire.NonNull for a value nothing around rejects null for, and
+// wire.Int64 for an integer. They decode leniently and record a null where
+// the schema forbids it and a number that is no integer in the range of
+// int64, such as 1.5, while a number with a zero fraction, such as 1.0 or
+// 1e2, decodes into the int64. The conversion of the wire value into the
+// Go type reports what they recorded, together with the other errors of
+// the value, with errors wrapping validator.ErrNull and validator.ErrKind.
+// The conversion hands a slice or a map on as decoded. A slice or a map
+// nested in another is copied once, since its wire type differs from its
+// Go type. A value of a type the generator declares, an opt.Option and raw
+// JSON text decide about null themselves. Schema nullability is expressed
+// by github.com/ngicks/option types and by jsontext.Value. A struct
+// decoding a value that is no object fails with an error wrapping
+// validator.ErrKind, and a value of the wrong kind for its Go type, such
+// as a string for a number, fails the decoding as encoding/json/v2 fails
+// it.
 //
 // A decoder decodes with the options of the decoder it is given, which
 // json.Unmarshal, json.UnmarshalDecode and json v1 fill from the options of
-// their caller. The unmarshalers of the caller come before those rejecting
-// null and decoding integers, so an unmarshaler of the caller decodes every
-// value of its type, at any depth. Two options are pinned whatever the
+// their caller. The decoders add no unmarshaler and the encoders no
+// marshaler, so an unmarshaler or a marshaler of the caller handles every
+// value of its type at any depth, a member of a union or of an allOf
+// included, and two calls passing different ones do not see each other's.
+// The wire types read some values themselves, which an unmarshaler of
+// the caller then does not see: a null they record, the number of an
+// int64, and the slice or the map a wire.NonNullSlice or a wire.NonNullMap
+// holds, whose elements decode through the unmarshalers again. Two options are pinned whatever the
 // caller passes: member names match exactly, as JSON Schema compares them,
 // and errors below the root are reported as json/v2 reports them, which
 // locates them, even under the legacy semantics of json v1. A value a union

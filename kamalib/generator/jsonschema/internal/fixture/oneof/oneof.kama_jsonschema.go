@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:11:25Z
+// generated: 2026-11-25T08:18:24Z
 
 package oneof
 
@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -249,18 +250,22 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 	}
 	if raw.Kind() == jsontext.KindNumber {
-		var m int64
-		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+		var w wire.Int64
+		if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 			errs = append(errs, fmt.Errorf("member Integer: %w", err))
 		} else {
-			if err := (ZooMixedInteger{Integer: m}).ValidateShallow(false); err != nil {
+			if m, err := wire.Int64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
-				if found != nil {
-					*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Integer", name)}}
-					return nil
+				if err := (ZooMixedInteger{Integer: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member Integer: %w", err))
+				} else {
+					if found != nil {
+						*v = ZooMixed{Kind: ZooMixedUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Integer", name)}}
+						return nil
+					}
+					found, name = ZooMixedInteger{Integer: m}, "Integer"
 				}
-				found, name = ZooMixedInteger{Integer: m}, "Integer"
 			}
 		}
 	}
@@ -473,18 +478,22 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var name string
 	var errs []error
 	if raw.Kind() == jsontext.KindNumber {
-		var m int64
-		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
+		var w wire.Int64
+		if err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil {
 			errs = append(errs, fmt.Errorf("member Integer: %w", err))
 		} else {
-			if err := (ZooAmountInteger{Integer: m}).ValidateShallow(false); err != nil {
+			if m, err := wire.Int64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
-				if found != nil {
-					*v = ZooAmount{Kind: ZooAmountUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Integer", name)}}
-					return nil
+				if err := (ZooAmountInteger{Integer: m}).ValidateShallow(false); err != nil {
+					errs = append(errs, fmt.Errorf("member Integer: %w", err))
+				} else {
+					if found != nil {
+						*v = ZooAmount{Kind: ZooAmountUnknown{Value: raw.Clone(), err: validator.New(validator.ErrOneOf, "value matches %s, Integer", name)}}
+						return nil
+					}
+					found, name = ZooAmountInteger{Integer: m}, "Integer"
 				}
-				found, name = ZooAmountInteger{Integer: m}, "Integer"
 			}
 		}
 	}
@@ -753,7 +762,7 @@ type Cat struct {
 //kama:generated kama:jsonschema
 type catWire struct {
 	Kind                 und.Und[string]           `json:"kind,omitzero"`
-	Lives                und.Und[int64]            `json:"lives,omitzero"`
+	Lives                und.Und[wire.Int64]       `json:"lives,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -770,7 +779,7 @@ func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Cat
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Kind, w.Kind), "kind"))
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Lives, w.Lives), "lives"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.Lives, w.Lives, wire.Int64.Value), "lives"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err

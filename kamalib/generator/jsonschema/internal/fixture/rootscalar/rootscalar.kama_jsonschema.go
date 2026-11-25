@@ -3,13 +3,15 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:58:12Z
+// generated: 2026-11-25T08:18:39Z
 
 package rootscalar
 
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+
+	"github.com/ngicks/kama/kamaruntime/wire"
 )
 
 // Port is generated from the schema at #.
@@ -31,8 +33,12 @@ func (v Port) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Port) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out int64
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.Int64
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.Int64.Value(w)
+	if err != nil {
 		return err
 	}
 	if err := Port(out).ValidateShallow(false); err != nil {

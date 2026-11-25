@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T05:58:15Z
+// generated: 2026-11-25T08:18:41Z
 
 package stream
 

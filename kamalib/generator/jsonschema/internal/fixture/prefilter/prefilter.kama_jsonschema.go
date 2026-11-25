@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:11:29Z
+// generated: 2026-11-25T08:18:26Z
 
 package prefilter
 
@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -303,10 +304,15 @@ const (
 //
 //kama:generated kama:jsonschema
 func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var s CircleKind
-	if err := kamaJsonschemaDecode(dec, (*string)(&s)); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
 		return err
 	}
+	str, err := w.Value()
+	if err != nil {
+		return err
+	}
+	s := CircleKind(str)
 	if err := s.ValidateShallow(false); err != nil {
 		return err
 	}

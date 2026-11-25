@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:11:13Z
+// generated: 2026-11-25T08:18:09Z
 
 package nestedunion
 
@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -958,7 +959,7 @@ type OverlapRight struct {
 //kama:generated kama:jsonschema
 type overlapRightWire struct {
 	C                    und.Und[Overlap]          `json:"c,omitzero"`
-	L                    und.Und[int64]            `json:"l,omitzero"`
+	L                    und.Und[wire.Int64]       `json:"l,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -975,7 +976,7 @@ func (v *OverlapRight) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out OverlapRight
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.C, w.C), "c"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.L, w.L), "l"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.L, w.L, wire.Int64.Value), "l"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T05:57:25Z
+// generated: 2026-11-25T08:17:55Z
 
 package allof
 

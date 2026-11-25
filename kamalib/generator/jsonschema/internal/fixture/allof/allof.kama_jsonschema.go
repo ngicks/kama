@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:57:24Z
+// generated: 2026-11-25T08:17:55Z
 
 package allof
 
@@ -11,6 +11,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -98,7 +99,7 @@ type Person struct {
 //kama:generated kama:jsonschema
 type personWire struct {
 	Name                 und.Und[string]           `json:"name,omitzero"`
-	Age                  und.Und[int64]            `json:"age,omitzero"`
+	Age                  und.Und[wire.Int64]       `json:"age,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -115,7 +116,7 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Person
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Name, w.Name), "name"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Age, w.Age), "age"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Age, w.Age, wire.Int64.Value), "age"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err

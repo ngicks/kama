@@ -3,7 +3,7 @@
 //	schema: "kama_jsonschema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:58:14Z
+// generated: 2026-11-25T08:18:41Z
 
 package stream
 
@@ -12,6 +12,7 @@ import (
 	"encoding/json/v2"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/und"
 )
 
@@ -35,8 +36,12 @@ func (v Stream) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Stream) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out []Item
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNullSlice[Item]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNullSlice[Item].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := Stream(out).ValidateShallow(false); err != nil {
@@ -61,7 +66,7 @@ type Item struct {
 //
 //kama:generated kama:jsonschema
 type itemWire struct {
-	N                    und.Und[int64]            `json:"n,omitzero"`
+	N                    und.Und[wire.Int64]       `json:"n,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -77,7 +82,7 @@ func (v *Item) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out Item
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.N, w.N), "n"))
+	errs = append(errs, validator.Field(kamaJsonschemaRequiredOf(&out.N, w.N, wire.Int64.Value), "n"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err

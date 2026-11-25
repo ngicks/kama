@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T05:58:01Z
+// generated: 2026-11-25T08:18:28Z
 
 package productcycle
 
@@ -11,6 +11,7 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -100,7 +101,7 @@ type A struct {
 //kama:generated kama:jsonschema
 type aWire struct {
 	Shared               und.Und[string]           `json:"shared,omitzero"`
-	A                    und.Und[int64]            `json:"a,omitzero"`
+	A                    und.Und[wire.Int64]       `json:"a,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -117,7 +118,7 @@ func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out A
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Shared, w.Shared), "shared"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.A, w.A), "a"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.A, w.A, wire.Int64.Value), "a"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
@@ -146,7 +147,7 @@ type B struct {
 //kama:generated kama:jsonschema
 type bWire struct {
 	Shared               und.Und[string]           `json:"shared,omitzero"`
-	B                    und.Und[int64]            `json:"b,omitzero"`
+	B                    und.Und[wire.Int64]       `json:"b,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
 
@@ -163,7 +164,7 @@ func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out B
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Shared, w.Shared), "shared"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.B, w.B), "b"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.B, w.B, wire.Int64.Value), "b"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T06:11:47Z
+// generated: 2026-11-25T08:18:47Z
 
 package validation
 
@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/ngicks/kama/kamaruntime/validator"
+	"github.com/ngicks/kama/kamaruntime/wire"
 	"github.com/ngicks/option/opt"
 	"github.com/ngicks/option/und"
 )
@@ -55,11 +56,11 @@ type Order struct {
 //kama:generated kama:jsonschema
 type orderWire struct {
 	Id                   und.Und[string]                      `json:"id,omitzero"`
-	Count                und.Und[int64]                       `json:"count,omitzero"`
+	Count                und.Und[wire.Int64]                  `json:"count,omitzero"`
 	Ratio                und.Und[float64]                     `json:"ratio,omitzero"`
 	Items                und.Und[[]Sku]                       `json:"items,omitzero"`
 	Labels               und.Und[map[string]OrderLabelsValue] `json:"labels,omitzero"`
-	Level                und.Und[int64]                       `json:"level,omitzero"`
+	Level                und.Und[wire.Int64]                  `json:"level,omitzero"`
 	Coupon               und.Und[string]                      `json:"coupon,omitzero"`
 	Discount             und.Und[float64]                     `json:"discount,omitzero"`
 	Closed               und.Und[OrderClosed]                 `json:"closed,omitzero"`
@@ -81,11 +82,11 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var out Order
 	var errs []error
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Id, w.Id), "id"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Count, w.Count), "count"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Count, w.Count, wire.Int64.Value), "count"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Ratio, w.Ratio), "ratio"))
 	errs = append(errs, validator.Field(kamaJsonschemaRequired(&out.Items, w.Items), "items"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Labels, w.Labels), "labels"))
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Level, w.Level), "level"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.Level, w.Level, wire.Int64.Value), "level"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Coupon, w.Coupon), "coupon"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Discount, w.Discount), "discount"))
 	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.Closed, w.Closed), "closed"))
@@ -122,8 +123,12 @@ func (v OrderLabelsValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *OrderLabelsValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out string
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[string].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := OrderLabelsValue(out).ValidateShallow(false); err != nil {
@@ -190,7 +195,7 @@ type OrderTyped struct {
 //
 //kama:generated kama:jsonschema
 type orderTypedWire struct {
-	N                    und.Und[int64]             `json:"n,omitzero"`
+	N                    und.Und[wire.Int64]        `json:"n,omitzero"`
 	AdditionalProperties map[string]OrderTypedValue `json:",embed"`
 }
 
@@ -206,7 +211,7 @@ func (v *OrderTyped) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var out OrderTyped
 	var errs []error
-	errs = append(errs, validator.Field(kamaJsonschemaOptional(&out.N, w.N), "n"))
+	errs = append(errs, validator.Field(kamaJsonschemaOptionalOf(&out.N, w.N, wire.Int64.Value), "n"))
 	out.AdditionalProperties = w.AdditionalProperties
 	if err := validator.Join(errs...); err != nil {
 		return err
@@ -238,8 +243,12 @@ func (v OrderTypedValue) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *OrderTypedValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out int64
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.Int64
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.Int64.Value(w)
+	if err != nil {
 		return err
 	}
 	if err := OrderTypedValue(out).ValidateShallow(false); err != nil {
@@ -449,8 +458,12 @@ func (v OrderPickOption1Value) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *OrderPickOption1Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out string
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[string].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := OrderPickOption1Value(out).ValidateShallow(false); err != nil {
@@ -480,8 +493,12 @@ func (v OrderPickOption2Value) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *OrderPickOption2Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out string
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[string].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := OrderPickOption2Value(out).ValidateShallow(false); err != nil {
@@ -510,8 +527,12 @@ func (v Sku) MarshalJSONTo(enc *jsontext.Encoder) error {
 //
 //kama:generated kama:jsonschema
 func (v *Sku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	var out string
-	if err := kamaJsonschemaDecode(dec, &out); err != nil {
+	var w wire.NonNull[string]
+	if err := kamaJsonschemaDecode(dec, &w); err != nil {
+		return err
+	}
+	out, err := wire.NonNull[string].Value(w)
+	if err != nil {
 		return err
 	}
 	if err := Sku(out).ValidateShallow(false); err != nil {

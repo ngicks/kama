@@ -276,13 +276,32 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 				)
 			}
 
-			then = lang.Steps(
-				lang.Stmt("var m %s", unionMemberType(doc, opts, ptr, i)),
-				lang.If(
-					lang.Expr("err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil"),
-					failed,
-					decoded,
-				),
+			then = converted(
+				unionMemberConv(doc, opts, ptr, i),
+				func(conv genExpr) genStep {
+					return lang.Steps(
+						lang.Stmt("var w %s", unionMemberWire(doc, opts, ptr, i)),
+						lang.If(
+							lang.Expr("err := kamaJsonschemaUnmarshal(dec, raw, &w); err != nil"),
+							failed,
+							lang.If(
+								lang.Expr("m, err := %s(w); err != nil", conv),
+								failed,
+								decoded,
+							),
+						),
+					)
+				},
+				func(genExpr) genStep {
+					return lang.Steps(
+						lang.Stmt("var m %s", unionMemberType(doc, opts, ptr, i)),
+						lang.If(
+							lang.Expr("err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil"),
+							failed,
+							decoded,
+						),
+					)
+				},
 			)
 
 			if probeArgs(doc, opts, ptr, i) != nil {
@@ -638,6 +657,43 @@ func unionMemberType(doc *jsonschema.Schema, opts Options, ptr string, i int) ge
 	return lang.FailGen(
 		unsupported(child(ptr, "type"), "kind %q in a union of kinds", s.Type.Names[i]),
 	)
+}
+
+// unionMemberWire is unionMemberType for the wire type the member i of the
+// union at ptr decodes into.
+func unionMemberWire(doc *jsonschema.Schema, opts Options, ptr string, i int) genExpr {
+	s, err := at(doc, ptr)
+	if err != nil {
+		return lang.FailGen(err)
+	}
+
+	if kw := unionKeyword(s); kw != "" {
+		return elemWireType(doc, opts, child(ptr, kw, strconv.Itoa(i)), slotMember)
+	}
+
+	if s.Type.Names[i] == "integer" {
+		return q(wirePath, "Int64")
+	}
+
+	return unionMemberType(doc, opts, ptr, i)
+}
+
+// unionMemberConv is wireConv for unionMemberWire.
+func unionMemberConv(doc *jsonschema.Schema, opts Options, ptr string, i int) genExpr {
+	s, err := at(doc, ptr)
+	if err != nil {
+		return lang.FailGen(err)
+	}
+
+	if kw := unionKeyword(s); kw != "" {
+		return elemWireConv(doc, opts, child(ptr, kw, strconv.Itoa(i)), slotMember)
+	}
+
+	if s.Type.Names[i] == "integer" {
+		return lang.Expr("%s.Value", q(wirePath, "Int64"))
+	}
+
+	return lang.Expr("")
 }
 
 func quoteAll(names []string) []string {
