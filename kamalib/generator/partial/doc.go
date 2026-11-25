@@ -103,6 +103,10 @@
 // directive in a _test.go file of x, need the tests loaded. Once test
 // files declare targets, run the generator with tests every time.
 //
+// This is a known quirk: the partial variant of a type of x that only a
+// test file reaches comes and goes with the tests. Marking that type
+// itself keeps its partial variant in every run.
+//
 // # Option file
 //
 // An option file gives the options of the directives for types that cannot
