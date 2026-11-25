@@ -97,6 +97,14 @@ type Box[T any] struct {
 	Ptr    *T  `json:"ptr"`
 }
 
+// Options is a generic target holding every option type on its type
+// parameter.
+type Options[T any] struct {
+	Opt     opt.Option[T]      `json:"opt"`
+	Und     und.Und[T]         `json:"und"`
+	Elastic elastic.Elastic[T] `json:"elastic"`
+}
+
 // Pair is a generic target with several type parameters.
 type Pair[K comparable, V any] struct {
 	Key   K `json:"key"`

@@ -7,6 +7,7 @@ packages:
     types:
       User:
       Box:
+      Options:
       Pair:
       Stat:
       Tree:

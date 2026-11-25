@@ -4,7 +4,7 @@
 //	merge_nested: "recursive"
 //	option_file: null
 //	package_option_file: "model/kama_partial.yaml"
-// generated: 2026-11-24T20:51:36Z
+// generated: 2026-11-25T22:35:52Z
 
 package model
 
@@ -625,6 +625,64 @@ func (p BoxPartial[T]) Merge(r BoxPartial[T]) BoxPartial[T] {
 //kama:generated kama:partial
 func (p BoxPartial[T]) ApplyTo(v Box[T]) Box[T] {
 	var base BoxPartial[T]
+	base.FromValue(v)
+	return base.Merge(p).ToValue()
+}
+
+// OptionsPartial is the partial variant of Options.
+//
+//kama:generated kama:partial
+type OptionsPartial[T any] struct {
+	Opt     und.Und[T]         `json:"opt,omitzero"`
+	Und     und.Und[T]         `json:"und,omitzero"`
+	Elastic elastic.Elastic[T] `json:"elastic,omitzero"`
+}
+
+// FromValue sets every field of p to the partial form of the field of v.
+// A nil pointer, slice or map and a none option become null.
+//
+//kama:generated kama:partial
+func (p *OptionsPartial[T]) FromValue(v Options[T]) {
+	p.Opt = und.FromOption(v.Opt, true)
+	p.Und = v.Und
+	p.Elastic = v.Elastic
+}
+
+// ToValue returns the value p describes. An undefined or null field
+// gives the zero value of the field.
+//
+//kama:generated kama:partial
+func (p OptionsPartial[T]) ToValue() Options[T] {
+	var v Options[T]
+	v.Opt = p.Opt.Flatten()
+	v.Und = p.Und
+	v.Elastic = p.Elastic
+	return v
+}
+
+// Merge returns p with the fields of r merged onto it. An undefined
+// field of r keeps the field of p. Merge writes to neither p nor r.
+//
+//kama:generated kama:partial
+func (p OptionsPartial[T]) Merge(r OptionsPartial[T]) OptionsPartial[T] {
+	if !r.Opt.IsUndefined() {
+		p.Opt = r.Opt
+	}
+	if !r.Und.IsUndefined() {
+		p.Und = r.Und
+	}
+	if !r.Elastic.IsUndefined() {
+		p.Elastic = r.Elastic
+	}
+	return p
+}
+
+// ApplyTo returns v with the change p describes applied. It is
+// FromValue of v merged with p, converted back with ToValue.
+//
+//kama:generated kama:partial
+func (p OptionsPartial[T]) ApplyTo(v Options[T]) Options[T] {
+	var base OptionsPartial[T]
 	base.FromValue(v)
 	return base.Merge(p).ToValue()
 }

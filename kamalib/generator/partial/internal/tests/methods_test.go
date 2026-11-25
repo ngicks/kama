@@ -192,6 +192,34 @@ func TestToValueStates(t *testing.T) {
 	equal(t, v.Opt, opt.Some(0))
 }
 
+func TestOptionsOnTypeParameter(t *testing.T) {
+	var p model.OptionsPartial[string]
+	p.FromValue(model.Options[string]{})
+	assert.Assert(t, p.Opt.IsNull())
+	assert.Assert(t, p.Und.IsUndefined())
+	assert.Assert(t, p.Elastic.IsUndefined())
+
+	v := model.Options[string]{
+		Opt:     opt.Some("o"),
+		Und:     und.Null[string](),
+		Elastic: elastic.FromOptions(opt.Some("e"), opt.None[string]()),
+	}
+	p.FromValue(v)
+	equal(t, p.Opt, und.Defined("o"))
+	equal(t, p.ToValue(), v)
+
+	cleared := model.OptionsPartial[string]{
+		Opt:     und.Null[string](),
+		Und:     und.Defined("u"),
+		Elastic: elastic.Null[string](),
+	}
+	equal(t, cleared.ApplyTo(v), model.Options[string]{
+		Und:     und.Defined("u"),
+		Elastic: elastic.Null[string](),
+	})
+	equal(t, model.OptionsPartial[string]{}.ApplyTo(v), v)
+}
+
 // states are an undefined, a null and a defined value.
 func states[T any](v T) map[string]und.Und[T] {
 	return map[string]und.Und[T]{

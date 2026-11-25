@@ -5,6 +5,7 @@ version: 1
 types:
   User:
   Box:
+  Options:
   Pair:
   Stat:
   Tree:
