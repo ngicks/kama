@@ -90,6 +90,8 @@ func TestBuiltinFuncsErrors(t *testing.T) {
 	for _, c := range []struct{ src, err string }{
 		{`{{ parseVer "x" }}`, "parseVer"},
 		{`{{ withPre "a b" "1.2.3" }}`, "withPre"},
+		{`{{ withPre "rc+x" "1.2.3" }}`, "withPre"},
+		{`{{ withBuild "b+x" "1.2.3" }}`, "withBuild"},
 		{`{{ withCore 1 "1.2.3" | withCore 10000 }}`, "withCore"},
 		{`{{ withCore "1.2.3" }}`, "takes 1 to 4 numbers"},
 		{`{{ addDuration "1x" "2026-01-02T00:00:00Z" }}`, "addDuration"},

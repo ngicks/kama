@@ -27,7 +27,10 @@ type Run struct {
 }
 
 // FuncProvider returns template functions bound to the data of one run.
-// It is called once per run, before any template is parsed.
+// A run calls it once, before any template is parsed. The proc also calls
+// it with an empty Run to parse the templates of a param in a dry run.
+// The names of the functions must not depend on the Run, and a function
+// reads the Run when it is called.
 type FuncProvider func(r Run) template.FuncMap
 
 var (
@@ -262,7 +265,11 @@ func withPre(pre string, v any) (exver.Version, error) {
 		return exver.Version{}, err
 	}
 
-	return respell(ver, pre, ver.Build())
+	if pre == "" {
+		return respell(ver, "", ver.Build())
+	}
+
+	return ver.WithPreRelease(pre)
 }
 
 func withBuild(build string, v any) (exver.Version, error) {
@@ -271,12 +278,16 @@ func withBuild(build string, v any) (exver.Version, error) {
 		return exver.Version{}, err
 	}
 
-	return respell(ver, ver.PreRelease(), build)
+	if build == "" {
+		return respell(ver, ver.PreRelease(), "")
+	}
+
+	return ver.WithBuild(build)
 }
 
 // respell returns v with pre and build. exver rejects an empty pre-release
-// or build in WithPreRelease and WithBuild, so the version is spelled anew
-// and parsed.
+// or build in WithPreRelease and WithBuild. respell clears one by spelling
+// the version anew and parsing it.
 func respell(v exver.Version, pre, build string) (exver.Version, error) {
 	var b strings.Builder
 

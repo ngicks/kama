@@ -187,6 +187,8 @@ type literal struct {
 	// neg tells a leading -.
 	neg  bool
 	text string
+	// typed tells a spec spelling its type.
+	typed bool
 }
 
 // literalOf returns the value of spec when it is one basic literal.
@@ -204,7 +206,7 @@ func literalOf(spec *ast.ValueSpec) (literal, error) {
 	}
 
 	v := spec.Values[0]
-	out := literal{expr: v}
+	out := literal{expr: v, typed: spec.Type != nil}
 
 	if u, ok := v.(*ast.UnaryExpr); ok && (u.Op == token.SUB || u.Op == token.ADD) {
 		if b, ok := u.X.(*ast.BasicLit); ok && (b.Kind == token.INT || b.Kind == token.FLOAT) {

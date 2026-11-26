@@ -4,9 +4,7 @@
 // text/template per id. The generator runs the template on the current
 // value of the spec, parses the output back as a value of the same kind,
 // and writes the new literal over the old one. Every other byte of the
-// file stays as it was. The generator puts no generated mark on a file, and
-// it is the first generator of kama that replaces text in a hand-written
-// file.
+// file stays as it was. The generator puts no generated mark on a file.
 //
 // # Directive
 //
@@ -82,7 +80,9 @@
 //     trimmed. A typed integer holds the value. int, uint and uintptr are
 //     taken as 64 bits wide.
 //   - float: a Go integer or float literal with an optional sign, after
-//     white space is trimmed. A float32 or a float64 holds it.
+//     white space is trimmed. A float32 or a float64 holds it. A decimal
+//     integer on a spec spelling no type is written with .0 appended. The
+//     spec then stays a float. Another integer literal there is an error.
 //   - bool: true or false, after white space is trimmed.
 //   - string: the output itself, white space included, unless it has a
 //     format.
@@ -123,8 +123,8 @@
 //
 // A mod setting a value from vars is idempotent: a second run with the same
 // param changes nothing. A mod computing from the current value, such as
-// one adding to a number or setting the core of a version from a var
-// computed elsewhere, changes the file on every run.
+// one adding to a number or bumping a version, changes the file on every
+// run.
 //
 // # Proc
 //
@@ -136,7 +136,7 @@
 //   - vars: a map of caller values, which a template reads as .Vars.
 //
 // A key of the param that names neither is warned about. The proc parses
-// every template when the param is set, so a dry run reports a template
+// every template when the param is set. A dry run then reports a template
 // that does not parse. The proc has no stale check. The generator writes
 // no generated mark.
 //

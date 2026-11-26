@@ -213,7 +213,25 @@ func spell(
 		return lit.text, nil
 	}
 
-	return s, nil
+	return floatSpelling(s, kind, lit)
+}
+
+// floatSpelling returns s, a number of kind, spelled so that the spec of lit
+// keeps its kind. An integer literal on a spec spelling no type would make
+// the constant an integer, or the var an int, so a decimal one takes .0.
+func floatSpelling(s string, kind Kind, lit literal) (string, error) {
+	if kind != KindFloat || lit.typed || strings.ContainsAny(s, ".eEpP") {
+		return s, nil
+	}
+
+	if strings.ContainsAny(strings.TrimLeft(s, "+-"), "xXoObB") {
+		return "", fmt.Errorf(
+			"the result %s is an integer literal on a float spec spelling no type; spell a float",
+			excerpt(s),
+		)
+	}
+
+	return s + ".0", nil
 }
 
 // formatted returns out as a string of format: the String of the version
