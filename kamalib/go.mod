@@ -12,6 +12,7 @@ require (
 	github.com/ngicks/opiter v0.0.0-20261125032700-03a99644b6ce
 	github.com/ngicks/option v0.0.5
 	github.com/pelletier/go-toml/v2 v2.4.3
+	github.com/rivo/uniseg v0.4.7
 	github.com/spf13/pflag v1.0.10
 	go.starlark.net v0.0.0-20261021141710-4f4267fb140d
 	go.yaml.in/yaml/v4 v4.0.0-rc.5

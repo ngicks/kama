@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
+	"github.com/rivo/uniseg"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/fieldtree/ext"
@@ -157,7 +157,14 @@ func (w walker) columns(t types.Type, expr, key string, path []types.Type) (n, w
 // # column.
 func descIndent(depth int) string { return strings.Repeat("  ", depth) }
 
-func width(s string) int { return utf8.RuneCountInString(s) }
+// width returns the number of terminal columns s takes, counted per
+// grapheme cluster, so a wide character or an emoji sequence counts two
+// and a combining mark none. uniseg is used over go-runewidth because
+// go-runewidth counts an emoji presentation sequence such as ☀ with VS16
+// as one column. uniseg reads no environment, and its ambiguous width is
+// left at the default of one, so the box-drawing characters of the tree
+// count one column.
+func width(s string) int { return uniseg.StringWidth(s) }
 
 func pad(s string, n int) string { return s + strings.Repeat(" ", n-width(s)) }
 

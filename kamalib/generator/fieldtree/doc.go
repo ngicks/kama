@@ -13,7 +13,10 @@
 // The lines of a value hang below it, drawn with ├─, └─ and │. The
 // expression and type columns of the lines hanging below one value are
 // aligned. The # and the key path each sit in one column for the whole
-// tree. The description is indented by two spaces for each level a line
+// tree. The columns are aligned by display width: a wide character, such
+// as a CJK character or an emoji, counts two columns. The alignment
+// assumes a monospace font that renders a wide character two columns
+// wide. The description is indented by two spaces for each level a line
 // sits below the fields of the target. Every line ends with a newline and
 // carries no trailing space.
 //
