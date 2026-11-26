@@ -136,6 +136,14 @@
 //   - mods: a map from an id to the source of its template.
 //   - vars: a map of caller values, which a template reads as .Vars.
 //
+// The step may name steps in its optional list. A template reads the
+// AsInput value of each of them, as it is, by the function input:
+// {{ input "tree" }} returns the value of the step tree. An optional list
+// side-loads a text another step computed, such as the field tree of a
+// struct, into a template. index on a map returns the zero value for a
+// key the map lacks, so {{ index (input "tree") "cofig" }} writes an empty
+// string.
+//
 // A key of the param that names neither is warned about. The proc parses
 // every template when the param is set. A dry run then reports a template
 // that does not parse. The proc has no stale check. The generator writes
@@ -166,7 +174,7 @@
 // # Function registry
 //
 // [RegisterFuncs] adds a [FuncProvider] under a name from an init function.
-// A run calls each provider once with its [Run], the loaded packages and
-// the vars of the run. A provider binds its functions to the data of that
+// A run calls each provider once with its [Run], the loaded packages, the
+// vars and the optional inputs of the run. A provider binds its functions to the data of that
 // run. A function name defined twice fails the run.
 package textmod

@@ -24,6 +24,9 @@ type Run struct {
 	Packages []*packages.Package
 	// Vars are the caller values of the run, as the param vars gives them.
 	Vars map[string]any
+	// Inputs are the optional inputs of the step, keyed by the name of the
+	// step giving each, as the function input returns them.
+	Inputs map[string]any
 }
 
 // FuncProvider returns template functions bound to the data of one run.
@@ -55,9 +58,16 @@ func RegisterFuncs(name string, p FuncProvider) {
 }
 
 // Funcs returns the template functions of a run on r: the built-in
-// functions of [BuiltinFuncs] and those of every registered provider.
+// functions of [BuiltinFuncs], the function input and those of every
+// registered provider.
+//
+// input name returns the optional input of the step that the step named
+// name gives, as it is: a map, a string, a struct or any other value, so
+// that {{ index (input "tree") "config" }} reads a member of a map. A name
+// the step does not take is an error listing the names it takes.
 func Funcs(r Run) (template.FuncMap, error) {
 	out := BuiltinFuncs()
+	out["input"] = func(name string) (any, error) { return input(r.Inputs, name) }
 	owner := map[string]string{}
 
 	for name := range out {
@@ -85,6 +95,18 @@ func Funcs(r Run) (template.FuncMap, error) {
 	}
 
 	return out, errors.Join(errs...)
+}
+
+func input(inputs map[string]any, name string) (any, error) {
+	v, ok := inputs[name]
+	if !ok {
+		return nil, fmt.Errorf(
+			"input %q: the step takes no such optional input; it takes %q",
+			name, slices.Sorted(maps.Keys(inputs)),
+		)
+	}
+
+	return v, nil
 }
 
 // BuiltinFuncs returns the built-in template functions. Every function is

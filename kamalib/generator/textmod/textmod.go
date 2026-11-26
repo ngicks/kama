@@ -114,7 +114,7 @@ const (
 // The package doc tells the rules.
 func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, error] {
 	return func(yield func(base.Output, error) bool) {
-		funcs, err := Funcs(Run{Packages: in.Pkgs, Vars: in.Vars})
+		funcs, err := Funcs(Run{Packages: in.Pkgs, Vars: in.Vars, Inputs: env.Optional})
 		if err != nil {
 			yield(nil, err)
 			return

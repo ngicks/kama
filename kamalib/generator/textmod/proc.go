@@ -40,15 +40,18 @@ func (p *ProcParam) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown
 
 // proc runs Generator on the packages its in loaded, reading and staging
 // the files in its out. It has no stale check: the generator puts no
-// generated mark on a file.
+// generated mark on a file. It takes optional inputs of any type, which
+// the templates read through the function input.
 //
 //	Param(base.ParamOf[ProcParam]) error
 //	In(*gopackages.Packages)
 //	Out(*overlayfs.Fs)
+//	Optional(map[string]any)
 var proc = base.Proc[base.ParamOf[ProcParam], ProcParam, *gopackages.Packages, Input]{
-	Generator: Generator(),
-	Check:     checkParam,
-	Input:     procInput,
+	Generator:     Generator(),
+	Check:         checkParam,
+	Input:         procInput,
+	TakesOptional: true,
 }
 
 // NewProc returns the proc of the generator. It is the constructor of the
@@ -56,7 +59,8 @@ var proc = base.Proc[base.ParamOf[ProcParam], ProcParam, *gopackages.Packages, I
 func NewProc() workflow.Proc { return proc }
 
 // checkParam parses every mod with functions bound to an empty Run, so a
-// dry run reports a template that does not parse.
+// dry run reports a template that does not parse. Parsing calls no
+// function, so input passes before the optional inputs exist.
 func checkParam(p ProcParam) error {
 	funcs, err := Funcs(Run{})
 	if err != nil {
