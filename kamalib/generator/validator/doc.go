@@ -111,8 +111,9 @@
 // another through struct fields, the fields of struct type literals,
 // slice and array elements, map values, pointers, aliases and the values
 // the types a type support of the registry claims hold, as ext.Dependants
-// tells. Package ext/opt registers the support of opt.Option, und.Und and
-// elastic.Elastic, so their type arguments make dependants. Map keys,
+// tells. Package ext/opt registers the support of opt.Option, und.Und,
+// elastic.Elastic and the types of packages either and tuple, so their
+// type arguments make dependants. Map keys,
 // channel elements and the type arguments of other generic types make no
 // dependant. The user did not
 // mark a dependant. Its hooks are therefore off by default. Its fields may
@@ -220,10 +221,13 @@
 //     their args are joined in source order.
 //  2. The nested validation of the values the field holds. Validate walks
 //     through pointers, slices, arrays, map values, the fields of struct
-//     type literals and the option types to each value of a target, of an
-//     implementor or of a type parameter. A nil pointer, slice or map, a
-//     none opt.Option, an undefined or null und.Und and a null element of
-//     an elastic.Elastic hold nothing and are skipped. The walk never goes
+//     type literals and the values the types a type support claims hold to
+//     each value of a target, of an implementor or of a type parameter. A
+//     nil pointer, slice or map, a none opt.Option, an undefined or null
+//     und.Und, a null element of an elastic.Elastic, the side an
+//     either.Either does not hold and the error of an either.Result hold
+//     nothing and are skipped. Each field of a tuple.Tuple2 to
+//     tuple.Tuple16 is walked. The walk never goes
 //     into the underlying type of a named type, except for a named array or
 //     pointer type of a package outside the run. A struct, slice or map
 //     type of the run holding something to validate by itself is a target
@@ -237,7 +241,10 @@
 //
 // Validate wraps every error of these steps with the path segment of the
 // field. Nested validation adds an index segment per slice, array and
-// elastic.Elastic element and a key segment per map value. With
+// elastic.Elastic element, a key segment per map value, the field segment
+// left or right of an either.Either, ok of an either.Result and V1 to VN
+// of a tuple, as they encode. The values of either.UntaggedEither and
+// either.UntaggedResult add none. With
 // stopOnFirstError true, Validate returns the first error. Otherwise it runs
 // every step and returns the errors joined by validator.Join, or nil when
 // there are none. It passes stopOnFirstError unchanged to nested Validate
@@ -567,9 +574,10 @@
 // documents the registry, how to write a validator and how to add an
 // extension package. Package basic holds the built-in validators. Package
 // opt holds the type support of github.com/ngicks/option, which tells the
-// generator and the validators about the values opt.Option, und.Und and
-// elastic.Elastic hold. This package imports both with blank imports,
-// which register them into the default registry of ext. The registry of
+// generator and the validators about the values opt.Option, und.Und,
+// elastic.Elastic and the types of packages either and tuple hold. This
+// package imports both with blank imports, which register them into the
+// default registry of ext. The registry of
 // Options.Registry also holds the type supports the walk, the selection of
 // targets and the validators ask.
 //

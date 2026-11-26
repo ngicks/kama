@@ -9,7 +9,7 @@ import (
 // whose values hold other values, such as the option types of
 // github.com/ngicks/option or a container type of another package. A
 // support answers through the interfaces it implements besides: Holder,
-// Container, PresenceTester, ZeroTester and NullTester. Each of their
+// Container, Composite, PresenceTester, ZeroTester and NullTester. Each of their
 // methods reports false for a type the support does not claim, so that the
 // next support of the registry answers. Pointers, slices, arrays and maps
 // need no support.
@@ -36,16 +36,44 @@ type Holder interface {
 	Held(t types.Type, v Gen) (role string, held types.Type, guard, value Gen, ok bool)
 }
 
-// Segment is the path segment by which an error of an element is located.
+// Segment is the kind of the path segment by which an error of a held
+// value is located.
 type Segment int
 
 const (
-	// SegmentIndex locates an element by an int index, as validator.Index
+	// SegmentNone adds no segment, as for a value that encodes alone.
+	SegmentNone Segment = iota
+	// SegmentIndex locates a value by an int index, as validator.Index
 	// does.
-	SegmentIndex Segment = iota
-	// SegmentKey locates an element by its key, as validator.Key does.
+	SegmentIndex
+	// SegmentKey locates a value by a map key, as validator.Key does.
 	SegmentKey
+	// SegmentField locates a value by the name of a JSON member, as
+	// validator.Field does.
+	SegmentField
 )
+
+// Composite is a TypeSupport for types whose values hold several values
+// side by side, each of its own type and under its own guard, as
+// either.Either holds a left or a right value and tuple.Tuple2 holds two.
+// A rule rejecting a claimed type does not apply to the values it holds.
+type Composite interface {
+	TypeSupport
+	// Roles returns the roles of the values a value of type t holds, in the
+	// order the generator walks them, or nil for a type the support does
+	// not claim.
+	Roles(t types.Type) []string
+	// Part returns the value of role that the value v of type t holds: its
+	// type, the condition of v holding it, nil when v always holds it, the
+	// expression of it, the kind of segment locating it and the label of
+	// that segment. ok is false for a type the support does not claim and
+	// for a role Roles does not return.
+	Part(
+		t types.Type,
+		v Gen,
+		role string,
+	) (part types.Type, guard, value Gen, segment Segment, label Gen, ok bool)
+}
 
 // Container is a TypeSupport for types whose values hold any number of
 // elements of one type, as a slice does.
@@ -130,6 +158,17 @@ func ContainerOf(r Resolver, t types.Type) (Container, bool) {
 	return nil, false
 }
 
+// CompositeOf returns the first Composite of r claiming t. r may be nil.
+func CompositeOf(r Resolver, t types.Type) (Composite, bool) {
+	for c := range supportsOf[Composite](r) {
+		if len(c.Roles(t)) > 0 {
+			return c, true
+		}
+	}
+
+	return nil, false
+}
+
 // Presence returns what the first PresenceTester of r claiming t tells
 // about the value v of type t. r may be nil.
 func Presence(r Resolver, t types.Type, v Gen) (cond Gen, absent string, ok bool) {
@@ -167,8 +206,9 @@ func Null(r Resolver, t types.Type, v Gen) (cond Gen, ok bool) {
 }
 
 // Dependants returns the types of the values a value of type t holds as the
-// supports of r tell: the type of the value a Holder tells and the type of
-// the elements a Container tells. Target selection walks into them. It
+// supports of r tell: the type of the value a Holder tells, the type of
+// the elements a Container tells and the type of each value a Composite
+// tells. Target selection walks into them. It
 // yields nothing for a type no Holder or Container of r claims.
 func Dependants(r Resolver, t types.Type) iter.Seq[types.Type] {
 	return func(yield func(types.Type) bool) {
@@ -181,7 +221,18 @@ func Dependants(r Resolver, t types.Type) iter.Seq[types.Type] {
 
 		if c, ok := ContainerOf(r, t); ok {
 			_, elem, _, _, _ := c.Elements(t, nil)
-			yield(elem)
+			if !yield(elem) {
+				return
+			}
+		}
+
+		if c, ok := CompositeOf(r, t); ok {
+			for _, role := range c.Roles(t) {
+				part, _, _, _, _, _ := c.Part(t, nil, role)
+				if !yield(part) {
+					return
+				}
+			}
 		}
 	}
 }

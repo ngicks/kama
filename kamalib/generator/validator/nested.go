@@ -115,6 +115,10 @@ func (w *writer) nestedNamed(
 		return w.elements(w.walker(elem), over, wrap, depth, segment, nil)
 	}
 
+	if c, ok := ext.CompositeOf(reg, named); ok {
+		return w.parts(c, named, x, wrap, depth)
+	}
+
 	switch {
 	case w.shallow && w.sel.callable(named) && w.sel.decoded(named):
 		return nil, nil
@@ -192,6 +196,65 @@ func (w *writer) guarded(
 	return lang.If(guard, s, nil), nil
 }
 
+// parts returns the steps validating the values the value x of type named
+// holds as c tells, each under its guard and located by its segment, or nil
+// when they hold nothing to validate.
+func (w *writer) parts(
+	c ext.Composite,
+	named *types.Named,
+	x genExpr,
+	wrap wrapFunc,
+	depth int,
+) (genStep, error) {
+	var steps genSteps
+
+	for _, role := range c.Roles(named) {
+		part, guard, value, segment, label, _ := c.Part(named, x, role)
+
+		s, err := w.nested(part, value, w.locate(segment, label, wrap), depth)
+		if err != nil {
+			return nil, err
+		}
+
+		if s == nil {
+			continue
+		}
+
+		if guard != nil {
+			s = lang.If(guard, s, nil)
+		}
+
+		steps = append(steps, s)
+	}
+
+	if len(steps) == 0 {
+		return nil, nil
+	}
+
+	return steps, nil
+}
+
+// locate returns wrap adding the segment of the kind segment labelled label
+// to an error first.
+func (w *writer) locate(segment ext.Segment, label genExpr, wrap wrapFunc) wrapFunc {
+	var fn string
+
+	switch segment {
+	case ext.SegmentIndex:
+		fn = "Index"
+	case ext.SegmentKey:
+		fn = "Key"
+	case ext.SegmentField:
+		fn = "Field"
+	default:
+		return wrap
+	}
+
+	return func(err genExpr) genExpr {
+		return wrap(lang.Expr("%s.%s(%s, %s)", w.Import(ext.ValidationPath), fn, err, label))
+	}
+}
+
 // elementFunc returns the step validating the element e, each error passed
 // through wrap, or nil when e holds nothing to validate.
 type elementFunc func(e genExpr, wrap wrapFunc, depth int) (genStep, error)
@@ -220,20 +283,16 @@ func (w *writer) elements(
 	segment ext.Segment,
 	key types.Type,
 ) (genStep, error) {
-	idx, locate := "i", "Index"
+	idx := "i"
 	if segment == ext.SegmentKey {
-		idx, locate = "k", "Key"
+		idx = "k"
 	}
 
 	if depth > 0 {
 		idx += strconv.Itoa(depth + 1)
 	}
 
-	inner := func(err genExpr) genExpr {
-		return wrap(lang.Expr(
-			"%s.%s(%s, %s)", w.Import(ext.ValidationPath), locate, err, lang.Name(idx),
-		))
-	}
+	inner := w.locate(segment, lang.Name(idx), wrap)
 
 	s, err := element(lang.Name("e"), inner, depth+1)
 	if s == nil || err != nil {

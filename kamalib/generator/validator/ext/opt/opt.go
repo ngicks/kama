@@ -10,8 +10,9 @@ import (
 
 func init() { ext.RegisterTypeSupport(Support{}) }
 
-// Support is the ext.TypeSupport of opt.Option, und.Und and
-// elastic.Elastic. It implements ext.Holder, ext.Container,
+// Support is the ext.TypeSupport of opt.Option, und.Und, elastic.Elastic,
+// either.Either, either.Result, their untagged variants and tuple.Tuple2 to
+// tuple.Tuple16. It implements ext.Holder, ext.Container, ext.Composite,
 // ext.PresenceTester, ext.ZeroTester and ext.NullTester.
 type Support struct{}
 

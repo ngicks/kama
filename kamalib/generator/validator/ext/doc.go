@@ -36,11 +36,24 @@
 //     type applies to the value held.
 //   - Container: the elements of a type, ranged over and located by index
 //     or key, as elastic.Elastic holds its elements.
+//   - Composite: several values side by side, each of its own type, under
+//     its own guard and located by its own segment, as either.Either holds
+//     a left or a right value and tuple.Tuple2 holds two. A rule rejecting
+//     the type does not apply to them.
 //   - PresenceTester, ZeroTester and NullTester: how required, zero and
 //     null test a value of the type.
 //
-// Each held value and each element has a role name, such as "t". A role
-// names the value among the values a type holds.
+// Each held value, each element and each value of a Composite has a role
+// name, such as "t", "left" or "v1". A role names the value among the
+// values a type holds. The role names a support gives are part of its API.
+// A role name is a Go identifier, and it is not hook, pre, post or the
+// name of a validator. Roles lists the roles of a type: e for the elements
+// of a slice or an array, k and v for the keys and the values of a map,
+// and the roles of the supports. RoleValue tells how the values of a role
+// are reached: their type, the guard, the value expression or the range
+// expression, and the segment locating them. A caller applying a rule to
+// the values of a role applies it to that value under that guard, or in
+// that loop, and locates its errors by that segment.
 //
 // The generator asks the supports at the point it needs an answer, in the
 // order they were registered, and the first support claiming a type

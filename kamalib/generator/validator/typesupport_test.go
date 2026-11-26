@@ -1,13 +1,16 @@
 package validator
 
 import (
+	"go/token"
 	"go/types"
+	"slices"
 	"testing"
 
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
 // bagSupport is the type support of the test container sub.Bag, whose All
@@ -111,4 +114,100 @@ func TestTypeSupport(t *testing.T) {
 	// the holder.
 	_, err = generate(t, files, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
+}
+
+// TestRoles lists the roles of the built-in kinds and of the types of
+// github.com/ngicks/option, and reaches the value of each role.
+func TestRoles(t *testing.T) {
+	pkgs := gentest.Load(t, map[string]string{
+		"a.go": `package x
+
+import (
+	"github.com/ngicks/option/either"
+	"github.com/ngicks/option/elastic"
+	"github.com/ngicks/option/opt"
+	"github.com/ngicks/option/tuple"
+	"github.com/ngicks/option/und"
+)
+
+type A struct {
+	S  []int
+	R  [2]int
+	M  map[string]int
+	P  *int
+	O  opt.Option[int]
+	U  und.Und[int]
+	E  elastic.Elastic[int]
+	EI either.Either[int, string]
+	RS either.Result[int]
+	UE either.UntaggedEither[int, string]
+	T3 tuple.Tuple3[int, string, bool]
+}
+`,
+	})
+
+	reg := ext.DefaultRegistry()
+	st := pkgs[0].Types.Scope().Lookup("A").Type().Underlying().(*types.Struct)
+
+	want := map[string][]string{
+		"S": {"e"}, "R": {"e"}, "M": {"k", "v"}, "P": nil,
+		"O": {"t"}, "U": {"t"}, "E": {"t"},
+		"EI": {"left", "right"}, "RS": {"ok"}, "UE": {"left", "right"},
+		"T3": {"v1", "v2", "v3"},
+	}
+
+	reserved := append([]string{"hook", "pre", "post"}, reg.Names()...)
+
+	for field := range st.Fields() {
+		roles := ext.Roles(reg, field.Type())
+		assert.DeepEqual(t, roles, want[field.Name()])
+
+		for _, role := range roles {
+			assert.Assert(t, token.IsIdentifier(role), role)
+			assert.Assert(t, !slices.Contains(reserved, role), role)
+
+			held, _, _, _, _, _, ok := ext.RoleValue(
+				reg, field.Type(), lang.Expr("x"), role, lang.Expr("p"), lang.Expr("e"),
+			)
+			assert.Assert(t, ok, "%s %s", field.Name(), role)
+			assert.Assert(t, held != nil, "%s %s", field.Name(), role)
+		}
+
+		_, _, _, _, _, _, ok := ext.RoleValue(reg, field.Type(), nil, "nope", nil, nil)
+		assert.Assert(t, !ok)
+	}
+
+	m := st.Field(2).Type()
+	key, _, over, value, segment, label, _ := ext.RoleValue(
+		reg, m, lang.Expr("x"), "k", lang.Expr("p"), lang.Expr("e"),
+	)
+	assert.Equal(t, key, types.Type(types.Typ[types.String]))
+	assert.Assert(t, over != nil)
+	assert.Equal(t, segment, ext.SegmentKey)
+	assert.Equal(t, render(t, value), "p")
+	assert.Equal(t, render(t, label), "p")
+
+	tup := st.Field(10).Type()
+	_, guard, over, value, segment, label, _ := ext.RoleValue(
+		reg,
+		tup,
+		lang.Expr("x"),
+		"v2",
+		nil,
+		nil,
+	)
+	assert.Assert(t, guard == nil && over == nil)
+	assert.Equal(t, segment, ext.SegmentField)
+	assert.Equal(t, render(t, value), "x.V2")
+	assert.Equal(t, render(t, label), `"V2"`)
+}
+
+// render renders g in a context of its own.
+func render(t *testing.T, g ext.Gen) string {
+	t.Helper()
+
+	text, err := g(genhelper.NewBaseContext(genhelper.NewScope(), nil))
+	assert.NilError(t, err)
+
+	return text
 }
