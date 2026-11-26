@@ -5,6 +5,14 @@
 // as in //go:noinline or //line x.go:10. A space after //, an empty toolname
 // or directive, or a block comment makes it an ordinary comment.
 //
+// [Parse] parses one comment, and [Ast] and [AstField] find the directive
+// comments of a comment group or a struct field. The package leaves the
+// args as written. [ParseArgsKeyValue] parses args written as
+// space-separated key=value pairs, as of //kama:option-file
+// partial=kama_partial.toml. The expr package parses args written as
+// Starlark expressions, as the directives of the generators of this module
+// are.
+//
 // Lifted from github.com/ngicks/go-codegen/codegen/pkg/directive.
 package dircmnt
 
@@ -28,8 +36,6 @@ type Comment struct {
 	//
 	// Args stays as written because the args of a directive follow the
 	// grammar of its tool, as the command line of //go:generate does.
-	// [ParseArgsKeyValue] parses Args of a directive that takes key=value
-	// pairs.
 	Args string
 }
 
