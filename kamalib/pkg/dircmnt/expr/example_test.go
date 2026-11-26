@@ -8,7 +8,7 @@ import (
 )
 
 func Example() {
-	args, err := expr.Parse(`required, hook=off, length(min=1, max=3) or regexp(r"^\d+$")`)
+	args, err := expr.Parse(`required, hook=False, length(ge=1, le=3) or regexp(r"^\d+$")`)
 	if err != nil {
 		panic(err)
 	}
@@ -21,9 +21,9 @@ func Example() {
 
 	// Output:
 	// "": expr.Call required
-	// "hook": expr.Call off
-	// "": expr.Or length(min=1, max=3) or regexp(r"^\d+$")
-	// required, hook=off, length(min=1, max=3) or regexp(r"^\d+$")
+	// "hook": expr.Bool False
+	// "": expr.Or length(ge=1, le=3) or regexp(r"^\d+$")
+	// required, hook=False, length(ge=1, le=3) or regexp(r"^\d+$")
 }
 
 func ExampleObject() {

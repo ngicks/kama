@@ -16,10 +16,11 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
-// Cmp is the validator //kama:validate cmp="<op><value> ...": the value
-// satisfies every comparison, as in >=1 <100 or =="a". The operators are
-// >, >=, ==, !=, <= and <, and value is a Go literal of the type of the
-// value: a number, a quoted string, true or false.
+// Cmp is the validator //kama:validate cmp(...): the value satisfies every
+// comparison, as in cmp(ge=1, lt=100) or cmp("a"). The keywords gt, ge,
+// lt, le, eq and ne compare with >, >=, <, <=, == and !=, one positional
+// arg compares with ==, and each value is a number, a string, True or
+// False.
 //
 // It applies to types of an integer, float or string underlying type, and
 // with == and != only to types of a bool underlying type. On raw JSON text,
@@ -36,9 +37,9 @@ type Cmp struct{}
 // Name returns "cmp".
 func (Cmp) Name() string { return "cmp" }
 
-// CmpOptions are the options of //kama:validate cmp="<op><value> ...".
+// CmpOptions are the options of //kama:validate cmp(...).
 type CmpOptions struct {
-	// Comparisons holds one comparison per token of the arg, in order.
+	// Comparisons holds one comparison per arg, in order.
 	Comparisons []Comparison
 }
 

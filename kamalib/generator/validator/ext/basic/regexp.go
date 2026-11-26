@@ -12,7 +12,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Regexp is the validator //kama:validate regexp=<pattern>: the value
+// Regexp is the validator //kama:validate regexp("<pattern>"): the value
 // matches the RE2 pattern, as package regexp reads it. The whole argument
 // is the pattern, so a quoted pattern may hold spaces, = and quotes.
 //
@@ -27,7 +27,7 @@ type Regexp struct{}
 // Name returns "regexp".
 func (Regexp) Name() string { return "regexp" }
 
-// RegexpOptions are the options of //kama:validate regexp=<pattern>.
+// RegexpOptions are the options of //kama:validate regexp("<pattern>").
 type RegexpOptions struct {
 	// Pattern is the whole arg.
 	Pattern string

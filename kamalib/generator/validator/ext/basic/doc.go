@@ -9,37 +9,45 @@
 // the sentinels listed here. Callers test the kind of a failure with
 // errors.Is:
 //
-//	required              validator.ErrRequired
-//	zero                  validator.ErrZero
-//	nil                   validator.ErrNil
-//	null                  validator.ErrNull
-//	regexp=<pattern>      validator.ErrPattern
-//	length="<op><n> ..."  validator.ErrLength
-//	runes="<op><n> ..."   validator.ErrLength
-//	cmp="<op><v> ..."     validator.ErrCompare
-//	const="<v> ..."       validator.ErrConst
-//	multipleof=<n>        validator.ErrMultiple
-//	unique                validator.ErrUnique
-//	format=<name>         validator.ErrFormat
-//	requires="<name> ..." validator.ErrRequired
-//	members="<op><n> ..." validator.ErrLength
-//	closed                validator.ErrClosed
-//	kind="<kind> ..."     validator.ErrKind
-//	and(<v>, ...)         the errors of the operands
-//	or(<v>, ...)          validator.ErrOr
-//	not(<v>)              validator.ErrNot
-//	oneof(<v>, ...)       validator.ErrOneOf
-//	if(<c>, <t>[, <e>])   the errors of the operand t or e
-//	ref=<type>            the errors of Validate of type
-//	decode=<type>         validator.ErrDecode
-//	props(<entry>, ...)   the errors of the operands, at their members
-//	items(<v>, ...)       the errors of the operands, at their elements
-//	prefix(<v>, ...)      the errors of the operands, at their elements
-//	contains(<n>, <v>...) validator.ErrContains
-//	keys(<v>, ...)        the errors of the operands, at their members
-//	unevalprops(<s>, ...) the errors of s and of the operands
-//	unevalitems(<s>, ...) the errors of s and of the operands
-//	json(<v>, ...)        the errors of the operands, validator.ErrEncode
+//	required                 validator.ErrRequired
+//	zero                     validator.ErrZero
+//	nil                      validator.ErrNil
+//	null                     validator.ErrNull
+//	regexp("<pattern>")      validator.ErrPattern
+//	length(ge=<n>, ...)      validator.ErrLength
+//	runes(ge=<n>, ...)       validator.ErrLength
+//	cmp(ge=<v>, ...)         validator.ErrCompare
+//	const(<v>, ...)          validator.ErrConst
+//	multipleof(<n>)          validator.ErrMultiple
+//	unique                   validator.ErrUnique
+//	format("<name>")         validator.ErrFormat
+//	requires("<name>", ...)  validator.ErrRequired
+//	members(ge=<n>, ...)     validator.ErrLength
+//	closed                   validator.ErrClosed
+//	kind("<kind>", ...)      validator.ErrKind
+//	a and b                  the errors of the operands
+//	a or b                   validator.ErrOr
+//	not a                    validator.ErrNot
+//	oneof(a, ...)            validator.ErrOneOf
+//	t if c else e            the errors of the operand t or e
+//	always                   none
+//	never                    validator.ErrOr
+//	ref("<type>")            the errors of Validate of type
+//	decode("<type>")         validator.ErrDecode
+//	props(<entry>, ...)      the errors of the operands, at their members
+//	items(a, ...)            the errors of the operands, at their elements
+//	prefix(a, ...)           the errors of the operands, at their elements
+//	contains(a, ..., ge=<n>) validator.ErrContains
+//	keys(a, ...)             the errors of the operands, at their members
+//	unevalprops(<s>, ...)    the errors of s and of the operands
+//	unevalitems(<s>, ...)    the errors of s and of the operands
+//	json(a, ...)             the errors of the operands, validator.ErrEncode
+//
+// A comparison is a keyword arg: gt, ge, lt, le, eq and ne compare with >,
+// >=, <, <=, == and !=. One positional arg compares with ==, as in
+// length(3), and ne takes a list of values too, as in length(ne=[2, 3]). A
+// keyword arg a validator does not take is reported as a warning and left
+// out.
 //
 // required takes no arg, except member names on raw JSON text, as told
 // below. The value is not the zero value: an opt.Option
@@ -68,43 +76,41 @@
 // types. Their nil value cannot call IsNull. A pointer therefore gets the
 // validator on its pointee, and a nil pointer passes.
 //
-// regexp takes its whole arg as the pattern, as in regexp="^[a-z]+$". A
-// quoted or raw string lets the pattern hold spaces, = and quotes, as in
-// regexp=`^a="b c"$`. The value of a string or []byte underlying type
-// matches the RE2 pattern. The
+// regexp takes the pattern as a string, as in regexp(r"^[a-z]+$"). A raw
+// string keeps every backslash. The value of a string or []byte underlying
+// type matches the RE2 pattern. The
 // generator compiles the pattern to reject a bad one, and the generated
 // code compiles it once into a package-level variable.
 //
-// length takes one or more comparisons <op><n> with the operators >, >=,
-// ==, !=, <= and <, and a non-negative integer literal n, as in
-// length=">=1 <=10".
-// n may carry a unary plus. len of the value satisfies every comparison.
-// It applies to string, slice, array, map and channel underlying types.
-// The length of a string is its number of bytes.
+// length takes one or more comparisons with non-negative integers, as in
+// length(ge=1, le=10). The length of the value satisfies every comparison.
+// It applies to string, slice, array, map and channel underlying types, and
+// to a type an ext.LengthTester claims, as elastic.Elastic. The length of a
+// string is its number of bytes.
 //
-// runes takes the arg of length. The number of runes of the value of a
+// runes takes the args of length. The number of runes of the value of a
 // string underlying type, as utf8.RuneCountInString counts them,
 // satisfies every comparison. A JSON string counts its length the same
 // way. runes does not apply to []byte, which encodes to a JSON string of
 // another length.
 //
-// cmp takes one or more comparisons <op><v>, where v is a Go literal of the
-// type of the value: a number, a quoted string, true or false, as in
-// cmp=">=0 <100" or cmp=`>"b"`. The value satisfies every comparison. It applies to
+// cmp takes one or more comparisons with values of the type of the value: a
+// number, a string, True or False, as in cmp(ge=0, lt=100) or cmp(gt="b").
+// The value satisfies every comparison. It applies to
 // integer, float and string underlying types, and with == and != only to
 // bool underlying types. A literal the type cannot represent is an error,
-// except a number on an integer type, which compares exactly: >=1.5 holds
-// for the values >=2, <=1e30 for every value of int64 and ==1.5 for none.
+// except a number on an integer type, which compares exactly: ge=1.5 holds
+// for the values >=2, le=1e30 for every value of int64 and eq=1.5 for none.
 // A comparison no value satisfies reports the literal as written.
 //
-// const takes one or more Go literals of the type of the value, as in
-// const="1 2 3" or const=`"red" "dark blue"`. The value equals one of them.
-// It applies to bool, numeric and string underlying types. A string type
-// takes quoted literals only and any other type bare literals only.
-// const=`"1"` and const=1 therefore never mean the same.
+// const takes one or more literals of the type of the value, as in
+// const(1, 2, 3) or const("red", "dark blue"). The value equals one of
+// them. It applies to bool, numeric and string underlying types. A string
+// type takes strings only and any other type takes no string. const("1")
+// and const(1) therefore never mean the same.
 //
-// multipleof takes one positive integer or float literal n, as in
-// multipleof=2 or multipleof=0.01. The value divided by n is an integer.
+// multipleof takes one positive number n, as in multipleof(2) or
+// multipleof(0.01). The value divided by n is an integer.
 // It applies to integer and float underlying types. An integer value is
 // tested with % by the numerator of n in lowest terms, which must be a
 // value of the type. A float value is tested exactly, as the shortest
@@ -116,7 +122,7 @@
 // no pointer, interface or type parameter compare with ==. Other elements
 // compare with reflect.DeepEqual, which follows pointers.
 //
-// format takes one format name, as in format=date. The value of a string underlying type is
+// format takes one format name, as in format("date"). The value of a string underlying type is
 // of that format. On raw JSON text a string is of that format and a value of another kind
 // passes. DefaultFormats holds the built-in formats: date parses with time.DateOnly,
 // date-time parses with time.RFC3339, url parses with net/url and has a scheme and a host,
@@ -124,7 +130,7 @@
 // is 32 hexadecimal digits in hyphenated groups of 8, 4, 4, 4 and 12.
 //
 // requires takes one or more JSON member names of sibling fields, as in
-// requires="city zip". When the field is present, each sibling named is
+// requires("city", "zip"). When the field is present, each sibling named is
 // present too, as JSON Schema dependentRequired tests. Present means what
 // required tests, so an und.Und holding null is present. The field and each
 // sibling must be of a type required applies to. A name no sibling field
@@ -132,8 +138,8 @@
 // sibling. requires applies to a pointer or an option field itself and
 // never to the value it holds.
 //
-// members takes the arg of length and is written in the doc comment of a
-// struct type, as in //kama:validate members=">=1 <=3". The number of JSON
+// members takes the args of length and is written in the doc comment of a
+// struct type, as in //kama:validate members(ge=1, le=3). The number of JSON
 // members of the value satisfies every comparison, as JSON Schema
 // minProperties and maxProperties count them. A field of an option type or
 // a nillable type whose json tag holds omitzero or omitempty counts when
@@ -149,7 +155,7 @@
 // its member, in the order of the keys. A fallback of another type than a
 // map keyed by strings is an error. A struct without one always passes.
 //
-// kind takes one or more JSON kinds, as in kind="integer null": null,
+// kind takes one or more JSON kinds, as in kind("integer", "null"): null,
 // boolean, object, array, number, string and integer, a number with a zero
 // fraction such as 1.0. It applies to raw JSON text only, whose kind is one
 // of them, as JSON Schema type tests.
@@ -159,37 +165,38 @@
 // members applies outside a struct and counts the members of an object,
 // unique and const compare JSON values, so 1 equals 1.0 and objects equal
 // regardless of member order, and required takes member names, as in
-// required="a b", which an object holds. Each passes a value of another
-// kind. A const token on raw JSON text is the text of a JSON value, quoted
-// or not, as in const="1 null `\"a\"`".
+// required("a", "b"), which an object holds. Each passes a value of another
+// kind. A const value on raw JSON text is a JSON value written as a
+// literal, None for null, a list for an array and a dict for an object, as
+// in const(1, None, "a", {"b": []}).
 //
-// and, or, not, oneof and if take operands: validators written as the args
-// of //kama:validate are, separated by commas, as in or(cmp=">=10",
-// const="0"). They apply to a type every operand applies to. and holds
-// when every operand holds and returns their errors, joined or with
-// stopOnFirstError the first one. and() always holds. or holds when an
-// operand holds. Its error, none of n alternatives holds, carries the
-// error of every operand as a cause, which validator.Causes returns.
-// errors.Is does not reach the causes. or() never holds. not takes one
-// operand and holds when it fails. Its error spells the operand. oneof
-// holds when exactly one operand holds. When none does, its error carries
-// the errors of the operands as causes. When several do, it spells them.
-// if takes cond, then and an optional else. When cond holds, it returns
-// the error of then, otherwise that of else, or nil without else. The
-// error of cond never surfaces. The operands of a combinator all run, as
-// the arguments of one helper call. A combinator with a requires
-// operand is bound to the siblings of its field, and one with a members
-// operand to its struct, as package validator describes. The other
-// operands of a combinator bound to the siblings apply to the value a
-// pointer or an option holds when they reject the field, inside a function
-// literal guarding a nil pointer. The spelling of
-// an operand in an error message quotes its value, as in
-// not(const=5) reporting want the value to fail const="5".
+// The operators and, or, not and the conditional, and oneof, take rules as
+// operands, as in cmp(ge=10) or const(0). They apply to a type every operand
+// applies to, else to the level of a pointer or an option every operand
+// applies to, else each operand to its own level, as package validator
+// describes. and holds when every operand holds and returns their errors,
+// joined or with stopOnFirstError the first one. always holds. or holds
+// when an operand holds. Its error, none of n alternatives holds, carries
+// the error of every operand as a cause, which validator.Causes returns.
+// errors.Is does not reach the causes. never never holds. not holds when
+// its operand fails. Its error spells the operand. oneof holds when exactly
+// one operand holds. When none does, its error carries the errors of the
+// operands as causes. When several do, it spells them. then if cond else
+// otherwise returns the error of then when cond holds, otherwise that of
+// otherwise, nil for always. The error of cond never surfaces. The
+// operands of a combinator all run, as the arguments of one helper call. A
+// combinator with a requires operand is bound to the siblings of its
+// field, and one with a members operand to its struct. The other operands
+// of a combinator bound to the siblings apply to the value a pointer or an
+// option holds when they reject the field, inside a function literal
+// guarding a nil pointer. An error message spells an operand as the
+// directive does, as not const(5) reporting want the value to fail
+// const(5).
 //
 // ref takes the name of a type of the generated package defined over raw
-// JSON text, as in ref=Tree, and calls Validate of the value converted to
-// it. decode takes the name of a type whose decoder validates, as in
-// decode=Pet, and decodes the value into it. Both apply to raw JSON text
+// JSON text, as in ref("Tree"), and calls Validate of the value converted
+// to it. decode takes the name of a type whose decoder validates, as in
+// decode("Pet"), and decodes the value into it. Both apply to raw JSON text
 // only and record nothing for unevalprops and unevalitems.
 //
 // props takes entries: field("<name>", <v>, ...) applies the operands to
@@ -199,16 +206,16 @@
 // patternProperties and additionalProperties do. items applies its
 // operands to each element. prefix applies its operand i to the element i
 // and the operands of a last rest(...) to each later element. contains
-// takes leading comparisons with the arg of length, >=1 when there is
-// none, which the number of elements passing every operand satisfies, as
-// in contains(>=2, <=3, kind=string). keys applies its operands to the
+// takes the comparisons of length as keyword args, ge=1 when there is none,
+// which the number of elements passing every operand satisfies, as in
+// contains(kind("string"), ge=2, le=3). keys applies its operands to the
 // name of each member as a JSON string. unevalprops and unevalitems take
 // the scope first. Each applies to raw JSON text only and passes a value
 // of another kind.
 //
 // json takes the validators of raw JSON text as operands and applies them
 // to the value of any other type encoded as JSON, as in
-// //kama:validate json(not(required=x), props(match("^x-", kind=string))) on
+// //kama:validate json(not required("x"), props(match("^x-", kind("string")))) on
 // a struct. It applies to the value a pointer, an opt.Option or an und.Und
 // holds, so a value holding none is not checked. It is a StructRule too, so
 // the doc comment of a struct type takes it. A value that does not encode

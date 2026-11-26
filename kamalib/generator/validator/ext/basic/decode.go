@@ -8,7 +8,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Decode is the validator //kama:validate decode=<type>: the value decodes
+// Decode is the validator //kama:validate decode("<type>"): the value decodes
 // into type, a type of the generated package, as JSON Schema $ref applies
 // the schema it names. The decoder of type must reject a value type does
 // not admit, as the decoder of a struct the jsonschema generator declares
@@ -23,7 +23,7 @@ type Decode struct{}
 // Name returns "decode".
 func (Decode) Name() string { return "decode" }
 
-// DecodeOptions are the options of //kama:validate decode=<type>.
+// DecodeOptions are the options of //kama:validate decode("<type>").
 type DecodeOptions struct {
 	// Type is the name of the type.
 	Type string

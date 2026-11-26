@@ -17,7 +17,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
-// MultipleOf is the validator //kama:validate multipleof=<n>: the value
+// MultipleOf is the validator //kama:validate multipleof(<n>): the value
 // divided by n is an integer, as in multipleof=2 or multipleof=0.01. n is a
 // positive integer or float literal and may carry a unary plus.
 //
@@ -37,7 +37,7 @@ type MultipleOf struct{}
 // Name returns "multipleof".
 func (MultipleOf) Name() string { return "multipleof" }
 
-// MultipleOfOptions are the options of //kama:validate multipleof=<n>.
+// MultipleOfOptions are the options of //kama:validate multipleof(<n>).
 type MultipleOfOptions struct {
 	// Divisor is the arg, as written.
 	Divisor string

@@ -445,7 +445,7 @@ func keysRules(
 }
 
 // dependentRules returns, for each key of the dependentSchemas of s,
-// if(required=<key>, <schema>).
+// <schema> if required(<key>) else always.
 func dependentRules(
 	s *jsonschema.Schema,
 	same func(keys ...string) (expr.Arg, error),

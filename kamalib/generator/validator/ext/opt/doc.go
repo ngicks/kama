@@ -15,13 +15,15 @@
 //     that Options returns, located by index. A null element is a none
 //     opt.Option, which holds nothing to validate. It is present, zero and
 //     null as und.Und is.
-//   - either.Either holds its left value, role "left", when IsLeft reports
-//     true and its right value, role "right", when IsRight does. It encodes
-//     as an object tagging the value with the member left or right, which
+//   - either.Either holds its left value, role "l", when IsLeft reports
+//     true and its right value, role "r", when IsRight does. It encodes as
+//     an object tagging the value with the member left or right, which
 //     locates the value.
-//   - either.Result holds its value, role "ok", when IsOk reports true,
-//     located at the member ok it encodes as. Its error is no value to
-//     validate.
+//   - either.Result holds its value, role "ok", when IsOk reports true, and
+//     its error, role "err", when IsErr does, located at the member ok or
+//     err it encodes as.
+//   - elastic.Elastic tells its length, the number of its elements, to the
+//     length validator.
 //   - either.UntaggedEither and either.UntaggedResult hold the values of
 //     Either and Result under the same roles. They encode the value alone,
 //     so their values add no path segment.

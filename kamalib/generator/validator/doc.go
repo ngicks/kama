@@ -37,56 +37,144 @@
 //
 // # Directive
 //
-// One directive, //kama:validate, carries every option. Its args follow the
-// grammar of dircmnt.ParseArgsKeyValue: space-separated words written key
-// or key=value, and calls written name(arg, ...). A value is a bare word or
-// a quoted or raw Go string literal:
+// One directive, //kama:validate, carries every option. The text after it
+// is a comma separated list of items, each a Starlark expression as package
+// pkg/dircmnt/expr reads it:
 //
 //	//kama:validate hook=False
 //	type User struct {
 //		//kama:validate required
 //		Name string
-//		//kama:validate required, length(ge=1, le=10), unique
+//		//kama:validate length(ge=1, le=10), unique, e=runes(le=64)
 //		Tags []string
-//		//kama:validate regexp("^[a-z-]+$"), runes(le=64), hook=True
+//		//kama:validate regexp(r"^[a-z-]+$"), runes(le=64), hook=True
 //		Slug string
 //		//kama:validate format("date")
 //		Born string
 //		//kama:validate cmp(ge=0, lt=100), const(1, 2, 3)
 //		N int
-//		//kama:validate multipleof(0.5)
-//		Score float64
-//		//kama:validate const("red", "dark blue")
-//		Color string
 //		//kama:validate cmp(ge=10) or const(0), not const(5)
 //		Stock int
+//		//kama:validate k=regexp(r"^[a-z]+$"), v=cmp(ge=0)
+//		Counts map[string]int
 //	}
 //
-// The place of the directive gives its args their meaning:
+// The grammar of an item is
 //
-//   - In the doc comment of a type, the directive marks the type. The arg
-//     ignore exempts the type instead. The arg hook=on or hook=off sets the
-//     default hook of the fields of the type. The arg decoded tells that
-//     decoding a value of the type validates it, as Shallow validation
-//     describes. The args pre=<func> and post=<func> name functions
-//     Validate calls before and after its checks, as Pre and post functions
-//     describes. Every other arg names a
-//     validator of the value of the type. Targets, Hooks and Type validators
-//     describe them.
-//   - On a struct field, each arg names a validator, and the arg hook=on or
-//     hook=off switches the hook of the field. Validators and Hooks
-//     describe them.
-//   - In a free-floating comment, the arg file or package marks the types
-//     of the file or of the package. Targets describes them.
+//	item   = rule | name "=" value .
+//	rule   = call | rule "and" rule | rule "or" rule | "not" rule
+//	       | rule "if" rule "else" rule | "(" rule ")" .
+//	call   = name [ "(" [ arg { "," arg } ] ")" ] .
+//	arg    = [ name "=" ] ( rule | literal ) .
+//	value  = rule | literal | "g(" item { "," item } ")" .
 //
-// Several //kama:validate lines on one type or one field count as one
-// directive. Their args are joined in source order. hook, pre or post given
-// twice on one type or field is an error wrapping ErrDirective. The words
-// hook, pre, post, ignore, decoded, file and package name no validator.
+// A literal is a string, a number, True, False, None, a list or a dict. A
+// bare item is a rule validating the value the directive is written on. A
+// keyword item is one of these:
+//
+//   - hook=True or hook=False switches the hook of a field, or the default
+//     hook of the fields of a type.
+//   - pre="f" and post="g" name the functions Validate of a type calls
+//     before and after its checks, as Pre and post functions describes.
+//   - A role of the type of the value, as e=length(le=64) on a []string,
+//     validates the values of that role, as Roles describes.
+//   - nested=False, unwrap="M", iter="M" and iter2="M" direct the walk into
+//     the values a field holds, as Nested validation describes.
+//
+// Any other keyword item is an error wrapping ErrDirective. A keyword item
+// naming a validator, as length=">=1", is reported with the call standing
+// for it, length(ge=1). The bare words ignore, decoded, file and package
+// are options of a type or a free-floating comment:
+//
+//   - In the doc comment of a type, the directive marks the type. ignore
+//     exempts the type instead. decoded tells that decoding a value of the
+//     type validates it, as Shallow validation describes. Every rule
+//     validates the value of the type. Targets, Hooks and Type validators
+//     describe them.
+//   - On a struct field, every rule validates the field. Validators and
+//     Hooks describe them.
+//   - In a free-floating comment, file or package marks the types of the
+//     file or of the package. Targets describes them.
+//
+// Each line of a directive is parsed on its own, and the items of the lines
+// of one type or one field are joined in source order. An item does not
+// span lines. hook, pre or post given twice on one type or field, and a
+// rule or a role given twice, are errors wrapping ErrDirective. The words
+// hook, pre, post, ignore, decoded, file, package, g, nested, unwrap, iter
+// and iter2 name no validator and no role.
 //
 // A sub-directive //kama:validate:<name> is an error wrapping ErrDirective.
-// The error shows the args of //kama:validate standing for it. For
-// //kama:validate:length >=1 it shows //kama:validate length=">=1".
+// The error shows the item of //kama:validate standing for it. For
+// //kama:validate:length ge=1 it shows //kama:validate length(ge=1).
+//
+// # Roles
+//
+// A role names the values a value holds. A keyword item whose name is a
+// role of the type of the value applies its value to each value of that
+// role, under the guard telling the value is held or in a loop over the
+// values, and locates its errors at the value:
+//
+//	type                                   roles
+//	slice, array                           e
+//	map                                    k, v
+//	pointer                                e
+//	opt.Option, und.Und, elastic.Elastic   t
+//	either.Either, UntaggedEither          l, r
+//	either.Result, UntaggedResult          ok, err
+//	tuple.TupleN                           v1 ... vN
+//
+// The value of a role item is one rule, as e=length(le=64), or a group
+// g(...). A group takes what a directive line takes: rules for the value
+// and role items for the values it holds, as e=g(length(ge=1), v=cmp(ge=0))
+// on a []map[string]int. A rule on elastic.Elastic validates the elastic
+// value, so length(3) or null, t=length(le=64) asks for three elements or
+// null, each of at most 64 bytes. A role the type does not offer is an
+// error naming the roles it offers. The type supports of the registry give
+// the roles of the types they claim, as ext.Roles tells. A role a support
+// names like a word of the directive or a validator is an error wrapping
+// ErrConflict.
+//
+// A pointer, an opt.Option and an und.Und hold one value. A rule on such a
+// field applies to the outermost level taking it: nil, required, zero and
+// null test the holder, and a rule of the held type goes through every
+// level, as cmp(ge=1) on a *opt.Option[int], under the guards. A role item
+// addresses an inner level, as e=g(nil or not cmp(0)) on a **int tests the
+// inner pointer. A combinator whose operands take different levels applies
+// each operand to its own level, and an operand holds when its level holds
+// no value. A slice, a map, an elastic.Elastic and the composites hold no
+// value a bare rule reaches. Their values take a role item.
+//
+// # Nested validation
+//
+// Validate calls Validate of each value a field holds whose type has one,
+// as What Validate does describes, whether or not role items validate the
+// value too. Each value gets one call. These keyword items, on a field or
+// inside g(...), direct that walk:
+//
+//   - nested=False stops the calls for the value and for everything it
+//     holds. nested=True in an inner group turns them back on. Role items
+//     still apply.
+//   - unwrap="M" reaches the one value M returns, M of the signature
+//     func() T, or func() (T, bool) whose bool tells the value is held.
+//     Role v names the value.
+//   - iter="M" ranges over the result of M, any function func(yield
+//     func(T) bool), as iter.Seq or opiter.Seq. Role v names each value,
+//     located by its position.
+//   - iter2="M" ranges over the result of M, any function func(yield
+//     func(K, V) bool). Roles k and v name each key and value. A key of a
+//     string or an integer kind locates its value, and the position does
+//     otherwise.
+//
+// A description names a method of the type of the field, found with
+// go/types, and replaces the roles of its type supports. A missing method,
+// another signature, and two descriptions of one value are errors. A field
+// with a description holds no type the target selection reports, so a
+// generic container of the run needs no directive of its own:
+//
+//	//kama:validate iter="All", v=length(le=64)
+//	Names List[string]
+//	//kama:validate unwrap="Get", v=cmp(ge=1)
+//	Size Maybe[int]
 //
 // # Targets
 //
@@ -94,7 +182,7 @@
 // or by the option file entries standing for them:
 //
 //   - //kama:validate in the doc comment of a type marks it, with or
-//     without hook=on or hook=off. In the doc
+//     without hook=True or hook=False. In the doc
 //     comment of a type declaration with several specs, as in
 //     type ( A struct{}; B struct{} ), it marks every type of the
 //     declaration, and so do the other directives of types.
@@ -335,24 +423,24 @@
 // names the type, the field, the expected signature and the arg turning
 // the hook off. These args of //kama:validate override the default:
 //
-//   - hook=off in the doc comment of a type turns the hooks of all its
-//     fields off, and hook=on turns them on.
-//   - hook=off on a field turns its hook off, and hook=on turns it on.
+//   - hook=False in the doc comment of a type turns the hooks of all its
+//     fields off, and hook=True turns them on.
+//   - hook=False on a field turns its hook off, and hook=True turns it on.
 //
 // A field arg wins over a type arg, and a type arg wins over the default.
-// A field opts back in under a type-level hook=off.
+// A field opts back in under a type-level hook=False.
 //
 // Every //kama:validate in the doc comment of a type marks the type unless
 // it holds ignore. A dependant therefore opts in to its hooks with
-// //kama:validate hook=on, and that directive marks it. A dependant is a
+// //kama:validate hook=True, and that directive marks it. A dependant is a
 // target already, so the mark changes nothing else for it. The type stays a
 // target when it no longer holds anything to validate. hook on a type or on a field of
-// a type that gets no Validate, as in //kama:validate ignore hook=on, is an
+// a type that gets no Validate, as in //kama:validate ignore, hook=True, is an
 // error wrapping ErrDirective.
 //
 // # Pre and post functions
 //
-// The args pre=<func> and post=<func> in the doc comment of a target name
+// The items pre="<func>" and post="<func>" in the doc comment of a target name
 // package-level functions of its package that take the value of the type:
 //
 //	//kama:validate pre="validatePointPre", post="validatePointPost"
@@ -389,98 +477,93 @@
 //
 // # Validators
 //
-// An arg of //kama:validate on a struct field of a target names a
-// validator of the registry: name alone, or name=<arg>. The validators run
-// in the order written. arg is one string. The directive grammar unquotes
-// it, and the validator receives it unchanged. Each validator parses its
-// own arg. length, runes, cmp and const split it into tokens with
-// dircmnt.ParseArgsKeyValue. A bare token starting with <, >, = or ! is one
-// comparison, as in >=1 or =="a b". regexp takes the whole arg as its
-// pattern. An empty arg, as in name="", counts as no arg.
+// A rule of //kama:validate on a struct field of a target calls a validator
+// of the registry: name alone, as required, or name(args), as
+// length(ge=1, le=10). The rules run in the order written. ext.Params binds
+// the args of a call to the parameters of the validator. A comparison is a
+// keyword arg gt, ge, lt, le, eq or ne, and one positional arg compares
+// with ==, as length(3). A name of a type, a format, a kind or a member is
+// a string, as ref("Tree") and kind("integer", "null"). A number keeps its
+// digits. A keyword arg no parameter takes is reported as a warning, and
+// the rule applies without it.
 //
-// A call name(a, b) gives the validator name the arg a, b: the args between
-// the parentheses as dircmnt.SpellCallArgs spells them. The combinators
-// take their operands this way. Combinators describes them.
-//
-// Several validators on one field must all pass. A name the registry does
-// not hold is an error wrapping ErrDirective. The error names the field
-// and lists the known validators. These are errors wrapping ErrDirective
-// too:
+// Several rules on one field must all pass. A name the registry does not
+// hold is an error wrapping ErrDirective. The error names the field and
+// lists the known validators. These are errors wrapping ErrDirective too:
 //
 //   - the same validator named twice on one field or one type. Join two
-//     uses of one combinator with and(...), as in and(not(a), not(b)).
-//   - a validator on a field of a type that gets no Validate, or in the doc
-//     comment of such a type, as in //kama:validate ignore cmp=">0".
-//   - //kama:validate without args on a field.
-//   - a validator name in a free-floating comment.
-//   - a validator other than an ext.StructRule in the doc comment of a
-//     struct type, an ext.StructRule on a field or in the doc comment of a
-//     type of another kind whose type its Check rejects, and a
-//     ext.SiblingRule in the doc comment of any type. members accepts raw
+//     uses of one validator with and, as in not a and not b.
+//   - a rule on a field of a type that gets no Validate, or in the doc
+//     comment of such a type, as in //kama:validate ignore, cmp(gt=0).
+//   - //kama:validate without items on a field.
+//   - a rule in a free-floating comment.
+//   - a rule other than an ext.StructRule in the doc comment of a struct
+//     type, an ext.StructRule on a field or in the doc comment of a type of
+//     another kind whose type its Check rejects, and an ext.SiblingRule in
+//     the doc comment of any type or in a role item. members accepts raw
 //     JSON text, as Raw JSON text describes.
 //
 // A validator applied to a type it cannot handle, or with an arg it does
 // not accept, is an error wrapping ErrUnsupported. The error names the
 // field, the validator and the type.
 //
-// The generator applies a validator to the type of the field first. When
-// the validator rejects that type and the field is a pointer, an
-// opt.Option or an und.Und, it applies the validator to the value held,
-// under a guard that skips the validator when no value is held. Only an
-// error of Rule.Check leads to that second attempt. The generator reports
-// every error of Validator.Parse at once. Such an error comes from the arg
-// alone and should wrap ext.ErrArgs. required, zero and nil therefore look
-// at a pointer itself, and every other validator applies to the pointee of
-// a non-nil pointer. An ext.SiblingRule, such as requires, reads the other
-// fields of the struct and applies to the field itself only. Its errors
-// are located where the rule puts them, as at a sibling field, without the
-// path segment of the field it is written on. elastic.Elastic holds no single value and takes
-// required, zero and null only.
+// The generator applies a rule to the type of the field first. When the
+// rule rejects that type and the field holds one value, a pointer, an
+// opt.Option or an und.Und, it applies the rule to the value held, through
+// every level, under a guard that skips the rule when no value is held, as
+// Roles describes. Only an error of Rule.Check leads to that attempt. The
+// generator reports every error of Validator.Parse at once. Such an error
+// comes from the args alone and should wrap ext.ErrArgs. An
+// ext.SiblingRule, such as requires, reads the other fields of the struct
+// and applies to the field itself only. Its errors are located where the
+// rule puts them, as at a sibling field, without the path segment of the
+// field it is written on.
 //
 // Package basic documents the built-in validators and the errors they report.
 //
 // # Combinators
 //
-// The combinators and, or, not, oneof and if are validators of the
-// registry whose args are other validators, the operands. An operand is
-// written as an arg of //kama:validate is, a combinator included:
+// The operators and, or, not and the conditional combine rules, and oneof
+// is a validator whose args are rules:
 //
-//	//kama:validate cmp(ge=10) or const(0), not regexp("^x")
-//	//kama:validate requires("amount") if const("fixed") else const("percent")
-//	//kama:validate cmp(ge=1) and not (const(5) or const(7)) or const(-1)
+//		//kama:validate cmp(ge=10) or const(0), not regexp("^x")
+//		//kama:validate requires("amount") if const("fixed") else const("percent")
+//		//kama:validate cmp(ge=1) and not (const(5) or const(7)) or const(-1)
 //
-// Inside the parentheses a bare value ends at ",", "(" and ")", so a value
-// holding one of them is quoted. A call may span several directive lines.
+//	  - a and b: every operand holds. always, a rule without operands, always
+//	    holds.
+//	  - a or b: at least one operand holds. never, a rule without operands,
+//	    never holds.
+//	  - not a: the operand fails.
+//	  - oneof(a, ...): exactly one operand holds.
+//	  - then if cond else otherwise: when cond holds, then holds, otherwise
+//	    otherwise holds. Write always for a branch that always holds. The
+//	    error of cond never surfaces.
 //
-//   - and(a, ...): every operand holds. and() always holds.
-//   - or(a, ...): at least one operand holds. or() never holds.
-//   - not(a): the one operand fails.
-//   - oneof(a, ...): exactly one operand holds.
-//   - if(cond, then[, else]): when cond holds, then holds, otherwise else
-//     holds. Without else a value failing cond passes. The error of cond
-//     never surfaces.
-//
-// The combinators parse their operands through the registry of the run,
-// so a user validator and a validator replacing a built-in are operands
-// too. An operand name the registry does not hold is an error wrapping
-// ErrDirective. A combinator applies to a type only when every operand
-// applies to it. The retry on the value a pointer, an opt.Option or an
-// und.Und holds applies to the combinator as a whole, and every operand
-// sees the same value: or(nil, cmp=">=1") applies to neither *int nor int
-// and is an error.
+// not binds tightest, then and, then or, and the conditional loosest.
+// Package basic registers the operators by the kinds of their nodes through
+// ext.RegisterOperator, so a registry may give them another meaning. The
+// operands resolve through the registry of the run, so a user validator
+// and a validator replacing a built-in are operands too. An operand name
+// the registry does not hold is an error wrapping ErrDirective. A
+// combinator applies to a type when every operand applies to it, else to
+// the level a pointer, an opt.Option or an und.Und holds that every operand
+// applies to, else each operand to its own level: nil or cmp(ge=1) on a
+// *int tests the pointer with nil and the int with cmp.
 //
 // A combinator holding an ext.SiblingRule operand, such as requires, is an
 // ext.SiblingRule itself. It applies to the field itself. Each of its
 // other operands applies to the type of the field, else to the value a
 // pointer, an opt.Option or an und.Und holds, and holds when the field
-// holds none: if(cmp=">=1", requires=b) on a field A *int compares *A when
-// A is not nil. Its errors are located at the field, except those the sibling operand
-// locates at a sibling. A combinator holding an ext.StructRule operand,
-// such as members, is an ext.StructRule and goes in the doc comment of a
-// struct type. Operands of both kinds in one combinator are an error.
+// holds none: requires("b") if cmp(ge=1) else always on a field A *int
+// compares *A when A is not nil. Its errors are located at the field,
+// except those the sibling operand locates at a sibling. A combinator
+// holding an ext.StructRule operand, such as members, is an ext.StructRule
+// and goes in the doc comment of a struct type. Operands of both kinds in
+// one combinator are an error.
 //
-// and and if return the errors of their operands. or, not and oneof return
-// errors of their own, which package basic describes.
+// and and the conditional return the errors of their operands. or, not and
+// oneof return errors of their own, which package basic describes.
 //
 // # Type validators
 //
@@ -500,7 +583,7 @@
 // interface type cannot declare methods. Validators on one are an error
 // wrapping ErrUnsupported. A slice, array or map type runs its validators
 // before the walk of its elements. A target of these kinds has no fields
-// and therefore no hooks. hook=on in its doc comment calls nothing.
+// and therefore no hooks. hook=True in its doc comment calls nothing.
 //
 // Validate of every type holding such a type calls its Validate, as for a
 // struct target. A field Level Level runs the validators of the field
@@ -529,7 +612,7 @@
 // The built-in validators on raw JSON text are kind, cmp, multipleof, runes,
 // regexp, length on arrays, members on objects, unique, const on JSON values,
 // and required with member names. A combinator holds when its operands do as
-// on any other type: not(cmp=">=5") fails on 7 and holds on "a". Validate
+// on any other type: not cmp(ge=5) fails on 7 and holds on "a". Validate
 // does not walk the bytes of raw JSON text as the elements of a slice.
 // props, items, prefix, contains, keys, unevalprops and unevalitems reach
 // into the members and the elements instead, and ref and decode apply
@@ -626,36 +709,37 @@
 //	  example.com/gen/pb:           # package import path
 //	    all_types: true             # //kama:validate package
 //	    types:
-//	      Order:                    # //kama:validate on, Order
-//	        hook: false             # hook=off on Order
+//	      Order:                    # //kama:validate on Order
+//	        hook: false             # hook=False on Order
 //	        fields:
 //	          Id:
 //	            validators:
-//	              - name: required  # required on Id
-//	              - name: regexp    # regexp="^[A-Z]+$" on Id
-//	                args: '^[A-Z]+$'
+//	              - required        # required on Id
+//	              - regexp("^[A-Z]+$")
+//	          Tags:
+//	            validators:
+//	              - e=length(le=8)  # a role item on Tags
 //	          Note:
-//	            hook: true          # hook=on on Note
+//	            hook: true          # hook=True on Note
 //	      Draft:
 //	        ignore: true            # //kama:validate ignore on Draft
 //	      Event:
 //	        decoded: true           # //kama:validate decoded on Event
 //	      Point:
-//	        pre: validatePointPre   # pre=validatePointPre on Point
-//	        post: validatePointPost # post=validatePointPost on Point
+//	        pre: validatePointPre   # pre="validatePointPre" on Point
+//	        post: validatePointPost # post="validatePointPost" on Point
 //	      Level:
-//	        validators:             # //kama:validate cmp=">=1" on Level
-//	          - name: cmp
-//	            args: ">=1"
-//	          - name: or            # or(const="0", cmp=">=10") on Level
-//	            args: 'const="0", cmp=">=10"'
+//	        validators:
+//	          - cmp(ge=1)
+//	          - const(0) or cmp(ge=10)
 //
 // Listing a type marks it unless ignore is true. Its hooks are then on by
-// default. args is the arg a directive gives after name=, unquoted, or the
-// args between the parentheses of a call. An empty or absent args stands
-// for no arg. The validators of a type stand
-// for the validators of its doc comment. A validator listed twice on one
-// field or one type is an error. The file has no equivalent of //kama:validate file.
+// default. Each entry of validators is the text of one item, a rule or a
+// keyword item of a role, of nested or of a description, read as a line
+// of a directive is. An entry holding another text, as an object, is an
+// error. The validators of a type stand for the rules of its doc comment.
+// A validator listed twice on one field or one type is an error. The file
+// has no equivalent of //kama:validate file.
 // version is required and is 1. An unknown key is a warning wrapping
 // genopt.ErrUnknownKey that names the file and the key path. An entry
 // holding unknown keys only does not list its type or field, so a
@@ -730,10 +814,8 @@
 //
 // # Not supported
 //
-//   - Validators on the elements of a slice or map, and on the fields of a
-//     struct type literal. Write a hook, or give the element type a
-//     Validate or validators of its own.
-//   - Validators other than required, zero and null on an elastic.Elastic.
+//   - Rules on the fields of a struct type literal. Give the struct a name
+//     and validators of its own.
 //   - Hooks with a pointer receiver.
 //   - Targets of packages outside the run, and types other than struct,
 //     slice and map types without validators of their own.

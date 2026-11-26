@@ -13,7 +13,7 @@ import (
 // <validator>, ...): the operand scope holds, and each member of an object
 // that scope did not evaluate passes every other operand, as JSON Schema
 // unevaluatedProperties tests. scope is the rest of the schema, usually
-// and(...) of its other keywords, which reports what it evaluated as
+// the and of its other keywords, which reports what it evaluated as
 // Annotator tells.
 //
 // It applies to raw JSON text only, as IsRawJson tells. Values of other

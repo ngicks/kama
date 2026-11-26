@@ -13,7 +13,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Kind is the validator //kama:validate kind="<kind> ...": the value is of
+// Kind is the validator //kama:validate kind("<kind>", ...): the value is of
 // one of the JSON kinds listed, as JSON Schema type tests: null, boolean,
 // object, array, number, string or integer, a number with a zero fraction
 // such as 1.0.
@@ -25,7 +25,7 @@ type Kind struct{}
 // Name returns "kind".
 func (Kind) Name() string { return "kind" }
 
-// KindOptions are the options of //kama:validate kind="<kind> ...".
+// KindOptions are the options of //kama:validate kind("<kind>", ...).
 type KindOptions struct {
 	// Kinds are the kinds of the arg, in order.
 	Kinds []string

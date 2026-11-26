@@ -9,10 +9,9 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Runes is the validator //kama:validate runes="<op><n> ...": the number of
-// runes of the value satisfies every comparison, as in >=1 <=10 or ==3. The
-// operators are >, >=, ==, !=, <= and <, and n is a non-negative integer
-// literal. n may carry a unary plus.
+// Runes is the validator //kama:validate runes(...): the number of
+// runes of the value satisfies every comparison, as in runes(ge=1, le=10)
+// or runes(3). It takes the args of length.
 //
 // It applies to types of a string underlying type. utf8.RuneCountInString
 // counts the runes, so an invalid UTF-8 byte counts as one rune. A JSON
@@ -27,9 +26,9 @@ type Runes struct{}
 // Name returns "runes".
 func (Runes) Name() string { return "runes" }
 
-// RunesOptions are the options of //kama:validate runes="<op><n> ...".
+// RunesOptions are the options of //kama:validate runes(...).
 type RunesOptions struct {
-	// Comparisons holds one comparison per token of the arg, in order.
+	// Comparisons holds one comparison per arg, in order.
 	Comparisons []Comparison
 }
 

@@ -12,12 +12,11 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Contains is the validator //kama:validate contains([<op><n>, ...,]
-// <validator>, ...): the number of elements of an array passing every
-// operand satisfies each comparison, as JSON Schema contains, minContains
-// and maxContains test. The comparisons come first and take the operators
-// and the non-negative integers of length. Without them the number is at
-// least 1, as in contains(kind=string).
+// Contains is the validator //kama:validate contains(<validator>, ...,
+// ge=<n>, ...): the number of elements of an array passing every operand
+// satisfies each comparison, as JSON Schema contains, minContains and
+// maxContains test. The comparisons are the keyword args of length.
+// Without them the number is at least 1, as in contains(kind("string")).
 //
 // It applies to raw JSON text only, as IsRawJson tells, and passes a value
 // of another kind. Its error wraps validator.ErrContains. As an Annotator

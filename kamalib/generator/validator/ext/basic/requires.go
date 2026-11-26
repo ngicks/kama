@@ -14,7 +14,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Requires is the validator //kama:validate requires="<name> ...": when
+// Requires is the validator //kama:validate requires("<name>", ...): when
 // the field is present, each sibling field named is present too, as JSON
 // Schema dependentRequired tests. A name is the JSON member name a sibling
 // field encodes as. Present means what Required tests: an option holds a
@@ -30,7 +30,7 @@ type Requires struct{}
 // Name returns "requires".
 func (Requires) Name() string { return "requires" }
 
-// RequiresOptions are the options of //kama:validate requires="<name> ...".
+// RequiresOptions are the options of //kama:validate requires("<name>", ...).
 type RequiresOptions struct {
 	// Names are the JSON member names of the sibling fields, in order.
 	Names []string

@@ -12,7 +12,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Format is the validator //kama:validate format=<name>: the value is a
+// Format is the validator //kama:validate format("<name>"): the value is a
 // string of the named format.
 //
 // It applies to types of a string underlying type and to raw JSON text, as
@@ -98,7 +98,7 @@ func DefaultFormats() map[string]FormatHelper {
 // Name returns "format".
 func (Format) Name() string { return "format" }
 
-// FormatOptions are the options of //kama:validate format=<name>.
+// FormatOptions are the options of //kama:validate format("<name>").
 type FormatOptions struct {
 	// Name is the whole arg, the name of the format.
 	Name string

@@ -8,11 +8,11 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Ref is the validator //kama:validate ref=<type>: the value converted to
+// Ref is the validator //kama:validate ref("<type>"): the value converted to
 // type, a type of the generated package defined over raw JSON text, passes
 // the Validate of type, as JSON Schema $ref applies the schema it names.
 // type names a type declaring Validate(bool) error, as one whose doc
-// comment names validators does. A type may name itself, as ref=Tree
+// comment names validators does. A type may name itself, as ref("Tree")
 // inside props in the doc comment of Tree does: each call validates a
 // member or an element, so the recursion ends with the value.
 //
@@ -27,7 +27,7 @@ type Ref struct{}
 // Name returns "ref".
 func (Ref) Name() string { return "ref" }
 
-// RefOptions are the options of //kama:validate ref=<type>.
+// RefOptions are the options of //kama:validate ref("<type>").
 type RefOptions struct {
 	// Type is the name of the type.
 	Type string

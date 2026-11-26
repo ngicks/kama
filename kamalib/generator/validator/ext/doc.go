@@ -42,13 +42,18 @@
 //     the type does not apply to them.
 //   - PresenceTester, ZeroTester and NullTester: how required, zero and
 //     null test a value of the type.
+//   - LengthTester: how length counts the values of the type, as it counts
+//     the values of elastic.Elastic.
 //
 // Each held value, each element and each value of a Composite has a role
-// name, such as "t", "left" or "v1". A role names the value among the
-// values a type holds. The role names a support gives are part of its API.
-// A role name is a Go identifier, and it is not hook, pre, post or the
-// name of a validator. Roles lists the roles of a type: e for the elements
-// of a slice or an array, k and v for the keys and the values of a map,
+// name, such as "t", "l" or "v1". A role names the value among the values
+// a type holds, and a keyword item of //kama:validate naming a role applies
+// its rules to the values of the role. The role names a support gives are
+// part of its API. A role name is a name of package pkg/dircmnt/expr, and
+// it is no word of //kama:validate, as hook or g, and no name of a
+// validator. The generator reports such a role as an error. Roles lists the
+// roles of a type: e for the elements of a slice or an array and for the
+// value a pointer points to, k and v for the keys and the values of a map,
 // and the roles of the supports. RoleValue tells how the values of a role
 // are reached: their type, the guard, the value expression or the range
 // expression, and the segment locating them. A caller applying a rule to
@@ -89,18 +94,23 @@
 //
 // # Registry
 //
-// DefaultRegistry returns a new registry holding the validators the
-// extension packages registered. The built-in validators use the same API
-// a caller does. A Validator names itself and parses an arg into a Rule. A
-// Rule checks a type and emits an expression of type error. Emit may
-// declare helper functions through the Emitter. The Emitter puts them in
-// the helpers file of the package. The expression may refer to the bool
+// DefaultRegistry returns a new registry holding the validators, the
+// operators and the type supports the extension packages registered. The
+// built-in validators use the same API a caller does. A Validator names
+// itself and parses a call of it, an expr.Call, into a Rule. An Operator
+// gives the meaning of the expression nodes of one kind other than a call,
+// as and gives to expr.And, and RegisterOperator registers it by a zero
+// node of the kind. Resolve returns the rule of any node: the validator of
+// the name of a call, else the operator of the kind of the node. A Rule
+// checks a type and emits an expression of type error. Emit may declare
+// helper functions through the Emitter. The Emitter puts them in the
+// helpers file of the package. The expression may refer to the bool
 // parameter stopOnFirstError of the function it lands in.
 // Emitter.StopOnFirstError spells the name the function knows it by.
 // NewRegistry returns a registry of the given validators only. A caller
 // changing a registry for one run changes a clone of it. Registering a
-// validator under the name of a built-in replaces both its arg and its
-// code.
+// validator under the name of a built-in replaces both its parameters and
+// its code.
 //
 // A rule writes code with the steps of package genhelper, rendered with
 // Context. A Gen renders an expression, and a Step renders the declaration
@@ -113,13 +123,17 @@
 // # Writing a validator
 //
 // A validator has three parts, and each built-in one of package basic lays
-// them out in its own file in this order. First, the Validator type names itself. Second,
-// an options struct holds the decoded arg, and Parse of the Validator
-// decodes arg into it. Parse reports the arg errors that hold for any
-// type. Those errors wrap ErrArgs. Third, the options struct is the Rule:
-// it checks a type with Check and emits the expression with Emit. The
-// generator parses arg again for every field the validator applies to,
-// and the options live only for that field. A field names the validator
+// them out in its own file in this order. First, the Validator type names
+// itself. Second, an options struct holds the decoded args, and Parse of
+// the Validator decodes the call into it with Params.Bind, which binds the
+// args to the parameters, decodes the literal ones with encoding/json/v2
+// and returns the rules among them. Bind reports a keyword arg no
+// parameter takes through Resolver.Warn and leaves it out. Parse reports
+// the arg errors that hold for any type. Those errors wrap ErrArgs. Third,
+// the options struct is the Rule: it checks a type with Check and emits
+// the expression with Emit. The generator parses the call again for every
+// field the validator applies to, and the options live only for that
+// field. A field names the validator
 // below as //kama:validate multiple(3):
 //
 //	type multiple struct{}
@@ -193,18 +207,18 @@
 //
 // # Writing a combinator
 //
-// A combinator is a validator whose arg names other validators, as
-// and(cmp=">=1", required) does. Parse receives the Resolver of the
-// registry in use and passes arg to basic.ParseOperands, which splits
-// arg with dircmnt.ParseCallArgs and parses each operand through the
-// Resolver, user validators and replaced built-ins included. The options
-// hold the operands. Check delegates to Rule.Check of each operand, and
-// Emit to Rule.Emit, combining the expressions of the operands into one
-// expression of type error, usually a call of a helper taking their
-// errors. A user combinator replaces a built-in one by its name, like any
-// other validator. The built-in combinators turn into a StructRule or a
-// SiblingRule when an operand is one. A user combinator taking such
-// operands implements StructRule or SiblingRule itself.
+// A combinator is a validator whose args are rules, as oneof(a, b) is, or
+// an operator. Parse binds the rules with Params.Bind, naming the
+// parameter taking them in Params.Rules, and resolves each through Resolve
+// with the Resolver it received, user validators and replaced built-ins
+// included. An operator receives the node, as an expr.Or, and resolves its
+// operands the same way. Check delegates to Rule.Check of each operand,
+// and Emit to Rule.Emit, combining the expressions of the operands into
+// one expression of type error, usually a call of a helper taking their
+// errors. The built-in combinators keep the nodes of their operands and
+// resolve them again where they need the rules. They turn into a
+// StructRule or a SiblingRule when an operand is one. A user combinator
+// taking such operands implements StructRule or SiblingRule itself.
 //
 // # Raw JSON text
 //
@@ -219,9 +233,9 @@
 // and JSON values as JSON values.
 //
 // A combinator needs no mode of its own for raw JSON text: an operand of
-// another kind holds, so not(cmp=">=5") fails on "a", as not with minimum
-// rejects a string in JSON Schema, and or(cmp=">=5", kind=string) holds on
-// it.
+// another kind holds, so not cmp(ge=5) fails on "a", as not with minimum
+// rejects a string in JSON Schema, and cmp(ge=5) or kind("string") holds
+// on it.
 //
 // # Reaching into raw JSON text
 //

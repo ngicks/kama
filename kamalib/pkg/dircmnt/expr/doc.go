@@ -3,7 +3,7 @@
 //
 // The text after //kama:validate in
 //
-//	//kama:validate required, length(min=1, max=3), not regexp(r"^x-") or kind("null")
+//	//kama:validate required, length(ge=1, le=3), not regexp(r"^x-") or kind("null")
 //
 // is the args of one directive. [Parse] reads them with the parser of
 // go.starlark.net/syntax and evaluates nothing. It returns the items of the
@@ -80,5 +80,7 @@
 // may locate an error just after the token at fault.
 //
 // The tree has no notion of rules. A caller resolves each Call by its
-// name, and decides what a bare name such as off in hook=off means.
+// name, and decides what a bare name such as ignore means. [FromJson]
+// turns a JSON value into a literal, as a writer of directives builds one
+// from a JSON document.
 package expr

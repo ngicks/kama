@@ -589,8 +589,10 @@
 //
 // # Validation
 //
-// The validation keywords become args of //kama:validate on the field of
-// an object property, or on the type a schema declares:
+// The validation keywords become items of //kama:validate on the field of
+// an object property, or on the type a schema declares. The generator builds
+// each item as a tree of package pkg/dircmnt/expr and prints it with
+// expr.Print, so every string is quoted as a Starlark literal:
 //
 //	minimum, maximum, exclusiveMinimum,
 //	exclusiveMaximum                      cmp on integers and numbers
@@ -615,27 +617,29 @@
 // const compare JSON values, so 1 equals 1.0 and objects equal regardless
 // of member order. The keywords holding subschemas become validators whose
 // operands are the validators of the subschemas, one operand per schema,
-// and(...) of them when it has several:
+// joined by and when it has several:
 //
-//	required                              required=<names>
-//	dependentRequired                     if(required=<key>, required=<names>)
+//	required                              required(<names>)
+//	dependentRequired                     required(<names>) if
+//	                                      required(<key>) else always
 //	properties, patternProperties,
 //	additionalProperties                  props(field(<name>, ...),
 //	                                      match(<pattern>, ...), rest(...))
 //	items                                 items(...)
 //	prefixItems                           prefix(<schema>, ..., rest(<items>))
-//	contains, minContains, maxContains    contains(>=<min>, <=<max>, ...)
+//	contains, minContains, maxContains    contains(..., ge=<min>, le=<max>)
 //	propertyNames                         keys(...)
-//	dependentSchemas                      if(required=<key>, <schema>)
+//	dependentSchemas                      <schema> if required(<key>)
+//	                                      else always
 //	allOf, anyOf, oneOf                   and, or, oneof of the members
-//	not                                   not(<schema>)
-//	if, then, else                        if(<if>, <then>, <else>), and()
-//	                                      for an absent then
-//	$ref, $dynamicRef                     ref=<type>, decode=<type> or the
+//	not                                   not <schema>
+//	if, then, else                        <then> if <if> else <else>,
+//	                                      always for an absent branch
+//	$ref, $dynamicRef                     ref("<type>"), decode("<type>") or the
 //	                                      validators of the target
 //	unevaluatedProperties                 unevalprops(<the others>, ...)
 //	unevaluatedItems                      unevalitems(<the others>, ...)
-//	true, false                           no validator, or()
+//	true, false                           no validator, never
 //
 // The keywords a Go type other than raw JSON text does not express check
 // the value encoded as JSON: the type or the field carries json(...) of the
@@ -670,13 +674,15 @@
 // unevaluatedProperties or unevaluatedItems a $ref to a type decode names
 // applying to the same value is written out, at each such $ref, and the
 // output grows with the number of paths reaching it. Validators named
-// twice on one place join one and. Each validator of the type or the field
-// stands on a //kama:validate line of its own.
+// twice on one place join one and. Each item of the type or the field
+// stands on a //kama:validate line of its own. A number a Starlark literal
+// cannot spell, as 1e400, is written as the integer it is, up to 1024
+// digits, and any other such number is an error wrapping ErrUnsupported.
 //
 // A keyword applies to one kind of value only, as minLength to strings, and
 // a value of another kind satisfies it. A typed value has one kind, so a
 // keyword of another kind gives no validator. A struct and every union wrapper
-// carry hook=off, since the generator writes no hook. A property takes the
+// carry hook=False, since the generator writes no hook. A property takes the
 // keywords of its own schema. A schema it refers to declares a type with
 // its own. A number compares as the Go value, so an enum of numbers cannot
 // tell apart two numbers one float64 holds. uniqueItems on a slice of Go

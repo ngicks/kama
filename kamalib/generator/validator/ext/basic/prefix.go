@@ -15,7 +15,7 @@ import (
 // Prefix is the validator //kama:validate prefix(<validator>, ...[,
 // rest(<validator>, ...)]): the element i of an array passes the operand
 // i, as JSON Schema prefixItems tests, and each later element passes every
-// validator of rest, as items next to prefixItems tests. Write and(...) for
+// validator of rest, as items next to prefixItems tests. Write a and b for
 // an element passing several validators. A last arg rest(...) is the rest,
 // so rest names no operand.
 //

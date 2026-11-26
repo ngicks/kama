@@ -10,7 +10,7 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Members is the validator //kama:validate members="<op><n> ...": the
+// Members is the validator //kama:validate members(...): the
 // number of JSON members a value of a struct holds satisfies every
 // comparison, as JSON Schema minProperties and maxProperties count them.
 // The operators and n are those of Length.
@@ -35,9 +35,9 @@ type Members struct{}
 // Name returns "members".
 func (Members) Name() string { return "members" }
 
-// MembersOptions are the options of //kama:validate members="<op><n> ...".
+// MembersOptions are the options of //kama:validate members(...).
 type MembersOptions struct {
-	// Comparisons holds one comparison per token of the arg, in order.
+	// Comparisons holds one comparison per arg, in order.
 	Comparisons []Comparison
 
 	// reg is the registry the options were parsed with, whose type supports
