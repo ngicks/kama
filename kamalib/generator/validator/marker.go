@@ -23,24 +23,57 @@ func (s *selection) callableIn(trimmed *typegraph.MatchedGraph, named *types.Nam
 }
 
 // implementor reports whether named has a Validate written by hand that
-// generated code can call: a method declared on the value receiver of
-// named itself, not promoted from an embedded field, with the shape
-// validateShape describes.
+// generated code can call, as validateMethod tells.
+func (s *selection) implementor(named *types.Named) bool {
+	fn, _, _ := s.validateMethod(named)
+	return fn != nil
+}
+
+// validateMethod returns the Validate written by hand that generated code
+// can call on a value of named: a method declared on the value receiver or
+// on the pointer receiver of named itself, not promoted from an embedded
+// field. onPointer tells the pointer receiver. kama tells the shape
+// validateShape describes, which takes stopOnFirstError. Otherwise the
+// method takes no argument, or only a variadic one, and returns one error.
+// A method of any other signature does not count.
 //
 // A method carrying the marker of this generator in a loaded package does
 // not count. It is dropped and generated again, and a type the run no
 // longer targets must not keep validating through a stale file. A method
 // another generator wrote counts as one written by hand.
 // An interface type does not count either: its nil value would panic.
-func (s *selection) implementor(named *types.Named) bool {
+func (s *selection) validateMethod(named *types.Named) (fn *types.Func, onPointer, kama bool) {
 	origin := named.Origin()
 	if types.IsInterface(origin) {
-		return false
+		return nil, false, false
 	}
 
-	fn := declaredValidate(origin, origin)
+	fn = declaredValidate(origin, origin)
+	if fn == nil {
+		fn, onPointer = declaredValidate(types.NewPointer(origin), origin), true
+	}
 
-	return fn != nil && validateShape(fn) && !s.generated(fn)
+	if fn == nil || s.generated(fn) {
+		return nil, false, false
+	}
+
+	switch {
+	case validateShape(fn):
+		return fn, onPointer, true
+	case callableBare(fn):
+		return fn, onPointer, false
+	}
+
+	return nil, false, false
+}
+
+// callableBare reports whether fn can be called without an argument and
+// returns one error: func() error, or func(...X) error.
+func callableBare(fn *types.Func) bool {
+	sig := fn.Type().(*types.Signature)
+	n := sig.Params().Len()
+
+	return returnsError(sig) && (n == 0 || n == 1 && sig.Variadic())
 }
 
 // shallowName is the name of the shallow form of Validate.
@@ -113,25 +146,22 @@ func (s *selection) shallowDiffers(named *types.Named) bool {
 }
 
 // shallowImplementor reports whether the implementor named declares
-// ValidateShallow on its value receiver with the shape of its Validate.
+// ValidateShallow of the shape of Validate on the receiver its Validate is
+// declared on.
 func (s *selection) shallowImplementor(named *types.Named) bool {
 	origin := named.Origin()
-	fn := declaredMethod(origin, origin, shallowName)
 
-	return fn != nil && validateShape(fn) && !s.generated(fn)
-}
-
-// pointerImplementor reports whether named has a Validate of the shape of
-// an implementor on its pointer receiver only. Generated code holds values,
-// which such a method cannot be called on in general, so it is reported as
-// unsupported.
-func (s *selection) pointerImplementor(named *types.Named) bool {
-	origin := named.Origin()
-	if types.IsInterface(origin) || declaredValidate(origin, origin) != nil {
+	_, onPointer, kama := s.validateMethod(named)
+	if !kama {
 		return false
 	}
 
-	fn := declaredValidate(types.NewPointer(origin), origin)
+	var recv types.Type = origin
+	if onPointer {
+		recv = types.NewPointer(origin)
+	}
+
+	fn := declaredMethod(recv, origin, shallowName)
 
 	return fn != nil && validateShape(fn) && !s.generated(fn)
 }

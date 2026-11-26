@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/types"
 	"strconv"
+	"strings"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
@@ -129,11 +130,6 @@ func (w *writer) nestedNamed(
 		}
 
 		return w.check(wrap(call)), nil
-	case w.sel.pointerImplementor(named):
-		return nil, fmt.Errorf(
-			"%w: %s declares Validate on its pointer receiver; declare it on the value receiver",
-			ErrUnsupported, named,
-		)
 	case w.sel.throughForeign(named):
 		return w.throughForeign(named, x, wrap, depth)
 	case w.sel.unsupported(named, true):
@@ -313,25 +309,81 @@ func (w *writer) elements(
 
 // call returns the call of Validate on the value x of the target or
 // implementor named, passing the function each type argument needs. In
-// ValidateShallow it calls ValidateShallow when named has one.
+// ValidateShallow it calls ValidateShallow when named has one. An
+// implementor whose Validate takes no stopOnFirstError is called without
+// args. A Validate on the pointer receiver is called on the address of x,
+// or of a copy of x when x is the result of a call, which has no address.
 func (w *writer) call(named *types.Named, x genExpr) (genExpr, error) {
 	method := "Validate"
 	if w.shallow && w.sel.hasShallow(named) {
 		method = shallowName
 	}
 
-	args := []genExpr{lang.Name("stopOnFirstError")}
+	fn, onPointer, kama := w.sel.validateMethod(named)
 
-	for arg := range named.TypeArgs().Types() {
-		fn, err := w.typeArgFunc(arg)
-		if err != nil {
-			return nil, err
+	var args []genExpr
+
+	if fn == nil || kama {
+		args = append(args, lang.Name("stopOnFirstError"))
+
+		for arg := range named.TypeArgs().Types() {
+			f, err := w.typeArgFunc(arg)
+			if err != nil {
+				return nil, err
+			}
+
+			args = append(args, f)
 		}
-
-		args = append(args, fn)
 	}
 
-	return lang.Expr("%s.%s(%s)", x, method, lang.Join(", ", args...)), nil
+	if !onPointer {
+		return lang.Expr("%s.%s(%s)", x, method, lang.Join(", ", args...)), nil
+	}
+
+	return func(c genCtx) (string, error) {
+		text, err := x(c)
+		if err != nil {
+			return "", err
+		}
+
+		if ptr, ok := dereferenced(text); ok {
+			return lang.Expr("%s.%s(%s)", ptr, method, lang.Join(", ", args...))(c)
+		}
+
+		// The values the walk reaches are variables, fields, dereferences and
+		// results of methods taking no args, which alone end with ().
+		if !strings.HasSuffix(text, "()") {
+			return lang.Expr("(&%s).%s(%s)", text, method, lang.Join(", ", args...))(c)
+		}
+
+		return lang.Expr("func() error {\n%s := %s\nreturn (&%s).%s(%s)\n}()",
+			decl("p"), text, lang.Name("p"), method, lang.Join(", ", args...))(c)
+	}, nil
+}
+
+// dereferenced returns the pointer text dereferences when text is a whole
+// dereference (*p), as nested spells the value a pointer points to.
+func dereferenced(text string) (string, bool) {
+	inner, ok := strings.CutPrefix(text, "(*")
+	if !ok || !strings.HasSuffix(inner, ")") {
+		return "", false
+	}
+
+	depth := 1
+
+	for i, r := range inner {
+		switch r {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 && i != len(inner)-1 {
+				return "", false
+			}
+		}
+	}
+
+	return inner[:len(inner)-1], true
 }
 
 // typeArgFunc returns the function validating values of the type argument

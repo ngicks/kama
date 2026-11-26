@@ -170,15 +170,16 @@
 // # Implementors
 //
 // An implementor is a named type with a hand-written Validate that
-// generated code can call. Its method must be declared on the value
-// receiver of the type itself, not promoted from an embedded field, and
-// have the signature
+// generated code can call. Its method is declared on the value receiver or
+// on the pointer receiver of the type itself, not promoted from an embedded
+// field, and has the signature
 //
 //	func(bool, func(T1, bool) error, ..., func(Tn, bool) error) error
 //
 // with one function parameter per type parameter T1, ..., Tn of the type,
-// in order, and nothing else. Validate() error is no implementor, and any
-// other signature is ignored. A method of a loaded package carrying the
+// in order, or takes no argument, or only a variadic one, and returns one
+// error, as Validate() error and Validate(opts ...Option) error do. The
+// first signature wins. Any other signature is ignored. A method of a loaded package carrying the
 // marker of this generator does not count. A stale generated file
 // therefore does not keep a type validated. A method another generator
 // wrote counts as one written by hand. A generated Validate of a
@@ -190,10 +191,7 @@
 // of its own, a type drops its Validate and moves those checks into pre and
 // post functions or field hooks. The types holding it become dependants. An
 // implementor of a package outside the run makes the types of the run
-// holding it targets in the same way. A type whose Validate of that shape
-// is declared on the pointer receiver only is an error wrapping
-// ErrUnsupported where Validate would call it. Generated code holds values,
-// which cannot call such a method in general. A target with a Validate the
+// holding it targets in the same way. A target with a Validate the
 // generator did not write and that is no implementor is an error wrapping
 // ErrConflict.
 //
@@ -208,6 +206,14 @@
 //   - another type holding something to validate, such as []Tag, passes a
 //     function literal walking it.
 //   - any other type, such as int, passes nil.
+//
+// An implementor whose Validate takes no stopOnFirstError is called as
+// x.Validate(). A Validate on the pointer receiver is called on the
+// pointer a value is reached through, as e.Validate(...) for an element of
+// a []*T, on the address of an addressable value, as (&v.F).Validate(...),
+// and on the address of a local copy of a value that has none, as the
+// result of opt.Option.Value. A function literal passed for a type
+// parameter calls it on the address of its parameter.
 //
 // # What Validate does
 //
@@ -728,7 +734,7 @@
 //     struct type literal. Write a hook, or give the element type a
 //     Validate or validators of its own.
 //   - Validators other than required, zero and null on an elastic.Elastic.
-//   - Hooks and implementors with a pointer receiver.
+//   - Hooks with a pointer receiver.
 //   - Targets of packages outside the run, and types other than struct,
 //     slice and map types without validators of their own.
 package validator

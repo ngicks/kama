@@ -52,18 +52,56 @@ type Iface interface{ Validate(bool) error }
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn, "v.Good.Validate(stopOnFirstError)",
-		"v.Generic.Validate(stopOnFirstError, nil)")
-	assertNotContains(t, fn, "v.NoArg", "v.Extra", "v.Wrong", "v.Iface")
+		"v.Generic.Validate(stopOnFirstError, nil)", "v.NoArg.Validate()")
+	assertNotContains(t, fn, "v.Extra", "v.Wrong", "v.Iface")
 }
 
+// TestImplementorPointerReceiver calls a Validate on the pointer receiver
+// on the address of the value, or of a copy of a value that has none, and
+// passes a function literal calling it for a type parameter.
 func TestImplementorPointerReceiver(t *testing.T) {
-	_, err := generate(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=False\n" +
-			"type A struct{ P []P }\n\ntype P struct{}\n\n" +
-			"func (*P) Validate(bool) error { return nil }\n",
-	}, testRun{})
-	assert.ErrorIs(t, err, ErrUnsupported)
-	assert.ErrorContains(t, err, "declares Validate on its pointer receiver")
+	fn := validateOf(t, map[string]string{
+		"a.go": `package x
+
+import "github.com/ngicks/option/opt"
+
+//kama:validate
+//kama:validate hook=False
+type A struct {
+	F P
+	S []P
+	Q []*P
+	M map[string]P
+	O opt.Option[P]
+	B Bare
+	G G[P]
+}
+
+type P struct{}
+
+func (*P) Validate(bool) error { return nil }
+
+type Bare struct{}
+
+func (*Bare) Validate(...int) error { return nil }
+
+//kama:validate hook=False
+type G[T any] struct{ V T }
+`,
+	}, "a.kama_validate.go", "A")
+
+	assertContains(t, fn,
+		"(&v.F).Validate(stopOnFirstError)",
+		"for i, e := range v.S {\n\t\tif err := validator.Field(validator.Index((&e).Validate(",
+		"if e != nil {\n\t\t\tif err := validator.Field(validator.Index(e.Validate(",
+		"e := v.M[k]",
+		"(&e).Validate(stopOnFirstError)",
+		"if v.O.IsSome() {\n\t\tif err := validator.Field(func() error {\n\t\t\tp := v.O.Value()\n"+
+			"\t\t\treturn (&p).Validate(stopOnFirstError)",
+		"(&v.B).Validate()",
+		"v.G.Validate(stopOnFirstError, func(v P, stopOnFirstError bool) error {\n"+
+			"\t\treturn (&v).Validate(stopOnFirstError)",
+	)
 }
 
 // generateDependent generates the package in the sub directory of files

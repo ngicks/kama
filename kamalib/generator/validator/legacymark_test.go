@@ -14,7 +14,7 @@ func TestLegacyMark(t *testing.T) {
 		"a.go": "package x\n\n//kama:validate\ntype A struct{ N int }\n",
 		"a.kama_validate.go": "package x\n\n" +
 			"// Validate validates a.\n//\n//kama:generated kama-validate\n" +
-			"func (a A) Validate() error { return nil }\n",
+			"func (a A) Validate(int) error { return nil }\n",
 	}, testRun{})
 	assert.ErrorIs(t, err, ErrConflict)
 	assert.ErrorContains(

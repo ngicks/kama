@@ -204,20 +204,13 @@ func TestSelectionErrors(t *testing.T) {
 			// A dependant with a Validate of another shape would get a second
 			// one.
 			name: "Validate of another shape",
-			src: "type P struct{ C C }\n\nfunc (P) Validate() error { return nil }\n\n" +
+			src: "type P struct{ C C }\n\nfunc (P) Validate(n int) error { return nil }\n\n" +
 				"//kama:validate\n//kama:validate hook=False\ntype C struct{ X int }\n",
 			is: ErrConflict,
 			msgs: []string{
-				"P declares Validate on its value receiver with signature func() error;" +
+				"P declares Validate on its value receiver with signature func(n int) error;" +
 					" want func(bool) error on the value receiver",
 			},
-		},
-		{
-			name: "Validate on the pointer receiver",
-			src: "type P struct{ C C }\n\nfunc (*P) Validate(bool) error { return nil }\n\n" +
-				"//kama:validate\n//kama:validate hook=False\ntype C struct{ X int }\n",
-			is:   ErrConflict,
-			msgs: []string{"P declares Validate on its pointer receiver"},
 		},
 		{
 			name: "field named Validate",
