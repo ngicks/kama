@@ -260,42 +260,6 @@ func TestDriveWholeEditsInPlace(t *testing.T) {
 	)
 }
 
-// TestDriveVerbatimWholeKeepsBytes edits one literal of a hand-written file
-// that is not gofmt-clean, and the file keeps every other byte.
-func TestDriveVerbatimWholeKeepsBytes(t *testing.T) {
-	ctx := context.Background()
-	env, f, r := driveEnv(t)
-
-	const hand = "package p\n\nconst   V   =  \"old\"   // keep\nvar x=[]int{1,2,  3}\n"
-	assert.NilError(t, f.WriteFormatted("hand.go", []byte(hand)))
-
-	g := base.Generator[string]{
-		Id: driveId,
-		Generate: func(_ context.Context, env base.Env, name string) iter.Seq2[base.Output, error] {
-			return func(yield func(base.Output, error) bool) {
-				src, err := fs.ReadFile(env.Out, name)
-				if err != nil {
-					yield(nil, err)
-					return
-				}
-
-				edited := strings.Replace(string(src), `"old"`, `"new"`, 1)
-				yield(base.Whole{Path: name, Content: []byte(edited), Verbatim: true}, nil)
-			}
-		},
-	}
-	assert.NilError(
-		t,
-		base.Drive(ctx, g, env, "hand.go", base.Scope{Files: []string{"hand.go"}}, f),
-	)
-	assert.DeepEqual(t, r.Messages, []string{"1 file written, 0 files unchanged"})
-	assert.Equal(t, len(r.Warnings), 0)
-
-	src, err := fs.ReadFile(f.FS(), "hand.go")
-	assert.NilError(t, err)
-	assert.Equal(t, string(src), strings.Replace(hand, `"old"`, `"new"`, 1))
-}
-
 // TestDriveStale runs generators into two sibling directories of one
 // output, and one of them again without a file and with none.
 func TestDriveStale(t *testing.T) {

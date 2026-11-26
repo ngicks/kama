@@ -110,7 +110,7 @@ const (
 )
 
 // Generate edits the value of each spec tagged //kama:textmod <id> whose id
-// in.Mods holds, and yields each changed file as a verbatim base.Whole.
+// in.Mods holds, and yields each changed file as a base.Whole.
 // The package doc tells the rules.
 func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, error] {
 	return func(yield func(base.Output, error) bool) {
@@ -288,7 +288,7 @@ func (r run) file(pkg *packages.Package, loaded *ast.File) iter.Seq2[base.Output
 		}
 
 		if !bytes.Equal(out, src) {
-			yield(base.Whole{Path: rel, Content: out, Verbatim: true}, nil)
+			yield(base.Whole{Path: rel, Content: out}, nil)
 		}
 	}
 }

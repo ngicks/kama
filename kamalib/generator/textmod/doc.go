@@ -3,8 +3,8 @@
 // A spec carries the directive //kama:textmod <id>. A step gives a
 // text/template per id. The generator runs the template on the current
 // value of the spec, parses the output back as a value of the same kind,
-// and writes the new literal over the old one. Every other byte of the
-// file stays as it was. The generator puts no generated mark on a file.
+// and writes the new literal over the old one. The formatter of the output
+// formats an edited file. The generator puts no generated mark on a file.
 //
 // # Directive
 //
@@ -116,10 +116,11 @@
 // The generator reads each file of the loaded packages under the root of
 // the output from Env.Out and parses it again. It takes positions from
 // the content as it is. It splices every edit of a file into that
-// content and yields the file once, as a base.Whole with Verbatim set. A
-// file whose bytes do not change yields nothing. The framework stages a
-// verbatim Whole byte for byte. A file that is not gofmt-clean stays as it
-// was outside the edits.
+// content and yields the file once, as a base.Whole. A file whose edits
+// change no byte yields nothing, so a tagged file that is not gofmt-clean
+// stays as it is while its values stay. The formatter of the output
+// formats a yielded file as it formats every Go file, and a later
+// packages.load step type-checks the result.
 //
 // A mod setting a value from vars is idempotent: a second run with the same
 // param changes nothing. A mod computing from the current value, such as

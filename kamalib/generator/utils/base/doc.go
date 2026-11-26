@@ -41,9 +41,9 @@
 // or one editing files in place, yields Whole files only.
 //
 // A generator editing a hand-written file in place reads it from Env.Out
-// and yields a Whole with Verbatim set. The framework stages such a file
-// byte for byte. It puts no generated mark on the file and never finds it
-// stale. Every byte outside the edit stays as it was.
+// and yields a Whole. The formatter of the output formats the file as it
+// formats every Go file. The framework puts no generated mark on it and
+// never finds it stale.
 //
 // # What the framework does
 //
@@ -64,8 +64,7 @@
 //     prepends the generated mark to each Decl.
 //  4. Format: the formatter of the output formats each Go file once, a
 //     Whole named *.go included, and the framework stages exactly those
-//     bytes. A Whole with Verbatim set skips this stage and is staged byte
-//     for byte.
+//     bytes.
 //  5. Preflight: the output can take each file. No path is a file and a
 //     directory of another file, names an existing directory, or goes
 //     through an existing file or a symbolic link. A Composed replaces only

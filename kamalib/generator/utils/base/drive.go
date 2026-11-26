@@ -52,8 +52,8 @@ func Drive[I any](
 // Plan is what a run of a generator stages, as [Prepare] finds it.
 type Plan struct {
 	// Files are the files the run stages in the order the generator yielded
-	// them, with the content out stages: a Go file formatted, a Verbatim
-	// Whole and any other file as it is.
+	// them, with the content out stages: a Go file formatted, any other file
+	// as it is.
 	Files []File
 	// Stale are the warnings of the stale check, each wrapping ErrStale.
 	Stale []error
@@ -67,7 +67,7 @@ type Plan struct {
 // panic of g as an error. It assembles each output as [Composed]
 // describes and checks it: its path is valid and is not yielded twice, a
 // Composed is a Go file, a Decl is not empty. It formats each file once,
-// with the formatter of out, except a Verbatim Whole. It checks that out can take each file: no
+// with the formatter of out. It checks that out can take each file: no
 // path is yielded both as a file and as a directory of another file, no
 // path names an existing directory, no directory of a path is an existing
 // non-directory or a symbolic link, and a Composed replaces only a file g
@@ -113,11 +113,6 @@ func Prepare[I any](
 	files := make([]File, 0, len(outs))
 
 	for _, o := range outs {
-		if o.verbatim {
-			files = append(files, o.File)
-			continue
-		}
-
 		content, err := out.Format(ctx, o.Path, o.Content)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s: format %q: %w", g.Id, o.Path, err))
@@ -151,8 +146,6 @@ type output struct {
 	// composed tells a Composed, which may replace only a file of its
 	// generator, from a Whole.
 	composed bool
-	// verbatim skips the formatting pass.
-	verbatim bool
 }
 
 // drain runs g on in and returns the files of its outputs and every error
@@ -217,7 +210,7 @@ func assemble(id Id, env Env, out Output) (output, error) {
 			return output{}, fmt.Errorf("invalid path %q", o.Path)
 		}
 
-		return output{Path: o.Path, Content: o.Content, verbatim: o.Verbatim}, nil
+		return output{File: File(o)}, nil
 	case Composed:
 		if !validPath(o.Path) {
 			return output{}, fmt.Errorf("invalid path %q", o.Path)

@@ -144,7 +144,27 @@ func TestGenerateKinds(t *testing.T) {
 		"local = 10", "local = 11",
 	).Replace(kindsSrc)
 
-	assert.DeepEqual(t, files, map[string]string{"p/a.go": want})
+	// The output formats the edited file, so its untagged spacing goes too.
+	formatted, err := f.Format(t.Context(), path.Join(gentest.InlineDir(t), "p/a.go"), []byte(want))
+	assert.NilError(t, err)
+	assert.Assert(
+		t,
+		strings.Contains(string(formatted), "const UntypedInt = 4 // keep   spacing\n"),
+	)
+	assert.DeepEqual(t, files, map[string]string{"p/a.go": string(formatted)})
+}
+
+// TestGenerateUnchangedKeepsUnformatted runs mods that keep every value on
+// a file that is not gofmt-clean. No edit changes a byte, so the run
+// yields nothing, and the formatter does not touch the file.
+func TestGenerateUnchangedKeepsUnformatted(t *testing.T) {
+	f, in := stage(t, map[string]string{"p/a.go": kindsSrc})
+	in.Mods = map[string]string{"untypedInt": "{{ .Value }}", "str": "{{ .Value }}"}
+
+	files, warnings, err := runGen(t, f, in)
+	assert.NilError(t, err)
+	assert.Equal(t, len(warnings), 0, "%v", warnings)
+	assert.Equal(t, len(files), 0, "%v", files)
 }
 
 // TestGenerateIdempotent runs mods setting values from vars on their own
