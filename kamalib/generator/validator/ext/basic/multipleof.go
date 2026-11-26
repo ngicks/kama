@@ -30,6 +30,9 @@ import (
 // numerator of n for an integer type, is above every value of the type,
 // such as 1e30 for int64 or 1e400 for float64, only 0 is a multiple.
 //
+// A type an ext.Comparer of the registry claims is a multiple as it tells,
+// as a *big.Int is with the package std.
+//
 // On raw JSON text, as IsRawJson tells, n must be a JSON number. It tests a
 // number exactly and passes a value of another kind.
 type MultipleOf struct{}
@@ -41,6 +44,9 @@ func (MultipleOf) Name() string { return "multipleof" }
 type MultipleOfOptions struct {
 	// Divisor is the arg, as written.
 	Divisor string
+	// reg is the registry the options were parsed with, whose type supports
+	// tell the multiples of the types they claim.
+	reg ext.Resolver
 }
 
 // Parse decodes the arg of c, a positive number.
@@ -61,11 +67,15 @@ func (MultipleOf) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
 		return nil, argsError(err)
 	}
 
-	return MultipleOfOptions{Divisor: string(args.N)}, nil
+	return MultipleOfOptions{Divisor: string(args.N), reg: r}, nil
 }
 
 // Check accepts the types the doc comment of MultipleOf lists.
 func (o MultipleOfOptions) Check(t types.Type) error {
+	if ok, err := ext.Comparable(o.reg, t, ext.OpMultiple, o.Divisor); ok {
+		return err
+	}
+
 	if ext.IsRawJson(t) {
 		return checkRawNumbers([]Comparison{{Operand: o.Divisor}})
 	}
@@ -82,7 +92,41 @@ func (o MultipleOfOptions) Check(t types.Type) error {
 }
 
 // Emit calls kamaValidateMultipleInt or kamaValidateMultipleFloat.
+// multipleComparedName is the helper of multipleof on a type an
+// ext.Comparer claims, which reports the condition it gives.
+const multipleComparedName = "kamaValidateMultipleCompared"
+
+func multipleComparedDecl(imp ext.Importer) ext.Step {
+	v := imp.Import(ext.ValidationPath)
+
+	return lang.Func(
+		lang.Expr("func %s(%s bool, %s any, %s string) error",
+			multipleComparedName, shadow("ok"), shadow("got"), shadow("want")),
+		lang.If(
+			lang.Expr("!%s", ref("ok")),
+			lang.Stmt(
+				`return %s.New(%s.ErrMultiple, "want a multiple of %%s, got %%s", %s, %s(%s))`,
+				v,
+				v,
+				ref("want"),
+				spellName,
+				ref("got"),
+			),
+			nil,
+		),
+		lang.Stmt("return nil"),
+	)
+}
+
 func (o MultipleOfOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
+	if cond, ok := ext.Compare(o.reg, e, t, v, ext.OpMultiple, o.Divisor); ok {
+		e.Declare(multipleComparedName, multipleComparedDecl)
+		e.Declare(spellName, spellDecl)
+
+		return lang.Expr("%s(%s, %s, %s)",
+			multipleComparedName, cond, v, strconv.Quote(o.Divisor)), nil
+	}
+
 	if ext.IsRawJson(t) {
 		return rawCall(e, "MultipleOf", v, lang.Expr("%s", strconv.Quote(o.Divisor))), nil
 	}

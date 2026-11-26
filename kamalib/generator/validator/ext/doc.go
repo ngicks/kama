@@ -7,9 +7,11 @@
 // An extension package provides validators and type supports. It
 // registers them into the default registry with Register and
 // RegisterTypeSupport in its init function. Package basic holds the
-// built-in validators, and package opt holds the type support of
-// github.com/ngicks/option. Package validator imports both with blank
-// imports, so that a program generating validators gets them. A third
+// built-in validators, package opt holds the type support of
+// github.com/ngicks/option, and package std holds the type supports of
+// types of the standard library, such as time.Time and sql.NullString.
+// Package validator imports the three with blank imports, so that a
+// program generating validators gets them. A third
 // party adds an extension package the same way, and a program imports
 // that package with a blank import too:
 //
@@ -44,6 +46,10 @@
 //     null test a value of the type.
 //   - LengthTester: how length counts the values of the type, as it counts
 //     the values of elastic.Elastic.
+//   - Comparer: how cmp and multipleof compare a value of the type with an
+//     operand the directive writes, as a time.Duration compares with
+//     cmp(ge="1s"). Comparable checks the operand at generation, and
+//     Compare gives the condition the generated code tests.
 //
 // Each held value, each element and each value of a Composite has a role
 // name, such as "t", "l" or "v1". A role names the value among the values
@@ -62,8 +68,9 @@
 //
 // The generator asks the supports at the point it needs an answer, in the
 // order they were registered, and the first support claiming a type
-// answers. HeldValue, HolderOf, ContainerOf, Presence, Zero, Null and
-// Dependants ask the supports of a Resolver. A rule keeps the Resolver its
+// answers. HeldValue, HolderOf, ContainerOf, Presence, Zero, Null,
+// Length, Comparable, Compare and Dependants ask the supports of a
+// Resolver. A rule keeps the Resolver its
 // Parse received to ask them. Target selection walks into the types
 // Dependants tells, so a type argument holding something to validate
 // makes the type holding the claimed type a target.
@@ -91,6 +98,50 @@
 //
 // The generated Validate then ranges over v.Iter() and validates each
 // element of a type with Validate, locating its errors by index.
+//
+// A support of a decimal type of a third party package, which compares
+// through its method Cmp, is a Comparer. It reads the operand at
+// generation, so that a directive with a bad operand fails to generate,
+// and the generated code parses it once into a package-level variable:
+//
+//	type decimalSupport struct{}
+//
+//	func (decimalSupport) Name() string { return "decimal" }
+//
+//	func (decimalSupport) Comparable(t types.Type, op, operand string) (bool, error) {
+//		if !typequery.IsNamed(t, "github.com/shopspring/decimal", "Decimal") {
+//			return false, nil
+//		}
+//
+//		if op == ext.OpMultiple {
+//			return true, errors.New("a decimal.Decimal takes no multipleof")
+//		}
+//
+//		if _, err := decimal.NewFromString(operand); err != nil {
+//			return true, fmt.Errorf("%w: %s is no decimal: %w", ext.ErrArgs, operand, err)
+//		}
+//
+//		return true, nil
+//	}
+//
+//	func (decimalSupport) Compare(
+//		e ext.Emitter,
+//		t types.Type,
+//		v ext.Gen,
+//		op, operand string,
+//	) ext.Gen {
+//		name := "kamaValidateDecimal_" + hex.EncodeToString([]byte(operand))
+//		e.Declare(name, func(imp ext.Importer) ext.Step {
+//			return lang.Stmt("var %s = %s.RequireFromString(%s)",
+//				name, imp.Import("github.com/shopspring/decimal"), strconv.Quote(operand))
+//		})
+//
+//		return lang.Expr("%s.Cmp(%s) %s 0", v, name, op)
+//	}
+//
+// With it, //kama:validate cmp(gt=0, le=100.25) on a decimal.Decimal field
+// reports an error wrapping validator.ErrCompare for a value outside the
+// range. cmp reports the operand and the value in the message of the error.
 //
 // # Registry
 //

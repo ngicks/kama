@@ -9,7 +9,10 @@ import (
 	"go/types"
 	"math"
 	"math/big"
+	"slices"
 	"strconv"
+
+	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
@@ -22,8 +25,10 @@ import (
 // arg compares with ==, and each value is a number, a string, True or
 // False.
 //
-// It applies to types of an integer, float or string underlying type, and
-// with == and != only to types of a bool underlying type. On raw JSON text,
+// A type an ext.Comparer of the registry claims compares as it tells, as
+// a time.Duration compares with cmp(ge="1s"). Otherwise it applies to types
+// of an integer, float or string underlying type, and with == and != only
+// to types of a bool underlying type. On raw JSON text,
 // as IsRawJson tells, it takes JSON numbers only and compares numbers
 // exactly, passing a value of another kind. On an integer
 // type a number literal the type cannot represent, such as 1.5 or 1e30,
@@ -41,6 +46,9 @@ func (Cmp) Name() string { return "cmp" }
 type CmpOptions struct {
 	// Comparisons holds one comparison per arg, in order.
 	Comparisons []Comparison
+	// reg is the registry the options were parsed with, whose type supports
+	// compare the types they claim.
+	reg ext.Resolver
 }
 
 // Parse decodes the args of c into comparisons.
@@ -54,14 +62,25 @@ func (Cmp) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
 		return nil, noComparison(c)
 	}
 
-	return CmpOptions{Comparisons: cs}, nil
+	return CmpOptions{Comparisons: cs, reg: r}, nil
 }
 
 // Check accepts comparisons with literals of t, on the types the doc
 // comment of Cmp lists.
 func (o CmpOptions) Check(t types.Type) error {
+	_, rest, err := splitClaimed(o.reg, t, o.Comparisons)
+	if err != nil || len(rest) == 0 {
+		return err
+	}
+
+	return checkComparisons(t, rest)
+}
+
+// checkComparisons is Check of the comparisons cs that no ext.Comparer
+// claims.
+func checkComparisons(t types.Type, cs []Comparison) error {
 	if ext.IsRawJson(t) {
-		return checkRawNumbers(o.Comparisons)
+		return checkRawNumbers(cs)
 	}
 
 	info := typequery.BasicInfo(t)
@@ -69,7 +88,7 @@ func (o CmpOptions) Check(t types.Type) error {
 	switch {
 	case info&types.IsOrdered != 0:
 	case info&types.IsBoolean != 0:
-		for _, c := range o.Comparisons {
+		for _, c := range cs {
 			if c.Op != "==" && c.Op != "!=" {
 				return fmt.Errorf("%s is a bool type, which takes == and != only; got %s", t, c.Op)
 			}
@@ -78,7 +97,7 @@ func (o CmpOptions) Check(t types.Type) error {
 		return fmt.Errorf("%s is not an integer, float, string or bool type", t)
 	}
 
-	for _, c := range o.Comparisons {
+	for _, c := range cs {
 		if _, _, err := onType(t, c); err != nil {
 			return err
 		}
@@ -87,11 +106,34 @@ func (o CmpOptions) Check(t types.Type) error {
 	return nil
 }
 
-// Emit calls kamaValidateCmp, or kamaValidateEqual for a bool, once per
-// comparison.
+// Emit calls kamaValidateCompared once per comparison an ext.Comparer
+// claims, then kamaValidateCmp, or kamaValidateEqual for a bool, once per
+// other comparison.
 func (o CmpOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
+	claimed, rest, err := splitClaimed(o.reg, t, o.Comparisons)
+	if err != nil {
+		return nil, err
+	}
+
+	calls := compared(e, o.reg, t, v, claimed)
+
+	if len(rest) > 0 {
+		g, err := emitComparisons(e, t, v, rest)
+		if err != nil {
+			return nil, err
+		}
+
+		calls = append(calls, g)
+	}
+
+	return joinErrors(e, calls), nil
+}
+
+// emitComparisons is Emit of the comparisons cs that no ext.Comparer
+// claims.
+func emitComparisons(e ext.Emitter, t types.Type, v ext.Gen, cs []Comparison) (ext.Gen, error) {
 	if ext.IsRawJson(t) {
-		return rawComparisons(e, "Compare", v, o.Comparisons, true), nil
+		return rawComparisons(e, "Compare", v, cs, true), nil
 	}
 
 	helper := cmpName
@@ -107,7 +149,7 @@ func (o CmpOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error
 
 	var calls []ext.Gen
 
-	for _, c := range o.Comparisons {
+	for _, c := range cs {
 		on, holds, err := onType(t, c)
 		if err != nil {
 			return nil, err
@@ -128,6 +170,67 @@ func (o CmpOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error
 	}
 
 	return joinErrors(e, calls), nil
+}
+
+// splitClaimed returns the comparisons of cs that an ext.Comparer of reg
+// claims for t and the rest, or the error of the first claimed one the
+// Comparer does not take.
+func splitClaimed(
+	reg ext.Resolver,
+	t types.Type,
+	cs []Comparison,
+) (claimed, rest []Comparison, err error) {
+	for _, c := range cs {
+		ok, err := ext.Comparable(reg, t, c.Op, c.Operand)
+
+		switch {
+		case err != nil:
+			return nil, nil, err
+		case ok:
+			claimed = append(claimed, c)
+		default:
+			rest = append(rest, c)
+		}
+	}
+
+	return claimed, rest, nil
+}
+
+// compared returns the calls of kamaValidateCompared testing the
+// comparisons cs, which an ext.Comparer of reg claims, on the value v of
+// type t.
+func compared(e ext.Emitter, reg ext.Resolver, t types.Type, v ext.Gen, cs []Comparison) []ext.Gen {
+	if len(cs) == 0 {
+		return nil
+	}
+
+	e.Declare(comparedName, comparedDecl)
+	e.Declare(spellName, spellDecl)
+
+	return opiter.WrapSeq(slices.Values(cs)).
+		Map(func(c Comparison) ext.Gen {
+			cond, _ := ext.Compare(reg, e, t, v, c.Op, c.Operand)
+
+			return lang.Expr(
+				"%s(%s, %s, %s, %s)",
+				comparedName,
+				cond,
+				v,
+				strconv.Quote(c.Op),
+				strconv.Quote(spelledOperand(c.Operand)),
+			)
+		}).
+		CollectSlice()
+}
+
+// spelledOperand returns operand, a Go literal, as an error message spells
+// it: a string unquoted, anything else as written.
+func spelledOperand(operand string) string {
+	if s, err := strconv.Unquote(operand); err == nil {
+		return s
+	}
+
+	return operand
 }
 
 // The verdicts of onType on a comparison that needs no code.
@@ -289,8 +392,11 @@ func integerRange(t types.Type) (*big.Int, *big.Int) {
 }
 
 const (
-	cmpName   = "kamaValidateCmp"
-	equalName = "kamaValidateEqual"
+	// comparedName is the helper of a comparison an ext.Comparer tells,
+	// which reports the condition it gives.
+	comparedName = "kamaValidateCompared"
+	cmpName      = "kamaValidateCmp"
+	equalName    = "kamaValidateEqual"
 	// neverName is the helper of a comparison no value of the type
 	// satisfies, which spells the operand as written.
 	neverName = "kamaValidateNever"
@@ -304,6 +410,22 @@ func neverDecl(imp ext.Importer) ext.Step {
 			neverName, shadow("got"), shadow("op"), shadow("want")),
 		lang.Stmt("return %s.New(%s.ErrCompare, \"want %%s %%s, got %%s\",\n%s, %s, %s(%s))",
 			v, v, ref("op"), ref("want"), spellName, ref("got")),
+	)
+}
+
+func comparedDecl(imp ext.Importer) ext.Step {
+	v := imp.Import(ext.ValidationPath)
+
+	return lang.Func(
+		lang.Expr("func %s(%s bool, %s any, %s, %s string) error",
+			comparedName, shadow("ok"), shadow("got"), shadow("op"), shadow("want")),
+		lang.If(
+			lang.Expr("!%s", ref("ok")),
+			lang.Stmt("return %s.New(%s.ErrCompare, \"want %%s %%s, got %%s\",\n%s, %s, %s(%s))",
+				v, v, ref("op"), ref("want"), spellName, ref("got")),
+			nil,
+		),
+		lang.Stmt("return nil"),
 	)
 }
 

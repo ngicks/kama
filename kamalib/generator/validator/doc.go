@@ -214,7 +214,8 @@
 // slice and array elements, map values, pointers, aliases and the values
 // the types a type support of the registry claims hold, as ext.Dependants
 // tells. Package ext/opt registers the support of opt.Option, und.Und,
-// elastic.Elastic and the types of packages either and tuple, so their
+// elastic.Elastic and the types of packages either and tuple, and package
+// ext/std the supports of sql.Null[T] and unique.Handle[T], so their
 // type arguments make dependants. Map keys,
 // channel elements and the type arguments of other generic types make no
 // dependant. The user did not
@@ -688,9 +689,14 @@
 // extension package. Package basic holds the built-in validators. Package
 // opt holds the type support of github.com/ngicks/option, which tells the
 // generator and the validators about the values opt.Option, und.Und,
-// elastic.Elastic and the types of packages either and tuple hold. This
-// package imports both with blank imports, which register them into the
-// default registry of ext. The registry of
+// elastic.Elastic and the types of packages either and tuple hold. Package
+// std holds the type supports of types of the standard library: the null
+// types of database/sql and unique.Handle hold a value, cmp compares
+// time.Time, time.Duration and the pointers of math/big with operands such
+// as "1s", and zero and required test netip.Addr and netip.Prefix by
+// IsValid. Its doc lists each type and rule. This package imports the
+// three with blank imports, which register them into the default registry
+// of ext. The registry of
 // Options.Registry also holds the type supports the walk, the selection of
 // targets and the validators ask.
 //

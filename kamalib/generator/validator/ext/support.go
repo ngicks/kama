@@ -9,7 +9,8 @@ import (
 // whose values hold other values, such as the option types of
 // github.com/ngicks/option or a container type of another package. A
 // support answers through the interfaces it implements besides: Holder,
-// Container, Composite, PresenceTester, ZeroTester and NullTester. Each of their
+// Container, Composite, PresenceTester, ZeroTester, NullTester,
+// LengthTester and Comparer. Each of their
 // methods reports false for a type the support does not claim, so that the
 // next support of the registry answers. Pointers, slices, arrays and maps
 // need no support.
@@ -127,6 +128,57 @@ type LengthTester interface {
 	// value v of type t holds. ok is false for a type the support does not
 	// claim.
 	Length(t types.Type, v Gen) (n Gen, ok bool)
+}
+
+// OpMultiple is the operator by which multipleof asks a Comparer whether a
+// value is a multiple of the operand.
+const OpMultiple = "%"
+
+// Comparer is a TypeSupport for types whose values compare with an operand
+// written in a directive, as cmp(ge="1s") compares a time.Duration. cmp
+// asks it with the operators >, >=, <, <=, == and !=, and multipleof with
+// OpMultiple. Both ask it before their own tests, so a support claiming a
+// type of a basic underlying type replaces them for it.
+type Comparer interface {
+	TypeSupport
+	// Comparable reports whether a value of type t compares with operand by
+	// op. operand is the Go literal the directive wrote: a quoted string, a
+	// number as written, true or false. ok is false for a type the support
+	// does not claim, and for an op or an operand it leaves to the rule, as
+	// a number compared with a time.Duration, which compares as any
+	// integer. err tells why the support does not take a claimed op or
+	// operand. It wraps ErrArgs for an operand the support cannot read for
+	// t, as an unparsable duration.
+	Comparable(t types.Type, op, operand string) (ok bool, err error)
+	// Compare returns the condition of the value v of type t satisfying the
+	// comparison by op with operand, which Comparable accepted. It declares
+	// through e what the condition needs, such as the operand parsed once at
+	// generation into a package-level variable.
+	Compare(e Emitter, t types.Type, v Gen, op, operand string) (cond Gen)
+}
+
+// Comparable returns what the first Comparer of r claiming t tells about
+// the comparison by op with operand. r may be nil.
+func Comparable(r Resolver, t types.Type, op, operand string) (ok bool, err error) {
+	for c := range supportsOf[Comparer](r) {
+		if ok, err := c.Comparable(t, op, operand); ok {
+			return true, err
+		}
+	}
+
+	return false, nil
+}
+
+// Compare returns the condition the first Comparer of r claiming t gives
+// for the value v. r may be nil.
+func Compare(r Resolver, e Emitter, t types.Type, v Gen, op, operand string) (cond Gen, ok bool) {
+	for c := range supportsOf[Comparer](r) {
+		if ok, _ := c.Comparable(t, op, operand); ok {
+			return c.Compare(e, t, v, op, operand), true
+		}
+	}
+
+	return nil, false
 }
 
 // Length returns what the first LengthTester of r claiming t tells about

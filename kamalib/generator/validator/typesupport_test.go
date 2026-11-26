@@ -119,13 +119,17 @@ func TestTypeSupport(t *testing.T) {
 	assert.ErrorIs(t, err, ErrUnsupported)
 }
 
-// TestRoles lists the roles of the built-in kinds and of the types of
-// github.com/ngicks/option, and reaches the value of each role.
+// TestRoles lists the roles of the built-in kinds, of the types of
+// github.com/ngicks/option and of the types of the standard library holding
+// a value, and reaches the value of each role.
 func TestRoles(t *testing.T) {
 	pkgs := gentest.Load(t, map[string]string{
 		"a.go": `package x
 
 import (
+	"database/sql"
+	"unique"
+
 	"github.com/ngicks/option/either"
 	"github.com/ngicks/option/elastic"
 	"github.com/ngicks/option/opt"
@@ -145,6 +149,12 @@ type A struct {
 	RS either.Result[int]
 	UE either.UntaggedEither[int, string]
 	T3 tuple.Tuple3[int, string, bool]
+	SN sql.Null[int]
+	SS sql.NullString
+	SB sql.NullBool
+	SF sql.NullFloat64
+	ST sql.NullTime
+	H  unique.Handle[string]
 }
 `,
 	})
@@ -157,6 +167,7 @@ type A struct {
 		"O": {"t"}, "U": {"t"}, "E": {"t"},
 		"EI": {"l", "r"}, "RS": {"ok", "err"}, "UE": {"l", "r"},
 		"T3": {"v1", "v2", "v3"},
+		"SN": {"t"}, "SS": {"t"}, "SB": {"t"}, "SF": {"t"}, "ST": {"t"}, "H": {"t"},
 	}
 
 	reserved := append([]string{"hook", "pre", "post"}, reg.Names()...)

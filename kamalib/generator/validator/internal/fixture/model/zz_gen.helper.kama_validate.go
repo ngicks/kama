@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:40Z
+// generated: 2026-11-26T08:54:09Z
 
 package model
 
@@ -37,6 +37,65 @@ func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
 	}
 	return nil
 }
+
+// kamaValidateBigFloatCmp is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateBigFloatCmp(x *big.Float, y *big.Rat) int {
+	if x.IsInf() {
+		return x.Sign()
+	}
+	r, _ := x.Rat(nil)
+	return r.Cmp(y)
+}
+
+// kamaValidateBigInt_116d36b583 is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+var kamaValidateBigInt_116d36b583 = func() *big.Int {
+	x, _ := new(big.Int).SetString("1000000000000000000000000000000", 10)
+	return x
+}()
+
+// kamaValidateBigInt_446f3b7586 is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+var kamaValidateBigInt_446f3b7586 = func() *big.Int {
+	x, _ := new(big.Int).SetString("0", 10)
+	return x
+}()
+
+// kamaValidateBigInt_7b01dd4011 is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+var kamaValidateBigInt_7b01dd4011 = func() *big.Int {
+	x, _ := new(big.Int).SetString("3", 10)
+	return x
+}()
+
+// kamaValidateBigRat_7acb3c7ad4 is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+var kamaValidateBigRat_7acb3c7ad4 = func() *big.Rat {
+	x, _ := new(big.Rat).SetString("1/1")
+	return x
+}()
+
+// kamaValidateBigRat_adb2c9e1db is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+var kamaValidateBigRat_adb2c9e1db = func() *big.Rat {
+	x, _ := new(big.Rat).SetString("1/2")
+	return x
+}()
+
+// kamaValidateBigRat_ed7fbe9234 is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+var kamaValidateBigRat_ed7fbe9234 = func() *big.Rat {
+	x, _ := new(big.Rat).SetString("1/10")
+	return x
+}()
 
 // kamaValidateClosed is a helper of the generated Validate methods.
 //
@@ -83,6 +142,17 @@ func kamaValidateCompare[T cmp.Ordered](got T, op string, want T) bool {
 		return got < want
 	}
 	return false
+}
+
+// kamaValidateCompared is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateCompared(ok bool, got any, op, want string) error {
+	if !ok {
+		return validator.New(validator.ErrCompare, "want %s %s, got %s",
+			op, want, kamaValidateSpell(got))
+	}
+	return nil
 }
 
 // kamaValidateConst is a helper of the generated Validate methods.
@@ -217,6 +287,16 @@ func kamaValidateLength(got int, op string, want int) error {
 func kamaValidateMembers(got int, op string, want int) error {
 	if !kamaValidateCompare(got, op, want) {
 		return validator.New(validator.ErrLength, "want member count %s %d, got %d", op, want, got)
+	}
+	return nil
+}
+
+// kamaValidateMultipleCompared is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateMultipleCompared(ok bool, got any, want string) error {
+	if !ok {
+		return validator.New(validator.ErrMultiple, "want a multiple of %s, got %s", want, kamaValidateSpell(got))
 	}
 	return nil
 }

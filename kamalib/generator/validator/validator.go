@@ -23,6 +23,7 @@ import (
 	// registry of package ext.
 	_ "github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
 	_ "github.com/ngicks/kama/kamalib/generator/validator/ext/opt"
+	_ "github.com/ngicks/kama/kamalib/generator/validator/ext/std"
 )
 
 // GeneratorId identifies the generator. Its name is the directive

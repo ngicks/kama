@@ -44,7 +44,7 @@ func TestAndResolve(t *testing.T) {
 	assert.Equal(t, o.Operands[0].Text, `cmp(ge=1)`)
 	assert.DeepEqual(t, o.Operands[0].Rule, ext.Rule(CmpOptions{
 		Comparisons: []Comparison{{Op: ">=", Operand: "1"}},
-	}))
+	}), ignoreRegistry)
 	assert.Equal(t, o.Operands[1].Text, `not const(3)`)
 	assert.Equal(t, built(t, o.Operands[1].Rule).(NotOptions).Operand.Text, `const(3)`)
 

@@ -19,6 +19,7 @@ var ignoreRegistry = cmpopts.IgnoreUnexported(
 	RequiresOptions{},
 	LengthOptions{},
 	MembersOptions{},
+	CmpOptions{},
 )
 
 func TestRequiredParse(t *testing.T) {
@@ -150,7 +151,7 @@ func TestCmpParse(t *testing.T) {
 		{Op: ">=", Operand: "1"},
 		{Op: "!=", Operand: `"a"`},
 		{Op: "==", Operand: "true"},
-	}}))
+	}}), ignoreRegistry)
 
 	for text, msg := range map[string]string{
 		"cmp":       "want one or more comparisons",
@@ -253,7 +254,7 @@ func TestMultipleOfParse(t *testing.T) {
 	} {
 		o, err := resolve(t, "multipleof("+text+")", reg)
 		assert.NilError(t, err, text)
-		assert.Equal(t, o, ext.Rule(MultipleOfOptions{Divisor: divisor}))
+		assert.Equal(t, o, ext.Rule(MultipleOfOptions{Divisor: divisor, reg: reg}))
 	}
 
 	for text, msg := range map[string]string{
