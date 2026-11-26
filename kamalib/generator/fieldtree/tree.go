@@ -30,7 +30,9 @@ func tree(in Input, t target) (string, error) {
 	var b strings.Builder
 
 	b.WriteString(cmp.Or(t.label, t.obj.Name()) + "\n")
-	w.render(&b, "", typ, "", "", nil)
+
+	hashAt, descW := w.measure(0, typ, "", "", nil, 0)
+	w.render(&b, "", typ, "", "", nil, 0, hashAt, descW)
 
 	return b.String(), nil
 }
@@ -61,28 +63,20 @@ type line struct {
 
 // render writes the lines below the value of type t at prefix, and the
 // lines below each of them. expr is the template expression of the value
-// and key its key path. path holds the types expanded above.
+// and key its key path. path holds the types expanded above. depth is the
+// nesting depth of the lines, 0 for the fields of the target. The # of
+// every line sits at the column hashAt, and the key path follows the
+// description padded to descW, as measure returns them for the whole
+// tree.
 func (w walker) render(
 	b *strings.Builder,
 	prefix string,
 	t types.Type,
 	expr, key string,
 	path []types.Type,
+	depth, hashAt, descW int,
 ) {
-	var n, wa, wt, wd int
-
-	// The widths come from walking the lines once before writing them, so
-	// that no list of lines is kept.
-	for l := range w.lines(t, expr, key, path) {
-		n++
-
-		if l.note == "" {
-			wa = max(wa, width(l.access))
-			wt = max(wt, width(l.typ))
-			wd = max(wd, width(l.desc))
-		}
-	}
-
+	n, wa, wt := w.columns(t, expr, key, path)
 	below := append(slices.Clip(path), deref(t))
 	i := 0
 
@@ -94,19 +88,74 @@ func (w walker) render(
 			branch, indent = "└─ ", "    "
 		}
 
-		text := l.note
-		if text == "" {
-			text = pad(l.access, wa) + "  " + pad(l.typ, wt) + "  # " + pad(l.desc, wd) +
-				"  (" + l.key + ")"
+		text := prefix + branch + l.note
+		if l.note == "" {
+			text = pad(prefix+branch+pad(l.access, wa)+"  "+pad(l.typ, wt), hashAt) +
+				"# " + pad(descIndent(depth)+l.desc, descW) + "  (" + l.key + ")"
 		}
 
-		b.WriteString(strings.TrimRight(prefix+branch+text, " ") + "\n")
+		b.WriteString(strings.TrimRight(text, " ") + "\n")
 
 		if l.next != nil {
-			w.render(b, prefix+indent, l.next, l.expr, l.key, below)
+			w.render(b, prefix+indent, l.next, l.expr, l.key, below, depth+1, hashAt, descW)
 		}
 	}
 }
+
+// measure walks the lines below the value of type t, drawn from the
+// column at, and the lines below each of them, as render does. It returns
+// the column of the # that follows the widest type column plus two
+// spaces, and the width of the widest indented description. render
+// aligns the whole tree on them, so the widths come from walking the tree
+// again instead of from a list of lines kept between the passes.
+func (w walker) measure(
+	at int,
+	t types.Type,
+	expr, key string,
+	path []types.Type,
+	depth int,
+) (int, int) {
+	_, wa, wt := w.columns(t, expr, key, path)
+	below := append(slices.Clip(path), deref(t))
+
+	var hashAt, descW int
+
+	for l := range w.lines(t, expr, key, path) {
+		if l.note == "" {
+			// 3 is the width of the branch, ├─ or └─ and a space.
+			hashAt = max(hashAt, at+3+wa+2+wt+2)
+			descW = max(descW, width(descIndent(depth)+l.desc))
+		}
+
+		if l.next != nil {
+			h, d := w.measure(at+4, l.next, l.expr, l.key, below, depth+1)
+			hashAt, descW = max(hashAt, h), max(descW, d)
+		}
+	}
+
+	return hashAt, descW
+}
+
+// columns walks the lines below the value of type t once to count them
+// and to find the widths of their access and type columns, which align
+// among the lines hanging below one value.
+func (w walker) columns(t types.Type, expr, key string, path []types.Type) (n, wa, wt int) {
+	for l := range w.lines(t, expr, key, path) {
+		n++
+
+		if l.note == "" {
+			wa = max(wa, width(l.access))
+			wt = max(wt, width(l.typ))
+		}
+	}
+
+	return n, wa, wt
+}
+
+// descIndent indents a description by two spaces per nesting depth, so
+// that the descriptions show the nesting of the fields beside the aligned
+// # column.
+func descIndent(depth int) string { return strings.Repeat("  ", depth) }
 
 func width(s string) int { return utf8.RuneCountInString(s) }
 

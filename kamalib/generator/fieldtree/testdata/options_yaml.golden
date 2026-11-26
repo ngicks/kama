@@ -1,5 +1,5 @@
 app config
-├─ .Name   string  #   (name)
-├─ .Inner  Inner   #   (inner)
-│   └─ .A  int  #   (inner.a)
-└─ .Plain  int     #   (Plain)
+├─ .Name   string  #     (name)
+├─ .Inner  Inner   #     (inner)
+│   └─ .A  int     #     (inner.a)
+└─ .Plain  int     #     (Plain)

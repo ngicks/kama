@@ -10,9 +10,12 @@
 // default. Each line below it shows one value and has four columns: the
 // template expression reaching the value, its type, a # and a description,
 // and the key path of the value in the serialized form in parentheses.
-// The lines of a value hang below it, drawn with ├─, └─ and │. The columns
-// of the lines hanging below one value are aligned. Every line ends with a
-// newline and carries no trailing space.
+// The lines of a value hang below it, drawn with ├─, └─ and │. The
+// expression and type columns of the lines hanging below one value are
+// aligned. The # and the key path each sit in one column for the whole
+// tree. The description is indented by two spaces for each level a line
+// sits below the fields of the target. Every line ends with a newline and
+// carries no trailing space.
 //
 // For this source
 //
@@ -42,19 +45,19 @@
 // the tree of config is
 //
 //	Config
-//	├─ .Addr   string             # Addr is the listen address.  (addr)
-//	├─ .Users  []User             # users allowed in             (users)
-//	│   └─ index .Users i  User  # element i; range .Users  (users[i])
-//	│       └─ .Name  string  # login name  (users[i].name)
-//	├─ .Env    map[string]string  # environment                  (env)
-//	│   └─ index .Env key  string  # value at key; range .Env  (env[key])
-//	├─ .TLS    opt.Option[TLS]    # TLS settings                 (tls)
-//	│   └─ .TLS.Value  TLS  # set only when .TLS.IsSome  (tls)
-//	│       └─ .Cert  string  # certificate file  (tls.cert)
-//	└─ .Root   *Dir               # served directory             (root)
-//	    ├─ .Path  string  # path on disk    (root.path)
-//	    └─ .Sub   []Dir   # subdirectories  (root.sub)
-//	        └─ index .Root.Sub i  Dir  # element i; range .Root.Sub  (root.sub[i])
+//	├─ .Addr   string                  # Addr is the listen address.     (addr)
+//	├─ .Users  []User                  # users allowed in                (users)
+//	│   └─ index .Users i  User        #   element i; range .Users       (users[i])
+//	│       └─ .Name  string           #     login name                  (users[i].name)
+//	├─ .Env    map[string]string       # environment                     (env)
+//	│   └─ index .Env key  string      #   value at key; range .Env      (env[key])
+//	├─ .TLS    opt.Option[TLS]         # TLS settings                    (tls)
+//	│   └─ .TLS.Value  TLS             #   set only when .TLS.IsSome     (tls)
+//	│       └─ .Cert  string           #     certificate file            (tls.cert)
+//	└─ .Root   *Dir                    # served directory                (root)
+//	    ├─ .Path  string               #   path on disk                  (root.path)
+//	    └─ .Sub   []Dir                #   subdirectories                (root.sub)
+//	        └─ index .Root.Sub i  Dir  #     element i; range .Root.Sub  (root.sub[i])
 //	            └─ Dir repeats; it is expanded above
 //
 // # Fields

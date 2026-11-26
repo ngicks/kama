@@ -1,6 +1,6 @@
 Pair
-├─ .Key    K    #   (key)
+├─ .Key    K              #                            (key)
 │   └─ K is a type parameter; the walk stops until it is instantiated
-└─ .Value  []V  #   (value)
-    └─ index .Value i  V  # element i; range .Value  (value[i])
+└─ .Value  []V            #                            (value)
+    └─ index .Value i  V  #   element i; range .Value  (value[i])
         └─ V is a type parameter; the walk stops until it is instantiated

@@ -47,8 +47,8 @@ func TestCrossPackage(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
 	assert.Equal(t, texts["app"], "App\n"+
-		"└─ .Settings  q.Settings  #   (settings)\n"+
-		"    └─ .Level  string  # Level is the log level.  (settings.level)\n")
+		"└─ .Settings  q.Settings  #                            (settings)\n"+
+		"    └─ .Level  string     #   Level is the log level.  (settings.level)\n")
 	assert.Equal(t, texts["settings"], "q settings\n"+
 		"└─ .Level  string  # Level is the log level.  (level)\n")
 }
@@ -165,8 +165,8 @@ func TestDependencyPackage(t *testing.T) {
 	texts, err := Generate(Input{Pkgs: pkgs}, func(w error) { t.Error(w) })
 	assert.NilError(t, err)
 	assert.Equal(t, texts["app"], "App\n"+
-		"└─ .Settings  q.Settings  #   (settings)\n"+
-		"    └─ .Level  string  # Level is the log level.  (settings.level)\n")
+		"└─ .Settings  q.Settings  #                            (settings)\n"+
+		"    └─ .Level  string     #   Level is the log level.  (settings.level)\n")
 }
 
 func TestDescribeKeepsAuthor(t *testing.T) {
