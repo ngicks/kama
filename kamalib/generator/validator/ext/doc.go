@@ -49,7 +49,8 @@
 //   - Comparer: how cmp and multipleof compare a value of the type with an
 //     operand the directive writes, as a time.Duration compares with
 //     cmp(ge="1s"). Comparable checks the operand at generation, and
-//     Compare gives the condition the generated code tests.
+//     Compare gives the condition the generated code tests. A comparison
+//     the support leaves to the rule takes the test of the rule.
 //
 // Each held value, each element and each value of a Composite has a role
 // name, such as "t", "l" or "v1". A role names the value among the values

@@ -137,8 +137,9 @@ const OpMultiple = "%"
 // Comparer is a TypeSupport for types whose values compare with an operand
 // written in a directive, as cmp(ge="1s") compares a time.Duration. cmp
 // asks it with the operators >, >=, <, <=, == and !=, and multipleof with
-// OpMultiple. Both ask it before their own tests, so a support claiming a
-// type of a basic underlying type replaces them for it.
+// OpMultiple. Both ask it for each comparison before their own tests, and
+// keep their own tests for a comparison it leaves to them, as std leaves a
+// number compared with a time.Duration to the integer test of cmp.
 type Comparer interface {
 	TypeSupport
 	// Comparable reports whether a value of type t compares with operand by
