@@ -150,9 +150,9 @@ type A struct {
 	st := pkgs[0].Types.Scope().Lookup("A").Type().Underlying().(*types.Struct)
 
 	want := map[string][]string{
-		"S": {"e"}, "R": {"e"}, "M": {"k", "v"}, "P": nil,
+		"S": {"e"}, "R": {"e"}, "M": {"k", "v"}, "P": {"e"},
 		"O": {"t"}, "U": {"t"}, "E": {"t"},
-		"EI": {"left", "right"}, "RS": {"ok"}, "UE": {"left", "right"},
+		"EI": {"l", "r"}, "RS": {"ok", "err"}, "UE": {"l", "r"},
 		"T3": {"v1", "v2", "v3"},
 	}
 

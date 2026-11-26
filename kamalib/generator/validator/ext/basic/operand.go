@@ -108,19 +108,54 @@ type combination struct {
 	build func(ops []Operand) ext.Rule
 }
 
-// rule returns the combinator of the operands resolved.
-func (c combination) rule() (ext.Rule, error) {
+// rule returns the combinator of the operands resolved, to apply to a
+// value of type t. When no single level of t, t itself or a value it holds
+// as ext.HeldValue tells, takes every operand, each operand applies to the
+// outermost level taking it, as in nil or not cmp(0) on a value of type
+// *int. A value holding none passes such an operand. Otherwise the
+// combinator applies whole, so that the generator applies it to the level
+// taking every operand under one guard. A nil t gives the combinator whole.
+func (c combination) rule(t types.Type) (ext.Rule, error) {
 	ops, err := ParseOperands(c.nodes, c.reg)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.build(ops), nil
+	whole := c.build(ops)
+	if t == nil {
+		return whole, nil
+	}
+
+	checkErr := whole.Check(t)
+	if checkErr == nil {
+		return whole, nil
+	}
+
+	for held, _, _, ok := ext.HeldValue(c.reg, t, nil); ok; held, _, _, ok = ext.HeldValue(
+		c.reg, held, nil,
+	) {
+		if whole.Check(held) == nil {
+			return whole, nil
+		}
+	}
+
+	split := c.build(
+		opiter.WrapSeq(slices.Values(ops)).
+			Map(func(op Operand) Operand {
+				return Operand{Text: op.Text, Rule: onHeld{rule: op.Rule, reg: c.reg}}
+			}).
+			CollectSlice(),
+	)
+	if split.Check(t) != nil {
+		return whole, nil
+	}
+
+	return split, nil
 }
 
 // Check accepts the types the combinator accepts.
 func (c combination) Check(t types.Type) error {
-	r, err := c.rule()
+	r, err := c.rule(t)
 	if err != nil {
 		return err
 	}
@@ -130,7 +165,7 @@ func (c combination) Check(t types.Type) error {
 
 // Emit emits the combinator.
 func (c combination) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
-	r, err := c.rule()
+	r, err := c.rule(t)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +176,7 @@ func (c combination) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, erro
 // Annotate annotates with the combinator, or emits it when it records
 // nothing.
 func (c combination) Annotate(e ext.Emitter, t types.Type, v, ev ext.Gen) (ext.Gen, error) {
-	r, err := c.rule()
+	r, err := c.rule(t)
 	if err != nil {
 		return nil, err
 	}

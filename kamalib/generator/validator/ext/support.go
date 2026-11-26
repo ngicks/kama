@@ -119,6 +119,28 @@ type NullTester interface {
 	Null(t types.Type, v Gen) (cond Gen, ok bool)
 }
 
+// LengthTester is a TypeSupport for types telling the number of values
+// they hold, as the length validator counts them.
+type LengthTester interface {
+	TypeSupport
+	// Length returns the expression of type int of the number of values the
+	// value v of type t holds. ok is false for a type the support does not
+	// claim.
+	Length(t types.Type, v Gen) (n Gen, ok bool)
+}
+
+// Length returns what the first LengthTester of r claiming t tells about
+// the value v of type t. r may be nil.
+func Length(r Resolver, t types.Type, v Gen) (n Gen, ok bool) {
+	for l := range supportsOf[LengthTester](r) {
+		if n, ok := l.Length(t, v); ok {
+			return n, true
+		}
+	}
+
+	return nil, false
+}
+
 // HeldValue returns the one value the value v of type t may hold: the value
 // a pointer points to, else the value the first Holder of r claiming t
 // tells. r may be nil, which claims nothing. ok is false for a type of

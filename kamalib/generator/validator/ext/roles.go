@@ -3,16 +3,16 @@ package ext
 import "go/types"
 
 // Roles returns the names of the roles of the values a value of type t
-// holds: e for the elements of a slice or an array, k and v for the keys
-// and the values of a map, and the roles the supports of r give for a type
-// they claim. A pointer has no role. r may be nil.
+// holds: e for the elements of a slice or an array and for the value a
+// pointer points to, k and v for the keys and the values of a map, and the
+// roles the supports of r give for a type they claim. r may be nil.
 //
 // A role name is a Go identifier. It must not be hook, pre, post or the
 // name of a validator of the registry, so that a directive item can name
 // a role.
 func Roles(r Resolver, t types.Type) []string {
 	switch types.Unalias(t).Underlying().(type) {
-	case *types.Slice, *types.Array:
+	case *types.Slice, *types.Array, *types.Pointer:
 		return []string{"e"}
 	case *types.Map:
 		return []string{"k", "v"}
@@ -56,6 +56,13 @@ func RoleValue(
 	pos, elem Gen,
 ) (held types.Type, guard, over, value Gen, segment Segment, label Gen, ok bool) {
 	switch u := types.Unalias(t).Underlying().(type) {
+	case *types.Pointer:
+		if role == "e" {
+			return u.Elem(), lang.Expr("%s != nil", v), nil, lang.Expr("(*%s)", v), SegmentNone,
+				nil, true
+		}
+
+		return nil, nil, nil, nil, SegmentNone, nil, false
 	case *types.Slice:
 		if role == "e" {
 			return u.Elem(), nil, v, elem, SegmentIndex, pos, true

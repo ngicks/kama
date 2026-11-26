@@ -17,6 +17,7 @@ import (
 var ignoreRegistry = cmpopts.IgnoreUnexported(
 	RequiredOptions{},
 	RequiresOptions{},
+	LengthOptions{},
 	MembersOptions{},
 )
 
@@ -117,13 +118,13 @@ func TestLengthParse(t *testing.T) {
 		{Op: "<=", Operand: "10"},
 		{Op: "!=", Operand: "3"},
 		{Op: "!=", Operand: "4"},
-	}}))
+	}}), ignoreRegistry)
 
 	o, err = resolve(t, "length(3)", reg)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, o, ext.Rule(LengthOptions{Comparisons: []Comparison{
 		{Op: "==", Operand: "3"},
-	}}))
+	}}), ignoreRegistry)
 
 	for text, msg := range map[string]string{
 		"length":          "want one or more comparisons, as in length(ge=1, le=10)",

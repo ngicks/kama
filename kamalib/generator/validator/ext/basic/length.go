@@ -9,13 +9,15 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Length is the validator //kama:validate length="<op><n> ...": len of
-// the value satisfies every comparison, as in >=1 <=10 or ==3. The operators
-// are >, >=, ==, !=, <= and <, and n is a non-negative integer literal.
-// n may carry a unary plus.
+// Length is the validator //kama:validate length(...): the length of the
+// value satisfies every comparison, as in length(ge=1, le=10) or length(3).
+// The keywords gt, ge, lt, le, eq and ne compare with >, >=, <, <=, == and
+// !=, one positional arg compares with ==, and ne takes a list too. Each
+// value is a non-negative integer.
 //
 // It applies to types of a string, slice, array, map or channel underlying
-// type. The length of a string is its number of bytes. On raw JSON text,
+// type, and to a type an ext.LengthTester of the registry claims, as
+// elastic.Elastic. The length of a string is its number of bytes. On raw JSON text,
 // as IsRawJson tells, it counts the elements of an array and passes a
 // value of another kind.
 type Length struct{}
@@ -23,10 +25,13 @@ type Length struct{}
 // Name returns "length".
 func (Length) Name() string { return "length" }
 
-// LengthOptions are the options of //kama:validate length="<op><n> ...".
+// LengthOptions are the options of //kama:validate length(...).
 type LengthOptions struct {
-	// Comparisons holds one comparison per token of the arg, in order.
+	// Comparisons holds one comparison per arg, in order.
 	Comparisons []Comparison
+	// reg is the registry whose length testers tell the length of a type
+	// they claim.
+	reg ext.Resolver
 }
 
 // Parse decodes the args of c into comparisons with non-negative integers.
@@ -36,12 +41,12 @@ func (Length) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
 		return nil, err
 	}
 
-	return LengthOptions{Comparisons: cs}, nil
+	return LengthOptions{Comparisons: cs, reg: r}, nil
 }
 
 // Check accepts the types the doc comment of Length lists.
-func (LengthOptions) Check(t types.Type) error {
-	if !hasLength(t) {
+func (o LengthOptions) Check(t types.Type) error {
+	if _, ok := ext.Length(o.reg, t, nil); !ok && !hasLength(t) {
 		return fmt.Errorf("%s is not a string, slice, array, map or channel type", t)
 	}
 
@@ -57,8 +62,13 @@ func (o LengthOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, er
 	e.Declare(compareName, compareDecl)
 	e.Declare(lengthName, lengthDecl)
 
+	n, ok := ext.Length(o.reg, t, v)
+	if !ok {
+		n = lang.Expr("len(%s)", v)
+	}
+
 	return joinCalls(e, o.Comparisons, func(c Comparison) ext.Gen {
-		return lang.Expr("%s(len(%s), %s, %s)", lengthName, v, strconv.Quote(c.Op), c.Operand)
+		return lang.Expr("%s(%s, %s, %s)", lengthName, n, strconv.Quote(c.Op), c.Operand)
 	}), nil
 }
 

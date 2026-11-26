@@ -28,7 +28,7 @@ func built(t *testing.T, r ext.Rule) ext.Rule {
 	c, ok := r.(combination)
 	assert.Assert(t, ok, "%T", r)
 
-	b, err := c.rule()
+	b, err := c.rule(nil)
 	assert.NilError(t, err)
 
 	return b

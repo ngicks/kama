@@ -16,9 +16,9 @@ import (
 func (Support) Roles(t types.Type) []string {
 	switch {
 	case isEither(t), isUntaggedEither(t):
-		return []string{"left", "right"}
+		return []string{"l", "r"}
 	case isResult(t), isUntaggedResult(t):
-		return []string{"ok"}
+		return []string{"ok", "err"}
 	}
 
 	if n := tupleLen(t); n > 0 {
@@ -35,12 +35,12 @@ func (Support) Roles(t types.Type) []string {
 
 // Part tells the value of role a value v of type t holds.
 //
-// An either.Either holds its left value, role "left", when IsLeft reports
-// true and its right value, role "right", when IsRight does. It encodes as
-// a JSON object tagging the value with the member left or right, so the
-// value is located at that member. An either.Result holds its ok value,
-// role "ok", when IsOk reports true, located at the member ok it encodes
-// as. Its error is no value to validate. either.UntaggedEither and
+// An either.Either holds its left value, role "l", when IsLeft reports true
+// and its right value, role "r", when IsRight does. It encodes as a JSON
+// object tagging the value with the member left or right, so the value is
+// located at that member. An either.Result holds its ok value, role "ok",
+// when IsOk reports true, and its error, role "err", when IsErr does, each
+// located at the member ok or err it encodes as. either.UntaggedEither and
 // either.UntaggedResult encode the value alone, so their values add no
 // segment. A tuple.TupleN holds its fields V1 to VN, roles "v1" to "vN",
 // always. It encodes as a JSON object with the members V1 to VN, which
@@ -64,15 +64,18 @@ func (Support) Part(
 	}
 
 	switch {
-	case (isEither(t) || isUntaggedEither(t)) && role == "left":
+	case (isEither(t) || isUntaggedEither(t)) && role == "l":
 		return args.At(0), lang.Expr("%s.IsLeft()", v), lang.Expr("%s.UnwrapLeft()", v),
 			segment, lang.Expr(`"left"`), true
-	case (isEither(t) || isUntaggedEither(t)) && role == "right":
+	case (isEither(t) || isUntaggedEither(t)) && role == "r":
 		return args.At(1), lang.Expr("%s.IsRight()", v), lang.Expr("%s.UnwrapRight()", v),
 			segment, lang.Expr(`"right"`), true
 	case (isResult(t) || isUntaggedResult(t)) && role == "ok":
 		return args.At(0), lang.Expr("%s.IsOk()", v), lang.Expr("%s.Value()", v),
 			segment, lang.Expr(`"ok"`), true
+	case (isResult(t) || isUntaggedResult(t)) && role == "err":
+		return types.Universe.Lookup("error").Type(), lang.Expr("%s.IsErr()", v),
+			lang.Expr("%s.Err()", v), segment, lang.Expr(`"err"`), true
 	}
 
 	n := tupleLen(t)

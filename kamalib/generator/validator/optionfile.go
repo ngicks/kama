@@ -34,8 +34,15 @@ func NewLoader(
 	)
 }
 
-// The words of //kama:validate that name no validator. Generate rejects a
-// registry holding a validator named by one of them.
+// itemWords are the words of //kama:validate that name no validator and
+// no role. Generate rejects a registry holding a validator named by one of
+// them.
+var itemWords = []string{
+	hookWord, preWord, postWord, ignoreWord, decodedWord, fileWord, packageWord,
+	groupWord, nestedWord, unwrapWord, iterWord, iter2Word,
+}
+
+// The words of //kama:validate that name no validator.
 const (
 	hookWord    = "hook"
 	preWord     = "pre"
@@ -44,6 +51,10 @@ const (
 	decodedWord = "decoded"
 	fileWord    = "file"
 	packageWord = "package"
+	nestedWord  = "nested"
+	unwrapWord  = "unwrap"
+	iterWord    = "iter"
+	iter2Word   = "iter2"
 )
 
 // PackageOptions are the options of a package, from the package entry of an

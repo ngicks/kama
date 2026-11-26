@@ -92,6 +92,16 @@ func (Support) Zero(t types.Type, v ext.Gen) (ext.Gen, string, bool) {
 	return lang.Expr("%s.IsZero()", v), "a non-zero value", true
 }
 
+// Length tells the number of values an elastic.Elastic holds: the length
+// of its Options, none when it is undefined or null.
+func (Support) Length(t types.Type, v ext.Gen) (ext.Gen, bool) {
+	if !isElastic(t) {
+		return nil, false
+	}
+
+	return lang.Expr("len(%s.Options())", v), true
+}
+
 // Null tells a null und.Und or elastic.Elastic by IsNull.
 func (Support) Null(t types.Type, v ext.Gen) (ext.Gen, bool) {
 	if !isUnd(t) && !isElastic(t) {

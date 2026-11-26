@@ -53,7 +53,8 @@ func TestCombinators(t *testing.T) {
 
 // TestCombinatorHeldValue applies a combinator none of whose operands takes
 // a pointer or an option to the value it holds, as a whole: every operand
-// sees the same value.
+// sees the same value. Operands taking different levels apply each to its
+// own.
 func TestCombinatorHeldValue(t *testing.T) {
 	fn := validateOf(t, map[string]string{
 		"a.go": "package x\n\nimport \"github.com/ngicks/option/opt\"\n\n" +
@@ -69,14 +70,23 @@ func TestCombinatorHeldValue(t *testing.T) {
 			`kamaValidateLength(len(v.O.Value()), "==", 0), "length(0)"), "O")`),
 	)
 
-	// nil applies to the pointer and cmp to the value only, so the
-	// combinator applies to neither.
-	_, err := generate(t, map[string]string{
+	// nil applies to the pointer and cmp to the value only, so each operand
+	// applies to the level taking it, and cmp holds for a nil pointer.
+	fn = validateOf(t, map[string]string{
 		"a.go": "package x\n\n//kama:validate hook=False\ntype A struct {\n" +
 			"\t//kama:validate nil or cmp(ge=1)\n\tQ *int\n}\n",
+	}, "a.kama_validate.go", "A")
+
+	assertContains(t, fn, "kamaValidateOr(kamaValidateNil(v.Q == nil), func() error {\n"+
+		"\t\tif v.Q != nil {\n\t\t\treturn kamaValidateCmp((*v.Q), \">=\", 1)")
+
+	// No level takes nil or regexp.
+	_, err := generate(t, map[string]string{
+		"a.go": "package x\n\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate nil or regexp(\"a\")\n\tQ *int\n}\n",
 	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
-	assert.ErrorContains(t, err, `operand cmp(ge=1): *int is not an integer, float, string`)
+	assert.ErrorContains(t, err, `operand regexp("a"): *int is neither a string`)
 	assert.ErrorContains(t, err, "for the value it holds: operand nil: int is not nillable")
 }
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
@@ -347,7 +348,11 @@ func (w *writer) validator(
 	v := st.Field(i)
 	place := "field " + v.Name()
 
-	r, err := w.parse(vo, place)
+	if vo.Item.Name != "" {
+		return w.role(vo, vo.Item, place, v.Type(), x, wrap, 0)
+	}
+
+	r, err := w.resolve(vo, vo.Item.Value, place)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +414,11 @@ func (w *writer) typeValidator(u types.Type, vo ValidatorOptions) (genStep, erro
 	named := w.n.Detail.Type
 	place := "type " + named.Obj().Name()
 
-	r, err := w.parse(vo, place)
+	if vo.Item.Name != "" {
+		return w.role(vo, vo.Item, place, named, lang.Name("v"), noWrap, 0)
+	}
+
+	r, err := w.resolve(vo, vo.Item.Value, place)
 	if err != nil {
 		return nil, err
 	}
@@ -450,16 +459,12 @@ func (w *writer) typeValidator(u types.Type, vo ValidatorOptions) (genStep, erro
 	return s, nil
 }
 
-// parse returns the rule of the item vo, which resolves the rules it
-// holds through the registry, as a combinator does. place names what vo
-// applies to in errors, as in field Name. An error of the args alone would
-// repeat for the value a pointer or an option holds, so apply never sees
-// it.
-func (w *writer) parse(vo ValidatorOptions, place string) (ext.Rule, error) {
-	if vo.Item.Name != "" {
-		return nil, keywordError(w.sel.opts.Registry, vo, place)
-	}
-
+// resolve returns the rule of n, a rule of the item vo, which resolves the
+// rules it holds through the registry, as a combinator does. place names
+// what n applies to in errors, as in field Name. An error of the args alone
+// would repeat for the value a pointer or an option holds, so apply never
+// sees it.
+func (w *writer) resolve(vo ValidatorOptions, n expr.Node, place string) (ext.Rule, error) {
 	res := ext.WithWarn(w.sel.opts.Registry, func(err error) {
 		if w.sel.warn != nil {
 			w.sel.warn(fmt.Errorf(
@@ -468,7 +473,7 @@ func (w *writer) parse(vo ValidatorOptions, place string) (ext.Rule, error) {
 		}
 	})
 
-	r, err := ext.Resolve(res, vo.Item.Value)
+	r, err := ext.Resolve(res, n)
 	if errors.Is(err, ext.ErrUnknown) {
 		return nil, fmt.Errorf(
 			"%w: %s: %s on %s: %w", ErrDirective, vo.src.origin(), vo.src.spelling(), place, err,
