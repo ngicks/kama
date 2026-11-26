@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T09:39:43Z
+// generated: 2026-11-26T10:12:03Z
 
 package decoding
 
@@ -75,8 +75,9 @@ func (v *Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Dict.IsSome() {
-		for _, k := range slices.Sorted(maps.Keys(v.Dict.Value())) {
-			e := v.Dict.Value()[k]
+		m := v.Dict.Value()
+		for _, k := range slices.Sorted(maps.Keys(m)) {
+			e := m[k]
 			if err := validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "dict"); err != nil {
 				if stopOnFirstError {
 					return err

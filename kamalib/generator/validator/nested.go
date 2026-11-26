@@ -452,12 +452,47 @@ func (w *writer) elements(
 		return lang.ForRange(idx, "e", x, s), nil
 	}
 
-	keys := lang.Expr("%s.Sorted(%s.Keys(%s))", w.Import("slices"), w.Import("maps"), x)
-	// x renders before e is declared in the loop, so that an x spelling an
-	// outer e refers to that one.
-	value := lang.Stmt("%[2]s := %[1]s[%[3]s]", x, decl("e"), lang.Name(idx))
+	return w.rangeSortedKeys(x, idx, loopName("m", depth), false, s), nil
+}
 
-	return lang.ForRange("", idx, keys, genSteps{value, s}), nil
+// rangeSortedKeys returns the loop over the sorted keys of the map m,
+// declaring idx. Unless keyOnly, the body is preceded by e := m[idx]. An m
+// calling a method is first bound to local, so that the method runs once
+// rather than once per key.
+func (w *writer) rangeSortedKeys(
+	m genExpr,
+	idx, local string,
+	keyOnly bool,
+	body genStep,
+) genStep {
+	slicesPkg, mapsPkg := w.Import("slices"), w.Import("maps")
+
+	return genhelper.FuncStep[genCtx](func(c genCtx, b []byte) (genCtx, []byte, error) {
+		text, err := m(c)
+		if err != nil {
+			return c, nil, err
+		}
+
+		var steps genSteps
+
+		over := m
+		if !keyOnly && callsMethod(text) {
+			steps = append(steps, lang.Stmt("%[2]s := %[1]s", m, decl(local)))
+			over = lang.Name(local)
+		}
+
+		keys := lang.Expr("%s.Sorted(%s.Keys(%s))", slicesPkg, mapsPkg, over)
+
+		if keyOnly {
+			return append(steps, lang.ForRange("", idx, keys, body)).Render(c, b)
+		}
+
+		// over renders before e is declared in the loop, so that an over
+		// spelling an outer e refers to that one.
+		value := lang.Stmt("%[2]s := %[1]s[%[3]s]", over, decl("e"), lang.Name(idx))
+
+		return append(steps, lang.ForRange("", idx, keys, genSteps{value, body})).Render(c, b)
+	})
 }
 
 // call returns the call of Validate on the value x of the target or

@@ -143,16 +143,7 @@ func (w *writer) over(
 	keyRole := isMap && role == "k"
 
 	if isMap && typequery.BasicInfo(m.Key())&(types.IsInteger|types.IsString) != 0 {
-		keys := lang.Expr("%s.Sorted(%s.Keys(%s))", w.Import("slices"), w.Import("maps"), over)
-		if keyRole {
-			return lang.ForRange("", idx, keys, s), nil
-		}
-
-		// over renders before e is declared in the loop, so that an over
-		// spelling an outer e refers to that one.
-		elem := lang.Stmt("%[2]s := %[1]s[%[3]s]", over, decl("e"), lang.Name(idx))
-
-		return lang.ForRange("", idx, keys, genSteps{elem, s}), nil
+		return w.rangeSortedKeys(over, idx, loopName("m", depth), keyRole, s), nil
 	}
 
 	if keyRole {

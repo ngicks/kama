@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -186,4 +187,36 @@ func TestRoleItemErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestMapMethodResult binds a map that a method returns to a local once,
+// so that the method runs once rather than once per key.
+func TestMapMethodResult(t *testing.T) {
+	fn := validateOf(t, map[string]string{
+		"a.go": `package x
+
+import "github.com/ngicks/option/opt"
+
+//kama:validate hook=False
+type A struct {
+	//kama:validate t=g(v=cmp(ge=0))
+	O opt.Option[map[string]int]
+	N opt.Option[map[string]B]
+}
+
+//kama:validate hook=False
+type B struct {
+	//kama:validate cmp(ge=0)
+	I int
+}
+`,
+	}, "a.kama_validate.go", "A")
+
+	assertContains(
+		t,
+		fn,
+		"m := v.O.Value()\n\t\tfor _, k := range slices.Sorted(maps.Keys(m)) {\n\t\t\te := m[k]\n",
+		"m := v.N.Value()\n\t\tfor _, k := range slices.Sorted(maps.Keys(m)) {\n\t\t\te := m[k]\n",
+	)
+	assert.Assert(t, !strings.Contains(fn, "Value()["), fn)
 }

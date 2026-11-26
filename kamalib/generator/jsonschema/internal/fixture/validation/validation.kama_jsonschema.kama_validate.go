@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:31:40Z
+// generated: 2026-11-26T10:12:36Z
 
 package validation
 
@@ -94,8 +94,9 @@ func (v *Order) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Labels.IsSome() {
-		for _, k := range slices.Sorted(maps.Keys(v.Labels.Value())) {
-			e := v.Labels.Value()[k]
+		m := v.Labels.Value()
+		for _, k := range slices.Sorted(maps.Keys(m)) {
+			e := m[k]
 			if err := validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "labels"); err != nil {
 				if stopOnFirstError {
 					return err
