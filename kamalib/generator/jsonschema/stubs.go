@@ -107,7 +107,7 @@ func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool
 		name := g.Specs[0].(*ast.TypeSpec).Name.Name
 
 		methods := []string{"Validate"}
-		if slices.Contains(lines, "decoded") {
+		if slices.Contains(lines, decodedWord) {
 			methods = append(methods, "ValidateShallow")
 		}
 

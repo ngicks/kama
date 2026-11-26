@@ -42,23 +42,23 @@
 // or key=value, and calls written name(arg, ...). A value is a bare word or
 // a quoted or raw Go string literal:
 //
-//	//kama:validate hook=off
+//	//kama:validate hook=False
 //	type User struct {
 //		//kama:validate required
 //		Name string
-//		//kama:validate required length=">=1 <=10" unique
+//		//kama:validate required, length(ge=1, le=10), unique
 //		Tags []string
-//		//kama:validate regexp="^[a-z-]+$" runes="<=64" hook=on
+//		//kama:validate regexp("^[a-z-]+$"), runes(le=64), hook=True
 //		Slug string
-//		//kama:validate format=date
+//		//kama:validate format("date")
 //		Born string
-//		//kama:validate cmp=">=0 <100" const="1 2 3"
+//		//kama:validate cmp(ge=0, lt=100), const(1, 2, 3)
 //		N int
-//		//kama:validate multipleof=0.5
+//		//kama:validate multipleof(0.5)
 //		Score float64
-//		//kama:validate const=`"red" "dark blue"`
+//		//kama:validate const("red", "dark blue")
 //		Color string
-//		//kama:validate or(cmp=">=10", const="0") not(const="5")
+//		//kama:validate cmp(ge=10) or const(0), not const(5)
 //		Stock int
 //	}
 //
@@ -349,7 +349,7 @@
 // The args pre=<func> and post=<func> in the doc comment of a target name
 // package-level functions of its package that take the value of the type:
 //
-//	//kama:validate pre=validatePointPre post=validatePointPost
+//	//kama:validate pre="validatePointPre", post="validatePointPost"
 //	type Point struct {
 //		X, Y int
 //	}
@@ -439,9 +439,9 @@
 // registry whose args are other validators, the operands. An operand is
 // written as an arg of //kama:validate is, a combinator included:
 //
-//	//kama:validate or(cmp=">=10", const="0") not(regexp="^x")
-//	//kama:validate if(const=`"fixed"`, requires=amount, const=`"percent"`)
-//	//kama:validate or(and(cmp=">=1", not(or(const="5", const="7"))), const="-1")
+//	//kama:validate cmp(ge=10) or const(0), not regexp("^x")
+//	//kama:validate requires("amount") if const("fixed") else const("percent")
+//	//kama:validate cmp(ge=1) and not (const(5) or const(7)) or const(-1)
 //
 // Inside the parentheses a bare value ends at ",", "(" and ")", so a value
 // holding one of them is quoted. A call may span several directive lines.
@@ -483,10 +483,10 @@
 // value, and the errors carry no path segment of their own. A field holding
 // the type adds its segment through the nested call:
 //
-//	//kama:validate cmp=">=1 <=5"
+//	//kama:validate cmp(ge=1, le=5)
 //	type Level int
 //
-//	//kama:validate length=">=1" unique
+//	//kama:validate length(ge=1), unique
 //	type Tags []string
 //
 // A type whose underlying type is no struct, slice or map, such as Level,
@@ -515,7 +515,7 @@
 // Schema: each tests the values of the JSON kinds it applies to and passes
 // any other, as minimum passes a string:
 //
-//	//kama:validate kind="number string" cmp=">=1" runes="<=3"
+//	//kama:validate kind("number", "string"), cmp(ge=1), runes(le=3)
 //	type Loose jsontext.Value
 //
 //	func (v Loose) RawJson() jsontext.Value { return jsontext.Value(v) }
@@ -529,8 +529,8 @@
 // into the members and the elements instead, and ref and decode apply
 // another type, as package basic describes:
 //
-//	//kama:validate kind=object
-//	//kama:validate props(field("next", ref=Tree), rest(kind=integer))
+//	//kama:validate kind("object")
+//	//kama:validate props(field("next", ref("Tree")), rest(kind("integer")))
 //	type Tree jsontext.Value
 //
 // A target of raw JSON text that is not generic gets one more method:
@@ -546,7 +546,7 @@
 // json applies the validators of raw JSON text to a value of any other type
 // encoded as JSON, a struct included:
 //
-//	//kama:validate json(not(required=x), props(match("^x-", kind=string)))
+//	//kama:validate json(not required("x"), props(match("^x-", kind("string"))))
 //	type Labeled struct {
 //		Name string `json:"name"`
 //		X    map[string]jsontext.Value `json:",embed"`
@@ -620,7 +620,7 @@
 //	  example.com/gen/pb:           # package import path
 //	    all_types: true             # //kama:validate package
 //	    types:
-//	      Order:                    # //kama:validate on Order
+//	      Order:                    # //kama:validate on, Order
 //	        hook: false             # hook=off on Order
 //	        fields:
 //	          Id:

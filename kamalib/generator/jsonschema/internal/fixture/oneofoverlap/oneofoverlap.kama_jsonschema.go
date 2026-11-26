@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:15Z
+// generated: 2026-11-26T06:59:16Z
 
 package oneofoverlap
 
@@ -36,7 +36,7 @@ type EitherKind interface {
 // EitherLeft holds the Left member of Either.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type EitherLeft struct {
 	Left EitherLeftValue
@@ -58,7 +58,7 @@ func (v EitherLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
 // EitherRight holds the Right member of Either.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type EitherRight struct {
 	Right EitherRightValue
@@ -200,7 +200,7 @@ func (v *Either) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // EitherLeftValue is generated from the schema at #/oneOf/0.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type EitherLeftValue struct {
 	L                    opt.Option[string]        `json:"l,omitzero"`
@@ -239,7 +239,7 @@ func (v *EitherLeftValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // EitherRightValue is generated from the schema at #/oneOf/1.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type EitherRightValue struct {
 	R                    opt.Option[string]        `json:"r,omitzero"`

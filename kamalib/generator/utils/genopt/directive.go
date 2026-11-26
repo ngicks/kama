@@ -14,6 +14,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // targetLines are the directive lines of one target, grouped by directive
@@ -197,12 +198,29 @@ func (l Loader[P, T, F]) directiveName(directive string) (string, bool) {
 // leaf, as one line.
 func (l Loader[P, T, F]) unmarshal(v any, src Source, names []nameLines) []error {
 	u, ok := v.(KeyValueUnmarshaler)
+	eu, isExpr := v.(ExprUnmarshaler)
 
 	var errs []error
 
 	for _, n := range names {
 		first := n.lines[0]
 		spelled := "//" + l.ToolName + ":" + first.directive
+
+		s := src
+		s.Pos = first.pos
+
+		if isExpr {
+			args, err := exprArgs(n.lines, spelled)
+			if err == nil {
+				err = eu.UnmarshalExpr(s, n.name, args)
+			}
+
+			if err != nil {
+				errs = append(errs, err)
+			}
+
+			continue
+		}
 
 		if !ok {
 			errs = append(errs, fmt.Errorf(
@@ -218,9 +236,6 @@ func (l Loader[P, T, F]) unmarshal(v any, src Source, names []nameLines) []error
 			errs = append(errs, fmt.Errorf("%w: %s: %s: %w", ErrDirective, first.pos, spelled, err))
 			continue
 		}
-
-		s := src
-		s.Pos = first.pos
 
 		if err := u.UnmarshalKeyValue(s, n.name, kv); err != nil {
 			errs = append(errs, err)
@@ -274,4 +289,22 @@ func structOf(obj types.Object) (*types.Struct, bool) {
 	st, ok := types.Unalias(tn.Type()).Underlying().(*types.Struct)
 
 	return st, ok
+}
+
+// exprArgs parses each of lines, the lines of one directive on one target,
+// with expr.Parse and returns their items in source order. A syntax error
+// is located at its line.
+func exprArgs(lines []line, spelled string) ([]expr.Arg, error) {
+	var out []expr.Arg
+
+	for _, ln := range lines {
+		args, err := expr.Parse(ln.args)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s: %s: %w", ErrDirective, ln.pos, spelled, err)
+		}
+
+		out = append(out, args...)
+	}
+
+	return out, nil
 }

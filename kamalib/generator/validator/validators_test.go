@@ -3,7 +3,6 @@ package validator
 import (
 	"fmt"
 	"go/types"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
@@ -37,7 +37,7 @@ type (
 )
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type A[T comparable] struct {
 	//kama:validate zero
 	Zero int
@@ -69,71 +69,71 @@ type A[T comparable] struct {
 	NullPtr *und.Und[int]
 	//kama:validate null
 	NullElastic elastic.Elastic[int]
-	//kama:validate regexp="^a+$"
+	//kama:validate regexp("^a+$")
 	ReString string
-	//kama:validate regexp="^a+$"
+	//kama:validate regexp("^a+$")
 	ReStr Str
-	//kama:validate regexp="^a+$"
+	//kama:validate regexp("^a+$")
 	ReBytes []byte
-	//kama:validate regexp="^b+$"
+	//kama:validate regexp("^b+$")
 	ReNamedBytes Bytes
-	//kama:validate regexp=` + "`^a=\"b c\"$`" + `
+	//kama:validate regexp('^a="b c"$')
 	RePtr *string
-	//kama:validate length=">=1 <=10"
+	//kama:validate length(ge=1, le=10)
 	LenString string
-	//kama:validate length="==3"
+	//kama:validate length(3)
 	LenArray [3]int
-	//kama:validate length="!=0"
+	//kama:validate length(ne=0)
 	LenMap map[string]int
-	//kama:validate length="<5"
+	//kama:validate length(lt=5)
 	LenChan chan int
-	//kama:validate length=">0"
+	//kama:validate length(gt=0)
 	LenOpt opt.Option[[]int]
-	//kama:validate length=">0"
+	//kama:validate length(gt=0)
 	LenPtr *[]int
-	//kama:validate length=">=+1"
+	//kama:validate length(ge=1)
 	LenPlus string
-	//kama:validate runes=">=1 <=10"
+	//kama:validate runes(ge=1, le=10)
 	RunesString string
-	//kama:validate runes="==3"
+	//kama:validate runes(3)
 	RunesStr Str
-	//kama:validate runes=">0"
+	//kama:validate runes(gt=0)
 	RunesOpt opt.Option[string]
-	//kama:validate cmp=">=-1 <10"
+	//kama:validate cmp(ge=-1, lt=10)
 	CmpInt int8
-	//kama:validate cmp=">0"
+	//kama:validate cmp(gt=0)
 	CmpUint uint
-	//kama:validate cmp=">=1.5"
+	//kama:validate cmp(ge=1.5)
 	CmpFloat float32
-	//kama:validate cmp=">\"a b\""
+	//kama:validate cmp(gt="a b")
 	CmpString Str
-	//kama:validate cmp="==true"
+	//kama:validate cmp(True)
 	CmpBool Bool
-	//kama:validate cmp="!='a'"
+	//kama:validate cmp(ne=97)
 	CmpRune rune
-	//kama:validate cmp=">1"
+	//kama:validate cmp(gt=1)
 	CmpUnd und.Und[Int]
-	//kama:validate const="1 2"
+	//kama:validate const(1, 2)
 	ConstInt Int
-	//kama:validate const="0.5 -1"
+	//kama:validate const(0.5, -1)
 	ConstFloat float64
-	//kama:validate const="\"a\" ` + "`b c`" + `"
+	//kama:validate const("a", 'b c')
 	ConstString string
-	//kama:validate const=false
+	//kama:validate const(False)
 	ConstBool bool
-	//kama:validate const=1
+	//kama:validate const(1)
 	ConstPtr *int
-	//kama:validate multipleof=3
+	//kama:validate multipleof(3)
 	MulInt int
-	//kama:validate multipleof=1.5
+	//kama:validate multipleof(1.5)
 	MulUint8 uint8
-	//kama:validate multipleof=2
+	//kama:validate multipleof(2)
 	MulNamed Int
-	//kama:validate multipleof=0.0001
+	//kama:validate multipleof(0.0001)
 	MulFloat float64
-	//kama:validate multipleof=+0.5
+	//kama:validate multipleof(0.5)
 	MulFloat32 float32
-	//kama:validate multipleof=2
+	//kama:validate multipleof(2)
 	MulPtr *float64
 	//kama:validate unique
 	UniqueInts []int
@@ -153,11 +153,11 @@ type A[T comparable] struct {
 	UniqueParam []T
 	//kama:validate unique
 	UniqueDeepArray [2][]int
-	//kama:validate format=date
+	//kama:validate format("date")
 	FormatDate string
-	//kama:validate format=date-time
+	//kama:validate format("date-time")
 	FormatDateTime Str
-	//kama:validate format=url
+	//kama:validate format("url")
 	FormatUrl opt.Option[string]
 }
 `,
@@ -198,7 +198,7 @@ type A[T comparable] struct {
 		"if v.LenOpt.IsSome() {",
 		`kamaValidateLength(len(v.LenOpt.Value()), ">", 0)`,
 		`kamaValidateLength(len((*v.LenPtr)), ">", 0)`,
-		`kamaValidateLength(len(v.LenPlus), ">=", +1)`,
+		`kamaValidateLength(len(v.LenPlus), ">=", 1)`,
 		`kamaValidateAll(stopOnFirstError, `+
 			`kamaValidateRunes(utf8.RuneCountInString(v.RunesString), ">=", 1), `+
 			`kamaValidateRunes(utf8.RuneCountInString(v.RunesString), "<=", 10))`,
@@ -211,7 +211,7 @@ type A[T comparable] struct {
 		`kamaValidateCmp(v.CmpFloat, ">=", 1.5)`,
 		`kamaValidateCmp(v.CmpString, ">", "a b")`,
 		`kamaValidateEqual(v.CmpBool, "==", true)`,
-		`kamaValidateCmp(v.CmpRune, "!=", 'a')`,
+		`kamaValidateCmp(v.CmpRune, "!=", 97)`,
 		"if v.CmpUnd.IsDefined() {",
 		`kamaValidateCmp(v.CmpUnd.Value(), ">", 1)`,
 		`kamaValidateConst(v.ConstInt, 1, 2)`,
@@ -223,7 +223,7 @@ type A[T comparable] struct {
 		`kamaValidateMultipleInt(v.MulUint8, 3, "1.5")`,
 		`kamaValidateMultipleInt(v.MulNamed, 2, "2")`,
 		`kamaValidateMultipleFloat(v.MulFloat, 64, "1/10000", "0.0001")`,
-		`kamaValidateMultipleFloat(float64(v.MulFloat32), 32, "1/2", "+0.5")`,
+		`kamaValidateMultipleFloat(float64(v.MulFloat32), 32, "1/2", "0.5")`,
 		"if v.MulPtr != nil {",
 		`kamaValidateMultipleFloat((*v.MulPtr), 64, "2/1", "2")`,
 		`kamaValidateUnique(v.UniqueInts)`,
@@ -268,8 +268,8 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 		msgs  []string
 	}{
 		// zero
-		{"zero args", "//kama:validate zero=yes\n\tN int", ErrUnsupported,
-			[]string{"//kama:validate zero on field V", `unexpected arg "yes"; want none`}},
+		{"zero args", "//kama:validate zero(\"yes\")\n\tN int", ErrUnsupported,
+			[]string{"//kama:validate zero on field V", "zero takes 0 positional args"}},
 		{"zero IsZero promoted through a pointer",
 			"//kama:validate zero\n\tN struct{ *elastic.Elastic[int]; L []int }", ErrUnsupported,
 			[]string{"has no method IsZero() bool declared on it or promoted" +
@@ -278,8 +278,8 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 			[]string{"struct{L []int} is not nillable, has no method IsZero() bool declared on it" +
 				" or promoted without a pointer or an interface, and is not comparable"}},
 		// nil
-		{"nil args", "//kama:validate nil=x\n\tN *int", ErrUnsupported,
-			[]string{`unexpected arg "x"`}},
+		{"nil args", "//kama:validate nil(\"x\")\n\tN *int", ErrUnsupported,
+			[]string{"nil takes 0 positional args"}},
 		{"nil not nillable", "//kama:validate nil\n\tN int", ErrUnsupported,
 			[]string{"//kama:validate nil on field V", "int is not nillable"}},
 		{"nil type parameter", "//kama:validate nil\n\tN P", ErrUnsupported,
@@ -298,75 +298,70 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 			[]string{"has no method IsNull() bool"},
 		},
 		// regexp
-		{"regexp bad pattern", "//kama:validate regexp=\"a(\"\n\tN string", ErrUnsupported,
+		{"regexp bad pattern", "//kama:validate regexp(\"a(\")\n\tN string", ErrUnsupported,
 			[]string{"//kama:validate regexp on field V", `pattern "a(" does not compile`}},
 		{"regexp no pattern", "//kama:validate regexp\n\tN string", ErrUnsupported,
 			[]string{"want a pattern"}},
-		{"regexp empty pattern", "//kama:validate regexp=\"\"\n\tN string", ErrUnsupported,
+		{"regexp empty pattern", "//kama:validate regexp(\"\")\n\tN string", ErrUnsupported,
 			[]string{"want a pattern"}},
-		{"regexp int", "//kama:validate regexp=a\n\tN int", ErrUnsupported,
+		{"regexp int", "//kama:validate regexp(\"a\")\n\tN int", ErrUnsupported,
 			[]string{"int is neither a string nor a []byte type"}},
-		{"regexp runes", "//kama:validate regexp=a\n\tN []rune", ErrUnsupported,
+		{"regexp runes", "//kama:validate regexp(\"a\")\n\tN []rune", ErrUnsupported,
 			[]string{"[]rune is neither a string nor a []byte type"}},
-		{"regexp bad pattern on pointer", "//kama:validate regexp=\"a(\"\n\tN *string",
+		{"regexp bad pattern on pointer", "//kama:validate regexp(\"a(\")\n\tN *string",
 			ErrUnsupported, []string{`pattern "a(" does not compile`}},
 		// length
 		{"length no args", "//kama:validate length\n\tN string", ErrUnsupported,
 			[]string{"want one or more comparisons"}},
-		{"length bad op", "//kama:validate length=\"=1\"\n\tN string", ErrUnsupported,
-			[]string{`arg "=1" is no comparison`}},
-		{"length no operand", "//kama:validate length=\">=\"\n\tN string", ErrUnsupported,
-			[]string{`arg ">=" is no comparison`}},
-		{"length pair", "//kama:validate length=\"a=1\"\n\tN string", ErrUnsupported,
-			[]string{`arg "a=1" is no comparison`}},
-		{"length bad quoting", "//kama:validate length=`\"1`\n\tN string", ErrUnsupported,
-			[]string{"unterminated quoted string"}},
-		{"length negative", "//kama:validate length=\">=-1\"\n\tN string", ErrUnsupported,
+		{"length old spelling", "//kama:validate length=\">=1\"\n\tN string", ErrDirective,
+			[]string{`length=">=1" on field V names the validator length as a keyword;` +
+				" write it as a call, as in length(ge=1)"}},
+		{"length null", "//kama:validate length(ge=None)\n\tN string", ErrUnsupported,
+			[]string{"None is no number, string or bool"}},
+		{"length two positional", "//kama:validate length(1, 2)\n\tN string", ErrUnsupported,
+			[]string{"length takes one positional arg, the value compared with ==, got 2"}},
+		{"length list", "//kama:validate length(ge=[1])\n\tN string", ErrUnsupported,
+			[]string{"[1] is no number, string or bool"}},
+		{"length negative", "//kama:validate length(ge=-1)\n\tN string", ErrUnsupported,
 			[]string{"length -1 is negative"}},
-		{"length float", "//kama:validate length=\">=1.5\"\n\tN string", ErrUnsupported,
+		{"length float", "//kama:validate length(ge=1.5)\n\tN string", ErrUnsupported,
 			[]string{"1.5 is no value of int", "cannot convert"}},
-		{"length not literal", "//kama:validate length=\">=n\"\n\tN string", ErrUnsupported,
-			[]string{"n is not a Go literal"}},
-		{"length float literal", "//kama:validate length=\">=1.0\"\n\tN string", ErrUnsupported,
+		{"length not literal", "//kama:validate length(ge=n)\n\tN string", ErrUnsupported,
+			[]string{"n is no number, string or bool"}},
+		{"length float literal", "//kama:validate length(ge=1.0)\n\tN string", ErrUnsupported,
 			[]string{"length 1.0 is not an integer literal"}},
-		{"length rune literal", "//kama:validate length=\">='a'\"\n\tN string", ErrUnsupported,
-			[]string{"length 'a' is not an integer literal"}},
-		{"length plus float literal", "//kama:validate length=\">=+1.0\"\n\tN string",
-			ErrUnsupported, []string{"length +1.0 is not an integer literal"}},
-		{"length plus rune literal", "//kama:validate length=\">=+'a'\"\n\tN string",
-			ErrUnsupported, []string{"length +'a' is not an integer literal"}},
-		{"length expression", "//kama:validate length=\">=1+1\"\n\tN string", ErrUnsupported,
-			[]string{"1+1 is not a Go literal"}},
-		{"length plus negative", "//kama:validate length=\">=+-1\"\n\tN string", ErrUnsupported,
-			[]string{"+-1 is not a Go literal"}},
-		{"length int", "//kama:validate length=\">=1\"\n\tN int", ErrUnsupported,
+		{"length string", "//kama:validate length(ge=\"a\")\n\tN string", ErrUnsupported,
+			[]string{`"a" is no value of int`}},
+		{"length plus float literal", "//kama:validate length(ge=+1.0)\n\tN string",
+			ErrUnsupported, []string{"length 1.0 is not an integer literal"}},
+		{"length int", "//kama:validate length(ge=1)\n\tN int", ErrUnsupported,
 			[]string{"//kama:validate length on field V",
 				"int is not a string, slice, array, map or channel type"}},
-		{"length float on option", "//kama:validate length=\">=1.5\"\n\tN opt.Option[string]",
+		{"length float on option", "//kama:validate length(ge=1.5)\n\tN opt.Option[string]",
 			ErrUnsupported, []string{"1.5 is no value of int"}},
 		// runes
 		{"runes no args", "//kama:validate runes\n\tN string", ErrUnsupported,
 			[]string{"want one or more comparisons"}},
-		{"runes negative", "//kama:validate runes=\">=-1\"\n\tN string", ErrUnsupported,
+		{"runes negative", "//kama:validate runes(ge=-1)\n\tN string", ErrUnsupported,
 			[]string{"//kama:validate runes on field V", "length -1 is negative"}},
-		{"runes bytes", "//kama:validate runes=\">=1\"\n\tN []byte", ErrUnsupported,
+		{"runes bytes", "//kama:validate runes(ge=1)\n\tN []byte", ErrUnsupported,
 			[]string{"[]byte is not a string type"}},
-		{"runes slice", "//kama:validate runes=\">=1\"\n\tN []string", ErrUnsupported,
+		{"runes slice", "//kama:validate runes(ge=1)\n\tN []string", ErrUnsupported,
 			[]string{"[]string is not a string type"}},
 		// multipleof
 		{"multipleof no args", "//kama:validate multipleof\n\tN int", ErrUnsupported,
-			[]string{`divisor "" is not a Go literal`}},
-		{"multipleof zero", "//kama:validate multipleof=0\n\tN int", ErrUnsupported,
+			[]string{"want one number, as in multipleof(0.01)"}},
+		{"multipleof zero", "//kama:validate multipleof(0)\n\tN int", ErrUnsupported,
 			[]string{"//kama:validate multipleof on field V", "divisor 0 is not positive"}},
-		{"multipleof negative", "//kama:validate multipleof=-2\n\tN *int", ErrUnsupported,
+		{"multipleof negative", "//kama:validate multipleof(-2)\n\tN *int", ErrUnsupported,
 			[]string{"divisor -2 is not an integer or float literal"}},
-		{"multipleof string", "//kama:validate multipleof=2\n\tN string", ErrUnsupported,
+		{"multipleof string", "//kama:validate multipleof(2)\n\tN string", ErrUnsupported,
 			[]string{"string is not an integer or float type"}},
-		{"multipleof type parameter", "//kama:validate multipleof=2\n\tN P", ErrUnsupported,
+		{"multipleof type parameter", "//kama:validate multipleof(2)\n\tN P", ErrUnsupported,
 			[]string{"P is not an integer or float type"}},
 		// unique
-		{"unique args", "//kama:validate unique=x\n\tN []int", ErrUnsupported,
-			[]string{`unexpected arg "x"; want none`}},
+		{"unique args", "//kama:validate unique(\"x\")\n\tN []int", ErrUnsupported,
+			[]string{"unique takes 0 positional args"}},
 		{
 			"unique map",
 			"//kama:validate unique\n\tN map[string]int",
@@ -383,65 +378,67 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 		// cmp
 		{"cmp no args", "//kama:validate cmp\n\tN int", ErrUnsupported,
 			[]string{"want one or more comparisons"}},
-		{"cmp int rejects string", "//kama:validate cmp=`>\"a\"`\n\tN int", ErrUnsupported,
+		{"cmp int rejects string", "//kama:validate cmp(gt=\"a\")\n\tN int", ErrUnsupported,
 			[]string{`"a" is no value of int`}},
-		{"cmp string rejects number", "//kama:validate cmp=\">65\"\n\tN string", ErrUnsupported,
+		{"cmp string rejects number", "//kama:validate cmp(gt=65)\n\tN string", ErrUnsupported,
 			[]string{"65 is no value of string; want a quoted string"}},
-		{"cmp float rejects string", "//kama:validate cmp=`>\"1\"`\n\tN float64", ErrUnsupported,
+		{"cmp float rejects string", "//kama:validate cmp(gt=\"1\")\n\tN float64", ErrUnsupported,
 			[]string{`"1" is no value of float64`}},
-		{"cmp bool order", "//kama:validate cmp=\">true\"\n\tN bool", ErrUnsupported,
+		{"cmp bool order", "//kama:validate cmp(gt=True)\n\tN bool", ErrUnsupported,
 			[]string{"bool is a bool type, which takes == and != only; got >"}},
-		{"cmp bool rejects number", "//kama:validate cmp=\"==1\"\n\tN bool", ErrUnsupported,
+		{"cmp bool rejects number", "//kama:validate cmp(1)\n\tN bool", ErrUnsupported,
 			[]string{"1 is no value of bool"}},
-		{"cmp expression", "//kama:validate cmp=\">1+1\"\n\tN int", ErrUnsupported,
-			[]string{"1+1 is not a Go literal"}},
-		{"cmp struct", "//kama:validate cmp=\">1\"\n\tN struct{}", ErrUnsupported,
+		{"cmp bare name", "//kama:validate cmp(gt=unknown)\n\tN int", ErrUnsupported,
+			[]string{"unknown is no number, string or bool"}},
+		{"cmp struct", "//kama:validate cmp(gt=1)\n\tN struct{}", ErrUnsupported,
 			[]string{"struct{} is not an integer, float, string or bool type"}},
-		{"cmp complex", "//kama:validate cmp=\">1\"\n\tN complex128", ErrUnsupported,
+		{"cmp complex", "//kama:validate cmp(gt=1)\n\tN complex128", ErrUnsupported,
 			[]string{"complex128 is not an integer, float, string or bool type"}},
-		{"cmp elastic", "//kama:validate cmp=\">1\"\n\tN elastic.Elastic[int]", ErrUnsupported,
+		{"cmp elastic", "//kama:validate cmp(gt=1)\n\tN elastic.Elastic[int]", ErrUnsupported,
 			[]string{"elastic.Elastic[int] is not an integer"}},
 		// const
 		{"const no args", "//kama:validate const\n\tN int", ErrUnsupported,
 			[]string{"want one or more values"}},
-		{"const pair", "//kama:validate const=\"a=b\"\n\tN string", ErrUnsupported,
-			[]string{`arg "a=b" is a key=value pair; quote a value holding =`}},
-		{"const int rejects word", "//kama:validate const=\"1 a\"\n\tN int", ErrUnsupported,
-			[]string{"//kama:validate const on field V", "a is not a Go literal"}},
-		{"const string rejects bare word", "//kama:validate const=red\n\tN string",
+		{"const int rejects word", "//kama:validate const(1, a)\n\tN int", ErrUnsupported,
+			[]string{"//kama:validate const on field V", "const: a is no literal"}},
+		{"const string rejects number", "//kama:validate const(1)\n\tN string",
 			ErrUnsupported,
-			[]string{`red is no value of string; want a quoted string, as in "red"`}},
-		{"const int rejects quoted", "//kama:validate const=`\"1\"`\n\tN int", ErrUnsupported,
+			[]string{`1 is no value of string; want a quoted string, as in "1"`}},
+		{"const string rejects list", `//kama:validate const(["a"])` + "\n\tN string",
+			ErrUnsupported,
+			[]string{`["a"] is no value of string`}},
+		{"const int rejects quoted", "//kama:validate const(\"1\")\n\tN int", ErrUnsupported,
 			[]string{`"1" is no value of int`}},
-		{"const float rejects quoted", "//kama:validate const=\"`1.5`\"\n\tN float64",
+		{"const float rejects quoted", "//kama:validate const(\"1.5\")\n\tN float64",
 			ErrUnsupported, []string{`"1.5" is no value of float64`}},
-		{"const overflow", "//kama:validate const=256\n\tN uint8", ErrUnsupported,
+		{"const overflow", "//kama:validate const(256)\n\tN uint8", ErrUnsupported,
 			[]string{"256 is no value of uint8"}},
-		{"const slice", "//kama:validate const=1\n\tN []int", ErrUnsupported,
+		{"const slice", "//kama:validate const(1)\n\tN []int", ErrUnsupported,
 			[]string{"[]int is not a bool, numeric or string type"}},
 		// format
-		{"format unknown", "//kama:validate format=email\n\tN string", ErrUnsupported,
+		{"format unknown", "//kama:validate format(\"email\")\n\tN string", ErrUnsupported,
 			[]string{"//kama:validate format on field V",
 				`unknown format "email"; known: date, date-time, ipv4, ipv6, url, uuid`}},
 		{"format no name", "//kama:validate format\n\tN string", ErrUnsupported,
-			[]string{"want one format name; known: date, date-time, ipv4, ipv6, url, uuid"}},
-		{"format int", "//kama:validate format=date\n\tN int", ErrUnsupported,
+			[]string{`want one format name, as in format("date");` +
+				" known: date, date-time, ipv4, ipv6, url, uuid"}},
+		{"format int", "//kama:validate format(\"date\")\n\tN int", ErrUnsupported,
 			[]string{"int is neither a string type nor raw JSON text"}},
 		{
 			"format elastic",
-			"//kama:validate format=date\n\tN elastic.Elastic[string]",
+			"//kama:validate format(\"date\")\n\tN elastic.Elastic[string]",
 			ErrUnsupported,
 			[]string{"elastic.Elastic[string] is neither a string type nor raw JSON text"},
 		},
 		{"nil elastic", "//kama:validate nil\n\tN elastic.Elastic[*int]", ErrUnsupported,
 			[]string{"elastic.Elastic[*int] is not nillable"}},
-		{"regexp elastic", "//kama:validate regexp=a\n\tN elastic.Elastic[string]",
+		{"regexp elastic", "//kama:validate regexp(\"a\")\n\tN elastic.Elastic[string]",
 			ErrUnsupported, []string{"elastic.Elastic[string] is neither a string"}},
-		{"length elastic", "//kama:validate length=\">0\"\n\tN elastic.Elastic[string]",
+		{"length elastic", "//kama:validate length(gt=0)\n\tN elastic.Elastic[string]",
 			ErrUnsupported, []string{"elastic.Elastic[string] is not a string, slice"}},
-		{"const elastic", "//kama:validate const=1\n\tN elastic.Elastic[int]", ErrUnsupported,
+		{"const elastic", "//kama:validate const(1)\n\tN elastic.Elastic[int]", ErrUnsupported,
 			[]string{"elastic.Elastic[int] is not a bool, numeric or string type"}},
-		{"format bytes", "//kama:validate format=date\n\tN []byte", ErrUnsupported,
+		{"format bytes", "//kama:validate format(\"date\")\n\tN []byte", ErrUnsupported,
 			[]string{"[]byte is neither a string type nor raw JSON text"}},
 	}
 
@@ -451,7 +448,7 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 				"\t\"github.com/ngicks/option/elastic\"\n" +
 				"\t\"github.com/ngicks/option/opt\"\n)\n\n" +
 				"var (\n\t_ elastic.Elastic[int]\n\t_ opt.Option[int]\n)\n\n" +
-				"//kama:validate\n//kama:validate hook=off\ntype V[P any] struct {\n\t" +
+				"//kama:validate\n//kama:validate hook=False\ntype V[P any] struct {\n\t" +
 				strings.Replace(tc.field, "\n\tN ", "\n\tV ", 1) + "\n}\n"
 
 			_, err := generate(t, map[string]string{"a.go": src}, testRun{})
@@ -468,8 +465,8 @@ func TestBuiltinValidatorErrors(t *testing.T) {
 // nor to the value it points to.
 func TestHeldValueError(t *testing.T) {
 	_, err := generate(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate cmp=\">1\"\n\tP *struct{}\n}\n",
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate cmp(gt=1)\n\tP *struct{}\n}\n",
 	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err,
@@ -481,8 +478,8 @@ func TestHeldValueError(t *testing.T) {
 // without applying the validator again to the value a pointer holds.
 func TestArgsErrorOnHeldValue(t *testing.T) {
 	_, err := generate(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate length=\">=1.5\"\n\tP *string\n}\n",
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate length(ge=1.5)\n\tP *string\n}\n",
 	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorIs(t, err, ext.ErrArgs)
@@ -496,9 +493,9 @@ type lengthOne struct{}
 
 func (lengthOne) Name() string { return "length" }
 
-func (lengthOne) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	if arg != "" {
-		return nil, fmt.Errorf("%w: unexpected arg %q; want none", ext.ErrArgs, arg)
+func (lengthOne) Parse(c expr.Call, _ ext.Resolver) (ext.Rule, error) {
+	if len(c.Args) > 0 {
+		return nil, fmt.Errorf("%w: unexpected args %s; want none", ext.ErrArgs, expr.Print(c.Args))
 	}
 
 	return lengthOne{}, nil
@@ -540,7 +537,7 @@ func TestReplaceBuiltin(t *testing.T) {
 	reg.Register(lengthOne{})
 
 	files := map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype A struct {\n" +
 			"\t//kama:validate length\n\tS string\n}\n",
 	}
 
@@ -566,13 +563,20 @@ func (multiple) Name() string { return "multiple" }
 
 type multipleOptions struct{ N int64 }
 
-func (multiple) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	n, err := strconv.ParseInt(arg, 10, 64)
-	if err != nil || n <= 0 {
+func (multiple) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	var args struct {
+		N int64 `json:"n"`
+	}
+
+	if _, err := (ext.Params{Positional: []string{"n"}}).Bind(r, c, &args); err != nil {
+		return nil, err
+	}
+
+	if args.N <= 0 {
 		return nil, fmt.Errorf("%w: want a positive integer", ext.ErrArgs)
 	}
 
-	return multipleOptions{N: n}, nil
+	return multipleOptions{N: args.N}, nil
 }
 
 func (multipleOptions) Check(t types.Type) error {
@@ -608,10 +612,10 @@ func TestDocExample(t *testing.T) {
 
 	files := map[string]string{
 		"a.go": "package x\n\ntype Count uint8\n\n" +
-			"//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate multiple=3\n\tN int\n" +
-			"\t//kama:validate multiple=4\n\tC Count\n" +
-			"\t//kama:validate multiple=5\n\tP *int64\n}\n",
+			"//kama:validate\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate multiple(3)\n\tN int\n" +
+			"\t//kama:validate multiple(4)\n\tC Count\n" +
+			"\t//kama:validate multiple(5)\n\tP *int64\n}\n",
 	}
 
 	f, opts := stage(t, files)
@@ -630,14 +634,14 @@ func TestDocExample(t *testing.T) {
 	)
 
 	_, err = generate(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate multiple=0\n\tN int\n}\n",
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate multiple(0)\n\tN int\n}\n",
 	}, testRun{Registry: reg})
 	assert.ErrorIs(t, err, ext.ErrArgs)
 
 	_, err = generate(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate multiple=3\n\tS string\n}\n",
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate multiple(3)\n\tS string\n}\n",
 	}, testRun{Registry: reg})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, "string is not an integer type")
@@ -670,9 +674,9 @@ func TestFormatExtra(t *testing.T) {
 	reg.Register(basic.Format{Formats: formats})
 
 	files := map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate format=lower\n\tS string\n" +
-			"\t//kama:validate format=date\n\tD string\n}\n",
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate format(\"lower\")\n\tS string\n" +
+			"\t//kama:validate format(\"date\")\n\tD string\n}\n",
 	}
 
 	f, opts := stage(t, files)
@@ -712,7 +716,7 @@ type Zeroer interface{ IsZero() bool }
 type Iface struct{ Zeroer }
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type A struct {
 	//kama:validate required
 	S Stamp
@@ -746,8 +750,8 @@ type A struct {
 func TestStopFlagRenamed(t *testing.T) {
 	fn := validateOf(t, map[string]string{
 		"a.go": "package x\n\nvar stopOnFirstError = true\n\n" +
-			"//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate cmp=\">=1 <=3\"\n\tN int\n}\n",
+			"//kama:validate\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate cmp(ge=1, le=3)\n\tN int\n}\n",
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,

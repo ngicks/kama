@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:38:50Z
+// generated: 2026-11-26T06:58:54Z
 
 package dynamicref
 
@@ -23,7 +23,7 @@ import (
 // does not declare.
 //
 //kama:generated kama:jsonschema
-//kama:validate unevalprops(and(kind="object", props(field("data"), field("children", kind="array", items(ref=StrictTree)))), or())
+//kama:validate unevalprops(kind("object") and props(field("data"), field("children", kind("array"), items(ref("StrictTree")))), never)
 //kama:validate decoded
 type StrictTree jsontext.Value
 
@@ -59,7 +59,7 @@ func (v StrictTree) RawJson() jsontext.Value {
 // Tree is generated from the schema at #/$defs/Tree.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Tree struct {
 	Data                 opt.Option[jsontext.Value]     `json:"data,omitzero"`
@@ -101,7 +101,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/$defs/Tree/properties/children/items.
 //
 //kama:generated kama:jsonschema
-//kama:validate ref=StrictTree
+//kama:validate ref("StrictTree")
 //kama:validate decoded
 type TreeChildrenItem jsontext.Value
 
@@ -172,8 +172,8 @@ func (v ListItem) RawJson() jsontext.Value {
 // Names is generated from the schema at #/$defs/Names.
 //
 //kama:generated kama:jsonschema
-//kama:validate kind="array"
-//kama:validate items(kind="string")
+//kama:validate kind("array")
+//kama:validate items(kind("string"))
 //kama:validate decoded
 type Names jsontext.Value
 

@@ -9,17 +9,17 @@ import (
 )
 
 const shallowSrc = "package x\n\n" +
-	"//kama:validate hook=off decoded\ntype Leaf struct {\n" +
-	"\t//kama:validate cmp=\">=0\"\n\tN int\n}\n\n" +
+	"//kama:validate hook=False, decoded\ntype Leaf struct {\n" +
+	"\t//kama:validate cmp(ge=0)\n\tN int\n}\n\n" +
 	"type Leaves []Leaf\n\n" +
 	"type U struct{}\n\n" +
 	"func (U) Validate(bool) error { return nil }\n\n" +
 	"func (U) ValidateShallow(bool) error { return nil }\n\n" +
 	"type Us []U\n\n" +
-	"//kama:validate hook=off\ntype Plain struct {\n" +
-	"\t//kama:validate cmp=\">0\"\n\tN int\n}\n\n" +
-	"//kama:validate hook=off decoded\ntype Root struct {\n" +
-	"\t//kama:validate cmp=\">0\"\n\tA int\n" +
+	"//kama:validate hook=False\ntype Plain struct {\n" +
+	"\t//kama:validate cmp(gt=0)\n\tN int\n}\n\n" +
+	"//kama:validate hook=False, decoded\ntype Root struct {\n" +
+	"\t//kama:validate cmp(gt=0)\n\tA int\n" +
 	"\tL Leaf\n\tP *Leaf\n\tS []Leaf\n\tM map[string]Leaf\n" +
 	"\tLs Leaves\n\tU U\n\tUs Us\n\tPlain Plain\n\tSelf *Root\n}\n"
 
@@ -63,24 +63,24 @@ func TestValidateShallowErrors(t *testing.T) {
 	}{
 		{
 			name: "hand-written ValidateShallow",
-			src: "//kama:validate hook=off decoded\ntype L struct{ N int }\n\n" +
-				"//kama:validate hook=off\ntype R struct{ L L }\n\n" +
+			src: "//kama:validate hook=False, decoded\ntype L struct{ N int }\n\n" +
+				"//kama:validate hook=False\ntype R struct{ L L }\n\n" +
 				"func (R) ValidateShallow(bool) error { return nil }\n",
 			is:  ErrConflict,
 			msg: "R declares ValidateShallow, which the generator writes",
 		},
 		{
 			name: "field named ValidateShallow",
-			src: "//kama:validate hook=off decoded\ntype L struct{ N int }\n\n" +
-				"//kama:validate hook=off\ntype R struct{ ValidateShallow L }\n",
+			src: "//kama:validate hook=False, decoded\ntype L struct{ N int }\n\n" +
+				"//kama:validate hook=False\ntype R struct{ ValidateShallow L }\n",
 			is:  ErrConflict,
 			msg: "field ValidateShallow of",
 		},
 		{
 			name: "decoded with a value",
-			src:  "//kama:validate decoded=on\ntype L struct{ N int }\n",
+			src:  "//kama:validate decoded(\"on\")\ntype L struct{ N int }\n",
 			is:   ErrDirective,
-			msg:  `unknown arg "decoded=on"`,
+			msg:  `unknown arg decoded("on")`,
 		},
 	}
 
@@ -98,9 +98,9 @@ func TestValidateShallowErrors(t *testing.T) {
 func TestValidateEvaluated(t *testing.T) {
 	out := generateAndBuild(t, map[string]string{"a.go": "package x\n\n" +
 		"import \"encoding/json/jsontext\"\n\n" +
-		"//kama:validate props(field(\"a\", kind=integer))\ntype A jsontext.Value\n\n" +
+		"//kama:validate props(field(\"a\", kind(\"integer\")))\ntype A jsontext.Value\n\n" +
 		"func (v A) RawJson() jsontext.Value { return jsontext.Value(v) }\n\n" +
-		"//kama:validate unevalprops(ref=A, or())\ntype R jsontext.Value\n\n" +
+		"//kama:validate unevalprops(ref(\"A\"), never)\ntype R jsontext.Value\n\n" +
 		"func (v R) RawJson() jsontext.Value { return jsontext.Value(v) }\n",
 	})
 	funcs := gentest.Funcs(t, out["a.kama_validate.go"])

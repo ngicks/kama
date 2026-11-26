@@ -11,15 +11,15 @@ import (
 // ErrNote is the error of the hook of Order.Note.
 var ErrNote = errors.New("note too long")
 
-//kama:validate hook=off members=">=4"
+//kama:validate hook=False, members(ge=4)
 type Order struct {
-	//kama:validate required regexp="^[A-Z]{3}-[0-9]+$"
+	//kama:validate required, regexp("^[A-Z]{3}-[0-9]+$")
 	Id string `json:"id"`
-	//kama:validate length=">=1 <=5"
+	//kama:validate length(ge=1, le=5)
 	Lines []Line `json:"lines,omitzero"`
-	//kama:validate const=`"eur" "usd"`
+	//kama:validate const("eur", "usd")
 	Currency string `json:"currency"`
-	//kama:validate hook=on
+	//kama:validate hook=True
 	Note string `json:"note"`
 }
 
@@ -31,27 +31,27 @@ func (o Order) validateNote(bool) error {
 	return nil
 }
 
-//kama:validate hook=off
+//kama:validate hook=False
 type Line struct {
-	//kama:validate cmp=">0 <=100"
+	//kama:validate cmp(gt=0, le=100)
 	Qty int `json:"qty"`
-	//kama:validate format=url
+	//kama:validate format("url")
 	Url opt.Option[string] `json:"url"`
 	Sku Sku                `json:"sku"`
 }
 
 // Sku is a scalar type with validators of its own.
 //
-//kama:validate regexp="^[A-Z]+$" runes="<=8"
+//kama:validate regexp("^[A-Z]+$"), runes(le=8)
 type Sku string
 
 // Discount holds combinators, a type-level one among them.
 //
-//kama:validate hook=off or(members="==0", members=">=2")
+//kama:validate hook=False, members(0) or members(ge=2)
 type Discount struct {
-	//kama:validate or(cmp=">=10", const="0") not(or(const="5", const="7"))
+	//kama:validate cmp(ge=10) or const(0), not (const(5) or const(7))
 	Percent opt.Option[int] `json:"percent,omitzero"`
-	//kama:validate if(const=`"fixed"`, requires=amount, oneof(const=`"percent"`, regexp="^p"))
+	//kama:validate requires("amount") if const("fixed") else oneof(const("percent"), regexp("^p"))
 	Kind   string `json:"kind"`
 	Amount *int   `json:"amount,omitzero"`
 }

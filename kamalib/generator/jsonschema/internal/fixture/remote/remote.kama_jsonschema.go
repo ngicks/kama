@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:25Z
+// generated: 2026-11-26T06:59:25Z
 
 package remote
 
@@ -22,7 +22,7 @@ import (
 // Invoice refers to the schemas of two other documents.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Invoice struct {
 	Total                Money                     `json:"total"`
@@ -67,10 +67,10 @@ func (v *Invoice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/$defs/https:~1~1example.com~1schemas~1money.json.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Money struct {
-	//kama:validate cmp=">=0"
+	//kama:validate cmp(ge=0)
 	Amount               int64                     `json:"amount"`
 	Currency             MoneyCurrency             `json:"currency"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
@@ -110,7 +110,7 @@ func (v *Money) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/$defs/https:~1~1example.com~1schemas~1money.json/$defs/Currency.
 //
 //kama:generated kama:jsonschema
-//kama:validate regexp="^[A-Z]{3}$"
+//kama:validate regexp("^[A-Z]{3}$")
 //kama:validate decoded
 type MoneyCurrency string
 
@@ -139,7 +139,7 @@ func (v *MoneyCurrency) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/$defs/https:~1~1example.com~1schemas~1party.json.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Party struct {
 	Name                 string                    `json:"name"`

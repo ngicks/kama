@@ -81,14 +81,14 @@ func (b Box[T]) Get() T { return b.v }
 func TestTypeSupport(t *testing.T) {
 	files := map[string]string{
 		"a.go": "package x\n\nimport \"" + modulePath(t) + "/sub\"\n\n" +
-			"//kama:validate\n//kama:validate hook=off\n" +
+			"//kama:validate\n//kama:validate hook=False\n" +
 			"type A struct {\n" +
 			"\tB sub.Bag[Inner]\n" +
 			"\tH sub.Box[Inner]\n" +
-			"\t//kama:validate length=\">=1\"\n" +
+			"\t//kama:validate length(ge=1)\n" +
 			"\tS sub.Box[string]\n" +
 			"}\n\n" +
-			"//kama:validate\n//kama:validate hook=off\n" +
+			"//kama:validate\n//kama:validate hook=False\n" +
 			"type Inner struct {\n\t//kama:validate required\n\tP *int\n}\n",
 		"sub/sub.go": typeSupportSub,
 	}

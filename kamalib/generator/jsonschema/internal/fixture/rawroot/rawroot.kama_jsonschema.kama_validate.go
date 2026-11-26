@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T09:13:21Z
+// generated: 2026-11-26T06:59:22Z
 
 package rawroot
 

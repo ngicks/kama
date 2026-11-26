@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: "kama_validate.yaml"
-// generated: 2026-11-25T10:38:55Z
+// generated: 2026-11-26T06:58:57Z
 
 package hooks
 

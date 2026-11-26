@@ -9,7 +9,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Prefix is the validator //kama:validate prefix(<validator>, ...[,
@@ -38,27 +38,30 @@ type PrefixOptions struct {
 	HasRest bool
 }
 
-// Parse decodes arg into operands and the rest through r.
-func (Prefix) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	args, err := dircmnt.ParseCallArgs(arg)
+// Parse resolves the args of c into operands and, from a last arg
+// rest(...), the rest, through r.
+func (Prefix) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	args, err := operandArgs.Bind(r, c, nil)
 	if err != nil {
-		return nil, argsError(err)
+		return nil, err
 	}
 
 	var o PrefixOptions
 
-	if n := len(args); n > 0 && args[n-1].Call && args[n-1].Key == "rest" {
-		o.HasRest = true
+	if n := len(args); n > 0 {
+		if rest, ok := args[n-1].Value.(expr.Call); ok && rest.Name == "rest" {
+			o.HasRest = true
 
-		o.Rest, err = ParseOperands(args[n-1].Arg(), r)
-		if err != nil {
-			return nil, fmt.Errorf("rest: %w", err)
+			o.Rest, err = parseOperandArgs(r, rest)
+			if err != nil {
+				return nil, fmt.Errorf("rest: %w", err)
+			}
+
+			args = args[:n-1]
 		}
-
-		args = args[:n-1]
 	}
 
-	o.Operands, err = ParseOperands(dircmnt.SpellCallArgs(args), r)
+	o.Operands, err = ParseOperands(argValues(args), r)
 	if err != nil {
 		return nil, err
 	}

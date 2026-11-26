@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:21Z
+// generated: 2026-11-26T06:59:22Z
 
 package rawroot
 
@@ -18,12 +18,12 @@ import (
 // kind.
 //
 //kama:generated kama:jsonschema
-//kama:validate cmp=">=1"
-//kama:validate runes="<=3"
-//kama:validate length=">=1"
+//kama:validate cmp(ge=1)
+//kama:validate runes(le=3)
+//kama:validate length(ge=1)
 //kama:validate unique
-//kama:validate members="<=2"
-//kama:validate if(required=`"a"`, required=`"b"`)
+//kama:validate members(le=2)
+//kama:validate required("b") if required("a") else always
 //kama:validate decoded
 type Loose jsontext.Value
 
@@ -59,7 +59,7 @@ func (v Loose) RawJson() jsontext.Value {
 // Mixed is generated from the schema at #/$defs/Mixed.
 //
 //kama:generated kama:jsonschema
-//kama:validate const="1 `\"a\"` null `{\"b\":[]}`"
+//kama:validate const(1, "a", None, {"b": []})
 //kama:validate decoded
 type Mixed jsontext.Value
 
@@ -95,8 +95,8 @@ func (v Mixed) RawJson() jsontext.Value {
 // Pair is generated from the schema at #/$defs/Pair.
 //
 //kama:generated kama:jsonschema
-//kama:validate kind="array object"
-//kama:validate length="<=2"
+//kama:validate kind("array", "object")
+//kama:validate length(le=2)
 //kama:validate decoded
 type Pair jsontext.Value
 

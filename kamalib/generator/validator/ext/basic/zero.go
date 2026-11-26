@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Zero is the validator //kama:validate zero: the value is the zero value.
@@ -30,9 +31,9 @@ type ZeroOptions struct {
 	reg ext.Resolver
 }
 
-// Parse accepts only the empty arg.
-func (Zero) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	return ZeroOptions{reg: r}, noArg(arg)
+// Parse takes no args.
+func (Zero) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	return ZeroOptions{reg: r}, noArgs(r, c)
 }
 
 // Check accepts the types the doc comment of Zero lists.

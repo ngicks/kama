@@ -7,7 +7,6 @@ import (
 	"go/types"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -15,6 +14,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	_ "github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
@@ -26,13 +26,20 @@ func (multiple) Name() string { return "multiple" }
 
 type multipleOptions struct{ N int64 }
 
-func (multiple) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	n, err := strconv.ParseInt(arg, 10, 64)
-	if err != nil || n <= 0 {
+func (multiple) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	var args struct {
+		N int64 `json:"n"`
+	}
+
+	if _, err := (ext.Params{Positional: []string{"n"}}).Bind(r, c, &args); err != nil {
+		return nil, err
+	}
+
+	if args.N <= 0 {
 		return nil, fmt.Errorf("%w: want a positive integer", ext.ErrArgs)
 	}
 
-	return multipleOptions{N: n}, nil
+	return multipleOptions{N: args.N}, nil
 }
 
 func (multipleOptions) Check(t types.Type) error {
@@ -83,14 +90,26 @@ func TestExampleMatchesDoc(t *testing.T) {
 }
 
 func TestExampleParse(t *testing.T) {
-	r, err := multiple{}.Parse("3", nil)
+	parse := func(text string) (ext.Rule, error) {
+		args, err := expr.Parse(text)
+		assert.NilError(t, err)
+
+		return multiple{}.Parse(args[0].Value.(expr.Call), ext.NewRegistry())
+	}
+
+	r, err := parse("multiple(3)")
 	assert.NilError(t, err)
 	assert.Equal(t, r, ext.Rule(multipleOptions{N: 3}))
 
-	for _, arg := range []string{"", "0", "-3", "1.5", "three"} {
-		_, err := multiple{}.Parse(arg, nil)
-		assert.ErrorIs(t, err, ext.ErrArgs, "arg %q", arg)
-		assert.ErrorContains(t, err, "want a positive integer", "arg %q", arg)
+	for _, text := range []string{"multiple", "multiple(0)", "multiple(-3)"} {
+		_, err := parse(text)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
+		assert.ErrorContains(t, err, "want a positive integer", text)
+	}
+
+	for _, text := range []string{"multiple(1.5)", `multiple("three")`, "multiple(1, 2)"} {
+		_, err := parse(text)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
 	}
 }
 

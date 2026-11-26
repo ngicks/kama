@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T09:13:27Z
+// generated: 2026-11-26T06:59:29Z
 
 package rootscalar
 
@@ -17,7 +17,7 @@ import (
 // Port is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate cmp=">=1 <=65535"
+//kama:validate cmp(ge=1, le=65535)
 //kama:validate decoded
 type Port int64
 

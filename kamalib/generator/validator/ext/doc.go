@@ -120,7 +120,7 @@
 // it checks a type with Check and emits the expression with Emit. The
 // generator parses arg again for every field the validator applies to,
 // and the options live only for that field. A field names the validator
-// below as //kama:validate multiple=3:
+// below as //kama:validate multiple(3):
 //
 //	type multiple struct{}
 //
@@ -128,13 +128,20 @@
 //
 //	type multipleOptions struct{ N int64 }
 //
-//	func (multiple) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-//		n, err := strconv.ParseInt(arg, 10, 64)
-//		if err != nil || n <= 0 {
+//	func (multiple) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+//		var args struct {
+//			N int64 `json:"n"`
+//		}
+//
+//		if _, err := (ext.Params{Positional: []string{"n"}}).Bind(r, c, &args); err != nil {
+//			return nil, err
+//		}
+//
+//		if args.N <= 0 {
 //			return nil, fmt.Errorf("%w: want a positive integer", ext.ErrArgs)
 //		}
 //
-//		return multipleOptions{N: n}, nil
+//		return multipleOptions{N: args.N}, nil
 //	}
 //
 //	func (multipleOptions) Check(t types.Type) error {

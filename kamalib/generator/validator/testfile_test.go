@@ -18,13 +18,13 @@ import (
 func TestTestFiles(t *testing.T) {
 	x := modulePath(t)
 	f, opts := stage(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype Inner struct {\n" +
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype Inner struct {\n" +
 			"\t//kama:validate required\n\tP *int\n}\n",
-		"a_test.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype B struct {\n" +
+		"a_test.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype B struct {\n" +
 			"\t//kama:validate required\n\tP *int\n" +
-			"\t//kama:validate length=\"<=3\"\n\tItems []Inner\n}\n",
+			"\t//kama:validate length(le=3)\n\tItems []Inner\n}\n",
 		"ext_test.go": "package x_test\n\nimport x \"" + x + "\"\n\n" +
-			"//kama:validate\n//kama:validate hook=off\ntype C struct {\n" +
+			"//kama:validate\n//kama:validate hook=False\ntype C struct {\n" +
 			"\t//kama:validate required\n\tP *int\n\tB x.B\n}\n",
 	})
 	opts.Tests = true

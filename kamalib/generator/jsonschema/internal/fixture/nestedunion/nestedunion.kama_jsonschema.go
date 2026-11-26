@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:38:58Z
+// generated: 2026-11-26T06:59:01Z
 
 package nestedunion
 
@@ -21,7 +21,7 @@ import (
 // Chains is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Chains struct {
 	Any                  opt.Option[Any]           `json:"any,omitzero"`
@@ -80,7 +80,7 @@ type AnyKind interface {
 // AnyAnyLeft holds the AnyLeft member of Any.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type AnyAnyLeft struct {
 	AnyLeft AnyLeft
@@ -102,7 +102,7 @@ func (v AnyAnyLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
 // AnyAnyRight holds the AnyRight member of Any.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type AnyAnyRight struct {
 	AnyRight AnyRight
@@ -172,7 +172,7 @@ func (v Any) Validate(stopOnFirstError bool) error {
 // costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("l", kind="string"))
+//kama:validate props(field("l", kind("string")))
 type anyAnyLeftProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -189,7 +189,7 @@ func (v anyAnyLeftProbe) RawJson() jsontext.Value {
 // reject costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("r", kind="string"))
+//kama:validate props(field("r", kind("string")))
 type anyAnyRightProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -272,7 +272,7 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // AnyLeft is generated from the schema at #/$defs/AnyLeft.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type AnyLeft struct {
 	C                    opt.Option[Any]           `json:"c,omitzero"`
@@ -313,7 +313,7 @@ func (v *AnyLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // AnyRight is generated from the schema at #/$defs/AnyRight.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type AnyRight struct {
 	C                    opt.Option[Any]           `json:"c,omitzero"`
@@ -369,7 +369,7 @@ type TaggedKind interface {
 // TaggedTaggedLeft holds the TaggedLeft member of Tagged.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type TaggedTaggedLeft struct {
 	TaggedLeft TaggedLeft
@@ -391,7 +391,7 @@ func (v TaggedTaggedLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
 // TaggedTaggedRight holds the TaggedRight member of Tagged.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type TaggedTaggedRight struct {
 	TaggedRight TaggedRight
@@ -462,7 +462,7 @@ func (v Tagged) Validate(stopOnFirstError bool) error {
 // value they reject costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("kind", const="`\"left\"`"))
+//kama:validate props(field("kind", const("left")))
 type taggedTaggedLeftProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -479,7 +479,7 @@ func (v taggedTaggedLeftProbe) RawJson() jsontext.Value {
 // value they reject costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("kind", const="`\"right\"`"))
+//kama:validate props(field("kind", const("right")))
 type taggedTaggedRightProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -575,10 +575,10 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // TaggedLeft is generated from the schema at #/$defs/TaggedLeft.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type TaggedLeft struct {
-	//kama:validate const=`"left"`
+	//kama:validate const("left")
 	Kind                 string                    `json:"kind"`
 	C                    opt.Option[Tagged]        `json:"c,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
@@ -617,10 +617,10 @@ func (v *TaggedLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // TaggedRight is generated from the schema at #/$defs/TaggedRight.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type TaggedRight struct {
-	//kama:validate const=`"right"`
+	//kama:validate const("right")
 	Kind                 string                    `json:"kind"`
 	C                    opt.Option[Tagged]        `json:"c,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
@@ -675,7 +675,7 @@ type OverlapKind interface {
 // OverlapOverlapLeft holds the OverlapLeft member of Overlap.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type OverlapOverlapLeft struct {
 	OverlapLeft OverlapLeft
@@ -697,7 +697,7 @@ func (v OverlapOverlapLeft) MarshalJSONTo(enc *jsontext.Encoder) error {
 // OverlapOverlapRight holds the OverlapRight member of Overlap.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type OverlapOverlapRight struct {
 	OverlapRight OverlapRight
@@ -768,7 +768,7 @@ func (v Overlap) Validate(stopOnFirstError bool) error {
 // value they reject costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("l", kind="string"))
+//kama:validate props(field("l", kind("string")))
 type overlapOverlapLeftProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -785,7 +785,7 @@ func (v overlapOverlapLeftProbe) RawJson() jsontext.Value {
 // value they reject costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("l", kind="integer"))
+//kama:validate props(field("l", kind("integer")))
 type overlapOverlapRightProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -881,7 +881,7 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // OverlapLeft is generated from the schema at #/$defs/OverlapLeft.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type OverlapLeft struct {
 	C                    opt.Option[Overlap]       `json:"c,omitzero"`
@@ -922,7 +922,7 @@ func (v *OverlapLeft) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // OverlapRight is generated from the schema at #/$defs/OverlapRight.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type OverlapRight struct {
 	C                    opt.Option[Overlap]       `json:"c,omitzero"`

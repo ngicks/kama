@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Format is the validator //kama:validate format=<name>: the value is a
@@ -105,20 +106,31 @@ type FormatOptions struct {
 	Helper FormatHelper
 }
 
-// Parse decodes arg into the name of one of f.Formats and its helper.
-func (f Format) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
+// Parse decodes the arg of c into the name of one of f.Formats and its
+// helper.
+func (f Format) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
 	known := strings.Join(slices.Sorted(maps.Keys(f.Formats)), ", ")
 
-	if arg == "" {
-		return nil, argsError(fmt.Errorf("want one format name; known: %s", known))
+	var args struct {
+		Name *string `json:"name"`
 	}
 
-	h, ok := f.Formats[arg]
+	if _, err := (ext.Params{Positional: []string{"name"}}).Bind(r, c, &args); err != nil {
+		return nil, err
+	}
+
+	if args.Name == nil {
+		return nil, argsError(
+			fmt.Errorf("want one format name, as in format(\"date\"); known: %s", known),
+		)
+	}
+
+	h, ok := f.Formats[*args.Name]
 	if !ok {
-		return nil, argsError(fmt.Errorf("unknown format %q; known: %s", arg, known))
+		return nil, argsError(fmt.Errorf("unknown format %q; known: %s", *args.Name, known))
 	}
 
-	return FormatOptions{Name: arg, Helper: h}, nil
+	return FormatOptions{Name: *args.Name, Helper: h}, nil
 }
 
 // Check accepts string types and raw JSON text.

@@ -12,7 +12,7 @@ import (
 // ErrNegative is the error of the hook of User.Age.
 var ErrNegative = errors.New("negative")
 
-//kama:validate hook=off
+//kama:validate hook=False
 type User struct {
 	//kama:validate required
 	Name string `json:"name"`
@@ -24,7 +24,7 @@ type User struct {
 	//kama:validate required
 	Nick opt.Option[string] `json:"nick"`
 	Box  Box[Tag]           `json:"box"`
-	//kama:validate hook=on
+	//kama:validate hook=True
 	Age int `json:"age"`
 }
 
@@ -36,25 +36,25 @@ func (u User) validateAge(bool) error {
 	return nil
 }
 
-//kama:validate hook=off
+//kama:validate hook=False
 type Address struct {
 	//kama:validate required
 	City string `json:"city"`
 }
 
-//kama:validate hook=off
+//kama:validate hook=False
 type Tag struct {
 	//kama:validate required
 	Name string `json:"name"`
 }
 
-//kama:validate hook=off
+//kama:validate hook=False
 type Pet struct {
 	//kama:validate required
 	Name string `json:"name"`
 }
 
-//kama:validate hook=off
+//kama:validate hook=False
 type Box[T any] struct {
 	Items []T        `json:"items"`
 	One   und.Und[T] `json:"one"`

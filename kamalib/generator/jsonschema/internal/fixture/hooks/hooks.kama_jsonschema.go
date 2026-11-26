@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:38:55Z
+// generated: 2026-11-26T06:58:57Z
 
 package hooks
 
@@ -22,10 +22,10 @@ import (
 // Order gets pre and post functions from kama_validate.yaml.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Order struct {
-	//kama:validate runes=">=3"
+	//kama:validate runes(ge=3)
 	Id                   string                    `json:"id"`
 	Lines                []Line                    `json:"lines"`
 	Sku                  opt.Option[Sku]           `json:"sku,omitzero"`
@@ -67,10 +67,10 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Line is generated from the schema at #/$defs/Line.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Line struct {
-	//kama:validate cmp=">=1"
+	//kama:validate cmp(ge=1)
 	Qty                  int64                     `json:"qty"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
@@ -106,7 +106,7 @@ func (v *Line) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Sku is generated from the schema at #/$defs/Sku.
 //
 //kama:generated kama:jsonschema
-//kama:validate regexp="^[A-Z]+$"
+//kama:validate regexp("^[A-Z]+$")
 //kama:validate decoded
 type Sku string
 

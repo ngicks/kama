@@ -11,6 +11,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Requires is the validator //kama:validate requires="<name> ...": when
@@ -39,28 +40,23 @@ type RequiresOptions struct {
 	reg ext.Resolver
 }
 
-// Parse decodes arg into one or more names separated by spaces.
-func (Requires) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	args, err := argTokens(arg)
-	if err != nil {
+// Parse decodes the args of c, the JSON names of sibling fields.
+func (Requires) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	var args struct {
+		Names []string `json:"names"`
+	}
+
+	if _, err := (ext.Params{Variadic: "names"}).Bind(r, c, &args); err != nil {
 		return nil, err
 	}
 
-	if len(args) == 0 {
-		return nil, argsError(errors.New("want one or more JSON names of sibling fields"))
+	if len(args.Names) == 0 {
+		return nil, argsError(errors.New(
+			`want one or more JSON names of sibling fields, as in requires("city", "zip")`,
+		))
 	}
 
-	names := make([]string, 0, len(args))
-
-	for _, kv := range args {
-		if kv.HasValue {
-			return nil, argsError(fmt.Errorf("arg %q is no JSON name", kv.String()))
-		}
-
-		names = append(names, kv.Key)
-	}
-
-	return RequiresOptions{Names: names, reg: r}, nil
+	return RequiresOptions{Names: args.Names, reg: r}, nil
 }
 
 // Check rejects every type: requires needs the struct holding the field,

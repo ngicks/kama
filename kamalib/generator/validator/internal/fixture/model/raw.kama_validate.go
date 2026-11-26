@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:40Z
+// generated: 2026-11-26T06:42:10Z
 
 package model
 
@@ -114,7 +114,7 @@ func (v RawBag) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validator.Field(kamaValidateNot(rawjson.Compare(v.Below, ">=", "5"), "cmp=\">=5\""), "below"); err != nil {
+	if err := validator.Field(kamaValidateNot(rawjson.Compare(v.Below, ">=", "5"), "cmp(ge=5)"), "below"); err != nil {
 		if stopOnFirstError {
 			return err
 		}

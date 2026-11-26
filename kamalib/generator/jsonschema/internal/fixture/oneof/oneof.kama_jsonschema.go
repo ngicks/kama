@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:13Z
+// generated: 2026-11-26T06:59:14Z
 
 package oneof
 
@@ -21,7 +21,7 @@ import (
 // Zoo is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Zoo struct {
 	Star                 Pet                       `json:"star"`
@@ -87,7 +87,7 @@ type ZooMixedKind interface {
 // ZooMixedString holds the String member of ZooMixed.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ZooMixedString struct {
 	String string
@@ -109,7 +109,7 @@ func (v ZooMixedString) MarshalJSONTo(enc *jsontext.Encoder) error {
 // ZooMixedInteger holds the Integer member of ZooMixed.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ZooMixedInteger struct {
 	Integer int64
@@ -131,7 +131,7 @@ func (v ZooMixedInteger) MarshalJSONTo(enc *jsontext.Encoder) error {
 // ZooMixedObject holds the Object member of ZooMixed.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ZooMixedObject struct {
 	Object ZooMixedObjectValue
@@ -300,7 +300,7 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/mixed/oneOf/2.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ZooMixedObjectValue struct {
 	Note                 string                    `json:"note"`
@@ -355,7 +355,7 @@ type ZooAmountKind interface {
 // ZooAmountInteger holds the Integer member of ZooAmount.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ZooAmountInteger struct {
 	Integer int64
@@ -377,7 +377,7 @@ func (v ZooAmountInteger) MarshalJSONTo(enc *jsontext.Encoder) error {
 // ZooAmountNumber holds the Number member of ZooAmount.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ZooAmountNumber struct {
 	Number float64
@@ -542,7 +542,7 @@ type PetKind interface {
 // PetCat holds the Cat member of Pet.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type PetCat struct {
 	Cat Cat
@@ -564,7 +564,7 @@ func (v PetCat) MarshalJSONTo(enc *jsontext.Encoder) error {
 // PetDog holds the Dog member of Pet.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type PetDog struct {
 	Dog Dog
@@ -635,7 +635,7 @@ func (v Pet) Validate(stopOnFirstError bool) error {
 // costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("kind", const="`\"cat\"`"), field("lives", kind="integer"))
+//kama:validate props(field("kind", const("cat")), field("lives", kind("integer")))
 type petCatProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -652,7 +652,7 @@ func (v petCatProbe) RawJson() jsontext.Value {
 // costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("kind", const="`\"dog\"`"), field("good", kind="boolean"))
+//kama:validate props(field("kind", const("dog")), field("good", kind("boolean")))
 type petDogProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -748,10 +748,10 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Cat is generated from the schema at #/$defs/Cat.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Cat struct {
-	//kama:validate const=`"cat"`
+	//kama:validate const("cat")
 	Kind                 string                    `json:"kind"`
 	Lives                int64                     `json:"lives"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
@@ -790,10 +790,10 @@ func (v *Cat) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Dog is generated from the schema at #/$defs/Dog.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Dog struct {
-	//kama:validate const=`"dog"`
+	//kama:validate const("dog")
 	Kind                 string                    `json:"kind"`
 	Good                 bool                      `json:"good"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`

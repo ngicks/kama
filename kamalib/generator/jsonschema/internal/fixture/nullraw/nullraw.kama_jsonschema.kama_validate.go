@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T10:39:09Z
+// generated: 2026-11-26T06:59:11Z
 
 package nullraw
 
@@ -26,7 +26,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validator.Field(kamaValidateNot(rawjson.Kind(v.R, "null"), "kind=\"null\""), "r"); err != nil {
+	if err := validator.Field(kamaValidateNot(rawjson.Kind(v.R, "null"), "kind(\"null\")"), "r"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -41,7 +41,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.A.IsSome() {
-		if err := validator.Field(kamaValidateNot(rawjson.Kind(v.A.Value(), "null"), "kind=\"null\""), "a"); err != nil {
+		if err := validator.Field(kamaValidateNot(rawjson.Kind(v.A.Value(), "null"), "kind(\"null\")"), "a"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -81,15 +81,7 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.S.IsSome() {
-		if err := validator.Field(rawjson.Kind(v.S.Value(), "string", "null"), "s"); err != nil {
-			if stopOnFirstError {
-				return err
-			}
-			errs = append(errs, err)
-		}
-	}
-	if v.S.IsSome() {
-		if err := validator.Field(rawjson.Kind(v.S.Value(), "string"), "s"); err != nil {
+		if err := validator.Field(kamaValidateAll(stopOnFirstError, rawjson.Kind(v.S.Value(), "string", "null"), rawjson.Kind(v.S.Value(), "string")), "s"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -151,7 +143,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validator.Field(kamaValidateNot(rawjson.Kind(v.R, "null"), "kind=\"null\""), "r"); err != nil {
+	if err := validator.Field(kamaValidateNot(rawjson.Kind(v.R, "null"), "kind(\"null\")"), "r"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -166,7 +158,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.A.IsSome() {
-		if err := validator.Field(kamaValidateNot(rawjson.Kind(v.A.Value(), "null"), "kind=\"null\""), "a"); err != nil {
+		if err := validator.Field(kamaValidateNot(rawjson.Kind(v.A.Value(), "null"), "kind(\"null\")"), "a"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -206,15 +198,7 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 		}
 	}
 	if v.S.IsSome() {
-		if err := validator.Field(rawjson.Kind(v.S.Value(), "string", "null"), "s"); err != nil {
-			if stopOnFirstError {
-				return err
-			}
-			errs = append(errs, err)
-		}
-	}
-	if v.S.IsSome() {
-		if err := validator.Field(rawjson.Kind(v.S.Value(), "string"), "s"); err != nil {
+		if err := validator.Field(kamaValidateAll(stopOnFirstError, rawjson.Kind(v.S.Value(), "string", "null"), rawjson.Kind(v.S.Value(), "string")), "s"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -278,7 +262,7 @@ func (v RootLItem) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := kamaValidateNot(rawjson.Kind(v, "null"), "kind=\"null\""); err != nil {
+	if err := kamaValidateNot(rawjson.Kind(v, "null"), "kind(\"null\")"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -309,7 +293,7 @@ func (v RootLItem) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluate
 		}
 		errs = append(errs, err)
 	}
-	if err := kamaValidateNot(rawjson.Kind(v, "null"), "kind=\"null\""); err != nil {
+	if err := kamaValidateNot(rawjson.Kind(v, "null"), "kind(\"null\")"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -330,7 +314,7 @@ func (v N) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := kamaValidateNot(rawjson.Kind(v, "null"), "kind=\"null\""); err != nil {
+	if err := kamaValidateNot(rawjson.Kind(v, "null"), "kind(\"null\")"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -361,7 +345,7 @@ func (v N) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error
 		}
 		errs = append(errs, err)
 	}
-	if err := kamaValidateNot(rawjson.Kind(v, "null"), "kind=\"null\""); err != nil {
+	if err := kamaValidateNot(rawjson.Kind(v, "null"), "kind(\"null\")"); err != nil {
 		if stopOnFirstError {
 			return err
 		}

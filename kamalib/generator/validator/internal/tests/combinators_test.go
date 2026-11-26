@@ -62,9 +62,9 @@ func TestCombinatorsInvalid(t *testing.T) {
 		{"/big", validator.ErrOr, "or: none of 2 alternatives holds\n" +
 			"\tvalidation failed: const: want one of 0, got 5\n" +
 			"\tvalidation failed: compare: want >= 10, got 5"},
-		{"/word", validator.ErrNot, `not: want the value to fail regexp="^x"`},
+		{"/word", validator.ErrNot, `not: want the value to fail regexp("^x")`},
 		{"/either", validator.ErrOneOf, `oneof: want exactly one of 2 alternatives to hold,` +
-			` got 2: regexp="^a", regexp="b$"`},
+			` got 2: regexp("^a"), regexp("b$")`},
 		{"/amount", validator.ErrRequired, `want a value, as "kind" has one`},
 		{"/nested", validator.ErrOr, "none of 2 alternatives holds"},
 		{"/held", validator.ErrOr, "none of 2 alternatives holds"},
@@ -97,7 +97,7 @@ func TestCombinatorsInvalid(t *testing.T) {
 	nested := validator.Causes(validator.At(err, "/nested")[0])
 	assert.Equal(t, len(nested), 2)
 	assert.ErrorIs(t, nested[0], validator.ErrNot)
-	assert.ErrorContains(t, nested[0], `want the value to fail or(const="5", const="7")`)
+	assert.ErrorContains(t, nested[0], `want the value to fail const(5) or const(7)`)
 	assert.ErrorIs(t, nested[1], validator.ErrConst)
 
 	first := invalidCombinators().Validate(true)

@@ -6,6 +6,7 @@ import (
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // UnevalProps is the validator //kama:validate unevalprops(<scope>,
@@ -36,19 +37,28 @@ type UnevaluatedOptions struct {
 	Operands []Operand
 }
 
-// Parse decodes arg into the scope and operands through r.
-func (UnevalProps) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	return parseUnevaluated(arg, r, false)
+// Parse resolves the args of c, the scope and the operands, through r.
+func (UnevalProps) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	return parseUnevaluated(c, r, false)
 }
 
-func parseUnevaluated(arg string, r ext.Resolver, items bool) (ext.Rule, error) {
-	ops, err := ParseOperands(arg, r)
+func parseUnevaluated(c expr.Call, r ext.Resolver, items bool) (ext.Rule, error) {
+	args, err := ext.Params{
+		Positional: []string{"scope"},
+		Variadic:   "operands",
+		Rules:      []string{"scope", "operands"},
+	}.Bind(r, c, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(ops) == 0 {
+	if len(args) == 0 || args[0].Name != "scope" {
 		return nil, argsError(errors.New("want the operand scope first"))
+	}
+
+	ops, err := ParseOperands(argValues(args), r)
+	if err != nil {
+		return nil, err
 	}
 
 	return UnevaluatedOptions{Items: items, Scope: ops[0], Operands: ops[1:]}, nil

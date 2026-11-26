@@ -24,10 +24,10 @@ func TestGeneratedModels(t *testing.T) {
 
 // Model is handed on.
 //
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:generated x:models
 type Model struct {
-	//kama:validate cmp=">0"
+	//kama:validate cmp(gt=0)
 	N int
 	U Union
 }

@@ -10,7 +10,7 @@ import (
 const genericSrc = `package x
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type Box[T any] struct {
 	V T
 	P *T
@@ -19,14 +19,14 @@ type Box[T any] struct {
 }
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type Target struct {
 	//kama:validate required
 	N int
 }
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type Parent[T any] struct {
 	I  Box[int]
 	B  Box[Target]
@@ -37,7 +37,7 @@ type Parent[T any] struct {
 }
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type Pair[_ any, U comparable] struct{ U U }
 `
 
@@ -112,7 +112,7 @@ func TestGenericTypeArgs(t *testing.T) {
 const genericNamesSrc = `package x
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type Box[X comparable] struct {
 	//kama:validate required
 	V  X
@@ -124,12 +124,12 @@ type Box[X comparable] struct {
 	BS Inner[[]X]
 	BD Inner[[]Inner[[]X]]
 	BM Inner[map[string]Inner[*X]]
-	//kama:validate cmp=">=1 <=3"
+	//kama:validate cmp(ge=1, le=3)
 	N int
 }
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type Inner[T any] struct{ V T }
 `
 
@@ -174,14 +174,14 @@ func TestGenericTypeParamNamedLikeLocal(t *testing.T) {
 const packageDeclNamesSrc = `package x
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type X struct {
 	//kama:validate required
 	A string
 }
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type S struct {
 	F X
 	S []X
@@ -196,7 +196,7 @@ type S struct {
 }
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type Box2[T any] struct{ X T }
 `
 

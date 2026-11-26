@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T09:13:27Z
+// generated: 2026-11-26T06:59:29Z
 
 package rootscalar
 

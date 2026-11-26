@@ -32,14 +32,14 @@ func (A) validateBox(bool) error   { return nil }
 func (A) validateO(bool) error     { return nil }
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type Inner struct {
 	//kama:validate required
 	P *int
 }
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type Box[T any] struct{ V []T }
 
 type Holder struct{ M map[string]Inner }
@@ -57,7 +57,7 @@ type HandHolder struct{ H []Hand }
 func TestRegenerate(t *testing.T) {
 	f, opts := stage(t, map[string]string{
 		"a.go": regenerateSrc,
-		"b_linux.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype B struct {\n" +
+		"b_linux.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype B struct {\n" +
 			"\t//kama:validate required\n\tN int\n}\n",
 	})
 
@@ -80,8 +80,8 @@ func TestRegenerate(t *testing.T) {
 // TestStale reports a generated file of a type no longer targeted.
 func TestStale(t *testing.T) {
 	f, opts := stage(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct{ N int }\n",
-		"b.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype B struct{ N int }\n",
+		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype A struct{ N int }\n",
+		"b.go": "package x\n\n//kama:validate\n//kama:validate hook=False\ntype B struct{ N int }\n",
 	})
 
 	_, err := generateInto(t, f, opts, Options{})

@@ -10,12 +10,12 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
@@ -71,7 +71,7 @@ func placeKind(doc *jsonschema.Schema, ptr string) string {
 // keywords that apply to kind and that no arg checks: those kindArgs
 // gives, then json(...) for the keywords the Go type leaves to the
 // validators of raw JSON text, as jsonArgs tells.
-func valueArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string, []string) {
+func valueArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]expr.Arg, []string) {
 	args, unchecked := kindArgs(doc, opts, ptr, kind)
 	if kind == "" || kind == "raw" {
 		return args, unchecked
@@ -89,7 +89,7 @@ func valueArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string
 // The args of a struct are those of the struct as a whole, which typeArgs
 // gives. The args of raw JSON text are those rawRules gives, which check
 // every keyword but a pattern RE2 does not compile.
-func kindArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string, []string) {
+func kindArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]expr.Arg, []string) {
 	s, err := at(doc, ptr)
 	if err != nil {
 		return nil, nil
@@ -104,51 +104,57 @@ func kindArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string,
 		return nil, nil
 	}
 
-	var args, unchecked []string
+	var (
+		args      []expr.Arg
+		unchecked []string
+	)
 
 	cmp := comparisons(map[string]jsontext.Value{
 		">=": s.Minimum, "<=": s.Maximum, ">": s.ExclusiveMinimum, "<": s.ExclusiveMaximum,
 	}, numberText)
-	lengths := func(min, max jsontext.Value) string {
+	lengths := func(min, max jsontext.Value) []expr.Arg {
 		return comparisons(map[string]jsontext.Value{">=": min, "<=": max}, integerText)
 	}
 
 	switch kind {
 	case "integer", "number":
-		if cmp != "" {
-			args = append(args, "cmp="+quoteArg(cmp))
+		if cmp != nil {
+			args = append(args, call("cmp", cmp...))
 		}
 
 		if s.MultipleOf != nil {
-			args = append(args, "multipleof="+quoteArg(string(s.MultipleOf)))
+			args = append(
+				args,
+				call("multipleof", pos(expr.Number{Text: numberText(s.MultipleOf)})...),
+			)
 		}
 	case "string":
-		if l := lengths(s.MinLength, s.MaxLength); l != "" {
-			args = append(args, "runes="+quoteArg(l))
+		if l := lengths(s.MinLength, s.MaxLength); l != nil {
+			args = append(args, call("runes", l...))
 		}
 
 		if f := assertedFormat(opts, s); f != "" {
-			args = append(args, "format="+quoteArg(f))
+			args = append(args, call("format", strs([]string{f})...))
 		}
 
 		if s.Pattern.IsSome() {
 			if _, err := regexp.Compile(s.Pattern.Value()); err != nil {
 				unchecked = append(unchecked, "pattern")
 			} else {
-				args = append(args, "regexp="+quoteArg(s.Pattern.Value()))
+				args = append(args, call("regexp", strs([]string{s.Pattern.Value()})...))
 			}
 		}
 	case "array":
-		if l := lengths(s.MinItems, s.MaxItems); l != "" {
-			args = append(args, "length="+quoteArg(l))
+		if l := lengths(s.MinItems, s.MaxItems); l != nil {
+			args = append(args, call("length", l...))
 		}
 
 		if s.UniqueItems.Value() && !bridged(doc, ptr, s, "uniqueItems") {
-			args = append(args, "unique")
+			args = append(args, call("unique"))
 		}
 	case "map":
-		if l := lengths(s.MinProperties, s.MaxProperties); l != "" {
-			args = append(args, "length="+quoteArg(l))
+		if l := lengths(s.MinProperties, s.MaxProperties); l != nil {
+			args = append(args, call("length", l...))
 		}
 	case "":
 		unchecked = append(unchecked, presentValidation(s)...)
@@ -157,7 +163,7 @@ func kindArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]string,
 	if allowed, err := allowedValues(doc, ptr); err == nil && allowed != nil {
 		switch kind {
 		case "string", "integer", "number", "boolean":
-			args = append(args, "const="+quoteArg(strings.Join(allowed, " ")))
+			args = append(args, call("const", literals(allowed)...))
 		}
 	}
 
@@ -177,59 +183,62 @@ func rawUnchecked(s *jsonschema.Schema) []string {
 }
 
 // rawDependents returns the arg checking the dependentRequired of s on raw
-// JSON text: for each key, if(required=<key>, required="<members>"), all
-// joined by and when there are several, or "" when no key requires a
-// member.
-func rawDependents(s *jsonschema.Schema) string {
-	required := func(ns []string) dircmnt.KeyValue {
-		return dircmnt.KeyValue{
-			Key:         "required",
-			Value:       spellNames(ns),
-			HasValue:    true,
-			ValueQuoted: true,
-		}
-	}
-
-	var conds []dircmnt.KeyValue
+// JSON text: for each key, required(<members>) if required(<key>) else
+// always, all joined by and when there are several. It returns false when
+// no key requires a member.
+func rawDependents(s *jsonschema.Schema) (expr.Arg, bool) {
+	var conds []expr.Arg
 
 	for key, deps := range opiter.MapsSorted(s.DependentRequired) {
 		if len(deps) > 0 {
-			conds = append(conds, dircmnt.KeyValue{
-				Key:  "if",
-				Call: true,
-				Args: []dircmnt.KeyValue{required([]string{key}), required(deps)},
-			})
+			conds = append(conds, cond(
+				call("required", strs([]string{key})...), call("required", strs(deps)...), always(),
+			))
 		}
 	}
 
-	switch len(conds) {
-	case 0:
-		return ""
-	case 1:
-		return conds[0].String()
+	if len(conds) == 0 {
+		return expr.Arg{}, false
 	}
 
-	return dircmnt.KeyValue{Key: "and", Call: true, Args: conds}.String()
+	return single(conds), true
 }
 
-// rawValues spells values as the arg of const on raw JSON text: the text
-// of each value, bare for a number, true, false and null, else quoted.
-func rawValues(values []jsontext.Value) string {
-	return dircmnt.SpellArgs(
-		opiter.WrapSeq(slices.Values(values)).
-			Map(func(v jsontext.Value) dircmnt.KeyValue {
-				text := v.Clone()
-				if err := text.Compact(); err != nil {
-					text = v
-				}
+// rawValues returns values as the args of const on raw JSON text, each the
+// literal of the JSON value.
+func rawValues(values []jsontext.Value) []expr.Arg {
+	var args []expr.Arg
 
-				return dircmnt.KeyValue{
-					Key:       string(text),
-					KeyQuoted: !strings.ContainsRune("ntf0", rune(v.Kind())),
-				}
-			}).
-			CollectSlice(),
-	)
+	for _, v := range values {
+		n, err := expr.FromJson(v)
+		if err != nil {
+			// check rejects a document holding such a value before any rule is
+			// written.
+			continue
+		}
+
+		args = append(args, expr.Arg{Value: n})
+	}
+
+	return args
+}
+
+// literals returns lits, Go literals of a string, a number or a bool as
+// goLiteral spells them, as the args of const.
+func literals(lits []string) []expr.Arg {
+	return opiter.WrapSeq(slices.Values(lits)).
+		Map(func(lit string) expr.Arg {
+			switch {
+			case lit == "true" || lit == "false":
+				return expr.Arg{Value: expr.Bool{Value: lit == "true"}}
+			case strings.HasPrefix(lit, `"`):
+				v, _ := strconv.Unquote(lit)
+				return expr.Arg{Value: expr.String{Value: v}}
+			}
+
+			return expr.Arg{Value: expr.Number{Text: lit}}
+		}).
+		CollectSlice()
 }
 
 // presentValidation returns the validation keywords of s that some kind
@@ -260,11 +269,11 @@ func presentValidation(s *jsonschema.Schema) []string {
 
 // typeArgs returns the args of //kama:validate on the type the schema at
 // ptr declares, and the keywords that apply to its value and that no arg
-// checks. A struct or a product takes hook=off, its hooks being unwritten,
+// checks. A struct or a product takes hook=False, its hooks being unwritten,
 // and the validators of the object as a whole. A union takes none, its
 // holder having a Validate of its own, and its wrappers take the
 // validators of its keywords, as unionArgs tells.
-func typeArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, []string) {
+func typeArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]expr.Arg, []string) {
 	s, err := at(doc, ptr)
 	if err != nil {
 		return nil, nil
@@ -285,17 +294,17 @@ func typeArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, []str
 		return valueArgs(doc, opts, ptr, placeKind(doc, ptr))
 	}
 
-	args := []string{"hook=off"}
+	args := []expr.Arg{hookOff()}
 
 	if closed(s) && !bridged(doc, ptr, s, "additionalProperties") {
-		args = append(args, "closed")
+		args = append(args, call("closed"))
 	}
 
 	members := comparisons(
 		map[string]jsontext.Value{">=": s.MinProperties, "<=": s.MaxProperties}, integerText,
 	)
-	if members != "" && !bridged(doc, ptr, s, "minProperties") {
-		args = append(args, "members="+quoteArg(members))
+	if members != nil && !bridged(doc, ptr, s, "minProperties") {
+		args = append(args, call("members", members...))
 	}
 
 	bridge, _ := jsonArgs(doc, opts, ptr)
@@ -304,16 +313,19 @@ func typeArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, []str
 }
 
 // unionArgs returns the args of //kama:validate on each wrapper of the
-// union at ptr: hook=off, its hooks being unwritten, and the validators of
-// the keywords of the union, which check the value of every member.
-func unionArgs(doc *jsonschema.Schema, opts Options, ptr string) []string {
+// union at ptr: hook=False, its hooks being unwritten, and the validators
+// of the keywords of the union, which check the value of every member.
+func unionArgs(doc *jsonschema.Schema, opts Options, ptr string) []expr.Arg {
 	bridge, _ := jsonArgs(doc, opts, ptr)
-	return append([]string{"hook=off"}, bridge...)
+	return append([]expr.Arg{hookOff()}, bridge...)
 }
+
+// hookOff returns the item hook=False.
+func hookOff() expr.Arg { return expr.Arg{Name: "hook", Value: expr.Bool{Value: false}} }
 
 // declArgs returns the args of //kama:validate on the type the schema at
 // ptr declares.
-func declArgs(doc *jsonschema.Schema, opts Options, ptr string) []string {
+func declArgs(doc *jsonschema.Schema, opts Options, ptr string) []expr.Arg {
 	args, _ := typeArgs(doc, opts, ptr)
 	return args
 }
@@ -323,10 +335,10 @@ func declArgs(doc *jsonschema.Schema, opts Options, ptr string) []string {
 // of the property schema itself, unless it declares a type of its own, and
 // what the dependentRequired of the object asks of the field. The keywords
 // of a schema the property refers to are those of the type it declares.
-func fieldArgs(doc *jsonschema.Schema, opts Options, ptr, name string) ([]string, error) {
+func fieldArgs(doc *jsonschema.Schema, opts Options, ptr, name string) ([]expr.Arg, error) {
 	pp := child(ptr, "properties", name)
 
-	var args []string
+	var args []expr.Arg
 
 	if kind := placeKind(doc, pp); !declares(doc, pp) && kind != "struct" && !named(doc, pp) {
 		args, _ = valueArgs(doc, opts, pp, kind)
@@ -339,15 +351,10 @@ func fieldArgs(doc *jsonschema.Schema, opts Options, ptr, name string) ([]string
 	clash := opiter.WrapSeq(slices.Values(deps)).
 		Map(argName).
 		Any(func(n string) bool {
-			return slices.ContainsFunc(args, func(a string) bool { return argName(a) == n })
+			return slices.ContainsFunc(args, func(a expr.Arg) bool { return argName(a) == n })
 		})
 	if clash {
-		and, err := callArg("and", args...)
-		if err != nil {
-			return nil, err
-		}
-
-		args = []string{and}
+		args = []expr.Arg{single(args)}
 	}
 
 	return append(args, deps...), nil
@@ -374,7 +381,7 @@ func named(doc *jsonschema.Schema, ptr string) bool {
 // present optional member depends on. The members a required member
 // depends on are required themselves. A key or a member without a
 // property is no field; typeArgs reports it.
-func dependentArgs(doc *jsonschema.Schema, ptr, name string) []string {
+func dependentArgs(doc *jsonschema.Schema, ptr, name string) []expr.Arg {
 	s, err := at(doc, ptr)
 	if err != nil || bridged(doc, ptr, s, "dependentRequired") {
 		return nil
@@ -396,18 +403,14 @@ func dependentArgs(doc *jsonschema.Schema, ptr, name string) []string {
 		Filter(func(k string) bool { return !optional(k) && declared(k) }).
 		Any(func(k string) bool { return slices.Contains(s.DependentRequired[k], name) })
 
-	var args []string
+	var args []expr.Arg
 
 	if len(names) > 0 {
-		args = append(args, "requires="+quoteArg(dircmnt.SpellArgs(
-			opiter.WrapSeq(slices.Values(names)).
-				Map(func(n string) dircmnt.KeyValue { return dircmnt.KeyValue{Key: n, KeyQuoted: true} }).
-				CollectSlice(),
-		)))
+		args = append(args, call("requires", strs(names)...))
 	}
 
 	if requiredBy && optional(name) {
-		args = append(args, "required")
+		args = append(args, call("required"))
 	}
 
 	return args
@@ -549,11 +552,37 @@ func checkKeywords(ptr string, s *jsonschema.Schema) []error {
 		return r
 	}
 
+	literal := func(kw string, v jsontext.Value) {
+		if _, ok := numberLiteral(v); !ok {
+			errs = append(errs, unsupported(child(ptr, kw),
+				"%s has no number literal of //kama:validate: a float literal holds no value"+
+					" beyond float64, and an integer literal holds at most %d digits",
+				v, maxLiteralDigits))
+		}
+	}
+
 	for kw, v := range map[string]jsontext.Value{
 		"minimum": s.Minimum, "maximum": s.Maximum,
 		"exclusiveMinimum": s.ExclusiveMinimum, "exclusiveMaximum": s.ExclusiveMaximum,
 	} {
-		number(kw, v)
+		if number(kw, v) != nil {
+			literal(kw, v)
+		}
+	}
+
+	for i, v := range slices.Concat([]jsontext.Value{s.Const}, s.Enum) {
+		if _, err := expr.FromJson(v); v != nil && err != nil {
+			at := child(ptr, "const")
+			if s.Const == nil || i > 0 {
+				at = child(ptr, "enum", strconv.Itoa(i-1))
+			}
+
+			errs = append(errs, unsupported(at, "%v", err))
+		}
+	}
+
+	if r := number("multipleOf", s.MultipleOf); r != nil && r.Sign() > 0 {
+		literal("multipleOf", s.MultipleOf)
 	}
 
 	if r := number("multipleOf", s.MultipleOf); r != nil && r.Sign() <= 0 {
@@ -562,7 +591,8 @@ func checkKeywords(ptr string, s *jsonschema.Schema) []error {
 			unsupported(child(ptr, "multipleOf"), "%s is not above zero", s.MultipleOf),
 		)
 	} else if r != nil {
-		if _, err := (basic.MultipleOf{}).Parse(string(s.MultipleOf), nil); err != nil {
+		c := expr.Call{Name: "multipleof", Args: pos(expr.Number{Text: numberText(s.MultipleOf)})}
+		if _, err := (basic.MultipleOf{}).Parse(c, ext.NewRegistry()); err != nil {
 			errs = append(errs, unsupported(child(ptr, "multipleOf"), "%v", err))
 		}
 	}
@@ -583,20 +613,55 @@ func checkKeywords(ptr string, s *jsonschema.Schema) []error {
 	return errs
 }
 
-// comparisons returns the comparisons of the bounds by operator, in the
-// order >=, >, <=, <, each spelled by text, or "" when there is none.
-func comparisons(bounds map[string]jsontext.Value, text func(jsontext.Value) string) string {
-	return strings.Join(
-		opiter.WrapSeq(slices.Values([]string{">=", ">", "<=", "<"})).
-			Filter(func(op string) bool { return bounds[op] != nil }).
-			Map(func(op string) string { return op + text(bounds[op]) }).
-			CollectSlice(),
-		" ",
-	)
+// comparisons returns the comparisons of the bounds by operator as keyword
+// args, in the order >=, >, <=, <, each number spelled by text, or nil when
+// there is none.
+func comparisons(bounds map[string]jsontext.Value, text func(jsontext.Value) string) []expr.Arg {
+	keywords := map[string]string{">=": "ge", ">": "gt", "<=": "le", "<": "lt"}
+
+	return opiter.WrapSeq(slices.Values([]string{">=", ">", "<=", "<"})).
+		Filter(func(op string) bool { return bounds[op] != nil }).
+		Map(func(op string) expr.Arg {
+			return expr.Arg{Name: keywords[op], Value: expr.Number{Text: text(bounds[op])}}
+		}).
+		CollectSlice()
 }
 
-// numberText returns the text of the JSON number v, a Go literal as it is.
-func numberText(v jsontext.Value) string { return string(v) }
+// numberText returns the text of the JSON number v as a number literal of
+// //kama:validate, which numberLiteral tells, or the text of v as it is.
+func numberText(v jsontext.Value) string {
+	text, _ := numberLiteral(v)
+	return text
+}
+
+// maxLiteralDigits bounds the digits of an integer literal spelling a JSON
+// number that a float literal cannot, as 1e400. A longer literal would fill
+// the comment with digits.
+const maxLiteralDigits = 1024
+
+// numberLiteral returns the JSON number v spelled as a number literal of
+// //kama:validate: its text when a Starlark literal spells it, else the
+// integer it is when that integer has at most maxLiteralDigits digits. It
+// returns false for any other number, as 1e-400 or 1e100000.
+func numberLiteral(v jsontext.Value) (string, bool) {
+	if _, err := expr.FromJson(v); err == nil {
+		return string(v), true
+	}
+
+	r, ok := new(big.Rat).SetString(string(v))
+	if !ok || !r.IsInt() {
+		return string(v), false
+	}
+
+	// The digits are counted before they are written out.
+	if new(big.Int).Abs(r.Num()).BitLen() > maxLiteralDigits*3 {
+		return string(v), false
+	}
+
+	text := r.Num().String()
+
+	return text, len(strings.TrimPrefix(text, "-")) <= maxLiteralDigits
+}
 
 // integerText returns the JSON number v, an integer that check accepted,
 // as a Go integer literal: 2.0 and 2e0 give 2. An integer above the
@@ -614,17 +679,4 @@ func integerText(v jsontext.Value) string {
 	}
 
 	return r.Num().String()
-}
-
-// quoteArg spells s as the value of an arg of //kama:validate, a Go string
-// literal, so that no character of s ends the arg or the comment: a raw
-// literal for printable text holding a double quote, which reads better,
-// else an interpreted one.
-func quoteArg(s string) string {
-	if strings.Contains(s, `"`) && !strings.Contains(s, "`") &&
-		!strings.ContainsFunc(s, func(r rune) bool { return !unicode.IsPrint(r) }) {
-		return "`" + s + "`"
-	}
-
-	return strconv.Quote(s)
 }

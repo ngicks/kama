@@ -1,6 +1,7 @@
 package jsonschema
 
 import (
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
@@ -145,7 +146,7 @@ func rootUnion(doc *jsonschema.Schema, ptr string) bool {
 // elements, or the type is raw JSON text, whose Validate ref may call. A defined type of a struct,
 // such as the opt.Option of a
 // nullable root, carries none. Its value has validated itself on decoding.
-func definedArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, bool) {
+func definedArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]expr.Arg, bool) {
 	args := declArgs(doc, opts, ptr)
 	if len(args) > 0 || raw(doc, ptr) {
 		return args, true

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:34Z
+// generated: 2026-11-26T06:59:34Z
 
 package typedkeywords
 
@@ -23,15 +23,15 @@ import (
 // Order keeps its struct next to keywords no Go type expresses.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(required=`"kind" "id"`, props(match("^x-", kind="string")), keys(runes="<=8"), and(if(required=`"note"`, required=`"lines"`), if(props(field("kind", const="`\"card\"`")), required=`"card"`, not(required=`"card"`))))
+//kama:validate hook=False
+//kama:validate json(required("kind", "id"), props(match("^x-", kind("string"))), keys(runes(le=8)), (required("lines") if required("note") else always) and (required("card") if props(field("kind", const("card"))) else not required("card")))
 //kama:validate decoded
 type Order struct {
 	Kind OrderKind          `json:"kind"`
 	Card opt.Option[string] `json:"card,omitzero"`
-	//kama:validate json(not(const="`\"x\"`"))
+	//kama:validate json(not const("x"))
 	Note opt.Option[string] `json:"note,omitzero"`
-	//kama:validate json(contains(>=1, <=1, const="0"))
+	//kama:validate json(contains(const(0), ge=1, le=1))
 	Lines                opt.Option[[]int64]          `json:"lines,omitzero"`
 	Counts               opt.Option[map[string]int64] `json:"counts,omitzero"`
 	AdditionalProperties map[string]jsontext.Value    `json:",embed"`
@@ -76,7 +76,7 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // OrderKind is generated from the schema at #/properties/kind.
 //
 //kama:generated kama:jsonschema
-//kama:validate const=`"card" "cash"`
+//kama:validate const("card", "cash")
 //kama:validate decoded
 type OrderKind string
 
@@ -121,8 +121,8 @@ type ShapeKind interface {
 // ShapeCircle holds the Circle member of Shape.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(kind="object", members=">=1", not(and(required=`"r"`, props(field("r", const="0")))))
+//kama:validate hook=False
+//kama:validate json(kind("object"), members(ge=1), not (required("r") and props(field("r", const(0)))))
 //kama:validate decoded
 type ShapeCircle struct {
 	Circle Circle
@@ -144,8 +144,8 @@ func (v ShapeCircle) MarshalJSONTo(enc *jsontext.Encoder) error {
 // ShapeSquare holds the Square member of Shape.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(kind="object", members=">=1", not(and(required=`"r"`, props(field("r", const="0")))))
+//kama:validate hook=False
+//kama:validate json(kind("object"), members(ge=1), not (required("r") and props(field("r", const(0)))))
 //kama:validate decoded
 type ShapeSquare struct {
 	Square Square
@@ -216,7 +216,7 @@ func (v Shape) Validate(stopOnFirstError bool) error {
 // costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("r", kind="number"))
+//kama:validate props(field("r", kind("number")))
 type shapeCircleProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -233,7 +233,7 @@ func (v shapeCircleProbe) RawJson() jsontext.Value {
 // costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("side", kind="number"))
+//kama:validate props(field("side", kind("number")))
 type shapeSquareProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -329,7 +329,7 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Circle is generated from the schema at #/$defs/Circle.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate closed
 //kama:validate decoded
 type Circle struct {
@@ -368,7 +368,7 @@ func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Square is generated from the schema at #/$defs/Square.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate closed
 //kama:validate decoded
 type Square struct {
@@ -407,7 +407,7 @@ func (v *Square) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Named is generated from the schema at #/$defs/Named.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Named struct {
 	Name                 string                    `json:"name"`
@@ -445,7 +445,7 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Aged is generated from the schema at #/$defs/Aged.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Aged struct {
 	Age                  opt.Option[int64]         `json:"age,omitzero"`
@@ -484,8 +484,8 @@ func (v *Aged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/$defs/Person.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(not(required=`"nick"`))
+//kama:validate hook=False
+//kama:validate json(not required("nick"))
 //kama:validate decoded
 type Person struct {
 	Named                Named                     `json:"-"`
@@ -541,8 +541,8 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Bounded is generated from the schema at #/$defs/Bounded.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(and(required=`"lo"`, not(required=`"x"`)))
+//kama:validate hook=False
+//kama:validate json(required("lo") and not required("x"))
 //kama:validate decoded
 type Bounded struct {
 	Lo                   opt.Option[int64]         `json:"lo,omitzero"`
@@ -583,8 +583,8 @@ func (v *Bounded) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Sealed is generated from the schema at #/$defs/Sealed.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(unevalprops(and(kind="object", props(field("a"), match("^x-"))), or()))
+//kama:validate hook=False
+//kama:validate json(unevalprops(kind("object") and props(field("a"), match("^x-")), never))
 //kama:validate decoded
 type Sealed struct {
 	A                    opt.Option[int64]         `json:"a,omitzero"`
@@ -622,8 +622,8 @@ func (v *Sealed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Tagged is generated from the schema at #/$defs/Tagged.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(props(field("a"), match("^x-", kind="string"), rest(or())))
+//kama:validate hook=False
+//kama:validate json(props(field("a"), match("^x-", kind("string")), rest(never)))
 //kama:validate decoded
 type Tagged struct {
 	A                    opt.Option[int64]         `json:"a,omitzero"`

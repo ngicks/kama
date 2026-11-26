@@ -134,7 +134,7 @@ func (s *selection) checkMarks(g *typegraph.Graph) error {
 		if ok && s.implementor(n.Detail.Type) {
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: %s declares Validate itself; remove the method and move its checks"+
-					" into a function named by pre=<func> or post=<func> of //kama:validate"+
+					" into a function named by pre=\"<func>\" or post=\"<func>\" of //kama:validate"+
 					" on the type, or into a field hook",
 				ErrConflict, mark.origin(), id,
 			))
@@ -250,14 +250,19 @@ func duplicateValidators(vs []ValidatorOptions, place string) []error {
 	)
 
 	for _, v := range vs {
-		if seen[v.Name] {
+		key := v.src.arg
+		if v.Item.Name != "" {
+			key = v.Item.Name + "="
+		}
+
+		if seen[key] {
 			errs = append(errs, fmt.Errorf(
 				"%w: %s: validator %s given twice on %s",
-				ErrDirective, v.src.origin(), v.Name, place,
+				ErrDirective, v.src.origin(), key, place,
 			))
 		}
 
-		seen[v.Name] = true
+		seen[key] = true
 	}
 
 	return errs

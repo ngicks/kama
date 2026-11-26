@@ -3,7 +3,7 @@
 //	schema: "kama_jsonschema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:30Z
+// generated: 2026-11-26T06:59:30Z
 
 package stream
 
@@ -48,10 +48,10 @@ func (v *Stream) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Item is generated from the schema at #/$defs/Item.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Item struct {
-	//kama:validate cmp=">=0"
+	//kama:validate cmp(ge=0)
 	N                    int64                     `json:"n"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }

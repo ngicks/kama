@@ -4,6 +4,7 @@ import (
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Keys is the validator //kama:validate keys(<validator>, ...): the name
@@ -24,9 +25,9 @@ type KeysOptions struct {
 	Operands []Operand
 }
 
-// Parse decodes arg into operands through r.
-func (Keys) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	ops, err := ParseOperands(arg, r)
+// Parse resolves the args of c, the operands, through r.
+func (Keys) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	ops, err := parseOperandArgs(r, c)
 	if err != nil {
 		return nil, err
 	}

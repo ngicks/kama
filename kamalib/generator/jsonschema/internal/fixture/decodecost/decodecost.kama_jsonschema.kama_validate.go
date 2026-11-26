@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T10:38:46Z
+// generated: 2026-11-26T06:58:50Z
 
 package decodecost
 
@@ -109,7 +109,7 @@ func (v Plain) ValidateShallow(stopOnFirstError bool) error {
 func (v Negated) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
-		return kamaValidateNot(rawjson.Required(m, stopOnFirstError, "bad"), "required=`\"bad\"`")
+		return kamaValidateNot(rawjson.Required(m, stopOnFirstError, "bad"), "required(\"bad\")")
 	}); err != nil {
 		if stopOnFirstError {
 			return err
@@ -137,7 +137,7 @@ func (v Negated) Validate(stopOnFirstError bool) error {
 func (v Negated) ValidateShallow(stopOnFirstError bool) error {
 	var errs []error
 	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
-		return kamaValidateNot(rawjson.Required(m, stopOnFirstError, "bad"), "required=`\"bad\"`")
+		return kamaValidateNot(rawjson.Required(m, stopOnFirstError, "bad"), "required(\"bad\")")
 	}); err != nil {
 		if stopOnFirstError {
 			return err

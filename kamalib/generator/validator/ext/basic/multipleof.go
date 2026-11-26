@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
@@ -41,15 +43,25 @@ type MultipleOfOptions struct {
 	Divisor string
 }
 
-// Parse decodes arg into a positive number literal. A literal below 1
-// whose exact value Go constants do not hold, such as 1e-9999, is an
-// error.
-func (MultipleOf) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	if _, err := divisorValue(arg); err != nil {
+// Parse decodes the arg of c, a positive number.
+func (MultipleOf) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	var args struct {
+		N jsontext.Value `json:"n"`
+	}
+
+	if _, err := (ext.Params{Positional: []string{"n"}}).Bind(r, c, &args); err != nil {
+		return nil, err
+	}
+
+	if args.N.Kind() != '0' {
+		return nil, argsError(errors.New("want one number, as in multipleof(0.01)"))
+	}
+
+	if _, err := divisorValue(string(args.N)); err != nil {
 		return nil, argsError(err)
 	}
 
-	return MultipleOfOptions{Divisor: arg}, nil
+	return MultipleOfOptions{Divisor: string(args.N)}, nil
 }
 
 // Check accepts the types the doc comment of MultipleOf lists.

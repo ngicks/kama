@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:08Z
+// generated: 2026-11-26T06:59:11Z
 
 package nullraw
 
@@ -21,24 +21,23 @@ import (
 // Root is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Root struct {
-	//kama:validate kind="integer null"
-	//kama:validate not(kind="null")
+	//kama:validate kind("integer", "null")
+	//kama:validate not kind("null")
 	R jsontext.Value `json:"r"`
-	//kama:validate kind="string null"
-	//kama:validate not(kind="null")
+	//kama:validate kind("string", "null")
+	//kama:validate not kind("null")
 	A opt.Option[jsontext.Value] `json:"a,omitzero"`
-	//kama:validate kind="string null"
-	//kama:validate const="`\"x\"`"
+	//kama:validate kind("string", "null")
+	//kama:validate const("x")
 	C opt.Option[jsontext.Value] `json:"c,omitzero"`
-	//kama:validate kind="string null"
-	//kama:validate if(kind="null", or())
+	//kama:validate kind("string", "null")
+	//kama:validate never if kind("null") else always
 	E opt.Option[jsontext.Value] `json:"e,omitzero"`
 	P und.Und[string]            `json:"p,omitzero"`
-	//kama:validate kind="string null"
-	//kama:validate and(kind="string")
+	//kama:validate kind("string", "null") and kind("string")
 	S                    opt.Option[jsontext.Value] `json:"s,omitzero"`
 	D                    opt.Option[RootD]          `json:"d,omitzero"`
 	Q                    opt.Option[N]              `json:"q,omitzero"`
@@ -111,7 +110,7 @@ type RootDKind interface {
 // RootDOption1 holds the Option1 member of RootD.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootDOption1 struct {
 	Option1 jsontext.Value
@@ -133,7 +132,7 @@ func (v RootDOption1) MarshalJSONTo(enc *jsontext.Encoder) error {
 // RootDInteger holds the Integer member of RootD.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootDInteger struct {
 	Integer int64
@@ -266,8 +265,8 @@ func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // RootLItem is generated from the schema at #/properties/l/items.
 //
 //kama:generated kama:jsonschema
-//kama:validate kind="string null"
-//kama:validate not(kind="null")
+//kama:validate kind("string", "null")
+//kama:validate not kind("null")
 //kama:validate decoded
 type RootLItem jsontext.Value
 
@@ -303,8 +302,8 @@ func (v RootLItem) RawJson() jsontext.Value {
 // N is generated from the schema at #/$defs/N.
 //
 //kama:generated kama:jsonschema
-//kama:validate kind="string null"
-//kama:validate not(kind="null")
+//kama:validate kind("string", "null")
+//kama:validate not kind("null")
 //kama:validate decoded
 type N jsontext.Value
 

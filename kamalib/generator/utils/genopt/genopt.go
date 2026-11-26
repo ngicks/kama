@@ -35,8 +35,10 @@
 // target, with the name after the generator: "" for //tool:generator and
 // "merge" for //tool:generator:merge. Several lines of one directive on one
 // target count as one line: their args are joined in source order and
-// parsed by dircmnt.ParseArgsKeyValue. A leaf type whose pointer does not
-// implement KeyValueUnmarshaler takes no directives.
+// parsed by dircmnt.ParseArgsKeyValue. A leaf type whose pointer
+// implements ExprUnmarshaler takes the items of each line parsed by
+// expr.Parse instead. A leaf type whose pointer implements neither takes no
+// directives.
 //
 // # Option files
 //
@@ -130,6 +132,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
@@ -309,6 +312,17 @@ type KeyValueUnmarshaler interface {
 	// on the target of src. directive is "" for //tool:generator and the
 	// part after the generator otherwise.
 	UnmarshalKeyValue(src Source, directive string, kv []dircmnt.KeyValue) error
+}
+
+// ExprUnmarshaler is implemented by the pointer types of leaf option types
+// whose directives take Starlark expressions, as expr.Parse reads them.
+// The loader calls it in place of KeyValueUnmarshaler.
+type ExprUnmarshaler interface {
+	// UnmarshalExpr decodes the items of the directive of the given name on
+	// the target of src. Each line of the directive is parsed on its own,
+	// and args holds the items of every line in source order. directive is
+	// "" for //tool:generator and the part after the generator otherwise.
+	UnmarshalExpr(src Source, directive string, args []expr.Arg) error
 }
 
 // SourceSetter is implemented by the pointer types of leaf option types

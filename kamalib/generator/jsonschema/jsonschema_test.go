@@ -305,21 +305,21 @@ func TestGenerateRootType(t *testing.T) {
 		{
 			"items without type",
 			`{"items":{"type":"integer"}}`,
-			[]string{"//kama:validate items(kind=\"integer\")\n", "type Root jsontext.Value"},
+			[]string{"//kama:validate items(kind(\"integer\"))\n", "type Root jsontext.Value"},
 		},
 		{"nullable", `{"type":["number","null"]}`, []string{"type Root opt.Option[float64]"}},
 		{"any", `{}`, []string{"type Root jsontext.Value"}},
 		{
 			"enum",
 			`{"enum":[1,2]}`,
-			[]string{"//kama:validate const=\"1 2\"\n", "type Root int64"},
+			[]string{"//kama:validate const(1, 2)\n", "type Root int64"},
 		},
 		{
 			"const of items",
 			`{"type":"array","items":{"const":1}}`,
 			[]string{
 				"type Root []RootItem",
-				"//kama:validate const=\"1\"\n",
+				"//kama:validate const(1)\n",
 				"type RootItem int64",
 			},
 		},
@@ -331,7 +331,7 @@ func TestGenerateRootType(t *testing.T) {
 		{
 			"keywords of a string",
 			`{"type":"string","minLength":2.0,"maxLength":1e1,"pattern":"^a\""}`,
-			[]string{"//kama:validate runes=\">=2 <=10\"\n//kama:validate regexp=`^a\"`\n"},
+			[]string{"//kama:validate runes(ge=2, le=10)\n//kama:validate regexp('^a\"')\n"},
 		},
 		{"ref", `{"$ref":"#/$defs/a","$defs":{"a":{"type":"object"}}}`, []string{"type Root A"}},
 	}
@@ -710,7 +710,7 @@ func TestGenerateDocuments(t *testing.T) {
 				"foo":{"$dynamicAnchor":"items","type":"string"},
 				"list":{"$id":"list","type":"array","items":{"$dynamicRef":"#items"},
 					"$defs":{"items":{"$dynamicAnchor":"items"}}}}}`,
-			want: []string{"type Root []ListItem", `//kama:validate kind="string"`},
+			want: []string{"type Root []ListItem", `//kama:validate kind("string")`},
 		},
 		{
 			// names is outside the lexical scope of list, so Names writes out
@@ -722,8 +722,8 @@ func TestGenerateDocuments(t *testing.T) {
 				"List":{"$id":"list","type":"array","items":{"$dynamicRef":"#item"},
 					"$defs":{"Item":{"$dynamicAnchor":"item"}}}}}`,
 			want: []string{
-				"//kama:validate ref=Names",
-				"//kama:validate items(ref=NamesItem)",
+				`//kama:validate ref("Names")`,
+				`//kama:validate items(ref("NamesItem"))`,
 				"type Names jsontext.Value",
 			},
 		},
@@ -812,7 +812,7 @@ func TestGenerateVocabularies(t *testing.T) {
 			assert.Assert(t, strings.Contains(content, tc.want), "%s", files[0].Content)
 			assert.Equal(
 				t,
-				strings.Contains(content, "cmp="),
+				strings.Contains(content, "cmp("),
 				tc.meta == "http://x.test/optional",
 			)
 		})
@@ -834,10 +834,10 @@ func TestGenerateAssertFormats(t *testing.T) {
 
 		content := string(files[0].Content)
 
-		assert.Equal(t, strings.Contains(content, `//kama:validate format="uuid"`), assertFormats)
-		assert.Equal(t, strings.Contains(content, `format="date"`), assertFormats)
+		assert.Equal(t, strings.Contains(content, `//kama:validate format("uuid")`), assertFormats)
+		assert.Equal(t, strings.Contains(content, `format("date")`), assertFormats)
 		// The validator generator has no helper for email.
-		assert.Assert(t, !strings.Contains(content, `format="email"`))
+		assert.Assert(t, !strings.Contains(content, `format("email")`))
 	}
 }
 

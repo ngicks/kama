@@ -6,48 +6,99 @@ import (
 	"go/types"
 	"iter"
 	"maps"
+	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Validator is one kind of validator //kama:validate can name.
 type Validator interface {
-	// Name is the word naming the validator in the args of //kama:validate.
-	// It must not be hook, pre, post, ignore, decoded, file or package.
+	// Name is the name of the call naming the validator in the args of
+	// //kama:validate. It is a name as expr.IsName reports, and it must not
+	// be hook, pre, post, ignore, decoded, file or package.
 	Name() string
-	// Parse decodes arg into the rule to apply.
+	// Parse decodes c, a call of the validator, into the rule to apply. c is
+	// a bare name, as in required, or a call with args, as in length(ge=1).
+	// Params.Bind binds the args of c to the parameters of the validator.
 	//
-	// arg is the argument of the validator: the value of the arg name=value
-	// of //kama:validate, unquoted, the args of the call name(...) as
-	// dircmnt.SpellCallArgs spells them, or the args of its option file
-	// entry. It is empty when the directive names the validator alone.
-	// Validators taking several tokens split arg with
-	// dircmnt.ParseArgsKeyValue.
-	//
-	// r is the registry in use. A validator whose arg names validators, as
-	// and(...) does, parses them through r with basic.ParseOperands. A rule
-	// testing the values a type holds keeps r and asks its type supports,
-	// through HeldValue, Presence and the other functions taking a
-	// Resolver. Other validators ignore r.
+	// r is the resolver in use. A validator whose args are rules, as
+	// oneof(...) is, resolves them through Resolve with r. A rule testing
+	// the values a type holds keeps r and asks its type supports, through
+	// HeldValue, Presence and the other functions taking a Resolver. A
+	// validator reports an arg it does not know through r.Warn.
 	//
 	// An error reports an arg that is wrong whatever the type is. It should
 	// wrap ErrArgs.
-	Parse(arg string, r Resolver) (Rule, error)
+	Parse(c expr.Call, r Resolver) (Rule, error)
 }
 
-// Resolver is the registry in use as a validator sees it: it parses a
-// validator by name and lists the type supports. *Registry is a Resolver.
+// Operator gives the meaning of the expression nodes of one kind other
+// than expr.Call, as and gives to expr.And. It returns the rule of n
+// resolved with r, or an error that should wrap ErrArgs. A Registry holds
+// one operator per kind of node.
+type Operator func(n expr.Node, r Resolver) (Rule, error)
+
+// Resolver is the registry in use as a validator sees it: the validators
+// by name, the operators by kind of node, the type supports and the sink
+// of warnings. *Registry is a Resolver.
 type Resolver interface {
-	// Resolve returns the rule of the validator named name parsed with
-	// arg. An error of a name it does not know wraps ErrUnknown.
-	Resolve(name, arg string) (Rule, error)
+	// Lookup returns the validator named name.
+	Lookup(name string) (Validator, bool)
+	// Operator returns the operator of the kind of n.
+	Operator(n expr.Node) (Operator, bool)
+	// Names returns the names of the validators, sorted.
+	Names() []string
 	// TypeSupports returns the type supports in the order they were
 	// registered, which is the order they are asked in.
 	TypeSupports() iter.Seq[TypeSupport]
+	// Warn reports a problem of a directive that does not stop the run, as
+	// an arg no parameter takes.
+	Warn(w error)
 }
 
-// ErrUnknown marks the error of Resolver.Resolve for a name the registry
-// does not hold. It wraps ErrArgs too.
+// Resolve returns the rule of the node n with r: the validator of the name
+// of a call parses it, and the operator of its kind resolves any other
+// node. A literal and a name r does not know are errors wrapping
+// ErrUnknown.
+func Resolve(r Resolver, n expr.Node) (Rule, error) {
+	if c, ok := n.(expr.Call); ok {
+		v, ok := r.Lookup(c.Name)
+		if !ok {
+			return nil, unknownErr{fmt.Errorf(
+				"unknown validator %s; known: %s", c.Name, strings.Join(r.Names(), ", "),
+			)}
+		}
+
+		return v.Parse(c, r)
+	}
+
+	op, ok := r.Operator(n)
+	if !ok {
+		return nil, unknownErr{fmt.Errorf("%s is no rule", n)}
+	}
+
+	return op(n, r)
+}
+
+// WithWarn returns r reporting its warnings to warn. A nil warn drops
+// them.
+func WithWarn(r Resolver, warn func(w error)) Resolver { return warner{Resolver: r, warn: warn} }
+
+type warner struct {
+	Resolver
+	warn func(w error)
+}
+
+func (w warner) Warn(err error) {
+	if w.warn != nil && err != nil {
+		w.warn(err)
+	}
+}
+
+// ErrUnknown marks the error of Resolve for a name the registry does not
+// hold and for a node that is no rule. It wraps ErrArgs too.
 var ErrUnknown = errors.New("validator: unknown validator")
 
 // ErrArgs marks an error of Validator.Parse, which the argument causes
@@ -191,13 +242,14 @@ type Annotator interface {
 // Registry holds validators by name.
 type Registry struct {
 	validators map[string]Validator
+	operators  map[reflect.Type]Operator
 	supports   []TypeSupport
 }
 
 // NewRegistry returns a registry holding vs and no type support. A later
 // validator replaces an earlier one of the same name.
 func NewRegistry(vs ...Validator) *Registry {
-	r := &Registry{validators: map[string]Validator{}}
+	r := &Registry{validators: map[string]Validator{}, operators: map[reflect.Type]Operator{}}
 	for _, v := range vs {
 		r.Register(v)
 	}
@@ -223,6 +275,18 @@ func Register(vs ...Validator) {
 	}
 }
 
+// RegisterOperator adds op to the default registry as the operator of the
+// nodes of the kind of kind, the zero value of a node type such as
+// expr.And{}. It panics when an operator of that kind is registered
+// already. An extension package calls it in its init function.
+func RegisterOperator(kind expr.Node, op Operator) {
+	if _, ok := defaults.Operator(kind); ok {
+		panic(fmt.Errorf("ext: operator of %T is registered twice", kind))
+	}
+
+	defaults.RegisterOperator(kind, op)
+}
+
 // RegisterTypeSupport adds ss to the default registry. It panics when a
 // support of the same name is registered already. An extension package
 // calls it in its init function.
@@ -238,14 +302,31 @@ func RegisterTypeSupport(ss ...TypeSupport) {
 	}
 }
 
-// DefaultRegistry returns a new registry holding the validators and the
-// type supports registered through Register and RegisterTypeSupport.
+// DefaultRegistry returns a new registry holding the validators, the
+// operators and the type supports registered through Register,
+// RegisterOperator and RegisterTypeSupport.
 // Package validator imports packages basic and opt for their
 // registrations.
 func DefaultRegistry() *Registry { return defaults.Clone() }
 
 // Register adds v, replacing the validator of the same name.
 func (r *Registry) Register(v Validator) { r.validators[v.Name()] = v }
+
+// RegisterOperator adds op as the operator of the nodes of the kind of
+// kind, replacing the operator of that kind.
+func (r *Registry) RegisterOperator(kind expr.Node, op Operator) {
+	r.operators[reflect.TypeOf(kind)] = op
+}
+
+// Operator returns the operator of the kind of n. It implements Resolver.
+func (r *Registry) Operator(n expr.Node) (Operator, bool) {
+	op, ok := r.operators[reflect.TypeOf(n)]
+	return op, ok
+}
+
+// Warn drops w. It implements Resolver. WithWarn gives a Resolver that
+// reports warnings.
+func (*Registry) Warn(error) {}
 
 // RegisterTypeSupport adds s after the supports of r, replacing the
 // support of the same name in its place.
@@ -263,32 +344,27 @@ func (r *Registry) RegisterTypeSupport(s TypeSupport) {
 // registered. It implements Resolver.
 func (r *Registry) TypeSupports() iter.Seq[TypeSupport] { return slices.Values(r.supports) }
 
-// Lookup returns the validator named name.
+// Lookup returns the validator named name. It implements Resolver.
 func (r *Registry) Lookup(name string) (Validator, bool) {
 	v, ok := r.validators[name]
 	return v, ok
 }
 
-// Resolve parses arg with the validator named name. It implements
+// Resolve returns the rule of n, as the function Resolve does with r.
+func (r *Registry) Resolve(n expr.Node) (Rule, error) { return Resolve(r, n) }
+
+// Names returns the names of the validators, sorted. It implements
 // Resolver.
-func (r *Registry) Resolve(name, arg string) (Rule, error) {
-	v, ok := r.Lookup(name)
-	if !ok {
-		return nil, unknownErr{fmt.Errorf(
-			"unknown validator %s; known: %s", name, strings.Join(r.Names(), ", "),
-		)}
-	}
-
-	return v.Parse(arg, r)
-}
-
-// Names returns the names of the validators, sorted.
 func (r *Registry) Names() []string { return slices.Sorted(maps.Keys(r.validators)) }
 
-// Clone returns a registry holding the validators and the type supports of
-// r, which changes to either do not affect.
+// Clone returns a registry holding the validators, the operators and the
+// type supports of r, which changes to either do not affect.
 func (r *Registry) Clone() *Registry {
-	return &Registry{validators: maps.Clone(r.validators), supports: slices.Clone(r.supports)}
+	return &Registry{
+		validators: maps.Clone(r.validators),
+		operators:  maps.Clone(r.operators),
+		supports:   slices.Clone(r.supports),
+	}
 }
 
 type unknownErr struct{ error }

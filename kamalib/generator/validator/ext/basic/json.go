@@ -6,6 +6,7 @@ import (
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Json is the validator //kama:validate json(<validator>, ...): the value
@@ -37,9 +38,9 @@ type JsonOptions struct {
 	reg ext.Resolver
 }
 
-// Parse decodes arg into operands through r.
-func (Json) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	ops, err := ParseOperands(arg, r)
+// Parse resolves the args of c, the operands, through r.
+func (Json) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	ops, err := parseOperandArgs(r, c)
 	if err != nil {
 		return nil, err
 	}

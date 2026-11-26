@@ -10,59 +10,41 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Operand is a validator a combinator applies to the value it validates.
 type Operand struct {
-	// Text spells the operand by what the validator receives, its name and
-	// its arg, with the name bare and the value quoted, as in cmp=">=1" or
-	// not(required). A directive and an option file writing the same
-	// operand, one quoting a value and the other not, give the same Text.
-	// The values in the args of a call are quoted too.
+	// Text spells the operand as expr.Print does, as in cmp(ge=1) or
+	// not required.
 	Text string
-	// Rule is the operand parsed through the registry in use.
+	// Rule is the operand resolved through the registry in use.
 	Rule ext.Rule
 }
 
-// ParseOperands parses arg, the args of a combinator as
-// dircmnt.ParseCallArgs reads them, into operands. Each arg names a
-// validator by its key, which r parses with the arg dircmnt.KeyValue.Arg
-// returns: cmp=">=10", not(required) gives cmp with >=10 and not with
-// required. A registered validator under the name of a built-in replaces
-// the built-in here too.
-func ParseOperands(arg string, r ext.Resolver) ([]Operand, error) {
-	args, err := dircmnt.ParseCallArgs(arg)
-	if err != nil {
-		return nil, argsError(err)
-	}
+// ParseOperands resolves each of nodes, the operands of a combinator,
+// through r with ext.Resolve. A registered validator under the name of a
+// built-in replaces the built-in here too.
+func ParseOperands(nodes []expr.Node, r ext.Resolver) ([]Operand, error) {
+	ops := make([]Operand, 0, len(nodes))
 
-	ops := make([]Operand, 0, len(args))
-
-	for _, kv := range args {
-		kv.KeyQuoted = false
-		text := quoteValues(kv).String()
-
-		rule, err := r.Resolve(kv.Key, kv.Arg())
+	for _, n := range nodes {
+		rule, err := ext.Resolve(r, n)
 		if err != nil {
-			return nil, fmt.Errorf("operand %s: %w", text, err)
+			return nil, fmt.Errorf("operand %s: %w", n, err)
 		}
 
-		ops = append(ops, Operand{Text: text, Rule: rule})
+		ops = append(ops, Operand{Text: n.String(), Rule: rule})
 	}
 
 	return ops, nil
 }
 
-// quoteValues returns kv with every value quoted, those of its call args
-// included. A quoted and a bare value read back alike.
-func quoteValues(kv dircmnt.KeyValue) dircmnt.KeyValue {
-	kv.ValueQuoted = kv.HasValue
-	kv.Args = opiter.WrapSeq(slices.Values(kv.Args)).
-		Map(quoteValues).
+// argValues returns the values of args.
+func argValues(args []expr.Arg) []expr.Node {
+	return opiter.WrapSeq(slices.Values(args)).
+		Map(func(a expr.Arg) expr.Node { return a.Value }).
 		CollectSlice()
-
-	return kv
 }
 
 // errorSource tells where the errors of a combinator come from.
@@ -77,34 +59,94 @@ const (
 	ownErrors errorSource = true
 )
 
-// combine returns the rule build makes of ops. When an operand is a
-// SiblingRule or a StructRule, the combinator is one too, and build runs
-// on the operands bound to the struct. src tells how the errors of the
-// combinator get the path segment of the field a SiblingRule leaves out. r
-// is the registry the operands were parsed with.
+// combine returns the rule build makes of the operands nodes resolve to.
+// When an operand is a SiblingRule or a StructRule, the combinator is one
+// too, and build runs on the operands bound to the struct. src tells how
+// the errors of the combinator get the path segment of the field a
+// SiblingRule leaves out. r is the registry the operands resolve with.
+//
+// The rule keeps nodes, not the operands, and resolves them again each
+// time it needs them. combine resolves them once to report an error of
+// their args and the warnings of r.
 func combine(
 	r ext.Resolver,
-	ops []Operand,
+	nodes []expr.Node,
 	src errorSource,
 	build func(ops []Operand) ext.Rule,
 ) (ext.Rule, error) {
+	ops, err := ParseOperands(nodes, r)
+	if err != nil {
+		return nil, err
+	}
+
 	siblings := opiter.WrapSeq(slices.Values(ops)).
 		Any(func(op Operand) bool { return isSiblingRule(op.Rule) })
 
 	whole := opiter.WrapSeq(slices.Values(ops)).
 		Any(func(op Operand) bool { return isStructRule(op.Rule) })
 
+	c := combination{nodes: nodes, reg: ext.WithWarn(r, nil), build: build}
+
 	switch {
 	case siblings && whole:
 		return nil, argsError(errors.New("operands read the siblings of a struct field and" +
 			" validate a struct as a whole; no place takes both"))
 	case siblings:
-		return siblingCombinator{ops: ops, src: src, build: build, reg: r}, nil
+		return siblingCombinator{c: c, src: src}, nil
 	case whole:
-		return structCombinator{ops: ops, build: build}, nil
+		return structCombinator{c: c}, nil
 	}
 
-	return build(ops), nil
+	return c, nil
+}
+
+// combination is a combinator over the operands its nodes resolve to.
+type combination struct {
+	nodes []expr.Node
+	// reg resolves the operands. It drops the warnings combine reported.
+	reg   ext.Resolver
+	build func(ops []Operand) ext.Rule
+}
+
+// rule returns the combinator of the operands resolved.
+func (c combination) rule() (ext.Rule, error) {
+	ops, err := ParseOperands(c.nodes, c.reg)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.build(ops), nil
+}
+
+// Check accepts the types the combinator accepts.
+func (c combination) Check(t types.Type) error {
+	r, err := c.rule()
+	if err != nil {
+		return err
+	}
+
+	return r.Check(t)
+}
+
+// Emit emits the combinator.
+func (c combination) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
+	r, err := c.rule()
+	if err != nil {
+		return nil, err
+	}
+
+	return r.Emit(e, t, v)
+}
+
+// Annotate annotates with the combinator, or emits it when it records
+// nothing.
+func (c combination) Annotate(e ext.Emitter, t types.Type, v, ev ext.Gen) (ext.Gen, error) {
+	r, err := c.rule()
+	if err != nil {
+		return nil, err
+	}
+
+	return annotate(e, r, t, v, ev)
 }
 
 func isSiblingRule(r ext.Rule) bool {
@@ -160,12 +202,8 @@ func texts(ops []Operand) []string {
 // type of the field, else to the value it holds, and hold when it holds
 // none.
 type siblingCombinator struct {
-	ops   []Operand
-	src   errorSource
-	build func(ops []Operand) ext.Rule
-	// reg is the registry the operands were parsed with, whose type
-	// supports tell the value a field holds.
-	reg ext.Resolver
+	c   combination
+	src errorSource
 }
 
 // Check rejects every type: an operand needs the struct holding the
@@ -181,10 +219,15 @@ func (siblingCombinator) Emit(ext.Emitter, types.Type, ext.Gen) (ext.Gen, error)
 // The errors such an operand returns are located already. The combinator
 // locates the other errors at the field: those of each other operand when
 // it returns the errors of its operands, else its own.
-func (c siblingCombinator) Siblings(s ext.Struct, field string) (ext.Rule, error) {
-	bound := make([]Operand, 0, len(c.ops))
+func (sc siblingCombinator) Siblings(s ext.Struct, field string) (ext.Rule, error) {
+	ops, err := ParseOperands(sc.c.nodes, sc.c.reg)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, op := range c.ops {
+	bound := make([]Operand, 0, len(ops))
+
+	for _, op := range ops {
 		sr, ok := op.Rule.(ext.SiblingRule)
 
 		switch {
@@ -195,20 +238,20 @@ func (c siblingCombinator) Siblings(s ext.Struct, field string) (ext.Rule, error
 			}
 
 			op.Rule = r
-		case c.src == operandErrors:
-			op.Rule = atField{rule: onHeld{rule: op.Rule, reg: c.reg}, field: field}
+		case sc.src == operandErrors:
+			op.Rule = atField{rule: onHeld{rule: op.Rule, reg: sc.c.reg}, field: field}
 		default:
-			op.Rule = onHeld{rule: op.Rule, reg: c.reg}
+			op.Rule = onHeld{rule: op.Rule, reg: sc.c.reg}
 		}
 
 		bound = append(bound, op)
 	}
 
-	if c.src == ownErrors {
-		return atField{rule: c.build(bound), field: field}, nil
+	if sc.src == ownErrors {
+		return atField{rule: sc.c.build(bound), field: field}, nil
 	}
 
-	return c.build(bound), nil
+	return sc.c.build(bound), nil
 }
 
 var errCombinatorSiblings = errors.New("an operand reads the siblings of a struct field;" +
@@ -217,16 +260,18 @@ var errCombinatorSiblings = errors.New("an operand reads the siblings of a struc
 // structCombinator is a combinator with an operand validating a struct as
 // a whole. As a StructRule it is written in the doc comment of a struct
 // type.
-type structCombinator struct {
-	ops   []Operand
-	build func(ops []Operand) ext.Rule
-}
+type structCombinator struct{ c combination }
 
 // Check accepts a type every operand accepts, as raw JSON text, which
 // members counts the members of. Any other type needs the struct, which
 // Struct gives.
-func (c structCombinator) Check(t types.Type) error {
-	if err := checkOperands(c.ops, t); err != nil {
+func (sc structCombinator) Check(t types.Type) error {
+	ops, err := ParseOperands(sc.c.nodes, sc.c.reg)
+	if err != nil {
+		return err
+	}
+
+	if err := checkOperands(ops, t); err != nil {
 		return fmt.Errorf("%w: %w", errCombinatorStruct, err)
 	}
 
@@ -234,15 +279,20 @@ func (c structCombinator) Check(t types.Type) error {
 }
 
 // Emit emits the combinator of the operands unbound.
-func (c structCombinator) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
-	return c.build(c.ops).Emit(e, t, v)
+func (sc structCombinator) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
+	return sc.c.Emit(e, t, v)
 }
 
 // Struct binds each StructRule operand to s.
-func (c structCombinator) Struct(s ext.Struct) (ext.Rule, error) {
-	bound := make([]Operand, 0, len(c.ops))
+func (sc structCombinator) Struct(s ext.Struct) (ext.Rule, error) {
+	ops, err := ParseOperands(sc.c.nodes, sc.c.reg)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, op := range c.ops {
+	bound := make([]Operand, 0, len(ops))
+
+	for _, op := range ops {
 		if sr, ok := op.Rule.(ext.StructRule); ok {
 			r, err := sr.Struct(s)
 			if err != nil {
@@ -255,7 +305,7 @@ func (c structCombinator) Struct(s ext.Struct) (ext.Rule, error) {
 		bound = append(bound, op)
 	}
 
-	return c.build(bound), nil
+	return sc.c.build(bound), nil
 }
 
 var errCombinatorStruct = errors.New("an operand validates a struct as a whole;" +

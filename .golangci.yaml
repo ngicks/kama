@@ -59,6 +59,12 @@ linters:
       # Vendored upstream code keeps upstream style; only the patches
       # documented in internal/third_party/README.md diverge from it.
       - internal/third_party
+    rules:
+      # An item of a //kama:validate directive does not span lines, so a
+      # long rule keeps its line.
+      - source: "^\\s*//kama:validate "
+        linters:
+          - lll
 formatters:
   enable:
     - goimports

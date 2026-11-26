@@ -76,11 +76,10 @@ types:
     fields:
       Name:
         validators:
-          - name: required
+          - required
       P:
         validators:
-          - name: required
-            args: ""
+          - "required"
       N:
         hook: true
   B:
@@ -100,25 +99,25 @@ types:
 }
 
 // TestOptionFileTypeValidators gives a type validators of its own, as its
-// directive would, and warns of an unknown key of such a validator.
+// directive would, and warns of an unknown arg of such a validator.
 func TestOptionFileTypeValidators(t *testing.T) {
 	out, warnings, err := generateWithWarnings(t, map[string]string{
 		"a.go": "package x\n\ntype N int\n",
 		"kama_validate.yaml": "version: 1\ntypes:\n  N:\n    validators:\n" +
-			"      - name: cmp\n        args: \">0\"\n        ww: 1\n",
+			"      - cmp(gt=0, ww=1)\n",
 	}, nil)
 	assert.NilError(t, err)
 	assertContains(t, gentest.Funcs(t, out["a.kama_validate.go"])["N.Validate"],
 		check(`kamaValidateCmp(v, ">", 0)`),
 	)
-	assert.Equal(t, len(warnings), 1)
-	assert.ErrorIs(t, warnings[0], genopt.ErrUnknownKey)
-	assert.ErrorContains(t, warnings[0], "types.N.validators.0.ww")
+	assert.Equal(t, len(warnings), 1, "%v", warnings)
+	assert.ErrorContains(t, warnings[0],
+		"types.N.validators.0: package option file cmp option on type N: cmp: unknown arg ww=1")
 
 	_, err = generateWithOptionFiles(t, map[string]string{
 		"a.go": "package x\n\ntype N int\n",
 		"kama_validate.yaml": "version: 1\ntypes:\n  N:\n    validators:\n" +
-			"      - name: cmp\n        args: '>\"1'\n",
+			"      - cmp(gt=x)\n",
 	})
 	assert.ErrorIs(t, err, ErrUnsupported)
 	assert.ErrorContains(t, err, "types.N.validators.0: package option file cmp option on type N")
@@ -134,22 +133,36 @@ func TestOptionFileErrors(t *testing.T) {
 		{
 			name: "bad args",
 			yaml: "version: 1\ntypes:\n  A:\n    hook: false\n    fields:\n      N:\n" +
-				"        validators:\n          - name: cmp\n            args: '>\"1'\n",
+				"        validators:\n          - cmp(gt=x)\n",
 			is:  ErrUnsupported,
 			msg: "types.A.fields.N.validators.0: package option file cmp option on field N",
 		},
 		{
-			name: "no name",
+			name: "entry of an object",
 			yaml: "version: 1\ntypes:\n  A:\n    fields:\n      N:\n        validators:\n" +
-				"          - args: x\n",
+				"          - name: required\n",
 			is:  ErrOptionFile,
-			msg: "validator without name",
+			msg: `types.A.fields.N.validators.0: want the text of one rule item, as in "length(ge=1)"`,
+		},
+		{
+			name: "two items",
+			yaml: "version: 1\ntypes:\n  A:\n    fields:\n      N:\n        validators:\n" +
+				"          - required, zero\n",
+			is:  ErrOptionFile,
+			msg: `"required, zero" holds 2 items; want one rule item per entry`,
+		},
+		{
+			name: "syntax",
+			yaml: "version: 1\ntypes:\n  A:\n    fields:\n      N:\n        validators:\n" +
+				"          - cmp(>0)\n",
+			is:  ErrOptionFile,
+			msg: "types.A.fields.N.validators.0: expr: 1:5",
 		},
 		{
 			name: "twice",
 			yaml: "version: 1\ntypes:\n  A:\n    hook: false\n    fields:\n" +
 				"      N:\n        validators:\n" +
-				"          - name: required\n          - name: required\n",
+				"          - required\n          - required\n",
 			is:  ErrDirective,
 			msg: "validator required given twice",
 		},
@@ -174,7 +187,7 @@ func TestOptionFileUnknownKeys(t *testing.T) {
 		"a.go": "package x\n\ntype A struct{ N int }\n",
 		"kama_validate.yaml": "version: 1\nzz: 1\ntypes:\n  A:\n    hook: false\n    yy: 1\n" +
 			"    fields:\n      N:\n        xx: 1\n        validators:\n" +
-			"          - name: required\n            ww: 1\n",
+			"          - required\n",
 	}, nil)
 	assert.NilError(t, err)
 	assertContains(t, out["a.kama_validate.go"],
@@ -190,12 +203,11 @@ func TestOptionFileUnknownKeys(t *testing.T) {
 	assert.DeepEqual(t, msgs, []string{
 		"zz",
 		"types.A.yy",
-		"types.A.fields.N.validators.0.ww",
 		"types.A.fields.N.xx",
 	})
 }
 
-// TestSubDirective rejects //kama:validate:<sub> and shows the arg of
+// TestSubDirective rejects //kama:validate:<sub> and shows the item of
 // //kama:validate standing for it.
 func TestSubDirective(t *testing.T) {
 	cases := []struct {
@@ -205,9 +217,9 @@ func TestSubDirective(t *testing.T) {
 	}{
 		{
 			name: "type hook",
-			src:  "//kama:validate\n//kama:validate:hook off\ntype A struct{ N int }\n",
+			src:  "//kama:validate\n//kama:validate:hook False\ntype A struct{ N int }\n",
 			want: "a.go:4:1: //kama:validate:hook; validators and hook are args of" +
-				" //kama:validate, as in //kama:validate hook=off",
+				" //kama:validate, as in //kama:validate hook=False",
 		},
 		{
 			name: "type validator",
@@ -215,33 +227,16 @@ func TestSubDirective(t *testing.T) {
 			want: "as in //kama:validate required",
 		},
 		{
-			name: "free-floating",
-			src:  "//kama:validate:hook on\n\ntype A struct{ N int }\n",
-			want: "as in //kama:validate hook=on",
-		},
-		{
 			name: "comparisons",
 			src: "//kama:validate\ntype A struct {\n" +
-				"\t//kama:validate:length >=1 <=10\n\tN string\n}\n",
-			want: `as in //kama:validate length=">=1 <=10"`,
-		},
-		{
-			name: "quoted pattern",
-			src: "//kama:validate\ntype A struct {\n" +
-				"\t//kama:validate:regexp \"^a b$\"\n\tN string\n}\n",
-			want: `as in //kama:validate regexp="^a b$"`,
+				"\t//kama:validate:length ge=1, le=10\n\tN string\n}\n",
+			want: `as in //kama:validate length(ge=1, le=10)`,
 		},
 		{
 			name: "quoted literals",
 			src: "//kama:validate\ntype A struct {\n" +
-				"\t//kama:validate:const \"red\" \"dark blue\"\n\tN string\n}\n",
-			want: "as in //kama:validate const=`\"red\" \"dark blue\"`",
-		},
-		{
-			name: "quoted comparison",
-			src: "//kama:validate\ntype A struct {\n" +
-				"\t//kama:validate:cmp >\"a b\"\n\tN string\n}\n",
-			want: "as in //kama:validate cmp=`>\"a b\"`",
+				"\t//kama:validate:const \"red\", 'dark blue'\n\tN string\n}\n",
+			want: `as in //kama:validate const("red", "dark blue")`,
 		},
 	}
 
@@ -277,7 +272,7 @@ func TestOptionFileDirective(t *testing.T) {
 		"a.go": "//kama:option-file validate=custom.yaml\n\npackage x\n\n" +
 			"type A struct{ N int }\n\ntype B struct{ N int }\n",
 		"custom.yaml": "version: 1\ntypes:\n  A:\n    hook: false\n    fields:\n" +
-			"      N:\n        validators:\n          - name: required\n",
+			"      N:\n        validators:\n          - required\n",
 		"kama_validate.yaml": "version: 1\ntypes:\n  B:\n    hook: false\n",
 	})
 	assert.NilError(t, err)
@@ -298,14 +293,14 @@ func TestOptionFileOverride(t *testing.T) {
 	out, warnings, err := generateWithWarnings(t, map[string]string{
 		"a.go": "package x\n\n//kama:validate\ntype A struct {\n" +
 			"\t//kama:validate required\n\tN int\n}\n\n" +
-			"//kama:validate\n//kama:validate hook=off\ntype B struct {\n" +
+			"//kama:validate\n//kama:validate hook=False\ntype B struct {\n" +
 			"\t//kama:validate required\n\tN int\n}\n",
 		"validate.yaml": "version: 1\npackages:\n  " + modulePath(t) + ":\n" +
 			"    types:\n      A:\n        hook: false\n        fields:\n" +
-			"          N:\n            validators:\n              - name: zero\n" +
+			"          N:\n            validators:\n              - zero\n" +
 			"      B:\n        hook: false\n",
 		"kama_validate.yaml": "version: 1\ntypes:\n  B:\n    hook: false\n    fields:\n" +
-			"      N:\n        validators:\n          - name: cmp\n            args: '>0'\n",
+			"      N:\n        validators:\n          - cmp(gt=0)\n",
 	}, optionFileOf(t))
 	assert.NilError(t, err)
 

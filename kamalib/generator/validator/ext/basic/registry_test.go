@@ -11,14 +11,13 @@ import (
 // TestDefaultRegistry lists the validators the package registers.
 func TestDefaultRegistry(t *testing.T) {
 	assert.DeepEqual(t, ext.DefaultRegistry().Names(), []string{
-		"and",
+		"always",
 		"closed",
 		"cmp",
 		"const",
 		"contains",
 		"decode",
 		"format",
-		"if",
 		"items",
 		"json",
 		"keys",
@@ -26,11 +25,10 @@ func TestDefaultRegistry(t *testing.T) {
 		"length",
 		"members",
 		"multipleof",
+		"never",
 		"nil",
-		"not",
 		"null",
 		"oneof",
-		"or",
 		"prefix",
 		"props",
 		"ref",

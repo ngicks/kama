@@ -8,19 +8,19 @@ import (
 
 // Held applies validators of strings to the string an und.Und holds.
 //
-//kama:validate hook=off
+//kama:validate hook=False
 type Held struct {
-	//kama:validate length=">=1 <=3"
+	//kama:validate length(ge=1, le=3)
 	Length und.Und[string] `json:"length"`
-	//kama:validate runes="<=2"
+	//kama:validate runes(le=2)
 	Runes und.Und[string] `json:"runes"`
-	//kama:validate regexp="^[a-z]+$"
+	//kama:validate regexp("^[a-z]+$")
 	Pattern und.Und[string] `json:"pattern"`
 }
 
 // Options holds every option type on its type parameter.
 //
-//kama:validate hook=off
+//kama:validate hook=False
 type Options[T any] struct {
 	O opt.Option[T]      `json:"o"`
 	U und.Und[T]         `json:"u"`

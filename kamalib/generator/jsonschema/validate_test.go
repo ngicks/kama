@@ -30,39 +30,39 @@ func TestGenerateDirectives(t *testing.T) {
 			"dependentRequired":{"k":["d"],"o":["e","k"]}}`,
 			[]string{
 				"\t//kama:validate required\n\tD ",
-				"\t//kama:validate requires=`\"e\"`\n\tO ",
+				"\t//kama:validate requires(\"e\")\n\tO ",
 			},
 		},
 		{
 			"hostile pattern",
 			`{"type":"string","pattern":"a\n//go:generate evil"}`,
-			[]string{`//kama:validate regexp="a\n//go:generate evil"` + "\n"},
+			[]string{`//kama:validate regexp("a\n//go:generate evil")` + "\n"},
 		},
 		{
 			"hostile enum value",
 			`{"type":"object","properties":{"s":{"const":"x\n//go:generate evil"}}}`,
-			[]string{"//kama:validate const=`\"x\\n//go:generate evil\"`\n"},
+			[]string{"//kama:validate const(\"x\\n//go:generate evil\")\n"},
 		},
 		{
 			"long directive",
 			`{"type":"string","pattern":"` + long + `"}`,
-			[]string{"//kama:validate regexp=\"" + long + "\"\n"},
+			[]string{"//kama:validate regexp(\"" + long + "\")\n"},
 		},
 		{
 			"raw property required by a key and requiring a member",
 			`{"type":"object","required":["a"],"dependentRequired":{"a":["b"]},
 			"properties":{"a":{"type":"object"},"b":{"required":["x"]}}}`,
-			[]string{"\t//kama:validate and(required=`\"x\"`)\n\t//kama:validate required\n"},
+			[]string{"\t//kama:validate required(\"x\")\n\t//kama:validate required\n"},
 		},
 		{
 			"raw JSON text of a schema of every kind",
 			`{"minimum":1,"maxLength":2,"minProperties":1,"uniqueItems":true,
 			"dependentRequired":{"a":["b","c"],"d":["e"]}}`,
 			[]string{
-				"//kama:validate cmp=\">=1\"\n//kama:validate runes=\"<=2\"\n" +
-					"//kama:validate unique\n//kama:validate members=\">=1\"\n",
-				"//kama:validate and(if(required=`\"a\"`, required=`\"b\" \"c\"`), " +
-					"if(required=`\"d\"`, required=`\"e\"`))\n",
+				"//kama:validate cmp(ge=1)\n//kama:validate runes(le=2)\n" +
+					"//kama:validate unique\n//kama:validate members(ge=1)\n",
+				`//kama:validate (required("b", "c") if required("a") else always) and ` +
+					`(required("e") if required("d") else always)` + "\n",
 				"type Root jsontext.Value\n",
 				"func (v Root) RawJson() jsontext.Value {",
 			},
@@ -74,15 +74,15 @@ func TestGenerateDirectives(t *testing.T) {
 				"e":{"enum":[1,"a",null,{"b":[]}]}
 			}}`,
 			[]string{
-				"\t//kama:validate kind=\"array object\"\n\t//kama:validate length=\"<=1\"\n\tK ",
-				"\t//kama:validate const=\"1 `\\\"a\\\"` null `{\\\"b\\\":[]}`\"\n\tE ",
+				"\t//kama:validate kind(\"array\", \"object\")\n\t//kama:validate length(le=1)\n\tK ",
+				"\t//kama:validate const(1, \"a\", None, {\"b\": []})\n\tE ",
 			},
 		},
 		{
 			"null-only schema of a property named like a union keyword",
 			`{"type":"object","properties":{"oneOf":{"type":"array","items":{"type":"null"}}}}`,
 			[]string{
-				"//kama:generated kama:jsonschema\n//kama:validate kind=\"null\"\n" +
+				"//kama:generated kama:jsonschema\n//kama:validate kind(\"null\")\n" +
 					"//kama:validate decoded\ntype RootOneOfItem ",
 			},
 		},
@@ -119,16 +119,16 @@ func TestGenerateDirectives(t *testing.T) {
 			`{"not":{"properties":{"":{"uniqueItems":true}}},"required":[""],
 			"dependentRequired":{"":["a"]},"patternProperties":{"^$":{"type":"string"}}}`,
 			[]string{
-				"//kama:validate required=`\"\"`\n",
-				"//kama:validate if(required=`\"\"`, required=`\"a\"`)\n",
-				`//kama:validate props(match("^$", kind="string"))` + "\n",
-				`//kama:validate not(props(field("", unique)))` + "\n",
+				"//kama:validate required(\"\")\n",
+				"//kama:validate required(\"a\") if required(\"\") else always\n",
+				`//kama:validate props(match("^$", kind("string")))` + "\n",
+				`//kama:validate not props(field("", unique))` + "\n",
 			},
 		},
 		{
 			"const next to enum in the validators of raw JSON text",
 			`{"const":{"a":1},"enum":[{"a":2}]}`,
-			[]string{"//kama:validate and(const=\"`{\\\"a\\\":1}`\", const=\"`{\\\"a\\\":2}`\")\n"},
+			[]string{"//kama:validate const({\"a\": 1}) and const({\"a\": 2})\n"},
 		},
 		{
 			"uniqueItems of elements that are no Go scalars",
@@ -140,7 +140,7 @@ func TestGenerateDirectives(t *testing.T) {
 			[]string{
 				"\t//kama:validate unique\n\tN ",
 				"\t//kama:validate json(unique)\n\tO ",
-				"\t//kama:validate json(unique, prefix(kind=\"number\"))\n\tP ",
+				"\t//kama:validate json(unique, prefix(kind(\"number\")))\n\tP ",
 			},
 		},
 		{
@@ -151,15 +151,15 @@ func TestGenerateDirectives(t *testing.T) {
 			},"$defs":{"n":{"type":["array","null"],"items":{"$ref":"#/$defs/n"},"uniqueItems":true}}}`,
 			[]string{
 				"\t//kama:validate unique\n\tA ",
-				"//kama:validate unique\n//kama:validate items(ref=N)\n",
+				"//kama:validate unique\n//kama:validate items(ref(\"N\"))\n",
 			},
 		},
 		{
 			"references under unevaluatedProperties",
 			unevaluatedChain(2),
 			[]string{
-				"//kama:validate unevalprops(ref=D0, or())\n",
-				"//kama:validate and(ref=D1, and(props(field(\"p0\")), ref=D1))\n",
+				"//kama:validate unevalprops(ref(\"D0\"), never)\n",
+				"//kama:validate ref(\"D1\") and (props(field(\"p0\")) and ref(\"D1\"))\n",
 				"//kama:validate props(field(\"z\"))\n",
 			},
 		},
@@ -168,8 +168,8 @@ func TestGenerateDirectives(t *testing.T) {
 			`{"type":"object","properties":{"next":{"$ref":"#"},"v":{"type":"integer"}},
 			"unevaluatedProperties":false}`,
 			[]string{
-				`//kama:validate json(unevalprops(and(kind="object", ` +
-					`props(field("next"), field("v"))), or()))`,
+				`//kama:validate json(unevalprops(kind("object") and ` +
+					`props(field("next"), field("v")), never))`,
 			},
 		},
 		{
@@ -179,9 +179,9 @@ func TestGenerateDirectives(t *testing.T) {
 				"b":{"type":"object","minProperties":2,"properties":{"n":{"$ref":"#"}}}
 			}}`,
 			[]string{
-				"//kama:generated kama:jsonschema\n//kama:validate props(field(\"a\", cmp=\">=0\"))\n" +
+				"//kama:generated kama:jsonschema\n//kama:validate props(field(\"a\", cmp(ge=0)))\n" +
 					"type rootAProbe jsontext.Value\n",
-				"//kama:generated kama:jsonschema\n//kama:validate members=\">=2\"\n" +
+				"//kama:generated kama:jsonschema\n//kama:validate members(ge=2)\n" +
 					"type rootBProbe jsontext.Value\n",
 				"if err := rootAProbe(raw).Validate(false); err != nil {",
 			},

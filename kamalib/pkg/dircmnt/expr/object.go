@@ -5,6 +5,7 @@ import (
 	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"strings"
 )
@@ -116,6 +117,88 @@ func Json(n Node) (jsontext.Value, error) {
 	}
 
 	return jsontext.Value(strings.TrimSuffix(b.String(), "\n")), nil
+}
+
+// FromJson returns the literal of the JSON value v, the inverse of [Json].
+// A number keeps its text, and an object keeps the order of its members. A
+// number that a Starlark literal cannot spell, such as 1e400, which the
+// float64 type cannot hold, is an error wrapping [ErrArgs].
+func FromJson(v jsontext.Value) (Node, error) {
+	dec := jsontext.NewDecoder(strings.NewReader(string(v)))
+
+	n, err := readJson(dec)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := dec.ReadToken(); err != io.EOF {
+		return nil, fmt.Errorf("%w: %s holds more than one JSON value", ErrArgs, v)
+	}
+
+	return n, nil
+}
+
+func readJson(dec *jsontext.Decoder) (Node, error) {
+	tok, err := dec.ReadToken()
+	if err != nil {
+		return nil, wrapArgs(err)
+	}
+
+	switch tok.Kind() {
+	case 'n':
+		return Null{}, nil
+	case 't', 'f':
+		return Bool{Value: tok.Bool()}, nil
+	case '"':
+		return String{Value: tok.String()}, nil
+	case '0':
+		text := tok.String()
+		if args, err := Parse(text); err != nil || len(args) != 1 {
+			return nil, fmt.Errorf("%w: number %s has no Starlark literal", ErrArgs, text)
+		}
+
+		return Number{Text: text}, nil
+	case '[':
+		var l List
+
+		for dec.PeekKind() != ']' {
+			e, err := readJson(dec)
+			if err != nil {
+				return nil, err
+			}
+
+			l.Elems = append(l.Elems, e)
+		}
+
+		_, err := dec.ReadToken()
+
+		return l, wrapArgs(err)
+	case '{':
+		var d Dict
+
+		for dec.PeekKind() != '}' {
+			k, err := dec.ReadToken()
+			if err != nil {
+				return nil, wrapArgs(err)
+			}
+
+			// The token is voided by the next read.
+			key := String{Value: k.String()}
+
+			e, err := readJson(dec)
+			if err != nil {
+				return nil, err
+			}
+
+			d.Entries = append(d.Entries, Entry{Key: key, Value: e})
+		}
+
+		_, err := dec.ReadToken()
+
+		return d, wrapArgs(err)
+	}
+
+	return nil, fmt.Errorf("%w: unexpected JSON token %s", ErrArgs, tok)
 }
 
 func isRule(n Node) bool {

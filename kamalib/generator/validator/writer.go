@@ -450,22 +450,25 @@ func (w *writer) typeValidator(u types.Type, vo ValidatorOptions) (genStep, erro
 	return s, nil
 }
 
-// parse returns the rule of the validator vo, which parses the validators
-// its arg names through the registry, as a combinator does. place names
-// what vo applies to in errors, as in field Name. An error of the args
-// alone would repeat for the value a pointer or an option holds, so apply
-// never sees it.
+// parse returns the rule of the item vo, which resolves the rules it
+// holds through the registry, as a combinator does. place names what vo
+// applies to in errors, as in field Name. An error of the args alone would
+// repeat for the value a pointer or an option holds, so apply never sees
+// it.
 func (w *writer) parse(vo ValidatorOptions, place string) (ext.Rule, error) {
-	val, ok := w.sel.opts.Registry.Lookup(vo.Name)
-	if !ok {
-		return nil, fmt.Errorf(
-			"%w: %s: unknown validator %s on %s; known: %s",
-			ErrDirective, vo.src.origin(), vo.src.spelling(), place,
-			strings.Join(w.sel.opts.Registry.Names(), ", "),
-		)
+	if vo.Item.Name != "" {
+		return nil, keywordError(w.sel.opts.Registry, vo, place)
 	}
 
-	r, err := val.Parse(vo.Args, w.sel.opts.Registry)
+	res := ext.WithWarn(w.sel.opts.Registry, func(err error) {
+		if w.sel.warn != nil {
+			w.sel.warn(fmt.Errorf(
+				"%s: %s on %s: %w", vo.src.origin(), vo.src.spelling(), place, err,
+			))
+		}
+	})
+
+	r, err := ext.Resolve(res, vo.Item.Value)
 	if errors.Is(err, ext.ErrUnknown) {
 		return nil, fmt.Errorf(
 			"%w: %s: %s on %s: %w", ErrDirective, vo.src.origin(), vo.src.spelling(), place, err,

@@ -4,38 +4,40 @@ import (
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// And is the validator //kama:validate and(<validator>, ...): every
-// operand holds. and() without operands always holds, as the JSON Schema
-// true does.
+// And gives the meaning of the operator and: every operand holds, as in
+// a and b. always, the validator without operands, always holds, as the
+// JSON Schema true does.
 //
 // It applies to a type every operand applies to. It returns the errors of
 // the failing operands joined, or with stopOnFirstError the first of them.
-type And struct{}
-
-// Name returns "and".
-func (And) Name() string { return "and" }
-
-// AndOptions are the options of //kama:validate and(<validator>, ...).
-type AndOptions struct {
-	// Operands are the validators of the args, in order.
-	Operands []Operand
-}
-
-// Parse decodes arg into operands through r.
-func (And) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	ops, err := ParseOperands(arg, r)
-	if err != nil {
-		return nil, err
-	}
-
+func And(n expr.Node, r ext.Resolver) (ext.Rule, error) {
 	return combine(
 		r,
-		ops,
+		n.(expr.And).Operands,
 		operandErrors,
 		func(ops []Operand) ext.Rule { return AndOptions{Operands: ops} },
 	)
+}
+
+// AndOptions are the operands of a and b.
+type AndOptions struct {
+	// Operands are the operands, in order.
+	Operands []Operand
+}
+
+// Always is the validator //kama:validate always, which always holds. It
+// applies to every type and emits no check.
+type Always struct{}
+
+// Name returns "always".
+func (Always) Name() string { return "always" }
+
+// Parse takes no args.
+func (Always) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	return AndOptions{}, noArgs(r, c)
 }
 
 // Check accepts a type every operand accepts.

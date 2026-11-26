@@ -179,9 +179,9 @@ steps:
 const procSrc = `package a
 
 //kama:validate
-//kama:validate hook=off
+//kama:validate hook=False
 type A struct {
-	//kama:validate length=">=1"
+	//kama:validate length(ge=1)
 	Name string ` + "`json:\"name\"`" + `
 }
 `
@@ -237,9 +237,9 @@ func TestProcRunWithRegistry(t *testing.T) {
 	reg.Register(lengthOne{})
 
 	root := procProject(t, map[string]string{
-		"a/a.go": "package a\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
+		"a/a.go": "package a\n\n//kama:validate\n//kama:validate hook=False\ntype A struct {\n" +
 			"\t//kama:validate positive\n\tN int\n" +
-			"\t//kama:validate length=\">=1\"\n\tS string\n}\n",
+			"\t//kama:validate length(ge=1)\n\tS string\n}\n",
 	})
 
 	assert.NilError(t, runProcSpecWith(t, procs, root, `{}`))

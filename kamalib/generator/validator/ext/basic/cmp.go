@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
@@ -41,12 +42,15 @@ type CmpOptions struct {
 	Comparisons []Comparison
 }
 
-// Parse decodes arg into comparisons. Check tells whether their operands
-// are values of the type.
-func (Cmp) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	cs, err := parseComparisons(arg)
+// Parse decodes the args of c into comparisons.
+func (Cmp) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	cs, _, err := parseComparisons(r, c, true)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(cs) == 0 {
+		return nil, noComparison(c)
 	}
 
 	return CmpOptions{Comparisons: cs}, nil
@@ -234,21 +238,33 @@ func beyondFloat(t types.Type, c Comparison, r *big.Rat, err error) (Comparison,
 // optional sign, exactly.
 func exactNumber(lit string) (*big.Rat, bool) {
 	x, err := parser.ParseExpr(lit)
-	if err != nil || !isLiteral(x) {
+	if err != nil {
 		return nil, false
 	}
 
-	info := &types.Info{Types: map[ast.Expr]types.TypeAndValue{}}
-	if types.CheckExpr(token.NewFileSet(), nil, token.NoPos, x, info) != nil {
+	neg := false
+	if u, ok := x.(*ast.UnaryExpr); ok && (u.Op == token.SUB || u.Op == token.ADD) {
+		neg, x = u.Op == token.SUB, u.X
+	}
+
+	// go/types holds no integer constant above 512 bits, so the literal is
+	// read with go/constant, which holds any.
+	b, ok := x.(*ast.BasicLit)
+	if !ok || b.Kind != token.INT && b.Kind != token.FLOAT {
 		return nil, false
 	}
 
-	v := info.Types[x].Value
-	if v == nil || (v.Kind() != constant.Int && v.Kind() != constant.Float) {
+	v := constant.MakeFromLiteral(b.Value, b.Kind, 0)
+	if v.Kind() == constant.Unknown {
 		return nil, false
 	}
 
-	return new(big.Rat).SetString(v.ExactString())
+	r, ok := new(big.Rat).SetString(v.ExactString())
+	if ok && neg {
+		r.Neg(r)
+	}
+
+	return r, ok
 }
 
 // integerRange returns the least and the greatest value of the integer

@@ -2,11 +2,26 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:13Z
+// generated: 2026-11-26T06:59:11Z
 
 package nullraw
 
 import "github.com/ngicks/kama/kamaruntime/validator"
+
+// kamaValidateAll is a helper of the generated Validate methods.
+//
+//kama:generated kama:validate
+func kamaValidateAll(stopOnFirstError bool, errs ...error) error {
+	if !stopOnFirstError {
+		return validator.Join(errs...)
+	}
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // kamaValidateIf is a helper of the generated Validate methods.
 //

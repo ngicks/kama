@@ -8,21 +8,17 @@ packages:
       Order:
         hook: false
         validators:
-          - name: members
-            args: ">=4"
+          - members(ge=4)
         fields:
           Id:
             validators:
-              - name: required
-              - name: regexp
-                args: '^[A-Z]{3}-[0-9]+$'
+              - required
+              - regexp("^[A-Z]{3}-[0-9]+$")
           Lines:
             validators:
-              - name: length
-                args: ">=1 <=5"
+              - length(ge=1, le=5)
           Currency:
             validators:
-              - name: const
-                args: '"eur" "usd"'
+              - const("eur", "usd")
           Note:
             hook: true

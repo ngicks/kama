@@ -14,6 +14,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
@@ -190,8 +191,8 @@ func docComment(text string) genExpr {
 // validatedDoc returns the doc comment of a type the validator generator
 // gives a Validate: docComment, an empty comment line and the
 // //kama:validate directive of the args. The args name the validators of the value of the
-// type, and hook=off for a struct, whose hooks nothing writes.
-func validatedDoc(text string, args []string) genExpr {
+// type, and hook=False for a struct, whose hooks nothing writes.
+func validatedDoc(text string, args []expr.Arg) genExpr {
 	return lang.Comment(
 		lang.Expr("%s", commentLines(text)),
 		lang.Expr(""),
@@ -213,29 +214,33 @@ func checkedReturn(opts Options, err, v genExpr) genStep {
 // decodedArgs returns args followed by decoded when the decoders validate.
 // decoded tells the validator generator that a decoded value of the type
 // is valid, so ValidateShallow of a type holding one skips it.
-func decodedArgs(opts Options, args []string) []string {
+func decodedArgs(opts Options, args []expr.Arg) []expr.Arg {
 	if !opts.Validate {
 		return args
 	}
 
-	return append(slices.Clone(args), "decoded")
+	return append(slices.Clone(args), call(decodedWord))
 }
+
+// decodedWord is the item of //kama:validate marking a type whose decoders
+// validate it.
+const decodedWord = "decoded"
 
 // validateDirective is the directive of the validator generator.
 const validateDirective = "//kama:validate"
 
-// directiveLines returns the //kama:validate lines of args, one arg per
+// directiveLines returns the //kama:validate lines of args, one item per
 // line so that a long combinator reads on a line of its own. The validator
-// generator joins the lines of one type or field. No args give one line
-// without args.
-func directiveLines(args []string) string {
+// generator parses each line on its own and joins their items. No args
+// give one line without args.
+func directiveLines(args []expr.Arg) string {
 	if len(args) == 0 {
 		return validateDirective
 	}
 
 	return strings.Join(
 		opiter.WrapSeq(slices.Values(args)).
-			Map(func(a string) string { return validateDirective + " " + a }).
+			Map(func(a expr.Arg) string { return validateDirective + " " + a.String() }).
 			CollectSlice(),
 		"\n",
 	)

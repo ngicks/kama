@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:04Z
+// generated: 2026-11-26T06:59:07Z
 
 package nullableenum
 
@@ -20,13 +20,13 @@ import (
 // Levels is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Levels struct {
 	Ref   und.Und[Level]       `json:"ref,omitzero"`
 	Const und.Und[LevelsConst] `json:"const,omitzero"`
 	Big   und.Und[LevelsBig]   `json:"big,omitzero"`
-	//kama:validate const="1.5 18446744073709551616"
+	//kama:validate const(1.5, 18446744073709551616)
 	Number               opt.Option[float64]       `json:"number,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
@@ -68,7 +68,7 @@ func (v *Levels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // LevelsConst is generated from the schema at #/properties/const/oneOf/0.
 //
 //kama:generated kama:jsonschema
-//kama:validate const=`"x"`
+//kama:validate const("x")
 //kama:validate decoded
 type LevelsConst string
 
@@ -96,7 +96,7 @@ func (v *LevelsConst) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // LevelsBig is generated from the schema at #/properties/big/oneOf/0.
 //
 //kama:generated kama:jsonschema
-//kama:validate const="18446744073709551616"
+//kama:validate const(18446744073709551616)
 //kama:validate decoded
 type LevelsBig float64
 
@@ -124,7 +124,7 @@ func (v *LevelsBig) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Level is generated from the schema at #/$defs/Level.
 //
 //kama:generated kama:jsonschema
-//kama:validate const="1 2 3"
+//kama:validate const(1, 2, 3)
 //kama:validate decoded
 type Level int64
 

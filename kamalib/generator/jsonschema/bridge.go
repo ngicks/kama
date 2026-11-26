@@ -5,6 +5,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
 
@@ -23,7 +24,7 @@ import (
 // would test again what the fields hold, and decode again a nested value
 // whose decoding validated it, which costs a recursive value as much as
 // two to the power of its depth.
-func jsonArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, error) {
+func jsonArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]expr.Arg, error) {
 	s, err := at(doc, ptr)
 	if err != nil || s.Bool.IsSome() || raw(doc, ptr) {
 		return nil, err
@@ -39,7 +40,7 @@ func jsonArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]string, error
 		return nil, err
 	}
 
-	return oneCall("json", args...)
+	return []expr.Arg{call("json", args...)}, nil
 }
 
 // bridged reports whether the Go type of the schema s at ptr, which is no

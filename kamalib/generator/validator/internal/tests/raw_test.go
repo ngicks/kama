@@ -76,7 +76,7 @@ func TestRawFields(t *testing.T) {
 	b.Fixed = jsontext.Value(`1.0`)
 	assert.NilError(t, b.Validate(false))
 
-	// cmp holds on a string, so not(cmp=">=5") fails on it, as not with
+	// cmp holds on a string, so not cmp(ge=5) fails on it, as not with
 	// minimum does in JSON Schema.
 	b = validRawBag()
 	b.Below = model.Loose(`"ab"`)

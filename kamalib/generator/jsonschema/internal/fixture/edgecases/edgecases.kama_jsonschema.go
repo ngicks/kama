@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:38:52Z
+// generated: 2026-11-26T07:02:40Z
 
 package edgecases
 
@@ -20,51 +20,51 @@ import (
 // Root is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Root struct {
 	ValidateField        opt.Option[string] `json:"validate,omitzero"`
 	AdditionalProperties opt.Option[int64]  `json:"additionalProperties,omitzero"`
 	Ce                   opt.Option[CE]     `json:"ce,omitzero"`
-	//kama:validate json(unique, prefix(kind="number"))
+	//kama:validate json(unique, prefix(kind("number")))
 	PrefixUnique opt.Option[[]jsontext.Value] `json:"prefixUnique,omitzero"`
 	//kama:validate json(unique)
 	ObjectUnique opt.Option[[]O] `json:"objectUnique,omitzero"`
 	//kama:validate unique
 	NumberUnique opt.Option[[]float64] `json:"numberUnique,omitzero"`
-	//kama:validate not(props(field("", unique)))
+	//kama:validate not props(field("", unique))
 	EmptyName opt.Option[jsontext.Value] `json:"emptyName,omitzero"`
-	//kama:validate required=`""`
-	//kama:validate if(required=`""`, required=`"a"`)
+	//kama:validate required("")
+	//kama:validate required("a") if required("") else always
 	RequiresEmpty opt.Option[jsontext.Value] `json:"requiresEmpty,omitzero"`
-	//kama:validate cmp="<=1e400"
+	//kama:validate cmp(le=10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
 	MaxHuge opt.Option[float64] `json:"maxHuge,omitzero"`
-	//kama:validate cmp=">=1e400"
+	//kama:validate cmp(ge=10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
 	MinHuge opt.Option[int64] `json:"minHuge,omitzero"`
-	//kama:validate cmp=">-1e400"
+	//kama:validate cmp(gt=-10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
 	ExclusiveHuge opt.Option[float64] `json:"exclusiveHuge,omitzero"`
-	//kama:validate multipleof="1e30"
+	//kama:validate multipleof(1e30)
 	MultipleHuge opt.Option[int64] `json:"multipleHuge,omitzero"`
-	//kama:validate multipleof="1e100000"
+	//kama:validate multipleof(10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)
 	MultipleHugeNumber opt.Option[float64] `json:"multipleHugeNumber,omitzero"`
-	//kama:validate multipleof="1e-400"
+	//kama:validate multipleof(1e-400)
 	MultipleTiny opt.Option[float64] `json:"multipleTiny,omitzero"`
-	//kama:validate runes="<=9223372036854775808"
+	//kama:validate runes(le=9223372036854775808)
 	LengthHuge opt.Option[string] `json:"lengthHuge,omitzero"`
-	//kama:validate runes=">=9223372036854775808"
+	//kama:validate runes(ge=9223372036854775808)
 	LengthHugeMin opt.Option[string]            `json:"lengthHugeMin,omitzero"`
 	MembersStruct opt.Option[RootMembersStruct] `json:"membersStruct,omitzero"`
-	//kama:validate runes="<=9223372036854775808"
+	//kama:validate runes(le=9223372036854775808)
 	RawMaxLength opt.Option[jsontext.Value] `json:"rawMaxLength,omitzero"`
-	//kama:validate contains(>=1, <=9223372036854775808, kind="integer")
+	//kama:validate contains(kind("integer"), ge=1, le=9223372036854775808)
 	RawContains opt.Option[jsontext.Value] `json:"rawContains,omitzero"`
-	//kama:validate contains(>=9223372036854775808, kind="integer")
+	//kama:validate contains(kind("integer"), ge=9223372036854775808)
 	RawMinContains opt.Option[jsontext.Value] `json:"rawMinContains,omitzero"`
-	//kama:validate length="<=9223372036854775808"
+	//kama:validate length(le=9223372036854775808)
 	MembersHuge opt.Option[map[string]int64] `json:"membersHuge,omitzero"`
-	//kama:validate const="18446744073709551617"
+	//kama:validate const(18446744073709551617)
 	TypedBig opt.Option[float64] `json:"typedBig,omitzero"`
-	//kama:validate const="18446744073709551617 `\"x\"`"
+	//kama:validate const(18446744073709551617, "x")
 	RawBig                 opt.Option[jsontext.Value] `json:"rawBig,omitzero"`
 	AdditionalProperties_2 map[string]jsontext.Value  `json:",embed"`
 }
@@ -145,8 +145,8 @@ func (v *Root) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/membersStruct.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate members="<=9223372036854775808"
+//kama:validate hook=False
+//kama:validate members(le=9223372036854775808)
 //kama:validate decoded
 type RootMembersStruct struct {
 	A                    opt.Option[jsontext.Value] `json:"a,omitzero"`
@@ -185,7 +185,7 @@ func (v *RootMembersStruct) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // CE is generated from the schema at #/$defs/CE.
 //
 //kama:generated kama:jsonschema
-//kama:validate and(const="`{\"a\":1}`", const="`{\"a\":2}`")
+//kama:validate const({"a": 1}) and const({"a": 2})
 //kama:validate decoded
 type CE jsontext.Value
 
@@ -221,7 +221,7 @@ func (v CE) RawJson() jsontext.Value {
 // O is generated from the schema at #/$defs/O.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type O struct {
 	X                    opt.Option[float64]       `json:"x,omitzero"`

@@ -1,46 +1,31 @@
 package basic
 
 import (
-	"fmt"
 	"go/types"
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Not is the validator //kama:validate not(<validator>): the one operand
-// fails, as JSON Schema not tests.
+// Not gives the meaning of the operator not: the one operand fails, as
+// JSON Schema not tests.
 //
 // It applies to a type its operand applies to. Its error wraps
 // validator.ErrNot and spells the operand.
-type Not struct{}
-
-// Name returns "not".
-func (Not) Name() string { return "not" }
-
-// NotOptions are the options of //kama:validate not(<validator>).
-type NotOptions struct {
-	// Operand is the validator of the arg.
-	Operand Operand
-}
-
-// Parse decodes arg into one operand through r.
-func (Not) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	ops, err := ParseOperands(arg, r)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(ops) != 1 {
-		return nil, argsError(fmt.Errorf("want one operand, got %d", len(ops)))
-	}
-
+func Not(n expr.Node, r ext.Resolver) (ext.Rule, error) {
 	return combine(
 		r,
-		ops,
+		[]expr.Node{n.(expr.Not).Operand},
 		ownErrors,
 		func(ops []Operand) ext.Rule { return NotOptions{Operand: ops[0]} },
 	)
+}
+
+// NotOptions are the operand of not a.
+type NotOptions struct {
+	// Operand is the operand.
+	Operand Operand
 }
 
 // Check accepts a type the operand accepts.

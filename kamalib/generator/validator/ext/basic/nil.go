@@ -5,6 +5,7 @@ import (
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Nil is the validator //kama:validate nil: the value is nil.
@@ -19,9 +20,9 @@ func (Nil) Name() string { return "nil" }
 // NilOptions are the options of //kama:validate nil. Nil takes no arg.
 type NilOptions struct{}
 
-// Parse accepts only the empty arg.
-func (Nil) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	return NilOptions{}, noArg(arg)
+// Parse takes no args.
+func (Nil) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	return NilOptions{}, noArgs(r, c)
 }
 
 // Check accepts nillable types.

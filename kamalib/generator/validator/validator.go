@@ -8,12 +8,15 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
+	"github.com/ngicks/kama/kamalib/workflow"
 
 	// The built-in validators and the type support of
 	// github.com/ngicks/option register themselves into the default
@@ -110,6 +113,8 @@ func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, 
 			return
 		}
 
+		sel.warn = onceWarn(env.Reporter)
+
 		byPkg := map[string][]string{}
 		pkgOf := map[string]*packages.Package{}
 
@@ -155,6 +160,30 @@ func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, 
 	}
 }
 
+// onceWarn returns the function reporting a warning to r once. A rule is
+// parsed once for each method generated for its type, which would repeat
+// its warnings.
+func onceWarn(r workflow.Reporter) func(w error) {
+	if r == nil {
+		return nil
+	}
+
+	var (
+		mu   sync.Mutex
+		seen = map[string]bool{}
+	)
+
+	return func(w error) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		if !seen[w.Error()] {
+			seen[w.Error()] = true
+			r.Warn(w)
+		}
+	}
+}
+
 // reservedNames reports the validators of reg named by a word of
 // //kama:validate that names no validator.
 func reservedNames(reg *ext.Registry) error {
@@ -169,13 +198,26 @@ func reservedNames(reg *ext.Registry) error {
 		}).
 		CollectSlice()
 
-	if len(reserved) == 0 {
-		return nil
+	unnamed := opiter.WrapSeq(slices.Values(reg.Names())).
+		Filter(func(name string) bool { return !expr.IsName(name) }).
+		CollectSlice()
+
+	var errs []error
+
+	if len(reserved) > 0 {
+		errs = append(errs, fmt.Errorf(
+			"%w: validators registered as %s; hook, pre, post, ignore, decoded, file and"+
+				" package name no validator",
+			ErrConflict, strings.Join(reserved, ", "),
+		))
 	}
 
-	return fmt.Errorf(
-		"%w: validators registered as %s; hook, pre, post, ignore, decoded, file and"+
-			" package name no validator",
-		ErrConflict, strings.Join(reserved, ", "),
-	)
+	if len(unnamed) > 0 {
+		errs = append(errs, fmt.Errorf(
+			"%w: validators registered as %s, which a directive cannot spell as a name",
+			ErrConflict, strings.Join(unnamed, ", "),
+		))
+	}
+
+	return errors.Join(errs...)
 }

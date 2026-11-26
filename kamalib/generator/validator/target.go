@@ -34,6 +34,9 @@ type selection struct {
 	loadedOptions *LoadedOptions
 	// pkgs are the loaded packages the run generates into.
 	pkgs []*packages.Package
+	// warn reports a warning of a directive. It is nil when the run takes
+	// no warnings.
+	warn func(w error)
 }
 
 func selectTargets(
@@ -423,7 +426,7 @@ func (s *selection) hookConflicts(n *typegraph.Node) []error {
 
 		errs = append(errs, fmt.Errorf(
 			"%w: %s: fields %s and %s of %s share the hook %s;"+
-				" rename one or turn its hook off with //kama:validate hook=off",
+				" rename one or turn its hook off with //kama:validate hook=False",
 			ErrConflict, n.Detail.Pkg.Fset.Position(v.Pos()), prev.Name(), v.Name(), n.Id, name,
 		))
 	}

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Members is the validator //kama:validate members="<op><n> ...": the
@@ -44,10 +45,9 @@ type MembersOptions struct {
 	reg ext.Resolver
 }
 
-// Parse decodes arg into comparisons with non-negative integers, as Length
-// does.
-func (Members) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	cs, err := parseLengths(arg)
+// Parse decodes the args of c into comparisons with non-negative integers.
+func (Members) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	cs, err := parseLengths(r, c)
 	if err != nil {
 		return nil, err
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Kind is the validator //kama:validate kind="<kind> ...": the value is of
@@ -33,30 +34,29 @@ type KindOptions struct {
 // jsonKinds are the kinds Kind takes.
 var jsonKinds = []string{"null", "boolean", "object", "array", "number", "string", "integer"}
 
-// Parse decodes arg into one or more kinds separated by spaces.
-func (Kind) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	args, err := argTokens(arg)
-	if err != nil {
+// Parse decodes the args of c, one or more JSON kinds.
+func (Kind) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	var args struct {
+		Kinds []string `json:"kinds"`
+	}
+
+	if _, err := (ext.Params{Variadic: "kinds"}).Bind(r, c, &args); err != nil {
 		return nil, err
 	}
 
-	if len(args) == 0 {
-		return nil, argsError(errors.New("want one or more JSON kinds, as in kind=\"string null\""))
+	if len(args.Kinds) == 0 {
+		return nil, argsError(errors.New(
+			`want one or more JSON kinds, as in kind("string", "null")`,
+		))
 	}
 
-	kinds := make([]string, 0, len(args))
-
-	for _, kv := range args {
-		if kv.HasValue || !slices.Contains(jsonKinds, kv.Key) {
-			return nil, argsError(
-				fmt.Errorf("arg %q is no JSON kind; want one of %v", kv.String(), jsonKinds),
-			)
+	for _, k := range args.Kinds {
+		if !slices.Contains(jsonKinds, k) {
+			return nil, argsError(fmt.Errorf("%q is no JSON kind; want one of %v", k, jsonKinds))
 		}
-
-		kinds = append(kinds, kv.Key)
 	}
 
-	return KindOptions{Kinds: kinds}, nil
+	return KindOptions{Kinds: args.Kinds}, nil
 }
 
 // Check accepts raw JSON text.

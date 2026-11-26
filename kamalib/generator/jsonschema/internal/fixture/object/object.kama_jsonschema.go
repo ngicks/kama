@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:11Z
+// generated: 2026-11-26T06:59:12Z
 
 package object
 
@@ -21,7 +21,7 @@ import (
 // Object exercises every field shape of an object.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Object struct {
 	// ReqName is required and not null.
@@ -105,7 +105,7 @@ func (v *Object) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // ObjectColor is generated from the schema at #/properties/color.
 //
 //kama:generated kama:jsonschema
-//kama:validate const=`"red" "green" "dark-blue"`
+//kama:validate const("red", "green", "dark-blue")
 //kama:validate decoded
 type ObjectColor string
 
@@ -136,7 +136,7 @@ func (v *ObjectColor) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // ObjectInline is generated from the schema at #/properties/inline.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ObjectInline struct {
 	X                    float64                   `json:"x"`
@@ -174,7 +174,7 @@ func (v *ObjectInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // ObjectClosed is generated from the schema at #/properties/closed.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate closed
 //kama:validate decoded
 type ObjectClosed struct {
@@ -213,7 +213,7 @@ func (v *ObjectClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // ObjectOpen is generated from the schema at #/properties/open.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ObjectOpen struct {
 	Id                   opt.Option[int64] `json:"id,omitzero"`
@@ -251,7 +251,7 @@ func (v *ObjectOpen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Point is generated from the schema at #/$defs/Point.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Point struct {
 	X                    int64                     `json:"x"`

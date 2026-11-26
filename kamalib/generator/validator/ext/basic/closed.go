@@ -6,6 +6,7 @@ import (
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Closed is the validator //kama:validate closed: a value of a struct holds
@@ -26,13 +27,9 @@ func (Closed) Name() string { return "closed" }
 // ClosedOptions are the options of //kama:validate closed. It has none.
 type ClosedOptions struct{}
 
-// Parse accepts the empty arg only.
-func (Closed) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	if arg != "" {
-		return nil, fmt.Errorf("%w: closed takes no arg, got %q", ext.ErrArgs, arg)
-	}
-
-	return ClosedOptions{}, nil
+// Parse takes no args.
+func (Closed) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	return ClosedOptions{}, noArgs(r, c)
 }
 
 // Check rejects every type: closed reads the fallback field of a struct,

@@ -15,7 +15,7 @@
     "minHuge": {"type": "integer", "minimum": 1e400},
     "exclusiveHuge": {"type": "number", "exclusiveMinimum": -1e400},
     "multipleHuge": {"type": "integer", "multipleOf": 1e30},
-    "multipleHugeNumber": {"type": "number", "multipleOf": 1e100000},
+    "multipleHugeNumber": {"type": "number", "multipleOf": 1e400},
     "multipleTiny": {"type": "number", "multipleOf": 1e-400},
     "lengthHuge": {"type": "string", "maxLength": 18446744073709551616},
     "lengthHugeMin": {"type": "string", "minLength": 1e100000},

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:37Z
+// generated: 2026-11-26T06:59:36Z
 
 package validation
 
@@ -23,26 +23,26 @@ import (
 // Order exercises the validation keywords the validators check.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate members=">=2 <=11"
+//kama:validate hook=False
+//kama:validate members(ge=2, le=11)
 //kama:validate decoded
 type Order struct {
-	//kama:validate runes=">=3 <=8"
-	//kama:validate regexp="^[A-Z]+[0-9]*$"
+	//kama:validate runes(ge=3, le=8)
+	//kama:validate regexp("^[A-Z]+[0-9]*$")
 	Id string `json:"id"`
-	//kama:validate cmp=">=1.5 <100"
-	//kama:validate multipleof="2"
+	//kama:validate cmp(ge=1.5, lt=100)
+	//kama:validate multipleof(2)
 	Count opt.Option[int64] `json:"count,omitzero"`
-	//kama:validate cmp=">0 <=1.0"
+	//kama:validate cmp(gt=0, le=1.0)
 	Ratio opt.Option[float64] `json:"ratio,omitzero"`
-	//kama:validate length=">=1 <=3"
+	//kama:validate length(ge=1, le=3)
 	//kama:validate unique
 	Items []Sku `json:"items"`
-	//kama:validate length="<=2"
+	//kama:validate length(le=2)
 	Labels opt.Option[map[string]OrderLabelsValue] `json:"labels,omitzero"`
-	//kama:validate const="1 2 3"
+	//kama:validate const(1, 2, 3)
 	Level opt.Option[int64] `json:"level,omitzero"`
-	//kama:validate requires=`"discount"`
+	//kama:validate requires("discount")
 	Coupon               opt.Option[string]        `json:"coupon,omitzero"`
 	Discount             opt.Option[float64]       `json:"discount,omitzero"`
 	Closed               opt.Option[OrderClosed]   `json:"closed,omitzero"`
@@ -103,7 +103,7 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/labels/additionalProperties.
 //
 //kama:generated kama:jsonschema
-//kama:validate runes=">=1"
+//kama:validate runes(ge=1)
 //kama:validate decoded
 type OrderLabelsValue string
 
@@ -131,7 +131,7 @@ func (v *OrderLabelsValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // OrderClosed is generated from the schema at #/properties/closed.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate closed
 //kama:validate decoded
 type OrderClosed struct {
@@ -170,7 +170,7 @@ func (v *OrderClosed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // OrderTyped is generated from the schema at #/properties/typed.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type OrderTyped struct {
 	N                    opt.Option[int64]          `json:"n,omitzero"`
@@ -209,7 +209,7 @@ func (v *OrderTyped) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/typed/additionalProperties.
 //
 //kama:generated kama:jsonschema
-//kama:validate cmp=">=0"
+//kama:validate cmp(ge=0)
 //kama:validate decoded
 type OrderTypedValue int64
 
@@ -253,7 +253,7 @@ type OrderPickKind interface {
 // OrderPickOption1 holds the Option1 member of OrderPick.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type OrderPickOption1 struct {
 	Option1 OrderPickOption1Value
@@ -275,7 +275,7 @@ func (v OrderPickOption1) MarshalJSONTo(enc *jsontext.Encoder) error {
 // OrderPickOption2 holds the Option2 member of OrderPick.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type OrderPickOption2 struct {
 	Option2 OrderPickOption2Value
@@ -418,7 +418,7 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/pick/oneOf/0.
 //
 //kama:generated kama:jsonschema
-//kama:validate runes="<=2"
+//kama:validate runes(le=2)
 //kama:validate decoded
 type OrderPickOption1Value string
 
@@ -447,7 +447,7 @@ func (v *OrderPickOption1Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/pick/oneOf/1.
 //
 //kama:generated kama:jsonschema
-//kama:validate runes=">=4"
+//kama:validate runes(ge=4)
 //kama:validate decoded
 type OrderPickOption2Value string
 
@@ -475,7 +475,7 @@ func (v *OrderPickOption2Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Sku is generated from the schema at #/$defs/Sku.
 //
 //kama:generated kama:jsonschema
-//kama:validate regexp="^[a-z]+$"
+//kama:validate regexp("^[a-z]+$")
 //kama:validate decoded
 type Sku string
 

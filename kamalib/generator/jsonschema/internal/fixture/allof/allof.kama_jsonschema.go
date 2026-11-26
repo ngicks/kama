@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:38:41Z
+// generated: 2026-11-26T06:58:46Z
 
 package allof
 
@@ -20,7 +20,7 @@ import (
 // generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Employee struct {
 	Person               Person                    `json:"-"`
@@ -82,7 +82,7 @@ func (v *Employee) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Person is generated from the schema at #/$defs/Person.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Person struct {
 	Name                 string                    `json:"name"`
@@ -123,7 +123,7 @@ func (v *Person) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Contract is generated from the schema at #/$defs/Contract.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Contract struct {
 	Salary               float64                   `json:"salary"`

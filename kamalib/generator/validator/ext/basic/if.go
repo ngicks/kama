@@ -1,54 +1,60 @@
 package basic
 
 import (
-	"fmt"
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// If is the validator //kama:validate if(<cond>, <then>[, <else>]): when
-// the operand cond holds, the operand then must hold, otherwise the operand
-// else must, as JSON Schema if, then and else test. Without else a value
-// failing cond passes. The error of cond never surfaces; it only tells
-// whether cond holds. Write and() for a branch that always holds and or()
-// for one that never does.
+// If gives the meaning of the conditional then if cond else otherwise:
+// when the operand cond holds, the operand then must hold, otherwise the
+// operand otherwise must, as JSON Schema if, then and else test. The
+// error of cond never surfaces; it only tells whether cond holds. Write
+// always for a branch that always holds and never for one that never
+// does. A value failing cond passes when otherwise is always.
 //
 // It applies to a type every operand applies to. It returns the error of
 // the branch taken.
-type If struct{}
+func If(n expr.Node, r ext.Resolver) (ext.Rule, error) {
+	c := n.(expr.Cond)
 
-// Name returns "if".
-func (If) Name() string { return "if" }
+	return combine(
+		r,
+		[]expr.Node{c.If, c.Then, c.Else},
+		operandErrors,
+		func(ops []Operand) ext.Rule {
+			o := IfOptions{Cond: ops[0], Then: ops[1]}
+			if !isAlways(ops[2].Rule) {
+				o.Else = &ops[2]
+			}
 
-// IfOptions are the options of //kama:validate if(<cond>, <then>[, <else>]).
+			return o
+		},
+	)
+}
+
+// IfOptions are the operands of then if cond else otherwise.
 type IfOptions struct {
 	Cond, Then Operand
-	// Else is nil when the args give no else.
+	// Else is nil when otherwise is always, which a value failing cond
+	// passes without a check.
 	Else *Operand
 }
 
-// Parse decodes arg into two or three operands through r.
-func (If) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	ops, err := ParseOperands(arg, r)
-	if err != nil {
-		return nil, err
+// isAlways reports whether r is the rule of always, which a combinator
+// bound to the siblings of a field may have wrapped.
+func isAlways(r ext.Rule) bool {
+	switch x := r.(type) {
+	case atField:
+		return isAlways(x.rule)
+	case onHeld:
+		return isAlways(x.rule)
+	case AndOptions:
+		return len(x.Operands) == 0
 	}
 
-	if len(ops) != 2 && len(ops) != 3 {
-		return nil, argsError(fmt.Errorf(
-			"want the operands cond, then and an optional else, got %d operands", len(ops),
-		))
-	}
-
-	return combine(r, ops, operandErrors, func(ops []Operand) ext.Rule {
-		o := IfOptions{Cond: ops[0], Then: ops[1]}
-		if len(ops) == 3 {
-			o.Else = &ops[2]
-		}
-
-		return o
-	})
+	return false
 }
 
 // Check accepts a type every operand accepts.

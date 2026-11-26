@@ -9,7 +9,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Contains is the validator //kama:validate contains([<op><n>, ...,]
@@ -35,40 +35,29 @@ type ContainsOptions struct {
 	Operands []Operand
 }
 
-// Parse decodes arg into the leading comparisons and the operands through
-// r.
-func (Contains) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	args, err := dircmnt.ParseCallArgs(arg)
+// Parse decodes the args of c into the comparisons, the keyword args, and
+// the operands, the positional args, resolved through r.
+func (Contains) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	counts, rest, err := parseComparisons(r, c, false)
 	if err != nil {
-		return nil, argsError(err)
+		return nil, err
 	}
 
-	n := 0
-	for n < len(args) && isComparisonArg(args[n]) {
-		n++
+	if counts == nil {
+		counts = []Comparison{{Op: ">=", Operand: "1"}}
 	}
 
-	counts := []Comparison{{Op: ">=", Operand: "1"}}
-
-	if n > 0 {
-		counts, err = parseLengths(dircmnt.SpellArgs(args[:n]))
-		if err != nil {
-			return nil, err
-		}
+	counts, err = lengths(counts)
+	if err != nil {
+		return nil, err
 	}
 
-	ops, err := ParseOperands(dircmnt.SpellCallArgs(args[n:]), r)
+	ops, err := ParseOperands(argValues(rest), r)
 	if err != nil {
 		return nil, err
 	}
 
 	return ContainsOptions{Counts: counts, Operands: ops}, nil
-}
-
-// isComparisonArg reports whether kv is written <op><operand>.
-func isComparisonArg(kv dircmnt.KeyValue) bool {
-	return !kv.Call && !kv.HasValue && !kv.KeyQuoted && kv.Key != "" &&
-		strings.ContainsAny(kv.Key[:1], "<>=!")
 }
 
 // Check accepts raw JSON text whose elements every operand applies to.

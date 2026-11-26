@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"encoding/json/jsontext"
 	"errors"
 	"go/types"
 	"testing"
@@ -20,11 +21,13 @@ var ignoreRegistry = cmpopts.IgnoreUnexported(
 )
 
 func TestRequiredParse(t *testing.T) {
-	o, err := Required{}.Parse("", nil)
+	reg := ext.DefaultRegistry()
+
+	o, err := resolve(t, "required", reg)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, o, ext.Rule(RequiredOptions{}), ignoreRegistry)
 
-	o, err = Required{}.Parse(`a "b c"`, nil)
+	o, err = resolve(t, `required("a", "b c")`, reg)
 	assert.NilError(t, err)
 	assert.DeepEqual(
 		t, o, ext.Rule(RequiredOptions{Names: []string{"a", "b c"}}), ignoreRegistry,
@@ -32,9 +35,12 @@ func TestRequiredParse(t *testing.T) {
 	assert.ErrorContains(t, o.Check(types.Typ[types.Int]),
 		"int is no raw JSON text, which the member names of required apply to")
 
-	_, err = Required{}.Parse("a=1", nil)
+	_, err = resolve(t, "required(1)", reg)
 	assert.ErrorIs(t, err, ext.ErrArgs)
-	assert.ErrorContains(t, err, `arg "a=1" is no member name`)
+
+	_, err = resolve(t, "required(a)", reg)
+	assert.ErrorIs(t, err, ext.ErrArgs)
+	assert.ErrorContains(t, err, `quote a name, as in required("a")`)
 }
 
 // TestRegexpVarName names the variable of a pattern after the first 5
@@ -46,148 +52,179 @@ func TestRegexpVarName(t *testing.T) {
 }
 
 func TestZeroParse(t *testing.T) {
-	o, err := Zero{}.Parse("", nil)
-	assert.NilError(t, err)
-	assert.Equal(t, o, ZeroOptions{})
+	reg := ext.DefaultRegistry()
 
-	_, err = Zero{}.Parse("yes", nil)
+	o, err := resolve(t, "zero", reg)
+	assert.NilError(t, err)
+	assert.Equal(t, o, ext.Rule(ZeroOptions{reg: reg}))
+
+	_, err = resolve(t, "zero(1)", reg)
 	assert.ErrorIs(t, err, ext.ErrArgs)
-	assert.ErrorContains(t, err, `unexpected arg "yes"; want none`)
+	assert.ErrorContains(t, err, "zero takes 0 positional args")
 }
 
 func TestNilParse(t *testing.T) {
-	o, err := Nil{}.Parse("", nil)
-	assert.NilError(t, err)
-	assert.Equal(t, o, NilOptions{})
+	reg := ext.DefaultRegistry()
 
-	_, err = Nil{}.Parse("x", nil)
+	o, err := resolve(t, "nil", reg)
+	assert.NilError(t, err)
+	assert.Equal(t, o, ext.Rule(NilOptions{}))
+
+	_, err = resolve(t, "nil(1)", reg)
 	assert.ErrorIs(t, err, ext.ErrArgs)
-	assert.ErrorContains(t, err, `unexpected arg "x"; want none`)
+	assert.ErrorContains(t, err, "nil takes 0 positional args")
 }
 
 func TestNullParse(t *testing.T) {
-	o, err := Null{}.Parse("", nil)
-	assert.NilError(t, err)
-	assert.Equal(t, o, NullOptions{})
+	reg := ext.DefaultRegistry()
 
-	_, err = Null{}.Parse("x", nil)
+	o, err := resolve(t, "null", reg)
+	assert.NilError(t, err)
+	assert.Equal(t, o, ext.Rule(NullOptions{reg: reg}))
+
+	_, err = resolve(t, "null(1)", reg)
 	assert.ErrorIs(t, err, ext.ErrArgs)
-	assert.ErrorContains(t, err, `unexpected arg "x"; want none`)
+	assert.ErrorContains(t, err, "null takes 0 positional args")
 }
 
 func TestRegexpParse(t *testing.T) {
-	o, err := Regexp{}.Parse(`^a="b c"$`, nil)
-	assert.NilError(t, err)
-	assert.Equal(t, o, RegexpOptions{Pattern: `^a="b c"$`})
+	reg := ext.DefaultRegistry()
 
-	for arg, msg := range map[string]string{
-		"":   "want a pattern",
-		"a(": `pattern "a(" does not compile`,
+	o, err := resolve(t, `regexp('^a="b c"$')`, reg)
+	assert.NilError(t, err)
+	assert.Equal(t, o, ext.Rule(RegexpOptions{Pattern: `^a="b c"$`}))
+
+	for text, msg := range map[string]string{
+		"regexp":         "want a pattern",
+		`regexp("a(")`:   `pattern "a(" does not compile`,
+		`regexp(1)`:      "pattern",
+		`regexp(x)`:      "quote a name",
+		`regexp("a", 1)`: "regexp takes 1 positional args",
 	} {
-		_, err := Regexp{}.Parse(arg, nil)
-		assert.ErrorIs(t, err, ext.ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
+		_, err := resolve(t, text, reg)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
+		assert.ErrorContains(t, err, msg, text)
 	}
 }
 
 func TestLengthParse(t *testing.T) {
-	o, err := Length{}.Parse(">=1 <=+10", nil)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, o, LengthOptions{Comparisons: []Comparison{
-		{Op: ">=", Operand: "1"},
-		{Op: "<=", Operand: "+10"},
-	}})
+	reg := ext.DefaultRegistry()
 
-	for arg, msg := range map[string]string{
-		"":        "want one or more comparisons",
-		"=1":      `arg "=1" is no comparison`,
-		">=a =1":  `arg "=1" is no comparison`,
-		">=-1":    "length -1 is negative",
-		">=1.0":   "length 1.0 is not an integer literal",
-		`"1`:      "unterminated quoted string",
-		">=\"a\"": "is no value of int",
+	o, err := resolve(t, "length(ge=1, le=+10, ne=[3, 4])", reg)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, o, ext.Rule(LengthOptions{Comparisons: []Comparison{
+		{Op: ">=", Operand: "1"},
+		{Op: "<=", Operand: "10"},
+		{Op: "!=", Operand: "3"},
+		{Op: "!=", Operand: "4"},
+	}}))
+
+	o, err = resolve(t, "length(3)", reg)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, o, ext.Rule(LengthOptions{Comparisons: []Comparison{
+		{Op: "==", Operand: "3"},
+	}}))
+
+	for text, msg := range map[string]string{
+		"length":          "want one or more comparisons, as in length(ge=1, le=10)",
+		"length(ge=-1)":   "length -1 is negative",
+		"length(ge=1.0)":  "length 1.0 is not an integer literal",
+		`length(ge="a")`:  "is no value of int",
+		"length(1, 2)":    "length takes one positional arg",
+		"length(ge=None)": "None is no number, string or bool",
+		"length(ge=[1])":  "is no number, string or bool",
 	} {
-		_, err := Length{}.Parse(arg, nil)
-		assert.ErrorIs(t, err, ext.ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
+		_, err := resolve(t, text, reg)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
+		assert.ErrorContains(t, err, msg, text)
 	}
 }
 
 func TestCmpParse(t *testing.T) {
-	o, err := Cmp{}.Parse(`>=1 !="a"`, nil)
+	reg := ext.DefaultRegistry()
+
+	o, err := resolve(t, `cmp(ge=1, ne="a", eq=True)`, reg)
 	assert.NilError(t, err)
-	assert.DeepEqual(t, o, CmpOptions{Comparisons: []Comparison{
+	assert.DeepEqual(t, o, ext.Rule(CmpOptions{Comparisons: []Comparison{
 		{Op: ">=", Operand: "1"},
 		{Op: "!=", Operand: `"a"`},
-	}})
+		{Op: "==", Operand: "true"},
+	}}))
 
-	for arg, msg := range map[string]string{
-		"":    "want one or more comparisons",
-		">=":  `arg ">=" is no comparison`,
-		"a=1": `arg "a=1" is no comparison`,
+	for text, msg := range map[string]string{
+		"cmp":       "want one or more comparisons",
+		"cmp(ge=x)": "x is no number, string or bool",
+		"cmp(1, 2)": "cmp takes one positional arg",
 	} {
-		_, err := Cmp{}.Parse(arg, nil)
-		assert.ErrorIs(t, err, ext.ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
+		_, err := resolve(t, text, reg)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
+		assert.ErrorContains(t, err, msg, text)
 	}
 }
 
 func TestConstParse(t *testing.T) {
-	o, err := Const{}.Parse(`1 "dark blue"`, nil)
+	reg := ext.DefaultRegistry()
+
+	o, err := resolve(t, `const(1, "dark blue", True, None, [1], {"a": 0x10})`, reg)
 	assert.NilError(t, err)
-	assert.DeepEqual(t, o, ConstOptions{Values: []ConstValue{
-		{Text: "1"},
-		{Text: "dark blue", Quoted: true},
-	}})
+	assert.DeepEqual(t, o, ext.Rule(ConstOptions{Values: []ConstValue{
+		{Text: "1", Json: jsontext.Value("1")},
+		{Text: "dark blue", Quoted: true, Json: jsontext.Value(`"dark blue"`)},
+		{Text: "true", Json: jsontext.Value("true")},
+		{Json: jsontext.Value("null")},
+		{Json: jsontext.Value("[1]")},
+		{Json: jsontext.Value(`{"a":16}`)},
+	}}))
 	assert.Equal(t, o.(ConstOptions).Values[1].Literal(), `"dark blue"`)
 
-	for arg, msg := range map[string]string{
-		"":    "want one or more values",
-		"a=1": `arg "a=1" is a key=value pair`,
-		`"a`:  "unterminated quoted string",
+	for text, msg := range map[string]string{
+		"const":          "want one or more values",
+		"const(x)":       "const: x is no literal",
+		"const(1, zero)": "const: zero is no literal",
 	} {
-		_, err := Const{}.Parse(arg, nil)
-		assert.ErrorIs(t, err, ext.ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
+		_, err := resolve(t, text, reg)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
+		assert.ErrorContains(t, err, msg, text)
 	}
 }
 
 func TestFormatParse(t *testing.T) {
-	f := Format{Formats: DefaultFormats()}
+	reg := ext.DefaultRegistry()
 
-	o, err := f.Parse("date", nil)
+	o, err := resolve(t, `format("date")`, reg)
 	assert.NilError(t, err)
 	assert.Equal(t, o.(FormatOptions).Name, "date")
 	assert.Equal(t, o.(FormatOptions).Helper.Name, "kamaValidateFormatDate")
 
-	for arg, msg := range map[string]string{
-		"":      "want one format name; known: date, date-time, ipv4, ipv6, url, uuid",
-		"email": `unknown format "email"; known: date, date-time, ipv4, ipv6, url, uuid`,
+	for text, msg := range map[string]string{
+		"format": `want one format name, as in format("date");` +
+			" known: date, date-time, ipv4, ipv6, url, uuid",
+		`format("email")`: `unknown format "email"; known: date, date-time, ipv4, ipv6, url, uuid`,
 	} {
-		_, err := f.Parse(arg, nil)
-		assert.ErrorIs(t, err, ext.ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
+		_, err := resolve(t, text, reg)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
+		assert.ErrorContains(t, err, msg, text)
 	}
 }
 
 func TestRunesParse(t *testing.T) {
-	o, err := Runes{}.Parse(">=1 <=+10", nil)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, o, RunesOptions{Comparisons: []Comparison{
-		{Op: ">=", Operand: "1"},
-		{Op: "<=", Operand: "+10"},
-	}})
+	reg := ext.DefaultRegistry()
 
-	for arg, msg := range map[string]string{
-		"":      "want one or more comparisons",
-		"=1":    `arg "=1" is no comparison`,
-		">=-1":  "length -1 is negative",
-		">=1.0": "length 1.0 is not an integer literal",
-		">=n":   "n is not a Go literal",
+	o, err := resolve(t, "runes(ge=1, le=10)", reg)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, o, ext.Rule(RunesOptions{Comparisons: []Comparison{
+		{Op: ">=", Operand: "1"},
+		{Op: "<=", Operand: "10"},
+	}}))
+
+	for text, msg := range map[string]string{
+		"runes":         "want one or more comparisons",
+		"runes(ge=-1)":  "length -1 is negative",
+		"runes(ge=1.0)": "length 1.0 is not an integer literal",
 	} {
-		_, err := Runes{}.Parse(arg, nil)
-		assert.ErrorIs(t, err, ext.ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
+		_, err := resolve(t, text, reg)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
+		assert.ErrorContains(t, err, msg, text)
 	}
 }
 
@@ -208,27 +245,28 @@ func TestRunesCheck(t *testing.T) {
 }
 
 func TestMultipleOfParse(t *testing.T) {
-	for _, arg := range []string{"2", "+2", "1.5", "0.0001", "1e-8", "0x10", "1_000"} {
-		o, err := MultipleOf{}.Parse(arg, nil)
-		assert.NilError(t, err, arg)
-		assert.Equal(t, o, ext.Rule(MultipleOfOptions{Divisor: arg}))
+	reg := ext.DefaultRegistry()
+
+	for text, divisor := range map[string]string{
+		"2": "2", "+2": "2", "1.5": "1.5", "0.0001": "0.0001", "1e-8": "1e-8", "0x10": "16",
+	} {
+		o, err := resolve(t, "multipleof("+text+")", reg)
+		assert.NilError(t, err, text)
+		assert.Equal(t, o, ext.Rule(MultipleOfOptions{Divisor: divisor}))
 	}
 
-	for arg, msg := range map[string]string{
-		"":        `divisor "" is not a Go literal`,
+	for text, msg := range map[string]string{
+		"":        "want one number, as in multipleof(0.01)",
 		"0":       "divisor 0 is not positive",
 		"0.0":     "divisor 0.0 is not positive",
 		"-1":      "divisor -1 is not an integer or float literal",
-		`"1"`:     `divisor "1" is not an integer or float literal`,
-		"'a'":     "divisor 'a' is not an integer or float literal",
-		"1i":      "divisor 1i is not an integer or float literal",
-		"1+1":     "divisor 1+1 is not an integer or float literal",
-		"n":       "divisor n is not an integer or float literal",
+		`"1"`:     "want one number",
+		"n":       "quote a name",
 		"1e-9999": "divisor 1e-9999 is out of range",
 	} {
-		_, err := MultipleOf{}.Parse(arg, nil)
-		assert.ErrorIs(t, err, ext.ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
+		_, err := resolve(t, "multipleof("+text+")", reg)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
+		assert.ErrorContains(t, err, msg, text)
 	}
 }
 
@@ -261,13 +299,15 @@ func TestMultipleOfCheck(t *testing.T) {
 }
 
 func TestUniqueParse(t *testing.T) {
-	o, err := Unique{}.Parse("", nil)
-	assert.NilError(t, err)
-	assert.Equal(t, o, UniqueOptions{})
+	reg := ext.DefaultRegistry()
 
-	_, err = Unique{}.Parse("x", nil)
+	o, err := resolve(t, "unique", reg)
+	assert.NilError(t, err)
+	assert.Equal(t, o, ext.Rule(UniqueOptions{}))
+
+	_, err = resolve(t, "unique(1)", reg)
 	assert.ErrorIs(t, err, ext.ErrArgs)
-	assert.ErrorContains(t, err, `unexpected arg "x"; want none`)
+	assert.ErrorContains(t, err, "unique takes 0 positional args")
 }
 
 func TestUniqueCheck(t *testing.T) {
@@ -340,17 +380,19 @@ func (s testStruct) Fallback() (types.Type, ext.Gen, bool) {
 }
 
 func TestRequiresParse(t *testing.T) {
-	o, err := Requires{}.Parse(`b "c d"`, nil)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, o, RequiresOptions{Names: []string{"b", "c d"}}, ignoreRegistry)
+	reg := ext.DefaultRegistry()
 
-	for arg, msg := range map[string]string{
-		"":    "want one or more JSON names of sibling fields",
-		"b=1": `arg "b=1" is no JSON name`,
+	o, err := resolve(t, `requires("b", "c d")`, reg)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, o, ext.Rule(RequiresOptions{Names: []string{"b", "c d"}}), ignoreRegistry)
+
+	for text, msg := range map[string]string{
+		"requires":    "want one or more JSON names of sibling fields",
+		"requires(1)": "names",
 	} {
-		_, err := Requires{}.Parse(arg, nil)
-		assert.ErrorIs(t, err, ext.ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
+		_, err := resolve(t, text, reg)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
+		assert.ErrorContains(t, err, msg, text)
 	}
 }
 
@@ -382,20 +424,22 @@ func TestRequiresSiblings(t *testing.T) {
 }
 
 func TestMembersParse(t *testing.T) {
-	o, err := Members{}.Parse(">=1 <=3", nil)
+	reg := ext.DefaultRegistry()
+
+	o, err := resolve(t, "members(ge=1, le=3)", reg)
 	assert.NilError(t, err)
-	assert.DeepEqual(t, o, MembersOptions{Comparisons: []Comparison{
+	assert.DeepEqual(t, o, ext.Rule(MembersOptions{Comparisons: []Comparison{
 		{Op: ">=", Operand: "1"},
 		{Op: "<=", Operand: "3"},
-	}}, ignoreRegistry)
+	}}), ignoreRegistry)
 
-	for arg, msg := range map[string]string{
-		"":    "want one or more comparisons",
-		">-1": "length -1 is negative",
+	for text, msg := range map[string]string{
+		"members":        "want one or more comparisons",
+		"members(gt=-1)": "length -1 is negative",
 	} {
-		_, err := Members{}.Parse(arg, nil)
-		assert.ErrorIs(t, err, ext.ErrArgs, arg)
-		assert.ErrorContains(t, err, msg, arg)
+		_, err := resolve(t, text, reg)
+		assert.ErrorIs(t, err, ext.ErrArgs, text)
+		assert.ErrorContains(t, err, msg, text)
 	}
 }
 

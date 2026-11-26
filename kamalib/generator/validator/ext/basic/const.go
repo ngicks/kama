@@ -12,39 +12,45 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
-// Const is the validator //kama:validate const="<v1> <v2> ...": the value
-// equals one of the listed values, as in const="1 2 3" or
-// const=`"red" "dark blue"`.
+// Const is the validator //kama:validate const(<v1>, <v2>, ...): the value
+// equals one of the listed values, as in const(1, 2, 3) or
+// const("red", "dark blue").
 //
 // It applies to types of a bool, numeric or string underlying type. Each
-// token of the argument is a Go literal of the type. A string type takes
-// quoted strings only, and any other type takes bare literals only, so
-// that const=`"1"` and const=1 do not mean the same.
+// arg is a literal of the type: a number, a string or True or False. A
+// string type takes strings only, and any other type takes no string, so
+// that const("1") and const(1) do not mean the same.
 //
-// On raw JSON text, as IsRawJson tells, each token is the text of a JSON
-// value, quoted or not, as in const="1 null `\"a\"` `{\"b\":[]}`". The value
-// equals one of them as JSON values do: 1 equals 1.0, and objects equal
-// regardless of member order.
+// On raw JSON text, as IsRawJson tells, each arg is a JSON value written
+// as a literal: None for null, a list for an array and a dict for an
+// object, as in const(1, None, "a", {"b": []}). The value equals one of
+// them as JSON values do: 1 equals 1.0, and objects equal regardless of
+// member order.
 type Const struct{}
 
 // Name returns "const".
 func (Const) Name() string { return "const" }
 
-// ConstOptions are the options of //kama:validate const="<v1> <v2> ...".
+// ConstOptions are the options of //kama:validate const(<v1>, ...).
 type ConstOptions struct {
-	// Values holds one value per token of the arg, in order.
+	// Values holds one value per arg, in order.
 	Values []ConstValue
 }
 
-// ConstValue is one token of the arg of const.
+// ConstValue is one arg of const.
 type ConstValue struct {
-	// Text is the token without the quotes it was written with.
+	// Text is the arg as a Go literal without the quotes of a string: a
+	// number as written, true or false. It is empty for None, a list and a
+	// dict, which no Go type of const takes.
 	Text string
-	// Quoted reports whether the token was written quoted.
+	// Quoted reports whether the arg is a string.
 	Quoted bool
+	// Json is the arg as JSON text, which raw JSON text compares with.
+	Json jsontext.Value
 }
 
 // Literal returns the Go literal v spells: Text quoted again when it was
@@ -57,29 +63,36 @@ func (v ConstValue) Literal() string {
 	return v.Text
 }
 
-// Parse decodes arg into one or more values. Check tells whether they are
-// values of the type.
-func (Const) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	args, err := argTokens(arg)
-	if err != nil {
-		return nil, err
-	}
+// Parse decodes the args of c into one or more values. Check tells whether
+// they are values of the type.
+func (Const) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	values := make([]ConstValue, 0, len(c.Args))
 
-	if len(args) == 0 {
-		return nil, argsError(errors.New("want one or more values"))
-	}
-
-	values := make([]ConstValue, 0, len(args))
-
-	for _, kv := range args {
-		if kv.HasValue {
-			return nil, argsError(fmt.Errorf(
-				"arg %q is a key=value pair; quote a value holding =",
-				kv.String(),
-			))
+	for _, a := range c.Args {
+		if a.Name != "" {
+			r.Warn(fmt.Errorf("const: unknown arg %s; const takes values only", a))
+			continue
 		}
 
-		values = append(values, ConstValue{Text: kv.Key, Quoted: kv.KeyQuoted})
+		j, err := expr.Json(a.Value)
+		if err != nil {
+			return nil, argsError(fmt.Errorf("const: %s is no literal: %w", a.Value, err))
+		}
+
+		v := ConstValue{Json: j}
+
+		switch x := a.Value.(type) {
+		case expr.String:
+			v.Text, v.Quoted = x.Value, true
+		case expr.Number, expr.Bool:
+			v.Text, _ = goLiteral(x)
+		}
+
+		values = append(values, v)
+	}
+
+	if len(values) == 0 {
+		return nil, argsError(errors.New("want one or more values, as in const(1, 2)"))
 	}
 
 	return ConstOptions{Values: values}, nil
@@ -88,12 +101,6 @@ func (Const) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
 // Check accepts values of t, on the types the doc comment of Const lists.
 func (o ConstOptions) Check(t types.Type) error {
 	if ext.IsRawJson(t) {
-		for _, c := range o.Values {
-			if !jsontext.Value(c.Text).IsValid() {
-				return fmt.Errorf("%s is no JSON value, which raw JSON text compares with", c.Text)
-			}
-		}
-
 		return nil
 	}
 
@@ -103,6 +110,10 @@ func (o ConstOptions) Check(t types.Type) error {
 	}
 
 	for _, c := range o.Values {
+		if c.Text == "" && !c.Quoted {
+			return fmt.Errorf("%s is no value of %s", c.Json, t)
+		}
+
 		if info&types.IsString != 0 && !c.Quoted {
 			return fmt.Errorf(
 				"%s is no value of %s; want a quoted string, as in %q", c.Text, t, c.Text,
@@ -121,7 +132,7 @@ func (o ConstOptions) Check(t types.Type) error {
 func (o ConstOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
 	if ext.IsRawJson(t) {
 		texts := opiter.WrapSeq(slices.Values(o.Values)).
-			Map(func(c ConstValue) ext.Gen { return lang.Expr("%s", strconv.Quote(c.Text)) }).
+			Map(func(c ConstValue) ext.Gen { return lang.Expr("%s", strconv.Quote(string(c.Json))) }).
 			CollectSlice()
 
 		return rawCall(e, "Const", v, texts...), nil

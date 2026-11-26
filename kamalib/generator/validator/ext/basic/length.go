@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Length is the validator //kama:validate length="<op><n> ...": len of
@@ -28,9 +29,9 @@ type LengthOptions struct {
 	Comparisons []Comparison
 }
 
-// Parse decodes arg into comparisons with non-negative integers.
-func (Length) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	cs, err := parseLengths(arg)
+// Parse decodes the args of c into comparisons with non-negative integers.
+func (Length) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	cs, err := parseLengths(r, c)
 	if err != nil {
 		return nil, err
 	}

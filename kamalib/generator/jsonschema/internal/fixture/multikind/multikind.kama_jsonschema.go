@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:38:57Z
+// generated: 2026-11-26T06:58:59Z
 
 package multikind
 
@@ -21,7 +21,7 @@ import (
 // Cell is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Cell struct {
 	Value                CellValue                 `json:"value"`
@@ -78,7 +78,7 @@ type CellValueKind interface {
 // CellValueString holds the String member of CellValue.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type CellValueString struct {
 	String string
@@ -100,7 +100,7 @@ func (v CellValueString) MarshalJSONTo(enc *jsontext.Encoder) error {
 // CellValueInteger holds the Integer member of CellValue.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type CellValueInteger struct {
 	Integer int64
@@ -122,7 +122,7 @@ func (v CellValueInteger) MarshalJSONTo(enc *jsontext.Encoder) error {
 // CellValueBoolean holds the Boolean member of CellValue.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type CellValueBoolean struct {
 	Boolean bool
@@ -286,7 +286,7 @@ type CellLabelKind interface {
 // CellLabelString holds the String member of CellLabel.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type CellLabelString struct {
 	String string
@@ -308,7 +308,7 @@ func (v CellLabelString) MarshalJSONTo(enc *jsontext.Encoder) error {
 // CellLabelNumber holds the Number member of CellLabel.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type CellLabelNumber struct {
 	Number float64
@@ -330,7 +330,7 @@ func (v CellLabelNumber) MarshalJSONTo(enc *jsontext.Encoder) error {
 // CellLabelNull holds the Null member of CellLabel.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type CellLabelNull struct{}
 

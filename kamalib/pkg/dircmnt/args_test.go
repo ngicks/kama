@@ -196,7 +196,7 @@ func TestSpellToken(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.top, func(t *testing.T) {
 			assert.Equal(t, SpellArgs([]KeyValue{c.kv}), c.top)
-			assert.Equal(t, SpellCallArgs([]KeyValue{c.kv}), c.insideCall)
+			assert.Equal(t, spellCallArgs([]KeyValue{c.kv}), c.insideCall)
 
 			back, err := ParseArgsKeyValue(c.top)
 			assert.NilError(t, err)
@@ -204,7 +204,7 @@ func TestSpellToken(t *testing.T) {
 			assert.Equal(t, back[0].Key, c.kv.Key)
 			assert.Equal(t, back[0].Value, c.kv.Value)
 
-			back, err = ParseCallArgs(c.insideCall)
+			back, err = callArgs(c.insideCall)
 			assert.NilError(t, err)
 			assert.Equal(t, len(back), 1)
 			assert.Equal(t, back[0].Key, c.kv.Key)
@@ -237,7 +237,7 @@ func TestParseCallArgs(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.args, func(t *testing.T) {
-			got, err := ParseCallArgs(c.args)
+			got, err := callArgs(c.args)
 			if c.err != "" {
 				assert.ErrorContains(t, err, c.err)
 				return
@@ -245,30 +245,24 @@ func TestParseCallArgs(t *testing.T) {
 
 			assert.NilError(t, err)
 			assert.DeepEqual(t, got, c.want)
-			assert.DeepEqual(t, mustParseCallArgs(t, SpellCallArgs(got)), got)
+			assert.DeepEqual(t, mustParseCallArgs(t, spellCallArgs(got)), got)
 		})
 	}
+}
+
+// callArgs parses args, the text between the parentheses of a call.
+func callArgs(args string) ([]KeyValue, error) {
+	out, _, err := parseCallArgs(args, "")
+	return out, err
 }
 
 func mustParseCallArgs(t *testing.T, args string) []KeyValue {
 	t.Helper()
 
-	kv, err := ParseCallArgs(args)
+	kv, err := callArgs(args)
 	assert.NilError(t, err)
 
 	return kv
-}
-
-func TestArg(t *testing.T) {
-	kv, err := ParseArgsKeyValue("a b=1 c=`x y` or(cmp=\">=1\",  not( d ))")
-	assert.NilError(t, err)
-
-	got := make([]string, 0, len(kv))
-	for _, a := range kv {
-		got = append(got, a.Arg())
-	}
-
-	assert.DeepEqual(t, got, []string{"", "1", "x y", `cmp=">=1", not(d)`})
 }
 
 func TestBareWords(t *testing.T) {

@@ -22,8 +22,8 @@ func TestPrePost(t *testing.T) {
 	}{
 		{
 			name: "struct",
-			src: "//kama:validate pre=pre post=post hook=off\ntype A struct {\n" +
-				"\t//kama:validate cmp=\">0\"\n\tN int\n}\n\n" + prePostFuncs,
+			src: "//kama:validate pre=\"pre\", post=\"post\", hook=False\ntype A struct {\n" +
+				"\t//kama:validate cmp(gt=0)\n\tN int\n}\n\n" + prePostFuncs,
 			typeName: "A",
 			want: []string{
 				"func (v A) Validate(stopOnFirstError bool) (err error) {",
@@ -34,7 +34,7 @@ func TestPrePost(t *testing.T) {
 		},
 		{
 			name:     "named non-struct type with no validator",
-			src:      "//kama:validate pre=pre post=post\ntype A int\n\n" + prePostFuncs,
+			src:      "//kama:validate pre=\"pre\", post=\"post\"\ntype A int\n\n" + prePostFuncs,
 			typeName: "A",
 			want: []string{
 				"(err error) {",
@@ -44,7 +44,7 @@ func TestPrePost(t *testing.T) {
 		},
 		{
 			name:     "post alone",
-			src:      "//kama:validate post=post\ntype A int\n\n" + prePostFuncs,
+			src:      "//kama:validate post=\"post\"\ntype A int\n\n" + prePostFuncs,
 			typeName: "A",
 			want: []string{
 				"defer func() { err = validator.Join(err, validator.Root(post(v, stopOnFirstError))) }()",
@@ -53,7 +53,7 @@ func TestPrePost(t *testing.T) {
 		},
 		{
 			name: "generic",
-			src: "//kama:validate pre=preB\ntype B[T any] []T\n\n" +
+			src: "//kama:validate pre=\"preB\"\ntype B[T any] []T\n\n" +
 				"func preB[U any](B[U], bool) error { return nil }\n",
 			typeName: "B",
 			want:     []string{check("validator.Root(preB(v, stopOnFirstError))")},
@@ -70,7 +70,7 @@ func TestPrePost(t *testing.T) {
 
 	// pre runs before the validators of the type.
 	fn := validateOf(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate cmp=\">0\" pre=pre\ntype A int\n\n" + prePostFuncs,
+		"a.go": "package x\n\n//kama:validate cmp(gt=0), pre=\"pre\"\ntype A int\n\n" + prePostFuncs,
 	}, "a.kama_validate.go", "A")
 	assert.Assert(t, strings.Index(fn, "pre(v") < strings.Index(fn, "kamaValidateCmp"), fn)
 }
@@ -79,8 +79,8 @@ func TestPrePost(t *testing.T) {
 // not in one passing the call on to Validate, so that they run once.
 func TestPrePostShallow(t *testing.T) {
 	out := generateAndBuild(t, map[string]string{"a.go": "package x\n\n" +
-		"//kama:validate decoded pre=preD post=postD\ntype D struct{ N int }\n\n" +
-		"//kama:validate pre=preO post=postO\ntype O struct{ D D }\n\n" +
+		"//kama:validate decoded, pre=\"preD\", post=\"postD\"\ntype D struct{ N int }\n\n" +
+		"//kama:validate pre=\"preO\", post=\"postO\"\ntype O struct{ D D }\n\n" +
 		"func preD(D, bool) error { return nil }\n\nfunc postD(D, bool) error { return nil }\n\n" +
 		"func preO(O, bool) error { return nil }\n\nfunc postO(O, bool) error { return nil }\n\n" +
 		"func (D) validateN(bool) error { return nil }\n\n" +
@@ -99,7 +99,7 @@ func TestPrePostShallow(t *testing.T) {
 func TestPrePostEvaluated(t *testing.T) {
 	out := generateAndBuild(t, map[string]string{"a.go": "package x\n\n" +
 		"import \"encoding/json/jsontext\"\n\n" +
-		"//kama:validate kind=object pre=preR post=postR\ntype R jsontext.Value\n\n" +
+		"//kama:validate kind(\"object\"), pre=\"preR\", post=\"postR\"\ntype R jsontext.Value\n\n" +
 		"func (v R) RawJson() jsontext.Value { return jsontext.Value(v) }\n\n" +
 		"func preR(R, bool) error { return nil }\n\nfunc postR(R, bool) error { return nil }\n",
 	})
@@ -122,28 +122,29 @@ func TestPrePostErrors(t *testing.T) {
 	}{
 		{
 			name: "missing",
-			src:  "//kama:validate pre=nope\ntype A int\n",
+			src:  "//kama:validate pre=\"nope\"\ntype A int\n",
 			is:   ErrHook,
 			msgs: []string{
-				"a.go:3:1", "//kama:validate pre=nope on", "names no package-level function nope",
+				"a.go:3:1", `//kama:validate pre="nope" on`, "names no package-level function nope",
 				"declare func nope(v A, stopOnFirstError bool) error",
 			},
 		},
 		{
 			name: "method",
-			src:  "//kama:validate post=check\ntype A int\n\nfunc (A) check(bool) error { return nil }\n",
+			src: "//kama:validate post=\"check\"\ntype A int\n\n" +
+				"func (A) check(bool) error { return nil }\n",
 			is:   ErrHook,
 			msgs: []string{"names no package-level function check"},
 		},
 		{
 			name: "wrong signature",
-			src:  "//kama:validate pre=pre\ntype A int\n\nfunc pre(*A, bool) error { return nil }\n",
+			src:  "//kama:validate pre=\"pre\"\ntype A int\n\nfunc pre(*A, bool) error { return nil }\n",
 			is:   ErrHook,
 			msgs: []string{"names pre with signature func(*", "declare func pre(v A,"},
 		},
 		{
 			name: "generic spelled",
-			src: "//kama:validate post=post\ntype A[T any, U comparable] []T\n\n" +
+			src: "//kama:validate post=\"post\"\ntype A[T any, U comparable] []T\n\n" +
 				"func post(A[int, int], bool) error { return nil }\n",
 			is: ErrHook,
 			msgs: []string{
@@ -156,12 +157,12 @@ func TestPrePostErrors(t *testing.T) {
 			is:   ErrConflict,
 			msgs: []string{
 				"declares Validate itself; remove the method",
-				"pre=<func> or post=<func>", "or into a field hook",
+				`pre="<func>" or post="<func>"`, "or into a field hook",
 			},
 		},
 		{
 			name: "given twice",
-			src:  "//kama:validate pre=a\n//kama:validate pre=b\ntype A int\n",
+			src:  "//kama:validate pre=\"a\"\n//kama:validate pre=\"b\"\ntype A int\n",
 			is:   ErrDirective,
 			msgs: []string{"a.go:3:1", "pre given twice on type"},
 		},
@@ -169,26 +170,27 @@ func TestPrePostErrors(t *testing.T) {
 			name: "no function name",
 			src:  "//kama:validate post\ntype A int\n",
 			is:   ErrDirective,
-			msgs: []string{`arg "post" of //kama:validate`, "want post=<function name>"},
+			msgs: []string{"item post on", "is a keyword item; write post=<value>"},
 		},
 		{
 			name: "on a field",
-			src:  "//kama:validate\ntype A struct {\n\t//kama:validate pre=p\n\tN int\n}\n",
+			src:  "//kama:validate\ntype A struct {\n\t//kama:validate pre=\"p\"\n\tN int\n}\n",
 			is:   ErrDirective,
 			msgs: []string{"pre on field", "write it in the doc comment of the type"},
 		},
 		{
 			name: "on an ignored type",
-			src:  "//kama:validate ignore post=p\ntype A int\n\nfunc p(A, bool) error { return nil }\n",
+			src: "//kama:validate ignore, post=\"p\"\ntype A int\n\n" +
+				"func p(A, bool) error { return nil }\n",
 			is:   ErrDirective,
-			msgs: []string{"//kama:validate post=p on", "A, which gets no Validate"},
+			msgs: []string{`//kama:validate post="p" on`, "A, which gets no Validate"},
 		},
 		{
 			name: "on a type group",
-			src: "//kama:validate pre=p\ntype (\n\tA struct{}\n\tB struct{}\n)\n\n" +
+			src: "//kama:validate pre=\"p\"\ntype (\n\tA struct{}\n\tB struct{}\n)\n\n" +
 				"func p(A, bool) error { return nil }\n",
 			is:   ErrDirective,
-			msgs: []string{"//kama:validate pre=p on a type group"},
+			msgs: []string{`//kama:validate pre="p" on a type group`},
 		},
 	}
 
@@ -209,15 +211,15 @@ func TestPrePostErrors(t *testing.T) {
 // warning. An entry setting anything else replaces the directives.
 func TestOptionFilePrePost(t *testing.T) {
 	out, warnings, err := generateWithWarnings(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate cmp=\">0\"\ntype A int\n\n" +
+		"a.go": "package x\n\n//kama:validate cmp(gt=0)\ntype A int\n\n" +
 			"//kama:validate\ntype B struct {\n\t//kama:validate required\n\tN int\n}\n\n" +
-			"//kama:validate cmp=\">0\"\ntype C int\n\n" + prePostFuncs +
+			"//kama:validate cmp(gt=0)\ntype C int\n\n" + prePostFuncs +
 			"func (B) validateN(bool) error { return nil }\n\n" +
 			"func preB(B, bool) error { return nil }\n\nfunc postC(C, bool) error { return nil }\n",
 		"kama_validate.yaml": "version: 1\ntypes:\n" +
 			"  A:\n    pre: pre\n    post: post\n" +
 			"  B:\n    pre: preB\n" +
-			"  C:\n    post: postC\n    validators:\n      - name: cmp\n        args: '<9'\n",
+			"  C:\n    post: postC\n    validators:\n      - cmp(lt=9)\n",
 	}, nil)
 	assert.NilError(t, err)
 

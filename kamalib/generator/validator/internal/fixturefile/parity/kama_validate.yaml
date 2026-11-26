@@ -7,31 +7,23 @@ types:
     fields:
       Qty:
         validators:
-          - name: cmp
-            args: ">0 <=100"
+          - cmp(gt=0, le=100)
       Url:
         validators:
-          - name: format
-            args: url
+          - format("url")
   Sku:
     validators:
-      - name: regexp
-        args: "^[A-Z]+$"
-      - name: runes
-        args: "<=8"
+      - regexp("^[A-Z]+$")
+      - runes(le=8)
   Discount:
     hook: false
     validators:
-      - name: or
-        args: 'members="==0", members=">=2"'
+      - members(0) or members(ge=2)
     fields:
       Percent:
         validators:
-          - name: or
-            args: 'cmp=">=10", const=0'
-          - name: not
-            args: or(const=5, const=7)
+          - cmp(ge=10) or const(0)
+          - not (const(5) or const(7))
       Kind:
         validators:
-          - name: if
-            args: 'const=`"fixed"`, requires=amount, oneof(const=`"percent"`, regexp=^p)'
+          - requires("amount") if const("fixed") else oneof(const("percent"), regexp("^p"))

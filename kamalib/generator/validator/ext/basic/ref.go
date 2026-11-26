@@ -2,10 +2,10 @@ package basic
 
 import (
 	"fmt"
-	"go/token"
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Ref is the validator //kama:validate ref=<type>: the value converted to
@@ -33,13 +33,14 @@ type RefOptions struct {
 	Type string
 }
 
-// Parse decodes arg into the name of a type.
-func (Ref) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	if !token.IsIdentifier(arg) {
-		return nil, argsError(fmt.Errorf("%q is no type name; want ref=<type>", arg))
+// Parse decodes the arg of c, the name of a type.
+func (Ref) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	name, err := typeArg(r, c)
+	if err != nil {
+		return nil, err
 	}
 
-	return RefOptions{Type: arg}, nil
+	return RefOptions{Type: name}, nil
 }
 
 // Check accepts raw JSON text.

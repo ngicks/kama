@@ -5,7 +5,7 @@ import (
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
@@ -123,22 +123,32 @@ func funcLit(role string, typ ext.Gen, body func(param ext.Gen) (ext.Gen, error)
 	}, nil
 }
 
-// parseNamed parses kv, an entry written key(<word>, <validator>, ...), into
-// its first arg, a bare or quoted word without a value, and the operands
-// after it.
-func parseNamed(kv dircmnt.KeyValue, r ext.Resolver) (string, []Operand, error) {
-	if len(kv.Args) == 0 || kv.Args[0].Call || kv.Args[0].HasValue {
+func parseNamed(c expr.Call, r ext.Resolver) (string, []Operand, error) {
+	var args struct {
+		Name *string `json:"name"`
+	}
+
+	ops, err := ext.Params{
+		Positional: []string{"name"},
+		Variadic:   "operands",
+		Rules:      []string{"operands"},
+	}.Bind(r, c, &args)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if args.Name == nil {
 		return "", nil, argsError(fmt.Errorf(
-			"%s: want a name or a pattern first, as in %s(\"a\", kind=string)", kv.Key, kv.Key,
+			"%s: want a name or a pattern first, as in %s(\"a\", kind(\"string\"))", c.Name, c.Name,
 		))
 	}
 
-	ops, err := ParseOperands(dircmnt.SpellCallArgs(kv.Args[1:]), r)
+	operands, err := ParseOperands(argValues(ops), r)
 	if err != nil {
-		return "", nil, fmt.Errorf("%s %q: %w", kv.Key, kv.Args[0].Key, err)
+		return "", nil, fmt.Errorf("%s %q: %w", c.Name, *args.Name, err)
 	}
 
-	return kv.Args[0].Key, ops, nil
+	return *args.Name, operands, nil
 }
 
 // branchOperands returns the expression of each operand of ops validating

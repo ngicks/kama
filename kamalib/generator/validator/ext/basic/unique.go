@@ -7,6 +7,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Unique is the validator //kama:validate unique: no two elements of the
@@ -31,9 +32,9 @@ func (Unique) Name() string { return "unique" }
 // UniqueOptions are the options of //kama:validate unique. Unique takes no arg.
 type UniqueOptions struct{}
 
-// Parse accepts only the empty arg.
-func (Unique) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	return UniqueOptions{}, noArg(arg)
+// Parse takes no args.
+func (Unique) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	return UniqueOptions{}, noArgs(r, c)
 }
 
 // Check accepts the types the doc comment of Unique lists.

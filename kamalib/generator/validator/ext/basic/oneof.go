@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // OneOf is the validator //kama:validate oneof(<validator>, ...): exactly
@@ -27,16 +28,16 @@ type OneOfOptions struct {
 	Operands []Operand
 }
 
-// Parse decodes arg into operands through r.
-func (OneOf) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	ops, err := ParseOperands(arg, r)
+// Parse resolves the args of c, the operands, through r.
+func (OneOf) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	ops, err := operandArgs.Bind(r, c, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	return combine(
 		r,
-		ops,
+		argValues(ops),
 		ownErrors,
 		func(ops []Operand) ext.Rule { return OneOfOptions{Operands: ops} },
 	)

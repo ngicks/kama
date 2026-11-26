@@ -9,6 +9,7 @@ import (
 	"regexp"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Regexp is the validator //kama:validate regexp=<pattern>: the value
@@ -32,17 +33,25 @@ type RegexpOptions struct {
 	Pattern string
 }
 
-// Parse decodes arg into a pattern that compiles.
-func (Regexp) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	if arg == "" {
-		return nil, argsError(errors.New("want a pattern, as in regexp=\"^[a-z]+$\""))
+// Parse decodes the arg of c into the pattern, which must compile.
+func (Regexp) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	var args struct {
+		Pattern *string `json:"pattern"`
 	}
 
-	if _, err := regexp.Compile(arg); err != nil {
-		return nil, argsError(fmt.Errorf("pattern %q does not compile: %w", arg, err))
+	if _, err := (ext.Params{Positional: []string{"pattern"}}).Bind(r, c, &args); err != nil {
+		return nil, err
 	}
 
-	return RegexpOptions{Pattern: arg}, nil
+	if args.Pattern == nil || *args.Pattern == "" {
+		return nil, argsError(errors.New(`want a pattern, as in regexp(r"^[a-z]+$")`))
+	}
+
+	if _, err := regexp.Compile(*args.Pattern); err != nil {
+		return nil, argsError(fmt.Errorf("pattern %q does not compile: %w", *args.Pattern, err))
+	}
+
+	return RegexpOptions{Pattern: *args.Pattern}, nil
 }
 
 // Check accepts the types the doc comment of Regexp lists.

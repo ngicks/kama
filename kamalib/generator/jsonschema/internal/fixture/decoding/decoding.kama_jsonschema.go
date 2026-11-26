@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:38:47Z
+// generated: 2026-11-26T06:58:52Z
 
 package decoding
 
@@ -23,7 +23,7 @@ import (
 // Root holds a member of each kind, required or optional, nullable or not.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Root struct {
 	S                    string                        `json:"s"`
@@ -178,7 +178,7 @@ type RootUKind interface {
 // RootUPoint holds the Point member of RootU.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootUPoint struct {
 	Point Point
@@ -200,7 +200,7 @@ func (v RootUPoint) MarshalJSONTo(enc *jsontext.Encoder) error {
 // RootUString holds the String member of RootU.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootUString struct {
 	String string
@@ -271,7 +271,7 @@ func (v RootU) Validate(stopOnFirstError bool) error {
 // costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("x", kind="integer", cmp=">=0"), field("y", kind="integer"))
+//kama:validate props(field("x", kind("integer"), cmp(ge=0)), field("y", kind("integer")))
 type rootUPointProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -368,7 +368,7 @@ func (v *RootU) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/all.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootAll struct {
 	Option1              RootAllOption1            `json:"-"`
@@ -424,7 +424,7 @@ func (v *RootAll) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // RootAllOption1 is generated from the schema at #/properties/all/allOf/0.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootAllOption1 struct {
 	P                    opt.Option[Point]         `json:"p,omitzero"`
@@ -463,7 +463,7 @@ func (v *RootAllOption1) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // RootAllOption2 is generated from the schema at #/properties/all/allOf/1.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootAllOption2 struct {
 	Q                    opt.Option[string]        `json:"q,omitzero"`
@@ -517,7 +517,7 @@ type RootTwiceKind interface {
 // RootTwiceObject holds the Object member of RootTwice.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootTwiceObject struct {
 	Object RootTwiceObjectValue
@@ -539,7 +539,7 @@ func (v RootTwiceObject) MarshalJSONTo(enc *jsontext.Encoder) error {
 // RootTwiceString holds the String member of RootTwice.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootTwiceString struct {
 	String string
@@ -686,7 +686,7 @@ func (v *RootTwice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/twice/oneOf/0.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootTwiceObjectValue struct {
 	X                    int64                     `json:"x"`
@@ -725,10 +725,10 @@ func (v *RootTwiceObjectValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Point is generated from the schema at #/$defs/Point.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Point struct {
-	//kama:validate cmp=">=0"
+	//kama:validate cmp(ge=0)
 	X                    int64                     `json:"x"`
 	Y                    int64                     `json:"y"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`

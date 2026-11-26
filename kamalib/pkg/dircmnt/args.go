@@ -40,16 +40,6 @@ type KeyValue struct {
 // would turn it into a key.
 func (kv KeyValue) String() string { return kv.spell(topLevel) }
 
-// Arg returns the text kv passes on to what its key names: the value of a
-// pair, or the args of a call as [SpellCallArgs] spells them.
-func (kv KeyValue) Arg() string {
-	if kv.Call {
-		return SpellCallArgs(kv.Args)
-	}
-
-	return kv.Value
-}
-
 // ParseArgsKeyValue parses [Comment.Args] as space-separated key=value
 // pairs and calls.
 //
@@ -109,14 +99,6 @@ func ParseArgsKeyValue(args string) ([]KeyValue, error) {
 	}
 }
 
-// ParseCallArgs parses args, the text between the parentheses of a call,
-// as comma-separated args in the grammar of [ParseArgsKeyValue]. It reads
-// back what [SpellCallArgs] spells. Empty args hold no arg.
-func ParseCallArgs(args string) ([]KeyValue, error) {
-	out, _, err := parseCallArgs(args, "")
-	return out, err
-}
-
 // SpellArgs spells kv as space-separated args, in the grammar
 // [ParseArgsKeyValue] reads back.
 func SpellArgs(kv []KeyValue) string {
@@ -128,9 +110,8 @@ func SpellArgs(kv []KeyValue) string {
 	)
 }
 
-// SpellCallArgs spells kv as the args of a call, separated by ", ", in the
-// grammar [ParseCallArgs] reads back.
-func SpellCallArgs(kv []KeyValue) string {
+// spellCallArgs spells kv as the args of a call, separated by ", ".
+func spellCallArgs(kv []KeyValue) string {
 	return strings.Join(
 		opiter.WrapSeq(slices.Values(kv)).
 			Map(func(kv KeyValue) string { return kv.spell(inCall) }).
@@ -316,7 +297,7 @@ func parseCallArgs(s, name string) ([]KeyValue, string, error) {
 func (kv KeyValue) spell(p place) string {
 	switch {
 	case kv.Call:
-		return kv.Key + "(" + SpellCallArgs(kv.Args) + ")"
+		return kv.Key + "(" + spellCallArgs(kv.Args) + ")"
 	case kv.HasValue:
 		return spellToken(kv.Key, kv.KeyQuoted, p.keyBreaks()) + "=" +
 			spellToken(kv.Value, kv.ValueQuoted, p.breaks())

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:01Z
+// generated: 2026-11-26T06:59:03Z
 
 package nullable
 
@@ -19,7 +19,7 @@ import (
 // Nullable is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Nullable struct {
 	ReqOneOf             opt.Option[Item]           `json:"reqOneOf"`
@@ -76,7 +76,7 @@ func (v *Nullable) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/properties/optInline/oneOf/0.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type NullableOptInline struct {
 	S                    string                    `json:"s"`
@@ -115,7 +115,7 @@ func (v *NullableOptInline) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Item is generated from the schema at #/$defs/Item.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Item struct {
 	N                    int64                     `json:"n"`

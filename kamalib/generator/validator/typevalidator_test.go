@@ -11,6 +11,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 func TestTypeValidators(t *testing.T) {
@@ -22,30 +23,30 @@ import (
 	"github.com/ngicks/option/und"
 )
 
-//kama:validate cmp=">=3"
+//kama:validate cmp(ge=3)
 type Level int
 
-//kama:validate length=">=1" unique
+//kama:validate length(ge=1), unique
 type Tags []string
 
-//kama:validate length="<=2"
+//kama:validate length(le=2)
 type Inners map[string]Inner
 
 //kama:validate unique
 type Pair [2]Inner
 
-// Mode has no fields, so hook=on calls no hook.
+// Mode has no fields, so hook=True calls no hook.
 //
-//kama:validate hook=on const="1 2"
+//kama:validate hook=True, const(1, 2)
 type Mode int
 
-//kama:validate hook=off
+//kama:validate hook=False
 type Inner struct {
 	//kama:validate required
 	N int
 }
 
-//kama:validate hook=off
+//kama:validate hook=False
 type Box[T any] struct{ V T }
 
 type Hand int
@@ -60,7 +61,7 @@ type Holder struct {
 	S []Level
 	M map[string]Level
 	B Box[Level]
-	//kama:validate cmp="<=9"
+	//kama:validate cmp(le=9)
 	F  Level
 	Pa Pair
 	H  []Hand
@@ -117,7 +118,7 @@ type Holder struct {
 // type of the group before those of the type.
 func TestTypeValidatorsOfGroup(t *testing.T) {
 	fs := gentest.Funcs(t, generateAndBuild(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate length=\"<=3\"\ntype (\n" +
+		"a.go": "package x\n\n//kama:validate length(le=3)\ntype (\n" +
 			"\t//kama:validate unique\n\tA []int\n\tB string\n)\n",
 	})["a.kama_validate.go"])
 
@@ -136,7 +137,7 @@ type fields struct{}
 
 func (fields) Name() string { return "fields" }
 
-func (fields) Parse(string, ext.Resolver) (ext.Rule, error) { return fieldsOptions{}, nil }
+func (fields) Parse(expr.Call, ext.Resolver) (ext.Rule, error) { return fieldsOptions{}, nil }
 
 type fieldsOptions struct{}
 
@@ -204,7 +205,7 @@ func fieldsRegistry() *ext.Registry {
 // embedded fallback of the struct.
 func TestStructRule(t *testing.T) {
 	f, opts := stage(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate fields hook=off\ntype S struct {\n" +
+		"a.go": "package x\n\n//kama:validate fields, hook=False\ntype S struct {\n" +
 			"\tA int `json:\"a,omitempty\"`\n\tB *int\n\tc int\n\tD int `json:\"-\"`\n" +
 			"\tE map[string]any `json:\",embed\"`\n\t//kama:validate required\n\tF string\n}\n",
 	})
@@ -231,7 +232,7 @@ func TestStructRuleErrors(t *testing.T) {
 	}{
 		{
 			name: "inlined struct",
-			src: "//kama:validate fields hook=off\ntype S struct {\n\tIn\n\tA int\n}\n\n" +
+			src: "//kama:validate fields, hook=False\ntype S struct {\n\tIn\n\tA int\n}\n\n" +
 				"type In struct{ B int }\n",
 			is: ErrUnsupported,
 			msgs: []string{
@@ -241,7 +242,7 @@ func TestStructRuleErrors(t *testing.T) {
 		},
 		{
 			name: "on a field",
-			src: "//kama:validate hook=off\ntype S struct {\n\t//kama:validate fields\n" +
+			src: "//kama:validate hook=False\ntype S struct {\n\t//kama:validate fields\n" +
 				"\tA struct{}\n}\n",
 			is: ErrDirective,
 			msgs: []string{
@@ -276,11 +277,11 @@ func TestStructRuleErrors(t *testing.T) {
 func TestMembers(t *testing.T) {
 	src := generateAndBuild(t, map[string]string{
 		"a.go": "package x\n\nimport \"github.com/ngicks/option/opt\"\n\n" +
-			"//kama:validate members=\">=1 <=3\" hook=off\ntype A struct {\n" +
+			"//kama:validate members(ge=1, le=3), hook=False\ntype A struct {\n" +
 			"\tA opt.Option[int] `json:\"a,omitzero\"`\n\tB *int `json:\",omitempty\"`\n" +
 			"\tC int\n\tD string `json:\"-\"`\n\tF *int\n" +
 			"\tE map[string]any `json:\",embed\"`\n}\n\n" +
-			"//kama:validate members=\"<=1\" hook=off\ntype B struct{ N int }\n",
+			"//kama:validate members(le=1), hook=False\ntype B struct{ N int }\n",
 	})["a.kama_validate.go"]
 	fs := gentest.Funcs(t, src)
 
@@ -298,9 +299,9 @@ func TestMembers(t *testing.T) {
 func TestClosed(t *testing.T) {
 	src := generateAndBuild(t, map[string]string{
 		"a.go": "package x\n\n" +
-			"//kama:validate closed hook=off\ntype A struct {\n" +
+			"//kama:validate closed, hook=False\ntype A struct {\n" +
 			"\tN int\n\tE map[string]int `json:\",embed\"`\n}\n\n" +
-			"//kama:validate closed hook=off\ntype B struct{ N int }\n",
+			"//kama:validate closed, hook=False\ntype B struct{ N int }\n",
 	})["a.kama_validate.go"]
 	fs := gentest.Funcs(t, src)
 
@@ -313,10 +314,10 @@ func TestClosed(t *testing.T) {
 // value satisfies emits nothing, and one no value satisfies always fails.
 func TestCmpIntegerBounds(t *testing.T) {
 	src := generateAndBuild(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate cmp=\">1.5 <2.5\"\n\tA int\n" +
-			"\t//kama:validate cmp=\">=-1e30 <=1e30 !=0.5\"\n\tB int8\n" +
-			"\t//kama:validate cmp=\">300\"\n\tC uint8\n}\n",
+		"a.go": "package x\n\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate cmp(gt=1.5, lt=2.5)\n\tA int\n" +
+			"\t//kama:validate cmp(ge=-1e30, le=1e30, ne=0.5)\n\tB int8\n" +
+			"\t//kama:validate cmp(gt=300)\n\tC uint8\n}\n",
 	})["a.kama_validate.go"]
 	fn := gentest.Funcs(t, src)["A.Validate"]
 
@@ -336,26 +337,26 @@ func TestCmpIntegerBounds(t *testing.T) {
 // leaves 0 the only multiple.
 func TestBoundsBeyondType(t *testing.T) {
 	src := generateAndBuild(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate cmp=\"<=1e400 >-1e400\"\n\tA float64\n" +
-			"\t//kama:validate cmp=\">=1e400\"\n\tB float32\n" +
-			"\t//kama:validate length=\"<=18446744073709551616\"\n\tC string\n" +
-			"\t//kama:validate runes=\">=18446744073709551616\"\n\tD string\n" +
-			"\t//kama:validate multipleof=1e30\n\tE int64\n" +
-			"\t//kama:validate multipleof=1e100000\n\tF float64\n}\n",
+		"a.go": "package x\n\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate cmp(le=1e39, gt=-1e39)\n\tA float32\n" +
+			"\t//kama:validate cmp(ge=1e39)\n\tB float32\n" +
+			"\t//kama:validate length(le=18446744073709551616)\n\tC string\n" +
+			"\t//kama:validate runes(ge=18446744073709551616)\n\tD string\n" +
+			"\t//kama:validate multipleof(1e30)\n\tE int64\n" +
+			"\t//kama:validate multipleof(1" + strings.Repeat("0", 400) + ")\n\tF float64\n}\n",
 	})["a.kama_validate.go"]
 	fn := gentest.Funcs(t, src)["A.Validate"]
 
 	assertContains(
 		t,
 		fn,
-		`kamaValidateCmp(v.A, "<=", 1.7976931348623157e+308), `+
-			`kamaValidateCmp(v.A, ">=", -1.7976931348623157e+308)`,
+		`kamaValidateCmp(v.A, "<=", 3.4028234663852886e+38), `+
+			`kamaValidateCmp(v.A, ">=", -3.4028234663852886e+38)`,
 		`kamaValidateCmp(v.B, ">", 3.4028234663852886e+38)`,
 		check(`validator.Field(error(nil), "C")`),
 		`kamaValidateRunes(utf8.RuneCountInString(v.D), ">", 9223372036854775807)`,
 		`kamaValidateMultipleZero(v.E, "1e30")`,
-		`kamaValidateMultipleZero(v.F, "1e100000")`,
+		`kamaValidateMultipleZero(v.F, "1`+strings.Repeat("0", 400)+`")`,
 	)
 }
 
@@ -375,13 +376,13 @@ func TestClosedErrors(t *testing.T) {
 		},
 		{
 			name: "arg",
-			src:  "//kama:validate closed=x hook=off\ntype A struct{ N int }\n",
+			src:  "//kama:validate closed(\"x\"), hook=False\ntype A struct{ N int }\n",
 			is:   ErrUnsupported,
-			msg:  "closed takes no arg",
+			msg:  "closed takes 0 positional args",
 		},
 		{
 			name: "on a field",
-			src:  "//kama:validate hook=off\ntype A struct {\n\t//kama:validate closed\n\tN int\n}\n",
+			src:  "//kama:validate hook=False\ntype A struct {\n\t//kama:validate closed\n\tN int\n}\n",
 			is:   ErrDirective,
 			msg:  "closed",
 		},
@@ -405,21 +406,21 @@ func TestMembersErrors(t *testing.T) {
 	}{
 		{
 			name: "fallback of another type",
-			src: "//kama:validate members=\">=1\"\ntype A struct {\n\tN int\n" +
+			src: "//kama:validate members(ge=1)\ntype A struct {\n\tN int\n" +
 				"\tE []int `json:\",embed\"`\n}\n",
 			is:   ErrUnsupported,
 			msgs: []string{"the embedded fallback field of type []int is no map"},
 		},
 		{
 			name: "inlined struct",
-			src: "//kama:validate members=\">=1\"\ntype A struct {\n\tB\n}\n\n" +
+			src: "//kama:validate members(ge=1)\ntype A struct {\n\tB\n}\n\n" +
 				"type B struct{ N int }\n",
 			is:   ErrUnsupported,
 			msgs: []string{"field B inlines the members of an embedded struct"},
 		},
 		{
 			name: "on a map type",
-			src:  "//kama:validate members=\">=1\"\ntype M map[string]int\n",
+			src:  "//kama:validate members(ge=1)\ntype M map[string]int\n",
 			is:   ErrDirective,
 			msgs: []string{"members on type M validates a struct as a whole"},
 		},

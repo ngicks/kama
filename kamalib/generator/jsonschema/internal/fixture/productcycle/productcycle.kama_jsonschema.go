@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:19Z
+// generated: 2026-11-26T06:59:20Z
 
 package productcycle
 
@@ -20,7 +20,7 @@ import (
 // schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Product struct {
 	A                    A                         `json:"-"`
@@ -83,7 +83,7 @@ func (v *Product) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // A is generated from the schema at #/$defs/A.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type A struct {
 	// A declares shared first.
@@ -125,7 +125,7 @@ func (v *A) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // B is generated from the schema at #/$defs/B.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type B struct {
 	// B declares shared too.
@@ -167,7 +167,7 @@ func (v *B) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Back is generated from the schema at #/$defs/Back.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Back struct {
 	Product              *Product                  `json:"product,omitzero"`

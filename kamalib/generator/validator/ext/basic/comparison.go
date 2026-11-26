@@ -16,60 +16,123 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
-// comparisonOps are the operators of a comparison arg, two-character ones
-// first so that >= is not read as > followed by =.
-var comparisonOps = []string{">=", "<=", "==", "!=", ">", "<"}
+// comparisonKeywords are the keywords of a comparison, the operators of
+// the parameters gt, ge, lt, le, eq and ne in that order.
+var comparisonKeywords = []string{"gt", "ge", "lt", "le", "eq", "ne"}
 
-// Comparison is one comparison of the arg of length, runes or cmp, written
-// <Op><Operand> as in >=1.
+// comparisonOps are the Go operators of comparisonKeywords, index for
+// index.
+var comparisonOps = []string{">", ">=", "<", "<=", "==", "!="}
+
+// Comparison is one comparison of the args of length, runes or cmp, as
+// ge=1 in length(ge=1).
 type Comparison struct {
 	// Op is one of >, >=, ==, !=, <= and <.
 	Op string
-	// Operand is the value compared with, as written.
+	// Operand is the value compared with, as a Go literal.
 	Operand string
 }
 
-// parseComparisons decodes arg, one or more comparisons separated by
-// spaces.
-func parseComparisons(arg string) ([]Comparison, error) {
-	args, err := argTokens(arg)
-	if err != nil {
-		return nil, err
-	}
+// parseComparisons returns the comparisons of the args of c in the order
+// written, and the positional args. A keyword of comparisonKeywords
+// compares with its operator. ne takes a list too, one != per element.
+// With eq set, one positional arg compares with ==, as in length(3). A
+// keyword of no comparison is left out and reported through r.Warn.
+func parseComparisons(r ext.Resolver, c expr.Call, eq bool) ([]Comparison, []expr.Arg, error) {
+	var (
+		cs         []Comparison
+		rest       []expr.Arg
+		positional int
+	)
 
-	if len(args) == 0 {
-		return nil, argsError(errors.New("want one or more comparisons, as in >=1 <=10"))
-	}
+	for _, a := range c.Args {
+		i := slices.Index(comparisonKeywords, a.Name)
 
-	cs := make([]Comparison, 0, len(args))
-
-	for _, kv := range args {
-		c, err := comparison(kv)
-		if err != nil {
-			return nil, argsError(err)
+		switch {
+		case a.Name == "" && eq:
+			positional++
+			i = slices.Index(comparisonOps, "==")
+		case a.Name == "":
+			rest = append(rest, a)
+			continue
+		case i < 0:
+			r.Warn(fmt.Errorf("%s: unknown arg %s; known: %v", c.Name, a, comparisonKeywords))
+			continue
 		}
 
-		cs = append(cs, c)
+		values := []expr.Node{a.Value}
+		if l, ok := a.Value.(expr.List); ok && a.Name == "ne" {
+			values = l.Elems
+		}
+
+		for _, v := range values {
+			operand, err := goLiteral(v)
+			if err != nil {
+				return nil, nil, argsError(fmt.Errorf("%s: %s: %w", c.Name, a, err))
+			}
+
+			cs = append(cs, Comparison{Op: comparisonOps[i], Operand: operand})
+		}
 	}
 
-	return cs, nil
+	if positional > 1 {
+		return nil, nil, argsError(fmt.Errorf(
+			"%s takes one positional arg, the value compared with ==, got %d", c.Name, positional,
+		))
+	}
+
+	return cs, rest, nil
 }
 
-// parseLengths decodes arg, one or more comparisons with non-negative
-// integer literals, as length and runes take it. A comparison with an
-// integer above the greatest int, which no length reaches, is left out
-// when every length satisfies it, and becomes >9223372036854775807 when
-// none does, taking int as 64 bits wide.
-func parseLengths(arg string) ([]Comparison, error) {
-	cs, err := parseComparisons(arg)
+// goLiteral spells the literal n as a Go literal: a number as written, a
+// string quoted and a bool as true or false.
+func goLiteral(n expr.Node) (string, error) {
+	switch x := n.(type) {
+	case expr.Number:
+		return x.Text, nil
+	case expr.String:
+		return strconv.Quote(x.Value), nil
+	case expr.Bool:
+		return strconv.FormatBool(x.Value), nil
+	}
+
+	return "", fmt.Errorf("%s is no number, string or bool", n)
+}
+
+// noComparison reports c without comparisons.
+func noComparison(c expr.Call) error {
+	return argsError(fmt.Errorf(
+		"%w, as in %s(ge=1, le=10); the keywords are %s",
+		errNoComparison, c.Name, strings.Join(comparisonKeywords, ", "),
+	))
+}
+
+// parseLengths returns the comparisons of the args of c, which take
+// non-negative integer literals, as length and runes take them. One
+// positional arg compares with ==. A comparison with an integer above the
+// greatest int, which no length reaches, is left out when every length
+// satisfies it, and becomes >9223372036854775807 when none does, taking
+// int as 64 bits wide.
+func parseLengths(r ext.Resolver, c expr.Call) ([]Comparison, error) {
+	cs, _, err := parseComparisons(r, c, true)
 	if err != nil {
 		return nil, err
 	}
 
+	if len(cs) == 0 {
+		return nil, noComparison(c)
+	}
+
+	return lengths(cs)
+}
+
+// lengths checks the operands of cs, comparisons of a length, as
+// parseLengths does.
+func lengths(cs []Comparison) ([]Comparison, error) {
 	out := make([]Comparison, 0, len(cs))
 
 	for _, c := range cs {
@@ -95,14 +158,8 @@ func parseLengths(arg string) ([]Comparison, error) {
 			return nil, argsError(fmt.Errorf("length %s is negative", n))
 		}
 
-		// int accepts 1.0 and 'a' as well, which are no lengths as written.
-		// literalValue parsed n already. cmp accepts a unary plus, so length
-		// does too.
+		// int accepts 1.0 and "a" as well, which are no lengths as written.
 		x, _ := parser.ParseExpr(n)
-		if u, ok := x.(*ast.UnaryExpr); ok && u.Op == token.ADD {
-			x = u.X
-		}
-
 		if lit, ok := x.(*ast.BasicLit); !ok || lit.Kind != token.INT {
 			return nil, argsError(fmt.Errorf("length %s is not an integer literal", n))
 		}
@@ -137,37 +194,6 @@ func beyondInt(lit string) bool {
 			token.GTR,
 			constant.MakeInt64(math.MaxInt64),
 		)
-}
-
-// comparison splits kv, an arg written <op><operand> as in >=1, into its
-// operator and operand.
-func comparison(kv dircmnt.KeyValue) (Comparison, error) {
-	if !kv.HasValue {
-		for _, op := range comparisonOps {
-			operand, ok := strings.CutPrefix(kv.Key, op)
-			// An operand starting like an operator, as in >= read as > and =,
-			// is a misspelled operator.
-			if ok && operand != "" && !strings.ContainsAny(operand[:1], "<>=!") {
-				return Comparison{Op: op, Operand: operand}, nil
-			}
-		}
-	}
-
-	return Comparison{}, fmt.Errorf(
-		"arg %q is no comparison; want one of %s followed by a value, as in >=1",
-		kv.String(), strings.Join(comparisonOps, ", "),
-	)
-}
-
-// argTokens splits arg, the argument of a validator taking several
-// tokens, as dircmnt.ParseArgsKeyValue does.
-func argTokens(arg string) ([]dircmnt.KeyValue, error) {
-	args, err := dircmnt.ParseArgsKeyValue(arg)
-	if err != nil {
-		return nil, argsError(err)
-	}
-
-	return args, nil
 }
 
 // literalValue returns the value of lit, a Go literal, as a value of t,

@@ -2,10 +2,10 @@ package basic
 
 import (
 	"fmt"
-	"go/token"
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Decode is the validator //kama:validate decode=<type>: the value decodes
@@ -29,13 +29,14 @@ type DecodeOptions struct {
 	Type string
 }
 
-// Parse decodes arg into the name of a type.
-func (Decode) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	if !token.IsIdentifier(arg) {
-		return nil, argsError(fmt.Errorf("%q is no type name; want decode=<type>", arg))
+// Parse decodes the arg of c, the name of a type.
+func (Decode) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	name, err := typeArg(r, c)
+	if err != nil {
+		return nil, err
 	}
 
-	return DecodeOptions{Type: arg}, nil
+	return DecodeOptions{Type: name}, nil
 }
 
 // Check accepts raw JSON text.

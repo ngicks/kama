@@ -29,8 +29,8 @@ func TestHooks(t *testing.T) {
 		},
 		{
 			name: "off by type",
-			src: "//kama:validate\n//kama:validate hook=off\ntype A struct {\n\tN int\n" +
-				"\t//kama:validate hook=on\n\tM int\n}\n\n" +
+			src: "//kama:validate\n//kama:validate hook=False\ntype A struct {\n\tN int\n" +
+				"\t//kama:validate hook=True\n\tM int\n}\n\n" +
 				"func (A) validateM(bool) error { return nil }\n",
 			typeName: "A",
 			want:     []string{"v.validateM(stopOnFirstError)"},
@@ -38,7 +38,8 @@ func TestHooks(t *testing.T) {
 		},
 		{
 			name: "off by field",
-			src: "//kama:validate\ntype A struct {\n\t//kama:validate hook=off\n\tN int\n\tM int\n}\n\n" +
+			src: "//kama:validate\ntype A struct {\n" +
+				"\t//kama:validate hook=False\n\tN int\n\tM int\n}\n\n" +
 				"func (A) validateM(bool) error { return nil }\n",
 			typeName: "A",
 			want:     []string{"v.validateM(stopOnFirstError)"},
@@ -47,15 +48,15 @@ func TestHooks(t *testing.T) {
 		{
 			name: "off for a dependant",
 			src: "type P struct{ C C }\n\n" +
-				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=False\ntype C struct{ X int }\n",
 			typeName: "P",
 			notWant:  []string{"validateC"},
 		},
 		{
 			name: "on for a dependant",
-			src: "//kama:validate hook=on\ntype P struct{ C C }\n\n" +
+			src: "//kama:validate hook=True\ntype P struct{ C C }\n\n" +
 				"func (P) validateC(bool) error { return nil }\n\n" +
-				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=False\ntype C struct{ X int }\n",
 			typeName: "P",
 			want: []string{
 				check(`validator.Field(v.C.Validate(stopOnFirstError), "C")`),
@@ -67,7 +68,7 @@ func TestHooks(t *testing.T) {
 			name: "order",
 			src: "//kama:validate\ntype A struct {\n\t//kama:validate required\n\tC *C\n}\n\n" +
 				"func (A) validateC(bool) error { return nil }\n\n" +
-				"//kama:validate\n//kama:validate hook=off\ntype C struct{ X int }\n",
+				"//kama:validate\n//kama:validate hook=False\ntype C struct{ X int }\n",
 			typeName: "A",
 			want: []string{
 				`kamaValidateRequired(v.C != nil, "nil")`,
@@ -86,7 +87,7 @@ func TestHooks(t *testing.T) {
 			// Fields name and Name share validateName, which only one of them
 			// may call.
 			name: "shared hook off for one field",
-			src: "//kama:validate\ntype A struct {\n\t//kama:validate hook=off\n\tname string\n" +
+			src: "//kama:validate\ntype A struct {\n\t//kama:validate hook=False\n\tname string\n" +
 				"\tName string `json:\"Name2\"`\n}\n\n" +
 				"func (A) validateName(bool) error { return nil }\n",
 			typeName: "A",
@@ -110,8 +111,8 @@ func TestHooks(t *testing.T) {
 		},
 		{
 			name: "on by field beside a validator",
-			src: "//kama:validate hook=off\ntype A struct {\n\tN int\n" +
-				"\t//kama:validate required hook=on cmp=\">0\"\n\tM int\n}\n\n" +
+			src: "//kama:validate hook=False\ntype A struct {\n\tN int\n" +
+				"\t//kama:validate required, hook=True, cmp(gt=0)\n\tM int\n}\n\n" +
 				"func (A) validateM(bool) error { return nil }\n",
 			typeName: "A",
 			want: []string{
@@ -151,7 +152,7 @@ func TestHookErrors(t *testing.T) {
 			msgs: []string{
 				"a.go:5:2", "field Name of", "A has no hook validateName",
 				"declare func (A) validateName(stopOnFirstError bool) error",
-				"//kama:validate hook=off on the field or the type",
+				"//kama:validate hook=False on the field or the type",
 			},
 		},
 		{

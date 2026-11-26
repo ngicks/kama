@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:03Z
+// generated: 2026-11-26T06:59:05Z
 
 package nullablecycle
 
@@ -18,7 +18,7 @@ import (
 // Node is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Node struct {
 	Value                int64                     `json:"value"`

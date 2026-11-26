@@ -43,52 +43,52 @@ func TestRawCheck(t *testing.T) {
 	value, _, plain := rawTypes()
 	reg := ext.DefaultRegistry()
 
-	for _, tc := range []struct {
-		name, arg, msg string
-	}{
-		{"cmp", ">=1.5", ""},
-		{"cmp", `>"a"`, `"a" is no JSON number`},
-		{"multipleof", "0.5", ""},
-		{"runes", "<=3", ""},
-		{"regexp", "^a", ""},
-		{"length", ">=1", ""},
-		{"members", "<=1", ""},
-		{"unique", "", ""},
-		{"const", "1 null `{\"a\":1}`", ""},
-		{"const", "`{`", "{ is no JSON value"},
-		{"required", "a b", ""},
-		{"kind", "integer null", ""},
-		{"and", `members="<=1", cmp=">=1"`, ""},
+	for _, tc := range []struct{ text, msg string }{
+		{"cmp(ge=1.5)", ""},
+		{`cmp(gt="a")`, `"a" is no JSON number`},
+		{"multipleof(0.5)", ""},
+		{"runes(le=3)", ""},
+		{`regexp("^a")`, ""},
+		{"length(ge=1)", ""},
+		{"members(le=1)", ""},
+		{"unique", ""},
+		{`const(1, None, {"a": 1})`, ""},
+		{`required("a", "b")`, ""},
+		{`kind("integer", "null")`, ""},
+		{"members(le=1) and cmp(ge=1)", ""},
 	} {
-		r, err := reg.Resolve(tc.name, tc.arg)
-		assert.NilError(t, err, tc.name)
+		r, err := resolve(t, tc.text, reg)
+		assert.NilError(t, err, tc.text)
 
 		if tc.msg == "" {
-			assert.NilError(t, r.Check(value), "%s=%s", tc.name, tc.arg)
+			assert.NilError(t, r.Check(value), tc.text)
 		} else {
 			assert.ErrorContains(t, r.Check(value), tc.msg)
 		}
 	}
 
-	r, err := reg.Resolve("kind", "string")
+	r, err := resolve(t, `kind("string")`, reg)
 	assert.NilError(t, err)
 	assert.ErrorContains(t, r.Check(plain), "is no raw JSON text")
 
-	r, err = reg.Resolve("members", ">=1")
+	r, err = resolve(t, "members(ge=1)", reg)
 	assert.NilError(t, err)
 	assert.ErrorIs(t, r.Check(plain), errMembersStruct)
 }
 
 func TestKindParse(t *testing.T) {
-	r, err := Kind{}.Parse("integer null", nil)
+	reg := ext.DefaultRegistry()
+
+	r, err := resolve(t, `kind("integer", "null")`, reg)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, r, ext.Rule(KindOptions{Kinds: []string{"integer", "null"}}))
 
-	for arg, msg := range map[string]string{
-		"":      "want one or more JSON kinds",
-		"float": `arg "float" is no JSON kind`,
+	for text, msg := range map[string]string{
+		"kind":          "want one or more JSON kinds",
+		`kind("float")`: `"float" is no JSON kind`,
+		"kind(null)":    `quote a name, as in kind("null")`,
 	} {
-		_, err := Kind{}.Parse(arg, nil)
+		_, err := resolve(t, text, reg)
 		assert.ErrorIs(t, err, ext.ErrArgs)
 		assert.ErrorContains(t, err, msg)
 	}

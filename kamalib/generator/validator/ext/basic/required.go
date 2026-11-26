@@ -9,6 +9,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Required is the validator //kama:validate required: the value is not the
@@ -40,25 +41,17 @@ type RequiredOptions struct {
 	reg ext.Resolver
 }
 
-// Parse decodes arg into member names separated by spaces, none for the
-// empty arg.
-func (Required) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	args, err := argTokens(arg)
-	if err != nil {
+// Parse decodes the args of c, the member names of raw JSON text.
+func (Required) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	var args struct {
+		Names []string `json:"names"`
+	}
+
+	if _, err := (ext.Params{Variadic: "names"}).Bind(r, c, &args); err != nil {
 		return nil, err
 	}
 
-	var names []string
-
-	for _, kv := range args {
-		if kv.HasValue {
-			return nil, argsError(fmt.Errorf("arg %q is no member name", kv.String()))
-		}
-
-		names = append(names, kv.Key)
-	}
-
-	return RequiredOptions{Names: names, reg: r}, nil
+	return RequiredOptions{Names: args.Names, reg: r}, nil
 }
 
 // Check accepts the types the doc comment of Required lists.

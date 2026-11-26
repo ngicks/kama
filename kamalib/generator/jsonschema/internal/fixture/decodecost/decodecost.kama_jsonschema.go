@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:38:45Z
+// generated: 2026-11-26T06:58:50Z
 
 package decodecost
 
@@ -21,7 +21,7 @@ import (
 // Costs is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Costs struct {
 	Plain                opt.Option[Plain]         `json:"plain,omitzero"`
@@ -68,7 +68,7 @@ func (v *Costs) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Plain is generated from the schema at #/$defs/Plain.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Plain struct {
 	Next                 *Plain                    `json:"next,omitzero"`
@@ -109,8 +109,8 @@ func (v *Plain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Negated is generated from the schema at #/$defs/Negated.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(not(required=`"bad"`))
+//kama:validate hook=False
+//kama:validate json(not required("bad"))
 //kama:validate decoded
 type Negated struct {
 	Next                 *Negated                  `json:"next,omitzero"`
@@ -166,7 +166,7 @@ type ChosenKind interface {
 // ChosenNonNegative holds the NonNegative member of Chosen.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ChosenNonNegative struct {
 	NonNegative NonNegative
@@ -188,7 +188,7 @@ func (v ChosenNonNegative) MarshalJSONTo(enc *jsontext.Encoder) error {
 // ChosenNegative holds the Negative member of Chosen.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ChosenNegative struct {
 	Negative Negative
@@ -259,7 +259,7 @@ func (v Chosen) Validate(stopOnFirstError bool) error {
 // value they reject costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("a", kind="integer", cmp=">=0"))
+//kama:validate props(field("a", kind("integer"), cmp(ge=0)))
 type chosenNonNegativeProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -276,7 +276,7 @@ func (v chosenNonNegativeProbe) RawJson() jsontext.Value {
 // value they reject costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("a", kind="integer", cmp="<=-1"))
+//kama:validate props(field("a", kind("integer"), cmp(le=-1)))
 type chosenNegativeProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -372,11 +372,11 @@ func (v *Chosen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // NonNegative is generated from the schema at #/$defs/NonNegative.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type NonNegative struct {
 	Next opt.Option[Chosen] `json:"next,omitzero"`
-	//kama:validate cmp=">=0"
+	//kama:validate cmp(ge=0)
 	A                    int64                     `json:"a"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
@@ -414,11 +414,11 @@ func (v *NonNegative) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Negative is generated from the schema at #/$defs/Negative.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Negative struct {
 	Next opt.Option[Chosen] `json:"next,omitzero"`
-	//kama:validate cmp="<=-1"
+	//kama:validate cmp(le=-1)
 	A                    int64                     `json:"a"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
@@ -456,8 +456,8 @@ func (v *Negative) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Closed is generated from the schema at #/$defs/Closed.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(unevalprops(and(kind="object", props(field("next"), field("v"))), or()))
+//kama:validate hook=False
+//kama:validate json(unevalprops(kind("object") and props(field("next"), field("v")), never))
 //kama:validate decoded
 type Closed struct {
 	Next                 *Closed                   `json:"next,omitzero"`

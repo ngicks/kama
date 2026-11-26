@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:40Z
+// generated: 2026-11-26T06:42:48Z
 
 package model
 
@@ -26,13 +26,13 @@ func (v Combinators) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validator.Field(kamaValidateNot(kamaValidateRegexpString(kamaValidateRegexp_9c5b6217da, v.Word), "regexp=\"^x\""), "word"); err != nil {
+	if err := validator.Field(kamaValidateNot(kamaValidateRegexpString(kamaValidateRegexp_9c5b6217da, v.Word), "regexp(\"^x\")"), "word"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
-	if err := validator.Field(kamaValidateOneOf([]string{"regexp=\"^a\"", "regexp=\"b$\""}, kamaValidateRegexpString(kamaValidateRegexp_5cd67a1734, v.Either), kamaValidateRegexpString(kamaValidateRegexp_91140f58d6, v.Either)), "either"); err != nil {
+	if err := validator.Field(kamaValidateOneOf([]string{"regexp(\"^a\")", "regexp(\"b$\")"}, kamaValidateRegexpString(kamaValidateRegexp_5cd67a1734, v.Either), kamaValidateRegexpString(kamaValidateRegexp_91140f58d6, v.Either)), "either"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -44,7 +44,7 @@ func (v Combinators) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	if err := validator.Field(kamaValidateOr(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Nested, ">=", 1), kamaValidateNot(kamaValidateOr(kamaValidateConst(v.Nested, 5), kamaValidateConst(v.Nested, 7)), "or(const=\"5\", const=\"7\")")), kamaValidateConst(v.Nested, -1)), "nested"); err != nil {
+	if err := validator.Field(kamaValidateOr(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Nested, ">=", 1), kamaValidateNot(kamaValidateOr(kamaValidateConst(v.Nested, 5), kamaValidateConst(v.Nested, 7)), "const(5) or const(7)")), kamaValidateConst(v.Nested, -1)), "nested"); err != nil {
 		if stopOnFirstError {
 			return err
 		}

@@ -10,7 +10,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 )
@@ -61,38 +61,40 @@ type PackageOptions struct {
 // option.
 func (o *PackageOptions) UnknownKeys() [][]string { return unknownkey.Paths(o.Unknown) }
 
-// UnmarshalKeyValue decodes a directive in a free-floating comment.
-func (o *PackageOptions) UnmarshalKeyValue(
-	src genopt.Source,
-	sub string,
-	kv []dircmnt.KeyValue,
-) error {
+// UnmarshalExpr decodes a directive in a free-floating comment.
+func (o *PackageOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.Arg) error {
 	if sub != "" {
-		return subDirectiveError(src, sub, kv)
+		return subDirectiveError(src, sub, args)
 	}
 
-	unknown := fmt.Errorf(
-		"%w: %s: unknown args %q on a free-floating comment; want file or package",
-		ErrDirective, src.Pos, dircmnt.SpellArgs(kv),
-	)
-
-	words, ok := dircmnt.BareWords(kv)
-	if !ok || len(words) == 0 {
-		return unknown
+	if len(args) == 0 {
+		return fmt.Errorf(
+			"%w: %s: no args on a free-floating comment; want file or package",
+			ErrDirective, src.Pos,
+		)
 	}
 
-	for _, w := range words {
-		switch w {
-		case fileWord:
+	for _, a := range args {
+		switch {
+		case isWord(a, fileWord):
 			o.file = true
-		case packageWord:
+		case isWord(a, packageWord):
 			o.AllTypes = true
 		default:
-			return unknown
+			return fmt.Errorf(
+				"%w: %s: unknown arg %s on a free-floating comment; want file or package",
+				ErrDirective, src.Pos, a,
+			)
 		}
 	}
 
 	return nil
+}
+
+// isWord reports whether a is the bare name word.
+func isWord(a expr.Arg, word string) bool {
+	c, ok := a.Value.(expr.Call)
+	return ok && a.Name == "" && c.Name == word && !c.Parens && len(c.Args) == 0
 }
 
 // TypeOptions are the options of a type.
@@ -103,13 +105,13 @@ type TypeOptions struct {
 	// type validates it, so ValidateShallow takes a decoded value of it as
 	// valid.
 	Decoded bool `json:"decoded"`
-	// Hook stands for //kama:validate hook=on (true) or hook=off (false). Nil
-	// leaves the default.
+	// Hook stands for //kama:validate hook=True or hook=False. Nil leaves
+	// the default.
 	Hook *bool `json:"hook"`
-	// Pre stands for //kama:validate pre=<func>: the package-level function
-	// Validate calls first. Empty stands for none.
+	// Pre stands for //kama:validate pre="<func>": the package-level
+	// function Validate calls first. Empty stands for none.
 	Pre string `json:"pre"`
-	// Post stands for //kama:validate post=<func>: the package-level
+	// Post stands for //kama:validate post="<func>": the package-level
 	// function Validate calls last, whatever happened before. Empty stands
 	// for none.
 	Post string `json:"post"`
@@ -127,61 +129,47 @@ type TypeOptions struct {
 	markSrc, hookSrc, preSrc, postSrc optionSource
 }
 
-// UnmarshalKeyValue decodes a directive on a type or a type group. Every
+// UnmarshalExpr decodes a directive on a type or a type group. Every
 // directive without ignore marks the type, as an option file entry does.
-// genopt joins the lines of a target into one directive, so a line holding
-// only hook=on cannot be told from one following a bare //kama:validate.
-// Each arg other than ignore, decoded, hook, pre and post names a validator.
-func (o *TypeOptions) UnmarshalKeyValue(
-	src genopt.Source,
-	sub string,
-	kv []dircmnt.KeyValue,
-) error {
+// Each item other than ignore, decoded, hook, pre and post is a rule.
+func (o *TypeOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.Arg) error {
 	if sub != "" {
-		return subDirectiveError(src, sub, kv)
+		return subDirectiveError(src, sub, args)
 	}
 
-	for _, a := range kv {
+	for _, a := range args {
+		c, isCall := a.Value.(expr.Call)
+		word := isCall && a.Name == "" && (c.Name == ignoreWord || c.Name == decodedWord)
+
 		switch {
-		case a.Key == ignoreWord && !a.HasValue && !a.Call:
-			o.Ignore = true
-		case a.Key == decodedWord && !a.HasValue && !a.Call:
-			o.Decoded = true
-		case a.Key == ignoreWord || a.Key == decodedWord:
+		case a.Name == "" && (isWord(a, hookWord) || isWord(a, preWord) || isWord(a, postWord)):
 			return fmt.Errorf(
-				"%w: %s: unknown arg %q on %s; want %s without a value",
-				ErrDirective, src.Pos, a.String(), src.Target.Describe(), a.Key,
+				"%w: %s: item %s on %s is a keyword item; write %s=<value>",
+				ErrDirective, src.Pos, a, src.Target.Describe(), c.Name,
 			)
-		case a.Key == hookWord:
-			if o.Hook != nil {
-				return fmt.Errorf(
-					"%w: %s: hook given twice on %s", ErrDirective, src.Pos, src.Target.Describe(),
-				)
+		case word && (c.Parens || len(c.Args) > 0):
+			return fmt.Errorf(
+				"%w: %s: unknown arg %s on %s; want %s without args",
+				ErrDirective, src.Pos, a, src.Target.Describe(), c.Name,
+			)
+		case word && c.Name == ignoreWord:
+			o.Ignore = true
+		case word:
+			o.Decoded = true
+		case a.Name == hookWord:
+			if err := setHook(&o.Hook, &o.hookSrc, src, a); err != nil {
+				return err
 			}
-
-			on, err := hookValue(a)
-			if err != nil {
-				return fmt.Errorf(
-					"%w: %s: %w on %s", ErrDirective, src.Pos, err, src.Target.Describe(),
-				)
-			}
-
-			o.Hook = &on
-			o.hookSrc = optionSource{src: src, arg: a.String()}
-		case a.Key == preWord:
+		case a.Name == preWord:
 			if err := setFunc(&o.Pre, &o.preSrc, src, a); err != nil {
 				return err
 			}
-		case a.Key == postWord:
+		case a.Name == postWord:
 			if err := setFunc(&o.Post, &o.postSrc, src, a); err != nil {
 				return err
 			}
 		default:
-			o.Validators = append(o.Validators, ValidatorOptions{
-				Name: a.Key,
-				Args: a.Arg(),
-				src:  optionSource{src: src, arg: a.Key},
-			})
+			o.Validators = append(o.Validators, newValidatorOptions(src, a))
 		}
 	}
 
@@ -240,15 +228,13 @@ func (o TypeOptions) OverlayOn(lower TypeOptions) (TypeOptions, bool) {
 }
 
 // UnknownKeys returns the keys of the option file entry that name no
-// option, those of each validator included.
-func (o *TypeOptions) UnknownKeys() [][]string {
-	return validatorUnknownKeys(o.Validators, unknownkey.Paths(o.Unknown))
-}
+// option.
+func (o *TypeOptions) UnknownKeys() [][]string { return unknownkey.Paths(o.Unknown) }
 
 // FieldOptions are the options of a struct field.
 type FieldOptions struct {
-	// Hook stands for //kama:validate hook=on (true) or hook=off (false). Nil
-	// leaves the default of the type.
+	// Hook stands for //kama:validate hook=True or hook=False. Nil leaves
+	// the default of the type.
 	Hook *bool `json:"hook"`
 	// Validators stand for the validators //kama:validate names on the
 	// field, in the order written.
@@ -258,18 +244,14 @@ type FieldOptions struct {
 	hookSrc optionSource
 }
 
-// UnmarshalKeyValue decodes a directive on a field. Each arg names a
-// validator, except hook.
-func (o *FieldOptions) UnmarshalKeyValue(
-	src genopt.Source,
-	sub string,
-	kv []dircmnt.KeyValue,
-) error {
+// UnmarshalExpr decodes a directive on a field. Each item is a rule,
+// except hook.
+func (o *FieldOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.Arg) error {
 	if sub != "" {
-		return subDirectiveError(src, sub, kv)
+		return subDirectiveError(src, sub, args)
 	}
 
-	if len(kv) == 0 {
+	if len(args) == 0 {
 		return fmt.Errorf(
 			"%w: %s: //kama:validate on field %s names no validator;"+
 				" mark the type in its doc comment instead",
@@ -277,42 +259,27 @@ func (o *FieldOptions) UnmarshalKeyValue(
 		)
 	}
 
-	for _, a := range kv {
-		if a.Key == preWord || a.Key == postWord {
+	for _, a := range args {
+		if isWord(a, hookWord) {
+			return fmt.Errorf(
+				"%w: %s: item hook on field %s is a keyword item; write hook=True or hook=False",
+				ErrDirective, src.Pos, src.Target.FieldName(),
+			)
+		}
+
+		switch a.Name {
+		case preWord, postWord:
 			return fmt.Errorf(
 				"%w: %s: %s on field %s; write it in the doc comment of the type",
-				ErrDirective, src.Pos, a.Key, src.Target.FieldName(),
+				ErrDirective, src.Pos, a.Name, src.Target.FieldName(),
 			)
+		case hookWord:
+			if err := setHook(&o.Hook, &o.hookSrc, src, a); err != nil {
+				return err
+			}
+		default:
+			o.Validators = append(o.Validators, newValidatorOptions(src, a))
 		}
-
-		if a.Key != hookWord {
-			o.Validators = append(o.Validators, ValidatorOptions{
-				Name: a.Key,
-				Args: a.Arg(),
-				src:  optionSource{src: src, arg: a.Key},
-			})
-
-			continue
-		}
-
-		if o.Hook != nil {
-			return fmt.Errorf(
-				"%w: %s: hook given twice on field %s",
-				ErrDirective,
-				src.Pos,
-				src.Target.FieldName(),
-			)
-		}
-
-		on, err := hookValue(a)
-		if err != nil {
-			return fmt.Errorf(
-				"%w: %s: %w on field %s", ErrDirective, src.Pos, err, src.Target.FieldName(),
-			)
-		}
-
-		o.Hook = &on
-		o.hookSrc = optionSource{src: src, arg: a.String()}
 	}
 
 	return nil
@@ -328,101 +295,117 @@ func (o *FieldOptions) SetSource(src genopt.Source) {
 }
 
 // UnknownKeys returns the keys of the option file entry that name no
-// option, those of each validator included.
-func (o *FieldOptions) UnknownKeys() [][]string {
-	return validatorUnknownKeys(o.Validators, unknownkey.Paths(o.Unknown))
-}
+// option.
+func (o *FieldOptions) UnknownKeys() [][]string { return unknownkey.Paths(o.Unknown) }
 
 // setValidatorSources records src, the option file entry listing vs, in
 // each of vs.
 func setValidatorSources(vs []ValidatorOptions, src genopt.Source) {
 	for i := range vs {
 		vs[i].src = optionSource{
-			src: src, arg: vs[i].Name, keys: []string{"validators", strconv.Itoa(i)},
+			src: src, arg: itemSpelling(vs[i].Item), keys: []string{"validators", strconv.Itoa(i)},
 		}
 	}
 }
 
-// validatorUnknownKeys returns keys followed by the unknown keys of each
-// of vs below the validators key.
-func validatorUnknownKeys(vs []ValidatorOptions, keys [][]string) [][]string {
-	for i, v := range vs {
-		keys = append(keys, unknownkey.Paths(v.Unknown, "validators", strconv.Itoa(i))...)
+// ValidatorOptions are one rule item of a field or a type: a rule, as
+// length(ge=1) or a or b, or a keyword item. In an option file it is the
+// text of the item, as a directive spells it.
+type ValidatorOptions struct {
+	Item expr.Arg
+	src  optionSource
+}
+
+// newValidatorOptions returns the rule item a of the directive at src.
+func newValidatorOptions(src genopt.Source, a expr.Arg) ValidatorOptions {
+	return ValidatorOptions{Item: a, src: optionSource{src: src, arg: itemSpelling(a)}}
+}
+
+// itemSpelling names the item a in messages: the name of a call, else a as
+// expr.Print spells it.
+func itemSpelling(a expr.Arg) string {
+	if c, ok := a.Value.(expr.Call); ok && a.Name == "" {
+		return c.Name
 	}
 
-	return keys
+	return a.String()
 }
 
-// ValidatorOptions are one validator of a field or a type: the arg
-// Name=Args or the call Name(Args) of //kama:validate, or Name alone when
-// Args is empty.
-type ValidatorOptions struct {
-	Name string `json:"name"`
-	// Args is the one argument of the validator, unparsed. Empty stands for
-	// none. For a call it holds the args between the parentheses as
-	// dircmnt.SpellCallArgs spells them, as in cmp=">=10", const="0" for
-	// or(cmp=">=10", const="0").
-	Args string `json:"args"`
-	// Unknown captures the keys of an option file entry that name no
-	// option.
-	Unknown map[string]any `json:",embed"`
-	src     optionSource
-}
-
-// UnmarshalJSONFrom decodes a validator entry of an option file and rejects
-// one without a name where it is written.
+// UnmarshalJSONFrom decodes a rule item of an option file, a string
+// holding one item. An object, the entry of an older format, is an error.
 func (o *ValidatorOptions) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
-	// fields is ValidatorOptions without its methods.
-	type fields ValidatorOptions
+	if dec.PeekKind() != '"' {
+		return errors.New(`want the text of one rule item, as in "length(ge=1)"`)
+	}
 
-	var v fields
-	if err := json.UnmarshalDecode(dec, &v); err != nil {
+	var text string
+	if err := json.UnmarshalDecode(dec, &text); err != nil {
 		return err
 	}
 
-	if v.Name == "" {
-		return errors.New("validator without name")
+	args, err := expr.Parse(text)
+	if err != nil {
+		return err
 	}
 
-	*o = ValidatorOptions(v)
+	if len(args) != 1 {
+		return fmt.Errorf("%q holds %d items; want one rule item per entry", text, len(args))
+	}
+
+	*o = ValidatorOptions{Item: args[0]}
 
 	return nil
 }
 
-// setFunc sets *dst, the function the arg a of the directive at src names,
-// and *dstSrc, its source. a names one function, given once on the type.
-func setFunc(dst *string, dstSrc *optionSource, src genopt.Source, a dircmnt.KeyValue) error {
+// MarshalJSONTo encodes o as the text of its item.
+func (o ValidatorOptions) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return enc.WriteToken(jsontext.String(o.Item.String()))
+}
+
+// setFunc sets *dst, the function the item a of the directive at src
+// names, and *dstSrc, its source. a names one function, given once on the
+// type.
+func setFunc(dst *string, dstSrc *optionSource, src genopt.Source, a expr.Arg) error {
 	if *dst != "" {
 		return fmt.Errorf(
-			"%w: %s: %s given twice on %s", ErrDirective, src.Pos, a.Key, src.Target.Describe(),
+			"%w: %s: %s given twice on %s", ErrDirective, src.Pos, a.Name, src.Target.Describe(),
 		)
 	}
 
-	if !a.HasValue || a.Call || !token.IsIdentifier(a.Value) {
+	name, ok := a.Value.(expr.String)
+	if !ok || !token.IsIdentifier(name.Value) {
 		return fmt.Errorf(
-			"%w: %s: arg %q of //kama:validate on %s; want %s=<function name>",
-			ErrDirective, src.Pos, a.String(), src.Target.Describe(), a.Key,
+			"%w: %s: arg %s of //kama:validate on %s; want %s=\"<function name>\"",
+			ErrDirective, src.Pos, a, src.Target.Describe(), a.Name,
 		)
 	}
 
-	*dst = a.Value
+	*dst = name.Value
 	*dstSrc = optionSource{src: src, arg: a.String()}
 
 	return nil
 }
 
-// hookValue decodes the arg hook=on or hook=off.
-func hookValue(a dircmnt.KeyValue) (bool, error) {
-	if a.HasValue {
-		switch a.Value {
-		case "on":
-			return true, nil
-		case "off":
-			return false, nil
-		}
+// setHook sets *dst, the switch of the hook the item a of the directive at
+// src gives, and *dstSrc, its source. a is hook=True or hook=False, given
+// once.
+func setHook(dst **bool, dstSrc *optionSource, src genopt.Source, a expr.Arg) error {
+	if *dst != nil {
+		return fmt.Errorf(
+			"%w: %s: hook given twice on %s", ErrDirective, src.Pos, src.Target.Describe(),
+		)
 	}
 
-	return false, fmt.Errorf(
-		"arg %q of //kama:validate; want hook=on or hook=off", a.String(),
-	)
+	on, ok := a.Value.(expr.Bool)
+	if !ok {
+		return fmt.Errorf(
+			"%w: %s: arg %s of //kama:validate on %s; want hook=True or hook=False",
+			ErrDirective, src.Pos, a, src.Target.Describe(),
+		)
+	}
+
+	*dst = &on.Value
+	*dstSrc = optionSource{src: src, arg: a.String()}
+
+	return nil
 }

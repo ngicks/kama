@@ -9,6 +9,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
@@ -419,7 +420,7 @@ func probeSteps(
 // them is one conjunct of the member, so the probe rejects only values the
 // member rejects. A member reaching no reference decodes no nested type,
 // so it gets no probe.
-func probeArgs(doc *jsonschema.Schema, opts Options, ptr string, i int) []string {
+func probeArgs(doc *jsonschema.Schema, opts Options, ptr string, i int) []expr.Arg {
 	s, err := at(doc, ptr)
 	if err != nil || !opts.Validate || unionKeyword(s) == "" {
 		return nil
@@ -434,7 +435,7 @@ func probeArgs(doc *jsonschema.Schema, opts Options, ptr string, i int) []string
 
 	args := leafRules(opts, rs, func(kw string) bool { return kw != "type" && kw != "required" })
 
-	var fields []string
+	var fields []expr.Arg
 
 	for _, n := range rs.Properties {
 		pp := child(r, "properties", n.Name)
@@ -447,19 +448,11 @@ func probeArgs(doc *jsonschema.Schema, opts Options, ptr string, i int) []string
 			continue
 		}
 
-		f, err := callArg("field", append([]string{quoteName(n.Name)}, ops...)...)
-		if err != nil {
-			continue
-		}
-
-		fields = append(fields, f)
+		fields = append(fields, call("field", append(strs([]string{n.Name}), ops...)...))
 	}
 
 	if len(fields) > 0 {
-		props, err := callArg("props", fields...)
-		if err == nil {
-			args = append(args, props)
-		}
+		args = append(args, call("props", fields...))
 	}
 
 	if len(args) == 0 {

@@ -17,7 +17,7 @@ type Level int
 
 // Rules holds a field for each built-in validator.
 //
-//kama:validate hook=off
+//kama:validate hook=False
 type Rules struct {
 	//kama:validate zero
 	Zero int `json:"zero"`
@@ -29,15 +29,15 @@ type Rules struct {
 	Null und.Und[int] `json:"null"`
 	//kama:validate null
 	NullPtr *und.Und[int] `json:"null_ptr"`
-	//kama:validate regexp="^[a-z]+$"
+	//kama:validate regexp("^[a-z]+$")
 	Slug string `json:"slug"`
-	//kama:validate regexp="^[a-z]+$"
+	//kama:validate regexp("^[a-z]+$")
 	SlugBytes []byte `json:"slug_bytes"`
-	//kama:validate length=">=1 <=3"
+	//kama:validate length(ge=1, le=3)
 	Items []int `json:"items"`
-	//kama:validate length="==2"
+	//kama:validate length(2)
 	Code opt.Option[string] `json:"code"`
-	//kama:validate runes="==2"
+	//kama:validate runes(2)
 	Kana string `json:"kana"`
 	//kama:validate unique
 	Tags []any `json:"tags"`
@@ -45,29 +45,29 @@ type Rules struct {
 	Triple opt.Option[[3]int] `json:"triple"`
 	//kama:validate unique
 	Refs []*int `json:"refs"`
-	//kama:validate cmp=">=0 <100"
+	//kama:validate cmp(ge=0, lt=100)
 	Level Level `json:"level"`
-	//kama:validate cmp=`>"b"`
+	//kama:validate cmp(gt="b")
 	Name *string `json:"name"`
-	//kama:validate cmp=">=0.5"
+	//kama:validate cmp(ge=0.5)
 	Ratio float64 `json:"ratio"`
-	//kama:validate cmp=">10 !=5"
+	//kama:validate cmp(gt=10, ne=5)
 	Score int `json:"score"`
-	//kama:validate multipleof=3
+	//kama:validate multipleof(3)
 	Step int `json:"step"`
-	//kama:validate multipleof=0.25
+	//kama:validate multipleof(0.25)
 	Quarter *float32 `json:"quarter"`
-	//kama:validate cmp="==true"
+	//kama:validate cmp(True)
 	Agreed bool `json:"agreed"`
-	//kama:validate const=`"red" "dark blue"`
+	//kama:validate const("red", "dark blue")
 	Color Color `json:"color"`
-	//kama:validate const="1 2 3"
+	//kama:validate const(1, 2, 3)
 	Pick uint8 `json:"pick"`
-	//kama:validate format=date
+	//kama:validate format("date")
 	Date string `json:"date"`
-	//kama:validate format=date-time
+	//kama:validate format("date-time")
 	At opt.Option[string] `json:"at"`
-	//kama:validate format=url
+	//kama:validate format("url")
 	Url string `json:"url"`
 	//kama:validate null
 	Elastic elastic.Elastic[int] `json:"elastic"`
@@ -77,21 +77,21 @@ type Rules struct {
 // Schema test suite. 1e308 overflows an integer type, so the field of the
 // schema of type integer and multipleOf 0.123456789 is a float.
 //
-//kama:validate hook=off
+//kama:validate hook=False
 type MultipleOf struct {
-	//kama:validate multipleof=2
+	//kama:validate multipleof(2)
 	ByInt int `json:"by_int"`
-	//kama:validate multipleof=1.5
+	//kama:validate multipleof(1.5)
 	ByNumber float64 `json:"by_number"`
-	//kama:validate multipleof=0.0001
+	//kama:validate multipleof(0.0001)
 	BySmallNumber float64 `json:"by_small_number"`
-	//kama:validate multipleof=0.0001
+	//kama:validate multipleof(0.0001)
 	BySmallNumber32 float32 `json:"by_small_number32"`
-	//kama:validate multipleof=1e-8
+	//kama:validate multipleof(1e-8)
 	ByVerySmallNumber float64 `json:"by_very_small_number"`
-	//kama:validate multipleof=0.123456789
+	//kama:validate multipleof(0.123456789)
 	FloatDivisionInf float64 `json:"float_division_inf"`
-	//kama:validate multipleof=1e-8
+	//kama:validate multipleof(1e-8)
 	SmallMultipleOfLargeInteger int64 `json:"small_multiple_of_large_integer"`
 }
 
@@ -110,7 +110,7 @@ type Stamp struct{ *time.Time }
 
 // Stamped holds Stamp, which required and zero compare with its zero value.
 //
-//kama:validate hook=off
+//kama:validate hook=False
 type Stamped struct {
 	//kama:validate required
 	At Stamp `json:"at"`
@@ -120,19 +120,19 @@ type Stamped struct {
 
 // Shipping holds fields whose presence requires other fields.
 //
-//kama:validate hook=off
+//kama:validate hook=False
 type Shipping struct {
-	//kama:validate requires="city zip"
+	//kama:validate requires("city", "zip")
 	Street opt.Option[string] `json:"street"`
 	City   *string            `json:"city"`
 	Zip    und.Und[string]    `json:"zip"`
-	//kama:validate requires=street
+	//kama:validate requires("street")
 	Express bool `json:"express"`
 }
 
 // Contact counts its members.
 //
-//kama:validate members=">=2 <=3" hook=off
+//kama:validate members(ge=2, le=3), hook=False
 type Contact struct {
 	Name  string             `json:"name"`
 	Email opt.Option[string] `json:"email,omitzero"`
@@ -142,19 +142,19 @@ type Contact struct {
 
 // Bounds compares integers with numbers their types cannot represent.
 //
-//kama:validate hook=off
+//kama:validate hook=False
 type Bounds struct {
-	//kama:validate cmp=">1.5 <=3.5"
+	//kama:validate cmp(gt=1.5, le=3.5)
 	Half int `json:"half"`
-	//kama:validate cmp="<300 >=-1e30 !=0.5"
+	//kama:validate cmp(lt=300, ge=-1e30, ne=0.5)
 	Small int8 `json:"small"`
-	//kama:validate cmp="==0.5"
+	//kama:validate cmp(0.5)
 	Never *int `json:"never"`
 }
 
 // Strict holds no member beyond its fields.
 //
-//kama:validate closed hook=off
+//kama:validate closed, hook=False
 type Strict struct {
 	Name  string         `json:"name"`
 	Extra map[string]any `json:",embed"`

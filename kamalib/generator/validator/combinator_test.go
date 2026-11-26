@@ -10,17 +10,17 @@ import (
 )
 
 // TestCombinators compiles each combinator over its operands to one call
-// of a helper taking their errors, nested three deep included. A call may
-// span directive lines.
+// of a helper taking their errors, nested three deep included. Each line
+// of a directive holds whole items.
 func TestCombinators(t *testing.T) {
 	out := generateAndBuild(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate and(cmp=\">=1\", multipleof=2) or(const=\"0\", cmp=\">=10\")\n\tN int\n" +
-			"\t//kama:validate not(regexp=\"^x\") oneof(length=\"==1\", length=\"==3\")\n\tS string\n" +
-			"\t//kama:validate if(const=\"1\", cmp=\"<=10\", and())\n\tM int\n" +
-			"\t//kama:validate or(and(cmp=\">=1\", not(or(const=\"5\", const=\"7\"))), const=\"-1\")\n" +
+		"a.go": "package x\n\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate cmp(ge=1) and multipleof(2), const(0) or cmp(ge=10)\n\tN int\n" +
+			"\t//kama:validate not regexp(\"^x\"), oneof(length(1), length(3))\n\tS string\n" +
+			"\t//kama:validate cmp(le=10) if const(1) else always\n\tM int\n" +
+			"\t//kama:validate cmp(ge=1) and not (const(5) or const(7)) or const(-1)\n" +
 			"\tD int\n" +
-			"\t//kama:validate and(\n\t//kama:validate   cmp=\">=1\",\n\t//kama:validate cmp=\"<=9\")\n" +
+			"\t//kama:validate cmp(ge=1),\n\t//kama:validate   multipleof(3)\n" +
 			"\tL int\n}\n",
 	})
 
@@ -31,17 +31,17 @@ func TestCombinators(t *testing.T) {
 		check(`validator.Field(kamaValidateOr(kamaValidateConst(v.N, 0),`+
 			` kamaValidateCmp(v.N, ">=", 10)), "N")`),
 		check(`validator.Field(kamaValidateNot(kamaValidateRegexpString(`+
-			`kamaValidateRegexp_9c5b6217da, v.S), "regexp=\"^x\""), "S")`),
-		check(`validator.Field(kamaValidateOneOf([]string{"length=\"==1\"", "length=\"==3\""},`+
+			`kamaValidateRegexp_9c5b6217da, v.S), "regexp(\"^x\")"), "S")`),
+		check(`validator.Field(kamaValidateOneOf([]string{"length(1)", "length(3)"},`+
 			` kamaValidateLength(len(v.S), "==", 1), kamaValidateLength(len(v.S), "==", 3)), "S")`),
 		check(`validator.Field(kamaValidateIf(kamaValidateConst(v.M, 1),`+
-			` kamaValidateCmp(v.M, "<=", 10), error(nil)), "M")`),
+			` kamaValidateCmp(v.M, "<=", 10), nil), "M")`),
 		check(`validator.Field(kamaValidateOr(kamaValidateAll(stopOnFirstError,`+
 			` kamaValidateCmp(v.D, ">=", 1), kamaValidateNot(kamaValidateOr(`+
 			`kamaValidateConst(v.D, 5), kamaValidateConst(v.D, 7)),`+
-			` "or(const=\"5\", const=\"7\")")), kamaValidateConst(v.D, -1)), "D")`),
-		check(`validator.Field(kamaValidateAll(stopOnFirstError,`+
-			` kamaValidateCmp(v.L, ">=", 1), kamaValidateCmp(v.L, "<=", 9)), "L")`),
+			` "const(5) or const(7)")), kamaValidateConst(v.D, -1)), "D")`),
+		check(`validator.Field(kamaValidateCmp(v.L, ">=", 1), "L")`),
+		check(`validator.Field(kamaValidateMultipleInt(v.L, 3, "3"), "L")`),
 	)
 	assertContains(t, out[HelpersFile],
 		"func kamaValidateOr(errs ...error) error {",
@@ -57,26 +57,26 @@ func TestCombinators(t *testing.T) {
 func TestCombinatorHeldValue(t *testing.T) {
 	fn := validateOf(t, map[string]string{
 		"a.go": "package x\n\nimport \"github.com/ngicks/option/opt\"\n\n" +
-			"//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate or(cmp=\">=10\", const=\"0\")\n\tP *int\n" +
-			"\t//kama:validate not(length=\"==0\")\n\tO opt.Option[string]\n}\n",
+			"//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate cmp(ge=10) or const(0)\n\tP *int\n" +
+			"\t//kama:validate not length(0)\n\tO opt.Option[string]\n}\n",
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,
 		"if v.P != nil {\n\t\t"+check(`validator.Field(kamaValidateOr(`+
 			`kamaValidateCmp((*v.P), ">=", 10), kamaValidateConst((*v.P), 0)), "P")`),
 		"if v.O.IsSome() {\n\t\t"+check(`validator.Field(kamaValidateNot(`+
-			`kamaValidateLength(len(v.O.Value()), "==", 0), "length=\"==0\""), "O")`),
+			`kamaValidateLength(len(v.O.Value()), "==", 0), "length(0)"), "O")`),
 	)
 
 	// nil applies to the pointer and cmp to the value only, so the
 	// combinator applies to neither.
 	_, err := generate(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate or(nil, cmp=\">=1\")\n\tQ *int\n}\n",
+		"a.go": "package x\n\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate nil or cmp(ge=1)\n\tQ *int\n}\n",
 	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
-	assert.ErrorContains(t, err, `operand cmp=">=1": *int is not an integer, float, string`)
+	assert.ErrorContains(t, err, `operand cmp(ge=1): *int is not an integer, float, string`)
 	assert.ErrorContains(t, err, "for the value it holds: operand nil: int is not nillable")
 }
 
@@ -89,9 +89,9 @@ func TestCombinatorOperandRegistry(t *testing.T) {
 	reg.Register(lengthOne{})
 
 	files := map[string]string{
-		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate or(multiple=3, not(multiple=5))\n\tN int\n" +
-			"\t//kama:validate and(length)\n\tS string\n}\n",
+		"a.go": "package x\n\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate multiple(3) or not multiple(5)\n\tN int\n" +
+			"\t//kama:validate length\n\tS string\n}\n",
 	}
 
 	f, opts := stage(t, files)
@@ -101,7 +101,7 @@ func TestCombinatorOperandRegistry(t *testing.T) {
 
 	assertContains(t, out["a.kama_validate.go"],
 		check(`validator.Field(kamaValidateOr(kamaValidateMultiple(int64(v.N), 3),`+
-			` kamaValidateNot(kamaValidateMultiple(int64(v.N), 5), "multiple=\"5\"")), "N")`),
+			` kamaValidateNot(kamaValidateMultiple(int64(v.N), 5), "multiple(5)")), "N")`),
 		check(`validator.Field(kamaValidateLengthOne(len(v.S)), "S")`),
 	)
 
@@ -111,10 +111,10 @@ func TestCombinatorOperandRegistry(t *testing.T) {
 	assert.ErrorContains(
 		t,
 		err,
-		"//kama:validate or on field N: operand multiple=\"3\":"+
-			" unknown validator multiple; known: and,",
+		"//kama:validate multiple(3) or not multiple(5) on field N: operand multiple(3):"+
+			" unknown validator multiple; known: always,",
 	)
-	assert.ErrorContains(t, err, "operand length: want one or more comparisons")
+	assert.ErrorContains(t, err, "//kama:validate length on field S: want one or more comparisons")
 }
 
 // TestCombinatorSiblings binds a combinator holding requires to the
@@ -122,10 +122,10 @@ func TestCombinatorOperandRegistry(t *testing.T) {
 // error is located at the field, except those requires puts at a sibling.
 func TestCombinatorSiblings(t *testing.T) {
 	fn := validateOf(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate if(const=`\"x\"`, requires=b, and(requires=c, length=\">=2\"))\n" +
+		"a.go": "package x\n\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate requires(\"b\") if const(\"x\") else requires(\"c\") and length(ge=2)\n" +
 			"\tA string `json:\"a\"`\n" +
-			"\t//kama:validate not(requires=a)\n\tB *int `json:\"b\"`\n" +
+			"\t//kama:validate not requires(\"a\")\n\tB *int `json:\"b\"`\n" +
 			"\tC *int `json:\"c\"`\n}\n",
 	}, "a.kama_validate.go", "A")
 
@@ -137,7 +137,7 @@ func TestCombinatorSiblings(t *testing.T) {
 			` kamaValidateNonZero(v.A), []string{"c"}, v.C != nil),`+
 			` validator.Field(kamaValidateLength(len(v.A), ">=", 2), "a")))`),
 		check(`validator.Field(kamaValidateNot(kamaValidateRequires(stopOnFirstError, "b",`+
-			` v.B != nil, []string{"a"}, kamaValidateNonZero(v.A)), "requires=\"a\""), "b")`),
+			` v.B != nil, []string{"a"}, kamaValidateNonZero(v.A)), "requires(\"a\")"), "b")`),
 	)
 	assertNotContains(t, fn, "if v.B != nil {")
 }
@@ -147,8 +147,8 @@ func TestCombinatorSiblings(t *testing.T) {
 // guard of its own.
 func TestCombinatorSiblingsHeld(t *testing.T) {
 	fn := validateOf(t, map[string]string{
-		"a.go": "package x\n\n//kama:validate hook=off\ntype A struct {\n" +
-			"\t//kama:validate if(cmp=\">=1\", requires=b)\n\tA *int `json:\"a\"`\n" +
+		"a.go": "package x\n\n//kama:validate hook=False\ntype A struct {\n" +
+			"\t//kama:validate requires(\"b\") if cmp(ge=1) else always\n\tA *int `json:\"a\"`\n" +
 			"\tB *int `json:\"b\"`\n}\n",
 	}, "a.kama_validate.go", "A")
 
@@ -165,7 +165,7 @@ func TestCombinatorSiblingsHeld(t *testing.T) {
 func TestCombinatorMembers(t *testing.T) {
 	fn := validateOf(t, map[string]string{
 		"a.go": "package x\n\nimport \"github.com/ngicks/option/opt\"\n\n" +
-			"//kama:validate hook=off or(members=\"==0\", members=\">=2\")\ntype A struct {\n" +
+			"//kama:validate hook=False, members(0) or members(ge=2)\ntype A struct {\n" +
 			"\tA opt.Option[int] `json:\"a,omitzero\"`\n\tB *int `json:\"b,omitzero\"`\n}\n",
 	}, "a.kama_validate.go", "A")
 
@@ -183,66 +183,73 @@ func TestCombinatorErrors(t *testing.T) {
 	}{
 		{
 			name: "members on a field",
-			src: "//kama:validate hook=off\ntype A struct {\n" +
-				"\t//kama:validate not(members=\">=1\")\n\tA int\n}\n",
+			src: "//kama:validate hook=False\ntype A struct {\n" +
+				"\t//kama:validate not members(ge=1)\n\tA int\n}\n",
 			is: []error{ErrDirective},
 			msgs: []string{
-				"//kama:validate not on field A validates a struct as a whole;" +
+				"//kama:validate not members(ge=1) on field A validates a struct as a whole;" +
 					" write it in the doc comment of a struct type",
 			},
 		},
 		{
 			name: "requires on a type",
-			src:  "//kama:validate or(requires=a, cmp=\">=1\")\ntype N int\n",
+			src:  "//kama:validate requires(\"a\") or cmp(ge=1)\ntype N int\n",
 			is:   []error{ErrDirective},
-			msgs: []string{"//kama:validate or on type N reads the siblings of a struct field"},
+			msgs: []string{
+				`//kama:validate requires("a") or cmp(ge=1) on type N reads the siblings` +
+					" of a struct field",
+			},
 		},
 		{
 			name: "plain combinator on a struct type",
-			src:  "//kama:validate hook=off and(required)\ntype A struct{ A int }\n",
+			src:  "//kama:validate hook=False, required and zero\ntype A struct{ A int }\n",
 			is:   []error{ErrDirective},
-			msgs: []string{"//kama:validate and on struct type A; a struct type takes only" +
-				" validators of the struct as a whole"},
+			msgs: []string{
+				"//kama:validate required and zero on struct type A; a struct type takes only" +
+					" validators of the struct as a whole",
+			},
 		},
 		{
 			name: "requires and members",
-			src: "//kama:validate hook=off\ntype A struct {\n" +
-				"\t//kama:validate and(requires=b, members=\">=1\")\n\tA int `json:\"a\"`\n" +
+			src: "//kama:validate hook=False\ntype A struct {\n" +
+				"\t//kama:validate requires(\"b\") and members(ge=1)\n\tA int `json:\"a\"`\n" +
 				"\tB int `json:\"b\"`\n}\n",
 			is:   []error{ErrUnsupported, ext.ErrArgs},
 			msgs: []string{"no place takes both"},
 		},
 		{
 			name: "operand on no held value with requires",
-			src: "//kama:validate hook=off\ntype A struct {\n" +
-				"\t//kama:validate if(cmp=\">=1\", requires=b)\n\tA []int `json:\"a\"`\n" +
+			src: "//kama:validate hook=False\ntype A struct {\n" +
+				"\t//kama:validate requires(\"b\") if cmp(ge=1) else always\n\tA []int `json:\"a\"`\n" +
 				"\tB int `json:\"b\"`\n}\n",
 			is: []error{ErrUnsupported},
 			msgs: []string{
-				"//kama:validate if on field A",
-				`operand cmp=">=1": []int is not an integer, float, string or bool type`,
+				`//kama:validate requires("b") if cmp(ge=1) else always on field A`,
+				`operand cmp(ge=1): []int is not an integer, float, string or bool type`,
 			},
 		},
 		{
-			name: "arity",
-			src: "//kama:validate hook=off\ntype A struct {\n" +
-				"\t//kama:validate not(zero, nil)\n\tA *int\n}\n",
-			is:   []error{ErrUnsupported, ext.ErrArgs},
-			msgs: []string{"//kama:validate not on field A: want one operand, got 2"},
+			name: "literal operand",
+			src: "//kama:validate hook=False\ntype A struct {\n" +
+				"\t//kama:validate oneof(zero, 1)\n\tA *int\n}\n",
+			is: []error{ErrUnsupported, ext.ErrArgs},
+			msgs: []string{
+				"//kama:validate oneof on field A: validator: invalid args: oneof: operands takes rules",
+			},
 		},
 		{
 			name: "grammar",
-			src: "//kama:validate hook=off\ntype A struct {\n" +
-				"\t//kama:validate or(zero nil)\n\tA *int\n}\n",
+			src: "//kama:validate hook=False\ntype A struct {\n" +
+				"\t//kama:validate zero nil\n\tA *int\n}\n",
 			is:   []error{ErrDirective},
-			msgs: []string{`want , or ) after zero, got "nil)"`},
+			msgs: []string{"got identifier, want ','"},
 		},
 		{
 			name: "combinator twice",
-			src: "//kama:validate hook=off\ntype A struct {\n" +
-				"\t//kama:validate not(zero) not(nil)\n\tA *int\n}\n",
+			src: "//kama:validate hook=False\ntype A struct {\n" +
+				"\t//kama:validate not zero, not zero\n\tA *int\n}\n",
 			is:   []error{ErrDirective},
-			msgs: []string{"validator not given twice on field"},
+			msgs: []string{"validator not zero given twice on field"},
 		},
 	}
 

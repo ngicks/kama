@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T10:39:33Z
+// generated: 2026-11-26T06:59:33Z
 
 package subschema
 
@@ -83,7 +83,7 @@ func (v Tree) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) er
 //kama:generated kama:validate
 func (v Small) Validate(stopOnFirstError bool) error {
 	var errs []error
-	if err := kamaValidateNot(rawjson.Compare(v, ">=", "5"), "cmp=\">=5\""); err != nil {
+	if err := kamaValidateNot(rawjson.Compare(v, ">=", "5"), "cmp(ge=5)"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -108,7 +108,7 @@ func (v Small) ValidateShallow(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Small) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error {
 	var errs []error
-	if err := kamaValidateNot(rawjson.Compare(v, ">=", "5"), "cmp=\">=5\""); err != nil {
+	if err := kamaValidateNot(rawjson.Compare(v, ">=", "5"), "cmp(ge=5)"); err != nil {
 		if stopOnFirstError {
 			return err
 		}

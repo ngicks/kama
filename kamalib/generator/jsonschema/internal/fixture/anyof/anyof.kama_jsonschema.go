@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:38:43Z
+// generated: 2026-11-26T06:58:48Z
 
 package anyof
 
@@ -21,7 +21,7 @@ import (
 // Doc is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Doc struct {
 	Label                Label                     `json:"label"`
@@ -81,7 +81,7 @@ type DocValueKind interface {
 // DocValueString holds the String member of DocValue.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type DocValueString struct {
 	String string
@@ -103,7 +103,7 @@ func (v DocValueString) MarshalJSONTo(enc *jsontext.Encoder) error {
 // DocValueNull holds the Null member of DocValue.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type DocValueNull struct{}
 
@@ -123,7 +123,7 @@ func (v DocValueNull) MarshalJSONTo(enc *jsontext.Encoder) error {
 // DocValueInteger holds the Integer member of DocValue.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type DocValueInteger struct {
 	Integer int64
@@ -281,7 +281,7 @@ type LabelKind interface {
 // LabelNamed holds the Named member of Label.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type LabelNamed struct {
 	Named Named
@@ -303,7 +303,7 @@ func (v LabelNamed) MarshalJSONTo(enc *jsontext.Encoder) error {
 // LabelTagged holds the Tagged member of Label.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type LabelTagged struct {
 	Tagged Tagged
@@ -374,7 +374,7 @@ func (v Label) Validate(stopOnFirstError bool) error {
 // costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("name", kind="string"))
+//kama:validate props(field("name", kind("string")))
 type labelNamedProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -391,7 +391,7 @@ func (v labelNamedProbe) RawJson() jsontext.Value {
 // costs no decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("name", kind="string"), field("tag", kind="string"))
+//kama:validate props(field("name", kind("string")), field("tag", kind("string")))
 type labelTaggedProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -474,7 +474,7 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Named is generated from the schema at #/$defs/Named.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Named struct {
 	Name                 string                    `json:"name"`
@@ -512,7 +512,7 @@ func (v *Named) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Tagged is generated from the schema at #/$defs/Tagged.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Tagged struct {
 	Name                 opt.Option[string]        `json:"name,omitzero"`

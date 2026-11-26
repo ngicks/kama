@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:32Z
+// generated: 2026-11-26T06:59:32Z
 
 package subschema
 
@@ -23,8 +23,8 @@ import (
 // children.
 //
 //kama:generated kama:jsonschema
-//kama:validate required=`"name"`
-//kama:validate props(field("name", kind="string"), field("children", kind="array", items(ref=Tree)))
+//kama:validate required("name")
+//kama:validate props(field("name", kind("string")), field("children", kind("array"), items(ref("Tree"))))
 //kama:validate decoded
 type Tree jsontext.Value
 
@@ -60,7 +60,7 @@ func (v Tree) RawJson() jsontext.Value {
 // Small is generated from the schema at #/$defs/Small.
 //
 //kama:generated kama:jsonschema
-//kama:validate not(cmp=">=5")
+//kama:validate not cmp(ge=5)
 //kama:validate decoded
 type Small jsontext.Value
 
@@ -96,8 +96,8 @@ func (v Small) RawJson() jsontext.Value {
 // Address is generated from the schema at #/$defs/Address.
 //
 //kama:generated kama:jsonschema
-//kama:validate and(if(required=`"zip"`, required=`"country"`), if(props(field("country", const="`\"us\"`")), required=`"zip"`, required=`"postal"`))
-//kama:validate props(field("country", const="`\"us\"` `\"ca\"`"))
+//kama:validate (required("country") if required("zip") else always) and (required("zip") if props(field("country", const("us"))) else required("postal"))
+//kama:validate props(field("country", const("us", "ca")))
 //kama:validate decoded
 type Address jsontext.Value
 
@@ -133,8 +133,8 @@ func (v Address) RawJson() jsontext.Value {
 // Labels is generated from the schema at #/$defs/Labels.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(props(match("^x-", kind="string"), rest(kind="integer")))
+//kama:validate hook=False
+//kama:validate json(props(match("^x-", kind("string")), rest(kind("integer"))))
 //kama:validate decoded
 type Labels struct {
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
@@ -169,7 +169,7 @@ func (v *Labels) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Point is generated from the schema at #/$defs/Point.
 //
 //kama:generated kama:jsonschema
-//kama:validate json(prefix(kind="number", kind="number", rest(kind="string")))
+//kama:validate json(prefix(kind("number"), kind("number"), rest(kind("string"))))
 //kama:validate decoded
 type Point []jsontext.Value
 
@@ -197,7 +197,7 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Tags is generated from the schema at #/$defs/Tags.
 //
 //kama:generated kama:jsonschema
-//kama:validate json(contains(>=1, <=2, const="`\"go\"`"))
+//kama:validate json(contains(const("go"), ge=1, le=2))
 //kama:validate decoded
 type Tags []jsontext.Value
 
@@ -225,8 +225,8 @@ func (v *Tags) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Keys is generated from the schema at #/$defs/Keys.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(keys(regexp="^[a-z]+$"))
+//kama:validate hook=False
+//kama:validate json(keys(regexp("^[a-z]+$")))
 //kama:validate decoded
 type Keys struct {
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
@@ -261,8 +261,8 @@ func (v *Keys) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Payment is generated from the schema at #/$defs/Payment.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
-//kama:validate json(if(required=`"card"`, required=`"billing"`))
+//kama:validate hook=False
+//kama:validate json(required("billing") if required("card") else always)
 //kama:validate decoded
 type Payment struct {
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
@@ -297,7 +297,7 @@ func (v *Payment) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Strict is generated from the schema at #/$defs/Strict.
 //
 //kama:generated kama:jsonschema
-//kama:validate unevalprops(and(props(field("b")), and(props(field("a", kind="integer")))), or())
+//kama:validate unevalprops(props(field("b")) and props(field("a", kind("integer"))), never)
 //kama:validate decoded
 type Strict jsontext.Value
 
@@ -333,7 +333,7 @@ func (v Strict) RawJson() jsontext.Value {
 // Mixed is generated from the schema at #/$defs/Mixed.
 //
 //kama:generated kama:jsonschema
-//kama:validate const="1 `\"a\"` null \"[1]\""
+//kama:validate const(1, "a", None, [1])
 //kama:validate decoded
 type Mixed jsontext.Value
 
@@ -369,7 +369,7 @@ func (v Mixed) RawJson() jsontext.Value {
 // Node is generated from the schema at #/$defs/Node.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Node struct {
 	V                    opt.Option[int64]         `json:"v,omitzero"`
@@ -413,7 +413,7 @@ func (v *Node) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Holder is generated from the schema at #/$defs/Holder.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("node", decode=Node))
+//kama:validate props(field("node", decode("Node")))
 //kama:validate decoded
 type Holder jsontext.Value
 

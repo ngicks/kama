@@ -5,6 +5,7 @@ import (
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Null is the validator //kama:validate null: the value is null by its
@@ -28,9 +29,9 @@ type NullOptions struct {
 	reg ext.Resolver
 }
 
-// Parse accepts only the empty arg.
-func (Null) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	return NullOptions{reg: r}, noArg(arg)
+// Parse takes no args.
+func (Null) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	return NullOptions{reg: r}, noArgs(r, c)
 }
 
 // Check accepts the types an ext.NullTester claims and types with a method

@@ -7,77 +7,95 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-func TestAndParse(t *testing.T) {
-	r, err := And{}.Parse(`cmp=">=1", not(const=3)`, ext.DefaultRegistry())
+// resolve resolves text, one rule item, through reg.
+func resolve(t *testing.T, text string, reg ext.Resolver) (ext.Rule, error) {
+	t.Helper()
+
+	args, err := expr.Parse(text)
+	assert.NilError(t, err)
+	assert.Equal(t, len(args), 1, text)
+
+	return ext.Resolve(reg, args[0].Value)
+}
+
+// built returns the combinator r keeps the nodes of, built of its operands.
+func built(t *testing.T, r ext.Rule) ext.Rule {
+	t.Helper()
+
+	c, ok := r.(combination)
+	assert.Assert(t, ok, "%T", r)
+
+	b, err := c.rule()
 	assert.NilError(t, err)
 
-	o, ok := r.(AndOptions)
+	return b
+}
+
+func TestAndResolve(t *testing.T) {
+	r, err := resolve(t, `cmp(ge=1) and not const(3)`, ext.DefaultRegistry())
+	assert.NilError(t, err)
+
+	o, ok := built(t, r).(AndOptions)
 	assert.Assert(t, ok, "%T", r)
 	assert.Equal(t, len(o.Operands), 2)
-	assert.Equal(t, o.Operands[0].Text, `cmp=">=1"`)
+	assert.Equal(t, o.Operands[0].Text, `cmp(ge=1)`)
 	assert.DeepEqual(t, o.Operands[0].Rule, ext.Rule(CmpOptions{
 		Comparisons: []Comparison{{Op: ">=", Operand: "1"}},
 	}))
-	assert.Equal(t, o.Operands[1].Text, `not(const="3")`)
-	assert.Equal(t, o.Operands[1].Rule.(NotOptions).Operand.Text, `const="3"`)
+	assert.Equal(t, o.Operands[1].Text, `not const(3)`)
+	assert.Equal(t, built(t, o.Operands[1].Rule).(NotOptions).Operand.Text, `const(3)`)
 
-	r, err = And{}.Parse("", ext.DefaultRegistry())
+	r, err = resolve(t, "always", ext.DefaultRegistry())
 	assert.NilError(t, err)
-	assert.DeepEqual(t, r, ext.Rule(AndOptions{Operands: []Operand{}}))
+	assert.DeepEqual(t, r, ext.Rule(AndOptions{}))
 }
 
-func TestCombinatorParseErrors(t *testing.T) {
+func TestCombinatorResolveErrors(t *testing.T) {
 	reg := ext.DefaultRegistry()
 
-	cases := []struct {
-		v        ext.Validator
-		arg, msg string
-	}{
-		{And{}, "x", "operand x: unknown validator x; known: and, closed, cmp,"},
-		{Or{}, "cmp=a b", `want , after cmp=a, got "b"`},
-		{Or{}, `cmp=">=1", length`, "operand length: want one or more comparisons"},
-		{Not{}, "", "want one operand, got 0"},
-		{Not{}, "zero, nil", "want one operand, got 2"},
-		{If{}, "zero", "want the operands cond, then and an optional else, got 1 operands"},
-		{If{}, "zero, nil, nil, zero", "got 4 operands"},
-		{OneOf{}, "or(and(not(x)))", "operand or(and(not(x))): operand and(not(x)):" +
-			" operand not(x): operand x: unknown validator x"},
-		{And{}, `requires=a, members=">=1"`, "operands read the siblings of a struct field" +
+	cases := []struct{ text, msg string }{
+		{"x and zero", "operand x: unknown validator x; known: always, closed, cmp,"},
+		{`cmp(ge=1) or length`, "operand length: want one or more comparisons"},
+		{"oneof(zero or (always and not x))", "operand zero or always and not x:" +
+			" operand always and not x: operand not x: operand x: unknown validator x"},
+		{`requires("a") and members(ge=1)`, "operands read the siblings of a struct field" +
 			" and validate a struct as a whole"},
+		{"always(1)", "always takes 0 positional args"},
 	}
 
 	for _, c := range cases {
-		t.Run(c.v.Name()+"("+c.arg+")", func(t *testing.T) {
-			_, err := c.v.Parse(c.arg, reg)
+		t.Run(c.text, func(t *testing.T) {
+			_, err := resolve(t, c.text, reg)
 			assert.ErrorIs(t, err, ext.ErrArgs)
 			assert.ErrorContains(t, err, c.msg)
 		})
 	}
 
-	_, err := And{}.Parse("x", reg)
+	_, err := resolve(t, "x and zero", reg)
 	assert.ErrorIs(t, err, ext.ErrUnknown)
 }
 
-func TestCombinatorParseShapes(t *testing.T) {
+func TestCombinatorResolveShapes(t *testing.T) {
 	reg := ext.DefaultRegistry()
 
-	r, err := If{}.Parse("zero, nil", reg)
+	r, err := resolve(t, "nil if zero else always", reg)
 	assert.NilError(t, err)
-	assert.Assert(t, r.(IfOptions).Else == nil)
+	assert.Assert(t, built(t, r).(IfOptions).Else == nil)
 
-	r, err = If{}.Parse("zero, nil, and()", reg)
+	r, err = resolve(t, "nil if zero else never", reg)
 	assert.NilError(t, err)
-	assert.Equal(t, r.(IfOptions).Else.Text, "and()")
+	assert.Equal(t, built(t, r).(IfOptions).Else.Text, "never")
 
-	r, err = OneOf{}.Parse("zero, nil", reg)
+	r, err = resolve(t, "oneof(zero, nil)", reg)
 	assert.NilError(t, err)
-	assert.Equal(t, len(r.(OneOfOptions).Operands), 2)
+	assert.Equal(t, len(built(t, r).(OneOfOptions).Operands), 2)
 
-	r, err = Or{}.Parse("", reg)
+	r, err = resolve(t, "never", reg)
 	assert.NilError(t, err)
-	assert.Equal(t, len(r.(OrOptions).Operands), 0)
+	assert.DeepEqual(t, r, ext.Rule(OrOptions{}))
 }
 
 // named is Required registered under another name.
@@ -88,22 +106,22 @@ type named struct {
 
 func (n named) Name() string { return n.name }
 
-// TestCombinatorResolvesThroughRegistry parses the operands through the
+// TestCombinatorResolvesThroughRegistry resolves the operands through the
 // registry given, whose validators replace the built-ins.
 func TestCombinatorResolvesThroughRegistry(t *testing.T) {
 	reg := ext.DefaultRegistry().Clone()
 	reg.Register(named{name: "cmp"})
 
-	r, err := And{}.Parse("cmp", reg)
+	r, err := resolve(t, "cmp and zero", reg)
 	assert.NilError(t, err)
 	assert.DeepEqual(
 		t,
-		r,
-		ext.Rule(AndOptions{Operands: []Operand{{Text: "cmp", Rule: RequiredOptions{}}}}),
+		built(t, r).(AndOptions).Operands[0],
+		Operand{Text: "cmp", Rule: RequiredOptions{}},
 		ignoreRegistry,
 	)
 
-	_, err = And{}.Parse("cmp", ext.DefaultRegistry())
+	_, err = resolve(t, "cmp and zero", ext.DefaultRegistry())
 	assert.ErrorContains(t, err, "want one or more comparisons")
 }
 
@@ -111,27 +129,32 @@ func TestCombinatorCheck(t *testing.T) {
 	reg := ext.DefaultRegistry()
 	str, ptr := types.Typ[types.String], types.NewPointer(types.Typ[types.Int])
 
-	for _, v := range []ext.Validator{And{}, Or{}, OneOf{}, If{}} {
-		r, err := v.Parse(`regexp="^a", length=">=1"`, reg)
+	for _, text := range []string{
+		`regexp("^a") and length(ge=1)`,
+		`regexp("^a") or length(ge=1)`,
+		`oneof(regexp("^a"), length(ge=1))`,
+		`length(ge=1) if regexp("^a") else always`,
+	} {
+		r, err := resolve(t, text, reg)
 		assert.NilError(t, err)
-		assert.NilError(t, r.Check(str), v.Name())
+		assert.NilError(t, r.Check(str), text)
 
 		err = r.Check(ptr)
 		assert.ErrorContains(
 			t,
 			err,
-			`operand regexp="^a": *int is neither a string nor a []byte type`,
-			v.Name(),
+			`operand regexp("^a"): *int is neither a string nor a []byte type`,
+			text,
 		)
 		assert.ErrorContains(
 			t,
 			err,
-			`operand length=">=1": *int is not a string, slice, array, map or channel type`,
-			v.Name(),
+			`operand length(ge=1): *int is not a string, slice, array, map or channel type`,
+			text,
 		)
 	}
 
-	r, err := Not{}.Parse("nil", reg)
+	r, err := resolve(t, "not nil", reg)
 	assert.NilError(t, err)
 	assert.NilError(t, r.Check(ptr))
 	assert.ErrorContains(t, r.Check(str), "operand nil: string is not nillable")
@@ -148,7 +171,7 @@ func TestCombinatorSiblings(t *testing.T) {
 		types: map[string]types.Type{"a": types.Typ[types.Int], "b": types.Typ[types.Int]},
 	}
 
-	r, err := If{}.Parse("const=1, requires=b", reg)
+	r, err := resolve(t, `requires("b") if const(1) else always`, reg)
 	assert.NilError(t, err)
 
 	sr, ok := r.(ext.SiblingRule)
@@ -164,7 +187,7 @@ func TestCombinatorSiblings(t *testing.T) {
 	assert.Assert(t, ok, "%T", o.Then.Rule)
 	assert.NilError(t, bound.Check(types.Typ[types.Int]))
 
-	r, err = Or{}.Parse("const=1, requires=b", reg)
+	r, err = resolve(t, `const(1) or requires("b")`, reg)
 	assert.NilError(t, err)
 
 	bound, err = r.(ext.SiblingRule).Siblings(s, "a")
@@ -175,13 +198,17 @@ func TestCombinatorSiblings(t *testing.T) {
 	_, ok = at.rule.(OrOptions).Operands[0].Rule.(onHeld).rule.(ConstOptions)
 	assert.Assert(t, ok, "%T", at.rule.(OrOptions).Operands[0].Rule)
 
-	r, err = And{}.Parse("requires=z", reg)
+	r, err = resolve(t, `requires("z") and always`, reg)
 	assert.NilError(t, err)
 
 	_, err = r.(ext.SiblingRule).Siblings(s, "a")
-	assert.ErrorContains(t, err, `operand requires="z": no sibling field encodes as the member "z"`)
+	assert.ErrorContains(
+		t,
+		err,
+		`operand requires("z"): no sibling field encodes as the member "z"`,
+	)
 
-	r, err = And{}.Parse("const=1", reg)
+	r, err = resolve(t, "const(1) and always", reg)
 	assert.NilError(t, err)
 
 	_, ok = r.(ext.SiblingRule)
@@ -191,7 +218,7 @@ func TestCombinatorSiblings(t *testing.T) {
 func TestCombinatorStruct(t *testing.T) {
 	reg := ext.DefaultRegistry()
 
-	r, err := Not{}.Parse(`members=">=2"`, reg)
+	r, err := resolve(t, `not members(ge=2)`, reg)
 	assert.NilError(t, err)
 
 	sr, ok := r.(ext.StructRule)
@@ -209,5 +236,19 @@ func TestCombinatorStruct(t *testing.T) {
 	assert.Assert(t, ok, "%T", bound.(NotOptions).Operand.Rule)
 
 	_, err = sr.Struct(testStruct{fallback: types.Typ[types.String]})
-	assert.ErrorContains(t, err, `operand members=">=2": the embedded fallback field`)
+	assert.ErrorContains(t, err, `operand members(ge=2): the embedded fallback field`)
+}
+
+// TestCombinatorWarnsOnce reports the unknown arg of an operand when the
+// combinator is resolved, not each time it is used.
+func TestCombinatorWarnsOnce(t *testing.T) {
+	var warnings []error
+
+	reg := ext.WithWarn(ext.DefaultRegistry(), func(w error) { warnings = append(warnings, w) })
+
+	r, err := resolve(t, "length(ge=1, nope=2) or zero", reg)
+	assert.NilError(t, err)
+	assert.NilError(t, r.Check(types.Typ[types.String]))
+	assert.Equal(t, len(warnings), 1)
+	assert.ErrorContains(t, warnings[0], "length: unknown arg nope=2")
 }

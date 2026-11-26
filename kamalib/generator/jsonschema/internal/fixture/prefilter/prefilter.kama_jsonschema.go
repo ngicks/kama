@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:17Z
+// generated: 2026-11-26T06:59:18Z
 
 package prefilter
 
@@ -36,7 +36,7 @@ type ShapeKind interface {
 // ShapeCircle holds the Circle member of Shape.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ShapeCircle struct {
 	Circle Circle
@@ -58,7 +58,7 @@ func (v ShapeCircle) MarshalJSONTo(enc *jsontext.Encoder) error {
 // ShapeSquare holds the Square member of Shape.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type ShapeSquare struct {
 	Square Square
@@ -129,7 +129,7 @@ func (v Shape) Validate(stopOnFirstError bool) error {
 // decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("kind", const="`\"circle\"`"), field("radius", kind="number"))
+//kama:validate props(field("kind", const("circle")), field("radius", kind("number")))
 type shapeCircleProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -146,7 +146,7 @@ func (v shapeCircleProbe) RawJson() jsontext.Value {
 // decoding.
 //
 //kama:generated kama:jsonschema
-//kama:validate props(field("side", kind="number"))
+//kama:validate props(field("side", kind("number")))
 type shapeSquareProbe jsontext.Value
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -242,7 +242,7 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Circle is generated from the schema at #/$defs/Circle.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Circle struct {
 	Kind                 CircleKind                `json:"kind"`
@@ -284,7 +284,7 @@ func (v *Circle) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // #/$defs/Circle/properties/kind.
 //
 //kama:generated kama:jsonschema
-//kama:validate const=`"circle"`
+//kama:validate const("circle")
 //kama:validate decoded
 type CircleKind string
 
@@ -313,7 +313,7 @@ func (v *CircleKind) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Square is generated from the schema at #/$defs/Square.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate closed
 //kama:validate decoded
 type Square struct {

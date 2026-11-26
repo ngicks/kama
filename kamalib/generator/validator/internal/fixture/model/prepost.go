@@ -8,9 +8,9 @@ import (
 // Hooked records the calls of its pre and post functions into Log. Fail
 // makes them fail.
 //
-//kama:validate pre=validateHookedPre post=validateHookedPost hook=off
+//kama:validate pre="validateHookedPre", post="validateHookedPost", hook=False
 type Hooked struct {
-	//kama:validate cmp=">0"
+	//kama:validate cmp(gt=0)
 	N    int       `json:"n"`
 	Next *Hooked   `json:"next"`
 	Fail Fail      `json:"-"`
@@ -34,7 +34,7 @@ func validateHookedPost(v Hooked, stopOnFirstError bool) error {
 // and post when it holds them. The keys failPre and failPost make them
 // fail.
 //
-//kama:validate length="<=4" pre=validateTallyPre post=validateTallyPost
+//kama:validate length(le=4), pre="validateTallyPre", post="validateTallyPost"
 type Tally map[string]int
 
 func validateTallyPre(v Tally, _ bool) error { return count(v, "pre", "failPre") }

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:39Z
+// generated: 2026-11-26T06:59:38Z
 
 package wiretypes
 
@@ -24,7 +24,7 @@ import (
 // number with a fraction apart.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Root struct {
 	Grid                 opt.Option[[][]int64]           `json:"grid,omitzero"`
@@ -99,7 +99,7 @@ type RootEitherKind interface {
 // RootEitherInteger holds the Integer member of RootEither.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootEitherInteger struct {
 	Integer int64
@@ -121,7 +121,7 @@ func (v RootEitherInteger) MarshalJSONTo(enc *jsontext.Encoder) error {
 // RootEitherString holds the String member of RootEither.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootEitherString struct {
 	String string
@@ -269,7 +269,7 @@ type RootListKind interface {
 // RootListArray holds the Array member of RootList.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootListArray struct {
 	Array []int64
@@ -291,7 +291,7 @@ func (v RootListArray) MarshalJSONTo(enc *jsontext.Encoder) error {
 // RootListString holds the String member of RootList.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type RootListString struct {
 	String string
@@ -441,7 +441,7 @@ func (v *RootList) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Matrix is generated from the schema at #/$defs/Matrix.
 //
 //kama:generated kama:jsonschema
-//kama:validate length=">=1"
+//kama:validate length(ge=1)
 //kama:validate decoded
 type Matrix [][]float64
 
@@ -469,7 +469,7 @@ func (v *Matrix) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Color is generated from the schema at #/$defs/Color.
 //
 //kama:generated kama:jsonschema
-//kama:validate const=`"red" "green"`
+//kama:validate const("red", "green")
 //kama:validate decoded
 type Color string
 
@@ -499,7 +499,7 @@ func (v *Color) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Raws is generated from the schema at #/$defs/Raws.
 //
 //kama:generated kama:jsonschema
-//kama:validate length=">=1"
+//kama:validate length(ge=1)
 //kama:validate decoded
 type Raws []jsontext.Value
 

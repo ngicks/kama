@@ -36,7 +36,7 @@ func (s *selection) checkHook(n *typegraph.Node, v *types.Var) error {
 	fail := func(problem string) error {
 		return fmt.Errorf(
 			"%w: %s: field %s of %s %s; declare func (%s) %s(stopOnFirstError bool) error"+
-				" or turn the hook off with //kama:validate hook=off on the field or the type",
+				" or turn the hook off with //kama:validate hook=False on the field or the type",
 			ErrHook, n.Detail.Pkg.Fset.Position(v.Pos()), v.Name(), n.Id, problem, recv, name,
 		)
 	}

@@ -4,39 +4,41 @@ import (
 	"go/types"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
-// Or is the validator //kama:validate or(<validator>, ...): at least one
-// operand holds, as JSON Schema anyOf tests. or() without operands never
+// Or gives the meaning of the operator or: at least one operand holds, as
+// JSON Schema anyOf tests. never, the validator without operands, never
 // holds, as the JSON Schema false does.
 //
 // It applies to a type every operand applies to. Its error wraps
 // validator.ErrOr and carries the error of every operand as a cause,
 // which validator.Causes returns.
-type Or struct{}
-
-// Name returns "or".
-func (Or) Name() string { return "or" }
-
-// OrOptions are the options of //kama:validate or(<validator>, ...).
-type OrOptions struct {
-	// Operands are the validators of the args, in order.
-	Operands []Operand
-}
-
-// Parse decodes arg into operands through r.
-func (Or) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	ops, err := ParseOperands(arg, r)
-	if err != nil {
-		return nil, err
-	}
-
+func Or(n expr.Node, r ext.Resolver) (ext.Rule, error) {
 	return combine(
 		r,
-		ops,
+		n.(expr.Or).Operands,
 		ownErrors,
 		func(ops []Operand) ext.Rule { return OrOptions{Operands: ops} },
 	)
+}
+
+// OrOptions are the operands of a or b.
+type OrOptions struct {
+	// Operands are the operands, in order.
+	Operands []Operand
+}
+
+// Never is the validator //kama:validate never, which never holds. It
+// applies to every type, and its error wraps validator.ErrOr.
+type Never struct{}
+
+// Name returns "never".
+func (Never) Name() string { return "never" }
+
+// Parse takes no args.
+func (Never) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	return OrOptions{}, noArgs(r, c)
 }
 
 // Check accepts a type every operand accepts.

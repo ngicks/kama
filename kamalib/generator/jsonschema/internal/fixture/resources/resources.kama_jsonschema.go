@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:27Z
+// generated: 2026-11-26T06:59:27Z
 
 package resources
 
@@ -22,7 +22,7 @@ import (
 // Order refers to the schema resources under $defs by their URIs.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Order struct {
 	Customer             Customer                  `json:"customer"`
@@ -69,7 +69,7 @@ func (v *Order) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Customer is generated from the schema at #/$defs/Customer.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Customer struct {
 	Name                 CustomerName              `json:"name"`
@@ -110,7 +110,7 @@ func (v *Customer) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // CustomerName is generated from the schema at #/$defs/Customer/$defs/Name.
 //
 //kama:generated kama:jsonschema
-//kama:validate runes=">=1"
+//kama:validate runes(ge=1)
 //kama:validate decoded
 type CustomerName string
 
@@ -138,7 +138,7 @@ func (v *CustomerName) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Address is generated from the schema at #/$defs/Address.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Address struct {
 	City                 opt.Option[string]        `json:"city,omitzero"`
@@ -179,7 +179,7 @@ func (v *Address) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // AddressZip is generated from the schema at #/$defs/Address/$defs/Zip.
 //
 //kama:generated kama:jsonschema
-//kama:validate regexp="^[0-9]{5}$"
+//kama:validate regexp("^[0-9]{5}$")
 //kama:validate decoded
 type AddressZip string
 
@@ -207,11 +207,11 @@ func (v *AddressZip) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Line is generated from the schema at #/$defs/Line.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Line struct {
 	Sku LineSku `json:"sku"`
-	//kama:validate cmp=">=1"
+	//kama:validate cmp(ge=1)
 	Count                opt.Option[int64]         `json:"count,omitzero"`
 	AdditionalProperties map[string]jsontext.Value `json:",embed"`
 }
@@ -249,7 +249,7 @@ func (v *Line) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // LineSku is generated from the schema at #/$defs/Line/$defs/Sku.
 //
 //kama:generated kama:jsonschema
-//kama:validate regexp="^[A-Z]+$"
+//kama:validate regexp("^[A-Z]+$")
 //kama:validate decoded
 type LineSku string
 
@@ -277,7 +277,7 @@ func (v *LineSku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Note is generated from the schema at #/$defs/Note.
 //
 //kama:generated kama:jsonschema
-//kama:validate runes="<=20"
+//kama:validate runes(le=20)
 //kama:validate decoded
 type Note string
 

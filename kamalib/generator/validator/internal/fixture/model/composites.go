@@ -8,7 +8,7 @@ import (
 // Composites holds the types of github.com/ngicks/option that hold several
 // values on its type parameter.
 //
-//kama:validate hook=off
+//kama:validate hook=False
 type Composites[T any] struct {
 	E  either.Either[T, int]         `json:"e"`
 	R  either.Result[T]              `json:"r"`

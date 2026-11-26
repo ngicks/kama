@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:40Z
+// generated: 2026-11-26T06:42:10Z
 
 package model
 
@@ -269,7 +269,7 @@ func (v Tree) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) er
 func (v Encoded) Validate(stopOnFirstError bool) error {
 	var errs []error
 	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
-		return kamaValidateAll(stopOnFirstError, kamaValidateNot(rawjson.Required(m, stopOnFirstError, "x"), "required=\"x\""), rawjson.Properties(m, stopOnFirstError, nil, rawjson.Property("a", func(m2 jsontext.Value) error {
+		return kamaValidateAll(stopOnFirstError, kamaValidateNot(rawjson.Required(m, stopOnFirstError, "x"), "required(\"x\")"), rawjson.Properties(m, stopOnFirstError, nil, rawjson.Property("a", func(m2 jsontext.Value) error {
 			return error(nil)
 		}), rawjson.Additional(func(m3 jsontext.Value) error {
 			return rawjson.Kind(m3, "integer")
@@ -282,7 +282,7 @@ func (v Encoded) Validate(stopOnFirstError bool) error {
 	}
 	if v.A.IsSome() {
 		if err := validator.Field(rawjson.Encoded(v.A.Value(), func(m jsontext.Value) error {
-			return kamaValidateNot(rawjson.Const(m, "\"b\""), "const=\"`\\\"b\\\"`\"")
+			return kamaValidateNot(rawjson.Const(m, "\"b\""), "const(\"b\")")
 		}), "a"); err != nil {
 			if stopOnFirstError {
 				return err

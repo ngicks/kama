@@ -11,7 +11,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // Props is the validator //kama:validate props(<entry>, ...): each member
@@ -51,11 +51,12 @@ type PropsEntry struct {
 	Operands []Operand
 }
 
-// Parse decodes arg into entries, parsing their validators through r.
-func (Props) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
-	args, err := dircmnt.ParseCallArgs(arg)
+// Parse decodes the args of c, calls of field, match and rest, into
+// entries, resolving their operands through r.
+func (Props) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
+	args, err := ext.Params{Variadic: "entries", Rules: []string{"entries"}}.Bind(r, c, nil)
 	if err != nil {
-		return nil, argsError(err)
+		return nil, err
 	}
 
 	var (
@@ -63,8 +64,8 @@ func (Props) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
 		seen []string
 	)
 
-	for _, kv := range args {
-		entry, err := propsEntry(kv, r)
+	for _, a := range args {
+		entry, err := propsEntry(a.Value, r)
 		if err != nil {
 			return nil, err
 		}
@@ -81,21 +82,20 @@ func (Props) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
 	return o, nil
 }
 
-func propsEntry(kv dircmnt.KeyValue, r ext.Resolver) (PropsEntry, error) {
-	if !kv.Call {
-		return PropsEntry{}, argsError(fmt.Errorf(
-			"entry %s is no call of field, match or rest", kv.String(),
-		))
+func propsEntry(n expr.Node, r ext.Resolver) (PropsEntry, error) {
+	c, ok := n.(expr.Call)
+	if !ok {
+		return PropsEntry{}, argsError(fmt.Errorf("entry %s is no call of field, match or rest", n))
 	}
 
-	switch kv.Key {
+	switch c.Name {
 	case "field", "match":
-		name, ops, err := parseNamed(kv, r)
+		name, ops, err := parseNamed(c, r)
 		if err != nil {
 			return PropsEntry{}, err
 		}
 
-		if kv.Key == "match" {
+		if c.Name == "match" {
 			if _, err := regexp.Compile(name); err != nil {
 				return PropsEntry{}, argsError(
 					fmt.Errorf("pattern %q does not compile: %w", name, err),
@@ -103,18 +103,18 @@ func propsEntry(kv dircmnt.KeyValue, r ext.Resolver) (PropsEntry, error) {
 			}
 		}
 
-		return PropsEntry{Kind: kv.Key, Name: name, Operands: ops}, nil
+		return PropsEntry{Kind: c.Name, Name: name, Operands: ops}, nil
 	case "rest":
-		ops, err := ParseOperands(kv.Arg(), r)
+		ops, err := parseOperandArgs(r, c)
 		if err != nil {
 			return PropsEntry{}, fmt.Errorf("rest: %w", err)
 		}
 
-		return PropsEntry{Kind: kv.Key, Operands: ops}, nil
+		return PropsEntry{Kind: c.Name, Operands: ops}, nil
 	}
 
 	return PropsEntry{}, argsError(
-		fmt.Errorf("entry %s is no call of field, match or rest", kv.Key),
+		fmt.Errorf("entry %s is no call of field, match or rest", c.Name),
 	)
 }
 

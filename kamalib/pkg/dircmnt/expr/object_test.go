@@ -172,3 +172,30 @@ func TestObjectDecodes(t *testing.T) {
 	assert.DeepEqual(t, o.Values, []int64{7, 8})
 	assert.DeepEqual(t, o.Unknown, map[string]any{"typo": 1.0})
 }
+
+func TestFromJson(t *testing.T) {
+	for _, text := range []string{
+		`null`, `true`, `false`, `"a"`, `"it's \"q\" \\ \n"`, `0`, `-0`, `1.50`, `1E+2`, `-3e-7`,
+		`123456789012345678901234567890`, `[]`, `[1, "a", [null]]`, `{}`, `{"b": 1, "a": {"c": []}}`,
+	} {
+		t.Run(text, func(t *testing.T) {
+			n, err := FromJson(jsontext.Value(text))
+			assert.NilError(t, err)
+
+			args, err := Parse(Print([]Arg{{Value: n}}))
+			assert.NilError(t, err)
+
+			got, err := Json(args[0].Value)
+			assert.NilError(t, err)
+
+			want := jsontext.Value(text)
+			assert.NilError(t, want.Compact())
+			assert.Equal(t, string(got), string(want))
+		})
+	}
+
+	for _, text := range []string{`1e400`, `1 2`, `[1`} {
+		_, err := FromJson(jsontext.Value(text))
+		assert.Assert(t, errors.Is(err, ErrArgs), "%s: %v", text, err)
+	}
+}

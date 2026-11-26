@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:23Z
+// generated: 2026-11-26T06:59:23Z
 
 package recursive
 
@@ -20,7 +20,7 @@ import (
 // Forest is generated from the schema at #.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Forest struct {
 	Trees                []Tree                    `json:"trees"`
@@ -67,7 +67,7 @@ func (v *Forest) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Tree is generated from the schema at #/$defs/Tree.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Tree struct {
 	Label                string                    `json:"label"`
@@ -108,7 +108,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // List is generated from the schema at #/$defs/List.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type List struct {
 	Value                int64                     `json:"value"`
@@ -149,7 +149,7 @@ func (v *List) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Chain is generated from the schema at #/$defs/Chain.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Chain struct {
 	Name                 string                    `json:"name"`
@@ -202,7 +202,7 @@ func (v *Chain) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Link is generated from the schema at #/$defs/Link.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Link struct {
 	Label                string                    `json:"label"`
@@ -243,7 +243,7 @@ func (v *Link) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // Ouroboros is generated from the schema at #/$defs/Ouroboros.
 //
 //kama:generated kama:jsonschema
-//kama:validate hook=off
+//kama:validate hook=False
 //kama:validate decoded
 type Ouroboros struct {
 	Tail                 *Ouroboros                `json:"tail"`

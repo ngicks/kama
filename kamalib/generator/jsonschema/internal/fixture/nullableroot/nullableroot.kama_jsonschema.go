@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-25T10:39:06Z
+// generated: 2026-11-26T06:59:09Z
 
 package nullableroot
 
@@ -44,7 +44,7 @@ func (v *Code) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 // CodeValue is generated from the schema at #/anyOf/0.
 //
 //kama:generated kama:jsonschema
-//kama:validate const="1.5 18446744073709551616"
+//kama:validate const(1.5, 18446744073709551616)
 //kama:validate decoded
 type CodeValue float64
 
