@@ -7,10 +7,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 )
 
-// structView is the rule.Struct of the struct type st, whose value x
+// structView is the ext.Struct of the struct type st, whose value x
 // denotes in generated code of the package pkg. It reads the fields from
 // st at every call.
 type structView struct {
@@ -19,7 +19,7 @@ type structView struct {
 	pkg *types.Package
 }
 
-var _ rule.Struct = structView{}
+var _ ext.Struct = structView{}
 
 func (s structView) Members() ([]string, error) {
 	var names []string

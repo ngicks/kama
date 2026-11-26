@@ -6,7 +6,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 )
 
 // TestCombinators compiles each combinator over its operands to one call
@@ -84,7 +84,7 @@ func TestCombinatorHeldValue(t *testing.T) {
 // of the run: a user validator and a validator replacing a built-in are
 // operands like any other.
 func TestCombinatorOperandRegistry(t *testing.T) {
-	reg := rule.DefaultRegistry().Clone()
+	reg := ext.DefaultRegistry().Clone()
 	reg.Register(multiple{})
 	reg.Register(lengthOne{})
 
@@ -107,7 +107,7 @@ func TestCombinatorOperandRegistry(t *testing.T) {
 
 	_, err = generate(t, files, testRun{})
 	assert.ErrorIs(t, err, ErrDirective)
-	assert.ErrorIs(t, err, rule.ErrUnknown)
+	assert.ErrorIs(t, err, ext.ErrUnknown)
 	assert.ErrorContains(
 		t,
 		err,
@@ -209,7 +209,7 @@ func TestCombinatorErrors(t *testing.T) {
 			src: "//kama:validate hook=off\ntype A struct {\n" +
 				"\t//kama:validate and(requires=b, members=\">=1\")\n\tA int `json:\"a\"`\n" +
 				"\tB int `json:\"b\"`\n}\n",
-			is:   []error{ErrUnsupported, rule.ErrArgs},
+			is:   []error{ErrUnsupported, ext.ErrArgs},
 			msgs: []string{"no place takes both"},
 		},
 		{
@@ -227,7 +227,7 @@ func TestCombinatorErrors(t *testing.T) {
 			name: "arity",
 			src: "//kama:validate hook=off\ntype A struct {\n" +
 				"\t//kama:validate not(zero, nil)\n\tA *int\n}\n",
-			is:   []error{ErrUnsupported, rule.ErrArgs},
+			is:   []error{ErrUnsupported, ext.ErrArgs},
 			msgs: []string{"//kama:validate not on field A: want one operand, got 2"},
 		},
 		{

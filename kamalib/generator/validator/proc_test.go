@@ -17,14 +17,13 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
 	"github.com/ngicks/kama/kamalib/pkg/overlayfs"
 	procpackages "github.com/ngicks/kama/kamalib/proc/gopackages"
 	procoverlayfs "github.com/ngicks/kama/kamalib/proc/overlayfs"
 	"github.com/ngicks/kama/kamalib/workflow"
-
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 )
 
 func TestProcParam(t *testing.T) {
@@ -221,7 +220,7 @@ func TestProcRun(t *testing.T) {
 // TestProcRunWithRegistry runs a graph whose validate.generate proc
 // generates with a registry holding a validator of the test.
 func TestProcRunWithRegistry(t *testing.T) {
-	reg := rule.DefaultRegistry().Clone()
+	reg := ext.DefaultRegistry().Clone()
 	reg.Register(positive{})
 
 	procs := workflow.NewRegistry()

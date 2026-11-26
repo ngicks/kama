@@ -11,9 +11,8 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
-
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
 )
 
 func TestRequired(t *testing.T) {
@@ -207,7 +206,7 @@ type positive struct{}
 
 func (positive) Name() string { return "positive" }
 
-func (positive) Parse(string, rule.Resolver) (rule.Rule, error) { return positive{}, nil }
+func (positive) Parse(string, ext.Resolver) (ext.Rule, error) { return positive{}, nil }
 
 func (positive) Check(t types.Type) error {
 	if b, ok := t.Underlying().(*types.Basic); ok && b.Info()&types.IsInteger != 0 {
@@ -219,14 +218,14 @@ func (positive) Check(t types.Type) error {
 
 // Emit declares a package-level variable besides the helper function, as a
 // validator compiling a pattern once does.
-func (positive) Emit(e rule.Emitter, _ types.Type, v rule.Gen) (rule.Gen, error) {
-	e.Declare("kamaValidateNotPositive", func(imp rule.Importer) rule.Step {
+func (positive) Emit(e ext.Emitter, _ types.Type, v ext.Gen) (ext.Gen, error) {
+	e.Declare("kamaValidateNotPositive", func(imp ext.Importer) ext.Step {
 		return lang.Stmt(
 			`var kamaValidateNotPositive = %s.New("not positive")`,
 			imp.Import("errors"),
 		)
 	})
-	e.Declare("kamaValidatePositive", func(rule.Importer) rule.Step {
+	e.Declare("kamaValidatePositive", func(ext.Importer) ext.Step {
 		return lang.Func(
 			lang.Expr("func kamaValidatePositive(%s int64) error", decl("n")),
 			lang.If(
@@ -244,10 +243,10 @@ func (positive) Emit(e rule.Emitter, _ types.Type, v rule.Gen) (rule.Gen, error)
 // TestRegistry adds a validator, which applies to the value a pointer or an
 // option holds when it cannot apply to the field itself.
 func TestRegistry(t *testing.T) {
-	reg := rule.DefaultRegistry().Clone()
+	reg := ext.DefaultRegistry().Clone()
 	reg.Register(positive{})
 	assert.Assert(t, slices.Contains(reg.Names(), "positive"))
-	assert.Assert(t, !slices.Contains(rule.DefaultRegistry().Names(), "positive"))
+	assert.Assert(t, !slices.Contains(ext.DefaultRegistry().Names(), "positive"))
 
 	files := map[string]string{
 		"a.go": `package x
@@ -328,7 +327,7 @@ func (r renamed) Name() string { return r.name }
 func TestReservedNames(t *testing.T) {
 	for _, name := range []string{"hook", "ignore", "file", "package"} {
 		t.Run(name, func(t *testing.T) {
-			reg := rule.DefaultRegistry().Clone()
+			reg := ext.DefaultRegistry().Clone()
 			reg.Register(renamed{name: name})
 
 			_, err := generate(t, map[string]string{

@@ -14,7 +14,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
@@ -561,8 +561,10 @@ func checkKeywords(ptr string, s *jsonschema.Schema) []error {
 			errs,
 			unsupported(child(ptr, "multipleOf"), "%s is not above zero", s.MultipleOf),
 		)
-	} else if _, err := (rule.MultipleOf{}).Parse(string(s.MultipleOf), nil); r != nil && err != nil {
-		errs = append(errs, unsupported(child(ptr, "multipleOf"), "%v", err))
+	} else if r != nil {
+		if _, err := (basic.MultipleOf{}).Parse(string(s.MultipleOf), nil); err != nil {
+			errs = append(errs, unsupported(child(ptr, "multipleOf"), "%v", err))
+		}
 	}
 
 	for kw, v := range map[string]jsontext.Value{

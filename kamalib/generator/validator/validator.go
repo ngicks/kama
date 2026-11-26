@@ -13,7 +13,11 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+
+	// The built-in validators register themselves into the default
+	// registry of package ext.
+	_ "github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
 )
 
 // GeneratorId identifies the generator. Its name is the directive
@@ -61,14 +65,14 @@ var (
 // Options configures Generate.
 type Options struct {
 	// Registry holds the validators directives name. It is
-	// rule.DefaultRegistry() when nil.
-	Registry *rule.Registry
+	// ext.DefaultRegistry() when nil.
+	Registry *ext.Registry
 }
 
 // WithDefaults returns o with empty fields set to their defaults.
 func (o Options) WithDefaults() Options {
 	if o.Registry == nil {
-		o.Registry = rule.DefaultRegistry()
+		o.Registry = ext.DefaultRegistry()
 	}
 
 	return o
@@ -151,7 +155,7 @@ func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, 
 
 // reservedNames reports the validators of reg named by a word of
 // //kama:validate that names no validator.
-func reservedNames(reg *rule.Registry) error {
+func reservedNames(reg *ext.Registry) error {
 	reserved := opiter.WrapSeq(slices.Values(reg.Names())).
 		Filter(func(name string) bool {
 			return slices.Contains(

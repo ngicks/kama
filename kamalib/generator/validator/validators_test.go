@@ -10,7 +10,8 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
@@ -484,7 +485,7 @@ func TestArgsErrorOnHeldValue(t *testing.T) {
 			"\t//kama:validate length=\">=1.5\"\n\tP *string\n}\n",
 	}, testRun{})
 	assert.ErrorIs(t, err, ErrUnsupported)
-	assert.ErrorIs(t, err, rule.ErrArgs)
+	assert.ErrorIs(t, err, ext.ErrArgs)
 	assert.Equal(t, strings.Count(err.Error(), "1.5 is no value of int"), 1, err.Error())
 	assert.Assert(t, !strings.Contains(err.Error(), "for the value it holds"), err.Error())
 }
@@ -495,9 +496,9 @@ type lengthOne struct{}
 
 func (lengthOne) Name() string { return "length" }
 
-func (lengthOne) Parse(arg string, _ rule.Resolver) (rule.Rule, error) {
+func (lengthOne) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
 	if arg != "" {
-		return nil, fmt.Errorf("%w: unexpected arg %q; want none", rule.ErrArgs, arg)
+		return nil, fmt.Errorf("%w: unexpected arg %q; want none", ext.ErrArgs, arg)
 	}
 
 	return lengthOne{}, nil
@@ -516,8 +517,8 @@ func (lengthOne) Check(t types.Type) error {
 	return fmt.Errorf("%s has no length", t)
 }
 
-func (lengthOne) Emit(e rule.Emitter, _ types.Type, v rule.Gen) (rule.Gen, error) {
-	e.Declare("kamaValidateLengthOne", func(imp rule.Importer) rule.Step {
+func (lengthOne) Emit(e ext.Emitter, _ types.Type, v ext.Gen) (ext.Gen, error) {
+	e.Declare("kamaValidateLengthOne", func(imp ext.Importer) ext.Step {
 		return lang.Func(
 			lang.Expr("func kamaValidateLengthOne(%s int) error", decl("n")),
 			lang.If(
@@ -535,7 +536,7 @@ func (lengthOne) Emit(e rule.Emitter, _ types.Type, v rule.Gen) (rule.Gen, error
 // TestReplaceBuiltin registers a validator under the name of a built-in,
 // which replaces both its args and its code.
 func TestReplaceBuiltin(t *testing.T) {
-	reg := rule.DefaultRegistry().Clone()
+	reg := ext.DefaultRegistry().Clone()
 	reg.Register(lengthOne{})
 
 	files := map[string]string{
@@ -565,10 +566,10 @@ func (multiple) Name() string { return "multiple" }
 
 type multipleOptions struct{ N int64 }
 
-func (multiple) Parse(arg string, _ rule.Resolver) (rule.Rule, error) {
+func (multiple) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
 	n, err := strconv.ParseInt(arg, 10, 64)
 	if err != nil || n <= 0 {
-		return nil, fmt.Errorf("%w: want a positive integer", rule.ErrArgs)
+		return nil, fmt.Errorf("%w: want a positive integer", ext.ErrArgs)
 	}
 
 	return multipleOptions{N: n}, nil
@@ -582,8 +583,8 @@ func (multipleOptions) Check(t types.Type) error {
 	return nil
 }
 
-func (o multipleOptions) Emit(e rule.Emitter, _ types.Type, v rule.Gen) (rule.Gen, error) {
-	e.Declare("kamaValidateMultiple", func(imp rule.Importer) rule.Step {
+func (o multipleOptions) Emit(e ext.Emitter, _ types.Type, v ext.Gen) (ext.Gen, error) {
+	e.Declare("kamaValidateMultiple", func(imp ext.Importer) ext.Step {
 		return lang.Func(
 			lang.Expr("func kamaValidateMultiple(%s, %s int64) error",
 				genhelper.Shadow("got"), genhelper.Shadow("n")),
@@ -602,7 +603,7 @@ func (o multipleOptions) Emit(e rule.Emitter, _ types.Type, v rule.Gen) (rule.Ge
 // TestDocExample generates and builds code with the validator the package
 // doc of rule writes.
 func TestDocExample(t *testing.T) {
-	reg := rule.DefaultRegistry().Clone()
+	reg := ext.DefaultRegistry().Clone()
 	reg.Register(multiple{})
 
 	files := map[string]string{
@@ -632,7 +633,7 @@ func TestDocExample(t *testing.T) {
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
 			"\t//kama:validate multiple=0\n\tN int\n}\n",
 	}, testRun{Registry: reg})
-	assert.ErrorIs(t, err, rule.ErrArgs)
+	assert.ErrorIs(t, err, ext.ErrArgs)
 
 	_, err = generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +
@@ -645,11 +646,11 @@ func TestDocExample(t *testing.T) {
 // TestFormatExtra registers a format validator with a format besides the
 // built-in ones.
 func TestFormatExtra(t *testing.T) {
-	formats := rule.DefaultFormats()
-	formats["lower"] = rule.FormatHelper{
+	formats := basic.DefaultFormats()
+	formats["lower"] = basic.FormatHelper{
 		Name: "kamaValidateFormatLower",
-		Decl: func(imp rule.Importer) rule.Step {
-			v := imp.Import(rule.ValidationPath)
+		Decl: func(imp ext.Importer) ext.Step {
+			v := imp.Import(ext.ValidationPath)
 
 			return lang.Func(
 				lang.Expr("func kamaValidateFormatLower(%s string) error", decl("got")),
@@ -665,8 +666,8 @@ func TestFormatExtra(t *testing.T) {
 		},
 	}
 
-	reg := rule.DefaultRegistry().Clone()
-	reg.Register(rule.Format{Formats: formats})
+	reg := ext.DefaultRegistry().Clone()
+	reg.Register(basic.Format{Formats: formats})
 
 	files := map[string]string{
 		"a.go": "package x\n\n//kama:validate\n//kama:validate hook=off\ntype A struct {\n" +

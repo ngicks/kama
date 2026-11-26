@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
@@ -53,7 +53,7 @@ const evaluatedName = "ValidateEvaluated"
 // is raw JSON text, whose validators may evaluate members and elements, and
 // not generic, so that the ref validator calls it alike on every target.
 func hasEvaluated(named *types.Named) bool {
-	return rule.IsRawJson(named) && named.TypeParams().Len() == 0
+	return ext.IsRawJson(named) && named.TypeParams().Len() == 0
 }
 
 // decoded reports whether //kama:validate decoded, or its option file

@@ -10,7 +10,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 )
 
 func TestTypeValidators(t *testing.T) {
@@ -130,23 +130,23 @@ func TestTypeValidatorsOfGroup(t *testing.T) {
 	assertContains(t, fs["B.Validate"], check(`kamaValidateLength(len(v), "<=", 3)`))
 }
 
-// fields is a rule.StructRule of the tests. It passes the members of a
+// fields is an ext.StructRule of the tests. It passes the members of a
 // struct and its embedded fallback to a helper.
 type fields struct{}
 
 func (fields) Name() string { return "fields" }
 
-func (fields) Parse(string, rule.Resolver) (rule.Rule, error) { return fieldsOptions{}, nil }
+func (fields) Parse(string, ext.Resolver) (ext.Rule, error) { return fieldsOptions{}, nil }
 
 type fieldsOptions struct{}
 
 func (fieldsOptions) Check(t types.Type) error { return fmt.Errorf("%s is no struct", t) }
 
-func (fieldsOptions) Emit(rule.Emitter, types.Type, rule.Gen) (rule.Gen, error) {
+func (fieldsOptions) Emit(ext.Emitter, types.Type, ext.Gen) (ext.Gen, error) {
 	return nil, fmt.Errorf("want a struct")
 }
 
-func (fieldsOptions) Struct(s rule.Struct) (rule.Rule, error) {
+func (fieldsOptions) Struct(s ext.Struct) (ext.Rule, error) {
 	if _, err := s.Members(); err != nil {
 		return nil, err
 	}
@@ -155,12 +155,12 @@ func (fieldsOptions) Struct(s rule.Struct) (rule.Rule, error) {
 }
 
 // fieldsOf is fields applied to a struct, which it reads through s.
-type fieldsOf struct{ s rule.Struct }
+type fieldsOf struct{ s ext.Struct }
 
 func (fieldsOf) Check(types.Type) error { return nil }
 
-func (f fieldsOf) Emit(e rule.Emitter, _ types.Type, _ rule.Gen) (rule.Gen, error) {
-	e.Declare("kamaValidateFields", func(rule.Importer) rule.Step {
+func (f fieldsOf) Emit(e ext.Emitter, _ types.Type, _ ext.Gen) (ext.Gen, error) {
+	e.Declare("kamaValidateFields", func(ext.Importer) ext.Step {
 		return lang.Func(
 			lang.Expr("func kamaValidateFields(%s []string, %s ...any) error",
 				decl("names"), decl("values")),
@@ -175,7 +175,7 @@ func (f fieldsOf) Emit(e rule.Emitter, _ types.Type, _ rule.Gen) (rule.Gen, erro
 
 	var (
 		quoted []string
-		values []rule.Gen
+		values []ext.Gen
 	)
 
 	for _, name := range names {
@@ -192,14 +192,14 @@ func (f fieldsOf) Emit(e rule.Emitter, _ types.Type, _ rule.Gen) (rule.Gen, erro
 		strings.Join(quoted, ", "), lang.Join(", ", values...)), nil
 }
 
-func fieldsRegistry() *rule.Registry {
-	reg := rule.DefaultRegistry().Clone()
+func fieldsRegistry() *ext.Registry {
+	reg := ext.DefaultRegistry().Clone()
 	reg.Register(fields{})
 
 	return reg
 }
 
-// TestStructRule applies a rule.StructRule written in the doc comment of a
+// TestStructRule applies an ext.StructRule written in the doc comment of a
 // struct type to the struct value. The rule sees the members and the
 // embedded fallback of the struct.
 func TestStructRule(t *testing.T) {

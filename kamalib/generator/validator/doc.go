@@ -398,10 +398,10 @@
 //     comment of such a type, as in //kama:validate ignore cmp=">0".
 //   - //kama:validate without args on a field.
 //   - a validator name in a free-floating comment.
-//   - a validator other than a rule.StructRule in the doc comment of a
-//     struct type, a rule.StructRule on a field or in the doc comment of a
+//   - a validator other than an ext.StructRule in the doc comment of a
+//     struct type, an ext.StructRule on a field or in the doc comment of a
 //     type of another kind whose type its Check rejects, and a
-//     rule.SiblingRule in the doc comment of any type. members accepts raw
+//     ext.SiblingRule in the doc comment of any type. members accepts raw
 //     JSON text, as Raw JSON text describes.
 //
 // A validator applied to a type it cannot handle, or with an arg it does
@@ -414,15 +414,15 @@
 // under a guard that skips the validator when no value is held. Only an
 // error of Rule.Check leads to that second attempt. The generator reports
 // every error of Validator.Parse at once. Such an error comes from the arg
-// alone and should wrap rule.ErrArgs. required, zero and nil therefore look
+// alone and should wrap ext.ErrArgs. required, zero and nil therefore look
 // at a pointer itself, and every other validator applies to the pointee of
-// a non-nil pointer. A rule.SiblingRule, such as requires, reads the other
+// a non-nil pointer. An ext.SiblingRule, such as requires, reads the other
 // fields of the struct and applies to the field itself only. Its errors
 // are located where the rule puts them, as at a sibling field, without the
 // path segment of the field it is written on. elastic.Elastic holds no single value and takes
 // required, zero and null only.
 //
-// Package rule documents the built-in validators and the errors they report.
+// Package basic documents the built-in validators and the errors they report.
 //
 // # Combinators
 //
@@ -454,18 +454,18 @@
 // sees the same value: or(nil, cmp=">=1") applies to neither *int nor int
 // and is an error.
 //
-// A combinator holding a rule.SiblingRule operand, such as requires, is a
-// rule.SiblingRule itself. It applies to the field itself. Each of its
+// A combinator holding an ext.SiblingRule operand, such as requires, is an
+// ext.SiblingRule itself. It applies to the field itself. Each of its
 // other operands applies to the type of the field, else to the value a
 // pointer, an opt.Option or an und.Und holds, and holds when the field
 // holds none: if(cmp=">=1", requires=b) on a field A *int compares *A when
 // A is not nil. Its errors are located at the field, except those the sibling operand
-// locates at a sibling. A combinator holding a rule.StructRule operand,
-// such as members, is a rule.StructRule and goes in the doc comment of a
+// locates at a sibling. A combinator holding an ext.StructRule operand,
+// such as members, is an ext.StructRule and goes in the doc comment of a
 // struct type. Operands of both kinds in one combinator are an error.
 //
 // and and if return the errors of their operands. or, not and oneof return
-// errors of their own, which package rule describes.
+// errors of their own, which package basic describes.
 //
 // # Type validators
 //
@@ -492,17 +492,17 @@
 // first, then v.Level.Validate.
 //
 // A struct type takes only validators of the struct as a whole, which
-// implement rule.StructRule, such as members and json. The rule reads the fields through
-// rule.Struct,
+// implement ext.StructRule, such as members and json. The rule reads the fields through
+// ext.Struct,
 // which names them by the JSON members they encode as. A field takes a
-// rule.StructRule only when the Check of the rule accepts the type of the
+// ext.StructRule only when the Check of the rule accepts the type of the
 // field or the value it holds, as members accepts raw JSON text.
 //
 // # Raw JSON text
 //
 // A value of jsontext.Value, or of a type of the underlying type []byte
 // declaring the method RawJson() jsontext.Value, is raw JSON text, as
-// rule.IsRawJson tells. Its validators test it with the semantics of JSON
+// ext.IsRawJson tells. Its validators test it with the semantics of JSON
 // Schema: each tests the values of the JSON kinds it applies to and passes
 // any other, as minimum passes a string:
 //
@@ -518,7 +518,7 @@
 // does not walk the bytes of raw JSON text as the elements of a slice.
 // props, items, prefix, contains, keys, unevalprops and unevalitems reach
 // into the members and the elements instead, and ref and decode apply
-// another type, as package rule describes:
+// another type, as package basic describes:
 //
 //	//kama:validate kind=object
 //	//kama:validate props(field("next", ref=Tree), rest(kind=integer))
@@ -529,7 +529,7 @@
 //	func (v T) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) error
 //
 // It runs the validators of T as Validate does, those implementing
-// rule.Annotator recording into ev the members and the elements they
+// ext.Annotator recording into ev the members and the elements they
 // evaluated. ref calls it in the scope of unevalprops and unevalitems, so
 // that a type a reference names reports what it evaluated without its
 // validators being written out at the reference.
@@ -559,13 +559,16 @@
 //
 // # Registry
 //
-// Validators are entries of a rule.Registry, and Options.Registry selects
+// Validators are entries of an ext.Registry, and Options.Registry selects
 // it. A validator named hook, pre, post, ignore, decoded, file or package
-// makes Generate fail with an error wrapping ErrConflict. Package rule
-// documents the registry and how to write a validator.
+// makes Generate fail with an error wrapping ErrConflict. Package ext
+// documents the registry, how to write a validator and how to add an
+// extension package. Package basic holds the built-in validators. This
+// package imports basic with a blank import, which registers them into
+// the default registry of ext.
 //
 // The kind validate.generate of workflow.DefaultRegistry generates with
-// rule.DefaultRegistry(). NewProcWith returns the constructor of a proc with
+// ext.DefaultRegistry(). NewProcWith returns the constructor of a proc with
 // another registry. A program runs a workflow spec with that registry
 // through a workflow.Registry of its own. The program registers the
 // constructor under validate.generate in it. It registers the other procs

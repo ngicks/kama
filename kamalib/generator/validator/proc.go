@@ -6,7 +6,7 @@ import (
 	"github.com/ngicks/option/opt"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -55,8 +55,8 @@ func NewProc() workflow.Proc { return procWith(nil) }
 // the validators of reg, for workflow.Registry.Register. It keeps a clone of
 // reg, so later changes to reg do not reach the procs. The procs only read
 // the clone, so the graphs built with them share nothing they change. A nil
-// reg means rule.DefaultRegistry().
-func NewProcWith(reg *rule.Registry) func() workflow.Proc {
+// reg means ext.DefaultRegistry().
+func NewProcWith(reg *ext.Registry) func() workflow.Proc {
 	if reg != nil {
 		reg = reg.Clone()
 	}
@@ -64,7 +64,7 @@ func NewProcWith(reg *rule.Registry) func() workflow.Proc {
 	return func() workflow.Proc { return procWith(reg) }
 }
 
-func procWith(reg *rule.Registry) base.SourceProc[
+func procWith(reg *ext.Registry) base.SourceProc[
 	ProcParamPartial, ProcParam, Options, PackageOptions, TypeOptions, FieldOptions,
 ] {
 	return base.SourceProc[

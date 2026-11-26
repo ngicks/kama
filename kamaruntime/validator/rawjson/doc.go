@@ -1,7 +1,7 @@
 // Package rawjson validates raw JSON text, jsontext.Value or a type of the
 // same underlying type, with the semantics of the validation keywords of
 // JSON Schema. The code the validators of package
-// github.com/ngicks/kama/kamalib/generator/validator/rule emit for raw JSON
+// github.com/ngicks/kama/kamalib/generator/validator/ext/basic emit for raw JSON
 // calls it, and so do the decoders the generator of package
 // github.com/ngicks/kama/kamalib/generator/jsonschema writes, which
 // compare a member to a const by Equal.

@@ -18,7 +18,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/gofragment/dstfragment"
 )
 
@@ -28,15 +28,15 @@ import (
 // No source holds the set: it tells what the generated code of the package
 // calls, which is known only once the code is written.
 type helperSet struct {
-	decls map[string]func(imp rule.Importer) genStep
+	decls map[string]func(imp ext.Importer) genStep
 }
 
 func newHelperSet() *helperSet {
-	return &helperSet{decls: map[string]func(rule.Importer) genStep{}}
+	return &helperSet{decls: map[string]func(ext.Importer) genStep{}}
 }
 
 // emitter spells packages and types for one generated file and records
-// the helpers the file calls. It is the rule.Emitter of the validator
+// the helpers the file calls. It is the ext.Emitter of the validator
 // expressions of the file.
 //
 // uses and imports are facts about the output, which no source holds: the
@@ -48,7 +48,7 @@ type emitter struct {
 	imports map[string]bool
 }
 
-var _ rule.Emitter = (*emitter)(nil)
+var _ ext.Emitter = (*emitter)(nil)
 
 func newEmitter(scope *filescope.Scope, helpers *helperSet) *emitter {
 	return &emitter{
@@ -80,7 +80,7 @@ func (e *emitter) Import(p string) genExpr {
 	}
 }
 
-func (e *emitter) Declare(name string, decl func(imp rule.Importer) genStep) {
+func (e *emitter) Declare(name string, decl func(imp ext.Importer) genStep) {
 	e.uses[name] = true
 
 	if _, ok := e.helpers.decls[name]; !ok {
@@ -176,7 +176,7 @@ func renderHelpersWith(
 	}, e, nil
 }
 
-// helperLocals mirror the locals the helper declarations of package rule
+// helperLocals mirror the locals the helper declarations of package basic
 // declare through Shadow, which an import of the same name would shadow.
 var helperLocals = []string{
 	"T", "t", "v", "zero", "ok", "got", "want", "op", "re", "u", "err", "rv", "spelled",

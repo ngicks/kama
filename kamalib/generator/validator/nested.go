@@ -5,7 +5,7 @@ import (
 	"go/types"
 	"strconv"
 
-	"github.com/ngicks/kama/kamalib/generator/validator/rule"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
@@ -228,7 +228,7 @@ func (w *writer) elements(
 
 	inner := func(err genExpr) genExpr {
 		return wrap(lang.Expr(
-			"%s.%s(%s, %s)", w.Import(rule.ValidationPath), segment, err, lang.Name(idx),
+			"%s.%s(%s, %s)", w.Import(ext.ValidationPath), segment, err, lang.Name(idx),
 		))
 	}
 
