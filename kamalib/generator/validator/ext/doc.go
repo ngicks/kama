@@ -4,19 +4,75 @@
 //
 // # Extension packages
 //
-// An extension package provides validators. It registers them into the
-// default registry with Register in its init function. Package basic
-// holds the built-in validators. Package validator imports it with a
-// blank import, so that a program generating validators gets them. A
-// third party adds an extension package the same way, and a program
-// imports that package with a blank import too:
+// An extension package provides validators and type supports. It
+// registers them into the default registry with Register and
+// RegisterTypeSupport in its init function. Package basic holds the
+// built-in validators, and package opt holds the type support of
+// github.com/ngicks/option. Package validator imports both with blank
+// imports, so that a program generating validators gets them. A third
+// party adds an extension package the same way, and a program imports
+// that package with a blank import too:
 //
 //	package myext
 //
-//	func init() { ext.Register(multiple{}) }
+//	func init() {
+//		ext.Register(multiple{})
+//		ext.RegisterTypeSupport(dequeSupport{})
+//	}
 //
-// Register panics on a name that is registered already. Two extension
-// packages must not claim one name.
+// Register and RegisterTypeSupport panic on a name that is registered
+// already. Two extension packages must not claim one name.
+//
+// # Type supports
+//
+// A TypeSupport tells about the values a named type of a package holds,
+// which the generator cannot see through its fields. Pointers, slices,
+// arrays and maps need none. A support implements one or more of these
+// interfaces, and each method reports false for a type the support does
+// not claim:
+//
+//   - Holder: the one value a type may hold, as opt.Option holds one. The
+//     generator walks into it under its guard, and a rule rejecting the
+//     type applies to the value held.
+//   - Container: the elements of a type, ranged over and located by index
+//     or key, as elastic.Elastic holds its elements.
+//   - PresenceTester, ZeroTester and NullTester: how required, zero and
+//     null test a value of the type.
+//
+// Each held value and each element has a role name, such as "t". A role
+// names the value among the values a type holds.
+//
+// The generator asks the supports at the point it needs an answer, in the
+// order they were registered, and the first support claiming a type
+// answers. HeldValue, HolderOf, ContainerOf, Presence, Zero, Null and
+// Dependants ask the supports of a Resolver. A rule keeps the Resolver its
+// Parse received to ask them. Target selection walks into the types
+// Dependants tells, so a type argument holding something to validate
+// makes the type holding the claimed type a target.
+//
+// A support of a double-ended queue of a third party package, whose method
+// Iter yields its elements by index, is a Container:
+//
+//	type dequeSupport struct{}
+//
+//	func (dequeSupport) Name() string { return "deque" }
+//
+//	func (dequeSupport) Elements(
+//		t types.Type,
+//		v ext.Gen,
+//	) (string, types.Type, ext.Gen, ext.Segment, bool) {
+//		named, ok := types.Unalias(t).(*types.Named)
+//		if !ok || named.Obj().Pkg() == nil ||
+//			named.Obj().Pkg().Path() != "github.com/gammazero/deque" ||
+//			named.Obj().Name() != "Deque" {
+//			return "", nil, nil, 0, false
+//		}
+//
+//		return "e", named.TypeArgs().At(0), lang.Expr("%s.Iter()", v), ext.SegmentIndex, true
+//	}
+//
+// The generated Validate then ranges over v.Iter() and validates each
+// element of a type with Validate, locating its errors by index.
 //
 // # Registry
 //

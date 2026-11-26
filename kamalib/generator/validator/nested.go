@@ -17,7 +17,8 @@ import (
 //
 // A value of a target or an implementor is validated by its Validate and a
 // value of a type parameter by the function given for it. The walk goes
-// through pointers, slices, arrays, map values, the option types, the
+// through pointers, slices, arrays, map values, the values the types an
+// ext.Holder or an ext.Container of the registry claims hold, the
 // fields of struct type literals and named array and pointer types of
 // packages outside the run, and never into the underlying type of another
 // named type. A struct, slice or map type of the run holding something to
@@ -47,11 +48,11 @@ func (w *writer) nested(t types.Type, x genExpr, wrap wrapFunc, depth int) (genS
 
 		return lang.If(lang.Expr("%s != nil", x), s, nil), nil
 	case *types.Slice:
-		return w.elements(w.walker(u.Elem()), x, wrap, depth, nil)
+		return w.elements(w.walker(u.Elem()), x, wrap, depth, ext.SegmentIndex, nil)
 	case *types.Array:
-		return w.elements(w.walker(u.Elem()), x, wrap, depth, nil)
+		return w.elements(w.walker(u.Elem()), x, wrap, depth, ext.SegmentIndex, nil)
 	case *types.Map:
-		return w.elements(w.walker(u.Elem()), x, wrap, depth, u.Key())
+		return w.elements(w.walker(u.Elem()), x, wrap, depth, ext.SegmentKey, u.Key())
 	case *types.Struct:
 		return w.structFields(u, x, wrap, depth)
 	}
@@ -102,18 +103,19 @@ func (w *writer) nestedNamed(
 	wrap wrapFunc,
 	depth int,
 ) (genStep, error) {
-	switch {
-	case typequery.IsNamed(named, typequery.OptPath, "Option"):
-		return w.guarded(typequery.TypeArg(named), lang.Expr("%s.IsSome()", x), x, wrap, depth)
-	case typequery.IsNamed(named, typequery.UndPath, "Und"):
-		return w.guarded(typequery.TypeArg(named), lang.Expr("%s.IsDefined()", x), x, wrap, depth)
-	case typequery.IsNamed(named, typequery.ElasticPath, "Elastic"):
-		// Options holds an opt.Option per element, none for a null one.
-		option := func(e genExpr, wrap wrapFunc, depth int) (genStep, error) {
-			return w.guarded(typequery.TypeArg(named), lang.Expr("%s.IsSome()", e), e, wrap, depth)
-		}
+	reg := w.sel.opts.Registry
 
-		return w.elements(option, lang.Expr("%s.Options()", x), wrap, depth, nil)
+	if h, ok := ext.HolderOf(reg, named); ok {
+		_, held, guard, value, _ := h.Held(named, x)
+		return w.guarded(held, guard, value, wrap, depth)
+	}
+
+	if c, ok := ext.ContainerOf(reg, named); ok {
+		_, elem, over, segment, _ := c.Elements(named, x)
+		return w.elements(w.walker(elem), over, wrap, depth, segment, nil)
+	}
+
+	switch {
 	case w.shallow && w.sel.callable(named) && w.sel.decoded(named):
 		return nil, nil
 	case w.sel.callable(named):
@@ -174,20 +176,20 @@ func (w *writer) throughForeign(
 	return w.nested(named.Underlying(), x, wrap, depth)
 }
 
-// guarded returns the step validating the value of type elem that the
-// option x holds when cond tells it holds one.
+// guarded returns the step validating the value of type held of the
+// expression value when guard tells it is held.
 func (w *writer) guarded(
-	elem types.Type,
-	cond, x genExpr,
+	held types.Type,
+	guard, value genExpr,
 	wrap wrapFunc,
 	depth int,
 ) (genStep, error) {
-	s, err := w.nested(elem, lang.Expr("%s.Value()", x), wrap, depth)
+	s, err := w.nested(held, value, wrap, depth)
 	if s == nil || err != nil {
 		return nil, err
 	}
 
-	return lang.If(cond, s, nil), nil
+	return lang.If(guard, s, nil), nil
 }
 
 // elementFunc returns the step validating the element e, each error passed
@@ -202,11 +204,11 @@ func (w *writer) walker(elem types.Type) elementFunc {
 	}
 }
 
-// elements returns the loop validating each element of x by element: map
-// values keyed by their keys of type key when key is not nil, else
-// elements by their indices.
+// elements returns the loop validating each element of x by element,
+// located by what the range over x yields first as segment tells. key is
+// the key type of a map x, nil for any other x.
 //
-// Integer and string keys are visited in sorted order. The first error and
+// Integer and string keys of a map are visited in sorted order. The first error and
 // the order of the errors are then stable. Other keys are visited in the
 // order of range. A lookup by a NaN float key never finds its value. The
 // other kinds have no order to sort by.
@@ -215,11 +217,12 @@ func (w *writer) elements(
 	x genExpr,
 	wrap wrapFunc,
 	depth int,
+	segment ext.Segment,
 	key types.Type,
 ) (genStep, error) {
-	idx, segment := "i", "Index"
-	if key != nil {
-		idx, segment = "k", "Key"
+	idx, locate := "i", "Index"
+	if segment == ext.SegmentKey {
+		idx, locate = "k", "Key"
 	}
 
 	if depth > 0 {
@@ -228,7 +231,7 @@ func (w *writer) elements(
 
 	inner := func(err genExpr) genExpr {
 		return wrap(lang.Expr(
-			"%s.%s(%s, %s)", w.Import(ext.ValidationPath), segment, err, lang.Name(idx),
+			"%s.%s(%s, %s)", w.Import(ext.ValidationPath), locate, err, lang.Name(idx),
 		))
 	}
 

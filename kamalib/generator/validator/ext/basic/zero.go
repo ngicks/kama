@@ -12,8 +12,9 @@ import (
 //
 // It applies to the types Required applies to. A pointer, slice, map,
 // channel, function or interface must be nil. A type with a method
-// IsZero() bool, the option types among them, must be zero by it: an
-// opt.Option must be none, an und.Und or an elastic.Elastic undefined. Any
+// IsZero() bool must be zero by it. A type an ext.ZeroTester of the
+// registry claims must be zero as it tells, as an opt.Option must be none,
+// an und.Und or an elastic.Elastic undefined. Any
 // other comparable type must equal its zero value. IsZero counts when the
 // type declares it or embedded fields promote it without a pointer or an
 // interface on the way.
@@ -23,16 +24,20 @@ type Zero struct{}
 func (Zero) Name() string { return "zero" }
 
 // ZeroOptions are the options of //kama:validate zero. Zero takes no arg.
-type ZeroOptions struct{}
+type ZeroOptions struct {
+	// reg is the registry the options were parsed with, whose type supports
+	// tell the zero value.
+	reg ext.Resolver
+}
 
 // Parse accepts only the empty arg.
-func (Zero) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	return ZeroOptions{}, noArg(arg)
+func (Zero) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
+	return ZeroOptions{reg: r}, noArg(arg)
 }
 
 // Check accepts the types the doc comment of Zero lists.
-func (ZeroOptions) Check(t types.Type) error {
-	if _, _, ok := zeroCall(t, nil); !ok {
+func (o ZeroOptions) Check(t types.Type) error {
+	if _, _, ok := zeroCall(o.reg, t, nil); !ok {
 		return fmt.Errorf(
 			"%s is not nillable, has no method IsZero() bool declared on it or promoted"+
 				" without a pointer or an interface, and is not comparable", t,
@@ -43,8 +48,8 @@ func (ZeroOptions) Check(t types.Type) error {
 }
 
 // Emit calls the helper the test of t needs.
-func (ZeroOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
-	helper, call, ok := zeroCall(t, v)
+func (o ZeroOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
+	helper, call, ok := zeroCall(o.reg, t, v)
 	if !ok {
 		return nil, fmt.Errorf("zero: unsupported type %s", t)
 	}
@@ -61,9 +66,8 @@ func (ZeroOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error)
 
 // zeroCall returns the helper testing that the value v of t is zero and the
 // call of it, or false when no test applies. It tests in the order of
-// requiredCall, without the option types, which tell their zero value by
-// IsZero.
-func zeroCall(t types.Type, v ext.Gen) (helper string, call ext.Gen, ok bool) {
+// requiredCall, asking the ext.ZeroTester supports of reg first.
+func zeroCall(reg ext.Resolver, t types.Type, v ext.Gen) (helper string, call ext.Gen, ok bool) {
 	test := func(cond ext.Gen, got string) (string, ext.Gen, bool) {
 		return zeroHelperName,
 			lang.Expr("%s(%s, %s)", zeroHelperName, cond, strconv.Quote(got)),
@@ -72,6 +76,10 @@ func zeroCall(t types.Type, v ext.Gen) (helper string, call ext.Gen, ok bool) {
 
 	comparable := func() (string, ext.Gen, bool) {
 		return zeroComparableName, lang.Expr("%s(%s)", zeroComparableName, v), true
+	}
+
+	if cond, nonZero, ok := ext.Zero(reg, t, v); ok {
+		return test(cond, nonZero)
 	}
 
 	if _, isParam := types.Unalias(t).(*types.TypeParam); isParam {

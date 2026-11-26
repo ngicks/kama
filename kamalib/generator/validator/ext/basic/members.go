@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
-	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // Members is the validator //kama:validate members="<op><n> ...": the
@@ -16,10 +15,11 @@ import (
 // The operators and n are those of Length.
 //
 // It is a StructRule, written in the doc comment of a struct type. A field
-// of an option type or a nillable type whose json tag holds omitzero or
-// omitempty counts when it is present as Required tests it: an opt.Option
-// holds a value, an und.Und or an elastic.Elastic is not undefined, and a
-// pointer, slice, map, channel, function or interface is not nil. Any
+// of a type an ext.PresenceTester claims, such as an option type of package
+// opt, or of a nillable type, whose json tag holds omitzero or omitempty,
+// counts when it is present as Required tests it: the PresenceTester tells
+// it holds a value, and a pointer, slice, map, channel, function or
+// interface is not nil. Any
 // other field always counts, as encoders write it, as null when it holds
 // no value. The embedded
 // fallback field, tagged json:",embed", counts its entries and must be a
@@ -38,17 +38,21 @@ func (Members) Name() string { return "members" }
 type MembersOptions struct {
 	// Comparisons holds one comparison per token of the arg, in order.
 	Comparisons []Comparison
+
+	// reg is the registry the options were parsed with, whose type supports
+	// tell presence.
+	reg ext.Resolver
 }
 
 // Parse decodes arg into comparisons with non-negative integers, as Length
 // does.
-func (Members) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
+func (Members) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
 	cs, err := parseLengths(arg)
 	if err != nil {
 		return nil, err
 	}
 
-	return MembersOptions{Comparisons: cs}, nil
+	return MembersOptions{Comparisons: cs, reg: r}, nil
 }
 
 // Check accepts raw JSON text only. members counts the fields of a struct
@@ -85,7 +89,7 @@ func (o MembersOptions) Struct(s ext.Struct) (ext.Rule, error) {
 		}
 	}
 
-	return membersOf{comparisons: o.Comparisons, s: s}, nil
+	return membersOf{comparisons: o.Comparisons, s: s, reg: o.reg}, nil
 }
 
 var errMembersStruct = errors.New("members counts the members of a struct;" +
@@ -95,6 +99,7 @@ var errMembersStruct = errors.New("members counts the members of a struct;" +
 type membersOf struct {
 	comparisons []Comparison
 	s           ext.Struct
+	reg         ext.Resolver
 }
 
 // Check accepts any type. Struct checked s already.
@@ -132,12 +137,12 @@ func (m membersOf) count(e ext.Emitter) (ext.Gen, error) {
 
 	for _, name := range names {
 		t, v, _ := m.s.Member(name)
-		if !optionalState(t) || !m.s.Omittable(name) {
+		if !optionalState(m.reg, t) || !m.s.Omittable(name) {
 			always++
 			continue
 		}
 
-		cond, err := presenceCond(e, t, v)
+		cond, err := presenceCond(e, m.reg, t, v)
 		if err != nil {
 			return nil, err
 		}
@@ -163,13 +168,11 @@ func (m membersOf) count(e ext.Emitter) (ext.Gen, error) {
 	return lang.Join(" + ", terms...), nil
 }
 
-// optionalState reports whether a value of t may hold no value: t is an
-// option type or nillable.
-func optionalState(t types.Type) bool {
-	return typequery.IsNamed(t, typequery.OptPath, "Option") ||
-		typequery.IsNamed(t, typequery.UndPath, "Und") ||
-		typequery.IsNamed(t, typequery.ElasticPath, "Elastic") ||
-		nillable(t)
+// optionalState reports whether a value of t may hold no value: an
+// ext.PresenceTester of reg claims t, or t is nillable.
+func optionalState(reg ext.Resolver, t types.Type) bool {
+	_, _, ok := ext.Presence(reg, t, nil)
+	return ok || nillable(t)
 }
 
 const (

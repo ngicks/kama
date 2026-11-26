@@ -8,7 +8,8 @@ import (
 )
 
 // Null is the validator //kama:validate null: the value is null by its
-// method IsNull() bool, as an und.Und or an elastic.Elastic tells.
+// method IsNull() bool, or as an ext.NullTester of the registry tells, as
+// for an und.Und or an elastic.Elastic.
 //
 // It applies to types with that method other than type parameters and
 // nillable types: pointer, slice, map, channel, function and interface
@@ -21,15 +22,24 @@ type Null struct{}
 func (Null) Name() string { return "null" }
 
 // NullOptions are the options of //kama:validate null. Null takes no arg.
-type NullOptions struct{}
-
-// Parse accepts only the empty arg.
-func (Null) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
-	return NullOptions{}, noArg(arg)
+type NullOptions struct {
+	// reg is the registry the options were parsed with, whose type supports
+	// tell null.
+	reg ext.Resolver
 }
 
-// Check accepts types with a method IsNull() bool that are not nillable.
-func (NullOptions) Check(t types.Type) error {
+// Parse accepts only the empty arg.
+func (Null) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
+	return NullOptions{reg: r}, noArg(arg)
+}
+
+// Check accepts the types an ext.NullTester claims and types with a method
+// IsNull() bool that are not nillable.
+func (o NullOptions) Check(t types.Type) error {
+	if _, ok := ext.Null(o.reg, t, nil); ok {
+		return nil
+	}
+
 	_, isParam := types.Unalias(t).(*types.TypeParam)
 
 	switch {
@@ -47,10 +57,17 @@ func (NullOptions) Check(t types.Type) error {
 	return nil
 }
 
-// Emit calls kamaValidateNull with the result of IsNull.
-func (NullOptions) Emit(e ext.Emitter, _ types.Type, v ext.Gen) (ext.Gen, error) {
+// Emit calls kamaValidateNull with the condition the ext.NullTester tells,
+// else with the result of IsNull.
+func (o NullOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
 	e.Declare(nullHelperName, nullHelperDecl)
-	return lang.Expr("%s(%s.IsNull())", nullHelperName, v), nil
+
+	cond, ok := ext.Null(o.reg, t, v)
+	if !ok {
+		cond = lang.Expr("%s.IsNull()", v)
+	}
+
+	return lang.Expr("%s(%s)", nullHelperName, cond), nil
 }
 
 const nullHelperName = "kamaValidateNull"

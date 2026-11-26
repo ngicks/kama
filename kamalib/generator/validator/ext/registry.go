@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
+	"iter"
 	"maps"
 	"slices"
 	"strings"
@@ -23,21 +24,26 @@ type Validator interface {
 	// Validators taking several tokens split arg with
 	// dircmnt.ParseArgsKeyValue.
 	//
-	// r parses other validators through the registry in use. A validator
-	// whose arg names validators, as and(...) does, parses them with
-	// ParseOperands. Other validators ignore r.
+	// r is the registry in use. A validator whose arg names validators, as
+	// and(...) does, parses them through r with basic.ParseOperands. A rule
+	// testing the values a type holds keeps r and asks its type supports,
+	// through HeldValue, Presence and the other functions taking a
+	// Resolver. Other validators ignore r.
 	//
 	// An error reports an arg that is wrong whatever the type is. It should
 	// wrap ErrArgs.
 	Parse(arg string, r Resolver) (Rule, error)
 }
 
-// Resolver parses a validator by name, as the registry in use holds it.
-// *Registry is a Resolver.
+// Resolver is the registry in use as a validator sees it: it parses a
+// validator by name and lists the type supports. *Registry is a Resolver.
 type Resolver interface {
 	// Resolve returns the rule of the validator named name parsed with
 	// arg. An error of a name it does not know wraps ErrUnknown.
 	Resolve(name, arg string) (Rule, error)
+	// TypeSupports returns the type supports in the order they were
+	// registered, which is the order they are asked in.
+	TypeSupports() iter.Seq[TypeSupport]
 }
 
 // ErrUnknown marks the error of Resolver.Resolve for a name the registry
@@ -47,7 +53,7 @@ var ErrUnknown = errors.New("validator: unknown validator")
 // ErrArgs marks an error of Validator.Parse, which the argument causes
 // for any type. A validator wraps it as fmt.Errorf("%w: ...", ErrArgs) does.
 // The generator reports such an error at once. It does not apply the
-// validator again to the value a pointer or an option holds. That
+// validator again to the value HeldValue tells. That
 // attempt would fail the same way.
 var ErrArgs = errors.New("validator: invalid args")
 
@@ -58,10 +64,11 @@ const ValidationPath = "github.com/ngicks/kama/kamaruntime/validator"
 // Rule is a validator with its arg decoded.
 //
 // The generator applies a rule to the type of the field first. When Check
-// rejects it and the field is a pointer, an opt.Option or an und.Und, the
-// generator applies it to the value held, under a guard that skips the
-// rule when no value is held. A rule in the doc comment of a type applies
-// to the value of the type itself.
+// rejects it and the field holds one value, as HeldValue tells for a
+// pointer and a type a Holder claims, the generator applies it to the
+// value held, under a guard that skips the rule when no value is held. A
+// rule in the doc comment of a type applies to the value of the type
+// itself.
 type Rule interface {
 	// Check reports why the rule cannot apply to a value of type t. It
 	// returns nil when it can.
@@ -86,7 +93,7 @@ type Rule interface {
 //
 // Elsewhere the rule is an ordinary Rule. The doc comment of a type of
 // another kind and a field take it when its Check accepts the type, or for
-// a field the value a pointer, an opt.Option or an und.Und holds, as
+// a field the value HeldValue tells, as
 // members accepts raw JSON text. The generator then calls Check and Emit
 // of the rule itself. A Check rejecting every type but the struct types
 // keeps the rule to the doc comments of struct types.
@@ -100,8 +107,8 @@ type StructRule interface {
 // SiblingRule is a Rule of a struct field that reads the other fields of
 // the struct holding the field. The generator never calls Check and Emit
 // of the rule itself. It applies the rule Siblings returns to the field.
-// It never applies that rule to the value a pointer or an option of the
-// field holds, and it adds no path segment of the field to its errors. The
+// It never applies that rule to the value HeldValue tells for the
+// field, and it adds no path segment of the field to its errors. The
 // errors are located at the struct, and the rule adds the segment of each
 // error itself, as validator.Field does.
 type SiblingRule interface {
@@ -184,10 +191,11 @@ type Annotator interface {
 // Registry holds validators by name.
 type Registry struct {
 	validators map[string]Validator
+	supports   []TypeSupport
 }
 
-// NewRegistry returns a registry holding vs. A later validator replaces an
-// earlier one of the same name.
+// NewRegistry returns a registry holding vs and no type support. A later
+// validator replaces an earlier one of the same name.
 func NewRegistry(vs ...Validator) *Registry {
 	r := &Registry{validators: map[string]Validator{}}
 	for _, v := range vs {
@@ -215,13 +223,45 @@ func Register(vs ...Validator) {
 	}
 }
 
-// DefaultRegistry returns a new registry holding the validators registered
-// through Register. Package validator imports package basic for its
+// RegisterTypeSupport adds ss to the default registry. It panics when a
+// support of the same name is registered already. An extension package
+// calls it in its init function.
+func RegisterTypeSupport(ss ...TypeSupport) {
+	for _, s := range ss {
+		if slices.ContainsFunc(defaults.supports, func(d TypeSupport) bool {
+			return d.Name() == s.Name()
+		}) {
+			panic(fmt.Errorf("ext: type support %s is registered twice", s.Name()))
+		}
+
+		defaults.RegisterTypeSupport(s)
+	}
+}
+
+// DefaultRegistry returns a new registry holding the validators and the
+// type supports registered through Register and RegisterTypeSupport.
+// Package validator imports packages basic and opt for their
 // registrations.
 func DefaultRegistry() *Registry { return defaults.Clone() }
 
 // Register adds v, replacing the validator of the same name.
 func (r *Registry) Register(v Validator) { r.validators[v.Name()] = v }
+
+// RegisterTypeSupport adds s after the supports of r, replacing the
+// support of the same name in its place.
+func (r *Registry) RegisterTypeSupport(s TypeSupport) {
+	i := slices.IndexFunc(r.supports, func(d TypeSupport) bool { return d.Name() == s.Name() })
+	if i >= 0 {
+		r.supports[i] = s
+		return
+	}
+
+	r.supports = append(r.supports, s)
+}
+
+// TypeSupports returns the type supports of r in the order they were
+// registered. It implements Resolver.
+func (r *Registry) TypeSupports() iter.Seq[TypeSupport] { return slices.Values(r.supports) }
 
 // Lookup returns the validator named name.
 func (r *Registry) Lookup(name string) (Validator, bool) {
@@ -245,10 +285,10 @@ func (r *Registry) Resolve(name, arg string) (Rule, error) {
 // Names returns the names of the validators, sorted.
 func (r *Registry) Names() []string { return slices.Sorted(maps.Keys(r.validators)) }
 
-// Clone returns a registry holding the validators of r, which changes to
-// either do not affect.
+// Clone returns a registry holding the validators and the type supports of
+// r, which changes to either do not affect.
 func (r *Registry) Clone() *Registry {
-	return &Registry{validators: maps.Clone(r.validators)}
+	return &Registry{validators: maps.Clone(r.validators), supports: slices.Clone(r.supports)}
 }
 
 type unknownErr struct{ error }

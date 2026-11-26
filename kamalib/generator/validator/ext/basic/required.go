@@ -9,15 +9,13 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
-	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 // Required is the validator //kama:validate required: the value is not the
 // zero value.
 //
-// An opt.Option must be some, an und.Und or an elastic.Elastic must not be
-// undefined, so null counts as a value, as a JSON member holding null is
-// present. A pointer, slice, map, channel, function or interface must
+// A type an ext.PresenceTester of the registry claims must hold a value as
+// it tells. A pointer, slice, map, channel, function or interface must
 // not be nil. A type with a method IsZero() bool must not be zero by it.
 // Any other comparable type must not equal its zero value. IsZero counts
 // when the type declares it or embedded fields promote it without a
@@ -36,11 +34,15 @@ func (Required) Name() string { return "required" }
 type RequiredOptions struct {
 	// Names are the member names of the arg, in order, for raw JSON text.
 	Names []string
+
+	// reg is the registry the options were parsed with, whose type supports
+	// tell presence.
+	reg ext.Resolver
 }
 
 // Parse decodes arg into member names separated by spaces, none for the
 // empty arg.
-func (Required) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
+func (Required) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
 	args, err := argTokens(arg)
 	if err != nil {
 		return nil, err
@@ -56,7 +58,7 @@ func (Required) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
 		names = append(names, kv.Key)
 	}
 
-	return RequiredOptions{Names: names}, nil
+	return RequiredOptions{Names: names, reg: r}, nil
 }
 
 // Check accepts the types the doc comment of Required lists.
@@ -72,7 +74,7 @@ func (o RequiredOptions) Check(t types.Type) error {
 		return nil
 	}
 
-	if _, _, ok := requiredCall(t, nil); !ok {
+	if _, _, ok := requiredCall(o.reg, t, nil); !ok {
 		return fmt.Errorf(
 			"%s is not an option type, not nillable, has no method IsZero() bool declared"+
 				" on it or promoted without a pointer or an interface, and is not comparable",
@@ -93,7 +95,7 @@ func (o RequiredOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, 
 		return rawCall(e, "Required", v, append([]ext.Gen{e.StopOnFirstError()}, names...)...), nil
 	}
 
-	helper, call, ok := requiredCall(t, v)
+	helper, call, ok := requiredCall(o.reg, t, v)
 	if !ok {
 		return nil, fmt.Errorf("required: unsupported type %s", t)
 	}
@@ -110,8 +112,12 @@ func (o RequiredOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, 
 
 // requiredCall returns the helper testing the value v of t and the call of
 // it, or false when no test applies.
-func requiredCall(t types.Type, v ext.Gen) (helper string, call ext.Gen, ok bool) {
-	cond, got, ok := presence(t, v)
+func requiredCall(
+	reg ext.Resolver,
+	t types.Type,
+	v ext.Gen,
+) (helper string, call ext.Gen, ok bool) {
+	cond, got, ok := presence(reg, t, v)
 
 	switch {
 	case !ok:
@@ -129,15 +135,11 @@ func requiredCall(t types.Type, v ext.Gen) (helper string, call ext.Gen, ok bool
 // Required tests it, and what v is when it holds none. got is empty for a
 // type compared with its zero value, whose condition calls
 // kamaValidateNonZero. ok is false when no test applies. The order matters:
-// an option type is comparable and has IsZero, and time.Time is comparable
-// but tells its zero value by IsZero.
-func presence(t types.Type, v ext.Gen) (cond ext.Gen, got string, ok bool) {
-	switch {
-	case typequery.IsNamed(t, typequery.OptPath, "Option"):
-		return lang.Expr("%s.IsSome()", v), "none", true
-	case typequery.IsNamed(t, typequery.UndPath, "Und"),
-		typequery.IsNamed(t, typequery.ElasticPath, "Elastic"):
-		return lang.Expr("!%s.IsUndefined()", v), "undefined", true
+// a type an ext.PresenceTester of reg claims may be comparable and have
+// IsZero, and time.Time is comparable but tells its zero value by IsZero.
+func presence(reg ext.Resolver, t types.Type, v ext.Gen) (cond ext.Gen, got string, ok bool) {
+	if cond, absent, ok := ext.Presence(reg, t, v); ok {
+		return cond, absent, true
 	}
 
 	nonZero := lang.Expr("%s(%s)", nonZeroName, v)
@@ -161,8 +163,8 @@ func presence(t types.Type, v ext.Gen) (cond ext.Gen, got string, ok bool) {
 
 // presenceCond returns the condition presence gives for the value v of t,
 // declaring the helper it calls.
-func presenceCond(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
-	cond, got, ok := presence(t, v)
+func presenceCond(e ext.Emitter, reg ext.Resolver, t types.Type, v ext.Gen) (ext.Gen, error) {
+	cond, got, ok := presence(reg, t, v)
 	if !ok {
 		return nil, fmt.Errorf("%s has no presence test", t)
 	}

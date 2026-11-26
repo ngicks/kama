@@ -15,6 +15,7 @@ import (
 	"golang.org/x/tools/go/packages"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
@@ -96,9 +97,9 @@ func (s *selection) trim() *typegraph.MatchedGraph {
 	}
 
 	// A parent that gets no Validate cannot pass validation on, so the trim
-	// stops at it. The routes of the edge cannot tell the type argument of an
-	// option type from that of any other generic type, so the type of the
-	// parent is walked again.
+	// stops at it. The routes of the edge cannot tell the type argument of a
+	// type a type support claims from that of any other generic type, so the
+	// type of the parent is walked again.
 	dependsThrough := func(e *typegraph.Edge[typegraph.Node]) bool {
 		isChild := func(named *types.Named) bool {
 			return typegraph.QualifiedTypeFromObject(named.Origin().Obj()) == e.Child.Id
@@ -169,7 +170,8 @@ func (s *selection) validatesValue(n *typegraph.Node) bool {
 // reaches reports whether a value of type t holds a value of a named type
 // that pred reports true for, where Validate walks: through pointers,
 // slices, arrays, map values, aliases, the fields of struct type literals
-// and the type argument of opt.Option, und.Und and elastic.Elastic. A named
+// and the types ext.Dependants tells for a type a type support claims. A
+// named
 // pointer or array type of a package outside the run is walked through
 // when pred reports false for it, as throughForeign tells. Any other named
 // type ends the walk, its type arguments included.
@@ -204,9 +206,11 @@ func (s *selection) reachesLeaf(t types.Type, pred func(leaf types.Type) bool) b
 	walk = func(t types.Type) bool {
 		switch u := types.Unalias(t).(type) {
 		case *types.Named:
+			deps := slices.Collect(ext.Dependants(s.opts.Registry, u))
+
 			switch {
-			case isOptionType(u):
-				return walk(typequery.TypeArg(u))
+			case len(deps) > 0:
+				return slices.ContainsFunc(deps, walk)
 			case pred(u):
 				return true
 			case !s.throughForeign(u):
@@ -273,13 +277,6 @@ func (s *selection) throughForeign(named *types.Named) bool {
 // of one generic type are told apart by their type arguments.
 func onPath(path []*types.Named, named *types.Named) bool {
 	return slices.ContainsFunc(path, func(p *types.Named) bool { return types.Identical(p, named) })
-}
-
-// isOptionType reports whether t is opt.Option, und.Und or elastic.Elastic.
-func isOptionType(t types.Type) bool {
-	return typequery.IsNamed(t, typequery.OptPath, "Option") ||
-		typequery.IsNamed(t, typequery.UndPath, "Und") ||
-		typequery.IsNamed(t, typequery.ElasticPath, "Elastic")
 }
 
 // holdsForeignImplementor reports whether n holds an implementor of a

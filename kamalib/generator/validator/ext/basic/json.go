@@ -14,8 +14,9 @@ import (
 // brings the validators of raw JSON text, such as not, props or contains,
 // to a value of a struct, a slice or a scalar type.
 //
-// It applies to a type of any kind but a pointer, an opt.Option and an
-// und.Und, so the generator applies it to the value one holds, and the
+// It applies to a type of any kind but a pointer and a type an ext.Holder
+// claims, such as an opt.Option or an und.Und, so the generator applies it
+// to the value one holds, and the
 // encoding of an absent value, null, is never checked. Its operands apply
 // to jsontext.Value. It returns the errors of the operands. A value that
 // does not encode is an error wrapping validator.ErrEncode. It is a
@@ -30,6 +31,10 @@ func (Json) Name() string { return "json" }
 type JsonOptions struct {
 	// Operands are the validators of the args, in order.
 	Operands []Operand
+
+	// reg is the registry the options were parsed with, whose type supports
+	// tell the types holding a value.
+	reg ext.Resolver
 }
 
 // Parse decodes arg into operands through r.
@@ -39,13 +44,13 @@ func (Json) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
 		return nil, err
 	}
 
-	return JsonOptions{Operands: ops}, nil
+	return JsonOptions{Operands: ops, reg: r}, nil
 }
 
 // Check accepts a type that holds no other value, when every operand
 // applies to jsontext.Value.
 func (o JsonOptions) Check(t types.Type) error {
-	if _, _, _, ok := ext.HeldValue(t, nil); ok {
+	if _, _, _, ok := ext.HeldValue(o.reg, t, nil); ok {
 		return fmt.Errorf("%s may hold no value, whose encoding json would check", t)
 	}
 

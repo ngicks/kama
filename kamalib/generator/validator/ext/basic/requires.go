@@ -33,10 +33,14 @@ func (Requires) Name() string { return "requires" }
 type RequiresOptions struct {
 	// Names are the JSON member names of the sibling fields, in order.
 	Names []string
+
+	// reg is the registry the options were parsed with, whose type supports
+	// tell presence.
+	reg ext.Resolver
 }
 
 // Parse decodes arg into one or more names separated by spaces.
-func (Requires) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
+func (Requires) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
 	args, err := argTokens(arg)
 	if err != nil {
 		return nil, err
@@ -56,7 +60,7 @@ func (Requires) Parse(arg string, _ ext.Resolver) (ext.Rule, error) {
 		names = append(names, kv.Key)
 	}
 
-	return RequiresOptions{Names: names}, nil
+	return RequiresOptions{Names: names, reg: r}, nil
 }
 
 // Check rejects every type: requires needs the struct holding the field,
@@ -78,12 +82,12 @@ func (o RequiresOptions) Siblings(s ext.Struct, field string) (ext.Rule, error) 
 			return nil, fmt.Errorf("no sibling field encodes as the member %q", name)
 		}
 
-		if err := (RequiredOptions{}).Check(t); err != nil {
+		if err := (RequiredOptions{reg: o.reg}).Check(t); err != nil {
 			return nil, fmt.Errorf("sibling %q has no presence test: %w", name, err)
 		}
 	}
 
-	return requiresOf{names: o.Names, field: field, s: s}, nil
+	return requiresOf{names: o.Names, field: field, s: s, reg: o.reg}, nil
 }
 
 var errRequiresSiblings = errors.New("requires reads the siblings of a struct field;" +
@@ -94,17 +98,18 @@ type requiresOf struct {
 	names []string
 	field string
 	s     ext.Struct
+	reg   ext.Resolver
 }
 
 // Check accepts the types Required accepts.
-func (requiresOf) Check(t types.Type) error { return RequiredOptions{}.Check(t) }
+func (r requiresOf) Check(t types.Type) error { return RequiredOptions{reg: r.reg}.Check(t) }
 
 // Emit calls kamaValidateRequires with the presence of the field and of
 // each sibling.
 func (r requiresOf) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
 	e.Declare(requiresName, requiresDecl)
 
-	present, err := presenceCond(e, t, v)
+	present, err := presenceCond(e, r.reg, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +122,7 @@ func (r requiresOf) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error
 			return nil, fmt.Errorf("requires: no sibling %q", name)
 		}
 
-		cond, err := presenceCond(e, st, sv)
+		cond, err := presenceCond(e, r.reg, st, sv)
 		if err != nil {
 			return nil, err
 		}

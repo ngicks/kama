@@ -36,6 +36,7 @@ func (Not) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
 	}
 
 	return combine(
+		r,
 		ops,
 		ownErrors,
 		func(ops []Operand) ext.Rule { return NotOptions{Operand: ops[0]} },

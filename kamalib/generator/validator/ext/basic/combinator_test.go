@@ -100,6 +100,7 @@ func TestCombinatorResolvesThroughRegistry(t *testing.T) {
 		t,
 		r,
 		ext.Rule(AndOptions{Operands: []Operand{{Text: "cmp", Rule: RequiredOptions{}}}}),
+		ignoreRegistry,
 	)
 
 	_, err = And{}.Parse("cmp", ext.DefaultRegistry())

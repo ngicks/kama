@@ -31,6 +31,7 @@ func (And) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
 	}
 
 	return combine(
+		r,
 		ops,
 		operandErrors,
 		func(ops []Operand) ext.Rule { return AndOptions{Operands: ops} },

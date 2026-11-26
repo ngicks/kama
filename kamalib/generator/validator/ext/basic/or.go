@@ -31,7 +31,12 @@ func (Or) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
 		return nil, err
 	}
 
-	return combine(ops, ownErrors, func(ops []Operand) ext.Rule { return OrOptions{Operands: ops} })
+	return combine(
+		r,
+		ops,
+		ownErrors,
+		func(ops []Operand) ext.Rule { return OrOptions{Operands: ops} },
+	)
 }
 
 // Check accepts a type every operand accepts.

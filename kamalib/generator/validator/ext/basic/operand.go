@@ -80,8 +80,14 @@ const (
 // combine returns the rule build makes of ops. When an operand is a
 // SiblingRule or a StructRule, the combinator is one too, and build runs
 // on the operands bound to the struct. src tells how the errors of the
-// combinator get the path segment of the field a SiblingRule leaves out.
-func combine(ops []Operand, src errorSource, build func(ops []Operand) ext.Rule) (ext.Rule, error) {
+// combinator get the path segment of the field a SiblingRule leaves out. r
+// is the registry the operands were parsed with.
+func combine(
+	r ext.Resolver,
+	ops []Operand,
+	src errorSource,
+	build func(ops []Operand) ext.Rule,
+) (ext.Rule, error) {
 	siblings := opiter.WrapSeq(slices.Values(ops)).
 		Any(func(op Operand) bool { return isSiblingRule(op.Rule) })
 
@@ -93,7 +99,7 @@ func combine(ops []Operand, src errorSource, build func(ops []Operand) ext.Rule)
 		return nil, argsError(errors.New("operands read the siblings of a struct field and" +
 			" validate a struct as a whole; no place takes both"))
 	case siblings:
-		return siblingCombinator{ops: ops, src: src, build: build}, nil
+		return siblingCombinator{ops: ops, src: src, build: build, reg: r}, nil
 	case whole:
 		return structCombinator{ops: ops, build: build}, nil
 	}
@@ -157,6 +163,9 @@ type siblingCombinator struct {
 	ops   []Operand
 	src   errorSource
 	build func(ops []Operand) ext.Rule
+	// reg is the registry the operands were parsed with, whose type
+	// supports tell the value a field holds.
+	reg ext.Resolver
 }
 
 // Check rejects every type: an operand needs the struct holding the
@@ -187,9 +196,9 @@ func (c siblingCombinator) Siblings(s ext.Struct, field string) (ext.Rule, error
 
 			op.Rule = r
 		case c.src == operandErrors:
-			op.Rule = atField{rule: onHeld{rule: op.Rule}, field: field}
+			op.Rule = atField{rule: onHeld{rule: op.Rule, reg: c.reg}, field: field}
 		default:
-			op.Rule = onHeld{rule: op.Rule}
+			op.Rule = onHeld{rule: op.Rule, reg: c.reg}
 		}
 
 		bound = append(bound, op)

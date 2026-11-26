@@ -41,7 +41,7 @@ func (If) Parse(arg string, r ext.Resolver) (ext.Rule, error) {
 		))
 	}
 
-	return combine(ops, operandErrors, func(ops []Operand) ext.Rule {
+	return combine(r, ops, operandErrors, func(ops []Operand) ext.Rule {
 		o := IfOptions{Cond: ops[0], Then: ops[1]}
 		if len(ops) == 3 {
 			o.Else = &ops[2]

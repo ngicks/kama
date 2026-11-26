@@ -5,19 +5,30 @@ import (
 	"go/types"
 	"testing"
 
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"gotest.tools/v3/assert"
 
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 )
 
+// ignoreRegistry leaves out the registry the options keep, which tests of
+// Parse do not look at.
+var ignoreRegistry = cmpopts.IgnoreUnexported(
+	RequiredOptions{},
+	RequiresOptions{},
+	MembersOptions{},
+)
+
 func TestRequiredParse(t *testing.T) {
 	o, err := Required{}.Parse("", nil)
 	assert.NilError(t, err)
-	assert.DeepEqual(t, o, ext.Rule(RequiredOptions{}))
+	assert.DeepEqual(t, o, ext.Rule(RequiredOptions{}), ignoreRegistry)
 
 	o, err = Required{}.Parse(`a "b c"`, nil)
 	assert.NilError(t, err)
-	assert.DeepEqual(t, o, ext.Rule(RequiredOptions{Names: []string{"a", "b c"}}))
+	assert.DeepEqual(
+		t, o, ext.Rule(RequiredOptions{Names: []string{"a", "b c"}}), ignoreRegistry,
+	)
 	assert.ErrorContains(t, o.Check(types.Typ[types.Int]),
 		"int is no raw JSON text, which the member names of required apply to")
 
@@ -331,7 +342,7 @@ func (s testStruct) Fallback() (types.Type, ext.Gen, bool) {
 func TestRequiresParse(t *testing.T) {
 	o, err := Requires{}.Parse(`b "c d"`, nil)
 	assert.NilError(t, err)
-	assert.DeepEqual(t, o, RequiresOptions{Names: []string{"b", "c d"}})
+	assert.DeepEqual(t, o, RequiresOptions{Names: []string{"b", "c d"}}, ignoreRegistry)
 
 	for arg, msg := range map[string]string{
 		"":    "want one or more JSON names of sibling fields",
@@ -376,7 +387,7 @@ func TestMembersParse(t *testing.T) {
 	assert.DeepEqual(t, o, MembersOptions{Comparisons: []Comparison{
 		{Op: ">=", Operand: "1"},
 		{Op: "<=", Operand: "3"},
-	}})
+	}}, ignoreRegistry)
 
 	for arg, msg := range map[string]string{
 		"":    "want one or more comparisons",
@@ -411,7 +422,7 @@ func TestOptionalState(t *testing.T) {
 		types.NewSlice(types.Typ[types.Int]),
 		types.NewInterfaceType(nil, nil),
 	} {
-		assert.Assert(t, optionalState(typ), typ.String())
+		assert.Assert(t, optionalState(nil, typ), typ.String())
 	}
 
 	for _, typ := range []types.Type{
@@ -419,6 +430,6 @@ func TestOptionalState(t *testing.T) {
 		types.Typ[types.String],
 		types.NewStruct(nil, nil),
 	} {
-		assert.Assert(t, !optionalState(typ), typ.String())
+		assert.Assert(t, !optionalState(nil, typ), typ.String())
 	}
 }

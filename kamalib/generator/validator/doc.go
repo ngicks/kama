@@ -109,10 +109,12 @@
 // Every type of a loaded package that holds a marked type or another
 // dependant is a dependant, and a dependant is a target too. A type holds
 // another through struct fields, the fields of struct type literals,
-// slice and array elements, map values, pointers, aliases and the type
-// argument of opt.Option, und.Und and elastic.Elastic of
-// github.com/ngicks/option. Map keys, channel elements and the type
-// arguments of other generic types make no dependant. The user did not
+// slice and array elements, map values, pointers, aliases and the values
+// the types a type support of the registry claims hold, as ext.Dependants
+// tells. Package ext/opt registers the support of opt.Option, und.Und and
+// elastic.Elastic, so their type arguments make dependants. Map keys,
+// channel elements and the type arguments of other generic types make no
+// dependant. The user did not
 // mark a dependant. Its hooks are therefore off by default. Its fields may
 // still carry validators.
 //
@@ -563,9 +565,13 @@
 // it. A validator named hook, pre, post, ignore, decoded, file or package
 // makes Generate fail with an error wrapping ErrConflict. Package ext
 // documents the registry, how to write a validator and how to add an
-// extension package. Package basic holds the built-in validators. This
-// package imports basic with a blank import, which registers them into
-// the default registry of ext.
+// extension package. Package basic holds the built-in validators. Package
+// opt holds the type support of github.com/ngicks/option, which tells the
+// generator and the validators about the values opt.Option, und.Und and
+// elastic.Elastic hold. This package imports both with blank imports,
+// which register them into the default registry of ext. The registry of
+// Options.Registry also holds the type supports the walk, the selection of
+// targets and the validators ask.
 //
 // The kind validate.generate of workflow.DefaultRegistry generates with
 // ext.DefaultRegistry(). NewProcWith returns the constructor of a proc with

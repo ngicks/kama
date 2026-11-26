@@ -15,9 +15,11 @@ import (
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 
-	// The built-in validators register themselves into the default
+	// The built-in validators and the type support of
+	// github.com/ngicks/option register themselves into the default
 	// registry of package ext.
 	_ "github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
+	_ "github.com/ngicks/kama/kamalib/generator/validator/ext/opt"
 )
 
 // GeneratorId identifies the generator. Its name is the directive

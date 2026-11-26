@@ -2,6 +2,7 @@ package ext
 
 import (
 	"errors"
+	"go/types"
 	"slices"
 	"testing"
 
@@ -56,4 +57,50 @@ func TestRegister(t *testing.T) {
 	}()
 
 	Register(named{name: "ext-test-register"})
+}
+
+// support is a type support claiming nothing.
+type support struct{ name, tag string }
+
+func (s support) Name() string { return s.name }
+
+func TestRegistryTypeSupport(t *testing.T) {
+	names := func(r *Registry) []string {
+		var out []string
+		for s := range r.TypeSupports() {
+			out = append(out, s.Name()+s.(support).tag)
+		}
+
+		return out
+	}
+
+	reg := NewRegistry()
+	reg.RegisterTypeSupport(support{name: "a"})
+	reg.RegisterTypeSupport(support{name: "b"})
+
+	clone := reg.Clone()
+	clone.RegisterTypeSupport(support{name: "c"})
+	assert.DeepEqual(t, names(reg), []string{"a", "b"})
+
+	// A later support of a name replaces the earlier one in its place.
+	reg.RegisterTypeSupport(support{name: "a", tag: "2"})
+	assert.DeepEqual(t, names(reg), []string{"a2", "b"})
+	assert.DeepEqual(t, names(clone), []string{"a", "b", "c"})
+
+	_, _, _, ok := HeldValue(reg, types.Typ[types.Int], nil)
+	assert.Assert(t, !ok)
+
+	held, _, _, ok := HeldValue(nil, types.NewPointer(types.Typ[types.Int]), nil)
+	assert.Assert(t, ok)
+	assert.Equal(t, held, types.Type(types.Typ[types.Int]))
+
+	RegisterTypeSupport(support{name: "ext-test-support"})
+
+	defer func() {
+		err, ok := recover().(error)
+		assert.Assert(t, ok)
+		assert.ErrorContains(t, err, "type support ext-test-support is registered twice")
+	}()
+
+	RegisterTypeSupport(support{name: "ext-test-support"})
 }

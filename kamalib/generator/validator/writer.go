@@ -361,7 +361,7 @@ func (w *writer) validator(
 		return s, nil
 	}
 
-	if _, ok := r.(ext.StructRule); ok && !acceptsHeld(r, v.Type()) {
+	if _, ok := r.(ext.StructRule); ok && !acceptsHeld(w.sel.opts.Registry, r, v.Type()) {
 		return nil, fmt.Errorf(
 			"%w: %s: %s on %s validates a struct as a whole;"+
 				" write it in the doc comment of a struct type",
@@ -487,16 +487,16 @@ func ruleError(vo ValidatorOptions, place string, err error) error {
 }
 
 // apply returns the step running r on the value x of type t. When r
-// cannot apply to t and t holds one value, as a pointer or an opt.Option
-// does, it applies r to that value when there is one. The error tells
-// why r applies to neither.
+// cannot apply to t and t holds one value, as ext.HeldValue tells for a
+// pointer or an opt.Option, it applies r to that value when there is one.
+// The error tells why r applies to neither.
 func (w *writer) apply(r ext.Rule, t types.Type, x genExpr, wrap wrapFunc) (genStep, error) {
 	checkErr := r.Check(t)
 	if checkErr == nil {
 		return w.emit(r, t, x, wrap), nil
 	}
 
-	held, guard, value, ok := ext.HeldValue(t, x)
+	held, guard, value, ok := ext.HeldValue(w.sel.opts.Registry, t, x)
 	if !ok {
 		return nil, checkErr
 	}
@@ -512,13 +512,13 @@ func (w *writer) apply(r ext.Rule, t types.Type, x genExpr, wrap wrapFunc) (genS
 // acceptsHeld reports whether r applies to t or to the value t holds, as
 // apply tries them. An ext.StructRule applies outside a struct type this
 // way, as members does to raw JSON text.
-func acceptsHeld(r ext.Rule, t types.Type) bool {
+func acceptsHeld(reg ext.Resolver, r ext.Rule, t types.Type) bool {
 	for {
 		if r.Check(t) == nil {
 			return true
 		}
 
-		held, _, _, ok := ext.HeldValue(t, nil)
+		held, _, _, ok := ext.HeldValue(reg, t, nil)
 		if !ok {
 			return false
 		}
