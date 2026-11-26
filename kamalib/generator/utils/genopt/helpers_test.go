@@ -13,12 +13,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ngicks/opiter"
-
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
 
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 )
 
@@ -72,8 +70,8 @@ type leaf struct {
 	Sub   *subLeaf `json:"sub,omitzero"`
 	// Unknown captures the keys of an option file entry the leaf lacks.
 	Unknown map[string]any `json:",embed"`
-	// directives are the args of each directive, spelled key or key=value
-	// and joined by spaces, keyed by directive name.
+	// directives are the items of each directive as expr.Print spells
+	// them, keyed by directive name.
 	directives map[string]string
 	// at is the position of each directive in call order, as
 	// <file base name>:<line>:<column> <target>.
@@ -90,7 +88,7 @@ type subLeaf struct {
 
 var errLeaf = errors.New("leaf refused")
 
-func (l *leaf) UnmarshalKeyValue(src Source, directive string, kv []dircmnt.KeyValue) error {
+func (l *leaf) UnmarshalExpr(src Source, directive string, args []expr.Arg) error {
 	if directive == "fail" {
 		return fmt.Errorf("%w: %s", errLeaf, src.Pos)
 	}
@@ -99,12 +97,7 @@ func (l *leaf) UnmarshalKeyValue(src Source, directive string, kv []dircmnt.KeyV
 		l.directives = map[string]string{}
 	}
 
-	l.directives[directive] = strings.Join(
-		opiter.WrapSeq(slices.Values(kv)).
-			Map(spellKeyValue).
-			CollectSlice(),
-		" ",
-	)
+	l.directives[directive] = expr.Print(args)
 	l.at = append(l.at, fmt.Sprintf(
 		"%s:%d:%d %s",
 		filepath.Base(src.Pos.Filename), src.Pos.Line, src.Pos.Column, src.Target.Describe(),
@@ -122,14 +115,6 @@ func (l *leaf) UnknownKeys() [][]string {
 	}
 
 	return keys
-}
-
-func spellKeyValue(kv dircmnt.KeyValue) string {
-	if kv.HasValue {
-		return kv.Key + "=" + kv.Value
-	}
-
-	return kv.Key
 }
 
 // String spells the parts of l that are set.

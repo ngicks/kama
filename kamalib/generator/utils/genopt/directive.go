@@ -194,33 +194,16 @@ func (l Loader[P, T, F]) directiveName(directive string) (string, bool) {
 	return strings.CutPrefix(directive, l.Generator+":")
 }
 
-// unmarshal hands the lines of each directive name to v, a pointer to a
-// leaf, as one line.
+// unmarshal hands the items of the lines of each directive name to v, a
+// pointer to a leaf.
 func (l Loader[P, T, F]) unmarshal(v any, src Source, names []nameLines) []error {
-	u, ok := v.(KeyValueUnmarshaler)
-	eu, isExpr := v.(ExprUnmarshaler)
+	u, ok := v.(ExprUnmarshaler)
 
 	var errs []error
 
 	for _, n := range names {
 		first := n.lines[0]
 		spelled := "//" + l.ToolName + ":" + first.directive
-
-		s := src
-		s.Pos = first.pos
-
-		if isExpr {
-			args, err := exprArgs(n.lines, spelled)
-			if err == nil {
-				err = eu.UnmarshalExpr(s, n.name, args)
-			}
-
-			if err != nil {
-				errs = append(errs, err)
-			}
-
-			continue
-		}
 
 		if !ok {
 			errs = append(errs, fmt.Errorf(
@@ -231,13 +214,14 @@ func (l Loader[P, T, F]) unmarshal(v any, src Source, names []nameLines) []error
 			continue
 		}
 
-		kv, err := dircmnt.ParseArgsKeyValue(joinArgs(n.lines))
-		if err != nil {
-			errs = append(errs, fmt.Errorf("%w: %s: %s: %w", ErrDirective, first.pos, spelled, err))
-			continue
+		args, err := exprArgs(n.lines, spelled)
+		if err == nil {
+			s := src
+			s.Pos = first.pos
+			err = u.UnmarshalExpr(s, n.name, args)
 		}
 
-		if err := u.UnmarshalKeyValue(s, n.name, kv); err != nil {
+		if err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -292,19 +276,91 @@ func structOf(obj types.Object) (*types.Struct, bool) {
 }
 
 // exprArgs parses each of lines, the lines of one directive on one target,
-// with expr.Parse and returns their items in source order. A syntax error
-// is located at its line.
+// with expr.Parse and returns their items in source order. The positions
+// in the items and in a syntax error count lines from the first line, and
+// columns from the start of the args of their line.
 func exprArgs(lines []line, spelled string) ([]expr.Arg, error) {
 	var out []expr.Arg
 
-	for _, ln := range lines {
-		args, err := expr.Parse(ln.args)
+	for i, ln := range lines {
+		// The newlines put the positions of this line on line i+1 without
+		// a walk over the tree. Each line is parsed on its own, so a line
+		// need not end with a comma.
+		args, err := expr.Parse(strings.Repeat("\n", i) + ln.args)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %s: %s: %w", ErrDirective, ln.pos, spelled, err)
+			return nil, fmt.Errorf(
+				"%w: %s: %s: %w%s",
+				ErrDirective,
+				lines[0].pos,
+				spelled,
+				err,
+				oldSpellingHint(ln.args),
+			)
 		}
 
 		out = append(out, args...)
 	}
 
 	return out, nil
+}
+
+// oldSpellingHint spells args, a line that does not parse, in the
+// expression grammar when args reads as space-separated words and
+// name=value pairs. It returns "" otherwise.
+func oldSpellingHint(args string) string {
+	kvs, err := dircmnt.ParseArgsKeyValue(args)
+	if err != nil || len(kvs) == 0 {
+		return ""
+	}
+
+	items := make([]expr.Arg, 0, len(kvs))
+
+	for _, kv := range kvs {
+		switch {
+		case !expr.IsName(kv.Key):
+			return ""
+		case kv.HasValue:
+			items = append(items, expr.Arg{Name: kv.Key, Value: expr.String{Value: kv.Value}})
+		default:
+			items = append(items, expr.Arg{Value: expr.Call{Name: kv.Key}})
+		}
+	}
+
+	return "; separate items with commas and quote strings, as in " + expr.Print(items)
+}
+
+// Word returns the name of a when a is a bare word, as ignore or file: a
+// positional name without parentheses.
+func Word(a expr.Arg) (string, bool) {
+	c, ok := a.Value.(expr.Call)
+	if !ok || a.Name != "" || c.Parens || len(c.Args) > 0 {
+		return "", false
+	}
+
+	return c.Name, true
+}
+
+// KeywordString returns the value of a, a keyword item holding a string
+// literal, as name="addr". For any other value the error spells a with a
+// string, as name=addr spells as name="addr".
+func KeywordString(a expr.Arg) (string, error) {
+	switch v := a.Value.(type) {
+	case expr.String:
+		return v.Value, nil
+	case expr.Call:
+		if !v.Parens && len(v.Args) == 0 {
+			return "", stringWanted(a, v.Name)
+		}
+	case expr.Number:
+		return "", stringWanted(a, v.Text)
+	}
+
+	return "", fmt.Errorf("%s; want %s=\"<text>\"", a, a.Name)
+}
+
+func stringWanted(a expr.Arg, text string) error {
+	return fmt.Errorf(
+		"%s; want a string, as in %s",
+		a, expr.Arg{Name: a.Name, Value: expr.String{Value: text}},
+	)
 }

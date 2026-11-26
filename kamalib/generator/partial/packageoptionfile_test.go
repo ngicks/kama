@@ -103,9 +103,9 @@ func TestPackageOptionFileParity(t *testing.T) {
 	byDirective := generated(t, map[string]string{
 		"x.go": "package x\n\n//kama:partial package\n\n//kama:partial\ntype A struct {\n" +
 			"\t//kama:partial:merge append\n\tB []int\n" +
-			"\t//kama:partial:flag name=c short=c usage=\"the c\"\n\tC string\n\tD D\n}\n\n" +
+			"\t//kama:partial:flag name=\"c\", short=\"c\", usage=\"the c\"\n\tC string\n\tD D\n}\n\n" +
 			"//kama:partial:fieldmask\ntype D struct {\n" +
-			"\t//kama:partial:fieldmask name=n\n\tN int\n}\n\n" +
+			"\t//kama:partial:fieldmask name=\"n\"\n\tN int\n}\n\n" +
 			"//kama:partial ignore\ntype E struct{ M int }\n",
 	})
 

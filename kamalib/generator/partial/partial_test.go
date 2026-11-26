@@ -210,7 +210,7 @@ func TestTargetErrors(t *testing.T) {
 			name:     "ignore free-floating",
 			src:      "package x\n\n//kama:partial ignore\n\ntype A struct{}\n",
 			is:       ErrDirective,
-			contains: []string{"x.go:3:1", `"ignore"`},
+			contains: []string{"x.go:3:1", "unknown arg ignore at 1:1"},
 		},
 		{
 			name:     "field",
@@ -222,7 +222,7 @@ func TestTargetErrors(t *testing.T) {
 			name:     "ignore twice",
 			src:      "package x\n\n//kama:partial ignore\n//kama:partial ignore\ntype A struct{}\n",
 			is:       ErrDirective,
-			contains: []string{"x.go:3:1", `"ignore ignore"`},
+			contains: []string{"x.go:3:1", `"ignore, ignore"`, "at 1:1"},
 		},
 		{
 			name: "marked by a type group and ignored",
@@ -312,7 +312,26 @@ func TestTargetErrors(t *testing.T) {
 			name:     "unparsable args",
 			src:      "package x\n\n//kama:partial ignore=\"x\ntype A struct{}\n",
 			is:       genopt.ErrDirective,
-			contains: []string{"x.go:3:1", "unterminated"},
+			contains: []string{"x.go:3:1", "unexpected newline in string"},
+		},
+		{
+			name:     "operator",
+			src:      "package x\n\n//kama:partial ignore or file\ntype A struct{}\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:3:1", `"ignore or file" at 1:1`, "want none or ignore"},
+		},
+		{
+			name:     "call",
+			src:      "package x\n\n//kama:partial file\n//kama:partial package()\n",
+			is:       ErrDirective,
+			contains: []string{"x.go:3:1", "unknown arg package() at 2:1"},
+		},
+		{
+			name: "old spelling of merge",
+			src: "package x\n\n//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:merge append overwrite\n\tB []int\n}\n",
+			is:       genopt.ErrDirective,
+			contains: []string{"x.go:5:2", "as in append, overwrite"},
 		},
 		{
 			name:     "unknown sub-directive",
@@ -338,7 +357,7 @@ func TestTargetErrors(t *testing.T) {
 			src: "package x\n\n//kama:partial\ntype A struct {\n" +
 				"\t//kama:partial:merge append\n\tB []int //kama:partial:merge overwrite\n}\n",
 			is:       ErrDirective,
-			contains: []string{"x.go:5:2", `"append overwrite"`, "want one strategy"},
+			contains: []string{"x.go:5:2", `"append, overwrite"`, "want one strategy"},
 		},
 		{
 			name: "append on a plain field",
@@ -530,7 +549,7 @@ func TestTypeGroup(t *testing.T) {
 type (
 	A struct{ I int }
 	B struct {
-		//kama:partial:fieldmask name=j
+		//kama:partial:fieldmask name="j"
 		J int
 	}
 )

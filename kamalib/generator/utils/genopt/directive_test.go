@@ -1,10 +1,14 @@
 package genopt
 
 import (
+	"fmt"
 	"testing"
 
 	"golang.org/x/tools/go/packages"
 	"gotest.tools/v3/assert"
+
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
+	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 )
 
 var testLoader = Loader[leaf, leaf, leaf]{ToolName: "kama", Generator: "x", Version: 1}
@@ -28,7 +32,7 @@ type Single struct {
 	//kama:x:merge append
 	//kama:x:merge more=1
 	A []string
-	B string //kama:x:flag name=addr usage="listen address"
+	B string //kama:x:flag name="addr", usage="listen address"
 	C, D int //kama:x:both
 	*Embedded //kama:x:embedded
 	Nested struct {
@@ -65,12 +69,12 @@ func TestLoadPackages(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, len(loaded.Warnings), 0)
 	assert.DeepEqual(t, flatten(loaded.Option), map[string]string{
-		"m/a file x.go": "[]package file; [sub]one; " +
+		"m/a file x.go": "[]package, file; [sub]one; " +
 			"at x.go:3:1 a free-floating comment, x.go:7:1 a free-floating comment",
 		"m/a.Single":      "a/x.go:14:1 fields=true",
 		"m/a.Single type": "[]; at x.go:14:1 type m/a.Single",
-		"m/a.Single.A":    "[merge]append more=1; at x.go:17:2 field m/a.Single.A",
-		"m/a.Single.B": `[flag]name=addr usage=listen address; ` +
+		"m/a.Single.A":    "[merge]append, more=1; at x.go:17:2 field m/a.Single.A",
+		"m/a.Single.B": `[flag]name="addr", usage="listen address"; ` +
 			"at x.go:20:11 field m/a.Single.B",
 		"m/a.Single.C":        "[both]; at x.go:21:11 field m/a.Single.C",
 		"m/a.Single.D":        "[both]; at x.go:21:11 field m/a.Single.D",
@@ -152,7 +156,7 @@ func TestLoadPackagesErrors(t *testing.T) {
 			name:     "unparsable args",
 			src:      "package a\n\n//kama:x a=\"b\ntype T int\n",
 			is:       ErrDirective,
-			contains: []string{"x.go:3:1: //kama:x: ", "unterminated"},
+			contains: []string{"x.go:3:1: //kama:x: ", "unexpected newline in string"},
 		},
 		{
 			name:     "leaf error",
@@ -181,16 +185,122 @@ func TestLoadPackagesErrors(t *testing.T) {
 	}
 }
 
-// TestLoadPackagesJoinedArgs checks that the lines of one directive on one
-// target parse as one line, so a quote may span them.
-func TestLoadPackagesJoinedArgs(t *testing.T) {
+// TestLoadPackagesLines checks that each line of one directive on one
+// target parses on its own: a quote cannot span lines, and a line needs no
+// trailing comma.
+func TestLoadPackagesLines(t *testing.T) {
 	loaded, err := testLoader.LoadPackages([]*packages.Package{
+		parsedPackage(t, "m/a", "a", map[string]string{
+			"x.go": "package a\n\n//kama:x a, b=\"c\"\n//kama:x d\ntype T int\n",
+		}),
+	})
+	assert.NilError(t, err)
+	assert.Equal(t, flatten(loaded.Option)["m/a.T type"], `[]a, b="c", d; at x.go:3:1 type m/a.T`)
+
+	_, err = testLoader.LoadPackages([]*packages.Package{
 		parsedPackage(t, "m/a", "a", map[string]string{
 			"x.go": "package a\n\n//kama:x a=\"b\n//kama:x c\" d\ntype T int\n",
 		}),
 	})
+	assert.ErrorIs(t, err, ErrDirective)
+	assert.ErrorContains(t, err, "x.go:3:1: //kama:x: expr: 1:")
+}
+
+// TestLoadPackagesPositions checks that the positions of the items count
+// lines from the first line of the directive, and columns from the start
+// of the args of their line.
+func TestLoadPackagesPositions(t *testing.T) {
+	l := Loader[leaf, starts, leaf]{ToolName: "kama", Generator: "x"}
+
+	loaded, err := l.LoadPackages([]*packages.Package{
+		parsedPackage(t, "m/a", "a", map[string]string{
+			"x.go": "package a\n\n//kama:x a, b\n// text\n//kama:x   c\ntype T int\n",
+		}),
+	})
 	assert.NilError(t, err)
-	assert.Equal(t, flatten(loaded.Option)["m/a.T type"], "[]a=b c d; at x.go:3:1 type m/a.T")
+
+	to, _ := loaded.Option.Type(typegraph.NewQualifiedType("m/a", "T"))
+	assert.DeepEqual(t, to.Type.at, []string{"a 1:1", "b 1:4", "c 2:3"})
+
+	_, err = l.LoadPackages([]*packages.Package{
+		parsedPackage(t, "m/a", "a", map[string]string{
+			"x.go": "package a\n\n//kama:x a\n//kama:x b c\ntype T int\n",
+		}),
+	})
+	assert.ErrorIs(t, err, ErrDirective)
+	assert.ErrorContains(t, err, "x.go:3:1: //kama:x: expr: 2:")
+}
+
+// starts is a leaf recording the items and their positions.
+type starts struct{ at []string }
+
+func (s *starts) UnmarshalExpr(_ Source, _ string, args []expr.Arg) error {
+	for _, a := range args {
+		s.at = append(s.at, fmt.Sprintf("%s %d:%d", a, a.Start.Line, a.Start.Column))
+	}
+
+	return nil
+}
+
+func TestOldSpellingHint(t *testing.T) {
+	for args, want := range map[string]string{
+		`name=b short=s usage="the b"`: `; separate items with commas and quote strings, ` +
+			`as in name="b", short="s", usage="the b"`,
+		"append overwrite":   "; separate items with commas and quote strings, as in append, overwrite",
+		`length=">=1" or(a)`: "",
+		">=1 b":              "",
+		`a="b`:               "",
+		"":                   "",
+	} {
+		assert.Equal(t, oldSpellingHint(args), want, args)
+	}
+
+	_, err := testLoader.LoadPackages([]*packages.Package{
+		parsedPackage(t, "m/a", "a", map[string]string{
+			"x.go": "package a\n\n//kama:x a=b c\ntype T int\n",
+		}),
+	})
+	assert.ErrorContains(t, err, `x.go:3:1: //kama:x: expr: 1:`)
+	assert.ErrorContains(t, err, `as in a="b", c`)
+}
+
+func TestWord(t *testing.T) {
+	for text, want := range map[string]string{
+		"ignore":   "ignore",
+		"ignore()": "",
+		`a="b"`:    "",
+		"a or b":   "",
+	} {
+		args, err := expr.Parse(text)
+		assert.NilError(t, err)
+
+		w, ok := Word(args[0])
+		assert.Equal(t, w, want, text)
+		assert.Equal(t, ok, want != "", text)
+	}
+}
+
+func TestKeywordString(t *testing.T) {
+	for text, want := range map[string]string{
+		`name="a b"`: "",
+		"name=a":     `name=a; want a string, as in name="a"`,
+		"name=1.5":   `name=1.5; want a string, as in name="1.5"`,
+		"name=a()":   `name=a(); want name="<text>"`,
+		"name=True":  `name=True; want name="<text>"`,
+	} {
+		args, err := expr.Parse(text)
+		assert.NilError(t, err)
+
+		v, err := KeywordString(args[0])
+		if want == "" {
+			assert.NilError(t, err)
+			assert.Equal(t, v, "a b")
+
+			continue
+		}
+
+		assert.Error(t, err, want, text)
+	}
 }
 
 // plain is a leaf taking no directives.

@@ -16,7 +16,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/base/filescope"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
@@ -45,9 +45,9 @@ type flagOption struct {
 	src                optionSource
 }
 
-// flagFromKeyValues decodes the args of //kama:partial:flag.
-func flagFromKeyValues(kv []dircmnt.KeyValue) (flagOption, error) {
-	args, err := dircmnt.KeyValueMap(kv)
+// flagFromItems decodes the items of //kama:partial:flag.
+func flagFromItems(items []expr.Arg) (flagOption, error) {
+	args, err := keywordStrings(items)
 	if err != nil {
 		return flagOption{}, err
 	}

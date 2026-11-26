@@ -16,7 +16,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 	"github.com/ngicks/kama/kamalib/workflow"
@@ -41,25 +41,26 @@ func (Param) Default() Param { return Param{Method: "Label"} }
 // UnknownKeys reports the keys of a step Param does not know.
 func (p *Param) UnknownKeys() [][]string { return unknownkey.Paths(p.Unknown) }
 
-// TypeOptions are the options of a type: //acme:foo label=<label>, or the
+// TypeOptions are the options of a type: //acme:foo label="<label>", or the
 // key label of its entry in an option file.
 type TypeOptions struct {
 	Label   string         `json:"label"`
 	Unknown map[string]any `json:",embed"`
 }
 
-// UnmarshalKeyValue decodes the args of the directive //acme:foo.
-func (o *TypeOptions) UnmarshalKeyValue(
-	src genopt.Source,
-	directive string,
-	kv []dircmnt.KeyValue,
-) error {
-	for _, arg := range kv {
-		if directive != "" || arg.Key != "label" || !arg.HasValue {
-			return fmt.Errorf("%s: unknown arg %s", src, arg)
+// UnmarshalExpr decodes the items of the directive //acme:foo.
+func (o *TypeOptions) UnmarshalExpr(src genopt.Source, directive string, args []expr.Arg) error {
+	for _, a := range args {
+		if directive != "" || a.Name != "label" {
+			return fmt.Errorf("%s: unknown arg %s at %d:%d", src, a, a.Start.Line, a.Start.Column)
 		}
 
-		o.Label = arg.Value
+		label, err := genopt.KeywordString(a)
+		if err != nil {
+			return fmt.Errorf("%s: arg at %d:%d: %w", src, a.Start.Line, a.Start.Column, err)
+		}
+
+		o.Label = label
 	}
 
 	return nil

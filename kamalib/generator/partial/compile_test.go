@@ -204,7 +204,7 @@ func TestTypeParamNamedLikePredeclared(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, err := generate(t, map[string]string{
 				"a.go": "package x\n\n//kama:partial\ntype A[" + name + " any] struct {\n" +
-					"\t//kama:partial:flag name=b\n\tB bool\n\tV " + name + "\n}\n",
+					"\t//kama:partial:flag name=\"b\"\n\tB bool\n\tV " + name + "\n}\n",
 			}, testRun{})
 			assert.ErrorIs(t, err, ErrConflict)
 			assert.ErrorContains(t, err, "a.go:4:8")

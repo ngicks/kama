@@ -51,12 +51,19 @@
 // //kama:partial:flag under Flags, //kama:partial:fieldmask under Field
 // mask, and any other //kama:partial:<name> is an error.
 //
-// Several lines of one directive on one target count as one line. Their
-// args are joined in source order, so //kama:partial:flag name=a on one
-// line and //kama:partial:flag usage="the a" on the next give one flag. A
-// name given twice in the joined args is an error. Errors about joined
-// lines name the position of the first line. The free-floating comments
-// of one file are one target.
+// The args of a directive are comma-separated items in the expression
+// grammar of the expr package: a bare word, as ignore or append, or a
+// keyword item holding a string literal, as name="addr". Several lines of
+// one directive on one target count as one directive. Each line is parsed
+// on its own and the items of all lines are taken in source order, so
+// //kama:partial:flag name="a" on one line and //kama:partial:flag
+// usage="the a" on the next give one flag. A keyword given twice is an
+// error. Errors name the position of the first line and, for an item, its
+// line and column inside the directive, as 2:1 for the first item of the
+// second line. An operator such as or, a call such as file(), and a value
+// that is not a string literal are errors. A line in the space-separated
+// spelling of name=value pairs gets an error showing the line spelled as
+// items. The free-floating comments of one file are one target.
 //
 // # Test files
 //
@@ -130,7 +137,7 @@
 //	              name: addr
 //	              short: a
 //	              usage: listen address
-//	            fieldmask:        # //kama:partial:fieldmask name=address
+//	            fieldmask:        # //kama:partial:fieldmask name="address"
 //	              name: address
 //	      Client:
 //	        ignore: true          # //kama:partial ignore on Client
@@ -509,9 +516,9 @@
 //
 // A source struct field opts in to a command-line flag with
 //
-//	//kama:partial:flag name=<name> short=<c> usage="<text>"
+//	//kama:partial:flag name="<name>", short="<c>", usage="<text>"
 //
-// The args are parsed by dircmnt.ParseArgsKeyValue. name is required, and
+// Each arg is a keyword item holding a string literal. name is required, and
 // has no leading -, no white space, no control character and no =. short is
 // optional and is a single ASCII character. usage is optional. An unknown
 // key, a key given twice, the directive on a type or a file,
@@ -590,11 +597,10 @@
 // A path joins the segments of nested fields with dots. Segments are
 // case-sensitive. The segment of a field is its Go name by default.
 //
-//	//kama:partial:fieldmask name=<segment>
+//	//kama:partial:fieldmask name="<segment>"
 //
-// on the field sets another segment. dircmnt.ParseArgsKeyValue parses the
-// args.
-// name is required. It must not be empty or hold a dot. Json tags and
+// on the field sets another segment. name is a keyword item holding a
+// string literal, and it is required. It must not be empty or hold a dot. Json tags and
 // other spellings of the field name give no segments. A path holds no
 // index, map key or wildcard. These are errors:
 //

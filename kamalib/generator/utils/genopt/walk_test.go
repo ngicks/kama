@@ -38,7 +38,7 @@ func TestWalk(t *testing.T) {
 		"a.go:11:1 file a.go //kama:partial file",
 		"a.go:17:1 type Single //kama:partial ",
 		"a.go:21:2 field Single.A //kama:partial:merge append",
-		`a.go:23:11 field Single.B //kama:partial:flag name=addr short=a usage="listen address"`,
+		`a.go:23:11 field Single.B //kama:partial:flag name="addr", short="a", usage="listen address"`,
 		"a.go:26:2 field Single.C //kama:partial:x ",
 		"a.go:26:2 field Single.D //kama:partial:x ",
 		"a.go:28:16 field Single.Buffer //kama:partial:embedded ",

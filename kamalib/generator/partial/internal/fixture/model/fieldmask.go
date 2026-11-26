@@ -10,7 +10,7 @@ type Masked struct {
 	Count int    `json:"count"`
 	On    bool   `json:"on"`
 	Ptr   *string
-	//kama:partial:fieldmask name=alias
+	//kama:partial:fieldmask name="alias"
 	Renamed string
 
 	Inner    MaskInner
@@ -53,7 +53,7 @@ type MaskPlain struct {
 //kama:partial:fieldmask
 type MaskEmbedded struct {
 	E string
-	//kama:partial:fieldmask name=e_deep
+	//kama:partial:fieldmask name="e_deep"
 	EDeep MaskDeep
 }
 

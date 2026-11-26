@@ -10,43 +10,49 @@ import (
 	"github.com/ngicks/option/und"
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
 // parseFlag decodes args as the args of //kama:partial:flag.
 func parseFlag(args string) (flagOption, error) {
-	kv, err := dircmnt.ParseArgsKeyValue(args)
+	items, err := expr.Parse(args)
 	if err != nil {
 		return flagOption{}, err
 	}
 
-	return flagFromKeyValues(kv)
+	return flagFromItems(items)
 }
 
 func TestParseFlag(t *testing.T) {
-	o, err := parseFlag(`name=dry-run short=d usage="do \"nothing\""`)
+	o, err := parseFlag(`name="dry-run", short="d", usage="do \"nothing\""`)
 	assert.NilError(t, err)
 	assert.Equal(t, o.name, "dry-run")
 	assert.Equal(t, o.short, "d")
 	assert.Equal(t, o.usage, `do "nothing"`)
 
 	for args, want := range map[string]string{
-		"":                   "name is required",
-		"name":               "name is required",
-		"short=a":            "name is required",
-		"name=a prefix=x":    `unknown key "prefix"`,
-		"name=-a":            "leading -",
-		"name=a=b":           "no =",
-		`name="a\u00a0b"`:    `name "a\u00a0b"`,
-		`name="a\u0085b"`:    `name "a\u0085b"`,
-		`name="a\u009fb"`:    `name "a\u009fb"`,
-		"name=a short=ab":    `short "ab"`,
-		"name=a short=":      `short ""`,
-		"name=a short=-":     `short "-"`,
-		"name=a short=\"é\"": "ASCII",
-		"name=a name=b":      "duplicate",
-		`name=a usage="x`:    "unterminated",
+		"":                     "name is required",
+		"name":                 `arg name at 1:1; want name="<text>"`,
+		`short="a"`:            "name is required",
+		`name="a", prefix="x"`: `unknown key "prefix"`,
+		`name="-a"`:            "leading -",
+		`name="a=b"`:           "no =",
+		`name="a\u00a0b"`:      `name "a\u00a0b"`,
+		`name="a\u0085b"`:      `name "a\u0085b"`,
+		`name="a\u009fb"`:      `name "a\u009fb"`,
+		`name="a", short="ab"`: `short "ab"`,
+		`name="a", short=""`:   `short ""`,
+		`name="a", short="-"`:  `short "-"`,
+		`name="a", short="é"`:  "ASCII",
+		`name="a", name="b"`:   "keyword arg name repeated",
+		`name="a", usage="x`:   "unexpected newline in string",
+		"name=a":               `name=a; want a string, as in name="a"`,
+		"name=1":               `name=1; want a string, as in name="1"`,
+		`name=["a"]`:           `want name="<text>"`,
+		`name="a" or "b"`:      `want name="<text>"`,
+		`name=f("a")`:          `want name="<text>"`,
 	} {
 		_, err := parseFlag(args)
 		assert.ErrorContains(t, err, want, args)
@@ -65,76 +71,97 @@ func TestFlagErrors(t *testing.T) {
 		{
 			name: "missing name",
 			src: head + "//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:flag short=a\n\tB int\n}\n",
+				"\t//kama:partial:flag short=\"a\"\n\tB int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:5:2", "_missing_name.A.B", "name is required"},
 		},
 		{
 			name: "unknown key",
 			src: head + "//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:flag name=b x=1\n\tB int\n}\n",
+				"\t//kama:partial:flag name=\"b\", x=\"1\"\n\tB int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:5:2", "A.B", `unknown key "x"`},
 		},
 		{
 			name: "name on two lines",
 			src: head + "//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:flag name=b\n\tB int //kama:partial:flag name=c\n}\n",
+				"\t//kama:partial:flag name=\"b\"\n\tB int //kama:partial:flag name=\"c\"\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:5:2", `duplicate name "name"`, "A.B"},
 		},
 		{
+			name: "old spelling",
+			src: head + "//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:flag name=b short=s usage=\"the b\"\n\tB int\n}\n",
+			is: genopt.ErrDirective,
+			contains: []string{
+				"x.go:5:2", "//kama:partial:flag", `as in name="b", short="s", usage="the b"`,
+			},
+		},
+		{
+			name: "bare value",
+			src: head + "//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:flag name=\"b\"\n\t//kama:partial:flag short=s\n\tB int\n}\n",
+			is: ErrDirective,
+			contains: []string{
+				"x.go:5:2",
+				"A.B",
+				`arg at 2:1: short=s; want a string, as in short="s"`,
+			},
+		},
+		{
 			name:     "on a type",
-			src:      head + "//kama:partial\n//kama:partial:flag name=a\ntype A struct{}\n",
+			src:      head + "//kama:partial\n//kama:partial:flag name=\"a\"\ntype A struct{}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:4:1", "struct fields only"},
 		},
 		{
 			name: "on a type without partial variant",
 			src: head + "//kama:partial\ntype A struct{}\n\n" +
-				"type B struct {\n\t//kama:partial:flag name=c\n\tC int\n}\n",
+				"type B struct {\n\t//kama:partial:flag name=\"c\"\n\tC int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:7:2", "_partial_variant.B.C", "B has no partial variant"},
 		},
 		{
 			name: "duplicate name",
 			src: head + "//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:flag name=n\n\tB int\n\t//kama:partial:flag name=n\n\tC int\n}\n",
+				"\t//kama:partial:flag name=\"n\"\n\tB int\n\t//kama:partial:flag name=\"n\"\n\tC int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:7:2", "A.C", `flag name "n"`, "field B (", "x.go:5:2"},
 		},
 		{
 			name: "duplicate short",
 			src: head + "//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:flag name=b short=s\n\tB int\n" +
-				"\t//kama:partial:flag name=c short=s\n\tC int\n}\n",
+				"\t//kama:partial:flag name=\"b\", short=\"s\"\n\tB int\n" +
+				"\t//kama:partial:flag name=\"c\", short=\"s\"\n\tC int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:7:2", `flag shorthand "s"`, "field B ("},
 		},
 		{
 			name: "unsupported type",
 			src: head + "//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:flag name=b\n\tB []int\n}\n",
+				"\t//kama:partial:flag name=\"b\"\n\tB []int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:5:2", "_unsupported_type.A.B", "unsupported type []int"},
 		},
 		{
 			name: "unsupported int32",
 			src: head + "//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:flag name=b\n\tB int32\n}\n",
+				"\t//kama:partial:flag name=\"b\"\n\tB int32\n}\n",
 			is:       ErrDirective,
 			contains: []string{"unsupported type int32"},
 		},
 		{
 			name: "nested partial",
-			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n\tB B\n}\n\n" +
+			src: head + "//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:flag name=\"b\"\n\tB B\n}\n\n" +
 				"type B struct{ I int }\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:5:2", "A.B", "nested partial"},
 		},
 		{
 			name: "embedded partial",
-			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n\tB\n}\n\n" +
+			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=\"b\"\n\tB\n}\n\n" +
 				"type B struct{ I int }\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:5:2", "nested partial"},
@@ -142,14 +169,15 @@ func TestFlagErrors(t *testing.T) {
 		{
 			name: "pointer to option",
 			src: head + "import \"github.com/ngicks/option/opt\"\n\n" +
-				"//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n\tB *opt.Option[int]\n}\n",
+				"//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:flag name=\"b\"\n\tB *opt.Option[int]\n}\n",
 			is:       ErrDirective,
 			contains: []string{"unsupported type"},
 		},
 		{
 			name: "elastic",
 			src: head + "import \"github.com/ngicks/option/elastic\"\n\n" +
-				"//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n" +
+				"//kama:partial\ntype A struct {\n\t//kama:partial:flag name=\"b\"\n" +
 				"\tB elastic.Elastic[int]\n}\n",
 			is: ErrDirective,
 			contains: []string{
@@ -160,28 +188,29 @@ func TestFlagErrors(t *testing.T) {
 		},
 		{
 			name: "blank field",
-			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n\t_ int\n" +
+			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=\"b\"\n\t_ int\n" +
 				"\tC int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:5:2", "A._", "a blank field cannot be set"},
 		},
 		{
 			name: "unknown member fallback",
-			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n" +
+			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=\"b\"\n" +
 				"\tB map[string]any `json:\",embed\"`\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:5:2", "A.B", "a field catching unknown members cannot be set"},
 		},
 		{
 			name: "field named like a flag method",
-			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n\tB int\n" +
+			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=\"b\"\n\tB int\n" +
 				"\tRegisterFlags int\n}\n",
 			is:       ErrConflict,
 			contains: []string{"method RegisterFlags"},
 		},
 		{
 			name: "flag set declared",
-			src: head + "//kama:partial\ntype A struct {\n\t//kama:partial:flag name=b\n\tB int\n}\n\n" +
+			src: head + "//kama:partial\ntype A struct {\n" +
+				"\t//kama:partial:flag name=\"b\"\n\tB int\n}\n\n" +
 				"type PartialFlagSet int\n",
 			is:       ErrConflict,
 			contains: []string{"x.go:9:6", "PartialFlagSet"},
@@ -217,7 +246,7 @@ func TestFlagSetFile(t *testing.T) {
 
 	files = generated(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct {\n" +
-			"\t//kama:partial:flag name=b\n\tB string\n\tC int\n}\n",
+			"\t//kama:partial:flag name=\"b\"\n\tB string\n\tC int\n}\n",
 	})
 	assert.DeepEqual(t, slices.Sorted(maps.Keys(files)), []string{
 		"a.kama_partial.go", FlagSetFile,
@@ -259,7 +288,8 @@ func TestFlagSetFileBuildVariant(t *testing.T) {
 	files := map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct{ B int }\n",
 		"b.go": "//go:build kamavariant\n\npackage x\n\nimport \"time\"\n\n" +
-			"//kama:partial\ntype B struct {\n\t//kama:partial:flag name=wait\n\tWait time.Duration\n}\n",
+			"//kama:partial\ntype B struct {\n" +
+			"\t//kama:partial:flag name=\"wait\"\n\tWait time.Duration\n}\n",
 	}
 	out := generated(t, files)
 	_, ok := out["b.kama_partial.go"]
@@ -273,7 +303,7 @@ func TestFlagSetFileBuildVariant(t *testing.T) {
 func TestFlagSetFileConflict(t *testing.T) {
 	_, err := generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct {\n" +
-			"\t//kama:partial:flag name=b\n\tB string\n}\n",
+			"\t//kama:partial:flag name=\"b\"\n\tB string\n}\n",
 		FlagSetFile: "package x\n\nfunc stray() {}\n",
 	}, testRun{})
 	assert.ErrorIs(t, err, ErrConflict)
@@ -309,7 +339,7 @@ func TestFlagSetOmitted(t *testing.T) {
 
 	_, err := generate(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\ntype A struct {\n" +
-			"\t//kama:partial:flag name=n\n\tN int\n}\n",
+			"\t//kama:partial:flag name=\"n\"\n\tN int\n}\n",
 	}, testRun{OmitFlagSet: true})
 	assert.ErrorIs(t, err, ErrOption)
 	assert.ErrorContains(t, err, "TestFlagSetOmitted.A.N")

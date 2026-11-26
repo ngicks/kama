@@ -25,17 +25,21 @@ func TestFieldMaskErrors(t *testing.T) {
 			contains: []string{"x.go:3:1", "applies to types and struct fields only"},
 		},
 		{
-			name:     "args on a type",
-			src:      head + "//kama:partial\n//kama:partial:fieldmask json\ntype A struct{ B int }\n",
-			is:       ErrDirective,
-			contains: []string{"x.go:4:1", `unknown args "json"`, "_args_on_a_type.A; want none"},
+			name: "args on a type",
+			src:  head + "//kama:partial\n//kama:partial:fieldmask json\ntype A struct{ B int }\n",
+			is:   ErrDirective,
+			contains: []string{
+				"x.go:4:1",
+				"unknown arg json at 1:1",
+				"_args_on_a_type.A; want none",
+			},
 		},
 		{
 			name: "args on a second line on a type",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\n//kama:partial:fieldmask json\n" +
 				"type A struct{ B int }\n",
 			is:       ErrDirective,
-			contains: []string{"x.go:4:1", `unknown args "json"`},
+			contains: []string{"x.go:4:1", "unknown arg json at 2:1"},
 		},
 		{
 			name:     "type without partial variant",
@@ -52,14 +56,14 @@ func TestFieldMaskErrors(t *testing.T) {
 		{
 			name: "name on a type without field masks",
 			src: head + "//kama:partial\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b\n\tB int\n}\n",
+				"\t//kama:partial:fieldmask name=\"b\"\n\tB int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:5:2", "masks.A.B", "A does not have field masks enabled"},
 		},
 		{
 			name: "name on a type without partial variant",
 			src: head + "//kama:partial\ntype A struct{}\n\n" +
-				"type C struct {\n\t//kama:partial:fieldmask name=b\n\tB int\n}\n",
+				"type C struct {\n\t//kama:partial:fieldmask name=\"b\"\n\tB int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:7:2", "C has no partial variant"},
 		},
@@ -73,42 +77,42 @@ func TestFieldMaskErrors(t *testing.T) {
 		{
 			name: "unknown key",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b json=c\n\tB int\n}\n",
+				"\t//kama:partial:fieldmask name=\"b\", json=\"c\"\n\tB int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:6:2", `unknown key "json"; want name`},
 		},
 		{
 			name: "dotted name",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b.c\n\tB int\n}\n",
+				"\t//kama:partial:fieldmask name=\"b.c\"\n\tB int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:6:2", `name "b.c"`, "without a dot"},
 		},
 		{
 			name: "name on two lines of a field",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b\n\tB int //kama:partial:fieldmask name=c\n}\n",
+				"\t//kama:partial:fieldmask name=\"b\"\n\tB int //kama:partial:fieldmask name=\"c\"\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:6:2", `duplicate name "name"`},
 		},
 		{
 			name: "blank field",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b\n\t_ int\n\tC int\n}\n",
+				"\t//kama:partial:fieldmask name=\"b\"\n\t_ int\n\tC int\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:6:2", "a blank field has no path"},
 		},
 		{
 			name: "unknown member fallback",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b\n\tB map[string]any `json:\",embed\"`\n}\n",
+				"\t//kama:partial:fieldmask name=\"b\"\n\tB map[string]any `json:\",embed\"`\n}\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:6:2", "a field catching unknown members has no path"},
 		},
 		{
 			name: "name on an embedded partial",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=b\n\tB\n}\n\n" +
+				"\t//kama:partial:fieldmask name=\"b\"\n\tB\n}\n\n" +
 				"//kama:partial:fieldmask\ntype B struct{ I int }\n",
 			is:       ErrDirective,
 			contains: []string{"x.go:6:2", "embedded partial value", "no path segment of its own"},
@@ -116,7 +120,7 @@ func TestFieldMaskErrors(t *testing.T) {
 		{
 			name: "duplicate segment",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\tB int\n\t//kama:partial:fieldmask name=B\n\tC int\n}\n",
+				"\tB int\n\t//kama:partial:fieldmask name=\"B\"\n\tC int\n}\n",
 			is: ErrDirective,
 			contains: []string{
 				"segment.A (", `segment "B" of field A.C`, "x.go:8:2", "taken by field A.B (",
@@ -135,7 +139,7 @@ func TestFieldMaskErrors(t *testing.T) {
 		{
 			name: "duplicate segment across an embedded pointer",
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-				"\t//kama:partial:fieldmask name=J\n\tI int\n\t*E\n}\n\n" +
+				"\t//kama:partial:fieldmask name=\"J\"\n\tI int\n\t*E\n}\n\n" +
 				"//kama:partial:fieldmask\ntype E struct{ J int }\n",
 			is:       ErrDirective,
 			contains: []string{`segment "J" of field E.J`, "taken by field A.I ("},
@@ -219,7 +223,7 @@ func TestFieldMaskErrors(t *testing.T) {
 			src: head + "//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
 				"\tI int\n\tB\n}\n\n//kama:partial:fieldmask\ntype B struct{ C }\n\n" +
 				"//kama:partial:fieldmask\ntype C struct {\n" +
-				"\t//kama:partial:fieldmask name=I\n\tJ int\n}\n",
+				"\t//kama:partial:fieldmask name=\"I\"\n\tJ int\n}\n",
 			is: ErrDirective,
 			contains: []string{
 				`segment "I" of field C.J`, "x.go:16:2", "taken by field A.I (", "x.go:6:2",
@@ -330,7 +334,7 @@ func TestFieldMaskOptIn(t *testing.T) {
 func TestFieldMaskMethods(t *testing.T) {
 	files := generated(t, map[string]string{
 		"a.go": "package x\n\n//kama:partial\n//kama:partial:fieldmask\ntype A struct {\n" +
-			"\t//kama:partial:fieldmask name=b\n\tB int\n\tC *C\n}\n\n" +
+			"\t//kama:partial:fieldmask name=\"b\"\n\tB int\n\tC *C\n}\n\n" +
 			"//kama:partial:fieldmask\ntype C struct{ D int }\n",
 	})
 	fs := funcs(t, files["a.kama_partial.go"])

@@ -20,7 +20,7 @@ import (
 type Single struct {
 	//kama:partial:merge append
 	A []string
-	B string //kama:partial:flag name=addr short=a usage="listen address"
+	B string //kama:partial:flag name="addr", short="a", usage="listen address"
 	//kama:partial:skip
 
 	//kama:partial:x

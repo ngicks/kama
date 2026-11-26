@@ -31,14 +31,17 @@
 // struct, are ignored.
 //
 // The leaf of a target is allocated once as its zero value. Its
-// UnmarshalKeyValue is called once per directive name present on the
-// target, with the name after the generator: "" for //tool:generator and
-// "merge" for //tool:generator:merge. Several lines of one directive on one
-// target count as one line: their args are joined in source order and
-// parsed by dircmnt.ParseArgsKeyValue. A leaf type whose pointer
-// implements ExprUnmarshaler takes the items of each line parsed by
-// expr.Parse instead. A leaf type whose pointer implements neither takes no
-// directives.
+// UnmarshalExpr is called once per directive name present on the target,
+// with the name after the generator: "" for //tool:generator and "merge"
+// for //tool:generator:merge. The args of a directive are comma-separated
+// items, parsed by expr.Parse. Several lines of one directive on one
+// target count as one directive: each line is parsed on its own, and the
+// leaf takes the items of all lines in source order. A line that does not
+// parse is an error naming the first line of the directive. When the line
+// reads as space-separated words and name=value pairs, the error spells it
+// as items. A leaf type whose pointer does not implement ExprUnmarshaler
+// takes no directives. Word and KeywordString read the items most leaves
+// take.
 //
 // # Option files
 //
@@ -70,12 +73,15 @@
 // entry still lists its type.
 //
 // The tool-wide directive //tool:option-file <generator>=<path> in a
-// free-floating comment names the package option file of a generator. The
-// path is slash-separated and relative to the package directory. It may
-// hold "..", but it must not be absolute or leave the root. Its extension
-// gives the format. A named file that does not exist is an error. The
-// directive joins its lines as other directives do, and Filter does not
-// apply to it. A generator named more than once for a package, in one
+// free-floating comment names the package option file of a generator. Its
+// args are space-separated <generator>=<path> pairs, as
+// dircmnt.ParseArgsKeyValue reads them, and a path holding a space is
+// quoted. The path is slash-separated and relative to the package
+// directory. It may hold "..", but it must not be absolute or leave the
+// root. Its extension gives the format. A named file that does not exist
+// is an error. The lines of the directive on one free-floating comment are
+// joined with spaces, and Filter does not apply to it. A generator named more than once for a
+// package, in one
 // comment or in several files, takes the last path in file name and
 // position order, with a warning for each other one. Loader.PackageFile
 // finds the file of a package without the directive in the package
@@ -131,7 +137,6 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/gopackages"
@@ -305,23 +310,17 @@ type TypeOption[T, F any] struct {
 	Fields opt.Option[map[string]F]
 }
 
-// KeyValueUnmarshaler is implemented by the pointer types of leaf option
-// types that take directives.
-type KeyValueUnmarshaler interface {
-	// UnmarshalKeyValue decodes the args of the directive of the given name
-	// on the target of src. directive is "" for //tool:generator and the
-	// part after the generator otherwise.
-	UnmarshalKeyValue(src Source, directive string, kv []dircmnt.KeyValue) error
-}
-
 // ExprUnmarshaler is implemented by the pointer types of leaf option types
-// whose directives take Starlark expressions, as expr.Parse reads them.
-// The loader calls it in place of KeyValueUnmarshaler.
+// that take directives. The args of a directive are Starlark expressions,
+// as expr.Parse reads them.
 type ExprUnmarshaler interface {
 	// UnmarshalExpr decodes the items of the directive of the given name on
 	// the target of src. Each line of the directive is parsed on its own,
-	// and args holds the items of every line in source order. directive is
-	// "" for //tool:generator and the part after the generator otherwise.
+	// and args holds the items of every line in source order. The
+	// positions in args count lines from the first line of the directive,
+	// whose position is src.Pos, and columns from the start of the args of
+	// their line. directive is "" for //tool:generator and the part after
+	// the generator otherwise.
 	UnmarshalExpr(src Source, directive string, args []expr.Arg) error
 }
 

@@ -66,7 +66,7 @@ func TestExample(t *testing.T) {
 	write("names.yaml", "names: [Alice, Bob]\n")
 	write(
 		"a/a.go",
-		"package a\n\n//acme:foo label=apple\ntype A struct{}\n\n//acme:foo\ntype Apricot int\n",
+		"package a\n\n//acme:foo label=\"apple\"\ntype A struct{}\n\n//acme:foo\ntype Apricot int\n",
 	)
 	write("b/b.go", "package b\n\n//acme:foo\ntype B struct{}\n")
 	// The option file of package c labels C, which carries no directive.

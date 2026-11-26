@@ -5,11 +5,10 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
-	"github.com/ngicks/kama/kamalib/pkg/dircmnt"
+	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
 )
@@ -49,12 +48,8 @@ type PackageOptions struct {
 // option.
 func (o *PackageOptions) UnknownKeys() [][]string { return unknownkey.Paths(o.Unknown) }
 
-// UnmarshalKeyValue decodes a directive in a free-floating comment.
-func (o *PackageOptions) UnmarshalKeyValue(
-	src genopt.Source,
-	sub string,
-	kv []dircmnt.KeyValue,
-) error {
+// UnmarshalExpr decodes a directive in a free-floating comment.
+func (o *PackageOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.Arg) error {
 	switch sub {
 	case "":
 	case "merge", "flag":
@@ -70,24 +65,23 @@ func (o *PackageOptions) UnmarshalKeyValue(
 		return unknownDirective(src, sub)
 	}
 
-	words, ok := dircmnt.BareWords(kv)
-	if !ok || len(words) == 0 {
+	if len(args) == 0 {
 		return fmt.Errorf(
-			"%w: %s: unknown args %q on a free-floating comment; want file or package",
-			ErrDirective, src.Pos, dircmnt.SpellArgs(kv),
+			"%w: %s: no args on a free-floating comment; want file or package",
+			ErrDirective, src.Pos,
 		)
 	}
 
-	for _, w := range words {
-		switch w {
+	for _, a := range args {
+		switch w, _ := genopt.Word(a); w {
 		case "file":
 			o.file = true
 		case "package":
 			o.AllTypes = true
 		default:
 			return fmt.Errorf(
-				"%w: %s: unknown args %q on a free-floating comment; want file or package",
-				ErrDirective, src.Pos, dircmnt.SpellArgs(kv),
+				"%w: %s: unknown arg %s at %s on a free-floating comment; want file or package",
+				ErrDirective, src.Pos, a, at(a),
 			)
 		}
 	}
@@ -110,36 +104,30 @@ type TypeOptions struct {
 	markSrc, maskSrc optionSource
 }
 
-// UnmarshalKeyValue decodes a directive on a type or a type group.
-func (o *TypeOptions) UnmarshalKeyValue(
-	src genopt.Source,
-	sub string,
-	kv []dircmnt.KeyValue,
-) error {
-	at := src.Target.Describe()
+// UnmarshalExpr decodes a directive on a type or a type group.
+func (o *TypeOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.Arg) error {
+	target := src.Target.Describe()
 
 	switch sub {
 	case "":
-		words, ok := dircmnt.BareWords(kv)
-
 		switch {
-		case ok && len(words) == 0:
+		case len(args) == 0:
 			o.marked = true
-		case ok && slices.Equal(words, []string{"ignore"}):
+		case len(args) == 1 && isWord(args[0], "ignore"):
 			o.Ignore = true
 		default:
 			return fmt.Errorf(
-				"%w: %s: unknown args %q on %s; want none or ignore",
-				ErrDirective, src.Pos, dircmnt.SpellArgs(kv), at,
+				"%w: %s: unknown args %q at %s on %s; want none or ignore",
+				ErrDirective, src.Pos, expr.Print(args), at(args[0]), target,
 			)
 		}
 
 		o.markSrc = optionSource{src: src}
 	case "fieldmask":
-		if len(kv) > 0 {
+		if len(args) > 0 {
 			return fmt.Errorf(
-				"%w: %s: unknown args %q of //kama:partial:fieldmask on %s; want none",
-				ErrDirective, src.Pos, dircmnt.SpellArgs(kv), at,
+				"%w: %s: unknown arg %s at %s of //kama:partial:fieldmask on %s; want none",
+				ErrDirective, src.Pos, args[0], at(args[0]), target,
 			)
 		}
 
@@ -190,12 +178,8 @@ type FieldOptions struct {
 	mergeSrc, flagSrc, maskSrc optionSource
 }
 
-// UnmarshalKeyValue decodes a directive on a field.
-func (o *FieldOptions) UnmarshalKeyValue(
-	src genopt.Source,
-	sub string,
-	kv []dircmnt.KeyValue,
-) error {
+// UnmarshalExpr decodes a directive on a field.
+func (o *FieldOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.Arg) error {
 	field := src.Target.FieldName()
 
 	switch sub {
@@ -207,18 +191,22 @@ func (o *FieldOptions) UnmarshalKeyValue(
 			field,
 		)
 	case "merge":
-		words, ok := dircmnt.BareWords(kv)
-		if !ok || len(words) != 1 {
+		w, ok := "", len(args) == 1
+		if ok {
+			w, ok = genopt.Word(args[0])
+		}
+
+		if !ok {
 			return fmt.Errorf(
 				"%w: %s: args %q of //kama:partial:merge on field %s; want one strategy",
-				ErrDirective, src.Pos, dircmnt.SpellArgs(kv), field,
+				ErrDirective, src.Pos, expr.Print(args), field,
 			)
 		}
 
-		o.Merge = words[0]
+		o.Merge = w
 		o.mergeSrc = optionSource{src: src, sub: "merge"}
 	case "flag":
-		f, err := flagFromKeyValues(kv)
+		f, err := flagFromItems(args)
 		if err != nil {
 			return fmt.Errorf(
 				"%w: %s: //kama:partial:flag on field %s: %w", ErrDirective, src.Pos, field, err,
@@ -228,9 +216,9 @@ func (o *FieldOptions) UnmarshalKeyValue(
 		o.Flag = &FlagOptions{Name: f.name, Short: f.short, Usage: f.usage}
 		o.flagSrc = optionSource{src: src, sub: "flag"}
 	case "fieldmask":
-		args, err := dircmnt.KeyValueMap(kv)
+		kv, err := keywordStrings(args)
 		if err == nil {
-			_, err = maskNameFromArgs(args)
+			_, err = maskNameFromArgs(kv)
 		}
 
 		if err != nil {
@@ -243,7 +231,7 @@ func (o *FieldOptions) UnmarshalKeyValue(
 			)
 		}
 
-		o.FieldMask = &FieldMaskOptions{Name: args["name"]}
+		o.FieldMask = &FieldMaskOptions{Name: kv["name"]}
 		o.maskSrc = optionSource{src: src, sub: "fieldmask"}
 	default:
 		return unknownDirective(src, sub)
@@ -251,6 +239,41 @@ func (o *FieldOptions) UnmarshalKeyValue(
 
 	return nil
 }
+
+// keywordStrings returns the keyword items of args keyed by name. Every
+// item is a keyword item holding a string, given once.
+func keywordStrings(args []expr.Arg) (map[string]string, error) {
+	out := make(map[string]string, len(args))
+
+	for _, a := range args {
+		if a.Name == "" {
+			return nil, fmt.Errorf("arg %s at %s; want name=\"<text>\"", a, at(a))
+		}
+
+		// expr.Parse rejects a keyword given twice on one line only, and
+		// the lines of a directive are parsed one by one.
+		if _, ok := out[a.Name]; ok {
+			return nil, fmt.Errorf("duplicate name %q at %s", a.Name, at(a))
+		}
+
+		v, err := genopt.KeywordString(a)
+		if err != nil {
+			return nil, fmt.Errorf("arg at %s: %w", at(a), err)
+		}
+
+		out[a.Name] = v
+	}
+
+	return out, nil
+}
+
+func isWord(a expr.Arg, word string) bool {
+	w, ok := genopt.Word(a)
+	return ok && w == word
+}
+
+// at spells the position of a inside its directive as line:column.
+func at(a expr.Arg) string { return fmt.Sprintf("%d:%d", a.Start.Line, a.Start.Column) }
 
 // UnmarshalJSONFrom decodes a field entry of an option file. A YAML key
 // without value, as in flag: or fieldmask:, decodes to null, which would

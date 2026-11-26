@@ -18,7 +18,7 @@ type Merging struct {
 	Index Index `json:"index"`
 	//kama:partial:merge append
 	Ptr *[]int `json:"ptr"`
-	//kama:partial:flag name=flagged
+	//kama:partial:flag name="flagged"
 	Flagged int `json:"flagged"`
 }
 
