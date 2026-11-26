@@ -46,10 +46,15 @@ type Output interface{ isOutput() }
 // Whole is a file a generator finished itself, such as a file edited in
 // place or a file in a language other than Go. The framework stages its
 // Content as it is, except that the output formats a Whole named *.go as
-// it formats every Go file. A Whole may replace any file.
+// it formats every Go file unless Verbatim is set. A Whole may replace any
+// file.
 type Whole struct {
 	Path    string
 	Content []byte
+	// Verbatim stages Content byte for byte, a Whole named *.go included.
+	// A generator editing a hand-written file in place sets it. The
+	// formatting pass would rewrite the parts of the file it did not edit.
+	Verbatim bool
 }
 
 // Composed is a Go file the framework assembles: the header naming the
