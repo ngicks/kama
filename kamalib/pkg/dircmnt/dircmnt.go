@@ -5,8 +5,8 @@
 // as in //go:noinline or //line x.go:10. A space after //, an empty toolname
 // or directive, or a block comment makes it an ordinary comment.
 //
-// [Parse] parses one comment, and [Ast] and [AstField] find the directive
-// comments of a comment group or a struct field. The package leaves the
+// [Parse] parses one comment, and [Ast] finds the directive comments of a
+// comment group. The package leaves the
 // args as written. [ParseArgsKeyValue] parses args written as
 // space-separated key=value pairs, as of //kama:option-file
 // partial=kama_partial.toml. The expr package parses args written as
@@ -70,21 +70,6 @@ func Parse(text string) (Comment, bool) {
 // Ast returns the directive comments in cg.
 func Ast(cg *ast.CommentGroup) []Comment {
 	return collect(astTexts(cg))
-}
-
-// AstField returns the directive comments of f, from its doc comment
-// followed by the first comment of its line comment.
-func AstField(f *ast.Field) []Comment {
-	var trailing []string
-	if f.Comment != nil && len(f.Comment.List) > 0 {
-		trailing = []string{f.Comment.List[0].Text}
-	}
-
-	return collect(
-		opiter.WrapSeq(astTexts(f.Doc)).
-			Concat(slices.Values(trailing)).
-			Iter(),
-	)
 }
 
 func astTexts(cg *ast.CommentGroup) iter.Seq[string] {

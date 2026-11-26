@@ -220,3 +220,43 @@ type B struct {
 	)
 	assert.Assert(t, !strings.Contains(fn, "Value()["), fn)
 }
+
+// TestMapMethodResultsInOneScope declares a local per bound map when two
+// of them share a scope.
+func TestMapMethodResultsInOneScope(t *testing.T) {
+	fn := validateOf(t, map[string]string{
+		"a.go": `package x
+
+type Box[T any] struct{ V T }
+
+func (b Box[T]) Value() T { return b.V }
+
+//kama:validate hook=False
+type A struct {
+	//kama:validate unwrap="Value"
+	X Box[map[string]B]
+	//kama:validate unwrap="Value"
+	Y Box[map[string]C]
+}
+
+//kama:validate hook=False
+type B struct {
+	//kama:validate cmp(ge=0)
+	I int
+}
+
+//kama:validate hook=False
+type C struct {
+	//kama:validate length(ge=1)
+	S string
+}
+`,
+	}, "a.kama_validate.go", "A")
+
+	assertContains(
+		t,
+		fn,
+		"m := v.X.Value()\n\tfor _, k := range slices.Sorted(maps.Keys(m)) {\n\t\te := m[k]\n",
+		"m2 := v.Y.Value()\n\tfor _, k := range slices.Sorted(maps.Keys(m2)) {\n\t\te := m2[k]\n",
+	)
+}

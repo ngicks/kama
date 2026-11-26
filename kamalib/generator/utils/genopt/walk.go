@@ -213,8 +213,8 @@ func (c *collector) add(target Target, comments []*ast.Comment) {
 		AppendSeq(c.out)
 }
 
-// fieldComments selects the same comments as dircmnt.AstField, which
-// returns no positions.
+// fieldComments returns the comments of f that may hold its directives:
+// its doc comment followed by the first comment of its line comment.
 func fieldComments(f *ast.Field) []*ast.Comment {
 	var out []*ast.Comment
 	if f.Doc != nil {

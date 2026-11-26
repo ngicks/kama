@@ -359,7 +359,7 @@ type FlagOptions struct {
 }
 
 // UnmarshalJSONFrom decodes a flag entry of an option file. The directive
-// rejects an empty short=, and FlagOptions cannot tell an empty Short from
+// rejects an empty short="", and FlagOptions cannot tell an empty Short from
 // none, so an empty short is rejected here.
 func (o *FlagOptions) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	var v struct {

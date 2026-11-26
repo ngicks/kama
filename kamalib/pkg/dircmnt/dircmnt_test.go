@@ -93,39 +93,3 @@ kama:ignore
 
 	assert.Assert(t, Ast(nil) == nil)
 }
-
-const fieldSrc = "package x\n" +
-	"type A struct {\n" +
-	"\t//kama:skipped\n" +
-	"\n" +
-	"\t//kama:a1\n" +
-	"\t/* block */ A /* 5 */ string /* 6 */ `json:\"a\"` //kama:a2\n" +
-	"\t/* block */\n" +
-	"\t//kama:b1\n" +
-	"\tB string /* block */ //kama:b2\n" +
-	"\t//kama:c1\n" +
-	"\t// not a directive\n" +
-	"\tC int //kama:c2\n" +
-	"\t// kama:d0\n" +
-	"\tD int //kama:d1\n" +
-	"}\n"
-
-func TestAstField(t *testing.T) {
-	_, f := parse(t, fieldSrc)
-	fields := f.Decls[0].(*ast.GenDecl).Specs[0].(*ast.TypeSpec).Type.(*ast.StructType).Fields.List
-
-	want := map[string][]Comment{
-		// go/ast attaches no doc comment to a field whose line starts with a
-		// block comment.
-		"A": {{"kama", "a2", ""}},
-		// Only the first trailing comment counts, and here it is a block.
-		"B": {{"kama", "b1", ""}},
-		"C": {{"kama", "c1", ""}, {"kama", "c2", ""}},
-		"D": {{"kama", "d1", ""}},
-	}
-
-	for _, fl := range fields {
-		name := fl.Names[0].Name
-		assert.DeepEqual(t, AstField(fl), want[name])
-	}
-}
