@@ -3,13 +3,13 @@ package std
 import (
 	"go/types"
 
-	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 const netipPath = "net/netip"
 
-// Netip is the ext.TypeSupport of netip.Addr and netip.Prefix, whose zero
+// Netip is the genext.TypeSupport of netip.Addr and netip.Prefix, whose zero
 // value is the one that is not valid. It implements ext.ZeroTester and
 // ext.PresenceTester.
 type Netip struct{}
@@ -18,7 +18,7 @@ type Netip struct{}
 func (Netip) Name() string { return netipPath }
 
 // Zero tells an Addr or a Prefix being zero by IsValid unset.
-func (Netip) Zero(t types.Type, v ext.Gen) (ext.Gen, string, bool) {
+func (Netip) Zero(t types.Type, v genext.Gen) (genext.Gen, string, bool) {
 	name, ok := netipName(t)
 	if !ok {
 		return nil, "", false
@@ -28,7 +28,7 @@ func (Netip) Zero(t types.Type, v ext.Gen) (ext.Gen, string, bool) {
 }
 
 // Presence tells an Addr or a Prefix holding a value by IsValid.
-func (Netip) Presence(t types.Type, v ext.Gen) (ext.Gen, string, bool) {
+func (Netip) Presence(t types.Type, v genext.Gen) (genext.Gen, string, bool) {
 	name, ok := netipName(t)
 	if !ok {
 		return nil, "", false

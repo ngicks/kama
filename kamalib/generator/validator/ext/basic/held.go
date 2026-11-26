@@ -3,11 +3,12 @@ package basic
 import (
 	"go/types"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 )
 
 // onHeld is rule applied the way the generator applies a rule to a field:
-// to the type of the field, else to the value HeldValue gives, which holds
+// to the type of the field, else to the value genext.HeldValue gives, which holds
 // when there is none. A combinator bound to the siblings of a field applies
 // its other operands this way.
 type onHeld struct {
@@ -22,7 +23,7 @@ func (h onHeld) Check(t types.Type) error {
 		return nil
 	}
 
-	held, _, _, ok := ext.HeldValue(h.reg, t, nil)
+	held, _, _, ok := genext.HeldValue(h.reg, t, nil)
 	if !ok {
 		return err
 	}
@@ -37,7 +38,7 @@ func (h onHeld) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
 		return h.rule.Emit(e, t, v)
 	}
 
-	held, guard, value, _ := ext.HeldValue(h.reg, t, v)
+	held, guard, value, _ := genext.HeldValue(h.reg, t, v)
 
 	g, err := h.Emit(e, held, value)
 	if err != nil {

@@ -3,20 +3,20 @@ package opt
 import (
 	"go/types"
 
-	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
-func init() { ext.RegisterTypeSupport(Support{}) }
+func init() { genext.RegisterTypeSupport(Support{}) }
 
-// Support is the ext.TypeSupport of opt.Option, und.Und, elastic.Elastic,
+// Support is the genext.TypeSupport of opt.Option, und.Und, elastic.Elastic,
 // either.Either, either.Result, their untagged variants and tuple.Tuple2 to
-// tuple.Tuple16. It implements ext.Holder, ext.Container, ext.Composite,
+// tuple.Tuple16. It implements genext.Holder, genext.Container, genext.Composite,
 // ext.PresenceTester, ext.ZeroTester and ext.NullTester.
 type Support struct{}
 
-var lang genhelper.Lang[ext.Context]
+var lang genhelper.Lang[genext.Context]
 
 // Name returns "github.com/ngicks/option".
 func (Support) Name() string { return "github.com/ngicks/option" }
@@ -24,7 +24,7 @@ func (Support) Name() string { return "github.com/ngicks/option" }
 // Held tells the value an opt.Option holds when it is some and the value an
 // und.Und holds when it is defined, null included. The role of the value is
 // "t".
-func (Support) Held(t types.Type, v ext.Gen) (string, types.Type, ext.Gen, ext.Gen, bool) {
+func (Support) Held(t types.Type, v genext.Gen) (string, types.Type, genext.Gen, genext.Gen, bool) {
 	var cond string
 
 	switch {
@@ -45,8 +45,8 @@ func (Support) Held(t types.Type, v ext.Gen) (string, types.Type, ext.Gen, ext.G
 // holds.
 func (Support) Elements(
 	t types.Type,
-	v ext.Gen,
-) (string, types.Type, ext.Gen, ext.Segment, bool) {
+	v genext.Gen,
+) (string, types.Type, genext.Gen, genext.Segment, bool) {
 	if !isElastic(t) {
 		return "", nil, nil, 0, false
 	}
@@ -65,13 +65,13 @@ func (Support) Elements(
 		return "", nil, nil, 0, false
 	}
 
-	return "t", options.Elem(), lang.Expr("%s.Options()", v), ext.SegmentIndex, true
+	return "t", options.Elem(), lang.Expr("%s.Options()", v), genext.SegmentIndex, true
 }
 
 // Presence tells an opt.Option is present when some, an und.Und and an
 // elastic.Elastic when not undefined, so null counts as a value, as a JSON
 // member holding null is present.
-func (Support) Presence(t types.Type, v ext.Gen) (ext.Gen, string, bool) {
+func (Support) Presence(t types.Type, v genext.Gen) (genext.Gen, string, bool) {
 	switch {
 	case isOption(t):
 		return lang.Expr("%s.IsSome()", v), "none", true
@@ -84,7 +84,7 @@ func (Support) Presence(t types.Type, v ext.Gen) (ext.Gen, string, bool) {
 
 // Zero tells the zero value by IsZero: a none opt.Option, an undefined
 // und.Und or elastic.Elastic.
-func (Support) Zero(t types.Type, v ext.Gen) (ext.Gen, string, bool) {
+func (Support) Zero(t types.Type, v genext.Gen) (genext.Gen, string, bool) {
 	if !isOption(t) && !isUnd(t) && !isElastic(t) {
 		return nil, "", false
 	}
@@ -94,7 +94,7 @@ func (Support) Zero(t types.Type, v ext.Gen) (ext.Gen, string, bool) {
 
 // Length tells the number of values an elastic.Elastic holds: the length
 // of its Options, none when it is undefined or null.
-func (Support) Length(t types.Type, v ext.Gen) (ext.Gen, bool) {
+func (Support) Length(t types.Type, v genext.Gen) (genext.Gen, bool) {
 	if !isElastic(t) {
 		return nil, false
 	}
@@ -103,7 +103,7 @@ func (Support) Length(t types.Type, v ext.Gen) (ext.Gen, bool) {
 }
 
 // Null tells a null und.Und or elastic.Elastic by IsNull.
-func (Support) Null(t types.Type, v ext.Gen) (ext.Gen, bool) {
+func (Support) Null(t types.Type, v genext.Gen) (genext.Gen, bool) {
 	if !isUnd(t) && !isElastic(t) {
 		return nil, false
 	}

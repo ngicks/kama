@@ -1,9 +1,9 @@
 // Package opt holds the type support of the option types of
 // github.com/ngicks/option and registers it into the default registry of
-// package ext in its init function. A program importing package validator
-// imports this package with it.
+// package genext in its init function. A program importing package
+// validator imports this package with it.
 //
-// Support tells the generator and the validators about these types. JSON
+// Support tells the generators and the validators about these types. JSON
 // locations below name the members the types encode as:
 //
 //   - opt.Option holds one value, role "t", when IsSome reports true. It is

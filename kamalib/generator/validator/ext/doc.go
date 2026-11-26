@@ -5,43 +5,45 @@
 // # Extension packages
 //
 // An extension package provides validators and type supports. It
-// registers them into the default registry with Register and
-// RegisterTypeSupport in its init function. Package basic holds the
-// built-in validators, package opt holds the type support of
-// github.com/ngicks/option, and package std holds the type supports of
-// types of the standard library, such as time.Time and sql.NullString.
-// Package validator imports the three with blank imports, so that a
-// program generating validators gets them. A third
-// party adds an extension package the same way, and a program imports
-// that package with a blank import too:
+// registers validators into the default registry of this package with
+// Register in its init function, and type supports into the default
+// registry of package genext with genext.RegisterTypeSupport. Package
+// basic holds the built-in validators. Package genext/opt holds the type
+// support of github.com/ngicks/option, and package genext/std holds the
+// type supports of types of the standard library, such as time.Time and
+// sql.NullString. Package validator imports the three with blank imports,
+// so that a program generating validators gets them. A third party adds an
+// extension package the same way, and a program imports that package with
+// a blank import too:
 //
 //	package myext
 //
 //	func init() {
 //		ext.Register(multiple{})
-//		ext.RegisterTypeSupport(dequeSupport{})
+//		genext.RegisterTypeSupport(dequeSupport{})
 //	}
 //
-// Register and RegisterTypeSupport panic on a name that is registered
-// already. Two extension packages must not claim one name.
+// Register and genext.RegisterTypeSupport panic on a name that is
+// registered already. Two extension packages must not claim one name.
 //
 // # Type supports
 //
-// A TypeSupport tells about the values a named type of a package holds,
-// which the generator cannot see through its fields. Pointers, slices,
-// arrays and maps need none. A support implements one or more of these
-// interfaces, and each method reports false for a type the support does
-// not claim:
+// A genext.TypeSupport tells about the values a named type of a package
+// holds, which the generator cannot see through its fields. Package genext
+// describes the neutral model: genext.Holder, genext.Container and
+// genext.Composite, the roles of held values and the segments locating
+// them. The generator walks into what they tell: Validate of the type of a
+// held value validates it, and a rule rejecting a type a genext.Holder
+// claims applies to the value held, under its guard, as it does to the
+// value a pointer points to. A rule rejecting a type a genext.Composite
+// claims does not apply to the values it holds. Target selection walks
+// into the types genext.Dependants tells, so a type argument holding
+// something to validate makes the type holding the claimed type a target.
 //
-//   - Holder: the one value a type may hold, as opt.Option holds one. The
-//     generator walks into it under its guard, and a rule rejecting the
-//     type applies to the value held.
-//   - Container: the elements of a type, ranged over and located by index
-//     or key, as elastic.Elastic holds its elements.
-//   - Composite: several values side by side, each of its own type, under
-//     its own guard and located by its own segment, as either.Either holds
-//     a left or a right value and tuple.Tuple2 holds two. A rule rejecting
-//     the type does not apply to them.
+// The validator asks a support more through the optional interfaces of
+// this package. Each method reports false for a type the support does not
+// claim:
+//
 //   - PresenceTester, ZeroTester and NullTester: how required, zero and
 //     null test a value of the type.
 //   - LengthTester: how length counts the values of the type, as it counts
@@ -52,53 +54,16 @@
 //     Compare gives the condition the generated code tests. A comparison
 //     the support leaves to the rule takes the test of the rule.
 //
-// Each held value, each element and each value of a Composite has a role
-// name, such as "t", "l" or "v1". A role names the value among the values
-// a type holds, and a keyword item of //kama:validate naming a role applies
-// its rules to the values of the role. The role names a support gives are
-// part of its API. A role name is a name of package pkg/dircmnt/expr, and
-// it is no word of //kama:validate, as hook or g, and no name of a
-// validator. The generator reports such a role as an error. Roles lists the
-// roles of a type: e for the elements of a slice or an array and for the
-// value a pointer points to, k and v for the keys and the values of a map,
-// and the roles of the supports. RoleValue tells how the values of a role
-// are reached: their type, the guard, the value expression or the range
-// expression, and the segment locating them. A caller applying a rule to
-// the values of a role applies it to that value under that guard, or in
-// that loop, and locates its errors by that segment.
+// Presence, Zero, Null, Length, Comparable and Compare ask the supports of
+// a Resolver in the order they were registered, and the first support
+// claiming a type answers. A rule keeps the Resolver its Parse received to
+// ask them.
 //
-// The generator asks the supports at the point it needs an answer, in the
-// order they were registered, and the first support claiming a type
-// answers. HeldValue, HolderOf, ContainerOf, Presence, Zero, Null,
-// Length, Comparable, Compare and Dependants ask the supports of a
-// Resolver. A rule keeps the Resolver its
-// Parse received to ask them. Target selection walks into the types
-// Dependants tells, so a type argument holding something to validate
-// makes the type holding the claimed type a target.
-//
-// A support of a double-ended queue of a third party package, whose method
-// Iter yields its elements by index, is a Container:
-//
-//	type dequeSupport struct{}
-//
-//	func (dequeSupport) Name() string { return "deque" }
-//
-//	func (dequeSupport) Elements(
-//		t types.Type,
-//		v ext.Gen,
-//	) (string, types.Type, ext.Gen, ext.Segment, bool) {
-//		named, ok := types.Unalias(t).(*types.Named)
-//		if !ok || named.Obj().Pkg() == nil ||
-//			named.Obj().Pkg().Path() != "github.com/gammazero/deque" ||
-//			named.Obj().Name() != "Deque" {
-//			return "", nil, nil, 0, false
-//		}
-//
-//		return "e", named.TypeArgs().At(0), lang.Expr("%s.Iter()", v), ext.SegmentIndex, true
-//	}
-//
-// The generated Validate then ranges over v.Iter() and validates each
-// element of a type with Validate, locating its errors by index.
+// A keyword item of //kama:validate naming a role applies its rules to the
+// values of the role, as genext.RoleValue reaches them. A role name of a
+// support must not be one of ItemWords or the name of a validator of the
+// registry, so that an item names one thing. The generator reports such a
+// role as an error.
 //
 // A support of a decimal type of a third party package, which compares
 // through its method Cmp, is a Comparer. It reads the operand at

@@ -1,6 +1,6 @@
 // Package std registers the type supports of types of the standard library
-// in the default registry of package ext. Package validator imports it, so
-// every run of the generator knows these types.
+// in the default registry of package genext. Package validator imports it,
+// so every run of the generator knows these types.
 //
 // Types holding a value. The nested validation and the role t reach the
 // value, and a rule the type itself does not take applies to the value

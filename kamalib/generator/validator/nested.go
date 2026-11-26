@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
@@ -19,7 +20,7 @@ import (
 // A value of a target or an implementor is validated by its Validate and a
 // value of a type parameter by the function given for it. The walk goes
 // through pointers, slices, arrays, map values, the values the types an
-// ext.Holder or an ext.Container of the registry claims hold, the
+// genext.Holder or an genext.Container of the registry claims hold, the
 // fields of struct type literals and named array and pointer types of
 // packages outside the run, and never into the underlying type of another
 // named type. A struct, slice or map type of the run holding something to
@@ -53,7 +54,7 @@ func (w *writer) nested(t types.Type, x genExpr, wrap wrapFunc, depth int) (genS
 	case *types.Array:
 		return w.indexed(w.walker(u.Elem()), x, wrap, depth)
 	case *types.Map:
-		return w.elements(w.walker(u.Elem()), x, wrap, depth, ext.SegmentKey, u.Key())
+		return w.elements(w.walker(u.Elem()), x, wrap, depth, genext.SegmentKey, u.Key())
 	case *types.Struct:
 		return w.structFields(u, x, wrap, depth)
 	}
@@ -106,14 +107,14 @@ func (w *writer) nestedNamed(
 ) (genStep, error) {
 	reg := w.sel.opts.Registry
 
-	if h, ok := ext.HolderOf(reg, named); ok {
+	if h, ok := genext.HolderOf(reg, named); ok {
 		_, held, guard, value, _ := h.Held(named, x)
 		return w.guarded(held, guard, value, wrap, depth)
 	}
 
-	if c, ok := ext.ContainerOf(reg, named); ok {
+	if c, ok := genext.ContainerOf(reg, named); ok {
 		_, elem, over, segment, _ := c.Elements(named, x)
-		if segment != ext.SegmentIndex {
+		if segment != genext.SegmentIndex {
 			return w.elements(w.walker(elem), over, wrap, depth, segment, nil)
 		}
 
@@ -132,7 +133,7 @@ func (w *writer) nestedNamed(
 		return rangeContainer(named, over, idx, local, s), nil
 	}
 
-	if c, ok := ext.CompositeOf(reg, named); ok {
+	if c, ok := genext.CompositeOf(reg, named); ok {
 		return w.parts(c, named, x, wrap, depth)
 	}
 
@@ -212,7 +213,7 @@ func (w *writer) guarded(
 // holds as c tells, each under its guard and located by its segment, or nil
 // when they hold nothing to validate.
 func (w *writer) parts(
-	c ext.Composite,
+	c genext.Composite,
 	named *types.Named,
 	x genExpr,
 	wrap wrapFunc,
@@ -248,15 +249,15 @@ func (w *writer) parts(
 
 // locate returns wrap adding the segment of the kind segment labelled label
 // to an error first.
-func (w *writer) locate(segment ext.Segment, label genExpr, wrap wrapFunc) wrapFunc {
+func (w *writer) locate(segment genext.Segment, label genExpr, wrap wrapFunc) wrapFunc {
 	var fn string
 
 	switch segment {
-	case ext.SegmentIndex:
+	case genext.SegmentIndex:
 		fn = "Index"
-	case ext.SegmentKey:
+	case genext.SegmentKey:
 		fn = "Key"
-	case ext.SegmentField:
+	case genext.SegmentField:
 		fn = "Field"
 	default:
 		return wrap
@@ -294,7 +295,7 @@ func (w *writer) indexed(
 	idx, local := loopName("i", depth), loopName("s", depth)
 
 	s, err := element(
-		indexElem(x, idx, local), w.locate(ext.SegmentIndex, lang.Name(idx), wrap), depth+1,
+		indexElem(x, idx, local), w.locate(genext.SegmentIndex, lang.Name(idx), wrap), depth+1,
 	)
 	if s == nil || err != nil {
 		return nil, err
@@ -429,11 +430,11 @@ func (w *writer) elements(
 	x genExpr,
 	wrap wrapFunc,
 	depth int,
-	segment ext.Segment,
+	segment genext.Segment,
 	key types.Type,
 ) (genStep, error) {
 	idx := "i"
-	if segment == ext.SegmentKey {
+	if segment == genext.SegmentKey {
 		idx = "k"
 	}
 

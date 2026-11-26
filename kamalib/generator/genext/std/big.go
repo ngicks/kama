@@ -9,13 +9,14 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 const bigPath = "math/big"
 
-// Big is the ext.TypeSupport of *big.Int, *big.Float and *big.Rat. It
+// Big is the genext.TypeSupport of *big.Int, *big.Float and *big.Rat. It
 // implements ext.Comparer.
 //
 // A value compares by Cmp with a number literal, read exactly, as in
@@ -48,7 +49,7 @@ func (Big) Comparable(t types.Type, op, operand string) (bool, error) {
 
 // Compare compares by Cmp with the operand, which a package-level variable
 // holds so that it is not parsed on every call.
-func (Big) Compare(e ext.Emitter, t types.Type, v ext.Gen, op, operand string) ext.Gen {
+func (Big) Compare(e ext.Emitter, t types.Type, v genext.Gen, op, operand string) genext.Gen {
 	name, _ := bigName(t)
 	r, _ := bigOperand(name, operand, op == ext.OpMultiple)
 	operandVar := declareBig(e, name, r)
@@ -113,7 +114,7 @@ var errNotPositive = errors.New("multipleof takes a positive integer")
 // declareBig declares the package-level variable holding r, a *big.Int for
 // the type Int and a *big.Rat otherwise, and returns its name. The name
 // derives from the value, so that equal operands share one variable.
-func declareBig(e ext.Emitter, name string, r *big.Rat) ext.Gen {
+func declareBig(e ext.Emitter, name string, r *big.Rat) genext.Gen {
 	kind, text := "Rat", r.String()
 	if name == "Int" {
 		kind, text = "Int", r.Num().String()

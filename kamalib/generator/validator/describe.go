@@ -8,6 +8,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
@@ -120,7 +121,7 @@ func roleItems(items []expr.Arg, role string) []expr.Arg {
 }
 
 // heldRoles returns the roles of the values a value of type t holds: those
-// the description among items tells, else those of ext.Roles.
+// the description among items tells, else those of genext.Roles.
 func (w *writer) heldRoles(t types.Type, items []expr.Arg) ([]string, error) {
 	word, method, err := description(items)
 	if err != nil {
@@ -129,7 +130,7 @@ func (w *writer) heldRoles(t types.Type, items []expr.Arg) ([]string, error) {
 
 	switch word {
 	case "":
-		return ext.Roles(w.sel.opts.Registry, t), nil
+		return genext.Roles(w.sel.opts.Registry, t), nil
 	case ext.Iter2Word:
 		if _, _, err := iterated(t, w.scope.Pkg.Types, word, method); err != nil {
 			return nil, err
@@ -257,13 +258,13 @@ func (w *writer) described(
 	keyed := word == ext.Iter2Word && typequery.BasicInfo(key)&(types.IsInteger|types.IsString) != 0
 	k, e, i := loopName("k", depth), loopName("e", depth), loopName("i", depth)
 
-	held, v, label, segment := value, lang.Name(e), lang.Name(i), ext.SegmentIndex
+	held, v, label, segment := value, lang.Name(e), lang.Name(i), genext.SegmentIndex
 	if role == "k" {
 		held, v = key, lang.Name(k)
 	}
 
 	if keyed {
-		label, segment = lang.Name(k), ext.SegmentKey
+		label, segment = lang.Name(k), genext.SegmentKey
 	}
 
 	s, err := inner(held, v, w.locate(segment, label, wrap), depth+1)

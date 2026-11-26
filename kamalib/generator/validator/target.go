@@ -14,8 +14,8 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
-	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 	"github.com/ngicks/kama/kamalib/pkg/typegraph"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
@@ -173,7 +173,7 @@ func (s *selection) validatesValue(n *typegraph.Node) bool {
 // reaches reports whether a value of type t holds a value of a named type
 // that pred reports true for, where Validate walks: through pointers,
 // slices, arrays, map values, aliases, the fields of struct type literals
-// and the types ext.Dependants tells for a type a type support claims. A
+// and the types genext.Dependants tells for a type a type support claims. A
 // named
 // pointer or array type of a package outside the run is walked through
 // when pred reports false for it, as throughForeign tells. Any other named
@@ -209,7 +209,7 @@ func (s *selection) reachesLeaf(t types.Type, pred func(leaf types.Type) bool) b
 	walk = func(t types.Type) bool {
 		switch u := types.Unalias(t).(type) {
 		case *types.Named:
-			deps := slices.Collect(ext.Dependants(s.opts.Registry, u))
+			deps := slices.Collect(genext.Dependants(s.opts.Registry, u))
 
 			switch {
 			case len(deps) > 0:

@@ -3,18 +3,18 @@ package std
 import (
 	"go/types"
 
-	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
-func init() { ext.RegisterTypeSupport(Sql{}, Unique{}, Time{}, Big{}, Netip{}) }
+func init() { genext.RegisterTypeSupport(Sql{}, Unique{}, Time{}, Big{}, Netip{}) }
 
 type (
 	ref    = genhelper.Ref
 	shadow = genhelper.Shadow
 )
 
-var lang genhelper.Lang[ext.Context]
+var lang genhelper.Lang[genext.Context]
 
 // field returns the type of the field name of the struct type t, as the
 // instance t is.

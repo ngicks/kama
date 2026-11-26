@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
@@ -95,8 +96,8 @@ func (w *writer) over(
 
 	idx := "i"
 
-	_, _, over, _, segment, _, _ := ext.RoleValue(reg, t, x, role, nil, nil)
-	if segment == ext.SegmentKey {
+	_, _, over, _, segment, _, _ := genext.RoleValue(reg, t, x, role, nil, nil)
+	if segment == genext.SegmentKey {
 		idx = "k"
 	}
 
@@ -112,11 +113,11 @@ func (w *writer) over(
 	switch {
 	case indexable:
 		elem = indexElem(x, idx, local)
-	case over != nil && segment == ext.SegmentIndex:
+	case over != nil && segment == genext.SegmentIndex:
 		elem = containerElem(t, over, local, idx)
 	}
 
-	held, guard, over, value, segment, label, _ := ext.RoleValue(
+	held, guard, over, value, segment, label, _ := genext.RoleValue(
 		reg, t, x, role, lang.Name(idx), elem,
 	)
 
@@ -150,7 +151,7 @@ func (w *writer) over(
 		return lang.ForRange(idx, "", over, s), nil
 	}
 
-	if segment == ext.SegmentIndex {
+	if segment == genext.SegmentIndex {
 		return rangeContainer(t, over, idx, local, s), nil
 	}
 

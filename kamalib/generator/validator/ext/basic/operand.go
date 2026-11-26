@@ -8,6 +8,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
@@ -109,7 +110,7 @@ type combination struct {
 
 // rule returns the combinator of the operands resolved, to apply to a
 // value of type t. When no single level of t, t itself or a value it holds
-// as ext.HeldValue tells, takes every operand, each operand applies to the
+// as genext.HeldValue tells, takes every operand, each operand applies to the
 // outermost level taking it, as in nil or not cmp(0) on a value of type
 // *int. A value holding none passes such an operand. Otherwise the
 // combinator applies whole, so that the generator applies it to the level
@@ -130,7 +131,7 @@ func (c combination) rule(t types.Type) (ext.Rule, error) {
 		return whole, nil
 	}
 
-	for held, _, _, ok := ext.HeldValue(c.reg, t, nil); ok; held, _, _, ok = ext.HeldValue(
+	for held, _, _, ok := genext.HeldValue(c.reg, t, nil); ok; held, _, _, ok = genext.HeldValue(
 		c.reg, held, nil,
 	) {
 		if whole.Check(held) == nil {

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
@@ -47,9 +47,9 @@ func (Support) Roles(t types.Type) []string {
 // locate the fields.
 func (Support) Part(
 	t types.Type,
-	v ext.Gen,
+	v genext.Gen,
 	role string,
-) (types.Type, ext.Gen, ext.Gen, ext.Segment, ext.Gen, bool) {
+) (types.Type, genext.Gen, genext.Gen, genext.Segment, genext.Gen, bool) {
 	named, ok := types.Unalias(t).(*types.Named)
 	if !ok {
 		return nil, nil, nil, 0, nil, false
@@ -58,9 +58,9 @@ func (Support) Part(
 	args := named.TypeArgs()
 	untagged := isUntaggedEither(t) || isUntaggedResult(t)
 
-	segment := ext.SegmentField
+	segment := genext.SegmentField
 	if untagged {
-		segment = ext.SegmentNone
+		segment = genext.SegmentNone
 	}
 
 	switch {
@@ -88,7 +88,7 @@ func (Support) Part(
 	field := fmt.Sprintf("V%d", i)
 
 	return args.At(i - 1), nil, lang.Expr("%s.%s", v, field),
-		ext.SegmentField, lang.Expr("%s", strconv.Quote(field)), true
+		genext.SegmentField, lang.Expr("%s", strconv.Quote(field)), true
 }
 
 const (

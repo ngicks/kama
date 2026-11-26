@@ -3,7 +3,7 @@ package std
 import (
 	"go/types"
 
-	"github.com/ngicks/kama/kamalib/generator/validator/ext"
+	"github.com/ngicks/kama/kamalib/generator/genext"
 )
 
 const sqlPath = "database/sql"
@@ -22,8 +22,8 @@ var sqlValues = map[string]string{
 	"NullTime":    "Time",
 }
 
-// Sql is the ext.TypeSupport of sql.Null[T] and the null types of
-// database/sql, such as sql.NullString. It implements ext.Holder,
+// Sql is the genext.TypeSupport of sql.Null[T] and the null types of
+// database/sql, such as sql.NullString. It implements genext.Holder,
 // ext.PresenceTester and ext.NullTester.
 type Sql struct{}
 
@@ -33,7 +33,7 @@ func (Sql) Name() string { return sqlPath }
 // Held tells the value a null type holds when Valid is set: V of
 // sql.Null[T], String of sql.NullString and so on. The role of the value is
 // "t".
-func (Sql) Held(t types.Type, v ext.Gen) (string, types.Type, ext.Gen, ext.Gen, bool) {
+func (Sql) Held(t types.Type, v genext.Gen) (string, types.Type, genext.Gen, genext.Gen, bool) {
 	name, ok := sqlField(t)
 	if !ok {
 		return "", nil, nil, nil, false
@@ -43,7 +43,7 @@ func (Sql) Held(t types.Type, v ext.Gen) (string, types.Type, ext.Gen, ext.Gen, 
 }
 
 // Presence tells a null type holding a value by Valid.
-func (Sql) Presence(t types.Type, v ext.Gen) (ext.Gen, string, bool) {
+func (Sql) Presence(t types.Type, v genext.Gen) (genext.Gen, string, bool) {
 	if _, ok := sqlField(t); !ok {
 		return nil, "", false
 	}
@@ -52,7 +52,7 @@ func (Sql) Presence(t types.Type, v ext.Gen) (ext.Gen, string, bool) {
 }
 
 // Null tells a null type being null by Valid unset.
-func (Sql) Null(t types.Type, v ext.Gen) (ext.Gen, bool) {
+func (Sql) Null(t types.Type, v genext.Gen) (genext.Gen, bool) {
 	if _, ok := sqlField(t); !ok {
 		return nil, false
 	}

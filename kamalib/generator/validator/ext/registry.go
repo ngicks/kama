@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
@@ -26,7 +27,7 @@ type Validator interface {
 	// r is the resolver in use. A validator whose args are rules, as
 	// oneof(...) is, resolves them through Resolve with r. A rule testing
 	// the values a type holds keeps r and asks its type supports, through
-	// HeldValue, Presence and the other functions taking a Resolver. A
+	// genext.HeldValue, Presence and the other functions taking r. A
 	// validator reports an arg it does not know through r.Warn.
 	//
 	// An error reports an arg that is wrong whatever the type is. It should
@@ -50,9 +51,9 @@ type Resolver interface {
 	Operator(n expr.Node) (Operator, bool)
 	// Names returns the names of the validators, sorted.
 	Names() []string
-	// TypeSupports returns the type supports in the order they were
-	// registered, which is the order they are asked in.
-	TypeSupports() iter.Seq[TypeSupport]
+	// Supports gives the type supports in the order they were registered,
+	// which is the order they are asked in.
+	genext.Supports
 	// Warn reports a problem of a directive that does not stop the run, as
 	// an arg no parameter takes.
 	Warn(w error)
@@ -104,7 +105,7 @@ var ErrUnknown = errors.New("validator: unknown validator")
 // ErrArgs marks an error of Validator.Parse, which the argument causes
 // for any type. A validator wraps it as fmt.Errorf("%w: ...", ErrArgs) does.
 // The generator reports such an error at once. It does not apply the
-// validator again to the value HeldValue tells. That
+// validator again to the value genext.HeldValue tells. That
 // attempt would fail the same way.
 var ErrArgs = errors.New("validator: invalid args")
 
@@ -115,7 +116,7 @@ const ValidationPath = "github.com/ngicks/kama/kamaruntime/validator"
 // Rule is a validator with its arg decoded.
 //
 // The generator applies a rule to the type of the field first. When Check
-// rejects it and the field holds one value, as HeldValue tells for a
+// rejects it and the field holds one value, as genext.HeldValue tells for a
 // pointer and a type a Holder claims, the generator applies it to the
 // value held, under a guard that skips the rule when no value is held. A
 // rule in the doc comment of a type applies to the value of the type
@@ -144,7 +145,7 @@ type Rule interface {
 //
 // Elsewhere the rule is an ordinary Rule. The doc comment of a type of
 // another kind and a field take it when its Check accepts the type, or for
-// a field the value HeldValue tells, as
+// a field the value genext.HeldValue tells, as
 // members accepts raw JSON text. The generator then calls Check and Emit
 // of the rule itself. A Check rejecting every type but the struct types
 // keeps the rule to the doc comments of struct types.
@@ -158,7 +159,7 @@ type StructRule interface {
 // SiblingRule is a Rule of a struct field that reads the other fields of
 // the struct holding the field. The generator never calls Check and Emit
 // of the rule itself. It applies the rule Siblings returns to the field.
-// It never applies that rule to the value HeldValue tells for the
+// It never applies that rule to the value genext.HeldValue tells for the
 // field, and it adds no path segment of the field to its errors. The
 // errors are located at the struct, and the rule adds the segment of each
 // error itself, as validator.Field does.
@@ -243,13 +244,17 @@ type Annotator interface {
 type Registry struct {
 	validators map[string]Validator
 	operators  map[reflect.Type]Operator
-	supports   []TypeSupport
+	supports   *genext.Registry
 }
 
 // NewRegistry returns a registry holding vs and no type support. A later
 // validator replaces an earlier one of the same name.
 func NewRegistry(vs ...Validator) *Registry {
-	r := &Registry{validators: map[string]Validator{}, operators: map[reflect.Type]Operator{}}
+	r := &Registry{
+		validators: map[string]Validator{},
+		operators:  map[reflect.Type]Operator{},
+		supports:   genext.NewRegistry(),
+	}
 	for _, v := range vs {
 		r.Register(v)
 	}
@@ -257,9 +262,11 @@ func NewRegistry(vs ...Validator) *Registry {
 	return r
 }
 
-// defaults holds what extension packages register in their init
-// functions. Callers get clones of it, so that a change to one registry
-// never leaks into another run.
+// defaults holds the validators and the operators extension packages
+// register in their init functions. Callers get clones of it, so that a
+// change to one registry never leaks into another run. The type supports
+// live in the default registry of package genext, which every generator
+// shares.
 var defaults = NewRegistry()
 
 // Register adds vs to the default registry. It panics when a validator of
@@ -287,27 +294,17 @@ func RegisterOperator(kind expr.Node, op Operator) {
 	defaults.RegisterOperator(kind, op)
 }
 
-// RegisterTypeSupport adds ss to the default registry. It panics when a
-// support of the same name is registered already. An extension package
-// calls it in its init function.
-func RegisterTypeSupport(ss ...TypeSupport) {
-	for _, s := range ss {
-		if slices.ContainsFunc(defaults.supports, func(d TypeSupport) bool {
-			return d.Name() == s.Name()
-		}) {
-			panic(fmt.Errorf("ext: type support %s is registered twice", s.Name()))
-		}
-
-		defaults.RegisterTypeSupport(s)
-	}
-}
-
-// DefaultRegistry returns a new registry holding the validators, the
-// operators and the type supports registered through Register,
-// RegisterOperator and RegisterTypeSupport.
-// Package validator imports packages basic and opt for their
+// DefaultRegistry returns a new registry holding the validators and the
+// operators registered through Register and RegisterOperator, and the
+// type supports registered through genext.RegisterTypeSupport. Package
+// validator imports packages basic, genext/opt and genext/std for their
 // registrations.
-func DefaultRegistry() *Registry { return defaults.Clone() }
+func DefaultRegistry() *Registry {
+	r := defaults.Clone()
+	r.supports = genext.DefaultRegistry()
+
+	return r
+}
 
 // Register adds v, replacing the validator of the same name.
 func (r *Registry) Register(v Validator) { r.validators[v.Name()] = v }
@@ -330,19 +327,11 @@ func (*Registry) Warn(error) {}
 
 // RegisterTypeSupport adds s after the supports of r, replacing the
 // support of the same name in its place.
-func (r *Registry) RegisterTypeSupport(s TypeSupport) {
-	i := slices.IndexFunc(r.supports, func(d TypeSupport) bool { return d.Name() == s.Name() })
-	if i >= 0 {
-		r.supports[i] = s
-		return
-	}
-
-	r.supports = append(r.supports, s)
-}
+func (r *Registry) RegisterTypeSupport(s genext.TypeSupport) { r.supports.RegisterTypeSupport(s) }
 
 // TypeSupports returns the type supports of r in the order they were
 // registered. It implements Resolver.
-func (r *Registry) TypeSupports() iter.Seq[TypeSupport] { return slices.Values(r.supports) }
+func (r *Registry) TypeSupports() iter.Seq[genext.TypeSupport] { return r.supports.TypeSupports() }
 
 // Lookup returns the validator named name. It implements Resolver.
 func (r *Registry) Lookup(name string) (Validator, bool) {
@@ -363,7 +352,7 @@ func (r *Registry) Clone() *Registry {
 	return &Registry{
 		validators: maps.Clone(r.validators),
 		operators:  maps.Clone(r.operators),
-		supports:   slices.Clone(r.supports),
+		supports:   r.supports.Clone(),
 	}
 }
 

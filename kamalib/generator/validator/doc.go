@@ -144,7 +144,7 @@
 // value, so length(3) or null, t=length(le=64) asks for three elements or
 // null, each of at most 64 bytes. A role the type does not offer is an
 // error naming the roles it offers. The type supports of the registry give
-// the roles of the types they claim, as ext.Roles tells. A role a support
+// the roles of the types they claim, as genext.Roles tells. A role a support
 // names like a word of the directive or a validator is an error wrapping
 // ErrConflict.
 //
@@ -212,10 +212,10 @@
 // dependant is a dependant, and a dependant is a target too. A type holds
 // another through struct fields, the fields of struct type literals,
 // slice and array elements, map values, pointers, aliases and the values
-// the types a type support of the registry claims hold, as ext.Dependants
-// tells. Package ext/opt registers the support of opt.Option, und.Und,
+// the types a type support of the registry claims hold, as genext.Dependants
+// tells. Package genext/opt registers the support of opt.Option, und.Und,
 // elastic.Elastic and the types of packages either and tuple, and package
-// ext/std the supports of sql.Null[T] and unique.Handle[T], so their
+// genext/std the supports of sql.Null[T] and unique.Handle[T], so their
 // type arguments make dependants. Map keys,
 // channel elements and the type arguments of other generic types make no
 // dependant. The user did not
@@ -690,17 +690,18 @@
 // it. A validator named hook, pre, post, ignore, decoded, file or package
 // makes Generate fail with an error wrapping ErrConflict. Package ext
 // documents the registry, how to write a validator and how to add an
-// extension package. Package basic holds the built-in validators. Package
-// opt holds the type support of github.com/ngicks/option, which tells the
+// extension package. Package genext documents the type supports, which
+// every generator shares. Package basic holds the built-in validators.
+// Package genext/opt holds the type support of github.com/ngicks/option, which tells the
 // generator and the validators about the values opt.Option, und.Und,
 // elastic.Elastic and the types of packages either and tuple hold. Package
-// std holds the type supports of types of the standard library: the null
+// genext/std holds the type supports of types of the standard library: the null
 // types of database/sql and unique.Handle hold a value, cmp compares
 // time.Time, time.Duration and the pointers of math/big with operands such
 // as "1s", and zero and required test netip.Addr and netip.Prefix by
 // IsValid. Its doc lists each type and rule. This package imports the
-// three with blank imports, which register them into the default registry
-// of ext. The registry of
+// three with blank imports, which register them into the default
+// registries of ext and genext. The registry of
 // Options.Registry also holds the type supports the walk, the selection of
 // targets and the validators ask.
 //

@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"go/types"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
@@ -15,7 +16,7 @@ import (
 // brings the validators of raw JSON text, such as not, props or contains,
 // to a value of a struct, a slice or a scalar type.
 //
-// It applies to a type of any kind but a pointer and a type an ext.Holder
+// It applies to a type of any kind but a pointer and a type an genext.Holder
 // claims, such as an opt.Option or an und.Und, so the generator applies it
 // to the value one holds, and the
 // encoding of an absent value, null, is never checked. Its operands apply
@@ -57,7 +58,7 @@ func (Json) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
 // Check accepts a type that holds no other value, when every operand
 // applies to jsontext.Value.
 func (o JsonOptions) Check(t types.Type) error {
-	if _, _, _, ok := ext.HeldValue(o.reg, t, nil); ok {
+	if _, _, _, ok := genext.HeldValue(o.reg, t, nil); ok {
 		return fmt.Errorf("%s may hold no value, whose encoding json would check", t)
 	}
 

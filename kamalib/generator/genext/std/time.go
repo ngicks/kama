@@ -7,13 +7,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
 const timePath = "time"
 
-// Time is the ext.TypeSupport of time.Time and time.Duration. It
+// Time is the genext.TypeSupport of time.Time and time.Duration. It
 // implements ext.Comparer.
 //
 // A time.Time compares with an RFC 3339 string, as in
@@ -59,7 +60,7 @@ func (Time) Comparable(t types.Type, op, operand string) (bool, error) {
 // Compare compares a time.Time by Compare with the instant of operand,
 // spelled by time.Unix so that it is not parsed on every call, and a
 // time.Duration with its number of nanoseconds.
-func (Time) Compare(e ext.Emitter, t types.Type, v ext.Gen, op, operand string) ext.Gen {
+func (Time) Compare(e ext.Emitter, t types.Type, v genext.Gen, op, operand string) genext.Gen {
 	if typequery.IsNamed(t, timePath, "Duration") {
 		s, _ := strconv.Unquote(operand)
 		d, _ := time.ParseDuration(s)

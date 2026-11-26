@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
@@ -560,7 +561,7 @@ func ruleError(vo ValidatorOptions, place string, err error) error {
 }
 
 // apply returns the step running r on the value x of type t. When r
-// cannot apply to t and t holds one value, as ext.HeldValue tells for a
+// cannot apply to t and t holds one value, as genext.HeldValue tells for a
 // pointer or an opt.Option, it applies r to that value when there is one.
 // The error tells why r applies to neither.
 func (w *writer) apply(r ext.Rule, t types.Type, x genExpr, wrap wrapFunc) (genStep, error) {
@@ -569,7 +570,7 @@ func (w *writer) apply(r ext.Rule, t types.Type, x genExpr, wrap wrapFunc) (genS
 		return w.emit(r, t, x, wrap), nil
 	}
 
-	held, guard, value, ok := ext.HeldValue(w.sel.opts.Registry, t, x)
+	held, guard, value, ok := genext.HeldValue(w.sel.opts.Registry, t, x)
 	if !ok || errors.Is(checkErr, ext.ErrClaimed) {
 		return nil, checkErr
 	}
@@ -591,7 +592,7 @@ func acceptsHeld(reg ext.Resolver, r ext.Rule, t types.Type) bool {
 			return true
 		}
 
-		held, _, _, ok := ext.HeldValue(reg, t, nil)
+		held, _, _, ok := genext.HeldValue(reg, t, nil)
 		if !ok {
 			return false
 		}

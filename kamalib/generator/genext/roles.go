@@ -1,4 +1,4 @@
-package ext
+package genext
 
 import "go/types"
 
@@ -7,10 +7,10 @@ import "go/types"
 // pointer points to, k and v for the keys and the values of a map, and the
 // roles the supports of r give for a type they claim. r may be nil.
 //
-// A role name is a Go identifier. It must not be hook, pre, post or the
-// name of a validator of the registry, so that a directive item can name
-// a role.
-func Roles(r Resolver, t types.Type) []string {
+// A role name is a Go identifier. A generator naming roles in its
+// directives may reserve names of its own, as the validator reserves its
+// item words and the names of its validators.
+func Roles(r Supports, t types.Type) []string {
 	switch types.Unalias(t).Underlying().(type) {
 	case *types.Slice, *types.Array, *types.Pointer:
 		return []string{"e"}
@@ -49,7 +49,7 @@ func Roles(r Resolver, t types.Type) []string {
 // pos and elem, the names the caller declares the range variables by. A
 // map key is pos itself.
 func RoleValue(
-	r Resolver,
+	r Supports,
 	t types.Type,
 	v Gen,
 	role string,

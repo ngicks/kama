@@ -8,6 +8,7 @@ import (
 
 	"gotest.tools/v3/assert"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/utils/gentest"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
@@ -32,13 +33,13 @@ func (s bagSupport) Held(t types.Type, v ext.Gen) (string, types.Type, ext.Gen, 
 func (s bagSupport) Elements(
 	t types.Type,
 	v ext.Gen,
-) (string, types.Type, ext.Gen, ext.Segment, bool) {
+) (string, types.Type, ext.Gen, genext.Segment, bool) {
 	if !s.is(t, "Bag") {
 		return "", nil, nil, 0, false
 	}
 
 	return "e", t.(*types.Named).TypeArgs().At(0),
-		lang.Expr("%s.All()", v), ext.SegmentIndex, true
+		lang.Expr("%s.All()", v), genext.SegmentIndex, true
 }
 
 func (s bagSupport) is(t types.Type, name string) bool {
@@ -173,36 +174,36 @@ type A struct {
 	reserved := append([]string{"hook", "pre", "post"}, reg.Names()...)
 
 	for field := range st.Fields() {
-		roles := ext.Roles(reg, field.Type())
+		roles := genext.Roles(reg, field.Type())
 		assert.DeepEqual(t, roles, want[field.Name()])
 
 		for _, role := range roles {
 			assert.Assert(t, token.IsIdentifier(role), role)
 			assert.Assert(t, !slices.Contains(reserved, role), role)
 
-			held, _, _, _, _, _, ok := ext.RoleValue(
+			held, _, _, _, _, _, ok := genext.RoleValue(
 				reg, field.Type(), lang.Expr("x"), role, lang.Expr("p"), lang.Expr("e"),
 			)
 			assert.Assert(t, ok, "%s %s", field.Name(), role)
 			assert.Assert(t, held != nil, "%s %s", field.Name(), role)
 		}
 
-		_, _, _, _, _, _, ok := ext.RoleValue(reg, field.Type(), nil, "nope", nil, nil)
+		_, _, _, _, _, _, ok := genext.RoleValue(reg, field.Type(), nil, "nope", nil, nil)
 		assert.Assert(t, !ok)
 	}
 
 	m := st.Field(2).Type()
-	key, _, over, value, segment, label, _ := ext.RoleValue(
+	key, _, over, value, segment, label, _ := genext.RoleValue(
 		reg, m, lang.Expr("x"), "k", lang.Expr("p"), lang.Expr("e"),
 	)
 	assert.Equal(t, key, types.Type(types.Typ[types.String]))
 	assert.Assert(t, over != nil)
-	assert.Equal(t, segment, ext.SegmentKey)
+	assert.Equal(t, segment, genext.SegmentKey)
 	assert.Equal(t, render(t, value), "p")
 	assert.Equal(t, render(t, label), "p")
 
 	tup := st.Field(10).Type()
-	_, guard, over, value, segment, label, _ := ext.RoleValue(
+	_, guard, over, value, segment, label, _ := genext.RoleValue(
 		reg,
 		tup,
 		lang.Expr("x"),
@@ -211,7 +212,7 @@ type A struct {
 		nil,
 	)
 	assert.Assert(t, guard == nil && over == nil)
-	assert.Equal(t, segment, ext.SegmentField)
+	assert.Equal(t, segment, genext.SegmentField)
 	assert.Equal(t, render(t, value), "x.V2")
 	assert.Equal(t, render(t, label), `"V2"`)
 }

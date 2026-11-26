@@ -1,17 +1,16 @@
 package ext
 
-import "github.com/ngicks/kama/kamalib/pkg/genhelper"
+import (
+	"github.com/ngicks/kama/kamalib/generator/genext"
+	"github.com/ngicks/kama/kamalib/pkg/genhelper"
+)
 
 type (
 	// Context is the context the code of a rule renders with.
-	Context = genhelper.BaseContext
+	Context = genext.Context
 	// Gen renders a piece of code, such as the expression Rule.Emit
 	// returns.
-	Gen = genhelper.Gen[Context]
+	Gen = genext.Gen
 	// Step renders code, such as the declaration Emitter.Declare takes.
 	Step = genhelper.Step[Context]
 )
-
-// lang is the vocabulary of steps for Context. It is zero-size and holds no
-// state.
-var lang genhelper.Lang[Context]
