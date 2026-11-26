@@ -755,7 +755,7 @@ func TestStopFlagRenamed(t *testing.T) {
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,
-		"func (v A) Validate(stopOnFirstError2 bool) error {",
+		"func (v *A) Validate(stopOnFirstError2 bool) error {",
 		`kamaValidateAll(stopOnFirstError2, kamaValidateCmp(v.N, ">=", 1), `+
 			`kamaValidateCmp(v.N, "<=", 3))`,
 	)

@@ -34,11 +34,11 @@ func TestHeldString(t *testing.T) {
 		})
 	}
 
-	err := model.Held{Length: und.Defined("")}.Validate(false)
+	err := (&model.Held{Length: und.Defined("")}).Validate(false)
 	assert.Assert(t, errors.Is(err, validator.ErrLength))
-	err = model.Held{Runes: und.Defined("あいう")}.Validate(false)
+	err = (&model.Held{Runes: und.Defined("あいう")}).Validate(false)
 	assert.Assert(t, errors.Is(err, validator.ErrLength))
-	err = model.Held{Pattern: und.Defined("A")}.Validate(false)
+	err = (&model.Held{Pattern: und.Defined("A")}).Validate(false)
 	assert.Assert(t, errors.Is(err, validator.ErrPattern))
 }
 
@@ -104,7 +104,7 @@ func TestOptionsOnTypeParameterWithoutValidate(t *testing.T) {
 		E: elastic.FromOptions(opt.Some(1), opt.None[int](), opt.Some(-1)),
 	}
 	// Generated code passes nil for a type without Validate.
-	assert.NilError(t, model.OptionsOf{Ints: ints}.Validate(false))
+	assert.NilError(t, (&model.OptionsOf{Ints: ints}).Validate(false))
 
 	notNegative := func(v int, _ bool) error {
 		if v < 0 {

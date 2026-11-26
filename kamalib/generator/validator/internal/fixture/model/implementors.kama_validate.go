@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T07:51:40Z
+// generated: 2026-11-26T08:31:47Z
 
 package model
 
@@ -17,33 +17,36 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Implementors) Validate(stopOnFirstError bool) error {
+func (v *Implementors) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Implementors")
+	}
 	var errs []error
-	if err := validator.Field((&v.Field).Validate(stopOnFirstError), "field"); err != nil {
+	if err := validator.Field(v.Field.Validate(stopOnFirstError), "field"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
 		errs = append(errs, err)
 	}
 	if v.Pointer != nil {
-		if err := validator.Field(v.Pointer.Validate(stopOnFirstError), "pointer"); err != nil {
+		if err := validator.Field((*v.Pointer).Validate(stopOnFirstError), "pointer"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	for i, e := range v.Slice {
-		if err := validator.Field(validator.Index((&e).Validate(stopOnFirstError), i), "slice"); err != nil {
+	for i := range v.Slice {
+		if err := validator.Field(validator.Index(v.Slice[i].Validate(stopOnFirstError), i), "slice"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	for i, e := range v.Pointers {
-		if e != nil {
-			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "pointers"); err != nil {
+	for i := range v.Pointers {
+		if v.Pointers[i] != nil {
+			if err := validator.Field(validator.Index((*v.Pointers[i]).Validate(stopOnFirstError), i), "pointers"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -53,7 +56,7 @@ func (v Implementors) Validate(stopOnFirstError bool) error {
 	}
 	for _, k := range slices.Sorted(maps.Keys(v.Map)) {
 		e := v.Map[k]
-		if err := validator.Field(validator.Key((&e).Validate(stopOnFirstError), k), "map"); err != nil {
+		if err := validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "map"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -63,7 +66,7 @@ func (v Implementors) Validate(stopOnFirstError bool) error {
 	if v.Option.IsSome() {
 		if err := validator.Field(func() error {
 			p := v.Option.Value()
-			return (&p).Validate(stopOnFirstError)
+			return p.Validate(stopOnFirstError)
 		}(), "option"); err != nil {
 			if stopOnFirstError {
 				return err
@@ -74,7 +77,7 @@ func (v Implementors) Validate(stopOnFirstError bool) error {
 	if v.Und.IsDefined() {
 		if err := validator.Field(func() error {
 			p := v.Und.Value()
-			return (&p).Validate(stopOnFirstError)
+			return p.Validate(stopOnFirstError)
 		}(), "und"); err != nil {
 			if stopOnFirstError {
 				return err
@@ -88,8 +91,8 @@ func (v Implementors) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v.Bares {
-		if err := validator.Field(validator.Index(e.Validate(), i), "bares"); err != nil {
+	for i := range v.Bares {
+		if err := validator.Field(validator.Index(v.Bares[i].Validate(), i), "bares"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -113,7 +116,7 @@ func (v Implementors) Validate(stopOnFirstError bool) error {
 			errs = append(errs, err)
 		}
 	}
-	if err := validator.Field((&v.Variadic).Validate(), "variadic"); err != nil {
+	if err := validator.Field(v.Variadic.Validate(), "variadic"); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -121,7 +124,10 @@ func (v Implementors) Validate(stopOnFirstError bool) error {
 	}
 	if v.VarOpt.IsSome() {
 		if v.VarOpt.Value() != nil {
-			if err := validator.Field(v.VarOpt.Value().Validate(stopOnFirstError), "varOpt"); err != nil {
+			if err := validator.Field(func() error {
+				p := (*v.VarOpt.Value())
+				return p.Validate(stopOnFirstError)
+			}(), "varOpt"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -132,7 +138,7 @@ func (v Implementors) Validate(stopOnFirstError bool) error {
 	{
 		i := 0
 		for e := range v.Listed.All() {
-			if err := validator.Field(validator.Index((&e).Validate(stopOnFirstError), i), "listed"); err != nil {
+			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "listed"); err != nil {
 				if stopOnFirstError {
 					return err
 				}

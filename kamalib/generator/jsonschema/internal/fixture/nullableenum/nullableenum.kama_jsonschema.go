@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:07Z
+// generated: 2026-11-26T08:15:40Z
 
 package nullableenum
 
@@ -90,7 +90,7 @@ func (v *LevelsConst) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = LevelsConst(out)
-	return kamaJsonschemaChecked(err, LevelsConst(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // LevelsBig is generated from the schema at #/properties/big/oneOf/0.
@@ -118,7 +118,7 @@ func (v *LevelsBig) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.Float64.Value(w)
 	*v = LevelsBig(out)
-	return kamaJsonschemaChecked(err, LevelsBig(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // Level is generated from the schema at #/$defs/Level.
@@ -146,5 +146,5 @@ func (v *Level) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.Int64.Value(w)
 	*v = Level(out)
-	return kamaJsonschemaChecked(err, Level(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }

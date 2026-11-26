@@ -820,10 +820,10 @@ type Inner struct {
 	assertContains(t, fs["S.Validate"],
 		"if v.P != nil {",
 		check(`validator.Field((*v.P).Validate(stopOnFirstError), "P")`),
-		"for i, e := range v.A {",
-		check(`validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "A")`),
+		"for i := range v.A {",
+		check(`validator.Field(validator.Index(v.A[i].Validate(stopOnFirstError), i), "A")`),
 		check(`validator.Field(validator.Key(validator.Index(`+
-			`e2.Validate(stopOnFirstError), i2), k), "M")`),
+			`e[i2].Validate(stopOnFirstError), i2), k), "M")`),
 		"if v.G != nil {",
 		check(`validator.Field((*v.G).Validate(stopOnFirstError), "G")`),
 		check(`validator.Field(v.V.Validate(stopOnFirstError), "V")`),
@@ -936,7 +936,7 @@ func TestSelectionDeepChain(t *testing.T) {
 
 			assert.NilError(t, err)
 			assert.Assert(t, elapsed < 30*time.Second, "Generate took %s", elapsed)
-			assertContains(t, gentest.ByBase(out)["x.kama_validate.go"], "func (v S) Validate(")
+			assertContains(t, gentest.ByBase(out)["x.kama_validate.go"], "func (v *S) Validate(")
 		})
 	}
 }

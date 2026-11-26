@@ -199,9 +199,9 @@ func TestProcRun(t *testing.T) {
 	assert.NilError(t, runProcSpec(t, root, `{option_file: {base: validate}}`))
 
 	tree := readTree(t, root)
-	assert.Assert(t, strings.Contains(tree["a/a.kama_validate.go"], "func (v A) Validate("))
+	assert.Assert(t, strings.Contains(tree["a/a.kama_validate.go"], "func (v *A) Validate("))
 	assert.Assert(t, strings.Contains(tree["a/"+HelpersFile], "func kamaValidateLength("))
-	assert.Assert(t, strings.Contains(tree["b/b.kama_validate.go"], "func (v B) Validate("))
+	assert.Assert(t, strings.Contains(tree["b/b.kama_validate.go"], "func (v *B) Validate("))
 	assert.Assert(t, strings.Contains(tree["b/b.kama_validate.go"], `option_file: "validate.yaml"`))
 
 	// A second run finds nothing to change.

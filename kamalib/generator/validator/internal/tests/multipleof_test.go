@@ -103,9 +103,9 @@ func TestMultipleOfSuite(t *testing.T) {
 // TestMultipleOfFloat32 reads a float32 as its own shortest decimal, which
 // the float64 it widens to does not share.
 func TestMultipleOfFloat32(t *testing.T) {
-	assert.NilError(t, model.MultipleOf{BySmallNumber32: 0.0075}.Validate(false))
+	assert.NilError(t, (&model.MultipleOf{BySmallNumber32: 0.0075}).Validate(false))
 
-	err := model.MultipleOf{BySmallNumber32: 0.00751}.Validate(false)
+	err := (&model.MultipleOf{BySmallNumber32: 0.00751}).Validate(false)
 	assert.ErrorContains(t, err, "want a multiple of 0.0001, got 0.00751")
 }
 
@@ -113,7 +113,7 @@ func TestMultipleOfFloat32(t *testing.T) {
 // nothing.
 func TestMultipleOfNonFinite(t *testing.T) {
 	for _, f := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
-		err := model.MultipleOf{ByNumber: f}.Validate(false)
+		err := (&model.MultipleOf{ByNumber: f}).Validate(false)
 		assert.ErrorIs(t, err, validator.ErrMultiple, f)
 	}
 }

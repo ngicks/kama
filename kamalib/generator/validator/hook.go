@@ -21,8 +21,9 @@ func hookName(v *types.Var) string {
 }
 
 // checkHook reports a hook of the field v of the struct target n that
-// Validate cannot call: a missing one, one on the pointer receiver and one
-// of another signature than func(bool) error.
+// Validate cannot call: a missing one and one of another signature than
+// func(bool) error. Validate of a struct target has the pointer receiver,
+// so it calls a hook on either receiver.
 func (s *selection) checkHook(n *typegraph.Node, v *types.Var) error {
 	named := n.Detail.Type
 	name := hookName(v)
@@ -41,12 +42,8 @@ func (s *selection) checkHook(n *typegraph.Node, v *types.Var) error {
 		)
 	}
 
-	sel := types.NewMethodSet(named).Lookup(pkg, name)
+	sel := types.NewMethodSet(types.NewPointer(named)).Lookup(pkg, name)
 	if sel == nil {
-		if types.NewMethodSet(types.NewPointer(named)).Lookup(pkg, name) != nil {
-			return fail("has its hook " + name + " on the pointer receiver")
-		}
-
 		return fail("has no hook " + name)
 	}
 
@@ -68,9 +65,10 @@ func (s *selection) typeOptions(id typegraph.QualifiedType) TypeOptions {
 
 // checkTypeFunc reports the function name that pre or post of the target n
 // names, set at src, when Validate cannot call it: a missing one and one of
-// another signature than func(T, bool) error, with T the type of n. A
-// generic n needs a function with type parameters of the same number that
-// takes n instantiated with them.
+// another signature than func(T, bool) error, with T the type of n, or
+// func(*T, bool) error for a struct target. A generic n needs a function
+// with type parameters of the same number that takes n instantiated with
+// them.
 func (s *selection) checkTypeFunc(n *typegraph.Node, name string, src optionSource) error {
 	named := n.Detail.Type
 	pkg := named.Obj().Pkg()
@@ -101,42 +99,60 @@ func (s *selection) checkTypeFunc(n *typegraph.Node, name string, src optionSour
 	}
 
 	sig := fn.Type().(*types.Signature)
-	if !takesValue(sig, named) {
+	if ok, pointer := takesValue(sig, named); !ok || pointer && !onPointerReceiver(named) {
 		return fail(fmt.Sprintf("names %s with signature %s", name, sig))
 	}
 
 	return nil
 }
 
-// takesValue reports whether sig is func(named, bool) error. For a generic
-// named, sig declares as many type parameters, and named instantiated with
-// them is its first parameter.
-func takesValue(sig *types.Signature, named *types.Named) bool {
+// typeFuncTakesPointer reports whether the function name, which pre or
+// post of the target n names and checkTypeFunc accepts, takes a pointer to
+// the value.
+func (s *selection) typeFuncTakesPointer(n *typegraph.Node, name string) bool {
+	named := n.Detail.Type
+	fn := named.Obj().Pkg().Scope().Lookup(name).(*types.Func)
+	_, pointer := takesValue(fn.Type().(*types.Signature), named)
+
+	return pointer
+}
+
+// takesValue reports whether sig is func(named, bool) error, or
+// func(*named, bool) error, which pointer tells. For a generic named, sig
+// declares as many type parameters, and named instantiated with them is
+// its first parameter.
+func takesValue(sig *types.Signature, named *types.Named) (ok, pointer bool) {
 	if sig.Variadic() || sig.Params().Len() != 2 || !returnsError(sig) ||
 		!types.Identical(sig.Params().At(1).Type(), types.Typ[types.Bool]) ||
 		sig.TypeParams().Len() != named.TypeParams().Len() {
-		return false
+		return false, false
 	}
 
-	if named.TypeParams().Len() == 0 {
-		return types.Identical(sig.Params().At(0).Type(), named)
+	first, value := sig.Params().At(0).Type(), types.Type(named)
+
+	if named.TypeParams().Len() > 0 {
+		args := opiter.WrapSeq(named.TypeParams().TypeParams()).
+			Map(func(tp *types.TypeParam) types.Type { return tp }).
+			CollectSlice()
+
+		inst, err := types.Instantiate(nil, sig, args, true)
+		if err != nil {
+			return false, false
+		}
+
+		value, err = types.Instantiate(nil, named.Origin(), args, false)
+		if err != nil {
+			return false, false
+		}
+
+		first = inst.(*types.Signature).Params().At(0).Type()
 	}
 
-	args := opiter.WrapSeq(named.TypeParams().TypeParams()).
-		Map(func(tp *types.TypeParam) types.Type { return tp }).
-		CollectSlice()
-
-	inst, err := types.Instantiate(nil, sig, args, true)
-	if err != nil {
-		return false
+	if types.Identical(first, value) {
+		return true, false
 	}
 
-	value, err := types.Instantiate(nil, named.Origin(), args, false)
-	if err != nil {
-		return false
-	}
-
-	return types.Identical(inst.(*types.Signature).Params().At(0).Type(), value)
+	return types.Identical(first, types.NewPointer(value)), true
 }
 
 // typeParamNames returns the names of the type parameters of named.

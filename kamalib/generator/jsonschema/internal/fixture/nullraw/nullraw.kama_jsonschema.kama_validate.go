@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:11Z
+// generated: 2026-11-26T08:15:44Z
 
 package nullraw
 
@@ -18,7 +18,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Root) Validate(stopOnFirstError bool) error {
+func (v *Root) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Root")
+	}
 	var errs []error
 	if err := validator.Field(rawjson.Kind(v.R, "integer", "null"), "r"); err != nil {
 		if stopOnFirstError {
@@ -135,7 +138,10 @@ func (v Root) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Root) ValidateShallow(stopOnFirstError bool) error {
+func (v *Root) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Root")
+	}
 	var errs []error
 	if err := validator.Field(rawjson.Kind(v.R, "integer", "null"), "r"); err != nil {
 		if stopOnFirstError {
@@ -220,7 +226,10 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootDOption1) Validate(stopOnFirstError bool) error {
+func (v *RootDOption1) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootDOption1")
+	}
 	return nil
 }
 
@@ -229,7 +238,7 @@ func (v RootDOption1) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v RootDOption1) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootDOption1) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -237,7 +246,10 @@ func (v RootDOption1) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootDInteger) Validate(stopOnFirstError bool) error {
+func (v *RootDInteger) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootDInteger")
+	}
 	return nil
 }
 
@@ -246,7 +258,7 @@ func (v RootDInteger) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v RootDInteger) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootDInteger) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 

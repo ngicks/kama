@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:15Z
+// generated: 2026-11-26T08:15:48Z
 
 package oneof
 
@@ -17,7 +17,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Zoo) Validate(stopOnFirstError bool) error {
+func (v *Zoo) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Zoo")
+	}
 	var errs []error
 	if err := validator.Field(v.Star.Validate(stopOnFirstError), "star"); err != nil {
 		if stopOnFirstError {
@@ -25,8 +28,8 @@ func (v Zoo) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v.Pets {
-		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "pets"); err != nil {
+	for i := range v.Pets {
+		if err := validator.Field(validator.Index(v.Pets[i].Validate(stopOnFirstError), i), "pets"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -65,7 +68,10 @@ func (v Zoo) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Zoo) ValidateShallow(stopOnFirstError bool) error {
+func (v *Zoo) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Zoo")
+	}
 	var errs []error
 	if err := validator.Field(v.Star.ValidateShallow(stopOnFirstError), "star"); err != nil {
 		if stopOnFirstError {
@@ -73,8 +79,8 @@ func (v Zoo) ValidateShallow(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v.Pets {
-		if err := validator.Field(validator.Index(e.ValidateShallow(stopOnFirstError), i), "pets"); err != nil {
+	for i := range v.Pets {
+		if err := validator.Field(validator.Index(v.Pets[i].ValidateShallow(stopOnFirstError), i), "pets"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -110,7 +116,10 @@ func (v Zoo) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ZooMixedString) Validate(stopOnFirstError bool) error {
+func (v *ZooMixedString) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ZooMixedString")
+	}
 	return nil
 }
 
@@ -119,7 +128,7 @@ func (v ZooMixedString) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v ZooMixedString) ValidateShallow(stopOnFirstError bool) error {
+func (v *ZooMixedString) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -127,7 +136,10 @@ func (v ZooMixedString) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ZooMixedInteger) Validate(stopOnFirstError bool) error {
+func (v *ZooMixedInteger) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ZooMixedInteger")
+	}
 	return nil
 }
 
@@ -136,7 +148,7 @@ func (v ZooMixedInteger) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v ZooMixedInteger) ValidateShallow(stopOnFirstError bool) error {
+func (v *ZooMixedInteger) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -144,7 +156,10 @@ func (v ZooMixedInteger) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ZooMixedObject) Validate(stopOnFirstError bool) error {
+func (v *ZooMixedObject) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ZooMixedObject")
+	}
 	var errs []error
 	if err := validator.Field(v.Object.Validate(stopOnFirstError), "Object"); err != nil {
 		if stopOnFirstError {
@@ -162,7 +177,10 @@ func (v ZooMixedObject) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v ZooMixedObject) ValidateShallow(stopOnFirstError bool) error {
+func (v *ZooMixedObject) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *ZooMixedObject")
+	}
 	return nil
 }
 
@@ -170,24 +188,10 @@ func (v ZooMixedObject) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ZooMixedObjectValue) Validate(stopOnFirstError bool) error {
-	return nil
-}
-
-// ValidateShallow is Validate for a decoded v, whose decoder calls it.
-// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
-// as valid.
-//
-//kama:generated kama:validate
-func (v ZooMixedObjectValue) ValidateShallow(stopOnFirstError bool) error {
-	return v.Validate(stopOnFirstError)
-}
-
-// Validate reports why v is invalid. With stopOnFirstError it returns the first
-// error found, otherwise every error joined, or nil when there is none.
-//
-//kama:generated kama:validate
-func (v ZooAmountInteger) Validate(stopOnFirstError bool) error {
+func (v *ZooMixedObjectValue) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ZooMixedObjectValue")
+	}
 	return nil
 }
 
@@ -196,7 +200,7 @@ func (v ZooAmountInteger) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v ZooAmountInteger) ValidateShallow(stopOnFirstError bool) error {
+func (v *ZooMixedObjectValue) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -204,7 +208,10 @@ func (v ZooAmountInteger) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ZooAmountNumber) Validate(stopOnFirstError bool) error {
+func (v *ZooAmountInteger) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ZooAmountInteger")
+	}
 	return nil
 }
 
@@ -213,7 +220,7 @@ func (v ZooAmountNumber) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v ZooAmountNumber) ValidateShallow(stopOnFirstError bool) error {
+func (v *ZooAmountInteger) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -221,7 +228,30 @@ func (v ZooAmountNumber) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v PetCat) Validate(stopOnFirstError bool) error {
+func (v *ZooAmountNumber) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ZooAmountNumber")
+	}
+	return nil
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v *ZooAmountNumber) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v *PetCat) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *PetCat")
+	}
 	var errs []error
 	if err := validator.Field(v.Cat.Validate(stopOnFirstError), "Cat"); err != nil {
 		if stopOnFirstError {
@@ -239,7 +269,10 @@ func (v PetCat) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v PetCat) ValidateShallow(stopOnFirstError bool) error {
+func (v *PetCat) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *PetCat")
+	}
 	return nil
 }
 
@@ -247,7 +280,10 @@ func (v PetCat) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v PetDog) Validate(stopOnFirstError bool) error {
+func (v *PetDog) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *PetDog")
+	}
 	var errs []error
 	if err := validator.Field(v.Dog.Validate(stopOnFirstError), "Dog"); err != nil {
 		if stopOnFirstError {
@@ -265,7 +301,10 @@ func (v PetDog) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v PetDog) ValidateShallow(stopOnFirstError bool) error {
+func (v *PetDog) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *PetDog")
+	}
 	return nil
 }
 
@@ -351,7 +390,10 @@ func (v petDogProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evalua
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Cat) Validate(stopOnFirstError bool) error {
+func (v *Cat) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Cat")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateConst(v.Kind, "cat"), "kind"); err != nil {
 		if stopOnFirstError {
@@ -367,7 +409,7 @@ func (v Cat) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Cat) ValidateShallow(stopOnFirstError bool) error {
+func (v *Cat) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -375,7 +417,10 @@ func (v Cat) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Dog) Validate(stopOnFirstError bool) error {
+func (v *Dog) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Dog")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateConst(v.Kind, "dog"), "kind"); err != nil {
 		if stopOnFirstError {
@@ -391,6 +436,6 @@ func (v Dog) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Dog) ValidateShallow(stopOnFirstError bool) error {
+func (v *Dog) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }

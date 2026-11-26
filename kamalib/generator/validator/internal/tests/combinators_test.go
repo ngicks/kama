@@ -12,10 +12,10 @@ import (
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
-func validCombinators() model.Combinators {
+func validCombinators() *model.Combinators {
 	amount := 3
 
-	return model.Combinators{
+	return &model.Combinators{
 		Even:   2,
 		Big:    0,
 		Word:   "abc",
@@ -28,8 +28,8 @@ func validCombinators() model.Combinators {
 }
 
 // invalidCombinators breaks every combinator of Combinators once.
-func invalidCombinators() model.Combinators {
-	return model.Combinators{
+func invalidCombinators() *model.Combinators {
+	return &model.Combinators{
 		Even:   3,
 		Big:    5,
 		Word:   "xyz",
@@ -147,10 +147,10 @@ func TestCombinatorsOneOfNone(t *testing.T) {
 func TestSparse(t *testing.T) {
 	one := 1
 
-	assert.NilError(t, model.Sparse{}.Validate(false))
-	assert.NilError(t, model.Sparse{A: opt.Some(1), B: &one}.Validate(false))
+	assert.NilError(t, (&model.Sparse{}).Validate(false))
+	assert.NilError(t, (&model.Sparse{A: opt.Some(1), B: &one}).Validate(false))
 
-	err := model.Sparse{C: opt.Some(1)}.Validate(false)
+	err := (&model.Sparse{C: opt.Some(1)}).Validate(false)
 	assert.ErrorIs(t, err, validator.ErrOr)
 	assert.ErrorContains(t, err, "want member count == 0, got 1")
 	assert.ErrorContains(t, err, "want member count >= 2, got 1")
@@ -158,9 +158,9 @@ func TestSparse(t *testing.T) {
 }
 
 func TestCounted(t *testing.T) {
-	assert.NilError(t, model.Counted{}.Validate(false))
+	assert.NilError(t, (&model.Counted{}).Validate(false))
 
-	err := model.Counted{A: opt.Some(1)}.Validate(false)
+	err := (&model.Counted{A: opt.Some(1)}).Validate(false)
 	assert.ErrorIs(t, err, validator.ErrLength)
 	assert.ErrorContains(t, err, "want member count <= 1, got 2")
 }

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: "kama_validate.yaml"
-// generated: 2026-11-26T06:58:57Z
+// generated: 2026-11-26T08:15:32Z
 
 package hooks
 
@@ -16,10 +16,13 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Order) Validate(stopOnFirstError bool) (err error) {
-	defer func() { err = validator.Join(err, validator.Root(validateOrderPost(v, stopOnFirstError))) }()
+func (v *Order) Validate(stopOnFirstError bool) (err error) {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Order")
+	}
+	defer func() { err = validator.Join(err, validator.Root(validateOrderPost((*v), stopOnFirstError))) }()
 	var errs []error
-	if err := validator.Root(validateOrderPre(v, stopOnFirstError)); err != nil {
+	if err := validator.Root(validateOrderPre((*v), stopOnFirstError)); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -31,8 +34,8 @@ func (v Order) Validate(stopOnFirstError bool) (err error) {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v.Lines {
-		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "lines"); err != nil {
+	for i := range v.Lines {
+		if err := validator.Field(validator.Index(v.Lines[i].Validate(stopOnFirstError), i), "lines"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -57,10 +60,13 @@ func (v Order) Validate(stopOnFirstError bool) (err error) {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Order) ValidateShallow(stopOnFirstError bool) (err error) {
-	defer func() { err = validator.Join(err, validator.Root(validateOrderPost(v, stopOnFirstError))) }()
+func (v *Order) ValidateShallow(stopOnFirstError bool) (err error) {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Order")
+	}
+	defer func() { err = validator.Join(err, validator.Root(validateOrderPost((*v), stopOnFirstError))) }()
 	var errs []error
-	if err := validator.Root(validateOrderPre(v, stopOnFirstError)); err != nil {
+	if err := validator.Root(validateOrderPre((*v), stopOnFirstError)); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -79,10 +85,13 @@ func (v Order) ValidateShallow(stopOnFirstError bool) (err error) {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Line) Validate(stopOnFirstError bool) (err error) {
-	defer func() { err = validator.Join(err, validator.Root(validateLinePost(v, stopOnFirstError))) }()
+func (v *Line) Validate(stopOnFirstError bool) (err error) {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Line")
+	}
+	defer func() { err = validator.Join(err, validator.Root(validateLinePost((*v), stopOnFirstError))) }()
 	var errs []error
-	if err := validator.Root(validateLinePre(v, stopOnFirstError)); err != nil {
+	if err := validator.Root(validateLinePre((*v), stopOnFirstError)); err != nil {
 		if stopOnFirstError {
 			return err
 		}
@@ -102,7 +111,7 @@ func (v Line) Validate(stopOnFirstError bool) (err error) {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Line) ValidateShallow(stopOnFirstError bool) error {
+func (v *Line) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 

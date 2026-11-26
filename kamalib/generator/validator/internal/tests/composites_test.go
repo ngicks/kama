@@ -12,10 +12,10 @@ import (
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
-func validComposites() model.Composites[model.Tag] {
+func validComposites() *model.Composites[model.Tag] {
 	ok := model.Tag{Name: "ok"}
 
-	return model.Composites[model.Tag]{
+	return &model.Composites[model.Tag]{
 		E:  either.Left[model.Tag, int](ok),
 		R:  either.Ok(ok),
 		UE: either.UntaggedEither[int, model.Tag]{Either: either.Right[int](ok)},
@@ -74,8 +74,8 @@ func TestCompositesOnTypeParameter(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			v := validComposites()
-			c.edit(&v)
-			got := validator.Pointers(model.CompositesOf{Tags: v}.Validate(false))
+			c.edit(v)
+			got := validator.Pointers((&model.CompositesOf{Tags: *v}).Validate(false))
 			assert.DeepEqual(t, got, c.want)
 		})
 	}
@@ -92,7 +92,7 @@ func TestCompositesOnTypeParameterWithoutValidate(t *testing.T) {
 	}
 	// Generated code passes nil for a type without Validate. A zero
 	// Composites[Tag] would be left and ok holding a zero Tag.
-	assert.NilError(t, model.CompositesOf{Tags: validComposites(), Ints: ints}.Validate(false))
+	assert.NilError(t, (&model.CompositesOf{Tags: *validComposites(), Ints: ints}).Validate(false))
 
 	notNegative := func(v int, _ bool) error {
 		if v < 0 {

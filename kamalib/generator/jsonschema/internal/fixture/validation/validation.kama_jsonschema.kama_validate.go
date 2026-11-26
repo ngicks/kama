@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:36Z
+// generated: 2026-11-26T08:31:40Z
 
 package validation
 
@@ -18,7 +18,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Order) Validate(stopOnFirstError bool) error {
+func (v *Order) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Order")
+	}
 	var errs []error
 	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v.AdditionalProperties), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v.AdditionalProperties), "<=", 11)); err != nil {
 		if stopOnFirstError {
@@ -74,8 +77,8 @@ func (v Order) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v.Items {
-		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "items"); err != nil {
+	for i := range v.Items {
+		if err := validator.Field(validator.Index(v.Items[i].Validate(stopOnFirstError), i), "items"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -116,7 +119,10 @@ func (v Order) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if v.Closed.IsSome() {
-		if err := validator.Field(v.Closed.Value().Validate(stopOnFirstError), "closed"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Closed.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "closed"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -124,7 +130,10 @@ func (v Order) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Typed.IsSome() {
-		if err := validator.Field(v.Typed.Value().Validate(stopOnFirstError), "typed"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Typed.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "typed"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -149,7 +158,10 @@ func (v Order) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Order) ValidateShallow(stopOnFirstError bool) error {
+func (v *Order) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Order")
+	}
 	var errs []error
 	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v.AdditionalProperties), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Count.IsSome(), v.Ratio.IsSome(), v.Labels.IsSome(), v.Level.IsSome(), v.Coupon.IsSome(), v.Discount.IsSome(), v.Closed.IsSome(), v.Typed.IsSome(), v.Pick.IsSome())+2+len(v.AdditionalProperties), "<=", 11)); err != nil {
 		if stopOnFirstError {
@@ -266,7 +278,10 @@ func (v OrderLabelsValue) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v OrderClosed) Validate(stopOnFirstError bool) error {
+func (v *OrderClosed) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *OrderClosed")
+	}
 	var errs []error
 	if err := kamaValidateClosed(v.AdditionalProperties, stopOnFirstError); err != nil {
 		if stopOnFirstError {
@@ -282,7 +297,7 @@ func (v OrderClosed) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v OrderClosed) ValidateShallow(stopOnFirstError bool) error {
+func (v *OrderClosed) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -290,7 +305,10 @@ func (v OrderClosed) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v OrderTyped) Validate(stopOnFirstError bool) error {
+func (v *OrderTyped) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *OrderTyped")
+	}
 	var errs []error
 	for _, k := range slices.Sorted(maps.Keys(v.AdditionalProperties)) {
 		e := v.AdditionalProperties[k]
@@ -311,7 +329,10 @@ func (v OrderTyped) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v OrderTyped) ValidateShallow(stopOnFirstError bool) error {
+func (v *OrderTyped) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *OrderTyped")
+	}
 	return nil
 }
 
@@ -343,7 +364,10 @@ func (v OrderTypedValue) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v OrderPickOption1) Validate(stopOnFirstError bool) error {
+func (v *OrderPickOption1) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *OrderPickOption1")
+	}
 	var errs []error
 	if err := validator.Field(v.Option1.Validate(stopOnFirstError), "Option1"); err != nil {
 		if stopOnFirstError {
@@ -361,7 +385,10 @@ func (v OrderPickOption1) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v OrderPickOption1) ValidateShallow(stopOnFirstError bool) error {
+func (v *OrderPickOption1) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *OrderPickOption1")
+	}
 	return nil
 }
 
@@ -369,7 +396,10 @@ func (v OrderPickOption1) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v OrderPickOption2) Validate(stopOnFirstError bool) error {
+func (v *OrderPickOption2) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *OrderPickOption2")
+	}
 	var errs []error
 	if err := validator.Field(v.Option2.Validate(stopOnFirstError), "Option2"); err != nil {
 		if stopOnFirstError {
@@ -387,7 +417,10 @@ func (v OrderPickOption2) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v OrderPickOption2) ValidateShallow(stopOnFirstError bool) error {
+func (v *OrderPickOption2) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *OrderPickOption2")
+	}
 	return nil
 }
 

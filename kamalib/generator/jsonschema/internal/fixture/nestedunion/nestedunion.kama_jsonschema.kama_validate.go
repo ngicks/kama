@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:01Z
+// generated: 2026-11-26T08:15:36Z
 
 package nestedunion
 
@@ -17,7 +17,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Chains) Validate(stopOnFirstError bool) error {
+func (v *Chains) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Chains")
+	}
 	var errs []error
 	if v.Any.IsSome() {
 		if err := validator.Field(v.Any.Value().Validate(stopOnFirstError), "any"); err != nil {
@@ -53,7 +56,10 @@ func (v Chains) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Chains) ValidateShallow(stopOnFirstError bool) error {
+func (v *Chains) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Chains")
+	}
 	var errs []error
 	if v.Any.IsSome() {
 		if err := validator.Field(v.Any.Value().ValidateShallow(stopOnFirstError), "any"); err != nil {
@@ -86,7 +92,10 @@ func (v Chains) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v AnyAnyLeft) Validate(stopOnFirstError bool) error {
+func (v *AnyAnyLeft) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *AnyAnyLeft")
+	}
 	var errs []error
 	if err := validator.Field(v.AnyLeft.Validate(stopOnFirstError), "AnyLeft"); err != nil {
 		if stopOnFirstError {
@@ -104,7 +113,10 @@ func (v AnyAnyLeft) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v AnyAnyLeft) ValidateShallow(stopOnFirstError bool) error {
+func (v *AnyAnyLeft) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *AnyAnyLeft")
+	}
 	return nil
 }
 
@@ -112,7 +124,10 @@ func (v AnyAnyLeft) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v AnyAnyRight) Validate(stopOnFirstError bool) error {
+func (v *AnyAnyRight) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *AnyAnyRight")
+	}
 	var errs []error
 	if err := validator.Field(v.AnyRight.Validate(stopOnFirstError), "AnyRight"); err != nil {
 		if stopOnFirstError {
@@ -130,7 +145,10 @@ func (v AnyAnyRight) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v AnyAnyRight) ValidateShallow(stopOnFirstError bool) error {
+func (v *AnyAnyRight) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *AnyAnyRight")
+	}
 	return nil
 }
 
@@ -208,7 +226,10 @@ func (v anyAnyRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v AnyLeft) Validate(stopOnFirstError bool) error {
+func (v *AnyLeft) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *AnyLeft")
+	}
 	var errs []error
 	if v.C.IsSome() {
 		if err := validator.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
@@ -228,7 +249,10 @@ func (v AnyLeft) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v AnyLeft) ValidateShallow(stopOnFirstError bool) error {
+func (v *AnyLeft) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *AnyLeft")
+	}
 	var errs []error
 	if v.C.IsSome() {
 		if err := validator.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
@@ -245,7 +269,10 @@ func (v AnyLeft) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v AnyRight) Validate(stopOnFirstError bool) error {
+func (v *AnyRight) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *AnyRight")
+	}
 	var errs []error
 	if v.C.IsSome() {
 		if err := validator.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
@@ -265,7 +292,10 @@ func (v AnyRight) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v AnyRight) ValidateShallow(stopOnFirstError bool) error {
+func (v *AnyRight) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *AnyRight")
+	}
 	var errs []error
 	if v.C.IsSome() {
 		if err := validator.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
@@ -282,7 +312,10 @@ func (v AnyRight) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v TaggedTaggedLeft) Validate(stopOnFirstError bool) error {
+func (v *TaggedTaggedLeft) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *TaggedTaggedLeft")
+	}
 	var errs []error
 	if err := validator.Field(v.TaggedLeft.Validate(stopOnFirstError), "TaggedLeft"); err != nil {
 		if stopOnFirstError {
@@ -300,7 +333,10 @@ func (v TaggedTaggedLeft) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v TaggedTaggedLeft) ValidateShallow(stopOnFirstError bool) error {
+func (v *TaggedTaggedLeft) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *TaggedTaggedLeft")
+	}
 	return nil
 }
 
@@ -308,7 +344,10 @@ func (v TaggedTaggedLeft) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v TaggedTaggedRight) Validate(stopOnFirstError bool) error {
+func (v *TaggedTaggedRight) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *TaggedTaggedRight")
+	}
 	var errs []error
 	if err := validator.Field(v.TaggedRight.Validate(stopOnFirstError), "TaggedRight"); err != nil {
 		if stopOnFirstError {
@@ -326,7 +365,10 @@ func (v TaggedTaggedRight) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v TaggedTaggedRight) ValidateShallow(stopOnFirstError bool) error {
+func (v *TaggedTaggedRight) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *TaggedTaggedRight")
+	}
 	return nil
 }
 
@@ -404,7 +446,10 @@ func (v taggedTaggedRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *raw
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v TaggedLeft) Validate(stopOnFirstError bool) error {
+func (v *TaggedLeft) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *TaggedLeft")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateConst(v.Kind, "left"), "kind"); err != nil {
 		if stopOnFirstError {
@@ -430,7 +475,10 @@ func (v TaggedLeft) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v TaggedLeft) ValidateShallow(stopOnFirstError bool) error {
+func (v *TaggedLeft) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *TaggedLeft")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateConst(v.Kind, "left"), "kind"); err != nil {
 		if stopOnFirstError {
@@ -453,7 +501,10 @@ func (v TaggedLeft) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v TaggedRight) Validate(stopOnFirstError bool) error {
+func (v *TaggedRight) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *TaggedRight")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateConst(v.Kind, "right"), "kind"); err != nil {
 		if stopOnFirstError {
@@ -479,7 +530,10 @@ func (v TaggedRight) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v TaggedRight) ValidateShallow(stopOnFirstError bool) error {
+func (v *TaggedRight) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *TaggedRight")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateConst(v.Kind, "right"), "kind"); err != nil {
 		if stopOnFirstError {
@@ -502,7 +556,10 @@ func (v TaggedRight) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v OverlapOverlapLeft) Validate(stopOnFirstError bool) error {
+func (v *OverlapOverlapLeft) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *OverlapOverlapLeft")
+	}
 	var errs []error
 	if err := validator.Field(v.OverlapLeft.Validate(stopOnFirstError), "OverlapLeft"); err != nil {
 		if stopOnFirstError {
@@ -520,7 +577,10 @@ func (v OverlapOverlapLeft) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v OverlapOverlapLeft) ValidateShallow(stopOnFirstError bool) error {
+func (v *OverlapOverlapLeft) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *OverlapOverlapLeft")
+	}
 	return nil
 }
 
@@ -528,7 +588,10 @@ func (v OverlapOverlapLeft) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v OverlapOverlapRight) Validate(stopOnFirstError bool) error {
+func (v *OverlapOverlapRight) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *OverlapOverlapRight")
+	}
 	var errs []error
 	if err := validator.Field(v.OverlapRight.Validate(stopOnFirstError), "OverlapRight"); err != nil {
 		if stopOnFirstError {
@@ -546,7 +609,10 @@ func (v OverlapOverlapRight) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v OverlapOverlapRight) ValidateShallow(stopOnFirstError bool) error {
+func (v *OverlapOverlapRight) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *OverlapOverlapRight")
+	}
 	return nil
 }
 
@@ -624,7 +690,10 @@ func (v overlapOverlapRightProbe) ValidateEvaluated(stopOnFirstError bool, ev *r
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v OverlapLeft) Validate(stopOnFirstError bool) error {
+func (v *OverlapLeft) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *OverlapLeft")
+	}
 	var errs []error
 	if v.C.IsSome() {
 		if err := validator.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
@@ -644,7 +713,10 @@ func (v OverlapLeft) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v OverlapLeft) ValidateShallow(stopOnFirstError bool) error {
+func (v *OverlapLeft) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *OverlapLeft")
+	}
 	var errs []error
 	if v.C.IsSome() {
 		if err := validator.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {
@@ -661,7 +733,10 @@ func (v OverlapLeft) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v OverlapRight) Validate(stopOnFirstError bool) error {
+func (v *OverlapRight) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *OverlapRight")
+	}
 	var errs []error
 	if v.C.IsSome() {
 		if err := validator.Field(v.C.Value().Validate(stopOnFirstError), "c"); err != nil {
@@ -681,7 +756,10 @@ func (v OverlapRight) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v OverlapRight) ValidateShallow(stopOnFirstError bool) error {
+func (v *OverlapRight) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *OverlapRight")
+	}
 	var errs []error
 	if v.C.IsSome() {
 		if err := validator.Field(v.C.Value().ValidateShallow(stopOnFirstError), "c"); err != nil {

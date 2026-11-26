@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:42:10Z
+// generated: 2026-11-26T08:14:34Z
 
 package model
 
@@ -266,9 +266,12 @@ func (v Tree) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) er
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Encoded) Validate(stopOnFirstError bool) error {
+func (v *Encoded) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Encoded")
+	}
 	var errs []error
-	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+	if err := rawjson.Encoded((*v), func(m jsontext.Value) error {
 		return kamaValidateAll(stopOnFirstError, kamaValidateNot(rawjson.Required(m, stopOnFirstError, "x"), "required(\"x\")"), rawjson.Properties(m, stopOnFirstError, nil, rawjson.Property("a", func(m2 jsontext.Value) error {
 			return error(nil)
 		}), rawjson.Additional(func(m3 jsontext.Value) error {

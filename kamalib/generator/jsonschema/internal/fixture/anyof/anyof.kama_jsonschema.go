@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:58:48Z
+// generated: 2026-11-26T08:15:22Z
 
 package anyof
 
@@ -226,7 +226,7 @@ func (v *DocValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.String.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
-				if err := (DocValueString{String: m}).ValidateShallow(false); err != nil {
+				if err := (&DocValueString{String: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member String: %w", err))
 				} else {
 					*v = DocValue{Kind: DocValueString{String: m}}
@@ -247,7 +247,7 @@ func (v *DocValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.Int64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
-				if err := (DocValueInteger{Integer: m}).ValidateShallow(false); err != nil {
+				if err := (&DocValueInteger{Integer: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Integer: %w", err))
 				} else {
 					*v = DocValue{Kind: DocValueInteger{Integer: m}}
@@ -438,7 +438,7 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Named: %w", err))
 			} else {
-				if err := (LabelNamed{Named: m}).ValidateShallow(false); err != nil {
+				if err := (&LabelNamed{Named: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Named: %w", err))
 				} else {
 					*v = Label{Kind: LabelNamed{Named: m}}
@@ -455,7 +455,7 @@ func (v *Label) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Tagged: %w", err))
 			} else {
-				if err := (LabelTagged{Tagged: m}).ValidateShallow(false); err != nil {
+				if err := (&LabelTagged{Tagged: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Tagged: %w", err))
 				} else {
 					*v = Label{Kind: LabelTagged{Tagged: m}}

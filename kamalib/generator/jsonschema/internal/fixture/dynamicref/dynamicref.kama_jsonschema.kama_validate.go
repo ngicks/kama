@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:58:55Z
+// generated: 2026-11-26T08:15:28Z
 
 package dynamicref
 
@@ -77,7 +77,10 @@ func (v StrictTree) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluat
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Tree) Validate(stopOnFirstError bool) error {
+func (v *Tree) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Tree")
+	}
 	var errs []error
 	if v.Children.IsSome() {
 		for i, e := range v.Children.Value() {
@@ -99,7 +102,10 @@ func (v Tree) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Tree) ValidateShallow(stopOnFirstError bool) error {
+func (v *Tree) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Tree")
+	}
 	return nil
 }
 

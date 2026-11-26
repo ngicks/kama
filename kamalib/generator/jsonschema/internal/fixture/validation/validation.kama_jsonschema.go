@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:36Z
+// generated: 2026-11-26T08:16:07Z
 
 package validation
 
@@ -125,7 +125,7 @@ func (v *OrderLabelsValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = OrderLabelsValue(out)
-	return kamaJsonschemaChecked(err, OrderLabelsValue(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // OrderClosed is generated from the schema at #/properties/closed.
@@ -231,7 +231,7 @@ func (v *OrderTypedValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.Int64.Value(w)
 	*v = OrderTypedValue(out)
-	return kamaJsonschemaChecked(err, OrderTypedValue(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // OrderPick is exactly one of Option1, Option2. It is generated from the
@@ -376,7 +376,7 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Option1: %w", err))
 		} else {
-			if err := (OrderPickOption1{Option1: m}).ValidateShallow(false); err != nil {
+			if err := (&OrderPickOption1{Option1: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member Option1: %w", err))
 			} else {
 				if found != nil {
@@ -392,7 +392,7 @@ func (v *OrderPick) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Option2: %w", err))
 		} else {
-			if err := (OrderPickOption2{Option2: m}).ValidateShallow(false); err != nil {
+			if err := (&OrderPickOption2{Option2: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member Option2: %w", err))
 			} else {
 				if found != nil {
@@ -440,7 +440,7 @@ func (v *OrderPickOption1Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = OrderPickOption1Value(out)
-	return kamaJsonschemaChecked(err, OrderPickOption1Value(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // OrderPickOption2Value is generated from the schema at
@@ -469,7 +469,7 @@ func (v *OrderPickOption2Value) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = OrderPickOption2Value(out)
-	return kamaJsonschemaChecked(err, OrderPickOption2Value(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // Sku is generated from the schema at #/$defs/Sku.
@@ -497,5 +497,5 @@ func (v *Sku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = Sku(out)
-	return kamaJsonschemaChecked(err, Sku(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }

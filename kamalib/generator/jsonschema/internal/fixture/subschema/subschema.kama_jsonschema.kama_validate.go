@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:33Z
+// generated: 2026-11-26T08:16:04Z
 
 package subschema
 
@@ -191,9 +191,12 @@ func (v Address) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated)
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Labels) Validate(stopOnFirstError bool) error {
+func (v *Labels) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Labels")
+	}
 	var errs []error
-	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+	if err := rawjson.Encoded((*v), func(m jsontext.Value) error {
 		return rawjson.Properties(m, stopOnFirstError, nil, rawjson.PatternProperty(kamaValidateRegexp_5f8f9cdb3f, func(m2 jsontext.Value) error {
 			return rawjson.Kind(m2, "string")
 		}), rawjson.Additional(func(m3 jsontext.Value) error {
@@ -213,7 +216,7 @@ func (v Labels) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Labels) ValidateShallow(stopOnFirstError bool) error {
+func (v *Labels) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -281,9 +284,12 @@ func (v Tags) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Keys) Validate(stopOnFirstError bool) error {
+func (v *Keys) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Keys")
+	}
 	var errs []error
-	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+	if err := rawjson.Encoded((*v), func(m jsontext.Value) error {
 		return rawjson.Keys(m, stopOnFirstError, func(m2 jsontext.Value) error {
 			return rawjson.Pattern(m2, kamaValidateRegexp_39c46b3647)
 		})
@@ -301,7 +307,7 @@ func (v Keys) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Keys) ValidateShallow(stopOnFirstError bool) error {
+func (v *Keys) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -309,9 +315,12 @@ func (v Keys) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Payment) Validate(stopOnFirstError bool) error {
+func (v *Payment) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Payment")
+	}
 	var errs []error
-	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+	if err := rawjson.Encoded((*v), func(m jsontext.Value) error {
 		return kamaValidateIf(rawjson.Required(m, stopOnFirstError, "card"), rawjson.Required(m, stopOnFirstError, "billing"), nil)
 	}); err != nil {
 		if stopOnFirstError {
@@ -327,7 +336,7 @@ func (v Payment) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Payment) ValidateShallow(stopOnFirstError bool) error {
+func (v *Payment) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -431,7 +440,10 @@ func (v Mixed) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) e
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Node) Validate(stopOnFirstError bool) error {
+func (v *Node) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Node")
+	}
 	var errs []error
 	if v.Kids.IsSome() {
 		for i, e := range v.Kids.Value() {
@@ -461,7 +473,10 @@ func (v Node) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Node) ValidateShallow(stopOnFirstError bool) error {
+func (v *Node) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Node")
+	}
 	return nil
 }
 

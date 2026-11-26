@@ -391,14 +391,19 @@ func helperDecl(name string) (genStep, bool) {
 	case helperPrefix + "SomeValid":
 		return helper(
 			name+" returns the error of ValidateShallow of the value o holds, or nil "+
-				"for None.",
-			`func kamaJsonschemaSomeValid[T interface{ ValidateShallow(bool) error }](
+				"for None. P lets T declare ValidateShallow on the pointer receiver, as "+
+				"the validator generator does for a struct.",
+			`func kamaJsonschemaSomeValid[T any, P interface {
+	*T
+	ValidateShallow(bool) error
+}](
 	o %[1]s.Option[T],
 ) error {
 	if o.IsNone() {
 		return nil
 	}
-	return o.Value().ValidateShallow(false)
+	v := o.Value()
+	return P(&v).ValidateShallow(false)
 }`,
 			optPath,
 		), true

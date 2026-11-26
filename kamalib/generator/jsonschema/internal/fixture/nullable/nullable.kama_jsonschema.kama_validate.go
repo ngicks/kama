@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:03Z
+// generated: 2026-11-26T08:31:12Z
 
 package nullable
 
@@ -12,10 +12,16 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Nullable) Validate(stopOnFirstError bool) error {
+func (v *Nullable) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Nullable")
+	}
 	var errs []error
 	if v.ReqOneOf.IsSome() {
-		if err := validator.Field(v.ReqOneOf.Value().Validate(stopOnFirstError), "reqOneOf"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.ReqOneOf.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "reqOneOf"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -23,7 +29,10 @@ func (v Nullable) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.OptOneOf.IsDefined() {
-		if err := validator.Field(v.OptOneOf.Value().Validate(stopOnFirstError), "optOneOf"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.OptOneOf.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "optOneOf"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -31,7 +40,10 @@ func (v Nullable) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.OptInline.IsDefined() {
-		if err := validator.Field(v.OptInline.Value().Validate(stopOnFirstError), "optInline"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.OptInline.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "optInline"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -48,7 +60,10 @@ func (v Nullable) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Nullable) ValidateShallow(stopOnFirstError bool) error {
+func (v *Nullable) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Nullable")
+	}
 	return nil
 }
 
@@ -56,7 +71,10 @@ func (v Nullable) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v NullableOptInline) Validate(stopOnFirstError bool) error {
+func (v *NullableOptInline) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *NullableOptInline")
+	}
 	return nil
 }
 
@@ -65,7 +83,7 @@ func (v NullableOptInline) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v NullableOptInline) ValidateShallow(stopOnFirstError bool) error {
+func (v *NullableOptInline) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -73,7 +91,10 @@ func (v NullableOptInline) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Item) Validate(stopOnFirstError bool) error {
+func (v *Item) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Item")
+	}
 	return nil
 }
 
@@ -82,6 +103,6 @@ func (v Item) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Item) ValidateShallow(stopOnFirstError bool) error {
+func (v *Item) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }

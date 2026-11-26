@@ -269,9 +269,11 @@ func unionUnmarshal(doc *jsonschema.Schema, opts Options, ptr string) genStep {
 			var decoded genStep = found
 			if opts.Validate {
 				// A composite literal in the header of an if needs the
-				// parentheses.
+				// parentheses. Its address reaches ValidateShallow on the
+				// pointer receiver, as the validator generator writes it for a
+				// struct.
 				decoded = lang.If(
-					lang.Expr("err := (%s).ValidateShallow(false); err != nil", kind),
+					lang.Expr("err := (&%s).ValidateShallow(false); err != nil", kind),
 					failed,
 					found,
 				)

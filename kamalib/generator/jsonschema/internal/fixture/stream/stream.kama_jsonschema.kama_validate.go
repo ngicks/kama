@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:31Z
+// generated: 2026-11-26T08:16:02Z
 
 package stream
 
@@ -14,8 +14,8 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 //kama:generated kama:validate
 func (v Stream) Validate(stopOnFirstError bool) error {
 	var errs []error
-	for i, e := range v {
-		if err := validator.Index(e.Validate(stopOnFirstError), i); err != nil {
+	for i := range v {
+		if err := validator.Index(v[i].Validate(stopOnFirstError), i); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -40,7 +40,10 @@ func (v Stream) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Item) Validate(stopOnFirstError bool) error {
+func (v *Item) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Item")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateCmp(v.N, ">=", 0), "n"); err != nil {
 		if stopOnFirstError {
@@ -56,6 +59,6 @@ func (v Item) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Item) ValidateShallow(stopOnFirstError bool) error {
+func (v *Item) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }

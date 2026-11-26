@@ -15,8 +15,8 @@ import (
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
-func validRoles() model.Roles {
-	return model.Roles{
+func validRoles() *model.Roles {
+	return &model.Roles{
 		Tags:    []string{"a", "abc"},
 		Counts:  map[string]int{"a": 0, "b": 2},
 		Note:    opt.Some("abc"),
@@ -103,9 +103,9 @@ func TestRolesInvalid(t *testing.T) {
 }
 
 func TestBagRoles(t *testing.T) {
-	assert.NilError(t, model.Bag[int]{Items: []int{1}, Main: opt.Some(2)}.Validate(false, nil))
+	assert.NilError(t, (&model.Bag[int]{Items: []int{1}, Main: opt.Some(2)}).Validate(false, nil))
 
-	err := model.Bag[string]{Items: []string{"a", ""}, Main: opt.Some("")}.Validate(false, nil)
+	err := (&model.Bag[string]{Items: []string{"a", ""}, Main: opt.Some("")}).Validate(false, nil)
 	assert.DeepEqual(t, validator.Pointers(err), []string{"/items/1", "/main"})
 }
 

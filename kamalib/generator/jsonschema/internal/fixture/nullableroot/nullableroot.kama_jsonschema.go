@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:09Z
+// generated: 2026-11-26T08:15:42Z
 
 package nullableroot
 
@@ -66,5 +66,5 @@ func (v *CodeValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.Float64.Value(w)
 	*v = CodeValue(out)
-	return kamaJsonschemaChecked(err, CodeValue(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }

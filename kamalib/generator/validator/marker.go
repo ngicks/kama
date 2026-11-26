@@ -76,6 +76,16 @@ func callableBare(fn *types.Func) bool {
 	return returnsError(sig) && (n == 0 || n == 1 && sig.Variadic())
 }
 
+// onPointerReceiver reports whether the methods the generator writes for
+// the target named take the pointer receiver: named is of a struct type.
+// A struct target is expected to be big, and a value receiver would copy
+// it at every call and at every level of the nested walk. Any other target
+// copies a header or a scalar, and keeps the value receiver.
+func onPointerReceiver(named *types.Named) bool {
+	_, ok := named.Underlying().(*types.Struct)
+	return ok
+}
+
 // shallowName is the name of the shallow form of Validate.
 const shallowName = "ValidateShallow"
 

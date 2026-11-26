@@ -67,17 +67,17 @@ func TestParity(t *testing.T) {
 
 	cases := map[string]parityValues{
 		"directives": {
-			valid:      order,
-			invalid:    bad,
-			emptyLines: empty,
-			batch:      parity.Batch{Orders: map[string]parity.Order{"b": bad, "a": order}},
+			valid:      &order,
+			invalid:    &bad,
+			emptyLines: &empty,
+			batch:      &parity.Batch{Orders: map[string]parity.Order{"b": bad, "a": order}},
 			errNote:    parity.ErrNote,
 		},
 		"option files": {
-			valid:      fileOrder,
-			invalid:    fileBad,
-			emptyLines: fileEmpty,
-			batch: fileparity.Batch{
+			valid:      &fileOrder,
+			invalid:    &fileBad,
+			emptyLines: &fileEmpty,
+			batch: &fileparity.Batch{
 				Orders: map[string]fileparity.Order{"b": fileBad, "a": fileOrder},
 			},
 			errNote: fileparity.ErrNote,

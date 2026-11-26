@@ -61,6 +61,12 @@ func (w *writer) method() (string, error) {
 
 	recv := named.Obj().Name()
 	params := []genExpr{lang.Expr("%s bool", decl("stopOnFirstError"))}
+	ptr := ""
+
+	if onPointerReceiver(named) {
+		ptr = "*"
+	}
+
 	tparams := w.tparams()
 	// post runs in a deferred call, which reports through the named result.
 	result := lang.Expr("error")
@@ -132,8 +138,8 @@ func (w *writer) method() (string, error) {
 		w.scope.FuncContext(tparams),
 		lang.DocFunc(
 			docComment(text, names...),
-			lang.Expr("func (%s %s) %s(%s) %s",
-				decl("v"), recv, name, lang.Join(", ", params...), result),
+			lang.Expr("func (%s %s%s) %s(%s) %s",
+				decl("v"), ptr, recv, name, lang.Join(", ", params...), result),
 			body...,
 		),
 	)
@@ -186,7 +192,12 @@ func (w *writer) body(u types.Type) ([]genStep, error) {
 		} else {
 			steps = append(steps, w.check(lang.Expr(
 				"%s.Root(%s(%s, %s))",
-				w.Import(ext.ValidationPath), o.Pre, lang.Name("v"), lang.Name("stopOnFirstError"),
+				w.Import(
+					ext.ValidationPath,
+				),
+				o.Pre,
+				w.typeFuncArg(o.Pre),
+				lang.Name("stopOnFirstError"),
 			)))
 		}
 	}
@@ -227,7 +238,7 @@ func (w *writer) body(u types.Type) ([]genStep, error) {
 			post = append(post, lang.Stmt(
 				"defer func() { %s = %s.Join(%s, %s.Root(%s(%s, %s))) }()",
 				lang.Name("err"), vp, lang.Name("err"),
-				vp, o.Post, lang.Name("v"), lang.Name("stopOnFirstError"),
+				vp, o.Post, w.typeFuncArg(o.Post), lang.Name("stopOnFirstError"),
 			))
 		}
 	}
@@ -236,7 +247,56 @@ func (w *writer) body(u types.Type) ([]genStep, error) {
 		return nil, err
 	}
 
-	return append(post, w.collect(steps)...), nil
+	return append(append(w.nilReceiver(), post...), w.collect(steps)...), nil
+}
+
+// nilReceiver returns the steps reporting a nil receiver of a method on the
+// pointer receiver, which has no value to validate. It returns an error
+// rather than panicking, as a nil pointer field reports through the
+// validators of the struct holding it.
+func (w *writer) nilReceiver() []genStep {
+	named := w.n.Detail.Type
+	if !onPointerReceiver(named) {
+		return nil
+	}
+
+	vp := w.Import(ext.ValidationPath)
+	method := "Validate"
+
+	switch {
+	case w.evaluated:
+		method = evaluatedName
+	case w.shallow:
+		method = shallowName
+	}
+
+	return []genStep{lang.If(
+		lang.Expr("%s == nil", lang.Name("v")),
+		lang.Stmt("return %s.New(%s.ErrNilReceiver, %s)",
+			vp, vp, strconv.Quote(method+" on a nil *"+named.Obj().Name())),
+		nil,
+	)}
+}
+
+// recvValue returns the value of the target the receiver of the method
+// denotes: the receiver, or what it points to on the pointer receiver.
+func (w *writer) recvValue() genExpr {
+	if onPointerReceiver(w.n.Detail.Type) {
+		return lang.Expr("(*%s)", lang.Name("v"))
+	}
+
+	return lang.Name("v")
+}
+
+// typeFuncArg returns the argument passing the value of the target to the
+// function name, which pre or post names: the receiver itself when the
+// function takes a pointer, else the value.
+func (w *writer) typeFuncArg(name string) genExpr {
+	if w.sel.typeFuncTakesPointer(w.n, name) {
+		return lang.Name("v")
+	}
+
+	return w.recvValue()
 }
 
 // collect returns steps between the declaration of the errors they collect
@@ -420,7 +480,7 @@ func (w *writer) typeValidator(u types.Type, vo ValidatorOptions) (genStep, erro
 	place := "type " + named.Obj().Name()
 
 	if vo.Item.Name != "" {
-		return w.role(vo, vo.Item, nil, place, named, lang.Name("v"), noWrap, 0)
+		return w.role(vo, vo.Item, nil, place, named, w.recvValue(), noWrap, 0)
 	}
 
 	r, err := w.resolve(vo, vo.Item.Value, place)
@@ -456,7 +516,7 @@ func (w *writer) typeValidator(u types.Type, vo ValidatorOptions) (genStep, erro
 		)
 	}
 
-	s, err := w.apply(r, named, lang.Name("v"), noWrap)
+	s, err := w.apply(r, named, w.recvValue(), noWrap)
 	if err != nil {
 		return nil, ruleError(vo, place, err)
 	}

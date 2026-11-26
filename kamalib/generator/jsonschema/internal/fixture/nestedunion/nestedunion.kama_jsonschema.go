@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:01Z
+// generated: 2026-11-26T08:15:35Z
 
 package nestedunion
 
@@ -236,7 +236,7 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member AnyLeft: %w", err))
 			} else {
-				if err := (AnyAnyLeft{AnyLeft: m}).ValidateShallow(false); err != nil {
+				if err := (&AnyAnyLeft{AnyLeft: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member AnyLeft: %w", err))
 				} else {
 					*v = Any{Kind: AnyAnyLeft{AnyLeft: m}}
@@ -253,7 +253,7 @@ func (v *Any) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member AnyRight: %w", err))
 			} else {
-				if err := (AnyAnyRight{AnyRight: m}).ValidateShallow(false); err != nil {
+				if err := (&AnyAnyRight{AnyRight: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member AnyRight: %w", err))
 				} else {
 					*v = Any{Kind: AnyAnyRight{AnyRight: m}}
@@ -529,7 +529,7 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member TaggedLeft: %w", err))
 			} else {
-				if err := (TaggedTaggedLeft{TaggedLeft: m}).ValidateShallow(false); err != nil {
+				if err := (&TaggedTaggedLeft{TaggedLeft: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member TaggedLeft: %w", err))
 				} else {
 					if found != nil {
@@ -549,7 +549,7 @@ func (v *Tagged) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member TaggedRight: %w", err))
 			} else {
-				if err := (TaggedTaggedRight{TaggedRight: m}).ValidateShallow(false); err != nil {
+				if err := (&TaggedTaggedRight{TaggedRight: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member TaggedRight: %w", err))
 				} else {
 					if found != nil {
@@ -835,7 +835,7 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member OverlapLeft: %w", err))
 			} else {
-				if err := (OverlapOverlapLeft{OverlapLeft: m}).ValidateShallow(false); err != nil {
+				if err := (&OverlapOverlapLeft{OverlapLeft: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member OverlapLeft: %w", err))
 				} else {
 					if found != nil {
@@ -855,7 +855,7 @@ func (v *Overlap) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member OverlapRight: %w", err))
 			} else {
-				if err := (OverlapOverlapRight{OverlapRight: m}).ValidateShallow(false); err != nil {
+				if err := (&OverlapOverlapRight{OverlapRight: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member OverlapRight: %w", err))
 				} else {
 					if found != nil {

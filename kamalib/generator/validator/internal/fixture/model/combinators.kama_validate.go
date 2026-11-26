@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:42:48Z
+// generated: 2026-11-26T08:14:34Z
 
 package model
 
@@ -12,7 +12,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Combinators) Validate(stopOnFirstError bool) error {
+func (v *Combinators) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Combinators")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Even, ">=", 1), kamaValidateMultipleInt(v.Even, 2, "2")), "even"); err != nil {
 		if stopOnFirstError {
@@ -76,7 +79,10 @@ func (v Combinators) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Sparse) Validate(stopOnFirstError bool) error {
+func (v *Sparse) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Sparse")
+	}
 	var errs []error
 	if err := kamaValidateOr(kamaValidateMembers(kamaValidateCount(v.A.IsSome(), v.B != nil, v.C.IsSome()), "==", 0), kamaValidateMembers(kamaValidateCount(v.A.IsSome(), v.B != nil, v.C.IsSome()), ">=", 2)); err != nil {
 		if stopOnFirstError {
@@ -91,7 +97,10 @@ func (v Sparse) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Counted) Validate(stopOnFirstError bool) error {
+func (v *Counted) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Counted")
+	}
 	var errs []error
 	if err := kamaValidateMembers(kamaValidateCount(v.A.IsSome())+1, "<=", 1); err != nil {
 		if stopOnFirstError {

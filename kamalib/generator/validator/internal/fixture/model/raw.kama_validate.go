@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:42:10Z
+// generated: 2026-11-26T08:14:34Z
 
 package model
 
@@ -70,7 +70,10 @@ func (v Loose) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) e
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RawBag) Validate(stopOnFirstError bool) error {
+func (v *RawBag) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RawBag")
+	}
 	var errs []error
 	if err := validator.Field(rawjson.MultipleOf(v.Mixed, "0.5"), "mixed"); err != nil {
 		if stopOnFirstError {

@@ -90,7 +90,7 @@ type Holder struct {
 	pair := fs["Pair.Validate"]
 	assert.Assert(t,
 		strings.Index(pair, check(`kamaValidateUnique(kamaValidateCopy(v)[:])`)) <
-			strings.Index(pair, check(`validator.Index(e.Validate(stopOnFirstError), i)`)),
+			strings.Index(pair, check(`validator.Index(v[i].Validate(stopOnFirstError), i)`)),
 		pair,
 	)
 
@@ -100,14 +100,14 @@ type Holder struct {
 		check(`validator.Field((*v.P).Validate(stopOnFirstError), "P")`),
 		check(`validator.Field(v.O.Value().Validate(stopOnFirstError), "O")`),
 		check(`validator.Field(v.U.Value().Validate(stopOnFirstError), "U")`),
-		check(`validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "S")`),
+		check(`validator.Field(validator.Index(v.S[i].Validate(stopOnFirstError), i), "S")`),
 		check(`validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "M")`),
 		"v.B.Validate(stopOnFirstError, func(v Level, stopOnFirstError bool) error {\n"+
 			"\t\treturn v.Validate(stopOnFirstError)",
 		check(`validator.Field(kamaValidateCmp(v.F, "<=", 9), "F")`),
 		check(`validator.Field(v.F.Validate(stopOnFirstError), "F")`),
 		check(`validator.Field(v.Pa.Validate(stopOnFirstError), "Pa")`),
-		check(`validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "H")`),
+		check(`validator.Field(validator.Index(v.H[i].Validate(stopOnFirstError), i), "H")`),
 	)
 
 	_, ok := fs["Hand.Validate"]

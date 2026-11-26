@@ -1,8 +1,18 @@
 // Package validator generates Validate methods for data models.
 //
-// A target T gets the method
+// A target T of a struct type gets the method
 //
-//	func (v T) Validate(stopOnFirstError bool) error
+//	func (v *T) Validate(stopOnFirstError bool) error
+//
+// A struct target is expected to be big, and a value receiver would copy
+// it at every call and at every level of the nested validation. A target
+// of another kind, as in type Name string, type Roster []User or type M
+// map[K]V, keeps the value receiver, since copying it is cheap. Every
+// method this generator writes for a type takes the receiver Validate
+// takes. A method on the pointer receiver called on a nil pointer returns
+// an error wrapping validator.ErrNilReceiver and never panics. A nil
+// pointer field is the business of the struct holding it, through nil and
+// required on the field, and the nested validation skips it.
 //
 // Validate runs the validators that //kama:validate directives name on T
 // and on the fields of T, validates the values the fields hold through
@@ -16,21 +26,25 @@
 //
 // A generic target gets one more parameter per type parameter, in order:
 //
-//	func (v Box[T, U]) Validate(
+//	func (v *Box[T, U]) Validate(
 //		stopOnFirstError bool,
 //		validateT func(v T, stopOnFirstError bool) error,
 //		validateU func(v U, stopOnFirstError bool) error,
 //	) error
 //
 // validateT validates the values of type T that a Box holds. A nil
-// validateT leaves them unchecked. The parameter is named validate followed
+// validateT leaves them unchecked. It takes the value, so a value crossing
+// it is copied once. The generator passes a function literal taking the
+// value for a type argument whose Validate is on the pointer receiver. A
+// caller avoids the copy by instantiating the type with *T. The parameter is named validate
+// followed
 // by the name of the type parameter. A blank type parameter gets a fresh
 // name. Because of these parameters no single interface describes every
 // Validate, and the generator finds callable methods by their shape.
 //
 // A type parameter or a package-level declaration may be named like a
 // local of the generated Validate, such as v, stopOnFirstError, errs or
-// err. The local then takes a fresh name, as in func (v2 Box[v]) Validate.
+// err. The local then takes a fresh name, as in func (v2 *Box[v]) Validate.
 // A type parameter named like a predeclared identifier the generated code
 // spells, or like a helper the generated code of its package calls,
 // shadows it. Each is an error wrapping ErrConflict.
@@ -296,12 +310,16 @@
 //   - any other type, such as int, passes nil.
 //
 // An implementor whose Validate takes no stopOnFirstError is called as
-// x.Validate(). A Validate on the pointer receiver is called on the
-// pointer a value is reached through, as e.Validate(...) for an element of
-// a []*T, on the address of an addressable value, as (&v.F).Validate(...),
-// and on the address of a local copy of a value that has none, as the
-// result of opt.Option.Value. A function literal passed for a type
-// parameter calls it on the address of its parameter.
+// x.Validate(). A Validate on the pointer receiver, such as the one of a
+// struct target, is called on the value in place wherever the value has an
+// address: a field as v.F.Validate(...), an element of a slice or an array
+// by its index as v.S[i].Validate(...), and the value a pointer points to
+// as (*p).Validate(...), which passes p itself. The walk reaches the
+// elements of a slice or an array by index for this reason, and copies
+// none into a range variable. A value without an address is copied into a
+// local first: a map value, a value an iterator yields, and the result of
+// a method such as opt.Option.Value. A function literal passed for a type
+// parameter calls the method on its parameter.
 //
 // # What Validate does
 //
@@ -369,14 +387,14 @@
 // //kama:validate decoded on a type tells that its decoder validates it,
 // and such a decoder calls the second method a target may get:
 //
-//	func (v T) ValidateShallow(stopOnFirstError bool) error
+//	func (v *T) ValidateShallow(stopOnFirstError bool) error
 //
 // ValidateShallow runs what Validate runs, with two differences in the
 // nested validation of step 2. It skips a value of a type marked decoded.
 // It calls ValidateShallow in place of Validate on a value of a target or
 // an implementor having one. An implementor has one when it declares
-// ValidateShallow on its value receiver with the signature of its
-// Validate. A target gets one when its walk reaches a value of a type
+// ValidateShallow on the receiver of its Validate with the signature of
+// its Validate. A target gets one when its walk reaches a value of a type
 // marked decoded or of a type having a ValidateShallow, directly or through
 // the walk of another target. A target marked decoded gets one too, since
 // its decoder calls it on the type itself; where its walk reaches no such
@@ -407,13 +425,14 @@
 // The hook of a field F is a method the user writes on the target T:
 //
 //	func (v T) validateF(stopOnFirstError bool) error
+//	func (v *T) validateF(stopOnFirstError bool) error
 //
 // Its name is validate followed by the field name with its first letter
 // upper-cased. A field Name and a field name both map to the hook
 // validateName. Two fields of one struct whose hooks are on and share a
 // name are an error wrapping ErrConflict. Turn the hook of one of them off.
-// The hook must be callable on a value of T. A hook on the pointer receiver
-// is an error. Validate wraps the error of the hook with the path segment
+// Validate of a struct target has the pointer receiver, so it calls a hook
+// on either receiver. Validate wraps the error of the hook with the path segment
 // of the field. A plain error of a hook is therefore located at the field.
 //
 // The hook of each field of a marked type is on by default. File and
@@ -449,7 +468,12 @@
 //	}
 //
 //	func validatePointPre(v Point, stopOnFirstError bool) error
-//	func validatePointPost(v Point, stopOnFirstError bool) error
+//	func validatePointPost(v *Point, stopOnFirstError bool) error
+//
+// A function of a struct target takes the value or a pointer to it.
+// Validate passes its receiver to a function taking a pointer, and the
+// value the receiver points to otherwise. A function of a target of
+// another kind takes the value.
 //
 // A generic target G[T any] takes generic functions with type parameters
 // of the same number, as in func validateGPre[T any](v G[T], stopOnFirstError
@@ -816,7 +840,6 @@
 //
 //   - Rules on the fields of a struct type literal. Give the struct a name
 //     and validators of its own.
-//   - Hooks with a pointer receiver.
 //   - Targets of packages outside the run, and types other than struct,
 //     slice and map types without validators of their own.
 package validator

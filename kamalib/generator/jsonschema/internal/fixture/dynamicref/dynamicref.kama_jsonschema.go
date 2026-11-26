@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:58:54Z
+// generated: 2026-11-26T08:15:28Z
 
 package dynamicref
 
@@ -45,7 +45,7 @@ func (v *StrictTree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = StrictTree(out)
-	return kamaJsonschemaChecked(err, StrictTree(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -123,7 +123,7 @@ func (v *TreeChildrenItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = TreeChildrenItem(out)
-	return kamaJsonschemaChecked(err, TreeChildrenItem(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -158,7 +158,7 @@ func (v *ListItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = ListItem(out)
-	return kamaJsonschemaChecked(err, ListItem(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -195,7 +195,7 @@ func (v *Names) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = Names(out)
-	return kamaJsonschemaChecked(err, Names(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v

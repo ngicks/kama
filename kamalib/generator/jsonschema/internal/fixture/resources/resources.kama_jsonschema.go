@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:27Z
+// generated: 2026-11-26T08:15:58Z
 
 package resources
 
@@ -132,7 +132,7 @@ func (v *CustomerName) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = CustomerName(out)
-	return kamaJsonschemaChecked(err, CustomerName(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // Address is generated from the schema at #/$defs/Address.
@@ -201,7 +201,7 @@ func (v *AddressZip) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = AddressZip(out)
-	return kamaJsonschemaChecked(err, AddressZip(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // Line is generated from the schema at #/$defs/Line.
@@ -271,7 +271,7 @@ func (v *LineSku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = LineSku(out)
-	return kamaJsonschemaChecked(err, LineSku(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // Note is generated from the schema at #/$defs/Note.
@@ -299,5 +299,5 @@ func (v *Note) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = Note(out)
-	return kamaJsonschemaChecked(err, Note(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }

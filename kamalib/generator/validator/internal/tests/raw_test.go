@@ -25,8 +25,8 @@ func TestRawKinds(t *testing.T) {
 	}
 }
 
-func validRawBag() model.RawBag {
-	return model.RawBag{
+func validRawBag() *model.RawBag {
+	return &model.RawBag{
 		Mixed:  jsontext.Value(`[1, "x"]`),
 		Object: jsontext.Value(`{"a": 1}`),
 		Fixed:  jsontext.Value(`{"b": []}`),
@@ -68,7 +68,7 @@ func TestRawFields(t *testing.T) {
 		func(b *model.RawBag) { b.Ipv6 = jsontext.Value(`"fe80::1%eth0"`) },
 	} {
 		b := validRawBag()
-		set(&b)
+		set(b)
 		assert.ErrorIs(t, b.Validate(false), validator.ErrFormat)
 	}
 
@@ -123,7 +123,7 @@ func TestRawFields(t *testing.T) {
 
 	for _, c := range cases {
 		b := validRawBag()
-		c.set(&b)
+		c.set(b)
 
 		err := b.Validate(false)
 		assert.DeepEqual(t, validator.Pointers(err), []string{c.pointer})

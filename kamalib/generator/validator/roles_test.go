@@ -52,8 +52,10 @@ type A struct {
 	assertContains(
 		t,
 		fn,
-		"for i, e := range v.S {\n\t\t"+
-			check(`validator.Field(validator.Index(kamaValidateLength(len(e), "<=", 64), i), "S")`),
+		"for i := range v.S {\n\t\t"+
+			check(
+				`validator.Field(validator.Index(kamaValidateLength(len(v.S[i]), "<=", 64), i), "S")`,
+			),
 		"for _, k := range slices.Sorted(maps.Keys(v.M)) {\n\t\t"+
 			check(`validator.Field(validator.Key(`+
 				`kamaValidateRegexpString(kamaValidateRegexp_39c46b3647, k), k), "M")`),
@@ -77,17 +79,17 @@ type A struct {
 		check(
 			`validator.Field(validator.Field(kamaValidateLength(len(v.T.V1), ">=", 1), "V1"), "T")`,
 		),
-		"for _, k2 := range slices.Sorted(maps.Keys(e)) {\n\t\t\te2 := e[k2]\n\t\t\t"+
+		"for _, k2 := range slices.Sorted(maps.Keys(v.N[i])) {\n\t\t\te := v.N[i][k2]\n\t\t\t"+
 			check(`validator.Field(validator.Index(validator.Key(`+
-				`kamaValidateCmp(e2, ">=", 0), k2), i), "N")`),
+				`kamaValidateCmp(e, ">=", 0), k2), i), "N")`),
 		"if v.P != nil {\n\t\tif err := validator.Field(kamaValidateOr("+
 			"kamaValidateNil((*v.P) == nil), func() error {",
 		"if (*v.P) != nil {\n\t\t\t\treturn "+
 			`kamaValidateNot(kamaValidateCmp((*(*v.P)), "==", 0), "cmp(0)")`,
 		"if v.Q != nil {\n\t\tif (*v.Q).IsSome() {\n\t\t\t"+
 			check(`validator.Field(kamaValidateCmp((*v.Q).Value(), ">=", 1), "Q")`),
-		"for i, e := range v.D {\n\t\tif e != nil {\n\t\t\t"+
-			check(`validator.Field(validator.Index(kamaValidateCmp((*e), ">=", 1), i), "D")`),
+		"for i := range v.D {\n\t\tif v.D[i] != nil {\n\t\t\t"+
+			check(`validator.Field(validator.Index(kamaValidateCmp((*v.D[i]), ">=", 1), i), "D")`),
 		"for k := range v.F {\n\t\t"+
 			check(`validator.Field(validator.Key(kamaValidateCmp(k, ">", 0), k), "F")`),
 	)
@@ -100,8 +102,8 @@ func TestRoleItemOnType(t *testing.T) {
 		"a.go": "package x\n\n//kama:validate e=runes(le=3)\ntype L []string\n",
 	}, "a.kama_validate.go", "L")
 
-	assertContains(t, fn, "for i, e := range v {\n\t\t"+
-		check(`validator.Index(kamaValidateRunes(utf8.RuneCountInString(e), "<=", 3), i)`))
+	assertContains(t, fn, "for i := range v {\n\t\t"+
+		check(`validator.Index(kamaValidateRunes(utf8.RuneCountInString(v[i]), "<=", 3), i)`))
 }
 
 // TestRoleItemGeneric applies a role item to values of a type parameter
@@ -114,8 +116,8 @@ func TestRoleItemGeneric(t *testing.T) {
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,
-		"for i, e := range v.S {",
-		"kamaValidateZeroComparable(e)",
+		"for i := range v.S {",
+		"kamaValidateZeroComparable(v.S[i])",
 		"if v.O.IsSome() {",
 		"kamaValidateZeroComparable(v.O.Value())",
 	)

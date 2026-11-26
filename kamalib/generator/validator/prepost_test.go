@@ -26,10 +26,22 @@ func TestPrePost(t *testing.T) {
 				"\t//kama:validate cmp(gt=0)\n\tN int\n}\n\n" + prePostFuncs,
 			typeName: "A",
 			want: []string{
-				"func (v A) Validate(stopOnFirstError bool) (err error) {",
+				"func (v *A) Validate(stopOnFirstError bool) (err error) {",
+				"defer func() { err = validator.Join(err, " +
+					"validator.Root(post((*v), stopOnFirstError))) }()",
+				check("validator.Root(pre((*v), stopOnFirstError))"),
+				check(`validator.Field(kamaValidateCmp(v.N, ">", 0), "N")`),
+			},
+		},
+		{
+			// A function taking a pointer gets the receiver of Validate itself.
+			name: "struct by pointer",
+			src: "//kama:validate pre=\"pre\", post=\"post\", hook=False\ntype A struct{ N int }\n\n" +
+				"func pre(*A, bool) error { return nil }\n\nfunc post(*A, bool) error { return nil }\n",
+			typeName: "A",
+			want: []string{
 				"defer func() { err = validator.Join(err, validator.Root(post(v, stopOnFirstError))) }()",
 				check("validator.Root(pre(v, stopOnFirstError))"),
-				check(`validator.Field(kamaValidateCmp(v.N, ">", 0), "N")`),
 			},
 		},
 		{
@@ -90,7 +102,7 @@ func TestPrePostShallow(t *testing.T) {
 
 	assertContains(t, funcs["D.ValidateShallow"], "return v.Validate(stopOnFirstError)")
 	assertNotContains(t, funcs["D.ValidateShallow"], "preD", "postD", "err error")
-	assertContains(t, funcs["O.ValidateShallow"], "preO(v,", "postO(v,", "(err error)")
+	assertContains(t, funcs["O.ValidateShallow"], "preO((*v),", "postO((*v),", "(err error)")
 	assertNotContains(t, funcs["O.ValidateShallow"], "v.D.ValidateShallow")
 }
 
@@ -230,7 +242,7 @@ func TestOptionFilePrePost(t *testing.T) {
 		check(`kamaValidateCmp(v, ">", 0)`),
 	)
 	assertContains(t, funcs["B.Validate"],
-		check("validator.Root(preB(v, stopOnFirstError))"),
+		check("validator.Root(preB((*v), stopOnFirstError))"),
 		check(`validator.Field(requiredComparable(v.N), "N")`),
 		check(`validator.Field(v.validateN(stopOnFirstError), "N")`),
 	)

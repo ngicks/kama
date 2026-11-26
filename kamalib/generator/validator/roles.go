@@ -112,8 +112,18 @@ func (w *writer) over(
 
 	idx = loopName(idx, depth)
 
+	_, indexable := types.Unalias(t).Underlying().(*types.Slice)
+	if _, ok := types.Unalias(t).Underlying().(*types.Array); ok {
+		indexable = true
+	}
+
+	elem := lang.Name("e")
+	if indexable {
+		elem = indexElem(x, idx)
+	}
+
 	held, guard, over, value, segment, label, _ := ext.RoleValue(
-		reg, t, x, role, lang.Name(idx), lang.Name("e"),
+		reg, t, x, role, lang.Name(idx), elem,
 	)
 
 	if over == nil {
@@ -128,6 +138,10 @@ func (w *writer) over(
 	s, err := inner(held, value, w.locate(segment, label, wrap), depth+1)
 	if s == nil || err != nil {
 		return nil, err
+	}
+
+	if indexable {
+		return rangeIndexed(over, idx, s), nil
 	}
 
 	m, isMap := types.Unalias(t).Underlying().(*types.Map)

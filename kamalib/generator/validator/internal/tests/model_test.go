@@ -12,10 +12,10 @@ import (
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
-func validUser() model.User {
+func validUser() *model.User {
 	email := "a@example.com"
 
-	return model.User{
+	return &model.User{
 		Name:    "a",
 		Email:   &email,
 		Address: model.Address{City: "c"},
@@ -27,8 +27,8 @@ func validUser() model.User {
 }
 
 // invalidUser breaks every check of User once.
-func invalidUser() model.User {
-	return model.User{
+func invalidUser() *model.User {
+	return &model.User{
 		Tags: []model.Tag{{Name: "t"}, {}},
 		Pets: map[string]*model.Pet{"cat": {}},
 		Box: model.Box[model.Tag]{
@@ -117,17 +117,17 @@ func TestGeneric(t *testing.T) {
 
 func TestDependants(t *testing.T) {
 	bad := invalidUser()
-	team := model.Team{Members: []model.User{validUser(), bad}, Lead: &bad}
+	team := model.Team{Members: []model.User{*validUser(), *bad}, Lead: bad}
 
 	err := team.Validate(false)
 	assert.Equal(t, len(validator.Under(err, "/members/1")), 9)
 	assert.Equal(t, len(validator.Under(err, "/lead")), 9)
 	assert.Equal(t, len(validator.Under(err, "/members/0")), 0)
 
-	assert.NilError(t, model.Team{}.Validate(false))
+	assert.NilError(t, (&model.Team{}).Validate(false))
 	assert.DeepEqual(
 		t,
-		validator.Pointers(model.Roster{validUser(), {Name: "x"}}.Validate(true)),
+		validator.Pointers(model.Roster{*validUser(), {Name: "x"}}.Validate(true)),
 		[]string{"/1/email"},
 	)
 }

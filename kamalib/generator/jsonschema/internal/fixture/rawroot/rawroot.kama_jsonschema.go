@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:22Z
+// generated: 2026-11-26T08:15:53Z
 
 package rawroot
 
@@ -45,7 +45,7 @@ func (v *Loose) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = Loose(out)
-	return kamaJsonschemaChecked(err, Loose(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -81,7 +81,7 @@ func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = Mixed(out)
-	return kamaJsonschemaChecked(err, Mixed(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -118,7 +118,7 @@ func (v *Pair) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = Pair(out)
-	return kamaJsonschemaChecked(err, Pair(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v

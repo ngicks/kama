@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T07:02:41Z
+// generated: 2026-11-26T08:31:07Z
 
 package edgecases
 
@@ -18,7 +18,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Root) Validate(stopOnFirstError bool) error {
+func (v *Root) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Root")
+	}
 	var errs []error
 	if v.Ce.IsSome() {
 		if err := validator.Field(v.Ce.Value().Validate(stopOnFirstError), "ce"); err != nil {
@@ -159,7 +162,10 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.MembersStruct.IsSome() {
-		if err := validator.Field(v.MembersStruct.Value().Validate(stopOnFirstError), "membersStruct"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.MembersStruct.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "membersStruct"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -228,7 +234,10 @@ func (v Root) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Root) ValidateShallow(stopOnFirstError bool) error {
+func (v *Root) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Root")
+	}
 	var errs []error
 	if v.PrefixUnique.IsSome() {
 		if err := validator.Field(rawjson.Encoded(v.PrefixUnique.Value(), func(m jsontext.Value) error {
@@ -409,7 +418,10 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootMembersStruct) Validate(stopOnFirstError bool) error {
+func (v *RootMembersStruct) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootMembersStruct")
+	}
 	var errs []error
 	if err := error(nil); err != nil {
 		if stopOnFirstError {
@@ -425,7 +437,7 @@ func (v RootMembersStruct) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v RootMembersStruct) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootMembersStruct) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -473,7 +485,10 @@ func (v CE) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Evaluated) erro
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v O) Validate(stopOnFirstError bool) error {
+func (v *O) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *O")
+	}
 	return nil
 }
 
@@ -482,6 +497,6 @@ func (v O) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v O) ValidateShallow(stopOnFirstError bool) error {
+func (v *O) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }

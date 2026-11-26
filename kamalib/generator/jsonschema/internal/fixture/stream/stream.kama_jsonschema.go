@@ -3,7 +3,7 @@
 //	schema: "kama_jsonschema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:30Z
+// generated: 2026-11-26T08:16:02Z
 
 package stream
 
@@ -42,7 +42,7 @@ func (v *Stream) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.NonNullSlice[Item].Value(w)
 	*v = Stream(out)
-	return kamaJsonschemaChecked(err, Stream(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // Item is generated from the schema at #/$defs/Item.

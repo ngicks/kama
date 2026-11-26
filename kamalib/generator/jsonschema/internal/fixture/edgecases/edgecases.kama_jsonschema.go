@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T07:02:40Z
+// generated: 2026-11-26T08:15:29Z
 
 package edgecases
 
@@ -207,7 +207,7 @@ func (v *CE) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = CE(out)
-	return kamaJsonschemaChecked(err, CE(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v

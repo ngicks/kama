@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:58:50Z
+// generated: 2026-11-26T08:15:24Z
 
 package decodecost
 
@@ -326,7 +326,7 @@ func (v *Chosen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member NonNegative: %w", err))
 			} else {
-				if err := (ChosenNonNegative{NonNegative: m}).ValidateShallow(false); err != nil {
+				if err := (&ChosenNonNegative{NonNegative: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member NonNegative: %w", err))
 				} else {
 					if found != nil {
@@ -346,7 +346,7 @@ func (v *Chosen) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Negative: %w", err))
 			} else {
-				if err := (ChosenNegative{Negative: m}).ValidateShallow(false); err != nil {
+				if err := (&ChosenNegative{Negative: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Negative: %w", err))
 				} else {
 					if found != nil {

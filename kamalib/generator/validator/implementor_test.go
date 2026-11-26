@@ -57,7 +57,7 @@ type Iface interface{ Validate(bool) error }
 }
 
 // TestImplementorPointerReceiver calls a Validate on the pointer receiver
-// on the address of the value, or of a copy of a value that has none, and
+// on the value in place, or on a copy of a value that has no address, and
 // passes a function literal calling it for a type parameter.
 func TestImplementorPointerReceiver(t *testing.T) {
 	fn := validateOf(t, map[string]string{
@@ -91,16 +91,16 @@ type G[T any] struct{ V T }
 	}, "a.kama_validate.go", "A")
 
 	assertContains(t, fn,
-		"(&v.F).Validate(stopOnFirstError)",
-		"for i, e := range v.S {\n\t\tif err := validator.Field(validator.Index((&e).Validate(",
-		"if e != nil {\n\t\t\tif err := validator.Field(validator.Index(e.Validate(",
+		check(`validator.Field(v.F.Validate(stopOnFirstError), "F")`),
+		"for i := range v.S {\n\t\tif err := validator.Field(validator.Index(v.S[i].Validate(",
+		"if v.Q[i] != nil {\n\t\t\tif err := validator.Field(validator.Index((*v.Q[i]).Validate(",
 		"e := v.M[k]",
-		"(&e).Validate(stopOnFirstError)",
+		check(`validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "M")`),
 		"if v.O.IsSome() {\n\t\tif err := validator.Field(func() error {\n\t\t\tp := v.O.Value()\n"+
-			"\t\t\treturn (&p).Validate(stopOnFirstError)",
-		"(&v.B).Validate()",
+			"\t\t\treturn p.Validate(stopOnFirstError)",
+		check(`validator.Field(v.B.Validate(), "B")`),
 		"v.G.Validate(stopOnFirstError, func(v P, stopOnFirstError bool) error {\n"+
-			"\t\treturn (&v).Validate(stopOnFirstError)",
+			"\t\treturn v.Validate(stopOnFirstError)",
 	)
 }
 

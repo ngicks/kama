@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:58:59Z
+// generated: 2026-11-26T08:15:34Z
 
 package multikind
 
@@ -12,7 +12,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Cell) Validate(stopOnFirstError bool) error {
+func (v *Cell) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Cell")
+	}
 	var errs []error
 	if err := validator.Field(v.Value.Validate(stopOnFirstError), "value"); err != nil {
 		if stopOnFirstError {
@@ -38,7 +41,10 @@ func (v Cell) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Cell) ValidateShallow(stopOnFirstError bool) error {
+func (v *Cell) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Cell")
+	}
 	var errs []error
 	if err := validator.Field(v.Value.ValidateShallow(stopOnFirstError), "value"); err != nil {
 		if stopOnFirstError {
@@ -61,7 +67,10 @@ func (v Cell) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v CellValueString) Validate(stopOnFirstError bool) error {
+func (v *CellValueString) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *CellValueString")
+	}
 	return nil
 }
 
@@ -70,7 +79,7 @@ func (v CellValueString) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v CellValueString) ValidateShallow(stopOnFirstError bool) error {
+func (v *CellValueString) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -78,7 +87,10 @@ func (v CellValueString) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v CellValueInteger) Validate(stopOnFirstError bool) error {
+func (v *CellValueInteger) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *CellValueInteger")
+	}
 	return nil
 }
 
@@ -87,7 +99,7 @@ func (v CellValueInteger) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v CellValueInteger) ValidateShallow(stopOnFirstError bool) error {
+func (v *CellValueInteger) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -95,7 +107,10 @@ func (v CellValueInteger) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v CellValueBoolean) Validate(stopOnFirstError bool) error {
+func (v *CellValueBoolean) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *CellValueBoolean")
+	}
 	return nil
 }
 
@@ -104,7 +119,7 @@ func (v CellValueBoolean) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v CellValueBoolean) ValidateShallow(stopOnFirstError bool) error {
+func (v *CellValueBoolean) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -112,7 +127,10 @@ func (v CellValueBoolean) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v CellLabelString) Validate(stopOnFirstError bool) error {
+func (v *CellLabelString) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *CellLabelString")
+	}
 	return nil
 }
 
@@ -121,7 +139,7 @@ func (v CellLabelString) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v CellLabelString) ValidateShallow(stopOnFirstError bool) error {
+func (v *CellLabelString) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -129,7 +147,10 @@ func (v CellLabelString) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v CellLabelNumber) Validate(stopOnFirstError bool) error {
+func (v *CellLabelNumber) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *CellLabelNumber")
+	}
 	return nil
 }
 
@@ -138,7 +159,7 @@ func (v CellLabelNumber) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v CellLabelNumber) ValidateShallow(stopOnFirstError bool) error {
+func (v *CellLabelNumber) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -146,7 +167,10 @@ func (v CellLabelNumber) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v CellLabelNull) Validate(stopOnFirstError bool) error {
+func (v *CellLabelNull) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *CellLabelNull")
+	}
 	return nil
 }
 
@@ -155,6 +179,6 @@ func (v CellLabelNull) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v CellLabelNull) ValidateShallow(stopOnFirstError bool) error {
+func (v *CellLabelNull) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }

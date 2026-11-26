@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:58:52Z
+// generated: 2026-11-26T08:15:26Z
 
 package decoding
 
@@ -321,7 +321,7 @@ func (v *RootU) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Point: %w", err))
 			} else {
-				if err := (RootUPoint{Point: m}).ValidateShallow(false); err != nil {
+				if err := (&RootUPoint{Point: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Point: %w", err))
 				} else {
 					if found != nil {
@@ -341,7 +341,7 @@ func (v *RootU) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.String.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
-				if err := (RootUString{String: m}).ValidateShallow(false); err != nil {
+				if err := (&RootUString{String: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member String: %w", err))
 				} else {
 					if found != nil {
@@ -640,7 +640,7 @@ func (v *RootTwice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Object: %w", err))
 		} else {
-			if err := (RootTwiceObject{Object: m}).ValidateShallow(false); err != nil {
+			if err := (&RootTwiceObject{Object: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member Object: %w", err))
 			} else {
 				if found != nil {
@@ -659,7 +659,7 @@ func (v *RootTwice) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.String.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
-				if err := (RootTwiceString{String: m}).ValidateShallow(false); err != nil {
+				if err := (&RootTwiceString{String: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member String: %w", err))
 				} else {
 					if found != nil {

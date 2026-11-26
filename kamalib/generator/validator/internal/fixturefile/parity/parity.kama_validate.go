@@ -2,7 +2,7 @@
 // params:
 //	option_file: "validate.yaml"
 //	package_option_file: "parity/kama_validate.yaml"
-// generated: 2026-11-26T06:42:12Z
+// generated: 2026-11-26T08:14:36Z
 
 package parity
 
@@ -18,7 +18,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Order) Validate(stopOnFirstError bool) error {
+func (v *Order) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Order")
+	}
 	var errs []error
 	if err := kamaValidateMembers(kamaValidateCount(v.Lines != nil)+3, ">=", 4); err != nil {
 		if stopOnFirstError {
@@ -44,8 +47,8 @@ func (v Order) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v.Lines {
-		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "lines"); err != nil {
+	for i := range v.Lines {
+		if err := validator.Field(validator.Index(v.Lines[i].Validate(stopOnFirstError), i), "lines"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -71,7 +74,10 @@ func (v Order) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Line) Validate(stopOnFirstError bool) error {
+func (v *Line) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Line")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Qty, ">", 0), kamaValidateCmp(v.Qty, "<=", 100)), "qty"); err != nil {
 		if stopOnFirstError {
@@ -121,7 +127,10 @@ func (v Sku) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Discount) Validate(stopOnFirstError bool) error {
+func (v *Discount) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Discount")
+	}
 	var errs []error
 	if err := kamaValidateOr(kamaValidateMembers(kamaValidateCount(v.Percent.IsSome(), v.Amount != nil)+1, "==", 0), kamaValidateMembers(kamaValidateCount(v.Percent.IsSome(), v.Amount != nil)+1, ">=", 2)); err != nil {
 		if stopOnFirstError {
@@ -158,7 +167,10 @@ func (v Discount) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Batch) Validate(stopOnFirstError bool) error {
+func (v *Batch) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Batch")
+	}
 	var errs []error
 	for _, k := range slices.Sorted(maps.Keys(v.Orders)) {
 		e := v.Orders[k]

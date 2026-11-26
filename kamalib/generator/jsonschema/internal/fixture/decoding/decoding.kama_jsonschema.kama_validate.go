@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:58:53Z
+// generated: 2026-11-26T08:31:03Z
 
 package decoding
 
@@ -19,7 +19,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Root) Validate(stopOnFirstError bool) error {
+func (v *Root) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Root")
+	}
 	var errs []error
 	if err := validator.Field(v.Obj.Validate(stopOnFirstError), "obj"); err != nil {
 		if stopOnFirstError {
@@ -28,7 +31,10 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if v.Oobj.IsSome() {
-		if err := validator.Field(v.Oobj.Value().Validate(stopOnFirstError), "oobj"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Oobj.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "oobj"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -36,7 +42,10 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Nobj.IsSome() {
-		if err := validator.Field(v.Nobj.Value().Validate(stopOnFirstError), "nobj"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Nobj.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "nobj"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -44,7 +53,10 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Onobj.IsDefined() {
-		if err := validator.Field(v.Onobj.Value().Validate(stopOnFirstError), "onobj"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Onobj.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "onobj"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -81,7 +93,10 @@ func (v Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.All.IsSome() {
-		if err := validator.Field(v.All.Value().Validate(stopOnFirstError), "all"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.All.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "all"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -106,7 +121,10 @@ func (v Root) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Root) ValidateShallow(stopOnFirstError bool) error {
+func (v *Root) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Root")
+	}
 	var errs []error
 	if v.U.IsSome() {
 		if err := validator.Field(v.U.Value().ValidateShallow(stopOnFirstError), "u"); err != nil {
@@ -131,7 +149,10 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootUPoint) Validate(stopOnFirstError bool) error {
+func (v *RootUPoint) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootUPoint")
+	}
 	var errs []error
 	if err := validator.Field(v.Point.Validate(stopOnFirstError), "Point"); err != nil {
 		if stopOnFirstError {
@@ -149,7 +170,10 @@ func (v RootUPoint) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v RootUPoint) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootUPoint) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *RootUPoint")
+	}
 	return nil
 }
 
@@ -157,7 +181,10 @@ func (v RootUPoint) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootUString) Validate(stopOnFirstError bool) error {
+func (v *RootUString) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootUString")
+	}
 	return nil
 }
 
@@ -166,7 +193,7 @@ func (v RootUString) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v RootUString) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootUString) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -213,7 +240,10 @@ func (v rootUPointProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.Ev
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootAll) Validate(stopOnFirstError bool) error {
+func (v *RootAll) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootAll")
+	}
 	var errs []error
 	if err := validator.Field(v.Option1.Validate(stopOnFirstError), "Option1"); err != nil {
 		if stopOnFirstError {
@@ -237,7 +267,10 @@ func (v RootAll) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v RootAll) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootAll) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *RootAll")
+	}
 	return nil
 }
 
@@ -245,10 +278,16 @@ func (v RootAll) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootAllOption1) Validate(stopOnFirstError bool) error {
+func (v *RootAllOption1) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootAllOption1")
+	}
 	var errs []error
 	if v.P.IsSome() {
-		if err := validator.Field(v.P.Value().Validate(stopOnFirstError), "p"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.P.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "p"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -265,7 +304,10 @@ func (v RootAllOption1) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v RootAllOption1) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootAllOption1) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *RootAllOption1")
+	}
 	return nil
 }
 
@@ -273,7 +315,10 @@ func (v RootAllOption1) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootAllOption2) Validate(stopOnFirstError bool) error {
+func (v *RootAllOption2) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootAllOption2")
+	}
 	return nil
 }
 
@@ -282,7 +327,7 @@ func (v RootAllOption2) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v RootAllOption2) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootAllOption2) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -290,7 +335,10 @@ func (v RootAllOption2) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootTwiceObject) Validate(stopOnFirstError bool) error {
+func (v *RootTwiceObject) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootTwiceObject")
+	}
 	var errs []error
 	if err := validator.Field(v.Object.Validate(stopOnFirstError), "Object"); err != nil {
 		if stopOnFirstError {
@@ -308,7 +356,10 @@ func (v RootTwiceObject) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v RootTwiceObject) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootTwiceObject) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *RootTwiceObject")
+	}
 	return nil
 }
 
@@ -316,24 +367,10 @@ func (v RootTwiceObject) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootTwiceString) Validate(stopOnFirstError bool) error {
-	return nil
-}
-
-// ValidateShallow is Validate for a decoded v, whose decoder calls it.
-// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
-// as valid.
-//
-//kama:generated kama:validate
-func (v RootTwiceString) ValidateShallow(stopOnFirstError bool) error {
-	return v.Validate(stopOnFirstError)
-}
-
-// Validate reports why v is invalid. With stopOnFirstError it returns the first
-// error found, otherwise every error joined, or nil when there is none.
-//
-//kama:generated kama:validate
-func (v RootTwiceObjectValue) Validate(stopOnFirstError bool) error {
+func (v *RootTwiceString) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootTwiceString")
+	}
 	return nil
 }
 
@@ -342,7 +379,7 @@ func (v RootTwiceObjectValue) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v RootTwiceObjectValue) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootTwiceString) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -350,7 +387,30 @@ func (v RootTwiceObjectValue) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Point) Validate(stopOnFirstError bool) error {
+func (v *RootTwiceObjectValue) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootTwiceObjectValue")
+	}
+	return nil
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v *RootTwiceObjectValue) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v *Point) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Point")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateCmp(v.X, ">=", 0), "x"); err != nil {
 		if stopOnFirstError {
@@ -366,6 +426,6 @@ func (v Point) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Point) ValidateShallow(stopOnFirstError bool) error {
+func (v *Point) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }

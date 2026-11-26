@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:28Z
+// generated: 2026-11-26T08:31:33Z
 
 package resources
 
@@ -16,7 +16,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Order) Validate(stopOnFirstError bool) error {
+func (v *Order) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Order")
+	}
 	var errs []error
 	if err := validator.Field(v.Customer.Validate(stopOnFirstError), "customer"); err != nil {
 		if stopOnFirstError {
@@ -60,7 +63,10 @@ func (v Order) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Order) ValidateShallow(stopOnFirstError bool) error {
+func (v *Order) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Order")
+	}
 	return nil
 }
 
@@ -68,7 +74,10 @@ func (v Order) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Customer) Validate(stopOnFirstError bool) error {
+func (v *Customer) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Customer")
+	}
 	var errs []error
 	if err := validator.Field(v.Name.Validate(stopOnFirstError), "name"); err != nil {
 		if stopOnFirstError {
@@ -77,7 +86,10 @@ func (v Customer) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if v.Address.IsSome() {
-		if err := validator.Field(v.Address.Value().Validate(stopOnFirstError), "address"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Address.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "address"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -94,7 +106,10 @@ func (v Customer) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Customer) ValidateShallow(stopOnFirstError bool) error {
+func (v *Customer) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Customer")
+	}
 	return nil
 }
 
@@ -126,7 +141,10 @@ func (v CustomerName) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Address) Validate(stopOnFirstError bool) error {
+func (v *Address) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Address")
+	}
 	var errs []error
 	if v.Zip.IsSome() {
 		if err := validator.Field(v.Zip.Value().Validate(stopOnFirstError), "zip"); err != nil {
@@ -146,7 +164,10 @@ func (v Address) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Address) ValidateShallow(stopOnFirstError bool) error {
+func (v *Address) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Address")
+	}
 	return nil
 }
 
@@ -178,7 +199,10 @@ func (v AddressZip) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Line) Validate(stopOnFirstError bool) error {
+func (v *Line) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Line")
+	}
 	var errs []error
 	if err := validator.Field(v.Sku.Validate(stopOnFirstError), "sku"); err != nil {
 		if stopOnFirstError {
@@ -204,7 +228,10 @@ func (v Line) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Line) ValidateShallow(stopOnFirstError bool) error {
+func (v *Line) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Line")
+	}
 	var errs []error
 	if v.Count.IsSome() {
 		if err := validator.Field(kamaValidateCmp(v.Count.Value(), ">=", 1), "count"); err != nil {

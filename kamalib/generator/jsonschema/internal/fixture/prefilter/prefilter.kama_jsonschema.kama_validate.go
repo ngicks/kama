@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:19Z
+// generated: 2026-11-26T08:15:51Z
 
 package prefilter
 
@@ -17,7 +17,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ShapeCircle) Validate(stopOnFirstError bool) error {
+func (v *ShapeCircle) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ShapeCircle")
+	}
 	var errs []error
 	if err := validator.Field(v.Circle.Validate(stopOnFirstError), "Circle"); err != nil {
 		if stopOnFirstError {
@@ -35,7 +38,10 @@ func (v ShapeCircle) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v ShapeCircle) ValidateShallow(stopOnFirstError bool) error {
+func (v *ShapeCircle) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *ShapeCircle")
+	}
 	return nil
 }
 
@@ -43,7 +49,10 @@ func (v ShapeCircle) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ShapeSquare) Validate(stopOnFirstError bool) error {
+func (v *ShapeSquare) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ShapeSquare")
+	}
 	var errs []error
 	if err := validator.Field(v.Square.Validate(stopOnFirstError), "Square"); err != nil {
 		if stopOnFirstError {
@@ -61,7 +70,10 @@ func (v ShapeSquare) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v ShapeSquare) ValidateShallow(stopOnFirstError bool) error {
+func (v *ShapeSquare) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *ShapeSquare")
+	}
 	return nil
 }
 
@@ -143,7 +155,10 @@ func (v shapeSquareProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjson.E
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Circle) Validate(stopOnFirstError bool) error {
+func (v *Circle) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Circle")
+	}
 	var errs []error
 	if err := validator.Field(v.Kind.Validate(stopOnFirstError), "kind"); err != nil {
 		if stopOnFirstError {
@@ -161,7 +176,10 @@ func (v Circle) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Circle) ValidateShallow(stopOnFirstError bool) error {
+func (v *Circle) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Circle")
+	}
 	return nil
 }
 
@@ -193,7 +211,10 @@ func (v CircleKind) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Square) Validate(stopOnFirstError bool) error {
+func (v *Square) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Square")
+	}
 	var errs []error
 	if err := kamaValidateClosed(v.AdditionalProperties, stopOnFirstError); err != nil {
 		if stopOnFirstError {
@@ -209,6 +230,6 @@ func (v Square) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Square) ValidateShallow(stopOnFirstError bool) error {
+func (v *Square) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }

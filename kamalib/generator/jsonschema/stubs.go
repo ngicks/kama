@@ -104,7 +104,11 @@ func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool
 			continue
 		}
 
-		name := g.Specs[0].(*ast.TypeSpec).Name.Name
+		spec := g.Specs[0].(*ast.TypeSpec)
+		name := spec.Name.Name
+		// The validator generator writes the methods of a struct on the
+		// pointer receiver, and a stub declares them as it does.
+		_, isStruct := spec.Type.(*ast.StructType)
 
 		methods := []string{"Validate"}
 		if slices.Contains(lines, decodedWord) {
@@ -113,7 +117,7 @@ func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool
 
 		for _, m := range methods {
 			if !declaresMethod(env.Registry, own, name, m) {
-				b.WriteString(stub(name, m))
+				b.WriteString(stub(name, m, isStruct))
 			}
 		}
 	}
@@ -130,17 +134,23 @@ func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool
 	return base.Whole{Path: file, Content: p.Bytes()}, true, nil
 }
 
-// stub returns the stub of the method of the type name.
-func stub(name, method string) string {
+// stub returns the stub of the method of the type name, on the pointer
+// receiver for a struct.
+func stub(name, method string, isStruct bool) string {
+	recv := name
+	if isStruct {
+		recv = "*" + name
+	}
+
 	return fmt.Sprintf(`
 // %[2]s is a stub of the method the validator generator writes. It
 // reports that the generator has not run.
 //
 %[3]s
-func (v %[1]s) %[2]s(stopOnFirstError bool) error {
+func (v %[4]s) %[2]s(stopOnFirstError bool) error {
 	return validator.New(validator.ErrStub, "%[1]s.%[2]s; run validate.generate over the package")
 }
-`, name, method, validatorId.Marker())
+`, name, method, validatorId.Marker(), recv)
 }
 
 // ownFiles returns the parsed Go files of dir in the output of env that

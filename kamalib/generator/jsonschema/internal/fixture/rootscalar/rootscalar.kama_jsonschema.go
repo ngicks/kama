@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:29Z
+// generated: 2026-11-26T08:16:00Z
 
 package rootscalar
 
@@ -39,5 +39,5 @@ func (v *Port) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.Int64.Value(w)
 	*v = Port(out)
-	return kamaJsonschemaChecked(err, Port(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }

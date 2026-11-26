@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T07:43:42Z
+// generated: 2026-11-26T08:14:34Z
 
 package model
 
@@ -12,7 +12,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Containers) Validate(stopOnFirstError bool) error {
+func (v *Containers) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Containers")
+	}
 	var errs []error
 	{
 		i := 0
@@ -102,7 +105,10 @@ func (v Containers) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Item) Validate(stopOnFirstError bool) error {
+func (v *Item) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Item")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateLength(len(v.Name), ">=", 1), "name"); err != nil {
 		if stopOnFirstError {
@@ -117,19 +123,22 @@ func (v Item) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Walks) Validate(stopOnFirstError bool) error {
+func (v *Walks) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Walks")
+	}
 	var errs []error
-	for i, e := range v.On {
-		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "on"); err != nil {
+	for i := range v.On {
+		if err := validator.Field(validator.Index(v.On[i].Validate(stopOnFirstError), i), "on"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	for i, e := range v.Back {
-		for i2, e2 := range e {
-			if err := validator.Field(validator.Index(validator.Index(e2.Validate(stopOnFirstError), i2), i), "back"); err != nil {
+	for i := range v.Back {
+		for i2 := range v.Back[i] {
+			if err := validator.Field(validator.Index(validator.Index(v.Back[i][i2].Validate(stopOnFirstError), i2), i), "back"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -137,8 +146,8 @@ func (v Walks) Validate(stopOnFirstError bool) error {
 			}
 		}
 	}
-	for i, e := range v.Ruled {
-		if err := validator.Field(validator.Index(kamaValidateLength(len(e), "<=", 1), i), "ruled"); err != nil {
+	for i := range v.Ruled {
+		if err := validator.Field(validator.Index(kamaValidateLength(len(v.Ruled[i]), "<=", 1), i), "ruled"); err != nil {
 			if stopOnFirstError {
 				return err
 			}

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:40Z
+// generated: 2026-11-26T08:14:34Z
 
 package model
 
@@ -18,7 +18,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Rules) Validate(stopOnFirstError bool) error {
+func (v *Rules) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Rules")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateZeroComparable(v.Zero), "zero"); err != nil {
 		if stopOnFirstError {
@@ -195,7 +198,10 @@ func (v Rules) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v MultipleOf) Validate(stopOnFirstError bool) error {
+func (v *MultipleOf) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *MultipleOf")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateMultipleInt(v.ByInt, 2, "2"), "by_int"); err != nil {
 		if stopOnFirstError {
@@ -246,7 +252,10 @@ func (v MultipleOf) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Ordered) Validate(stopOnFirstError bool) error {
+func (v *Ordered) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Ordered")
+	}
 	var errs []error
 	for _, k := range slices.Sorted(maps.Keys(v.ByName)) {
 		e := v.ByName[k]
@@ -281,7 +290,10 @@ func (v Ordered) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Stamped) Validate(stopOnFirstError bool) error {
+func (v *Stamped) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Stamped")
+	}
 	var errs []error
 	if err := validator.Field(requiredComparable(v.At), "at"); err != nil {
 		if stopOnFirstError {
@@ -302,7 +314,10 @@ func (v Stamped) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Shipping) Validate(stopOnFirstError bool) error {
+func (v *Shipping) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Shipping")
+	}
 	var errs []error
 	if err := kamaValidateRequires(stopOnFirstError, "street", v.Street.IsSome(), []string{"city", "zip"}, v.City != nil, !v.Zip.IsUndefined()); err != nil {
 		if stopOnFirstError {
@@ -323,7 +338,10 @@ func (v Shipping) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Contact) Validate(stopOnFirstError bool) error {
+func (v *Contact) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Contact")
+	}
 	var errs []error
 	if err := kamaValidateAll(stopOnFirstError, kamaValidateMembers(kamaValidateCount(v.Email.IsSome(), v.Phone != nil)+1+len(v.Extra), ">=", 2), kamaValidateMembers(kamaValidateCount(v.Email.IsSome(), v.Phone != nil)+1+len(v.Extra), "<=", 3)); err != nil {
 		if stopOnFirstError {
@@ -338,7 +356,10 @@ func (v Contact) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Bounds) Validate(stopOnFirstError bool) error {
+func (v *Bounds) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Bounds")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateAll(stopOnFirstError, kamaValidateCmp(v.Half, ">=", 2), kamaValidateCmp(v.Half, "<=", 3)), "half"); err != nil {
 		if stopOnFirstError {
@@ -367,7 +388,10 @@ func (v Bounds) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Strict) Validate(stopOnFirstError bool) error {
+func (v *Strict) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Strict")
+	}
 	var errs []error
 	if err := kamaValidateClosed(v.Extra, stopOnFirstError); err != nil {
 		if stopOnFirstError {

@@ -110,7 +110,7 @@ func TestDecodeFunctionErrors(t *testing.T) {
 
 	reset("validateOrderPre")
 
-	err = Order{Id: "abc"}.Validate(true)
+	err = (&Order{Id: "abc"}).Validate(true)
 	assert.ErrorContains(t, err, "validateOrderPre")
 	assert.DeepEqual(t, validator.Pointers(err), []string{""})
 	assert.Equal(t, calls["validateOrderPost"], 1)

@@ -261,7 +261,7 @@ func TestOptionFileAllTypes(t *testing.T) {
 	assert.Equal(t, len(warnings), 0, "%v", warnings)
 
 	src := out["a.kama_validate.go"]
-	assertContains(t, src, "func (v A) Validate(", "func (v L) Validate(")
+	assertContains(t, src, "func (v *A) Validate(", "func (v L) Validate(")
 	assertNotContains(t, src, "func (v ID)")
 }
 

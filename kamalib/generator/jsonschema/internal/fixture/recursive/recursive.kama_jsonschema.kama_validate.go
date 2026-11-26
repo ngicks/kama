@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:24Z
+// generated: 2026-11-26T08:31:29Z
 
 package recursive
 
@@ -12,10 +12,13 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Forest) Validate(stopOnFirstError bool) error {
+func (v *Forest) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Forest")
+	}
 	var errs []error
-	for i, e := range v.Trees {
-		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "trees"); err != nil {
+	for i := range v.Trees {
+		if err := validator.Field(validator.Index(v.Trees[i].Validate(stopOnFirstError), i), "trees"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -33,7 +36,10 @@ func (v Forest) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.List.IsSome() {
-		if err := validator.Field(v.List.Value().Validate(stopOnFirstError), "list"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.List.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "list"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -56,7 +62,10 @@ func (v Forest) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Forest) ValidateShallow(stopOnFirstError bool) error {
+func (v *Forest) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Forest")
+	}
 	return nil
 }
 
@@ -64,7 +73,10 @@ func (v Forest) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Tree) Validate(stopOnFirstError bool) error {
+func (v *Tree) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Tree")
+	}
 	var errs []error
 	if v.Children.IsSome() {
 		for i, e := range v.Children.Value() {
@@ -86,7 +98,10 @@ func (v Tree) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Tree) ValidateShallow(stopOnFirstError bool) error {
+func (v *Tree) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Tree")
+	}
 	return nil
 }
 
@@ -94,7 +109,10 @@ func (v Tree) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v List) Validate(stopOnFirstError bool) error {
+func (v *List) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *List")
+	}
 	var errs []error
 	if v.Next != nil {
 		if err := validator.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
@@ -114,7 +132,10 @@ func (v List) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v List) ValidateShallow(stopOnFirstError bool) error {
+func (v *List) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *List")
+	}
 	return nil
 }
 
@@ -122,7 +143,10 @@ func (v List) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Chain) Validate(stopOnFirstError bool) error {
+func (v *Chain) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Chain")
+	}
 	var errs []error
 	if v.Link != nil {
 		if err := validator.Field((*v.Link).Validate(stopOnFirstError), "link"); err != nil {
@@ -142,7 +166,10 @@ func (v Chain) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Chain) ValidateShallow(stopOnFirstError bool) error {
+func (v *Chain) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Chain")
+	}
 	return nil
 }
 
@@ -150,7 +177,10 @@ func (v Chain) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Link) Validate(stopOnFirstError bool) error {
+func (v *Link) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Link")
+	}
 	var errs []error
 	if v.Chain != nil {
 		if err := validator.Field((*v.Chain).Validate(stopOnFirstError), "chain"); err != nil {
@@ -170,7 +200,10 @@ func (v Link) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Link) ValidateShallow(stopOnFirstError bool) error {
+func (v *Link) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Link")
+	}
 	return nil
 }
 
@@ -178,7 +211,10 @@ func (v Link) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Ouroboros) Validate(stopOnFirstError bool) error {
+func (v *Ouroboros) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Ouroboros")
+	}
 	var errs []error
 	if v.Tail != nil {
 		if err := validator.Field((*v.Tail).Validate(stopOnFirstError), "tail"); err != nil {
@@ -198,6 +234,9 @@ func (v Ouroboros) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Ouroboros) ValidateShallow(stopOnFirstError bool) error {
+func (v *Ouroboros) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Ouroboros")
+	}
 	return nil
 }

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:34Z
+// generated: 2026-11-26T08:16:06Z
 
 package typedkeywords
 
@@ -283,7 +283,7 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Circle: %w", err))
 			} else {
-				if err := (ShapeCircle{Circle: m}).ValidateShallow(false); err != nil {
+				if err := (&ShapeCircle{Circle: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Circle: %w", err))
 				} else {
 					if found != nil {
@@ -303,7 +303,7 @@ func (v *Shape) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Square: %w", err))
 			} else {
-				if err := (ShapeSquare{Square: m}).ValidateShallow(false); err != nil {
+				if err := (&ShapeSquare{Square: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Square: %w", err))
 				} else {
 					if found != nil {

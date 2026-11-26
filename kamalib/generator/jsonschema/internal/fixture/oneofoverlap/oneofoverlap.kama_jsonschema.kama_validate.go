@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:17Z
+// generated: 2026-11-26T08:15:50Z
 
 package oneofoverlap
 
@@ -12,7 +12,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v EitherLeft) Validate(stopOnFirstError bool) error {
+func (v *EitherLeft) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *EitherLeft")
+	}
 	var errs []error
 	if err := validator.Field(v.Left.Validate(stopOnFirstError), "Left"); err != nil {
 		if stopOnFirstError {
@@ -30,7 +33,10 @@ func (v EitherLeft) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v EitherLeft) ValidateShallow(stopOnFirstError bool) error {
+func (v *EitherLeft) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *EitherLeft")
+	}
 	return nil
 }
 
@@ -38,7 +44,10 @@ func (v EitherLeft) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v EitherRight) Validate(stopOnFirstError bool) error {
+func (v *EitherRight) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *EitherRight")
+	}
 	var errs []error
 	if err := validator.Field(v.Right.Validate(stopOnFirstError), "Right"); err != nil {
 		if stopOnFirstError {
@@ -56,7 +65,10 @@ func (v EitherRight) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v EitherRight) ValidateShallow(stopOnFirstError bool) error {
+func (v *EitherRight) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *EitherRight")
+	}
 	return nil
 }
 
@@ -64,7 +76,10 @@ func (v EitherRight) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v EitherLeftValue) Validate(stopOnFirstError bool) error {
+func (v *EitherLeftValue) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *EitherLeftValue")
+	}
 	return nil
 }
 
@@ -73,7 +88,7 @@ func (v EitherLeftValue) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v EitherLeftValue) ValidateShallow(stopOnFirstError bool) error {
+func (v *EitherLeftValue) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -81,7 +96,10 @@ func (v EitherLeftValue) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v EitherRightValue) Validate(stopOnFirstError bool) error {
+func (v *EitherRightValue) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *EitherRightValue")
+	}
 	return nil
 }
 
@@ -90,6 +108,6 @@ func (v EitherRightValue) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v EitherRightValue) ValidateShallow(stopOnFirstError bool) error {
+func (v *EitherRightValue) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }

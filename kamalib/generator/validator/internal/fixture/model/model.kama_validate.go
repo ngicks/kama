@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:40Z
+// generated: 2026-11-26T08:31:47Z
 
 package model
 
@@ -17,7 +17,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v User) Validate(stopOnFirstError bool) error {
+func (v *User) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *User")
+	}
 	var errs []error
 	if err := validator.Field(requiredComparable(v.Name), "name"); err != nil {
 		if stopOnFirstError {
@@ -37,8 +40,8 @@ func (v User) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v.Tags {
-		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "tags"); err != nil {
+	for i := range v.Tags {
+		if err := validator.Field(validator.Index(v.Tags[i].Validate(stopOnFirstError), i), "tags"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -83,7 +86,10 @@ func (v User) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Address) Validate(stopOnFirstError bool) error {
+func (v *Address) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Address")
+	}
 	var errs []error
 	if err := validator.Field(requiredComparable(v.City), "city"); err != nil {
 		if stopOnFirstError {
@@ -98,7 +104,10 @@ func (v Address) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Tag) Validate(stopOnFirstError bool) error {
+func (v *Tag) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Tag")
+	}
 	var errs []error
 	if err := validator.Field(requiredComparable(v.Name), "name"); err != nil {
 		if stopOnFirstError {
@@ -113,7 +122,10 @@ func (v Tag) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Pet) Validate(stopOnFirstError bool) error {
+func (v *Pet) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Pet")
+	}
 	var errs []error
 	if err := validator.Field(requiredComparable(v.Name), "name"); err != nil {
 		if stopOnFirstError {
@@ -130,11 +142,14 @@ func (v Pet) Validate(stopOnFirstError bool) error {
 // nil leaves them unchecked.
 //
 //kama:generated kama:validate
-func (v Box[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstError bool) error) error {
+func (v *Box[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstError bool) error) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Box")
+	}
 	var errs []error
-	for i, e := range v.Items {
+	for i := range v.Items {
 		if validateT != nil {
-			if err := validator.Field(validator.Index(validateT(e, stopOnFirstError), i), "items"); err != nil {
+			if err := validator.Field(validator.Index(validateT(v.Items[i], stopOnFirstError), i), "items"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -159,10 +174,13 @@ func (v Box[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstE
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Team) Validate(stopOnFirstError bool) error {
+func (v *Team) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Team")
+	}
 	var errs []error
-	for i, e := range v.Members {
-		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "members"); err != nil {
+	for i := range v.Members {
+		if err := validator.Field(validator.Index(v.Members[i].Validate(stopOnFirstError), i), "members"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -186,8 +204,8 @@ func (v Team) Validate(stopOnFirstError bool) error {
 //kama:generated kama:validate
 func (v Roster) Validate(stopOnFirstError bool) error {
 	var errs []error
-	for i, e := range v {
-		if err := validator.Index(e.Validate(stopOnFirstError), i); err != nil {
+	for i := range v {
+		if err := validator.Index(v[i].Validate(stopOnFirstError), i); err != nil {
 			if stopOnFirstError {
 				return err
 			}

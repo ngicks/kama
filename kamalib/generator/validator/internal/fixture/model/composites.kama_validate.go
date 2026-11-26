@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T05:57:15Z
+// generated: 2026-11-26T08:31:47Z
 
 package model
 
@@ -14,7 +14,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // nil leaves them unchecked.
 //
 //kama:generated kama:validate
-func (v Composites[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstError bool) error) error {
+func (v *Composites[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstError bool) error) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Composites")
+	}
 	var errs []error
 	if v.E.IsLeft() {
 		if validateT != nil {
@@ -87,7 +90,10 @@ func (v Composites[T]) Validate(stopOnFirstError bool, validateT func(v T, stopO
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v CompositesOf) Validate(stopOnFirstError bool) error {
+func (v *CompositesOf) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *CompositesOf")
+	}
 	var errs []error
 	if err := validator.Field(v.Tags.Validate(stopOnFirstError, func(v Tag, stopOnFirstError bool) error {
 		return v.Validate(stopOnFirstError)
@@ -110,10 +116,16 @@ func (v CompositesOf) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ConcreteComposites) Validate(stopOnFirstError bool) error {
+func (v *ConcreteComposites) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ConcreteComposites")
+	}
 	var errs []error
 	if v.E.IsLeft() {
-		if err := validator.Field(validator.Field(v.E.UnwrapLeft().Validate(stopOnFirstError), "left"), "e"); err != nil {
+		if err := validator.Field(validator.Field(func() error {
+			p := v.E.UnwrapLeft()
+			return p.Validate(stopOnFirstError)
+		}(), "left"), "e"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -121,15 +133,18 @@ func (v ConcreteComposites) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.E.IsRight() {
-		if err := validator.Field(validator.Field(v.E.UnwrapRight().Validate(stopOnFirstError), "right"), "e"); err != nil {
+		if err := validator.Field(validator.Field(func() error {
+			p := v.E.UnwrapRight()
+			return p.Validate(stopOnFirstError)
+		}(), "right"), "e"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	for i, e := range v.T.V2 {
-		if err := validator.Field(validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "V2"), "t"); err != nil {
+	for i := range v.T.V2 {
+		if err := validator.Field(validator.Field(validator.Index(v.T.V2[i].Validate(stopOnFirstError), i), "V2"), "t"); err != nil {
 			if stopOnFirstError {
 				return err
 			}

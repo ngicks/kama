@@ -101,11 +101,14 @@ func TestTypeSupport(t *testing.T) {
 	assert.NilError(t, err)
 	assert.NilError(t, gentest.Build(f, opts))
 
-	assertContains(t, out["a.kama_validate.go"],
+	assertContains(
+		t,
+		out["a.kama_validate.go"],
 		"for i, e := range v.B.All() {",
 		check(`validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "B")`),
 		"if v.H.Has() {",
-		check(`validator.Field(v.H.Get().Validate(stopOnFirstError), "H")`),
+		"if err := validator.Field(func() error {\n\t\t\tp := v.H.Get()\n"+
+			"\t\t\treturn p.Validate(stopOnFirstError)\n\t\t}(), \"H\"); err != nil {",
 		"if v.S.Has() {",
 		"kamaValidateLength(len(v.S.Get())",
 	)

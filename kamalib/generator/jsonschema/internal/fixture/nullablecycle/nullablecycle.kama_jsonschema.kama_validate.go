@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:05Z
+// generated: 2026-11-26T08:31:14Z
 
 package nullablecycle
 
@@ -12,7 +12,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Node) Validate(stopOnFirstError bool) error {
+func (v *Node) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Node")
+	}
 	var errs []error
 	if v.Parent != nil {
 		if err := validator.Field((*v.Parent).Validate(stopOnFirstError), "parent"); err != nil {
@@ -40,6 +43,9 @@ func (v Node) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Node) ValidateShallow(stopOnFirstError bool) error {
+func (v *Node) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Node")
+	}
 	return nil
 }

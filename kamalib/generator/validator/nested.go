@@ -49,9 +49,9 @@ func (w *writer) nested(t types.Type, x genExpr, wrap wrapFunc, depth int) (genS
 
 		return lang.If(lang.Expr("%s != nil", x), s, nil), nil
 	case *types.Slice:
-		return w.elements(w.walker(u.Elem()), x, wrap, depth, ext.SegmentIndex, nil)
+		return w.indexed(w.walker(u.Elem()), x, wrap, depth)
 	case *types.Array:
-		return w.elements(w.walker(u.Elem()), x, wrap, depth, ext.SegmentIndex, nil)
+		return w.indexed(w.walker(u.Elem()), x, wrap, depth)
 	case *types.Map:
 		return w.elements(w.walker(u.Elem()), x, wrap, depth, ext.SegmentKey, u.Key())
 	case *types.Struct:
@@ -263,6 +263,71 @@ func (w *writer) walker(elem types.Type) elementFunc {
 	}
 }
 
+// indexed returns the loop validating each element of the slice or array
+// x by element, located by its index. The element is spelled x[i], so that
+// a Validate on the pointer receiver runs on the element in place rather
+// than on a copy in a range variable. An x calling a method is ranged over
+// with a range variable instead, so that the method runs once.
+func (w *writer) indexed(
+	element elementFunc,
+	x genExpr,
+	wrap wrapFunc,
+	depth int,
+) (genStep, error) {
+	idx := loopName("i", depth)
+
+	s, err := element(
+		indexElem(x, idx), w.locate(ext.SegmentIndex, lang.Name(idx), wrap), depth+1,
+	)
+	if s == nil || err != nil {
+		return nil, err
+	}
+
+	return rangeIndexed(x, idx, s), nil
+}
+
+// indexElem returns the element at idx of the slice or array x, as
+// rangeIndexed declares the loop variables.
+func indexElem(x genExpr, idx string) genExpr {
+	return func(c genCtx) (string, error) {
+		text, err := x(c)
+		if err != nil {
+			return "", err
+		}
+
+		if callsMethod(text) {
+			return lang.Name("e")(c)
+		}
+
+		return lang.Expr("%s[%s]", text, lang.Name(idx))(c)
+	}
+}
+
+// rangeIndexed returns the loop over the indices of the slice or array x,
+// declaring idx, or idx and the range variable e when x calls a method, as
+// indexed spells the element.
+func rangeIndexed(x genExpr, idx string, body genStep) genStep {
+	return genhelper.FuncStep[genCtx](func(c genCtx, b []byte) (genCtx, []byte, error) {
+		text, err := x(c)
+		if err != nil {
+			return c, nil, err
+		}
+
+		value := ""
+		if callsMethod(text) {
+			value = "e"
+		}
+
+		return lang.ForRange(idx, value, x, body).Render(c, b)
+	})
+}
+
+// callsMethod reports whether the expression text calls a method. The
+// values the walk reaches are variables, fields, index expressions,
+// dereferences and results of methods taking no args, which alone spell
+// ().
+func callsMethod(text string) bool { return strings.Contains(text, "()") }
+
 // elements returns the loop validating each element of x by element,
 // located by what the range over x yields first as segment tells. key is
 // the key type of a map x, nil for any other x.
@@ -311,8 +376,9 @@ func (w *writer) elements(
 // implementor named, passing the function each type argument needs. In
 // ValidateShallow it calls ValidateShallow when named has one. An
 // implementor whose Validate takes no stopOnFirstError is called without
-// args. A Validate on the pointer receiver is called on the address of x,
-// or of a copy of x when x is the result of a call, which has no address.
+// args. A Validate on the pointer receiver, as a target of a struct type
+// has, is called on x in place, or on a copy of x when x holds the result
+// of a call, which has no address.
 func (w *writer) call(named *types.Named, x genExpr) (genExpr, error) {
 	method := "Validate"
 	if w.shallow && w.sel.hasShallow(named) {
@@ -320,6 +386,9 @@ func (w *writer) call(named *types.Named, x genExpr) (genExpr, error) {
 	}
 
 	fn, onPointer, kama := w.sel.validateMethod(named)
+	if fn == nil {
+		onPointer = onPointerReceiver(named)
+	}
 
 	var args []genExpr
 
@@ -346,44 +415,16 @@ func (w *writer) call(named *types.Named, x genExpr) (genExpr, error) {
 			return "", err
 		}
 
-		if ptr, ok := dereferenced(text); ok {
-			return lang.Expr("%s.%s(%s)", ptr, method, lang.Join(", ", args...))(c)
+		// Go takes the address of an addressable operand of a call of a
+		// method on the pointer receiver itself, as it does of (*p) for a
+		// pointer p, so the call copies nothing.
+		if !callsMethod(text) {
+			return lang.Expr("%s.%s(%s)", text, method, lang.Join(", ", args...))(c)
 		}
 
-		// The values the walk reaches are variables, fields, dereferences and
-		// results of methods taking no args, which alone end with ().
-		if !strings.HasSuffix(text, "()") {
-			return lang.Expr("(&%s).%s(%s)", text, method, lang.Join(", ", args...))(c)
-		}
-
-		return lang.Expr("func() error {\n%s := %s\nreturn (&%s).%s(%s)\n}()",
+		return lang.Expr("func() error {\n%s := %s\nreturn %s.%s(%s)\n}()",
 			decl("p"), text, lang.Name("p"), method, lang.Join(", ", args...))(c)
 	}, nil
-}
-
-// dereferenced returns the pointer text dereferences when text is a whole
-// dereference (*p), as nested spells the value a pointer points to.
-func dereferenced(text string) (string, bool) {
-	inner, ok := strings.CutPrefix(text, "(*")
-	if !ok || !strings.HasSuffix(inner, ")") {
-		return "", false
-	}
-
-	depth := 1
-
-	for i, r := range inner {
-		switch r {
-		case '(':
-			depth++
-		case ')':
-			depth--
-			if depth == 0 && i != len(inner)-1 {
-				return "", false
-			}
-		}
-	}
-
-	return inner[:len(inner)-1], true
 }
 
 // typeArgFunc returns the function validating values of the type argument

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:14Z
+// generated: 2026-11-26T08:15:47Z
 
 package oneof
 
@@ -237,7 +237,7 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.String.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
-				if err := (ZooMixedString{String: m}).ValidateShallow(false); err != nil {
+				if err := (&ZooMixedString{String: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member String: %w", err))
 				} else {
 					if found != nil {
@@ -257,7 +257,7 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.Int64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
-				if err := (ZooMixedInteger{Integer: m}).ValidateShallow(false); err != nil {
+				if err := (&ZooMixedInteger{Integer: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Integer: %w", err))
 				} else {
 					if found != nil {
@@ -274,7 +274,7 @@ func (v *ZooMixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Object: %w", err))
 		} else {
-			if err := (ZooMixedObject{Object: m}).ValidateShallow(false); err != nil {
+			if err := (&ZooMixedObject{Object: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member Object: %w", err))
 			} else {
 				if found != nil {
@@ -481,7 +481,7 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.Int64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
-				if err := (ZooAmountInteger{Integer: m}).ValidateShallow(false); err != nil {
+				if err := (&ZooAmountInteger{Integer: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Integer: %w", err))
 				} else {
 					if found != nil {
@@ -501,7 +501,7 @@ func (v *ZooAmount) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.Float64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Number: %w", err))
 			} else {
-				if err := (ZooAmountNumber{Number: m}).ValidateShallow(false); err != nil {
+				if err := (&ZooAmountNumber{Number: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Number: %w", err))
 				} else {
 					if found != nil {
@@ -702,7 +702,7 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Cat: %w", err))
 			} else {
-				if err := (PetCat{Cat: m}).ValidateShallow(false); err != nil {
+				if err := (&PetCat{Cat: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Cat: %w", err))
 				} else {
 					if found != nil {
@@ -722,7 +722,7 @@ func (v *Pet) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 				errs = append(errs, fmt.Errorf("member Dog: %w", err))
 			} else {
-				if err := (PetDog{Dog: m}).ValidateShallow(false); err != nil {
+				if err := (&PetDog{Dog: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Dog: %w", err))
 				} else {
 					if found != nil {

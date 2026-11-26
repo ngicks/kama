@@ -80,13 +80,13 @@ func TestReachTree(t *testing.T) {
 }
 
 func TestReachEncoded(t *testing.T) {
-	assert.NilError(t, model.Encoded{A: opt.None[string](), X: nil}.Validate(false))
+	assert.NilError(t, (&model.Encoded{A: opt.None[string](), X: nil}).Validate(false))
 	assert.NilError(
 		t,
-		model.Encoded{
+		(&model.Encoded{
 			A: opt.Some("a"),
 			X: map[string]jsontext.Value{"n": jsontext.Value("1")},
-		}.Validate(
+		}).Validate(
 			false,
 		),
 	)
@@ -98,13 +98,18 @@ func TestReachEncoded(t *testing.T) {
 		pointer string
 		kind    error
 	}{
-		{"field", model.Encoded{A: opt.Some("b"), X: nil}.Validate(false), "/a", validator.ErrNot},
+		{
+			"field",
+			(&model.Encoded{A: opt.Some("b"), X: nil}).Validate(false),
+			"/a",
+			validator.ErrNot,
+		},
 		{
 			"rest",
-			model.Encoded{
+			(&model.Encoded{
 				A: opt.None[string](),
 				X: map[string]jsontext.Value{"n": jsontext.Value(`"s"`)},
-			}.
+			}).
 				Validate(
 					false,
 				),
@@ -113,10 +118,10 @@ func TestReachEncoded(t *testing.T) {
 		},
 		{
 			"not",
-			model.Encoded{
+			(&model.Encoded{
 				A: opt.None[string](),
 				X: map[string]jsontext.Value{"x": jsontext.Value("1")},
-			}.
+			}).
 				Validate(
 					false,
 				),

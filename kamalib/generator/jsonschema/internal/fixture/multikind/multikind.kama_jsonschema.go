@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:58:59Z
+// generated: 2026-11-26T08:15:33Z
 
 package multikind
 
@@ -222,7 +222,7 @@ func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member String: %w", err))
 		} else {
-			if err := (CellValueString{String: m}).ValidateShallow(false); err != nil {
+			if err := (&CellValueString{String: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
 				*v = CellValue{Kind: CellValueString{String: m}}
@@ -238,7 +238,7 @@ func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.Int64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
-				if err := (CellValueInteger{Integer: m}).ValidateShallow(false); err != nil {
+				if err := (&CellValueInteger{Integer: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Integer: %w", err))
 				} else {
 					*v = CellValue{Kind: CellValueInteger{Integer: m}}
@@ -252,7 +252,7 @@ func (v *CellValue) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Boolean: %w", err))
 		} else {
-			if err := (CellValueBoolean{Boolean: m}).ValidateShallow(false); err != nil {
+			if err := (&CellValueBoolean{Boolean: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member Boolean: %w", err))
 			} else {
 				*v = CellValue{Kind: CellValueBoolean{Boolean: m}}
@@ -428,7 +428,7 @@ func (v *CellLabel) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member String: %w", err))
 		} else {
-			if err := (CellLabelString{String: m}).ValidateShallow(false); err != nil {
+			if err := (&CellLabelString{String: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
 				*v = CellLabel{Kind: CellLabelString{String: m}}
@@ -441,7 +441,7 @@ func (v *CellLabel) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Number: %w", err))
 		} else {
-			if err := (CellLabelNumber{Number: m}).ValidateShallow(false); err != nil {
+			if err := (&CellLabelNumber{Number: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member Number: %w", err))
 			} else {
 				*v = CellLabel{Kind: CellLabelNumber{Number: m}}

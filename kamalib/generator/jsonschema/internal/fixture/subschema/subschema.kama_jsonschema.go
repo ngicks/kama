@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:32Z
+// generated: 2026-11-26T08:16:04Z
 
 package subschema
 
@@ -46,7 +46,7 @@ func (v *Tree) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = Tree(out)
-	return kamaJsonschemaChecked(err, Tree(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -82,7 +82,7 @@ func (v *Small) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = Small(out)
-	return kamaJsonschemaChecked(err, Small(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -119,7 +119,7 @@ func (v *Address) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = Address(out)
-	return kamaJsonschemaChecked(err, Address(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -191,7 +191,7 @@ func (v *Point) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.NonNullSlice[jsontext.Value].Value(w)
 	*v = Point(out)
-	return kamaJsonschemaChecked(err, Point(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // Tags is generated from the schema at #/$defs/Tags.
@@ -219,7 +219,7 @@ func (v *Tags) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.NonNullSlice[jsontext.Value].Value(w)
 	*v = Tags(out)
-	return kamaJsonschemaChecked(err, Tags(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // Keys is generated from the schema at #/$defs/Keys.
@@ -319,7 +319,7 @@ func (v *Strict) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = Strict(out)
-	return kamaJsonschemaChecked(err, Strict(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -355,7 +355,7 @@ func (v *Mixed) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = Mixed(out)
-	return kamaJsonschemaChecked(err, Mixed(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -435,7 +435,7 @@ func (v *Holder) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = Holder(out)
-	return kamaJsonschemaChecked(err, Holder(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v

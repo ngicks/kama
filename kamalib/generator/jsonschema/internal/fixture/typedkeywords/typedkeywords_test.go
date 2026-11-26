@@ -121,8 +121,8 @@ func TestBounded(t *testing.T) {
 		},
 	)
 
-	assert.NilError(t, Bounded{Lo: opt.Some[int64](1)}.Validate(false))
-	assert.ErrorIs(t, Bounded{Hi: opt.Some[int64](1)}.Validate(false), validator.ErrRequired)
+	assert.NilError(t, (&Bounded{Lo: opt.Some[int64](1)}).Validate(false))
+	assert.ErrorIs(t, (&Bounded{Hi: opt.Some[int64](1)}).Validate(false), validator.ErrRequired)
 }
 
 func TestSealed(t *testing.T) {

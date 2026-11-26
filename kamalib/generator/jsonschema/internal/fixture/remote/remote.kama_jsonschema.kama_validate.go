@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:26Z
+// generated: 2026-11-26T08:31:31Z
 
 package remote
 
@@ -12,7 +12,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Invoice) Validate(stopOnFirstError bool) error {
+func (v *Invoice) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Invoice")
+	}
 	var errs []error
 	if err := validator.Field(v.Total.Validate(stopOnFirstError), "total"); err != nil {
 		if stopOnFirstError {
@@ -29,7 +32,10 @@ func (v Invoice) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Payer.IsSome() {
-		if err := validator.Field(v.Payer.Value().Validate(stopOnFirstError), "payer"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Payer.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "payer"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -46,7 +52,10 @@ func (v Invoice) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Invoice) ValidateShallow(stopOnFirstError bool) error {
+func (v *Invoice) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Invoice")
+	}
 	return nil
 }
 
@@ -54,7 +63,10 @@ func (v Invoice) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Money) Validate(stopOnFirstError bool) error {
+func (v *Money) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Money")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateCmp(v.Amount, ">=", 0), "amount"); err != nil {
 		if stopOnFirstError {
@@ -78,7 +90,10 @@ func (v Money) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Money) ValidateShallow(stopOnFirstError bool) error {
+func (v *Money) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Money")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateCmp(v.Amount, ">=", 0), "amount"); err != nil {
 		if stopOnFirstError {
@@ -117,10 +132,16 @@ func (v MoneyCurrency) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Party) Validate(stopOnFirstError bool) error {
+func (v *Party) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Party")
+	}
 	var errs []error
 	if v.Balance.IsSome() {
-		if err := validator.Field(v.Balance.Value().Validate(stopOnFirstError), "balance"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Balance.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "balance"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -145,6 +166,9 @@ func (v Party) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Party) ValidateShallow(stopOnFirstError bool) error {
+func (v *Party) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Party")
+	}
 	return nil
 }

@@ -16,10 +16,10 @@ import (
 	"github.com/ngicks/kama/kamaruntime/validator"
 )
 
-func validRules() model.Rules {
+func validRules() *model.Rules {
 	name, quarter := "c", float32(0.75)
 
-	return model.Rules{
+	return &model.Rules{
 		Null:      und.Null[int](),
 		Slug:      "abc",
 		SlugBytes: []byte("abc"),
@@ -46,10 +46,10 @@ func validRules() model.Rules {
 }
 
 // invalidRules breaks every validator of Rules once.
-func invalidRules() model.Rules {
+func invalidRules() *model.Rules {
 	one, name, defined, quarter := 1, "b", und.Defined(1), float32(0.3)
 
-	return model.Rules{
+	return &model.Rules{
 		Zero:      1,
 		ZeroPtr:   &one,
 		Nil:       []int{},
@@ -220,14 +220,16 @@ func TestMapFloatKey(t *testing.T) {
 func TestStampPromotedIsZero(t *testing.T) {
 	now := time.Unix(1, 0)
 
-	err := model.Stamped{}.Validate(false)
+	err := (&model.Stamped{}).Validate(false)
 	assert.DeepEqual(t, validator.Pointers(err), []string{"/at"})
 	assert.ErrorIs(t, err, validator.ErrRequired)
 
 	// A non-nil pointer to the zero time is not the zero value of Stamp.
-	assert.NilError(t, model.Stamped{At: model.Stamp{Time: &time.Time{}}}.Validate(false))
+	assert.NilError(t, (&model.Stamped{At: model.Stamp{Time: &time.Time{}}}).Validate(false))
 
-	err = model.Stamped{At: model.Stamp{Time: &now}, Zero: model.Stamp{Time: &now}}.Validate(false)
+	err = (&model.Stamped{At: model.Stamp{Time: &now}, Zero: model.Stamp{Time: &now}}).Validate(
+		false,
+	)
 	assert.DeepEqual(t, validator.Pointers(err), []string{"/zero"})
 	assert.ErrorIs(t, err, validator.ErrZero)
 }
@@ -248,7 +250,7 @@ func TestRequires(t *testing.T) {
 	}
 
 	// A null Zip is present, as a JSON member holding null is.
-	err := model.Shipping{Street: opt.Some(""), Zip: und.Null[string](), Express: true}.
+	err := (&model.Shipping{Street: opt.Some(""), Zip: und.Null[string](), Express: true}).
 		Validate(false)
 	assert.DeepEqual(t, validator.Pointers(err), []string{"/city"})
 
@@ -259,7 +261,7 @@ func TestRequires(t *testing.T) {
 	assert.ErrorContains(t, validator.At(err, "/zip")[0], `want a value, as "street" has one`)
 	assert.DeepEqual(t, validator.Pointers(invalid.Validate(true)), []string{"/city"})
 
-	err = model.Shipping{Express: true}.Validate(false)
+	err = (&model.Shipping{Express: true}).Validate(false)
 	assert.DeepEqual(t, validator.Pointers(err), []string{"/street"})
 	assert.ErrorContains(t, err, `want a value, as "express" has one`)
 }
@@ -278,19 +280,19 @@ func TestMembers(t *testing.T) {
 		}
 	}
 
-	err := model.Contact{}.Validate(false)
+	err := (&model.Contact{}).Validate(false)
 	assert.DeepEqual(t, validator.Pointers(err), []string{""})
 	assert.ErrorIs(t, err, validator.ErrLength)
 	assert.ErrorContains(t, err, "want member count >= 2, got 1")
 
-	err = model.Contact{Email: opt.Some("e"), Phone: &phone, Extra: map[string]any{"x": 1}}.
+	err = (&model.Contact{Email: opt.Some("e"), Phone: &phone, Extra: map[string]any{"x": 1}}).
 		Validate(false)
 	assert.ErrorContains(t, err, "want member count <= 3, got 4")
 }
 
 // TestClosed reports each entry of the embedded fallback at its member.
 func TestClosed(t *testing.T) {
-	assert.NilError(t, model.Strict{Name: "n"}.Validate(false))
+	assert.NilError(t, (&model.Strict{Name: "n"}).Validate(false))
 
 	strict := model.Strict{Extra: map[string]any{"b": 1, "a": 2}}
 
@@ -306,18 +308,18 @@ func TestClosed(t *testing.T) {
 // cannot represent.
 func TestBoundsOfIntegers(t *testing.T) {
 	for _, half := range []int{2, 3} {
-		assert.NilError(t, model.Bounds{Half: half, Small: -128}.Validate(false))
+		assert.NilError(t, (&model.Bounds{Half: half, Small: -128}).Validate(false))
 	}
 
 	for _, half := range []int{1, 4} {
-		err := model.Bounds{Half: half}.Validate(false)
+		err := (&model.Bounds{Half: half}).Validate(false)
 		assert.DeepEqual(t, validator.Pointers(err), []string{"/half"})
 		assert.ErrorIs(t, err, validator.ErrCompare)
 	}
 
 	n := 0
 
-	err := model.Bounds{Half: 2, Never: &n}.Validate(false)
+	err := (&model.Bounds{Half: 2, Never: &n}).Validate(false)
 	assert.DeepEqual(t, validator.Pointers(err), []string{"/never"})
 	assert.ErrorContains(t, err, "want == 0.5, got 0")
 }

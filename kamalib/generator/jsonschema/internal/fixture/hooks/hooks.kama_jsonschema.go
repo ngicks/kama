@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:58:57Z
+// generated: 2026-11-26T08:15:31Z
 
 package hooks
 
@@ -128,5 +128,5 @@ func (v *Sku) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = Sku(out)
-	return kamaJsonschemaChecked(err, Sku(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }

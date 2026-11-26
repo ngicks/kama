@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:58:50Z
+// generated: 2026-11-26T08:31:02Z
 
 package decodecost
 
@@ -17,10 +17,16 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Costs) Validate(stopOnFirstError bool) error {
+func (v *Costs) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Costs")
+	}
 	var errs []error
 	if v.Plain.IsSome() {
-		if err := validator.Field(v.Plain.Value().Validate(stopOnFirstError), "plain"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Plain.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "plain"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -28,7 +34,10 @@ func (v Costs) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Negated.IsSome() {
-		if err := validator.Field(v.Negated.Value().Validate(stopOnFirstError), "negated"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Negated.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "negated"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -44,7 +53,10 @@ func (v Costs) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Closed.IsSome() {
-		if err := validator.Field(v.Closed.Value().Validate(stopOnFirstError), "closed"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Closed.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "closed"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -61,7 +73,10 @@ func (v Costs) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Costs) ValidateShallow(stopOnFirstError bool) error {
+func (v *Costs) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Costs")
+	}
 	var errs []error
 	if v.Chosen.IsSome() {
 		if err := validator.Field(v.Chosen.Value().ValidateShallow(stopOnFirstError), "chosen"); err != nil {
@@ -78,7 +93,10 @@ func (v Costs) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Plain) Validate(stopOnFirstError bool) error {
+func (v *Plain) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Plain")
+	}
 	var errs []error
 	if v.Next != nil {
 		if err := validator.Field((*v.Next).Validate(stopOnFirstError), "next"); err != nil {
@@ -98,7 +116,10 @@ func (v Plain) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Plain) ValidateShallow(stopOnFirstError bool) error {
+func (v *Plain) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Plain")
+	}
 	return nil
 }
 
@@ -106,9 +127,12 @@ func (v Plain) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Negated) Validate(stopOnFirstError bool) error {
+func (v *Negated) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Negated")
+	}
 	var errs []error
-	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+	if err := rawjson.Encoded((*v), func(m jsontext.Value) error {
 		return kamaValidateNot(rawjson.Required(m, stopOnFirstError, "bad"), "required(\"bad\")")
 	}); err != nil {
 		if stopOnFirstError {
@@ -134,9 +158,12 @@ func (v Negated) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Negated) ValidateShallow(stopOnFirstError bool) error {
+func (v *Negated) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Negated")
+	}
 	var errs []error
-	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+	if err := rawjson.Encoded((*v), func(m jsontext.Value) error {
 		return kamaValidateNot(rawjson.Required(m, stopOnFirstError, "bad"), "required(\"bad\")")
 	}); err != nil {
 		if stopOnFirstError {
@@ -151,7 +178,10 @@ func (v Negated) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ChosenNonNegative) Validate(stopOnFirstError bool) error {
+func (v *ChosenNonNegative) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ChosenNonNegative")
+	}
 	var errs []error
 	if err := validator.Field(v.NonNegative.Validate(stopOnFirstError), "NonNegative"); err != nil {
 		if stopOnFirstError {
@@ -169,7 +199,10 @@ func (v ChosenNonNegative) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v ChosenNonNegative) ValidateShallow(stopOnFirstError bool) error {
+func (v *ChosenNonNegative) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *ChosenNonNegative")
+	}
 	return nil
 }
 
@@ -177,7 +210,10 @@ func (v ChosenNonNegative) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ChosenNegative) Validate(stopOnFirstError bool) error {
+func (v *ChosenNegative) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ChosenNegative")
+	}
 	var errs []error
 	if err := validator.Field(v.Negative.Validate(stopOnFirstError), "Negative"); err != nil {
 		if stopOnFirstError {
@@ -195,7 +231,10 @@ func (v ChosenNegative) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v ChosenNegative) ValidateShallow(stopOnFirstError bool) error {
+func (v *ChosenNegative) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *ChosenNegative")
+	}
 	return nil
 }
 
@@ -273,7 +312,10 @@ func (v chosenNegativeProbe) ValidateEvaluated(stopOnFirstError bool, ev *rawjso
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v NonNegative) Validate(stopOnFirstError bool) error {
+func (v *NonNegative) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *NonNegative")
+	}
 	var errs []error
 	if v.Next.IsSome() {
 		if err := validator.Field(v.Next.Value().Validate(stopOnFirstError), "next"); err != nil {
@@ -299,7 +341,10 @@ func (v NonNegative) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v NonNegative) ValidateShallow(stopOnFirstError bool) error {
+func (v *NonNegative) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *NonNegative")
+	}
 	var errs []error
 	if v.Next.IsSome() {
 		if err := validator.Field(v.Next.Value().ValidateShallow(stopOnFirstError), "next"); err != nil {
@@ -322,7 +367,10 @@ func (v NonNegative) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Negative) Validate(stopOnFirstError bool) error {
+func (v *Negative) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Negative")
+	}
 	var errs []error
 	if v.Next.IsSome() {
 		if err := validator.Field(v.Next.Value().Validate(stopOnFirstError), "next"); err != nil {
@@ -348,7 +396,10 @@ func (v Negative) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Negative) ValidateShallow(stopOnFirstError bool) error {
+func (v *Negative) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Negative")
+	}
 	var errs []error
 	if v.Next.IsSome() {
 		if err := validator.Field(v.Next.Value().ValidateShallow(stopOnFirstError), "next"); err != nil {
@@ -371,9 +422,12 @@ func (v Negative) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Closed) Validate(stopOnFirstError bool) error {
+func (v *Closed) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Closed")
+	}
 	var errs []error
-	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+	if err := rawjson.Encoded((*v), func(m jsontext.Value) error {
 		return rawjson.UnevaluatedMembers(m, stopOnFirstError, nil, func(ev *rawjson.Evaluated) error {
 			return kamaValidateAll(stopOnFirstError, rawjson.Kind(m, "object"), rawjson.Properties(m, stopOnFirstError, ev, rawjson.Property("next", func(m2 jsontext.Value) error {
 				return error(nil)
@@ -407,9 +461,12 @@ func (v Closed) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Closed) ValidateShallow(stopOnFirstError bool) error {
+func (v *Closed) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Closed")
+	}
 	var errs []error
-	if err := rawjson.Encoded(v, func(m jsontext.Value) error {
+	if err := rawjson.Encoded((*v), func(m jsontext.Value) error {
 		return rawjson.UnevaluatedMembers(m, stopOnFirstError, nil, func(ev *rawjson.Evaluated) error {
 			return kamaValidateAll(stopOnFirstError, rawjson.Kind(m, "object"), rawjson.Properties(m, stopOnFirstError, ev, rawjson.Property("next", func(m2 jsontext.Value) error {
 				return error(nil)

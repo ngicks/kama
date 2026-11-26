@@ -40,8 +40,10 @@ func TestStubs(t *testing.T) {
 	assert.NilError(t, err)
 
 	for _, want := range []string{
-		"//kama:generated kama:validate\nfunc (v Pet) Validate(stopOnFirstError bool) error {",
-		"//kama:generated kama:validate\nfunc (v Pet) ValidateShallow(stopOnFirstError bool) error {",
+		// A struct gets the stubs on the pointer receiver, as the validator
+		// generator writes the methods, and another type on the value receiver.
+		"//kama:generated kama:validate\nfunc (v *Pet) Validate(stopOnFirstError bool) error {",
+		"//kama:generated kama:validate\nfunc (v *Pet) ValidateShallow(stopOnFirstError bool) error {",
 		"func (v PetTag) Validate(stopOnFirstError bool) error {",
 		"func (v PetTag) ValidateShallow(stopOnFirstError bool) error {",
 		`return validator.New(validator.ErrStub, "Pet.Validate; run validate.generate ` +
@@ -243,10 +245,10 @@ func TestStubsKeepHandWrittenMethods(t *testing.T) {
 
 	got, err := fs.ReadFile(f.FS(), inline(t, "c/c.kama_jsonschema.kama_validate.go"))
 	assert.NilError(t, err)
-	assert.Assert(t, !strings.Contains(string(got), "func (v Top) Validate("), "%s", got)
-	assert.Assert(t, !strings.Contains(string(got), "func (v Pt) ValidateShallow("), "%s", got)
-	assert.Assert(t, strings.Contains(string(got), "func (v Top) ValidateShallow("), "%s", got)
-	assert.Assert(t, strings.Contains(string(got), "func (v Pt) Validate("), "%s", got)
+	assert.Assert(t, !strings.Contains(string(got), "Top) Validate("), "%s", got)
+	assert.Assert(t, !strings.Contains(string(got), "Pt) ValidateShallow("), "%s", got)
+	assert.Assert(t, strings.Contains(string(got), "func (v *Top) ValidateShallow("), "%s", got)
+	assert.Assert(t, strings.Contains(string(got), "func (v *Pt) Validate("), "%s", got)
 
 	buildFs(t, f)
 }

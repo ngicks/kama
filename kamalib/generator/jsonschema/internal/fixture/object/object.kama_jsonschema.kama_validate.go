@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:13Z
+// generated: 2026-11-26T08:31:19Z
 
 package object
 
@@ -12,7 +12,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Object) Validate(stopOnFirstError bool) error {
+func (v *Object) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Object")
+	}
 	var errs []error
 	if err := validator.Field(v.ReqPoint.Validate(stopOnFirstError), "reqPoint"); err != nil {
 		if stopOnFirstError {
@@ -21,7 +24,10 @@ func (v Object) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if v.OptPoint.IsSome() {
-		if err := validator.Field(v.OptPoint.Value().Validate(stopOnFirstError), "optPoint"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.OptPoint.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "optPoint"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -29,7 +35,10 @@ func (v Object) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.ReqNullPoint.IsSome() {
-		if err := validator.Field(v.ReqNullPoint.Value().Validate(stopOnFirstError), "reqNullPoint"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.ReqNullPoint.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "reqNullPoint"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -37,7 +46,10 @@ func (v Object) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.OptNullPoint.IsDefined() {
-		if err := validator.Field(v.OptNullPoint.Value().Validate(stopOnFirstError), "optNullPoint"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.OptNullPoint.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "optNullPoint"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -57,7 +69,10 @@ func (v Object) Validate(stopOnFirstError bool) error {
 		errs = append(errs, err)
 	}
 	if v.Closed.IsSome() {
-		if err := validator.Field(v.Closed.Value().Validate(stopOnFirstError), "closed"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Closed.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "closed"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -65,7 +80,10 @@ func (v Object) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Open.IsSome() {
-		if err := validator.Field(v.Open.Value().Validate(stopOnFirstError), "open"); err != nil {
+		if err := validator.Field(func() error {
+			p := v.Open.Value()
+			return p.Validate(stopOnFirstError)
+		}(), "open"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -82,7 +100,10 @@ func (v Object) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Object) ValidateShallow(stopOnFirstError bool) error {
+func (v *Object) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Object")
+	}
 	return nil
 }
 
@@ -114,7 +135,10 @@ func (v ObjectColor) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ObjectInline) Validate(stopOnFirstError bool) error {
+func (v *ObjectInline) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ObjectInline")
+	}
 	return nil
 }
 
@@ -123,7 +147,7 @@ func (v ObjectInline) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v ObjectInline) ValidateShallow(stopOnFirstError bool) error {
+func (v *ObjectInline) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -131,7 +155,10 @@ func (v ObjectInline) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ObjectClosed) Validate(stopOnFirstError bool) error {
+func (v *ObjectClosed) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ObjectClosed")
+	}
 	var errs []error
 	if err := kamaValidateClosed(v.AdditionalProperties, stopOnFirstError); err != nil {
 		if stopOnFirstError {
@@ -147,7 +174,7 @@ func (v ObjectClosed) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v ObjectClosed) ValidateShallow(stopOnFirstError bool) error {
+func (v *ObjectClosed) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -155,7 +182,10 @@ func (v ObjectClosed) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v ObjectOpen) Validate(stopOnFirstError bool) error {
+func (v *ObjectOpen) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *ObjectOpen")
+	}
 	return nil
 }
 
@@ -164,7 +194,7 @@ func (v ObjectOpen) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v ObjectOpen) ValidateShallow(stopOnFirstError bool) error {
+func (v *ObjectOpen) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -172,7 +202,10 @@ func (v ObjectOpen) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Point) Validate(stopOnFirstError bool) error {
+func (v *Point) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Point")
+	}
 	return nil
 }
 
@@ -181,6 +214,6 @@ func (v Point) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v Point) ValidateShallow(stopOnFirstError bool) error {
+func (v *Point) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }

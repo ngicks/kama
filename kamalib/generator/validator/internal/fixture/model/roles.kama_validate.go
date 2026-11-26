@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T07:29:06Z
+// generated: 2026-11-26T08:14:34Z
 
 package model
 
@@ -17,7 +17,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Roles) Validate(stopOnFirstError bool) error {
+func (v *Roles) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Roles")
+	}
 	var errs []error
 	if err := validator.Field(kamaValidateLength(len(v.Tags), ">=", 1), "tags"); err != nil {
 		if stopOnFirstError {
@@ -25,8 +28,8 @@ func (v Roles) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v.Tags {
-		if err := validator.Field(validator.Index(kamaValidateLength(len(e), "<=", 3), i), "tags"); err != nil {
+	for i := range v.Tags {
+		if err := validator.Field(validator.Index(kamaValidateLength(len(v.Tags[i]), "<=", 3), i), "tags"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -126,16 +129,16 @@ func (v Roles) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v.Groups {
-		if err := validator.Field(validator.Index(kamaValidateLength(len(e), ">=", 1), i), "groups"); err != nil {
+	for i := range v.Groups {
+		if err := validator.Field(validator.Index(kamaValidateLength(len(v.Groups[i]), ">=", 1), i), "groups"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
-		for _, k2 := range slices.Sorted(maps.Keys(e)) {
-			e2 := e[k2]
-			if err := validator.Field(validator.Index(validator.Key(kamaValidateCmp(e2, ">=", 0), k2), i), "groups"); err != nil {
+		for _, k2 := range slices.Sorted(maps.Keys(v.Groups[i])) {
+			e := v.Groups[i][k2]
+			if err := validator.Field(validator.Index(validator.Key(kamaValidateCmp(e, ">=", 0), k2), i), "groups"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -175,19 +178,22 @@ func (v Roles) Validate(stopOnFirstError bool) error {
 // nil leaves them unchecked.
 //
 //kama:generated kama:validate
-func (v Bag[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstError bool) error) error {
+func (v *Bag[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstError bool) error) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Bag")
+	}
 	var errs []error
-	for i, e := range v.Items {
-		if err := validator.Field(validator.Index(kamaValidateNot(kamaValidateZeroComparable(e), "zero"), i), "items"); err != nil {
+	for i := range v.Items {
+		if err := validator.Field(validator.Index(kamaValidateNot(kamaValidateZeroComparable(v.Items[i]), "zero"), i), "items"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	for i, e := range v.Items {
+	for i := range v.Items {
 		if validateT != nil {
-			if err := validator.Field(validator.Index(validateT(e, stopOnFirstError), i), "items"); err != nil {
+			if err := validator.Field(validator.Index(validateT(v.Items[i], stopOnFirstError), i), "items"); err != nil {
 				if stopOnFirstError {
 					return err
 				}

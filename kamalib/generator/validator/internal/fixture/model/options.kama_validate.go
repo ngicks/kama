@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T22:25:06Z
+// generated: 2026-11-26T08:14:34Z
 
 package model
 
@@ -16,7 +16,10 @@ import (
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Held) Validate(stopOnFirstError bool) error {
+func (v *Held) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Held")
+	}
 	var errs []error
 	if v.Length.IsDefined() {
 		if err := validator.Field(kamaValidateAll(stopOnFirstError, kamaValidateLength(len(v.Length.Value()), ">=", 1), kamaValidateLength(len(v.Length.Value()), "<=", 3)), "length"); err != nil {
@@ -51,7 +54,10 @@ func (v Held) Validate(stopOnFirstError bool) error {
 // nil leaves them unchecked.
 //
 //kama:generated kama:validate
-func (v Options[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstError bool) error) error {
+func (v *Options[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFirstError bool) error) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Options")
+	}
 	var errs []error
 	if v.O.IsSome() {
 		if validateT != nil {
@@ -92,7 +98,10 @@ func (v Options[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnFi
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v OptionsOf) Validate(stopOnFirstError bool) error {
+func (v *OptionsOf) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *OptionsOf")
+	}
 	var errs []error
 	if err := validator.Field(v.Tags.Validate(stopOnFirstError, func(v Tag, stopOnFirstError bool) error {
 		return v.Validate(stopOnFirstError)

@@ -78,7 +78,9 @@ func definedSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		if opts.Validate {
 			decodeDoc += " The value must pass ValidateShallow."
 
-			checks = append(checks, lang.Expr("%s(out).ValidateShallow(false)", name))
+			// v holds the value by now, and is addressable as the pointer
+			// receiver of ValidateShallow of a struct needs.
+			checks = append(checks, lang.Expr("v.ValidateShallow(false)"))
 		}
 	}
 

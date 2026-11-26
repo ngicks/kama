@@ -64,6 +64,15 @@ func TestHooks(t *testing.T) {
 			},
 		},
 		{
+			// Validate is on the pointer receiver, which calls a hook on either
+			// receiver.
+			name: "pointer receiver",
+			src: "//kama:validate\ntype A struct{ N int }\n\n" +
+				"func (*A) validateN(bool) error { return nil }\n",
+			typeName: "A",
+			want:     []string{check(`validator.Field(v.validateN(stopOnFirstError), "N")`)},
+		},
+		{
 			// Validators, nested validation and the hook run in that order.
 			name: "order",
 			src: "//kama:validate\ntype A struct {\n\t//kama:validate required\n\tC *C\n}\n\n" +
@@ -134,7 +143,7 @@ func TestHooks(t *testing.T) {
 	}
 
 	// The steps of a field keep their order.
-	fn := validateOf(t, map[string]string{"a.go": "package x\n\n" + cases[5].src},
+	fn := validateOf(t, map[string]string{"a.go": "package x\n\n" + cases[6].src},
 		"a.kama_validate.go", "A")
 	assert.Assert(t, strings.Index(fn, "kamaValidateRequired") < strings.Index(fn, ".Validate(") &&
 		strings.Index(fn, ".Validate(") < strings.Index(fn, "validateC"), fn)
@@ -160,12 +169,6 @@ func TestHookErrors(t *testing.T) {
 			src: "//kama:validate\ntype A struct{ N int }\n\n" +
 				"func (A) validateN() error { return nil }\n",
 			msgs: []string{"has its hook validateN with signature func() error"},
-		},
-		{
-			name: "pointer receiver",
-			src: "//kama:validate\ntype A struct{ N int }\n\n" +
-				"func (*A) validateN(bool) error { return nil }\n",
-			msgs: []string{"has its hook validateN on the pointer receiver"},
 		},
 		{
 			name: "generic receiver spelled",

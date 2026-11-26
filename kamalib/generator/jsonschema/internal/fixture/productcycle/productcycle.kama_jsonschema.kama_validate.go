@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:20Z
+// generated: 2026-11-26T08:31:26Z
 
 package productcycle
 
@@ -12,7 +12,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Product) Validate(stopOnFirstError bool) error {
+func (v *Product) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Product")
+	}
 	var errs []error
 	if err := validator.Field(v.A.Validate(stopOnFirstError), "A"); err != nil {
 		if stopOnFirstError {
@@ -44,7 +47,10 @@ func (v Product) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Product) ValidateShallow(stopOnFirstError bool) error {
+func (v *Product) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Product")
+	}
 	return nil
 }
 
@@ -52,24 +58,10 @@ func (v Product) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v A) Validate(stopOnFirstError bool) error {
-	return nil
-}
-
-// ValidateShallow is Validate for a decoded v, whose decoder calls it.
-// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
-// as valid.
-//
-//kama:generated kama:validate
-func (v A) ValidateShallow(stopOnFirstError bool) error {
-	return v.Validate(stopOnFirstError)
-}
-
-// Validate reports why v is invalid. With stopOnFirstError it returns the first
-// error found, otherwise every error joined, or nil when there is none.
-//
-//kama:generated kama:validate
-func (v B) Validate(stopOnFirstError bool) error {
+func (v *A) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *A")
+	}
 	return nil
 }
 
@@ -78,7 +70,7 @@ func (v B) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v B) ValidateShallow(stopOnFirstError bool) error {
+func (v *A) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -86,7 +78,30 @@ func (v B) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Back) Validate(stopOnFirstError bool) error {
+func (v *B) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *B")
+	}
+	return nil
+}
+
+// ValidateShallow is Validate for a decoded v, whose decoder calls it.
+// stopOnFirstError is passed on to Validate, since v holds no value ValidateShallow takes
+// as valid.
+//
+//kama:generated kama:validate
+func (v *B) ValidateShallow(stopOnFirstError bool) error {
+	return v.Validate(stopOnFirstError)
+}
+
+// Validate reports why v is invalid. With stopOnFirstError it returns the first
+// error found, otherwise every error joined, or nil when there is none.
+//
+//kama:generated kama:validate
+func (v *Back) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Back")
+	}
 	var errs []error
 	if v.Product != nil {
 		if err := validator.Field((*v.Product).Validate(stopOnFirstError), "product"); err != nil {
@@ -106,6 +121,9 @@ func (v Back) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Back) ValidateShallow(stopOnFirstError bool) error {
+func (v *Back) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Back")
+	}
 	return nil
 }

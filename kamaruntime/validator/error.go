@@ -33,6 +33,9 @@ var (
 	// ErrOmitted reports how many errors a collection left out to bound its memory. It
 	// stands for errors not reported, never for an error of its own.
 	ErrOmitted = errors.New("omitted")
+	// ErrNilReceiver reports a method of a generated validator called on a
+	// nil pointer, which has no value to validate.
+	ErrNilReceiver = errors.New("nil receiver")
 	// ErrStub reports a stub standing for a method the validator generator
 	// has not written yet. It tells nothing of the value checked.
 	ErrStub = errors.New("stub")

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:38Z
+// generated: 2026-11-26T08:16:09Z
 
 package wiretypes
 
@@ -222,7 +222,7 @@ func (v *RootEither) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.Int64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
-				if err := (RootEitherInteger{Integer: m}).ValidateShallow(false); err != nil {
+				if err := (&RootEitherInteger{Integer: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Integer: %w", err))
 				} else {
 					*v = RootEither{Kind: RootEitherInteger{Integer: m}}
@@ -236,7 +236,7 @@ func (v *RootEither) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member String: %w", err))
 		} else {
-			if err := (RootEitherString{String: m}).ValidateShallow(false); err != nil {
+			if err := (&RootEitherString{String: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
 				*v = RootEither{Kind: RootEitherString{String: m}}
@@ -395,7 +395,7 @@ func (v *RootList) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.NonNullSlice[int64].Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Array: %w", err))
 			} else {
-				if err := (RootListArray{Array: m}).ValidateShallow(false); err != nil {
+				if err := (&RootListArray{Array: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Array: %w", err))
 				} else {
 					if found != nil {
@@ -415,7 +415,7 @@ func (v *RootList) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.String.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member String: %w", err))
 			} else {
-				if err := (RootListString{String: m}).ValidateShallow(false); err != nil {
+				if err := (&RootListString{String: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member String: %w", err))
 				} else {
 					if found != nil {
@@ -463,7 +463,7 @@ func (v *Matrix) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.SliceOf(wire.NonNullSlice[float64].Value)(w)
 	*v = Matrix(out)
-	return kamaJsonschemaChecked(err, Matrix(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // Color is generated from the schema at #/$defs/Color.
@@ -521,5 +521,5 @@ func (v *Raws) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.NonNullSlice[jsontext.Value].Value(w)
 	*v = Raws(out)
-	return kamaJsonschemaChecked(err, Raws(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }

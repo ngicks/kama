@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T02:44:40Z
+// generated: 2026-11-26T08:31:47Z
 
 package model
 
@@ -19,11 +19,17 @@ import (
 // nil leaves them unchecked.
 //
 //kama:generated kama:validate
-func (v Shapes[T0]) Validate(stopOnFirstError bool, validateT0 func(v T0, stopOnFirstError bool) error) error {
+func (v *Shapes[T0]) Validate(stopOnFirstError bool, validateT0 func(v T0, stopOnFirstError bool) error) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Shapes")
+	}
 	var errs []error
 	for i, e := range v.E.Options() {
 		if e.IsSome() {
-			if err := validator.Field(validator.Index(e.Value().Validate(stopOnFirstError), i), "e"); err != nil {
+			if err := validator.Field(validator.Index(func() error {
+				p := e.Value()
+				return p.Validate(stopOnFirstError)
+			}(), i), "e"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -31,20 +37,20 @@ func (v Shapes[T0]) Validate(stopOnFirstError bool, validateT0 func(v T0, stopOn
 			}
 		}
 	}
-	for i, e := range v.A {
-		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "a"); err != nil {
+	for i := range v.A {
+		if err := validator.Field(validator.Index(v.A[i].Validate(stopOnFirstError), i), "a"); err != nil {
 			if stopOnFirstError {
 				return err
 			}
 			errs = append(errs, err)
 		}
 	}
-	for i, e := range v.N {
-		for _, k2 := range slices.Sorted(maps.Keys(e)) {
-			e2 := e[k2]
-			for i3, e3 := range e2 {
-				if e3 != nil {
-					if err := validator.Field(validator.Index(validator.Key(validator.Index((*e3).Validate(stopOnFirstError), i3), k2), i), "n"); err != nil {
+	for i := range v.N {
+		for _, k2 := range slices.Sorted(maps.Keys(v.N[i])) {
+			e := v.N[i][k2]
+			for i3 := range e {
+				if e[i3] != nil {
+					if err := validator.Field(validator.Index(validator.Key(validator.Index((*e[i3]).Validate(stopOnFirstError), i3), k2), i), "n"); err != nil {
 						if stopOnFirstError {
 							return err
 						}
@@ -96,12 +102,18 @@ func (v Shapes[T0]) Validate(stopOnFirstError bool, validateT0 func(v T0, stopOn
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Elastics) Validate(stopOnFirstError bool) error {
+func (v *Elastics) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Elastics")
+	}
 	var errs []error
-	for i, e := range v.S {
-		for i2, e2 := range e.Options() {
-			if e2.IsSome() {
-				if err := validator.Field(validator.Index(validator.Index(e2.Value().Validate(stopOnFirstError), i2), i), "s"); err != nil {
+	for i := range v.S {
+		for i2, e := range v.S[i].Options() {
+			if e.IsSome() {
+				if err := validator.Field(validator.Index(validator.Index(func() error {
+					p := e.Value()
+					return p.Validate(stopOnFirstError)
+				}(), i2), i), "s"); err != nil {
 					if stopOnFirstError {
 						return err
 					}
@@ -114,7 +126,10 @@ func (v Elastics) Validate(stopOnFirstError bool) error {
 		e := v.M[k]
 		for i2, e2 := range e.Options() {
 			if e2.IsSome() {
-				if err := validator.Field(validator.Key(validator.Index(e2.Value().Validate(stopOnFirstError), i2), k), "m"); err != nil {
+				if err := validator.Field(validator.Key(validator.Index(func() error {
+					p := e2.Value()
+					return p.Validate(stopOnFirstError)
+				}(), i2), k), "m"); err != nil {
 					if stopOnFirstError {
 						return err
 					}
@@ -123,10 +138,13 @@ func (v Elastics) Validate(stopOnFirstError bool) error {
 			}
 		}
 	}
-	for i, e := range v.A {
-		for i2, e2 := range e.Options() {
-			if e2.IsSome() {
-				if err := validator.Field(validator.Index(validator.Index(e2.Value().Validate(stopOnFirstError), i2), i), "a"); err != nil {
+	for i := range v.A {
+		for i2, e := range v.A[i].Options() {
+			if e.IsSome() {
+				if err := validator.Field(validator.Index(validator.Index(func() error {
+					p := e.Value()
+					return p.Validate(stopOnFirstError)
+				}(), i2), i), "a"); err != nil {
 					if stopOnFirstError {
 						return err
 					}
@@ -142,7 +160,10 @@ func (v Elastics) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Embedded) Validate(stopOnFirstError bool) error {
+func (v *Embedded) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Embedded")
+	}
 	var errs []error
 	if err := validator.Field(requiredComparable(v.Code), "code"); err != nil {
 		if stopOnFirstError {
@@ -186,8 +207,8 @@ func (v Ranks) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v {
-		if err := validator.Index(e.Validate(stopOnFirstError), i); err != nil {
+	for i := range v {
+		if err := validator.Index(v[i].Validate(stopOnFirstError), i); err != nil {
 			if stopOnFirstError {
 				return err
 			}
@@ -201,7 +222,10 @@ func (v Ranks) Validate(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Values) Validate(stopOnFirstError bool) error {
+func (v *Values) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Values")
+	}
 	var errs []error
 	if err := validator.Field(v.L.Validate(stopOnFirstError), "l"); err != nil {
 		if stopOnFirstError {

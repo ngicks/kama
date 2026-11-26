@@ -732,7 +732,11 @@
 // carrying //kama:validate decoded. They go to the file the validator
 // generator writes for the generated file, <package>.kama_jsonschema.kama_validate.go,
 // and carry its generated mark, //kama:generated kama:validate, so that it
-// takes them for its own output and replaces them. A stub returns an error
+// takes them for its own output and replaces them. A stub of a struct
+// type is declared on the pointer receiver and a stub of another type on
+// the value receiver, as the validator generator declares the methods.
+// The decoders call ValidateShallow on a value with an address, so either
+// receiver serves them. A stub returns an error
 // wrapping validator.ErrStub telling to run validate.generate over the
 // package. A union whose members fail on a stub fails the decoding with
 // that error rather than taking the value for its unknown member, so

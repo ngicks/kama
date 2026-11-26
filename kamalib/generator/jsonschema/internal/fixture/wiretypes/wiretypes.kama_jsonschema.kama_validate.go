@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:38Z
+// generated: 2026-11-26T08:16:10Z
 
 package wiretypes
 
@@ -12,7 +12,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Root) Validate(stopOnFirstError bool) error {
+func (v *Root) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Root")
+	}
 	var errs []error
 	if v.Matrix.IsSome() {
 		if err := validator.Field(v.Matrix.Value().Validate(stopOnFirstError), "matrix"); err != nil {
@@ -64,7 +67,10 @@ func (v Root) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Root) ValidateShallow(stopOnFirstError bool) error {
+func (v *Root) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Root")
+	}
 	var errs []error
 	if v.Either.IsSome() {
 		if err := validator.Field(v.Either.Value().ValidateShallow(stopOnFirstError), "either"); err != nil {
@@ -89,7 +95,10 @@ func (v Root) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootEitherInteger) Validate(stopOnFirstError bool) error {
+func (v *RootEitherInteger) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootEitherInteger")
+	}
 	return nil
 }
 
@@ -98,7 +107,7 @@ func (v RootEitherInteger) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v RootEitherInteger) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootEitherInteger) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -106,7 +115,10 @@ func (v RootEitherInteger) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootEitherString) Validate(stopOnFirstError bool) error {
+func (v *RootEitherString) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootEitherString")
+	}
 	return nil
 }
 
@@ -115,7 +127,7 @@ func (v RootEitherString) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v RootEitherString) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootEitherString) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -123,7 +135,10 @@ func (v RootEitherString) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootListArray) Validate(stopOnFirstError bool) error {
+func (v *RootListArray) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootListArray")
+	}
 	return nil
 }
 
@@ -132,7 +147,7 @@ func (v RootListArray) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v RootListArray) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootListArray) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 
@@ -140,7 +155,10 @@ func (v RootListArray) ValidateShallow(stopOnFirstError bool) error {
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v RootListString) Validate(stopOnFirstError bool) error {
+func (v *RootListString) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *RootListString")
+	}
 	return nil
 }
 
@@ -149,7 +167,7 @@ func (v RootListString) Validate(stopOnFirstError bool) error {
 // as valid.
 //
 //kama:generated kama:validate
-func (v RootListString) ValidateShallow(stopOnFirstError bool) error {
+func (v *RootListString) ValidateShallow(stopOnFirstError bool) error {
 	return v.Validate(stopOnFirstError)
 }
 

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T06:59:07Z
+// generated: 2026-11-26T08:15:41Z
 
 package nullableenum
 
@@ -12,7 +12,10 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Levels) Validate(stopOnFirstError bool) error {
+func (v *Levels) Validate(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Levels")
+	}
 	var errs []error
 	if v.Ref.IsDefined() {
 		if err := validator.Field(v.Ref.Value().Validate(stopOnFirstError), "ref"); err != nil {
@@ -56,7 +59,10 @@ func (v Levels) Validate(stopOnFirstError bool) error {
 // calls a Validate that has one.
 //
 //kama:generated kama:validate
-func (v Levels) ValidateShallow(stopOnFirstError bool) error {
+func (v *Levels) ValidateShallow(stopOnFirstError bool) error {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "ValidateShallow on a nil *Levels")
+	}
 	var errs []error
 	if v.Number.IsSome() {
 		if err := validator.Field(kamaValidateConst(v.Number.Value(), 1.5, 18446744073709551616), "number"); err != nil {

@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:11Z
+// generated: 2026-11-26T08:15:44Z
 
 package nullraw
 
@@ -230,7 +230,7 @@ func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		if err := kamaJsonschemaUnmarshal(dec, raw, &m); err != nil {
 			errs = append(errs, fmt.Errorf("member Option1: %w", err))
 		} else {
-			if err := (RootDOption1{Option1: m}).ValidateShallow(false); err != nil {
+			if err := (&RootDOption1{Option1: m}).ValidateShallow(false); err != nil {
 				errs = append(errs, fmt.Errorf("member Option1: %w", err))
 			} else {
 				*v = RootD{Kind: RootDOption1{Option1: m}}
@@ -246,7 +246,7 @@ func (v *RootD) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			if m, err := wire.Int64.Value(w); err != nil {
 				errs = append(errs, fmt.Errorf("member Integer: %w", err))
 			} else {
-				if err := (RootDInteger{Integer: m}).ValidateShallow(false); err != nil {
+				if err := (&RootDInteger{Integer: m}).ValidateShallow(false); err != nil {
 					errs = append(errs, fmt.Errorf("member Integer: %w", err))
 				} else {
 					*v = RootD{Kind: RootDInteger{Integer: m}}
@@ -288,7 +288,7 @@ func (v *RootLItem) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = RootLItem(out)
-	return kamaJsonschemaChecked(err, RootLItem(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v
@@ -325,7 +325,7 @@ func (v *N) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	var err error
 	*v = N(out)
-	return kamaJsonschemaChecked(err, N(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // RawJson returns v as raw JSON text, which tells the validators to check v

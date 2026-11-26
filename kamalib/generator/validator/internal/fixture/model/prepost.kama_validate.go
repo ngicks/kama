@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-25T10:21:44Z
+// generated: 2026-11-26T08:31:47Z
 
 package model
 
@@ -12,10 +12,13 @@ import "github.com/ngicks/kama/kamaruntime/validator"
 // error found, otherwise every error joined, or nil when there is none.
 //
 //kama:generated kama:validate
-func (v Hooked) Validate(stopOnFirstError bool) (err error) {
-	defer func() { err = validator.Join(err, validator.Root(validateHookedPost(v, stopOnFirstError))) }()
+func (v *Hooked) Validate(stopOnFirstError bool) (err error) {
+	if v == nil {
+		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Hooked")
+	}
+	defer func() { err = validator.Join(err, validator.Root(validateHookedPost((*v), stopOnFirstError))) }()
 	var errs []error
-	if err := validator.Root(validateHookedPre(v, stopOnFirstError)); err != nil {
+	if err := validator.Root(validateHookedPre((*v), stopOnFirstError)); err != nil {
 		if stopOnFirstError {
 			return err
 		}

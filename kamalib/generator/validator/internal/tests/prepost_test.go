@@ -69,7 +69,7 @@ func TestPrePostStruct(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var log []string
 
-			err := model.Hooked{N: tc.n, Fail: tc.fail, Log: &log}.Validate(tc.stop)
+			err := (&model.Hooked{N: tc.n, Fail: tc.fail, Log: &log}).Validate(tc.stop)
 			assert.DeepEqual(t, log, tc.wantLog)
 			assert.DeepEqual(t, validator.Pointers(err), tc.pointers)
 

@@ -58,14 +58,14 @@ func TestGenericSignature(t *testing.T) {
 	assertContains(
 		t,
 		fs["Box.Validate"],
-		"func (v Box[T]) Validate(stopOnFirstError bool, "+
+		"func (v *Box[T]) Validate(stopOnFirstError bool, "+
 			"validateT func(v T, stopOnFirstError bool) error) error {",
 	)
 	// A blank type parameter gets a name, for its function too.
 	assertContains(
 		t,
 		fs["Pair.Validate"],
-		"func (v Pair[T0, U]) Validate(stopOnFirstError bool, "+
+		"func (v *Pair[T0, U]) Validate(stopOnFirstError bool, "+
 			"validateT0 func(v T0, stopOnFirstError bool) error, "+
 			"validateU func(v U, stopOnFirstError bool) error) error {",
 		"validateU(v.U, stopOnFirstError)",
@@ -81,7 +81,7 @@ func TestGenericTypeParamFields(t *testing.T) {
 		check(`validator.Field(validateT(v.V, stopOnFirstError), "V")`),
 		"if v.P != nil {",
 		check(`validator.Field(validateT((*v.P), stopOnFirstError), "P")`),
-		check(`validator.Field(validator.Index(validateT(e, stopOnFirstError), i), "S")`),
+		check(`validator.Field(validator.Index(validateT(v.S[i], stopOnFirstError), i), "S")`),
 		check(`validator.Field(validator.Key(validateT(e, stopOnFirstError), k), "M")`),
 	)
 }
@@ -141,13 +141,13 @@ func TestGenericTypeParamNamedLikeLocal(t *testing.T) {
 		want []string
 	}{
 		{"v", []string{
-			"func (v2 Box[v]) Validate(stopOnFirstError bool, " +
+			"func (v2 *Box[v]) Validate(stopOnFirstError bool, " +
 				"validatev func(v v, stopOnFirstError bool) error) error {",
 			"func(v3 Inner[v], stopOnFirstError bool) error {",
 			"func(v4 []v, stopOnFirstError bool) error {",
 		}},
 		{"stopOnFirstError", []string{
-			"func (v Box[stopOnFirstError]) Validate(stopOnFirstError2 bool, ",
+			"func (v *Box[stopOnFirstError]) Validate(stopOnFirstError2 bool, ",
 			"func(v Inner[stopOnFirstError], stopOnFirstError3 bool) error {",
 		}},
 		{"errs", []string{"\tvar errs2 []error\n"}},
@@ -209,7 +209,7 @@ func TestPackageDeclNamedLikeLocal(t *testing.T) {
 		want []string
 	}{
 		{"v", []string{
-			"func (v2 S) Validate(stopOnFirstError bool) error {",
+			"func (v2 *S) Validate(stopOnFirstError bool) error {",
 			"func(v3 Box2[v], stopOnFirstError bool) error {",
 			"func(v3 []v, stopOnFirstError bool) error {",
 		}},
@@ -223,7 +223,7 @@ func TestPackageDeclNamedLikeLocal(t *testing.T) {
 				`if err2 := validator.Field(v.F.Validate(stopOnFirstError), "F"); err2 != nil {`,
 			},
 		},
-		{"stopOnFirstError", []string{"func (v S) Validate(stopOnFirstError2 bool) error {"}},
+		{"stopOnFirstError", []string{"func (v *S) Validate(stopOnFirstError2 bool) error {"}},
 		// The loop variables take fresh names already.
 		{"e", nil},
 		{"i", nil},

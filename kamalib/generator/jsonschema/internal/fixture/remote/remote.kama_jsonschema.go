@@ -3,7 +3,7 @@
 //	schema: "schema.json"
 //	type_name: null
 //	validate: true
-// generated: 2026-11-26T06:59:25Z
+// generated: 2026-11-26T08:15:56Z
 
 package remote
 
@@ -132,7 +132,7 @@ func (v *MoneyCurrency) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	}
 	out, err := wire.String.Value(w)
 	*v = MoneyCurrency(out)
-	return kamaJsonschemaChecked(err, MoneyCurrency(out).ValidateShallow(false))
+	return kamaJsonschemaChecked(err, v.ValidateShallow(false))
 }
 
 // Party is generated from the schema at
