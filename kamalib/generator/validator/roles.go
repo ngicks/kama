@@ -19,11 +19,14 @@ const groupWord = "g"
 
 // role returns the step applying the value of the item a, a role keyword
 // item of vo, to the values of that role of the value x of type t, each
-// error passed through wrap. place names what a applies to in errors.
-// depth counts the loops around the step, as nested does.
+// error passed through wrap. level holds the items of the level a belongs
+// to, whose description tells the roles of t in place of the type
+// supports. place names what a applies to in errors. depth counts the
+// loops around the step, as nested does.
 func (w *writer) role(
 	vo ValidatorOptions,
 	a expr.Arg,
+	level []expr.Arg,
 	place string,
 	t types.Type,
 	x genExpr,
@@ -31,7 +34,17 @@ func (w *writer) role(
 	depth int,
 ) (genStep, error) {
 	reg := w.sel.opts.Registry
-	roles := ext.Roles(reg, t)
+
+	if slices.Contains(itemWords, a.Name) {
+		return nil, fmt.Errorf("%w: %s: %s on %s: %s is written on a field or inside %s(...)",
+			ErrDirective, vo.src.origin(), vo.src.spelling(), place, a.Name, groupWord)
+	}
+
+	roles, err := w.heldRoles(t, level)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s: %s on %s: %w",
+			ErrDirective, vo.src.origin(), vo.src.spelling(), place, err)
+	}
 
 	if err := checkRoles(reg, t, roles); err != nil {
 		return nil, fmt.Errorf("%w: %s: %s on %s: %w",
@@ -50,28 +63,61 @@ func (w *writer) role(
 	inner := place + " role " + a.Name
 	items := groupItems(a.Value)
 
+	return w.over(t, x, level, a.Name, wrap, depth,
+		func(held types.Type, value genExpr, wrap wrapFunc, depth int) (genStep, error) {
+			return w.items(vo, items, inner, held, value, wrap, depth)
+		},
+	)
+}
+
+// heldFunc returns the step for value, a value of type held a role tells,
+// each error passed through wrap, or nil for none.
+type heldFunc func(held types.Type, value genExpr, wrap wrapFunc, depth int) (genStep, error)
+
+// over returns the step running inner on each value of role the value x of
+// type t holds: under its guard for a role of one value, in a loop for a
+// role of many, each located by its segment. The description among level,
+// the items of the level, tells the values in place of the type supports.
+func (w *writer) over(
+	t types.Type,
+	x genExpr,
+	level []expr.Arg,
+	role string,
+	wrap wrapFunc,
+	depth int,
+	inner heldFunc,
+) (genStep, error) {
+	word, method, err := description(level)
+	if err != nil {
+		return nil, err
+	}
+
+	if word != "" {
+		return w.described(t, x, word, method, role, wrap, depth, inner)
+	}
+
+	reg := w.sel.opts.Registry
+
 	idx := "i"
 	if _, _, _, _, segment, _, _ := ext.RoleValue(
 		reg,
 		t,
 		x,
-		a.Name,
+		role,
 		nil,
 		nil,
 	); segment == ext.SegmentKey {
 		idx = "k"
 	}
 
-	if depth > 0 {
-		idx += strconv.Itoa(depth + 1)
-	}
+	idx = loopName(idx, depth)
 
 	held, guard, over, value, segment, label, _ := ext.RoleValue(
-		reg, t, x, a.Name, lang.Name(idx), lang.Name("e"),
+		reg, t, x, role, lang.Name(idx), lang.Name("e"),
 	)
 
 	if over == nil {
-		s, err := w.items(vo, items, inner, held, value, w.locate(segment, label, wrap), depth)
+		s, err := inner(held, value, w.locate(segment, label, wrap), depth)
 		if s == nil || err != nil || guard == nil {
 			return s, err
 		}
@@ -79,14 +125,14 @@ func (w *writer) role(
 		return lang.If(guard, s, nil), nil
 	}
 
-	s, err := w.items(vo, items, inner, held, value, w.locate(segment, label, wrap), depth+1)
+	s, err := inner(held, value, w.locate(segment, label, wrap), depth+1)
 	if s == nil || err != nil {
 		return nil, err
 	}
 
 	m, isMap := types.Unalias(t).Underlying().(*types.Map)
 	// The keys of a map are the values of k, which reads no element.
-	keyRole := isMap && a.Name == "k"
+	keyRole := isMap && role == "k"
 
 	if isMap && typequery.BasicInfo(m.Key())&(types.IsInteger|types.IsString) != 0 {
 		keys := lang.Expr("%s.Sorted(%s.Keys(%s))", w.Import("slices"), w.Import("maps"), over)
@@ -106,6 +152,16 @@ func (w *writer) role(
 	}
 
 	return lang.ForRange(idx, "e", over, s), nil
+}
+
+// loopName returns the name of a loop variable of the role name at depth,
+// apart from those of the loops around it.
+func loopName(name string, depth int) string {
+	if depth > 0 {
+		return name + strconv.Itoa(depth+1)
+	}
+
+	return name
 }
 
 // items returns the steps of items, the items of a group or the value of
@@ -129,9 +185,11 @@ func (w *writer) items(
 			err error
 		)
 
-		if a.Name != "" {
-			s, err = w.role(vo, a, place, t, x, wrap, depth)
-		} else {
+		switch {
+		case slices.Contains(levelWords, a.Name):
+		case a.Name != "":
+			s, err = w.role(vo, a, items, place, t, x, wrap, depth)
+		default:
 			s, err = w.heldRule(vo, a.Value, place, t, x, wrap)
 		}
 

@@ -279,10 +279,12 @@ func (w *writer) field(st *types.Struct, i int) ([]genStep, []error) {
 			continue
 		}
 
-		steps = append(steps, s)
+		if s != nil {
+			steps = append(steps, s)
+		}
 	}
 
-	s, err := w.nested(v.Type(), x, wrap, 0)
+	s, err := w.heldNested(v.Type(), x, wrap, 0, w.fieldItems(v), true)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("field %s: %w", v.Name(), err))
 	} else if s != nil {
@@ -348,8 +350,11 @@ func (w *writer) validator(
 	v := st.Field(i)
 	place := "field " + v.Name()
 
-	if vo.Item.Name != "" {
-		return w.role(vo, vo.Item, place, v.Type(), x, wrap, 0)
+	switch {
+	case slices.Contains(levelWords, vo.Item.Name):
+		return nil, nil
+	case vo.Item.Name != "":
+		return w.role(vo, vo.Item, w.fieldItems(v), place, v.Type(), x, wrap, 0)
 	}
 
 	r, err := w.resolve(vo, vo.Item.Value, place)
@@ -415,7 +420,7 @@ func (w *writer) typeValidator(u types.Type, vo ValidatorOptions) (genStep, erro
 	place := "type " + named.Obj().Name()
 
 	if vo.Item.Name != "" {
-		return w.role(vo, vo.Item, place, named, lang.Name("v"), noWrap, 0)
+		return w.role(vo, vo.Item, nil, place, named, lang.Name("v"), noWrap, 0)
 	}
 
 	r, err := w.resolve(vo, vo.Item.Value, place)

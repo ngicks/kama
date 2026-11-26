@@ -477,6 +477,11 @@ func (s *selection) checkUnsupportedHolders(g *typegraph.Graph) error {
 				continue
 			}
 
+			// The walk follows the description of a field, not its type.
+			if s.described(n.Id, v.Name()) {
+				continue
+			}
+
 			if named := s.unsupportedIn(v.Type(), target, unsupported); named != nil {
 				errs = append(errs, unsupportedHolderError(pos(v.Pos()),
 					"field "+v.Name()+" of "+n.Id.String(), named))
