@@ -228,6 +228,22 @@ func TestTextExtensionUnknownKey(t *testing.T) {
 	)
 }
 
+// TestTextExtensionCompareOperand rejects an operand of the kind the
+// section of the file does not take.
+func TestTextExtensionCompareOperand(t *testing.T) {
+	files := textExtFiles(t, textExtFile(t, textExtHolder, `cond = "{{.V}}.Has()"`))
+	files["ext.toml"] += "\n[types.\"" + modulePath(
+		t,
+	) + "/sub.Box\".generator.validate.compare]\n" +
+		"ops = [\"==\"]\noperand = \"string\"\ncond = \"{{.V}}.Get() {{.Op}} {{.Operand}}\"\n"
+	files["a.go"] = strings.Replace(files["a.go"], "required, v=length(le=3)", "cmp(eq=1)", 1)
+
+	_, _, err := runTextExt(t, files, nil)
+	assert.ErrorIs(t, err, ext.ErrArgs)
+	assert.ErrorIs(t, err, ext.ErrClaimed)
+	assert.ErrorContains(t, err, "compares with a quoted string, got 1")
+}
+
 // TestTextExtensionMissingMethod shows that a template calling a method
 // the type lacks generates and fails to compile: the generator does not
 // type-check the code a template writes.

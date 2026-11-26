@@ -366,12 +366,11 @@ func textUnknown(name string, f *TextFile) []error {
 }
 
 func textWarnings(name string, prefix []string, paths [][]string) []error {
-	var out []error
-	for _, p := range paths {
-		out = append(out, textWarning(name, append(slices.Clip(prefix), p...), "unknown key"))
-	}
-
-	return out
+	return opiter.SlicesValues(paths).
+		Map(func(p []string) error {
+			return textWarning(name, slices.Concat(prefix, p), "unknown key")
+		}).
+		CollectSlice()
 }
 
 // checkText reports the values of f that are wrong whatever type a run
@@ -389,6 +388,17 @@ func checkText(name string, f *TextFile) []error {
 		if _, err := parseText(text); err != nil {
 			fail(path, "%v", err)
 		}
+	}
+
+	// A template left out would render as empty code, which compiles to
+	// nothing sensible.
+	required := func(path []string, text string) {
+		if strings.TrimSpace(text) == "" {
+			fail(path, "is required")
+			return
+		}
+
+		parse(path, text)
 	}
 
 	ident := func(path []string, s string) {
@@ -415,7 +425,7 @@ func checkText(name string, f *TextFile) []error {
 
 	for _, n := range slices.Sorted(maps.Keys(f.Helpers)) {
 		ident([]string{"helpers", n}, n)
-		parse([]string{"helpers", n, "decl"}, f.Helpers[n].Decl)
+		required([]string{"helpers", n, "decl"}, f.Helpers[n].Decl)
 	}
 
 	for _, key := range slices.Sorted(maps.Keys(f.Types)) {
@@ -429,14 +439,16 @@ func checkText(name string, f *TextFile) []error {
 		if t.Holder != nil {
 			h := append(slices.Clip(at), "holder")
 			ident(append(h, "role"), t.Holder.Role)
-			parse(append(h, "guard"), t.Holder.Guard)
-			parse(append(h, "value"), t.Holder.Value)
+			required(append(h, "type"), t.Holder.Type)
+			required(append(h, "guard"), t.Holder.Guard)
+			required(append(h, "value"), t.Holder.Value)
 		}
 
 		if t.Container != nil {
 			c := append(slices.Clip(at), "container")
 			ident(append(c, "role"), t.Container.Role)
-			parse(append(c, "over"), t.Container.Over)
+			required(append(c, "type"), t.Container.Type)
+			required(append(c, "over"), t.Container.Over)
 			oneOf(append(c, "yields"), t.Container.Yields, "values", "pairs")
 
 			if t.Container.Yields == "pairs" {
@@ -447,15 +459,29 @@ func checkText(name string, f *TextFile) []error {
 		}
 
 		if t.Composite != nil {
-			for i, p := range t.Composite.Parts {
-				pp := append(slices.Clip(at), "composite", "parts", fmt.Sprint(i))
-				ident(append(pp, "role"), p.Role)
-				parse(append(pp, "guard"), p.Guard)
-				parse(append(pp, "value"), p.Value)
-				parse(append(pp, "label"), p.Label)
+			if len(t.Composite.Parts) == 0 {
+				fail(append(slices.Clip(at), "composite", "parts"), "is required")
+			}
 
-				if p.Segment != "" {
+			for i, p := range t.Composite.Parts {
+				pp := append(slices.Clip(at), "composite", "parts", strconv.Itoa(i))
+				ident(append(pp, "role"), p.Role)
+				required(append(pp, "type"), p.Type)
+				parse(append(pp, "guard"), p.Guard)
+				required(append(pp, "value"), p.Value)
+
+				if slices.ContainsFunc(t.Composite.Parts[:i], func(q TextPart) bool {
+					return q.Role == p.Role
+				}) {
+					fail(append(pp, "role"), "role %s is taken by an earlier part", p.Role)
+				}
+
+				switch p.Segment {
+				case "", "none":
+					parse(append(pp, "label"), p.Label)
+				default:
 					oneOf(append(pp, "segment"), p.Segment, "none", "index", "key", "field")
+					required(append(pp, "label"), p.Label)
 				}
 			}
 		}

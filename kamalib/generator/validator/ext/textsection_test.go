@@ -67,6 +67,7 @@ func TestTextSectionErrors(t *testing.T) {
 			`compare.operand: "int"; want string or number`,
 		},
 		{"length = { expr = \"{{.V\" }", `types."x.Box".generator.validate.length.expr: template: `},
+		{"null = { words = \"x\" }", `types."x.Box".generator.validate.null.cond: is required`},
 	} {
 		_, _, err := loadText(t, head+tc.src)
 		assert.ErrorIs(t, err, genext.ErrTextFile)

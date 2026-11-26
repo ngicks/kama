@@ -15,6 +15,10 @@ func validOrder() textext.Order {
 	return textext.Order{
 		Counts: textext.NewBag(0, 2),
 		Items:  textext.NewBag(textext.Item{P: &p}),
+		Ranks:  textext.NewList(0, 1),
+		Lists:  textext.NewList(textext.Item{P: &p}),
+		Names:  textext.NewDict(map[string]string{"a": "abc"}),
+		Dicts:  textext.NewDict(map[string]textext.Item{"a": {P: &p}}),
 		Note:   textext.Some("abc"),
 		Held:   textext.Some(textext.Item{P: &p}),
 		Entry:  textext.Pair[string, int]{Key: "k", Value: 1, Set: true},
@@ -38,6 +42,10 @@ func TestTextExtensionInvalid(t *testing.T) {
 	o := textext.Order{
 		Counts: textext.NewBag(1, -1),
 		Items:  textext.NewBag(textext.Item{}, textext.Item{}),
+		Ranks:  textext.NewList(0, -1),
+		Lists:  textext.NewList(textext.Item{}),
+		Names:  textext.NewDict(map[string]string{"a": "abcd"}),
+		Dicts:  textext.NewDict(map[string]textext.Item{"b": {}}),
 		Held:   textext.Some(textext.Item{}),
 		Entry:  textext.Pair[string, int]{Value: 0, Set: true},
 		Tag:    textext.NewLabel("none"),
@@ -52,6 +60,10 @@ func TestTextExtensionInvalid(t *testing.T) {
 		{"/Counts/1", validator.ErrCompare},
 		{"/Items/0/P", validator.ErrRequired},
 		{"/Items/1/P", validator.ErrRequired},
+		{"/Ranks/1", validator.ErrCompare},
+		{"/Lists/0/P", validator.ErrRequired},
+		{"/Names/a", validator.ErrLength},
+		{"/Dicts/b/P", validator.ErrRequired},
 		{"/Note", validator.ErrRequired},
 		{"/Held/P", validator.ErrRequired},
 		{"/Entry/key", validator.ErrLength},
@@ -63,7 +75,7 @@ func TestTextExtensionInvalid(t *testing.T) {
 		assert.ErrorIs(t, at[0], tc.kind, tc.pointer)
 	}
 
-	assert.Equal(t, len(validator.Pointers(err)), 8, "%v", validator.Pointers(err))
+	assert.Equal(t, len(validator.Pointers(err)), 12, "%v", validator.Pointers(err))
 
 	// The length of Counts counts through the helper of ext.toml, and the
 	// zero test of Tag trims through strings.

@@ -9,6 +9,7 @@ import (
 	"go/types"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
@@ -120,6 +121,11 @@ func buildTextSection(
 	var errs []error
 
 	check := func(text string, keys ...string) {
+		if strings.TrimSpace(text) == "" {
+			errs = append(errs, scope.Error(at(keys...), "is required"))
+			return
+		}
+
 		errs = append(errs, scope.Check(at(keys...), text))
 	}
 
@@ -141,6 +147,10 @@ func buildTextSection(
 
 	if c := sec.Compare; c != nil {
 		check(c.Cond, "compare", "cond")
+
+		if len(c.Ops) == 0 {
+			errs = append(errs, scope.Error(at("compare", "ops"), "is required"))
+		}
 
 		for i, op := range c.Ops {
 			if !slices.Contains(operators, op) {

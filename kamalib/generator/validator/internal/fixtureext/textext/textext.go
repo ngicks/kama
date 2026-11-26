@@ -4,6 +4,7 @@ package textext
 
 import (
 	"iter"
+	"maps"
 	"slices"
 )
 
@@ -15,6 +16,24 @@ func NewBag[T any](items ...T) Bag[T] { return Bag[T]{items: items} }
 
 // Values yields the elements of b.
 func (b Bag[T]) Values() iter.Seq[T] { return slices.Values(b.items) }
+
+// List holds elements, which All yields by index.
+type List[T any] struct{ items []T }
+
+// NewList returns a List of items.
+func NewList[T any](items ...T) List[T] { return List[T]{items: items} }
+
+// All yields the elements of l by index.
+func (l List[T]) All() iter.Seq2[int, T] { return slices.All(l.items) }
+
+// Dict holds elements by key, which All yields.
+type Dict[V any] struct{ m map[string]V }
+
+// NewDict returns a Dict of m.
+func NewDict[V any](m map[string]V) Dict[V] { return Dict[V]{m: m} }
+
+// All yields the keys and the elements of d.
+func (d Dict[V]) All() iter.Seq2[string, V] { return maps.All(d.m) }
 
 // Maybe holds at most one value.
 type Maybe[T any] struct {
@@ -55,6 +74,12 @@ type Order struct {
 	//kama:validate length(ge=1), v=cmp(ge=0)
 	Counts Bag[int]
 	Items  Bag[Item]
+	//kama:validate v=cmp(ge=0)
+	Ranks List[int]
+	Lists List[Item]
+	//kama:validate v=length(le=3)
+	Names Dict[string]
+	Dicts Dict[Item]
 	//kama:validate required, v=length(le=3)
 	Note Maybe[string]
 	Held Maybe[Item]

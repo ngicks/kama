@@ -24,6 +24,20 @@ yields = "values"
 [types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.Bag".generator.validate.length]
 expr = '{{helper "count"}}({{.V}}.Values())'
 
+[types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.List".container]
+role = "v"
+type = "T"
+over = "{{.V}}.All()"
+yields = "pairs"
+segment = "index"
+
+[types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.Dict".container]
+role = "v"
+type = "V"
+over = "{{.V}}.All()"
+yields = "pairs"
+segment = "key"
+
 [types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.Maybe".holder]
 role = "v"
 type = "T"

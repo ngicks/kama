@@ -66,6 +66,17 @@ func TestLoadTextErrors(t *testing.T) {
 			`holder.role: "a-b" is no Go identifier`,
 		},
 		{
+			"empty template",
+			`{"version": 1, "types": {"x.Box": {"holder": {"role": "v", "type": "T", "guard": "x"}}}}`,
+			`types."x.Box".holder.value: is required`,
+		},
+		{
+			"missing label",
+			`{"version": 1, "types": {"x.P": {"composite": {"parts": ` +
+				`[{"role": "a", "type": "A", "value": "x", "segment": "field"}]}}}}`,
+			`types."x.P".composite.parts.0.label: is required`,
+		},
+		{
 			"template",
 			`{"version": 1, "types": {"x.Box": {"holder": {"role": "v", "value": "{{.V"}}}}`,
 			`types."x.Box".holder.value: template: `,

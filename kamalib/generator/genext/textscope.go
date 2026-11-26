@@ -294,12 +294,18 @@ func upperFirst(name string) string {
 // isStd reports whether the package at path lies in the standard library:
 // the first element of path holds no dot, as the go command tells standard
 // packages apart, and the directory of the package lies under the src
-// directory of GOROOT. Asking go/build to import path instead would run
+// directory of GOROOT when GOROOT is known. Asking go/build to import path instead would run
 // the go command for a path outside GOROOT.
 func isStd(path string) bool {
 	first, _, _ := strings.Cut(path, "/")
-	if path == "" || strings.Contains(first, ".") || build.Default.GOROOT == "" {
+	if path == "" || strings.Contains(first, ".") {
 		return false
+	}
+
+	// A program built with -trimpath and run without GOROOT knows no
+	// GOROOT, so the rule of the go command decides alone.
+	if build.Default.GOROOT == "" {
+		return true
 	}
 
 	info, err := os.Stat(filepath.Join(build.Default.GOROOT, "src", filepath.FromSlash(path)))

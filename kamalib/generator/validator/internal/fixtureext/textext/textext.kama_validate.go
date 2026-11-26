@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T11:51:04Z
+// generated: 2026-11-26T12:05:19Z
 
 package textext
 
@@ -53,6 +53,38 @@ func (v *Order) Validate(stopOnFirstError bool) error {
 		}
 	} {
 		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "Items"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	for i, e := range v.Ranks.All() {
+		if err := validator.Field(validator.Index(kamaValidateCmp(e, ">=", 0), i), "Ranks"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	for i, e := range v.Lists.All() {
+		if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "Lists"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	for k, e := range v.Names.All() {
+		if err := validator.Field(validator.Key(kamaValidateLength(len(e), "<=", 3), k), "Names"); err != nil {
+			if stopOnFirstError {
+				return err
+			}
+			errs = append(errs, err)
+		}
+	}
+	for k, e := range v.Dicts.All() {
+		if err := validator.Field(validator.Key(e.Validate(stopOnFirstError), k), "Dicts"); err != nil {
 			if stopOnFirstError {
 				return err
 			}

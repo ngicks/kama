@@ -147,8 +147,8 @@
 //
 //   - {{std "<import path>"}} spells a package of the standard library, as
 //     {{std "strings"}}.TrimSpace({{.V}}). A path whose first element holds
-//     no dot and whose directory lies under GOROOT/src is a package of the
-//     standard library.
+//     no dot is a package of the standard library when its directory lies
+//     under GOROOT/src, or when the program knows no GOROOT.
 //   - {{pkg "<name>"}} spells the package imports names.
 //   - {{helper "<name>"}} declares the helper of helpers and spells its
 //     name. A helper calls no other helper.
@@ -159,10 +159,12 @@
 // the generated package does not depend on under the last element of its
 // path. Each helper is declared once per package, in the helper file of
 // the generator, under a name the generator prefixes, as
-// kamaValidateExtCount for the helper count of the validator. A template
-// that does not parse is an error when the file loads. A template that
-// does not execute, and a name imports or helpers does not declare, is an
-// error of the run. Each error names the file and the key path of the
+// kamaValidateExtCount for the helper count of the validator. Every key
+// but the guard of a part, and the label of a part without segment, is
+// required. A missing key and a template that does not parse are errors
+// when the file loads. A template that does not execute, and a name
+// imports or helpers does not declare, is an error of the run. Each error names the file and the
+// key path of the
 // template. A key that names nothing is a warning naming its key path.
 //
 // The generator does not type-check the code of a template. A method the

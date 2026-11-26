@@ -7,6 +7,8 @@ import (
 	"iter"
 	"strconv"
 	"strings"
+
+	"github.com/ngicks/opiter"
 )
 
 // textSupport is the Holder, Container and Composite a type of a text
@@ -92,12 +94,9 @@ func (s textSupport) Roles(t types.Type) []string {
 		return nil
 	}
 
-	roles := make([]string, 0, len(c.Parts))
-	for _, p := range c.Parts {
-		roles = append(roles, p.Role)
-	}
-
-	return roles
+	return opiter.SlicesValues(c.Parts).
+		Map(func(p TextPart) string { return p.Role }).
+		CollectSlice()
 }
 
 func (s textSupport) Part(
