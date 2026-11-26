@@ -98,9 +98,9 @@
 // The functions a template calls are those of text/template, those of
 // [BuiltinFuncs], and those other packages add with [RegisterFuncs]. No
 // built-in function reads the clock, the environment or a file: such a
-// value comes through vars. [BuiltinFuncs] documents the table. Bump
-// functions for versions are not built in yet. They are wired to the bump
-// helpers of exver once exver provides them.
+// value comes through vars. [BuiltinFuncs] documents the table. exver has
+// no bump helper. A template bumps a version with the functions setting
+// and dropping its components.
 //
 // # Ids
 //

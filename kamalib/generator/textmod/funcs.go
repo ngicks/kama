@@ -106,8 +106,19 @@ func Funcs(r Run) (template.FuncMap, error) {
 //	                        verExtra read the others
 //	verPre v                the pre-release of v; verBuild reads the build
 //
-// Bump functions are not built in. They are wired to the bump helpers of
-// exver once a version of exver provides them.
+// These map to the methods of exver.Core and exver.Version:
+//
+//	setMajor n v            v with the major number n (Core.WithMajor);
+//	                        setMinor, setPatch and setExtra set the others
+//	                        and add the component v lacks
+//	dropMinor v             v with the major number only (Core.DropMinor);
+//	                        dropPatch keeps major and minor, dropExtra keeps
+//	                        major, minor and patch
+//	dropPre v               v without its pre-release (DropPreRelease)
+//	dropBuild v             v without its build metadata (DropBuild)
+//
+// exver has no bump helper. A template bumps a version with them, as in
+// {{ .Value | setMinor (add (verMinor .Value) 1) | setPatch 0 | dropPre }}.
 //
 // Date-times take a time.Time or a string parsing as RFC 3339. A
 // duration is a time.Duration or a string time.ParseDuration takes:
@@ -171,7 +182,16 @@ func BuiltinFuncs() template.FuncMap {
 		"verExtra":   func(v any) (int, error) { return verNum(v, 3) },
 		"verPre":     func(v any) (string, error) { return verStr(v, exver.Version.PreRelease) },
 		"verBuild":   func(v any) (string, error) { return verStr(v, exver.Version.Build) },
-		// Bump functions of exver go here once exver provides them.
+		"setMajor":   setCore(exver.Core.WithMajor),
+		"setMinor":   setCore(exver.Core.WithMinor),
+		"setPatch":   setCore(exver.Core.WithPatch),
+		"setExtra":   setCore(exver.Core.WithExtra),
+		"dropMinor":  mapCore(exver.Core.DropMinor),
+		"dropPatch":  mapCore(exver.Core.DropPatch),
+		"dropExtra":  mapCore(exver.Core.DropExtra),
+		"dropPre":    mapVersion(exver.Version.DropPreRelease),
+		"dropBuild":  mapVersion(exver.Version.DropBuild),
+		// Bump functions go here once exver provides bump helpers.
 
 		// Date-times.
 		"parseTime":   time.Parse,
@@ -266,7 +286,7 @@ func withPre(pre string, v any) (exver.Version, error) {
 	}
 
 	if pre == "" {
-		return respell(ver, "", ver.Build())
+		return ver.DropPreRelease(), nil
 	}
 
 	return ver.WithPreRelease(pre)
@@ -279,33 +299,52 @@ func withBuild(build string, v any) (exver.Version, error) {
 	}
 
 	if build == "" {
-		return respell(ver, ver.PreRelease(), "")
+		return ver.DropBuild(), nil
 	}
 
 	return ver.WithBuild(build)
 }
 
-// respell returns v with pre and build. exver rejects an empty pre-release
-// or build in WithPreRelease and WithBuild. respell clears one by spelling
-// the version anew and parsing it.
-func respell(v exver.Version, pre, build string) (exver.Version, error) {
-	var b strings.Builder
+func mapVersion(fn func(exver.Version) exver.Version) func(v any) (exver.Version, error) {
+	return func(v any) (exver.Version, error) { return mapVer(v, fn) }
+}
 
-	if v.V() {
-		b.WriteByte('v')
+func mapCore(fn func(exver.Core) exver.Core) func(v any) (exver.Version, error) {
+	return func(v any) (exver.Version, error) {
+		return mapVer(
+			v,
+			func(ver exver.Version) exver.Version { return ver.WithCore(fn(ver.Core())) },
+		)
+	}
+}
+
+func setCore(
+	fn func(exver.Core, uint16) (exver.Core, error),
+) func(n, v any) (exver.Version, error) {
+	return func(n, v any) (exver.Version, error) { return setCoreOf(n, v, fn) }
+}
+
+func setCoreOf(n, v any, fn func(exver.Core, uint16) (exver.Core, error)) (exver.Version, error) {
+	ver, err := asVer(v)
+	if err != nil {
+		return exver.Version{}, err
 	}
 
-	b.WriteString(v.Core().String())
-
-	if pre != "" {
-		b.WriteString("-" + pre)
+	i, err := int64Of(n)
+	if err != nil {
+		return exver.Version{}, err
 	}
 
-	if build != "" {
-		b.WriteString("+" + build)
+	if i < 0 || i > math.MaxUint16 {
+		return exver.Version{}, fmt.Errorf("version number %d is out of range", i)
 	}
 
-	return exver.Parse(b.String())
+	core, err := fn(ver.Core(), uint16(i))
+	if err != nil {
+		return exver.Version{}, err
+	}
+
+	return ver.WithCore(core), nil
 }
 
 // withCore takes the numbers of the core, then the version a pipeline
