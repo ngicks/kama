@@ -28,6 +28,12 @@ type Prefix struct{}
 // Name returns "prefix".
 func (Prefix) Name() string { return "prefix" }
 
+// PrefixArgs are the args of prefix(...), which Parse reads and Call spells.
+type PrefixArgs OperandArgs
+
+// Call returns the call of prefix spelling a.
+func (a PrefixArgs) Call() (expr.Call, error) { return operandArgs.Call(Prefix{}.Name(), a) }
+
 // PrefixOptions are the options of //kama:validate prefix(<validator>, ...).
 type PrefixOptions struct {
 	// Operands are the validators of the elements, in order.
@@ -49,7 +55,7 @@ func (Prefix) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
 	var o PrefixOptions
 
 	if n := len(args); n > 0 {
-		if rest, ok := args[n-1].Value.(expr.Call); ok && rest.Name == "rest" {
+		if rest, ok := args[n-1].Value.(expr.Call); ok && rest.Name == restEntry {
 			o.HasRest = true
 
 			o.Rest, err = parseOperandArgs(r, rest)

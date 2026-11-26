@@ -25,6 +25,12 @@ type Length struct{}
 // Name returns "length".
 func (Length) Name() string { return "length" }
 
+// LengthArgs are the args of length(...), which Parse reads and Call spells.
+type LengthArgs CompareArgs
+
+// Call returns the call of length spelling a.
+func (a LengthArgs) Call() (expr.Call, error) { return compareParams.Call(Length{}.Name(), a) }
+
 // LengthOptions are the options of //kama:validate length(...).
 type LengthOptions struct {
 	// Comparisons holds one comparison per arg, in order.

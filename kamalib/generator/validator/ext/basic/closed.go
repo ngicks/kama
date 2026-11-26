@@ -24,6 +24,12 @@ type Closed struct{}
 // Name returns "closed".
 func (Closed) Name() string { return "closed" }
 
+// ClosedArgs are the args of closed, which takes none.
+type ClosedArgs struct{}
+
+// Call returns the bare name closed.
+func (a ClosedArgs) Call() (expr.Call, error) { return noParams.Call(Closed{}.Name(), a) }
+
 // ClosedOptions are the options of //kama:validate closed. It has none.
 type ClosedOptions struct{}
 

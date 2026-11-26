@@ -19,6 +19,12 @@ type Keys struct{}
 // Name returns "keys".
 func (Keys) Name() string { return "keys" }
 
+// KeysArgs are the args of keys(...), which Parse reads and Call spells.
+type KeysArgs OperandArgs
+
+// Call returns the call of keys spelling a.
+func (a KeysArgs) Call() (expr.Call, error) { return operandArgs.Call(Keys{}.Name(), a) }
+
 // KeysOptions are the options of //kama:validate keys(<validator>, ...).
 type KeysOptions struct {
 	// Operands are the validators of the args, in order.

@@ -23,6 +23,20 @@ func Or(n expr.Node, r ext.Resolver) (ext.Rule, error) {
 	)
 }
 
+// Any returns the rule holding when a rule of ns holds: never for none,
+// the only rule for one, else the or of ns. An or among ns stays one
+// operand, which Print parenthesizes.
+func Any(ns ...expr.Node) expr.Node {
+	switch len(ns) {
+	case 0:
+		return expr.Call{Name: Never{}.Name()}
+	case 1:
+		return ns[0]
+	}
+
+	return expr.Or{Operands: ns}
+}
+
 // OrOptions are the operands of a or b.
 type OrOptions struct {
 	// Operands are the operands, in order.
@@ -35,6 +49,12 @@ type Never struct{}
 
 // Name returns "never".
 func (Never) Name() string { return "never" }
+
+// NeverArgs are the args of never, which takes none.
+type NeverArgs struct{}
+
+// Call returns the bare name never.
+func (a NeverArgs) Call() (expr.Call, error) { return noParams.Call(Never{}.Name(), a) }
 
 // Parse takes no args.
 func (Never) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {

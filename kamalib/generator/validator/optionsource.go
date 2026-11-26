@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 )
 
@@ -32,7 +33,7 @@ func (o optionSource) spelling() string {
 // //kama:validate that stands for it.
 func subDirectiveError(src genopt.Source, sub string, args []expr.Arg) error {
 	want := expr.Call{Name: sub, Args: args}.String()
-	if (sub == hookWord || sub == preWord || sub == postWord) && len(args) == 1 {
+	if (sub == ext.HookWord || sub == ext.PreWord || sub == ext.PostWord) && len(args) == 1 {
 		want = expr.Arg{Name: sub, Value: args[0].Value}.String()
 	}
 

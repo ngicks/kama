@@ -10,6 +10,7 @@ import (
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/utils/genopt"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/pkg/unknownkey"
@@ -33,29 +34,6 @@ func NewLoader(
 		GeneratorId(), OptionFileVersion, optionFile,
 	)
 }
-
-// itemWords are the words of //kama:validate that name no validator and
-// no role. Generate rejects a registry holding a validator named by one of
-// them.
-var itemWords = []string{
-	hookWord, preWord, postWord, ignoreWord, decodedWord, fileWord, packageWord,
-	groupWord, nestedWord, unwrapWord, iterWord, iter2Word,
-}
-
-// The words of //kama:validate that name no validator.
-const (
-	hookWord    = "hook"
-	preWord     = "pre"
-	postWord    = "post"
-	ignoreWord  = "ignore"
-	decodedWord = "decoded"
-	fileWord    = "file"
-	packageWord = "package"
-	nestedWord  = "nested"
-	unwrapWord  = "unwrap"
-	iterWord    = "iter"
-	iter2Word   = "iter2"
-)
 
 // PackageOptions are the options of a package, from the package entry of an
 // option file or from the free-floating directives of a file.
@@ -87,9 +65,9 @@ func (o *PackageOptions) UnmarshalExpr(src genopt.Source, sub string, args []exp
 
 	for _, a := range args {
 		switch {
-		case isWord(a, fileWord):
+		case isWord(a, ext.FileWord):
 			o.file = true
-		case isWord(a, packageWord):
+		case isWord(a, ext.PackageWord):
 			o.AllTypes = true
 		default:
 			return fmt.Errorf(
@@ -150,10 +128,11 @@ func (o *TypeOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.A
 
 	for _, a := range args {
 		c, isCall := a.Value.(expr.Call)
-		word := isCall && a.Name == "" && (c.Name == ignoreWord || c.Name == decodedWord)
+		word := isCall && a.Name == "" && (c.Name == ext.IgnoreWord || c.Name == ext.DecodedWord)
 
 		switch {
-		case a.Name == "" && (isWord(a, hookWord) || isWord(a, preWord) || isWord(a, postWord)):
+		case a.Name == "" &&
+			(isWord(a, ext.HookWord) || isWord(a, ext.PreWord) || isWord(a, ext.PostWord)):
 			return fmt.Errorf(
 				"%w: %s: item %s on %s is a keyword item; write %s=<value>",
 				ErrDirective, src.Pos, a, src.Target.Describe(), c.Name,
@@ -163,19 +142,19 @@ func (o *TypeOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.A
 				"%w: %s: unknown arg %s on %s; want %s without args",
 				ErrDirective, src.Pos, a, src.Target.Describe(), c.Name,
 			)
-		case word && c.Name == ignoreWord:
+		case word && c.Name == ext.IgnoreWord:
 			o.Ignore = true
 		case word:
 			o.Decoded = true
-		case a.Name == hookWord:
+		case a.Name == ext.HookWord:
 			if err := setHook(&o.Hook, &o.hookSrc, src, a); err != nil {
 				return err
 			}
-		case a.Name == preWord:
+		case a.Name == ext.PreWord:
 			if err := setFunc(&o.Pre, &o.preSrc, src, a); err != nil {
 				return err
 			}
-		case a.Name == postWord:
+		case a.Name == ext.PostWord:
 			if err := setFunc(&o.Post, &o.postSrc, src, a); err != nil {
 				return err
 			}
@@ -197,19 +176,19 @@ func (o *TypeOptions) SetSource(src genopt.Source) {
 	o.markSrc = optionSource{src: src}
 
 	if o.Ignore {
-		o.markSrc.keys = []string{ignoreWord}
+		o.markSrc.keys = []string{ext.IgnoreWord}
 	}
 
 	if o.Hook != nil {
-		o.hookSrc = optionSource{src: src, arg: hookWord}
+		o.hookSrc = optionSource{src: src, arg: ext.HookWord}
 	}
 
 	if o.Pre != "" {
-		o.preSrc = optionSource{src: src, arg: preWord}
+		o.preSrc = optionSource{src: src, arg: ext.PreWord}
 	}
 
 	if o.Post != "" {
-		o.postSrc = optionSource{src: src, arg: postWord}
+		o.postSrc = optionSource{src: src, arg: ext.PostWord}
 	}
 
 	setValidatorSources(o.Validators, src)
@@ -271,7 +250,7 @@ func (o *FieldOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.
 	}
 
 	for _, a := range args {
-		if isWord(a, hookWord) {
+		if isWord(a, ext.HookWord) {
 			return fmt.Errorf(
 				"%w: %s: item hook on field %s is a keyword item; write hook=True or hook=False",
 				ErrDirective, src.Pos, src.Target.FieldName(),
@@ -279,12 +258,12 @@ func (o *FieldOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.
 		}
 
 		switch a.Name {
-		case preWord, postWord:
+		case ext.PreWord, ext.PostWord:
 			return fmt.Errorf(
 				"%w: %s: %s on field %s; write it in the doc comment of the type",
 				ErrDirective, src.Pos, a.Name, src.Target.FieldName(),
 			)
-		case hookWord:
+		case ext.HookWord:
 			if err := setHook(&o.Hook, &o.hookSrc, src, a); err != nil {
 				return err
 			}
@@ -299,7 +278,7 @@ func (o *FieldOptions) UnmarshalExpr(src genopt.Source, sub string, args []expr.
 // SetSource records src, the option file entry of the field.
 func (o *FieldOptions) SetSource(src genopt.Source) {
 	if o.Hook != nil {
-		o.hookSrc = optionSource{src: src, arg: hookWord}
+		o.hookSrc = optionSource{src: src, arg: ext.HookWord}
 	}
 
 	setValidatorSources(o.Validators, src)

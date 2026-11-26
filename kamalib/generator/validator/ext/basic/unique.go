@@ -29,6 +29,12 @@ type Unique struct{}
 // Name returns "unique".
 func (Unique) Name() string { return "unique" }
 
+// UniqueArgs are the args of unique, which takes none.
+type UniqueArgs struct{}
+
+// Call returns the bare name unique.
+func (a UniqueArgs) Call() (expr.Call, error) { return noParams.Call(Unique{}.Name(), a) }
+
 // UniqueOptions are the options of //kama:validate unique. Unique takes no arg.
 type UniqueOptions struct{}
 

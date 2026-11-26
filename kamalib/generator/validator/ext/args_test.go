@@ -1,6 +1,7 @@
 package ext
 
 import (
+	"encoding/json/jsontext"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -57,4 +58,67 @@ func TestParamsBind(t *testing.T) {
 
 	_, err = Params{}.Bind(r, call(t, "zero(1)"), nil)
 	assert.ErrorIs(t, err, ErrArgs)
+}
+
+func TestParamsCall(t *testing.T) {
+	type options struct {
+		Name     *string        `json:"name"`
+		Operands []expr.Node    `json:"operands"`
+		Max      jsontext.Value `json:"max"`
+		Strict   bool           `json:"strict"`
+	}
+
+	p := Params{
+		Positional: []string{"name"},
+		Variadic:   "operands",
+		Keywords:   []string{"strict", "max"},
+		Rules:      []string{"operands"},
+	}
+	name := func(s string) *string { return &s }
+	required := expr.Call{Name: "required"}
+
+	for _, tc := range []struct {
+		src  any
+		text string
+	}{
+		{options{}, "f"},
+		{&options{Name: name("")}, `f("")`},
+		{
+			options{Name: name("a"), Operands: []expr.Node{required}, Max: jsontext.Value("3")},
+			`f("a", required, max=3)`,
+		},
+		{options{Max: jsontext.Value("1e3"), Strict: true}, "f(strict=True, max=1e3)"},
+	} {
+		c, err := p.Call("f", tc.src)
+		assert.NilError(t, err)
+		assert.Equal(t, expr.Print([]expr.Arg{{Value: c}}), tc.text)
+	}
+
+	twoPositional := Params{Positional: []string{"a", "b"}, Variadic: "rest"}
+
+	c, err := twoPositional.Call("f", struct {
+		A *string `json:"a"`
+		B string  `json:"b"`
+	}{B: "x"})
+	assert.NilError(t, err)
+	assert.Equal(t, c.String(), `f(b="x")`)
+
+	_, err = twoPositional.Call("f", struct {
+		Nope int `json:"nope"`
+	}{})
+	assert.ErrorContains(t, err, "field Nope names no parameter")
+
+	_, err = twoPositional.Call("f", struct {
+		A    *string  `json:"a"`
+		Rest []string `json:"rest"`
+	}{Rest: []string{"x"}})
+	assert.ErrorContains(t, err, "rest follows a, which holds nothing")
+
+	_, err = p.Call("f", options{Max: jsontext.Value("1e400")})
+	assert.ErrorIs(t, err, expr.ErrArgs)
+
+	_, err = Params{Variadic: "operands", Rules: []string{"operands"}}.Call("f", struct {
+		Operands []string `json:"operands"`
+	}{Operands: []string{"a"}})
+	assert.ErrorContains(t, err, "a parameter of rules takes")
 }

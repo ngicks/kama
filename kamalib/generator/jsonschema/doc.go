@@ -590,8 +590,9 @@
 // # Validation
 //
 // The validation keywords become items of //kama:validate on the field of
-// an object property, or on the type a schema declares. The generator builds
-// each item as a tree of package pkg/dircmnt/expr and prints it with
+// an object property, or on the type a schema declares. The generator fills
+// the args struct of each validator of package basic, spells it as a tree
+// of package pkg/dircmnt/expr with its Call method and prints the tree with
 // expr.Print, so every string is quoted as a Starlark literal:
 //
 //	minimum, maximum, exclusiveMinimum,

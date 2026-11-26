@@ -30,6 +30,14 @@ type Requires struct{}
 // Name returns "requires".
 func (Requires) Name() string { return "requires" }
 
+// RequiresArgs are the args of requires("<name>", ...), which Parse reads and Call spells.
+type RequiresArgs struct {
+	Names []string `json:"names"`
+}
+
+// Call returns the call of requires spelling a.
+func (a RequiresArgs) Call() (expr.Call, error) { return namesParams.Call(Requires{}.Name(), a) }
+
 // RequiresOptions are the options of //kama:validate requires("<name>", ...).
 type RequiresOptions struct {
 	// Names are the JSON member names of the sibling fields, in order.
@@ -42,11 +50,9 @@ type RequiresOptions struct {
 
 // Parse decodes the args of c, the JSON names of sibling fields.
 func (Requires) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
-	var args struct {
-		Names []string `json:"names"`
-	}
+	var args RequiresArgs
 
-	if _, err := (ext.Params{Variadic: "names"}).Bind(r, c, &args); err != nil {
+	if _, err := namesParams.Bind(r, c, &args); err != nil {
 		return nil, err
 	}
 

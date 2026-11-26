@@ -42,6 +42,12 @@ type Cmp struct{}
 // Name returns "cmp".
 func (Cmp) Name() string { return "cmp" }
 
+// CmpArgs are the args of cmp(...), which Parse reads and Call spells.
+type CmpArgs CompareArgs
+
+// Call returns the call of cmp spelling a.
+func (a CmpArgs) Call() (expr.Call, error) { return compareParams.Call(Cmp{}.Name(), a) }
+
 // CmpOptions are the options of //kama:validate cmp(...).
 type CmpOptions struct {
 	// Comparisons holds one comparison per arg, in order.

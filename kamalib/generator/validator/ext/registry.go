@@ -17,7 +17,7 @@ import (
 type Validator interface {
 	// Name is the name of the call naming the validator in the args of
 	// //kama:validate. It is a name as expr.IsName reports, and it must not
-	// be hook, pre, post, ignore, decoded, file or package.
+	// be one of ItemWords.
 	Name() string
 	// Parse decodes c, a call of the validator, into the rule to apply. c is
 	// a bare name, as in required, or a call with args, as in length(ge=1).

@@ -24,6 +24,12 @@ type Zero struct{}
 // Name returns "zero".
 func (Zero) Name() string { return "zero" }
 
+// ZeroArgs are the args of zero, which takes none.
+type ZeroArgs struct{}
+
+// Call returns the bare name zero.
+func (a ZeroArgs) Call() (expr.Call, error) { return noParams.Call(Zero{}.Name(), a) }
+
 // ZeroOptions are the options of //kama:validate zero. Zero takes no arg.
 type ZeroOptions struct {
 	// reg is the registry the options were parsed with, whose type supports

@@ -18,6 +18,12 @@ type Items struct{}
 // Name returns "items".
 func (Items) Name() string { return "items" }
 
+// ItemsArgs are the args of items(...), which Parse reads and Call spells.
+type ItemsArgs OperandArgs
+
+// Call returns the call of items spelling a.
+func (a ItemsArgs) Call() (expr.Call, error) { return operandArgs.Call(Items{}.Name(), a) }
+
 // ItemsOptions are the options of //kama:validate items(<validator>, ...).
 type ItemsOptions struct {
 	// Operands are the validators of the args, in order.

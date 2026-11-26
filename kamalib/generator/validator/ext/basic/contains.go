@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"encoding/json/jsontext"
 	"go/types"
 	"slices"
 	"strconv"
@@ -25,6 +26,28 @@ type Contains struct{}
 
 // Name returns "contains".
 func (Contains) Name() string { return "contains" }
+
+// ContainsArgs are the args of contains(...), which Parse reads and Call
+// spells: the operands, then the comparisons of the number of elements
+// passing them, each the operand of its keyword as JSON text.
+type ContainsArgs struct {
+	Operands []expr.Node    `json:"operands"`
+	Eq       jsontext.Value `json:"eq"`
+	Ge       jsontext.Value `json:"ge"`
+	Gt       jsontext.Value `json:"gt"`
+	Le       jsontext.Value `json:"le"`
+	Lt       jsontext.Value `json:"lt"`
+	Ne       jsontext.Value `json:"ne"`
+}
+
+// Call returns the call of contains spelling a.
+func (a ContainsArgs) Call() (expr.Call, error) { return containsParams.Call(Contains{}.Name(), a) }
+
+var containsParams = ext.Params{
+	Variadic: operandArgs.Variadic,
+	Keywords: comparisonKeywords,
+	Rules:    operandArgs.Rules,
+}
 
 // ContainsOptions are the options of //kama:validate contains(...).
 type ContainsOptions struct {

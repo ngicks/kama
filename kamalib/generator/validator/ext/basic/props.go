@@ -35,6 +35,56 @@ type Props struct{}
 // Name returns "props".
 func (Props) Name() string { return "props" }
 
+// PropsArgs are the args of props(<entry>, ...), which Parse reads and
+// Call spells. Each entry is the call FieldArgs, MatchArgs or RestArgs
+// spells.
+type PropsArgs struct {
+	Entries []expr.Node `json:"entries"`
+}
+
+// Call returns the call of props spelling a.
+func (a PropsArgs) Call() (expr.Call, error) { return propsParams.Call(Props{}.Name(), a) }
+
+// FieldArgs are the args of the entry field("<name>", <validator>, ...)
+// of props. Name is a pointer since "" names a member too.
+type FieldArgs struct {
+	Name     *string     `json:"name"`
+	Operands []expr.Node `json:"operands"`
+}
+
+// Call returns the entry field spelling a.
+func (a FieldArgs) Call() (expr.Call, error) { return namedParams.Call(fieldEntry, a) }
+
+// MatchArgs are the args of the entry match("<pattern>", <validator>, ...)
+// of props. Name holds the pattern.
+type MatchArgs FieldArgs
+
+// Call returns the entry match spelling a.
+func (a MatchArgs) Call() (expr.Call, error) { return namedParams.Call(matchEntry, a) }
+
+// RestArgs are the args of the entry rest(<validator>, ...) of props and
+// of the last arg of prefix.
+type RestArgs OperandArgs
+
+// Call returns rest spelling a.
+func (a RestArgs) Call() (expr.Call, error) { return operandArgs.Call(restEntry, a) }
+
+// The names of the entries of props. rest is the last arg of prefix too.
+const (
+	fieldEntry = "field"
+	matchEntry = "match"
+	restEntry  = "rest"
+)
+
+var (
+	propsParams = ext.Params{Variadic: "entries", Rules: []string{"entries"}}
+	namedParams = ext.Params{
+		Positional: []string{"name"},
+		Variadic:   operandArgs.Variadic,
+		Rules:      operandArgs.Rules,
+	}
+)
+
 // PropsOptions are the options of //kama:validate props(<entry>, ...).
 type PropsOptions struct {
 	// Entries are the entries of the args, in order.
@@ -54,7 +104,7 @@ type PropsEntry struct {
 // Parse decodes the args of c, calls of field, match and rest, into
 // entries, resolving their operands through r.
 func (Props) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
-	args, err := ext.Params{Variadic: "entries", Rules: []string{"entries"}}.Bind(r, c, nil)
+	args, err := propsParams.Bind(r, c, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,13 +139,13 @@ func propsEntry(n expr.Node, r ext.Resolver) (PropsEntry, error) {
 	}
 
 	switch c.Name {
-	case "field", "match":
+	case fieldEntry, matchEntry:
 		name, ops, err := parseNamed(c, r)
 		if err != nil {
 			return PropsEntry{}, err
 		}
 
-		if c.Name == "match" {
+		if c.Name == matchEntry {
 			if _, err := regexp.Compile(name); err != nil {
 				return PropsEntry{}, argsError(
 					fmt.Errorf("pattern %q does not compile: %w", name, err),
@@ -104,7 +154,7 @@ func propsEntry(n expr.Node, r ext.Resolver) (PropsEntry, error) {
 		}
 
 		return PropsEntry{Kind: c.Name, Name: name, Operands: ops}, nil
-	case "rest":
+	case restEntry:
 		ops, err := parseOperandArgs(r, c)
 		if err != nil {
 			return PropsEntry{}, fmt.Errorf("rest: %w", err)
@@ -145,14 +195,14 @@ func (o PropsOptions) Annotate(e ext.Emitter, t types.Type, v, ev ext.Gen) (ext.
 		var g ext.Gen
 
 		switch en.Kind {
-		case "field":
+		case fieldEntry:
 			g = lang.Expr(
 				"%s.Property(%s, %s)",
 				e.Import(ext.RawJsonPath),
 				strconv.Quote(en.Name),
 				f,
 			)
-		case "match":
+		case matchEntry:
 			g = lang.Expr("%s.PatternProperty(%s, %s)",
 				e.Import(ext.RawJsonPath), declareRegexp(e, en.Name), f)
 		default:

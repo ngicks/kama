@@ -22,6 +22,12 @@ type Null struct{}
 // Name returns "null".
 func (Null) Name() string { return "null" }
 
+// NullArgs are the args of null, which takes none.
+type NullArgs struct{}
+
+// Call returns the bare name null.
+func (a NullArgs) Call() (expr.Call, error) { return noParams.Call(Null{}.Name(), a) }
+
 // NullOptions are the options of //kama:validate null. Null takes no arg.
 type NullOptions struct {
 	// reg is the registry the options were parsed with, whose type supports

@@ -189,7 +189,7 @@ func onceWarn(r workflow.Reporter) func(w error) {
 // //kama:validate that names no validator.
 func reservedNames(reg *ext.Registry) error {
 	reserved := opiter.WrapSeq(slices.Values(reg.Names())).
-		Filter(func(name string) bool { return slices.Contains(itemWords, name) }).
+		Filter(func(name string) bool { return slices.Contains(ext.ItemWords, name) }).
 		CollectSlice()
 
 	unnamed := opiter.WrapSeq(slices.Values(reg.Names())).
@@ -201,7 +201,7 @@ func reservedNames(reg *ext.Registry) error {
 	if len(reserved) > 0 {
 		errs = append(errs, fmt.Errorf(
 			"%w: validators registered as %s; %s name no validator",
-			ErrConflict, strings.Join(reserved, ", "), strings.Join(itemWords, ", "),
+			ErrConflict, strings.Join(reserved, ", "), strings.Join(ext.ItemWords, ", "),
 		))
 	}
 

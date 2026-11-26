@@ -22,6 +22,12 @@ type OneOf struct{}
 // than two operands would mean an odd number of them, not exactly one.
 func (OneOf) Name() string { return "oneof" }
 
+// OneOfArgs are the args of oneof(...), which Parse reads and Call spells.
+type OneOfArgs OperandArgs
+
+// Call returns the call of oneof spelling a.
+func (a OneOfArgs) Call() (expr.Call, error) { return operandArgs.Call(OneOf{}.Name(), a) }
+
 // OneOfOptions are the options of //kama:validate oneof(<validator>, ...).
 type OneOfOptions struct {
 	// Operands are the validators of the args, in order.

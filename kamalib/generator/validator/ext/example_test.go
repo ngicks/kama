@@ -24,14 +24,22 @@ type multiple struct{}
 
 func (multiple) Name() string { return "multiple" }
 
+type multipleArgs struct {
+	N int64 `json:"n"`
+}
+
+var multipleParams = ext.Params{Positional: []string{"n"}}
+
+func (a multipleArgs) Call() (expr.Call, error) {
+	return multipleParams.Call(multiple{}.Name(), a)
+}
+
 type multipleOptions struct{ N int64 }
 
 func (multiple) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
-	var args struct {
-		N int64 `json:"n"`
-	}
+	var args multipleArgs
 
-	if _, err := (ext.Params{Positional: []string{"n"}}).Bind(r, c, &args); err != nil {
+	if _, err := multipleParams.Bind(r, c, &args); err != nil {
 		return nil, err
 	}
 
@@ -39,7 +47,7 @@ func (multiple) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
 		return nil, fmt.Errorf("%w: want a positive integer", ext.ErrArgs)
 	}
 
-	return multipleOptions{N: args.N}, nil
+	return multipleOptions(args), nil
 }
 
 func (multipleOptions) Check(t types.Type) error {
@@ -96,6 +104,10 @@ func TestExampleParse(t *testing.T) {
 
 		return multiple{}.Parse(args[0].Value.(expr.Call), ext.NewRegistry())
 	}
+
+	c, err := multipleArgs{N: 3}.Call()
+	assert.NilError(t, err)
+	assert.Equal(t, c.String(), "multiple(3)")
 
 	r, err := parse("multiple(3)")
 	assert.NilError(t, err)

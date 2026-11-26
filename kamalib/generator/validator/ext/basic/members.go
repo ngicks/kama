@@ -35,6 +35,12 @@ type Members struct{}
 // Name returns "members".
 func (Members) Name() string { return "members" }
 
+// MembersArgs are the args of members(...), which Parse reads and Call spells.
+type MembersArgs CompareArgs
+
+// Call returns the call of members spelling a.
+func (a MembersArgs) Call() (expr.Call, error) { return compareParams.Call(Members{}.Name(), a) }
+
 // MembersOptions are the options of //kama:validate members(...).
 type MembersOptions struct {
 	// Comparisons holds one comparison per arg, in order.

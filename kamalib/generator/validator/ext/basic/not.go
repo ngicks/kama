@@ -22,6 +22,9 @@ func Not(n expr.Node, r ext.Resolver) (ext.Rule, error) {
 	)
 }
 
+// Negate returns the rule not n.
+func Negate(n expr.Node) expr.Node { return expr.Not{Operand: n} }
+
 // NotOptions are the operand of not a.
 type NotOptions struct {
 	// Operand is the operand.

@@ -23,6 +23,12 @@ type Decode struct{}
 // Name returns "decode".
 func (Decode) Name() string { return "decode" }
 
+// DecodeArgs are the args of decode("<type>"), which Parse reads and Call spells.
+type DecodeArgs RefArgs
+
+// Call returns the call of decode spelling a.
+func (a DecodeArgs) Call() (expr.Call, error) { return typeParams.Call(Decode{}.Name(), a) }
+
 // DecodeOptions are the options of //kama:validate decode("<type>").
 type DecodeOptions struct {
 	// Type is the name of the type.

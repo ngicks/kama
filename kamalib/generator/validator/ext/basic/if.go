@@ -34,6 +34,20 @@ func If(n expr.Node, r ext.Resolver) (ext.Rule, error) {
 	)
 }
 
+// Cond returns the rule then if cond else otherwise. A nil then or
+// otherwise stands for always.
+func Cond(cond, then, otherwise expr.Node) expr.Node {
+	if then == nil {
+		then = All()
+	}
+
+	if otherwise == nil {
+		otherwise = All()
+	}
+
+	return expr.Cond{If: cond, Then: then, Else: otherwise}
+}
+
 // IfOptions are the operands of then if cond else otherwise.
 type IfOptions struct {
 	Cond, Then Operand

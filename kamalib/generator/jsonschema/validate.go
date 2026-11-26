@@ -2,6 +2,7 @@ package jsonschema
 
 import (
 	"encoding/json/jsontext"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"maps"
@@ -109,52 +110,51 @@ func kindArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]expr.Ar
 		unchecked []string
 	)
 
-	cmp := comparisons(map[string]jsontext.Value{
-		">=": s.Minimum, "<=": s.Maximum, ">": s.ExclusiveMinimum, "<": s.ExclusiveMaximum,
-	}, numberText)
-	lengths := func(min, max jsontext.Value) []expr.Arg {
-		return comparisons(map[string]jsontext.Value{">=": min, "<=": max}, integerText)
-	}
-
 	switch kind {
 	case "integer", "number":
-		if cmp != nil {
-			args = append(args, call("cmp", cmp...))
+		if c, ok := bounds(
+			s.Minimum,
+			s.ExclusiveMinimum,
+			s.Maximum,
+			s.ExclusiveMaximum,
+			numberText,
+		); ok {
+			args = appendRule(args, basic.CmpArgs(c))
 		}
 
 		if s.MultipleOf != nil {
-			args = append(
+			args = appendRule(
 				args,
-				call("multipleof", pos(expr.Number{Text: numberText(s.MultipleOf)})...),
+				basic.MultipleOfArgs{N: jsontext.Value(numberText(s.MultipleOf))},
 			)
 		}
 	case "string":
-		if l := lengths(s.MinLength, s.MaxLength); l != nil {
-			args = append(args, call("runes", l...))
+		if c, ok := lengths(s.MinLength, s.MaxLength); ok {
+			args = appendRule(args, basic.RunesArgs(c))
 		}
 
 		if f := assertedFormat(opts, s); f != "" {
-			args = append(args, call("format", strs([]string{f})...))
+			args = appendRule(args, basic.FormatArgs{Name: f})
 		}
 
 		if s.Pattern.IsSome() {
 			if _, err := regexp.Compile(s.Pattern.Value()); err != nil {
 				unchecked = append(unchecked, "pattern")
 			} else {
-				args = append(args, call("regexp", strs([]string{s.Pattern.Value()})...))
+				args = appendRule(args, basic.RegexpArgs{Pattern: s.Pattern.Value()})
 			}
 		}
 	case "array":
-		if l := lengths(s.MinItems, s.MaxItems); l != nil {
-			args = append(args, call("length", l...))
+		if c, ok := lengths(s.MinItems, s.MaxItems); ok {
+			args = appendRule(args, basic.LengthArgs(c))
 		}
 
 		if s.UniqueItems.Value() && !bridged(doc, ptr, s, "uniqueItems") {
-			args = append(args, call("unique"))
+			args = appendRule(args, basic.UniqueArgs{})
 		}
 	case "map":
-		if l := lengths(s.MinProperties, s.MaxProperties); l != nil {
-			args = append(args, call("length", l...))
+		if c, ok := lengths(s.MinProperties, s.MaxProperties); ok {
+			args = appendRule(args, basic.LengthArgs(c))
 		}
 	case "":
 		unchecked = append(unchecked, presentValidation(s)...)
@@ -163,7 +163,7 @@ func kindArgs(doc *jsonschema.Schema, opts Options, ptr, kind string) ([]expr.Ar
 	if allowed, err := allowedValues(doc, ptr); err == nil && allowed != nil {
 		switch kind {
 		case "string", "integer", "number", "boolean":
-			args = append(args, call("const", literals(allowed)...))
+			args = appendRule(args, basic.ConstArgs{Values: literals(allowed)})
 		}
 	}
 
@@ -191,9 +191,11 @@ func rawDependents(s *jsonschema.Schema) (expr.Arg, bool) {
 
 	for key, deps := range opiter.MapsSorted(s.DependentRequired) {
 		if len(deps) > 0 {
-			conds = append(conds, cond(
-				call("required", strs([]string{key})...), call("required", strs(deps)...), always(),
-			))
+			conds = append(conds, expr.Arg{Value: basic.Cond(
+				node(basic.RequiredArgs{Names: []string{key}}),
+				node(basic.RequiredArgs{Names: deps}),
+				nil,
+			)})
 		}
 	}
 
@@ -204,39 +206,29 @@ func rawDependents(s *jsonschema.Schema) (expr.Arg, bool) {
 	return single(conds), true
 }
 
-// rawValues returns values as the args of const on raw JSON text, each the
-// literal of the JSON value.
-func rawValues(values []jsontext.Value) []expr.Arg {
-	var args []expr.Arg
-
-	for _, v := range values {
-		n, err := expr.FromJson(v)
-		if err != nil {
-			// check rejects a document holding such a value before any rule is
-			// written.
-			continue
-		}
-
-		args = append(args, expr.Arg{Value: n})
-	}
-
-	return args
+// rawValues returns the values of const on raw JSON text: values but nil
+// and those no literal spells. check rejects a document holding a value no
+// literal spells before any rule is written.
+func rawValues(values []jsontext.Value) []jsontext.Value {
+	return opiter.WrapSeq(slices.Values(values)).
+		Filter(func(v jsontext.Value) bool {
+			_, err := expr.FromJson(v)
+			return v != nil && err == nil
+		}).
+		CollectSlice()
 }
 
 // literals returns lits, Go literals of a string, a number or a bool as
-// goLiteral spells them, as the args of const.
-func literals(lits []string) []expr.Arg {
+// goLiteral spells them, as the JSON values of const.
+func literals(lits []string) []jsontext.Value {
 	return opiter.WrapSeq(slices.Values(lits)).
-		Map(func(lit string) expr.Arg {
-			switch {
-			case lit == "true" || lit == "false":
-				return expr.Arg{Value: expr.Bool{Value: lit == "true"}}
-			case strings.HasPrefix(lit, `"`):
-				v, _ := strconv.Unquote(lit)
-				return expr.Arg{Value: expr.String{Value: v}}
+		Map(func(lit string) jsontext.Value {
+			if v, err := strconv.Unquote(lit); err == nil && strings.HasPrefix(lit, `"`) {
+				text, _ := jsonv2.Marshal(v)
+				return text
 			}
 
-			return expr.Arg{Value: expr.Number{Text: lit}}
+			return jsontext.Value(lit)
 		}).
 		CollectSlice()
 }
@@ -294,17 +286,18 @@ func typeArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]expr.Arg, []s
 		return valueArgs(doc, opts, ptr, placeKind(doc, ptr))
 	}
 
-	args := []expr.Arg{hookOff()}
+	args := []expr.Arg{ext.Hook(false)}
 
 	if closed(s) && !bridged(doc, ptr, s, "additionalProperties") {
-		args = append(args, call("closed"))
+		args = appendRule(args, basic.ClosedArgs{})
 	}
 
-	members := comparisons(
-		map[string]jsontext.Value{">=": s.MinProperties, "<=": s.MaxProperties}, integerText,
-	)
-	if members != nil && !bridged(doc, ptr, s, "minProperties") {
-		args = append(args, call("members", members...))
+	if c, ok := lengths(
+		s.MinProperties,
+		s.MaxProperties,
+	); ok &&
+		!bridged(doc, ptr, s, "minProperties") {
+		args = appendRule(args, basic.MembersArgs(c))
 	}
 
 	bridge, _ := jsonArgs(doc, opts, ptr)
@@ -317,11 +310,8 @@ func typeArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]expr.Arg, []s
 // of the keywords of the union, which check the value of every member.
 func unionArgs(doc *jsonschema.Schema, opts Options, ptr string) []expr.Arg {
 	bridge, _ := jsonArgs(doc, opts, ptr)
-	return append([]expr.Arg{hookOff()}, bridge...)
+	return append([]expr.Arg{ext.Hook(false)}, bridge...)
 }
-
-// hookOff returns the item hook=False.
-func hookOff() expr.Arg { return expr.Arg{Name: "hook", Value: expr.Bool{Value: false}} }
 
 // declArgs returns the args of //kama:validate on the type the schema at
 // ptr declares.
@@ -406,11 +396,11 @@ func dependentArgs(doc *jsonschema.Schema, ptr, name string) []expr.Arg {
 	var args []expr.Arg
 
 	if len(names) > 0 {
-		args = append(args, call("requires", strs(names)...))
+		args = appendRule(args, basic.RequiresArgs{Names: names})
 	}
 
 	if requiredBy && optional(name) {
-		args = append(args, call("required"))
+		args = appendRule(args, basic.RequiredArgs{})
 	}
 
 	return args
@@ -591,8 +581,12 @@ func checkKeywords(ptr string, s *jsonschema.Schema) []error {
 			unsupported(child(ptr, "multipleOf"), "%s is not above zero", s.MultipleOf),
 		)
 	} else if r != nil {
-		c := expr.Call{Name: "multipleof", Args: pos(expr.Number{Text: numberText(s.MultipleOf)})}
-		if _, err := (basic.MultipleOf{}).Parse(c, ext.NewRegistry()); err != nil {
+		c, err := basic.MultipleOfArgs{N: jsontext.Value(numberText(s.MultipleOf))}.Call()
+		if err == nil {
+			_, err = (basic.MultipleOf{}).Parse(c, ext.NewRegistry())
+		}
+
+		if err != nil {
 			errs = append(errs, unsupported(child(ptr, "multipleOf"), "%v", err))
 		}
 	}
@@ -613,18 +607,29 @@ func checkKeywords(ptr string, s *jsonschema.Schema) []error {
 	return errs
 }
 
-// comparisons returns the comparisons of the bounds by operator as keyword
-// args, in the order >=, >, <=, <, each number spelled by text, or nil when
-// there is none.
-func comparisons(bounds map[string]jsontext.Value, text func(jsontext.Value) string) []expr.Arg {
-	keywords := map[string]string{">=": "ge", ">": "gt", "<=": "le", "<": "lt"}
+// bounds returns the comparisons with the bounds ge, gt, le and lt, each
+// number spelled by text, and whether a bound is not nil.
+func bounds(
+	ge, gt, le, lt jsontext.Value,
+	text func(jsontext.Value) string,
+) (basic.CompareArgs, bool) {
+	spell := func(v jsontext.Value) jsontext.Value {
+		if v == nil {
+			return nil
+		}
 
-	return opiter.WrapSeq(slices.Values([]string{">=", ">", "<=", "<"})).
-		Filter(func(op string) bool { return bounds[op] != nil }).
-		Map(func(op string) expr.Arg {
-			return expr.Arg{Name: keywords[op], Value: expr.Number{Text: text(bounds[op])}}
-		}).
-		CollectSlice()
+		return jsontext.Value(text(v))
+	}
+
+	c := basic.CompareArgs{Ge: spell(ge), Gt: spell(gt), Le: spell(le), Lt: spell(lt)}
+
+	return c, ge != nil || gt != nil || le != nil || lt != nil
+}
+
+// lengths returns the comparisons with the bounds min and max of a length
+// or a count, as bounds does.
+func lengths(min, max jsontext.Value) (basic.CompareArgs, bool) {
+	return bounds(min, nil, max, nil, integerText)
 }
 
 // numberText returns the text of the JSON number v as a number literal of

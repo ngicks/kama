@@ -22,6 +22,20 @@ func And(n expr.Node, r ext.Resolver) (ext.Rule, error) {
 	)
 }
 
+// All returns the rule holding when every rule of ns holds: always for
+// none, the only rule for one, else the and of ns. An and among ns stays
+// one operand, which Print parenthesizes.
+func All(ns ...expr.Node) expr.Node {
+	switch len(ns) {
+	case 0:
+		return expr.Call{Name: Always{}.Name()}
+	case 1:
+		return ns[0]
+	}
+
+	return expr.And{Operands: ns}
+}
+
 // AndOptions are the operands of a and b.
 type AndOptions struct {
 	// Operands are the operands, in order.
@@ -34,6 +48,12 @@ type Always struct{}
 
 // Name returns "always".
 func (Always) Name() string { return "always" }
+
+// AlwaysArgs are the args of always, which takes none.
+type AlwaysArgs struct{}
+
+// Call returns the bare name always.
+func (a AlwaysArgs) Call() (expr.Call, error) { return noParams.Call(Always{}.Name(), a) }
 
 // Parse takes no args.
 func (Always) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {

@@ -35,6 +35,17 @@ type Const struct{}
 // Name returns "const".
 func (Const) Name() string { return "const" }
 
+// ConstArgs are the args of const(<v1>, ...), which Parse reads and Call spells.
+type ConstArgs struct {
+	// Values are the values as JSON text, in order.
+	Values []jsontext.Value `json:"values"`
+}
+
+// Call returns the call of const spelling a.
+func (a ConstArgs) Call() (expr.Call, error) { return constParams.Call(Const{}.Name(), a) }
+
+var constParams = ext.Params{Variadic: "values"}
+
 // ConstOptions are the options of //kama:validate const(<v1>, ...).
 type ConstOptions struct {
 	// Values holds one value per arg, in order.

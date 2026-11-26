@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -21,12 +22,31 @@ import (
 )
 
 // comparisonKeywords are the keywords of a comparison, the operators of
-// the parameters gt, ge, lt, le, eq and ne in that order.
-var comparisonKeywords = []string{"gt", "ge", "lt", "le", "eq", "ne"}
+// the parameters eq, ge, gt, le, lt and ne in that order.
+var comparisonKeywords = []string{"eq", "ge", "gt", "le", "lt", "ne"}
 
 // comparisonOps are the Go operators of comparisonKeywords, index for
 // index.
-var comparisonOps = []string{">", ">=", "<", "<=", "==", "!="}
+var comparisonOps = []string{"==", ">=", ">", "<=", "<", "!="}
+
+// compareParams are the parameters of length, runes, cmp and members. One
+// positional arg compares with ==.
+var compareParams = ext.Params{
+	Positional: comparisonKeywords[:1:1],
+	Keywords:   comparisonKeywords[1:],
+}
+
+// CompareArgs are the args of length, runes, cmp and members, each the
+// operand of its keyword as JSON text, nil for none. Ne holds a list of
+// operands or one operand.
+type CompareArgs struct {
+	Eq jsontext.Value `json:"eq"`
+	Ge jsontext.Value `json:"ge"`
+	Gt jsontext.Value `json:"gt"`
+	Le jsontext.Value `json:"le"`
+	Lt jsontext.Value `json:"lt"`
+	Ne jsontext.Value `json:"ne"`
+}
 
 // Comparison is one comparison of the args of length, runes or cmp, as
 // ge=1 in length(ge=1).

@@ -17,6 +17,12 @@ type Nil struct{}
 // Name returns "nil".
 func (Nil) Name() string { return "nil" }
 
+// NilArgs are the args of nil, which takes none.
+type NilArgs struct{}
+
+// Call returns the bare name nil.
+func (a NilArgs) Call() (expr.Call, error) { return noParams.Call(Nil{}.Name(), a) }
+
 // NilOptions are the options of //kama:validate nil. Nil takes no arg.
 type NilOptions struct{}
 

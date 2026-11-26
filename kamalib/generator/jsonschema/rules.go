@@ -2,12 +2,15 @@ package jsonschema
 
 import (
 	"encoding/json/jsontext"
+	"fmt"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
@@ -63,7 +66,7 @@ func rulesOf(
 			return nil, nil
 		}
 
-		return []expr.Arg{call("never")}, nil
+		return appendRule(nil, basic.NeverArgs{}), nil
 	}
 
 	scope = enter(doc, scope, ptr)
@@ -124,12 +127,14 @@ func rulesOf(
 			return nil, err
 		}
 
-		name := "unevalprops"
+		scope, ops := single(args).Value, values(rest)
+
+		var uneval spelled = basic.UnevalPropsArgs{Scope: scope, Operands: ops}
 		if kw == "unevaluatedItems" {
-			name = "unevalitems"
+			uneval = basic.UnevalItemsArgs{Scope: scope, Operands: ops}
 		}
 
-		args = []expr.Arg{call(name, append([]expr.Arg{single(args)}, rest...)...)}
+		args = appendRule(nil, uneval)
 	}
 
 	return distinct(args), nil
@@ -161,9 +166,13 @@ func distinct(args []expr.Arg) []expr.Arg {
 	)
 
 	for i, a := range args {
+		_, isAnd := a.Value.(expr.And)
+
 		switch {
-		case names[i] == "and":
-			joined = append(joined, pos(a.Value.(expr.And).Operands...)...)
+		case isAnd:
+			joined = opiter.WrapSeq(slices.Values(a.Value.(expr.And).Operands)).
+				Map(func(n expr.Node) expr.Arg { return expr.Arg{Value: n} }).
+				AppendSeq(joined)
 		case twice(names[i]):
 			joined = append(joined, a)
 		default:
@@ -180,22 +189,14 @@ func distinct(args []expr.Arg) []expr.Arg {
 }
 
 // argName returns the name of the validator the arg a names: the name of a
-// call, or the word of an operator.
+// call, or the type of the node of an operator, which no name of a
+// validator equals.
 func argName(a expr.Arg) string {
-	switch x := a.Value.(type) {
-	case expr.Call:
-		return x.Name
-	case expr.And:
-		return "and"
-	case expr.Or:
-		return "or"
-	case expr.Not:
-		return "not"
-	case expr.Cond:
-		return "if"
+	if c, ok := a.Value.(expr.Call); ok {
+		return c.Name
 	}
 
-	return a.String()
+	return reflect.TypeOf(a.Value).String()
 }
 
 // leafRules returns the args of the keywords of s holding no subschema that
@@ -203,62 +204,71 @@ func argName(a expr.Arg) string {
 func leafRules(opts Options, s *jsonschema.Schema, keep func(kw string) bool) []expr.Arg {
 	var args []expr.Arg
 
-	add := func(name string, params []expr.Arg, keywords ...string) {
-		if len(params) > 0 && slices.ContainsFunc(keywords, keep) {
-			args = append(args, call(name, params...))
+	add := func(a spelled, keywords ...string) {
+		if slices.ContainsFunc(keywords, keep) {
+			args = appendRule(args, a)
 		}
 	}
-	lengths := func(min, max jsontext.Value) []expr.Arg {
-		return comparisons(map[string]jsontext.Value{">=": min, "<=": max}, integerText)
-	}
 
-	if !s.Type.IsZero() {
-		add("kind", strs(slices.Compact(slices.Clone(s.Type.Names))), "type")
+	if len(s.Type.Names) > 0 {
+		add(basic.KindArgs{Kinds: slices.Compact(slices.Clone(s.Type.Names))}, "type")
 	}
 
 	// A const next to an enum applies too, so each gives a const of its own.
-	if s.Const != nil {
-		add("const", rawValues([]jsontext.Value{s.Const}), "const")
+	if v := rawValues([]jsontext.Value{s.Const}); len(v) > 0 {
+		add(basic.ConstArgs{Values: v}, "const")
 	}
 
 	if s.Enum != nil && keep("enum") {
 		if len(s.Enum) == 0 {
-			args = append(args, call("never"))
-		} else {
-			add("const", rawValues(s.Enum), "enum")
+			args = appendRule(args, basic.NeverArgs{})
+		} else if v := rawValues(s.Enum); len(v) > 0 {
+			add(basic.ConstArgs{Values: v}, "enum")
 		}
 	}
 
-	add("cmp", comparisons(map[string]jsontext.Value{
-		">=": s.Minimum, "<=": s.Maximum, ">": s.ExclusiveMinimum, "<": s.ExclusiveMaximum,
-	}, numberText), "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum")
-
-	if s.MultipleOf != nil {
-		add("multipleof", pos(expr.Number{Text: numberText(s.MultipleOf)}), "multipleOf")
+	if c, ok := bounds(
+		s.Minimum,
+		s.ExclusiveMinimum,
+		s.Maximum,
+		s.ExclusiveMaximum,
+		numberText,
+	); ok {
+		add(basic.CmpArgs(c), "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum")
 	}
 
-	add("runes", lengths(s.MinLength, s.MaxLength), "minLength", "maxLength")
+	if s.MultipleOf != nil {
+		add(basic.MultipleOfArgs{N: jsontext.Value(numberText(s.MultipleOf))}, "multipleOf")
+	}
+
+	if c, ok := lengths(s.MinLength, s.MaxLength); ok {
+		add(basic.RunesArgs(c), "minLength", "maxLength")
+	}
 
 	if f := assertedFormat(opts, s); f != "" {
-		add("format", strs([]string{f}), "format")
+		add(basic.FormatArgs{Name: f}, "format")
 	}
 
 	if s.Pattern.IsSome() {
 		if _, err := regexp.Compile(s.Pattern.Value()); err == nil {
-			add("regexp", strs([]string{s.Pattern.Value()}), "pattern")
+			add(basic.RegexpArgs{Pattern: s.Pattern.Value()}, "pattern")
 		}
 	}
 
-	add("length", lengths(s.MinItems, s.MaxItems), "minItems", "maxItems")
-
-	if s.UniqueItems.Value() && keep("uniqueItems") {
-		args = append(args, call("unique"))
+	if c, ok := lengths(s.MinItems, s.MaxItems); ok {
+		add(basic.LengthArgs(c), "minItems", "maxItems")
 	}
 
-	add("members", lengths(s.MinProperties, s.MaxProperties), "minProperties", "maxProperties")
+	if s.UniqueItems.Value() && keep("uniqueItems") {
+		args = appendRule(args, basic.UniqueArgs{})
+	}
+
+	if c, ok := lengths(s.MinProperties, s.MaxProperties); ok {
+		add(basic.MembersArgs(c), "minProperties", "maxProperties")
+	}
 
 	if len(s.Required) > 0 {
-		add("required", strs(s.Required), "required")
+		add(basic.RequiredArgs{Names: s.Required}, "required")
 	}
 
 	if dep, ok := rawDependents(s); ok && keep("dependentRequired") {
@@ -281,15 +291,15 @@ func propsRules(
 	keep func(kw string) bool,
 ) ([]expr.Arg, error) {
 	var (
-		entries []expr.Arg
+		entries []expr.Node
 		checks  bool
 	)
 
 	rest := s.AdditionalProperties != nil && keep("additionalProperties")
 
-	// entry adds the entry kind of the subschema at keys, which names the
-	// member name or the pattern name, but for rest.
-	entry := func(kind, name string, keys ...string) error {
+	// entry adds the entry spell gives for the validators of the subschema
+	// at keys. isRest tells the entry rest from field and match.
+	entry := func(spell func(ops []expr.Node) spelled, isRest bool, keys ...string) error {
 		var ops []expr.Arg
 
 		if keep(keys[0]) {
@@ -303,21 +313,18 @@ func propsRules(
 
 		checks = checks || len(ops) > 0
 
-		if len(ops) == 0 && kind != "rest" && !rest && !annotated {
+		if len(ops) == 0 && !isRest && !rest && !annotated {
 			return nil
 		}
 
-		if kind != "rest" {
-			ops = append(strs([]string{name}), ops...)
-		}
-
-		entries = append(entries, call(kind, ops...))
+		entries = append(entries, node(spell(values(ops))))
 
 		return nil
 	}
 
 	for _, n := range s.Properties {
-		if err := entry("field", n.Name, "properties", n.Name); err != nil {
+		field := func(ops []expr.Node) spelled { return basic.FieldArgs{Name: &n.Name, Operands: ops} }
+		if err := entry(field, false, "properties", n.Name); err != nil {
 			return nil, err
 		}
 	}
@@ -333,13 +340,15 @@ func propsRules(
 			)
 		}
 
-		if err := entry("match", n.Name, "patternProperties", n.Name); err != nil {
+		match := func(ops []expr.Node) spelled { return basic.MatchArgs{Name: &n.Name, Operands: ops} }
+		if err := entry(match, false, "patternProperties", n.Name); err != nil {
 			return nil, err
 		}
 	}
 
 	if rest {
-		if err := entry("rest", "", "additionalProperties"); err != nil {
+		restOf := func(ops []expr.Node) spelled { return basic.RestArgs{Operands: ops} }
+		if err := entry(restOf, true, "additionalProperties"); err != nil {
 			return nil, err
 		}
 
@@ -350,7 +359,7 @@ func propsRules(
 		return nil, nil
 	}
 
-	return []expr.Arg{call("props", entries...)}, nil
+	return appendRule(nil, basic.PropsArgs{Entries: entries}), nil
 }
 
 // itemsRules returns prefix for the prefixItems of s, with the items of s
@@ -377,10 +386,10 @@ func itemsRules(
 			return nil, nil
 		}
 
-		return []expr.Arg{call("items", rest...)}, nil
+		return appendRule(nil, basic.ItemsArgs{Operands: values(rest)}), nil
 	}
 
-	var ops []expr.Arg
+	var ops []expr.Node
 
 	for i := range s.PrefixItems {
 		args, err := sub("prefixItems", strconv.Itoa(i))
@@ -388,14 +397,14 @@ func itemsRules(
 			return nil, err
 		}
 
-		ops = append(ops, single(args))
+		ops = append(ops, single(args).Value)
 	}
 
 	if s.Items != nil && keep("items") {
-		ops = append(ops, call("rest", rest...))
+		ops = append(ops, node(basic.RestArgs{Operands: values(rest)}))
 	}
 
-	return []expr.Arg{call("prefix", ops...)}, nil
+	return appendRule(nil, basic.PrefixArgs{Operands: ops}), nil
 }
 
 // containsRules returns contains for the contains of s, counted by its
@@ -419,11 +428,12 @@ func containsRules(
 		minimum = s.MinContains
 	}
 
-	counts := comparisons(
-		map[string]jsontext.Value{">=": minimum, "<=": s.MaxContains}, integerText,
-	)
+	counts, _ := lengths(minimum, s.MaxContains)
 
-	return []expr.Arg{call("contains", append(ops, counts...)...)}, nil
+	return appendRule(
+		nil,
+		basic.ContainsArgs{Operands: values(ops), Ge: counts.Ge, Le: counts.Le},
+	), nil
 }
 
 // keysRules returns keys for the propertyNames of s.
@@ -441,7 +451,7 @@ func keysRules(
 		return nil, err
 	}
 
-	return []expr.Arg{call("keys", ops...)}, nil
+	return appendRule(nil, basic.KeysArgs{Operands: values(ops)}), nil
 }
 
 // dependentRules returns, for each key of the dependentSchemas of s,
@@ -463,7 +473,8 @@ func dependentRules(
 			return nil, err
 		}
 
-		args = append(args, cond(call("required", strs([]string{n.Name})...), then, always()))
+		required := node(basic.RequiredArgs{Names: []string{n.Name}})
+		args = append(args, expr.Arg{Value: basic.Cond(required, then.Value, nil)})
 	}
 
 	return args, nil
@@ -499,9 +510,9 @@ func listRules(
 		case "allOf":
 			args = append(args, single(ops))
 		case "anyOf":
-			args = append(args, anyOf(ops))
+			args = append(args, expr.Arg{Value: basic.Any(values(ops)...)})
 		default:
-			args = append(args, call("oneof", ops...))
+			args = appendRule(args, basic.OneOfArgs{Operands: values(ops)})
 		}
 	}
 
@@ -523,7 +534,7 @@ func notRules(
 		return nil, err
 	}
 
-	return []expr.Arg{{Value: expr.Not{Operand: op.Value}}}, nil
+	return []expr.Arg{{Value: basic.Negate(op.Value)}}, nil
 }
 
 // ifRules returns if for the if, then and else of s. An if without then
@@ -539,25 +550,26 @@ func ifRules(
 		return nil, nil
 	}
 
-	ops := make([]expr.Arg, 0, 3)
+	ops := make([]expr.Node, 0, 3)
 
 	for _, kw := range []string{"if", "then", "else"} {
 		present := map[string]bool{"if": true, "then": s.Then != nil, "else": s.Else != nil}[kw]
 
-		switch {
-		case present:
-			op, err := same(kw)
+		var op expr.Arg
+
+		if present {
+			var err error
+
+			op, err = same(kw)
 			if err != nil {
 				return nil, err
 			}
-
-			ops = append(ops, op)
-		default:
-			ops = append(ops, always())
 		}
+
+		ops = append(ops, op.Value)
 	}
 
-	return []expr.Arg{cond(ops[0], ops[1], ops[2])}, nil
+	return []expr.Arg{{Value: basic.Cond(ops[0], ops[1], ops[2])}}, nil
 }
 
 // refRules returns the args the keyword kw, $ref or $dynamicRef, of the
@@ -598,13 +610,18 @@ func refRules(
 	keeps := scopeKeeps(doc, scope, target)
 
 	if name := namedBy(doc, target); name != "" && keeps &&
-		(onCycle || !annotated || name == "ref") {
+		(onCycle || !annotated || name == (basic.Ref{}).Name()) {
 		t, err := typeName(doc, opts, target)
 		if err != nil {
 			return nil, err
 		}
 
-		return []expr.Arg{call(name, strs([]string{t})...)}, nil
+		var named spelled = basic.RefArgs{Type: t}
+		if name == (basic.Decode{}).Name() {
+			named = basic.DecodeArgs{Type: t}
+		}
+
+		return appendRule(nil, named), nil
 	}
 
 	if onCycle {
@@ -626,7 +643,7 @@ func namedBy(doc *jsonschema.Schema, ptr string) string {
 	case ptr != "" && !declares(doc, ptr):
 		return ""
 	case raw(doc, ptr):
-		return "ref"
+		return (basic.Ref{}).Name()
 	}
 
 	s, err := at(doc, ptr)
@@ -634,60 +651,37 @@ func namedBy(doc *jsonschema.Schema, ptr string) string {
 		return ""
 	}
 
-	return "decode"
+	return (basic.Decode{}).Name()
 }
 
-// single returns args as one arg: always for none, the only arg, else
-// the and of them.
-func single(args []expr.Arg) expr.Arg {
-	switch len(args) {
-	case 0:
-		return always()
-	case 1:
-		return args[0]
+// single returns args as one arg, as basic.All joins them.
+func single(args []expr.Arg) expr.Arg { return expr.Arg{Value: basic.All(values(args)...)} }
+
+// spelled is the args of a validator, which Call spells as its call.
+type spelled interface{ Call() (expr.Call, error) }
+
+// appendRule appends to args the call a spells. It appends nothing when a
+// holds a number that no literal spells, as 1e100000. check reports such a
+// number, so no directive holding it is written, but checking one schema
+// builds the args of others, as allChecked does.
+func appendRule(args []expr.Arg, a spelled) []expr.Arg {
+	c, err := a.Call()
+	if err != nil {
+		return args
 	}
 
-	return expr.Arg{Value: expr.And{Operands: values(args)}}
+	return append(args, expr.Arg{Value: c})
 }
 
-// anyOf returns the or of args, never for none. One arg stands for itself,
-// as an or of one operand holds when the operand does.
-func anyOf(args []expr.Arg) expr.Arg {
-	switch len(args) {
-	case 0:
-		return call("never")
-	case 1:
-		return args[0]
+// node returns the call a spells, for args of names and rules only. A
+// name decoded from JSON is valid UTF-8, so its spelling never fails.
+func node(a spelled) expr.Node {
+	c, err := a.Call()
+	if err != nil {
+		panic(fmt.Errorf("jsonschema: %w", err))
 	}
 
-	return expr.Arg{Value: expr.Or{Operands: values(args)}}
-}
-
-// cond returns the conditional then if c else otherwise.
-func cond(c, then, otherwise expr.Arg) expr.Arg {
-	return expr.Arg{Value: expr.Cond{If: c.Value, Then: then.Value, Else: otherwise.Value}}
-}
-
-// always returns the rule always holding.
-func always() expr.Arg { return call("always") }
-
-// call returns the call name(args...), the bare name without args.
-func call(name string, args ...expr.Arg) expr.Arg {
-	return expr.Arg{Value: expr.Call{Name: name, Args: args}}
-}
-
-// pos returns ns as positional args.
-func pos(ns ...expr.Node) []expr.Arg {
-	return opiter.WrapSeq(slices.Values(ns)).
-		Map(func(n expr.Node) expr.Arg { return expr.Arg{Value: n} }).
-		CollectSlice()
-}
-
-// strs returns names as positional string args.
-func strs(names []string) []expr.Arg {
-	return opiter.WrapSeq(slices.Values(names)).
-		Map(func(n string) expr.Arg { return expr.Arg{Value: expr.String{Value: n}} }).
-		CollectSlice()
+	return c
 }
 
 // values returns the values of args.

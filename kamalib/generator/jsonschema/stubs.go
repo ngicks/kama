@@ -19,6 +19,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/genmark"
 )
@@ -111,7 +112,7 @@ func stubsFile(env base.Env, opts Options, main base.Composed) (base.Whole, bool
 		_, isStruct := spec.Type.(*ast.StructType)
 
 		methods := []string{"Validate"}
-		if slices.Contains(lines, decodedWord) {
+		if slices.Contains(lines, ext.DecodedWord) {
 			methods = append(methods, "ValidateShallow")
 		}
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
 )
@@ -40,7 +41,7 @@ func jsonArgs(doc *jsonschema.Schema, opts Options, ptr string) ([]expr.Arg, err
 		return nil, err
 	}
 
-	return []expr.Arg{call("json", args...)}, nil
+	return appendRule(nil, basic.JsonArgs{Operands: values(args)}), nil
 }
 
 // bridged reports whether the Go type of the schema s at ptr, which is no

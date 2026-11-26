@@ -26,6 +26,12 @@ type Runes struct{}
 // Name returns "runes".
 func (Runes) Name() string { return "runes" }
 
+// RunesArgs are the args of runes(...), which Parse reads and Call spells.
+type RunesArgs CompareArgs
+
+// Call returns the call of runes spelling a.
+func (a RunesArgs) Call() (expr.Call, error) { return compareParams.Call(Runes{}.Name(), a) }
+
 // RunesOptions are the options of //kama:validate runes(...).
 type RunesOptions struct {
 	// Comparisons holds one comparison per arg, in order.

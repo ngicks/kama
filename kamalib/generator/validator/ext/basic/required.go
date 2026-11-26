@@ -31,6 +31,18 @@ type Required struct{}
 // Name returns "required".
 func (Required) Name() string { return "required" }
 
+// RequiredArgs are the args of required("<name>", ...), which Parse reads and Call spells.
+type RequiredArgs struct {
+	Names []string `json:"names"`
+}
+
+// Call returns the call of required spelling a.
+func (a RequiredArgs) Call() (expr.Call, error) { return namesParams.Call(Required{}.Name(), a) }
+
+// namesParams are the parameters of required and requires, the names of
+// members.
+var namesParams = ext.Params{Variadic: "names"}
+
 // RequiredOptions are the options of //kama:validate required.
 type RequiredOptions struct {
 	// Names are the member names of the arg, in order, for raw JSON text.
@@ -43,11 +55,9 @@ type RequiredOptions struct {
 
 // Parse decodes the args of c, the member names of raw JSON text.
 func (Required) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
-	var args struct {
-		Names []string `json:"names"`
-	}
+	var args RequiredArgs
 
-	if _, err := (ext.Params{Variadic: "names"}).Bind(r, c, &args); err != nil {
+	if _, err := namesParams.Bind(r, c, &args); err != nil {
 		return nil, err
 	}
 

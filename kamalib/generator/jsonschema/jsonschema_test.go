@@ -116,6 +116,18 @@ func TestGenerateRejects(t *testing.T) {
 			"#/minLength: 1.5 is no non-negative integer",
 		},
 		{
+			"minimum that no literal spells",
+			`{"type":"number","minimum":1e100000}`,
+			ErrUnsupported,
+			"#/minimum: 1e100000 has no number literal",
+		},
+		{
+			"union member whose minimum no literal spells",
+			`{"oneOf":[{"type":"number","minimum":1e100000},{"type":"string"}]}`,
+			ErrUnsupported,
+			"#/oneOf/0/minimum: 1e100000 has no number literal",
+		},
+		{
 			"multipleOf of zero",
 			`{"type":"number","multipleOf":0}`,
 			ErrUnsupported,

@@ -12,11 +12,6 @@ import (
 	"github.com/ngicks/kama/kamalib/pkg/typequery"
 )
 
-// groupWord is the name of the call grouping the items applying to the
-// values of a role, as in e=g(length(ge=1), v=cmp(ge=0)). It names no
-// validator.
-const groupWord = "g"
-
 // role returns the step applying the value of the item a, a role keyword
 // item of vo, to the values of that role of the value x of type t, each
 // error passed through wrap. level holds the items of the level a belongs
@@ -35,9 +30,9 @@ func (w *writer) role(
 ) (genStep, error) {
 	reg := w.sel.opts.Registry
 
-	if slices.Contains(itemWords, a.Name) {
+	if slices.Contains(ext.ItemWords, a.Name) {
 		return nil, fmt.Errorf("%w: %s: %s on %s: %s is written on a field or inside %s(...)",
-			ErrDirective, vo.src.origin(), vo.src.spelling(), place, a.Name, groupWord)
+			ErrDirective, vo.src.origin(), vo.src.spelling(), place, a.Name, ext.GroupWord)
 	}
 
 	roles, err := w.heldRoles(t, level)
@@ -260,7 +255,7 @@ func (w *writer) heldRule(
 // groupItems returns the items n stands for as the value of a role item:
 // the args of g(...), else n alone.
 func groupItems(n expr.Node) []expr.Arg {
-	if c, ok := n.(expr.Call); ok && c.Name == groupWord {
+	if c, ok := n.(expr.Call); ok && c.Name == ext.GroupWord {
 		return c.Args
 	}
 
@@ -274,7 +269,7 @@ func checkRoles(reg *ext.Registry, t types.Type, roles []string) error {
 	for _, role := range roles {
 		_, isRule := reg.Lookup(role)
 
-		if !expr.IsName(role) || isRule || slices.Contains(itemWords, role) {
+		if !expr.IsName(role) || isRule || slices.Contains(ext.ItemWords, role) {
 			return fmt.Errorf(
 				"%s has the role %s, which names a validator or a word of %s;"+
 					" a type support must name its roles otherwise",

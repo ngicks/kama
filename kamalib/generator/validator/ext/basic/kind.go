@@ -25,6 +25,16 @@ type Kind struct{}
 // Name returns "kind".
 func (Kind) Name() string { return "kind" }
 
+// KindArgs are the args of kind("<kind>", ...), which Parse reads and Call spells.
+type KindArgs struct {
+	Kinds []string `json:"kinds"`
+}
+
+// Call returns the call of kind spelling a.
+func (a KindArgs) Call() (expr.Call, error) { return kindParams.Call(Kind{}.Name(), a) }
+
+var kindParams = ext.Params{Variadic: "kinds"}
+
 // KindOptions are the options of //kama:validate kind("<kind>", ...).
 type KindOptions struct {
 	// Kinds are the kinds of the arg, in order.
@@ -36,11 +46,9 @@ var jsonKinds = []string{"null", "boolean", "object", "array", "number", "string
 
 // Parse decodes the args of c, one or more JSON kinds.
 func (Kind) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
-	var args struct {
-		Kinds []string `json:"kinds"`
-	}
+	var args KindArgs
 
-	if _, err := (ext.Params{Variadic: "kinds"}).Bind(r, c, &args); err != nil {
+	if _, err := kindParams.Bind(r, c, &args); err != nil {
 		return nil, err
 	}
 
@@ -56,7 +64,7 @@ func (Kind) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
 		}
 	}
 
-	return KindOptions{Kinds: args.Kinds}, nil
+	return KindOptions(args), nil
 }
 
 // Check accepts raw JSON text.

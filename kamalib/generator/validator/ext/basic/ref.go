@@ -27,6 +27,14 @@ type Ref struct{}
 // Name returns "ref".
 func (Ref) Name() string { return "ref" }
 
+// RefArgs are the args of ref("<type>"), which Parse reads and Call spells.
+type RefArgs struct {
+	Type string `json:"type"`
+}
+
+// Call returns the call of ref spelling a.
+func (a RefArgs) Call() (expr.Call, error) { return typeParams.Call(Ref{}.Name(), a) }
+
 // RefOptions are the options of //kama:validate ref("<type>").
 type RefOptions struct {
 	// Type is the name of the type.

@@ -14,6 +14,7 @@ import (
 	"github.com/ngicks/opiter"
 
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
+	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/importdecl"
@@ -219,12 +220,8 @@ func decodedArgs(opts Options, args []expr.Arg) []expr.Arg {
 		return args
 	}
 
-	return append(slices.Clone(args), call(decodedWord))
+	return append(slices.Clone(args), ext.Decoded())
 }
-
-// decodedWord is the item of //kama:validate marking a type whose decoders
-// validate it.
-const decodedWord = "decoded"
 
 // validateDirective is the directive of the validator generator.
 const validateDirective = "//kama:validate"

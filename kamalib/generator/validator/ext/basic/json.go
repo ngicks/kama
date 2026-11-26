@@ -28,6 +28,12 @@ type Json struct{}
 // Name returns "json".
 func (Json) Name() string { return "json" }
 
+// JsonArgs are the args of json(...), which Parse reads and Call spells.
+type JsonArgs OperandArgs
+
+// Call returns the call of json spelling a.
+func (a JsonArgs) Call() (expr.Call, error) { return operandArgs.Call(Json{}.Name(), a) }
+
 // JsonOptions are the options of //kama:validate json(<validator>, ...).
 type JsonOptions struct {
 	// Operands are the validators of the args, in order.

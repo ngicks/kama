@@ -27,6 +27,16 @@ type Regexp struct{}
 // Name returns "regexp".
 func (Regexp) Name() string { return "regexp" }
 
+// RegexpArgs are the args of regexp("<pattern>"), which Parse reads and Call spells.
+type RegexpArgs struct {
+	Pattern string `json:"pattern"`
+}
+
+// Call returns the call of regexp spelling a.
+func (a RegexpArgs) Call() (expr.Call, error) { return regexpParams.Call(Regexp{}.Name(), a) }
+
+var regexpParams = ext.Params{Positional: []string{"pattern"}}
+
 // RegexpOptions are the options of //kama:validate regexp("<pattern>").
 type RegexpOptions struct {
 	// Pattern is the whole arg.
@@ -35,23 +45,21 @@ type RegexpOptions struct {
 
 // Parse decodes the arg of c into the pattern, which must compile.
 func (Regexp) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
-	var args struct {
-		Pattern *string `json:"pattern"`
-	}
+	var args RegexpArgs
 
-	if _, err := (ext.Params{Positional: []string{"pattern"}}).Bind(r, c, &args); err != nil {
+	if _, err := regexpParams.Bind(r, c, &args); err != nil {
 		return nil, err
 	}
 
-	if args.Pattern == nil || *args.Pattern == "" {
+	if args.Pattern == "" {
 		return nil, argsError(errors.New(`want a pattern, as in regexp(r"^[a-z]+$")`))
 	}
 
-	if _, err := regexp.Compile(*args.Pattern); err != nil {
-		return nil, argsError(fmt.Errorf("pattern %q does not compile: %w", *args.Pattern, err))
+	if _, err := regexp.Compile(args.Pattern); err != nil {
+		return nil, argsError(fmt.Errorf("pattern %q does not compile: %w", args.Pattern, err))
 	}
 
-	return RegexpOptions{Pattern: *args.Pattern}, nil
+	return RegexpOptions(args), nil
 }
 
 // Check accepts the types the doc comment of Regexp lists.

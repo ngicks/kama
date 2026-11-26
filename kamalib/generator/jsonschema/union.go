@@ -9,6 +9,7 @@ import (
 
 	"github.com/ngicks/opiter"
 
+	"github.com/ngicks/kama/kamalib/generator/validator/ext/basic"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
 	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 	"github.com/ngicks/kama/kamalib/pkg/jsonschema"
@@ -437,7 +438,7 @@ func probeArgs(doc *jsonschema.Schema, opts Options, ptr string, i int) []expr.A
 
 	args := leafRules(opts, rs, func(kw string) bool { return kw != "type" && kw != "required" })
 
-	var fields []expr.Arg
+	var fields []expr.Node
 
 	for _, n := range rs.Properties {
 		pp := child(r, "properties", n.Name)
@@ -450,11 +451,11 @@ func probeArgs(doc *jsonschema.Schema, opts Options, ptr string, i int) []expr.A
 			continue
 		}
 
-		fields = append(fields, call("field", append(strs([]string{n.Name}), ops...)...))
+		fields = append(fields, node(basic.FieldArgs{Name: &n.Name, Operands: values(ops)}))
 	}
 
 	if len(fields) > 0 {
-		args = append(args, call("props", fields...))
+		args = appendRule(args, basic.PropsArgs{Entries: fields})
 	}
 
 	if len(args) == 0 {

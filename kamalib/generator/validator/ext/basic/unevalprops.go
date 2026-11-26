@@ -25,6 +25,25 @@ type UnevalProps struct{}
 // Name returns "unevalprops".
 func (UnevalProps) Name() string { return "unevalprops" }
 
+// UnevalPropsArgs are the args of unevalprops(...), which Parse reads and Call spells.
+type UnevalPropsArgs struct {
+	// Scope is the first operand.
+	Scope expr.Node `json:"scope"`
+	// Operands are the operands after Scope.
+	Operands []expr.Node `json:"operands"`
+}
+
+// Call returns the call of unevalprops spelling a.
+func (a UnevalPropsArgs) Call() (expr.Call, error) {
+	return unevalParams.Call(UnevalProps{}.Name(), a)
+}
+
+var unevalParams = ext.Params{
+	Positional: []string{"scope"},
+	Variadic:   operandArgs.Variadic,
+	Rules:      []string{"scope", operandArgs.Variadic},
+}
+
 // UnevaluatedOptions are the options of unevalprops and of unevalitems,
 // which UnevalItems declares.
 type UnevaluatedOptions struct {
@@ -43,11 +62,7 @@ func (UnevalProps) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
 }
 
 func parseUnevaluated(c expr.Call, r ext.Resolver, items bool) (ext.Rule, error) {
-	args, err := ext.Params{
-		Positional: []string{"scope"},
-		Variadic:   "operands",
-		Rules:      []string{"scope", "operands"},
-	}.Bind(r, c, nil)
+	args, err := unevalParams.Bind(r, c, nil)
 	if err != nil {
 		return nil, err
 	}

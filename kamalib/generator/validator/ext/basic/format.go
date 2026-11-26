@@ -98,6 +98,16 @@ func DefaultFormats() map[string]FormatHelper {
 // Name returns "format".
 func (Format) Name() string { return "format" }
 
+// FormatArgs are the args of format("<name>"), which Parse reads and Call spells.
+type FormatArgs struct {
+	Name string `json:"name"`
+}
+
+// Call returns the call of format spelling a.
+func (a FormatArgs) Call() (expr.Call, error) { return formatParams.Call(Format{}.Name(), a) }
+
+var formatParams = ext.Params{Positional: []string{"name"}}
+
 // FormatOptions are the options of //kama:validate format("<name>").
 type FormatOptions struct {
 	// Name is the whole arg, the name of the format.
@@ -111,26 +121,24 @@ type FormatOptions struct {
 func (f Format) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
 	known := strings.Join(slices.Sorted(maps.Keys(f.Formats)), ", ")
 
-	var args struct {
-		Name *string `json:"name"`
-	}
+	var args FormatArgs
 
-	if _, err := (ext.Params{Positional: []string{"name"}}).Bind(r, c, &args); err != nil {
+	if _, err := formatParams.Bind(r, c, &args); err != nil {
 		return nil, err
 	}
 
-	if args.Name == nil {
+	if args.Name == "" {
 		return nil, argsError(
 			fmt.Errorf("want one format name, as in format(\"date\"); known: %s", known),
 		)
 	}
 
-	h, ok := f.Formats[*args.Name]
+	h, ok := f.Formats[args.Name]
 	if !ok {
-		return nil, argsError(fmt.Errorf("unknown format %q; known: %s", *args.Name, known))
+		return nil, argsError(fmt.Errorf("unknown format %q; known: %s", args.Name, known))
 	}
 
-	return FormatOptions{Name: *args.Name, Helper: h}, nil
+	return FormatOptions{Name: args.Name, Helper: h}, nil
 }
 
 // Check accepts string types and raw JSON text.

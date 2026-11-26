@@ -124,15 +124,9 @@ func funcLit(role string, typ ext.Gen, body func(param ext.Gen) (ext.Gen, error)
 }
 
 func parseNamed(c expr.Call, r ext.Resolver) (string, []Operand, error) {
-	var args struct {
-		Name *string `json:"name"`
-	}
+	var args FieldArgs
 
-	ops, err := ext.Params{
-		Positional: []string{"name"},
-		Variadic:   "operands",
-		Rules:      []string{"operands"},
-	}.Bind(r, c, &args)
+	ops, err := namedParams.Bind(r, c, &args)
 	if err != nil {
 		return "", nil, err
 	}

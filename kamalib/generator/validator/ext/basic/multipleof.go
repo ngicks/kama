@@ -40,6 +40,19 @@ type MultipleOf struct{}
 // Name returns "multipleof".
 func (MultipleOf) Name() string { return "multipleof" }
 
+// MultipleOfArgs are the args of multipleof(<n>), which Parse reads and Call spells.
+type MultipleOfArgs struct {
+	// N is the divisor as JSON text.
+	N jsontext.Value `json:"n"`
+}
+
+// Call returns the call of multipleof spelling a.
+func (a MultipleOfArgs) Call() (expr.Call, error) {
+	return multipleOfParams.Call(MultipleOf{}.Name(), a)
+}
+
+var multipleOfParams = ext.Params{Positional: []string{"n"}}
+
 // MultipleOfOptions are the options of //kama:validate multipleof(<n>).
 type MultipleOfOptions struct {
 	// Divisor is the arg, as written.
@@ -51,11 +64,9 @@ type MultipleOfOptions struct {
 
 // Parse decodes the arg of c, a positive number.
 func (MultipleOf) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
-	var args struct {
-		N jsontext.Value `json:"n"`
-	}
+	var args MultipleOfArgs
 
-	if _, err := (ext.Params{Positional: []string{"n"}}).Bind(r, c, &args); err != nil {
+	if _, err := multipleOfParams.Bind(r, c, &args); err != nil {
 		return nil, err
 	}
 

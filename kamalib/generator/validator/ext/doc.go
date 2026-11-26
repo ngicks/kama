@@ -174,32 +174,46 @@
 //
 // # Writing a validator
 //
-// A validator has three parts, and each built-in one of package basic lays
+// A validator has four parts, and each built-in one of package basic lays
 // them out in its own file in this order. First, the Validator type names
-// itself. Second, an options struct holds the decoded args, and Parse of
-// the Validator decodes the call into it with Params.Bind, which binds the
-// args to the parameters, decodes the literal ones with encoding/json/v2
-// and returns the rules among them. Bind reports a keyword arg no
-// parameter takes through Resolver.Warn and leaves it out. Parse reports
-// the arg errors that hold for any type. Those errors wrap ErrArgs. Third,
-// the options struct is the Rule: it checks a type with Check and emits
-// the expression with Emit. The generator parses the call again for every
-// field the validator applies to, and the options live only for that
-// field. A field names the validator
-// below as //kama:validate multiple(3):
+// itself. Second, an args struct and a Params declare the parameters once.
+// The json tag of each field names its parameter. Params.Bind binds the
+// args of a call to the parameters, decodes the literal ones into the args
+// struct with encoding/json/v2 and returns the rules among them. A field of
+// type expr.Node or []expr.Node receives the rules of its parameter too.
+// Params.Call spells an args struct back as the call, the args in the
+// order of the parameters, so that expr.Print gives the text a user writes.
+// A generator writing directives, as the jsonschema generator does, builds
+// args structs and spells them through Call. Third, Parse of the Validator
+// decodes the call into the args struct with Bind and checks the args.
+// Bind reports a keyword arg no parameter takes through Resolver.Warn and
+// leaves it out. Parse reports the arg errors that hold for any type. Those
+// errors wrap ErrArgs. Fourth, an options struct is the Rule: it checks a
+// type with Check and emits the expression with Emit. The generator parses
+// the call again for every field the validator applies to, and the options
+// live only for that field. A field names the validator below as
+// //kama:validate multiple(3):
 //
 //	type multiple struct{}
 //
 //	func (multiple) Name() string { return "multiple" }
 //
+//	type multipleArgs struct {
+//		N int64 `json:"n"`
+//	}
+//
+//	var multipleParams = ext.Params{Positional: []string{"n"}}
+//
+//	func (a multipleArgs) Call() (expr.Call, error) {
+//		return multipleParams.Call(multiple{}.Name(), a)
+//	}
+//
 //	type multipleOptions struct{ N int64 }
 //
 //	func (multiple) Parse(c expr.Call, r ext.Resolver) (ext.Rule, error) {
-//		var args struct {
-//			N int64 `json:"n"`
-//		}
+//		var args multipleArgs
 //
-//		if _, err := (ext.Params{Positional: []string{"n"}}).Bind(r, c, &args); err != nil {
+//		if _, err := multipleParams.Bind(r, c, &args); err != nil {
 //			return nil, err
 //		}
 //
@@ -207,7 +221,7 @@
 //			return nil, fmt.Errorf("%w: want a positive integer", ext.ErrArgs)
 //		}
 //
-//		return multipleOptions{N: args.N}, nil
+//		return multipleOptions(args), nil
 //	}
 //
 //	func (multipleOptions) Check(t types.Type) error {

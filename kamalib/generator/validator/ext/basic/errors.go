@@ -17,10 +17,20 @@ func (argsErr) Is(target error) bool { return target == ext.ErrArgs }
 
 // noArgs reports an arg of c, a call of a validator taking none.
 func noArgs(r ext.Resolver, c expr.Call) error {
-	_, err := ext.Params{}.Bind(r, c, nil)
+	_, err := noParams.Bind(r, c, nil)
 	return err
 }
+
+// noParams are the parameters of a validator taking no args.
+var noParams = ext.Params{}
 
 // operandArgs are the parameters of a validator whose args are its
 // operands, as oneof(a, b) has.
 var operandArgs = ext.Params{Variadic: "operands", Rules: []string{"operands"}}
+
+// OperandArgs are the args of a validator whose args are its operands, as
+// oneof(a, b) has.
+type OperandArgs struct {
+	// Operands are the rules of the args, in order.
+	Operands []expr.Node `json:"operands"`
+}

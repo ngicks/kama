@@ -19,12 +19,12 @@ import (
 // tell how the walk reaches the values of the level, rather than naming a
 // role: the switch of the nested Validate call and the description of what
 // a value holds.
-var levelWords = []string{nestedWord, unwrapWord, iterWord, iter2Word}
+var levelWords = []string{ext.NestedWord, ext.UnwrapWord, ext.IterWord, ext.Iter2Word}
 
 // descriptionWords are the keyword items naming the method by which a
 // value yields what it holds: unwrap for one value, iter for a sequence and
 // iter2 for a sequence of pairs.
-var descriptionWords = []string{unwrapWord, iterWord, iter2Word}
+var descriptionWords = []string{ext.UnwrapWord, ext.IterWord, ext.Iter2Word}
 
 // fieldItems returns the items of the directives and the option file entry
 // of the field v of the target.
@@ -79,7 +79,7 @@ func description(items []expr.Arg) (word, method string, err error) {
 // nested=True or nested=False, else on.
 func nestedOn(items []expr.Arg, on bool) (bool, error) {
 	for _, a := range items {
-		if a.Name != nestedWord {
+		if a.Name != ext.NestedWord {
 			continue
 		}
 
@@ -106,7 +106,7 @@ func reshapes(items []expr.Arg) bool {
 
 			c, ok := a.Value.(expr.Call)
 
-			return ok && a.Name != "" && c.Name == groupWord && reshapes(c.Args)
+			return ok && a.Name != "" && c.Name == ext.GroupWord && reshapes(c.Args)
 		})
 }
 
@@ -132,7 +132,7 @@ func (w *writer) heldRoles(t types.Type, items []expr.Arg) ([]string, error) {
 	switch word {
 	case "":
 		return ext.Roles(w.sel.opts.Registry, t), nil
-	case iter2Word:
+	case ext.Iter2Word:
 		if _, _, err := iterated(t, w.scope.Pkg.Types, word, method); err != nil {
 			return nil, err
 		}
@@ -161,9 +161,9 @@ func iterated(
 	word, method string,
 ) (key, value types.Type, err error) {
 	shapes := map[string]string{
-		unwrapWord: "func() T or func() (T, bool)",
-		iterWord:   "func() S, S a function func(yield func(T) bool)",
-		iter2Word:  "func() S, S a function func(yield func(K, V) bool)",
+		ext.UnwrapWord: "func() T or func() (T, bool)",
+		ext.IterWord:   "func() S, S a function func(yield func(T) bool)",
+		ext.Iter2Word:  "func() S, S a function func(yield func(K, V) bool)",
 	}
 
 	sel := types.NewMethodSet(t).Lookup(pkg, method)
@@ -183,7 +183,7 @@ func iterated(
 
 	res := sig.Results()
 
-	if word == unwrapWord {
+	if word == ext.UnwrapWord {
 		switch {
 		case res.Len() == 1:
 			return nil, res.At(0).Type(), nil
@@ -210,9 +210,9 @@ func iterated(
 	}
 
 	switch {
-	case word == iterWord && yield.Params().Len() == 1:
+	case word == ext.IterWord && yield.Params().Len() == 1:
 		return nil, yield.Params().At(0).Type(), nil
-	case word == iter2Word && yield.Params().Len() == 2:
+	case word == ext.Iter2Word && yield.Params().Len() == 2:
 		return yield.Params().At(0).Type(), yield.Params().At(1).Type(), nil
 	}
 
@@ -236,7 +236,7 @@ func (w *writer) described(
 
 	call := lang.Expr("%s.%s()", x, method)
 
-	if word == unwrapWord {
+	if word == ext.UnwrapWord {
 		if key == nil {
 			return inner(value, call, wrap, depth)
 		}
@@ -256,7 +256,7 @@ func (w *writer) described(
 
 	// A key of a string or an integer kind locates its value, as a map key
 	// does. Any other value is located by its position in the sequence.
-	keyed := word == iter2Word && typequery.BasicInfo(key)&(types.IsInteger|types.IsString) != 0
+	keyed := word == ext.Iter2Word && typequery.BasicInfo(key)&(types.IsInteger|types.IsString) != 0
 	k, e, i := loopName("k", depth), loopName("e", depth), loopName("i", depth)
 
 	held, v, label, segment := value, lang.Name(e), lang.Name(i), ext.SegmentIndex
@@ -276,7 +276,7 @@ func (w *writer) described(
 	keyVar, elemVar := "", e
 
 	switch {
-	case word == iterWord:
+	case word == ext.IterWord:
 		keyVar, elemVar = e, ""
 	case role == "k":
 		keyVar, elemVar = k, ""
