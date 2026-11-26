@@ -20,9 +20,23 @@ Go code in this repository transforms sequences with `github.com/ngicks/opiter` 
 
 #### Shape of a chain
 
-- Enter a chain through `opiter.WrapSeq` or `opiter.WrapSeq2`.
-- Keep a short source on the opening line, as in `opiter.WrapSeq(specs).` or `opiter.WrapSeq(slices.Values(fields)).`.
-  - Put the source on its own line inside the parentheses when the opening line would exceed the line length limit.
+- Enter a chain through a source of opiter. A source returns an `opiter.Seq` or an `opiter.Seq2`, and a chain starts on it directly.
+  - Write `opiter.SlicesValues(fields).`. Do not write `opiter.WrapSeq(slices.Values(fields)).`.
+  - Write `opiter.MapsSorted(byPath).`. Do not wrap it into `opiter.WrapSeq2`.
+- These sources wrap a source of the standard library:
+  - `opiter.SlicesValues`, `opiter.SlicesAll`, `opiter.SlicesBackward` and `opiter.SlicesChunk`.
+  - `opiter.MapsKeys`, `opiter.MapsValues` and `opiter.MapsAll`.
+  - `opiter.StringsLines`, `opiter.StringsSplitSeq`, `opiter.StringsSplitAfterSeq`, `opiter.StringsFieldsSeq` and `opiter.StringsFieldsFuncSeq`.
+  - `opiter.BytesLines`, `opiter.BytesSplitSeq`, `opiter.BytesSplitAfterSeq`, `opiter.BytesFieldsSeq` and `opiter.BytesFieldsFuncSeq`.
+- These sources have no counterpart in the standard library:
+  - `opiter.MapsSorted`, `opiter.MapsSortedFunc` and `opiter.MapsOverlay`.
+  - `opiter.Range`, `opiter.RangeInclusive`, `opiter.Step` and `opiter.StepBy`.
+  - `opiter.Once`, `opiter.Once2`, `opiter.Repeat`, `opiter.Repeat2`, `opiter.RepeatFunc` and `opiter.RepeatFunc2`.
+  - `opiter.Empty`, `opiter.Empty2`, `opiter.Chan`, `opiter.Window` and `opiter.Values2`.
+- Enter a chain through `opiter.WrapSeq` or `opiter.WrapSeq2` only for a sequence that no source of opiter yields, such as `opiter.WrapSeq(st.Fields())` or a parameter of type `iter.Seq`.
+- Keep the std source in code that needs no chain method, such as `for v := range slices.Values(fields)` or an argument of type `iter.Seq`.
+- Keep a short source on the opening line, as in `opiter.SlicesValues(fields).` or `opiter.WrapSeq(st.Fields()).`.
+  - Put the argument of the source on its own line inside the parentheses when the opening line would exceed the line length limit.
 - Put every method on its own line. This holds for short chains and for chains with one method.
 - End a chain with `.CollectSlice()` to get a slice.
 - End a chain with `.Collect(collector)` to hand it to a collecting function, as in `.Collect(slices.Sorted)` or `.Collect(maps.Collect)`.
@@ -35,12 +49,12 @@ Go code in this repository transforms sequences with `github.com/ngicks/opiter` 
 - Use the `FlatMap` method to flatten. The mapper returns an iterator, as in `FlatMap(func(d ast.Decl) iter.Seq[ast.Spec] { return slices.Values(specsOf(d)) })`.
 
 ```go
-out := opiter.WrapSeq2(opiter.MapsSorted(byPath)).
+out := opiter.MapsSorted(byPath).
 	OmitF().
 	Map(func(h *Host) Host { return *h }).
 	CollectSlice()
 
-reserve = opiter.WrapSeq(slices.Values(tparams)).
+reserve = opiter.SlicesValues(tparams).
 	Map(typeParamName).
 	AppendSeq(reserve)
 ```
@@ -54,12 +68,12 @@ reserve = opiter.WrapSeq(slices.Values(tparams)).
 
 #### Helper functions of opiter
 
-- Some steps have no method, such as `opiter.TryCollect`, `opiter.Min`, `opiter.MapsSorted`, `opiter.Range` and `opiter.Once`. Call them as functions around or inside the chain.
+- Some steps have no method, such as `opiter.TryCollect`, `opiter.Min` and `opiter.Merge`. Call them as functions around or inside the chain.
 - Put each argument of such a call on its own line when the argument is a chain.
 
 ```go
 names, err := opiter.TryCollect(
-	opiter.WrapSeq(slices.Values(tps)).
+	opiter.SlicesValues(tps).
 		Disassemble(render),
 )
 ```

@@ -1,5 +1,5 @@
 lockfile_version: '4'
-apm_version: 0.37.0
+apm_version: 0.38.1
 manifest_targets:
 - claude
 - codex
@@ -13,6 +13,10 @@ dependencies:
   is_virtual: true
   package_type: apm_package
   content_hash: sha256:9b9d1f49c482d98e0728fdb7ef5990f6d78a437502a7e62f8034011f9622a615
+  package_targets:
+  - claude
+  - codex
+  - opencode
   carried_licenses:
   - path: LICENSE
     source: LICENSE
@@ -445,51 +449,6 @@ deployments:
   - ngicks/agents-package/pkg/cc-workers
   active_owner: ngicks/agents-package/pkg/cc-workers
   content_hash: sha256:2b6b1188560b9749dd3910fd4fe3479398ceac59ee5d993f71a2a070167e250c
-- kind: project-relative
-  target: claude
-  value: .claude/rules/kama.go.generator-single-source.md
-  runtime: null
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: sha256:ee61cda6f01bd5190f54431d38e5dee7bad9ff8a457159d6a6ecd4e7ebdb7bbd
-- kind: project-relative
-  target: claude
-  value: .claude/rules/kama.go.iterator-chain.md
-  runtime: null
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: sha256:bee45bd9b54df5846a42c07cbc7b9d8f4cc31e5247dbdb27233dd501db67304a
-- kind: project-relative
-  target: claude
-  value: .claude/rules/kama.go.json-unknown-fields.md
-  runtime: null
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: sha256:445fdec3644cbdaf0ba256913330c992140272c18fbac2a88202a08068664711
-- kind: project-relative
-  target: claude
-  value: .claude/rules/kama.go.lenient-decode.md
-  runtime: null
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: sha256:18b293722ca5ed63a2ee37f40fd7d8a78dc3987bf548ed9c2cd184de77e46c79
-- kind: project-relative
-  target: claude
-  value: .claude/rules/kama.go.pure-functions.md
-  runtime: null
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: sha256:5f78500dae00f9b48ea2c8bb37bca406ab15f7ae7ee9616d05459b8979cf1166
 - kind: project-relative
   target: claude
   value: .claude/skills/go-check-outdated-patterns
@@ -1498,15 +1457,3 @@ deployments:
   - ngicks/agents-package/pkg/cc-workers
   active_owner: ngicks/agents-package/pkg/cc-workers
   content_hash: sha256:2b6b1188560b9749dd3910fd4fe3479398ceac59ee5d993f71a2a070167e250c
-local_deployed_files:
-- .claude/rules/kama.go.generator-single-source.md
-- .claude/rules/kama.go.iterator-chain.md
-- .claude/rules/kama.go.json-unknown-fields.md
-- .claude/rules/kama.go.lenient-decode.md
-- .claude/rules/kama.go.pure-functions.md
-local_deployed_file_hashes:
-  .claude/rules/kama.go.generator-single-source.md: sha256:ee61cda6f01bd5190f54431d38e5dee7bad9ff8a457159d6a6ecd4e7ebdb7bbd
-  .claude/rules/kama.go.iterator-chain.md: sha256:bee45bd9b54df5846a42c07cbc7b9d8f4cc31e5247dbdb27233dd501db67304a
-  .claude/rules/kama.go.json-unknown-fields.md: sha256:445fdec3644cbdaf0ba256913330c992140272c18fbac2a88202a08068664711
-  .claude/rules/kama.go.lenient-decode.md: sha256:18b293722ca5ed63a2ee37f40fd7d8a78dc3987bf548ed9c2cd184de77e46c79
-  .claude/rules/kama.go.pure-functions.md: sha256:5f78500dae00f9b48ea2c8bb37bca406ab15f7ae7ee9616d05459b8979cf1166
