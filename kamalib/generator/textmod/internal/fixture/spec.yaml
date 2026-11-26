@@ -1,0 +1,31 @@
+version: 1
+steps:
+  root:
+    proc: overlayfs.open
+  load:
+    proc: packages.load
+    in: root
+    param:
+      patterns: [./...]
+  replace:
+    proc: textmod.replace
+    in: load
+    out: root
+    param:
+      # The mods set the values from vars, so a run on the fixture changes
+      # nothing. A mod computing from .Value, such as a bump, changes the
+      # file on every run.
+      vars:
+        version: v1.10.0
+        build: 3
+        options: "  -v  print the version\n"
+      mods:
+        version: "{{ .Vars.version }}"
+        name: "{{ .Value }}"
+        build: "{{ toInt .Vars.build }}"
+        help: |
+          {{ .Value | replaceBetween "# begin" "# end" .Vars.options }}
+  final:
+    proc: overlayfs.copy_down
+    in: root
+    after: [replace]
