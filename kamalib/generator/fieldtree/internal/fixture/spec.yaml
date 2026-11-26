@@ -1,0 +1,26 @@
+version: 1
+steps:
+  root:
+    proc: overlayfs.open
+  load:
+    proc: packages.load
+    in: root
+    param:
+      patterns: [./...]
+  tree:
+    proc: fieldtree.text
+    in: load
+  replace:
+    proc: textmod.replace
+    in: load
+    out: root
+    # tree runs first and hands its texts to the templates through input.
+    optional: [tree]
+    param:
+      mods:
+        help: |
+          {{ .Value | replaceBetween "Fields:" "Example:" (index (input "tree") "config" | indent "  ") }}
+  final:
+    proc: overlayfs.copy_down
+    in: root
+    after: [replace]

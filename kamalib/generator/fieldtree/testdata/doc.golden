@@ -1,0 +1,15 @@
+Config
+├─ .Addr   string             # Addr is the listen address.  (addr)
+├─ .Users  []User             # users allowed in             (users)
+│   └─ index .Users i  User  # element i; range .Users  (users[i])
+│       └─ .Name  string  # login name  (users[i].name)
+├─ .Env    map[string]string  # environment                  (env)
+│   └─ index .Env key  string  # value at key; range .Env  (env[key])
+├─ .TLS    opt.Option[TLS]    # TLS settings                 (tls)
+│   └─ .TLS.Value  TLS  # set only when .TLS.IsSome  (tls)
+│       └─ .Cert  string  # certificate file  (tls.cert)
+└─ .Root   *Dir               # served directory             (root)
+    ├─ .Path  string  # path on disk    (root.path)
+    └─ .Sub   []Dir   # subdirectories  (root.sub)
+        └─ index .Root.Sub i  Dir  # element i; range .Root.Sub  (root.sub[i])
+            └─ Dir repeats; it is expanded above

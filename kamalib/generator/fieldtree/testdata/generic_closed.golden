@@ -1,0 +1,6 @@
+Closed
+└─ .Pair  Pair[string, Item]  #   (pair)
+    ├─ .Key    string  #   (pair.key)
+    └─ .Value  []Item  #   (pair.value)
+        └─ index .Pair.Value i  Item  # element i; range .Pair.Value  (pair.value[i])
+            └─ .Id  int  # the id  (pair.value[i].id)

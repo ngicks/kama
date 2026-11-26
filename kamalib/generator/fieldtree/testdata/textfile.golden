@@ -1,0 +1,6 @@
+Boxed
+├─ .Box  Box[Item]  #   (box)
+│   └─ .Box.Get  Item  # set only when .Box.Ok  (box)
+│       └─ .Id  int  #   (box.id)
+└─ .Bag  Bag[int]   #   (bag)
+    └─ (t)  int  # the t value of Bag[int]; no support tells how a template reaches it  (bag)

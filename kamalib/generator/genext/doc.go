@@ -140,7 +140,8 @@
 // generator holds a section per generator, keyed by its name. A generator
 // package registers the builder of its section with RegisterTextSection.
 // The validator registers validate, whose keys package validator/ext
-// documents.
+// documents, and fieldtree registers fieldtree, whose keys package
+// fieldtree/ext documents.
 //
 // Templates execute with text/template while the generated code renders.
 // .V is the code of the value. Three functions reach outside it:

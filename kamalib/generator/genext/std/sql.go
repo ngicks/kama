@@ -24,7 +24,8 @@ var sqlValues = map[string]string{
 
 // Sql is the genext.TypeSupport of sql.Null[T] and the null types of
 // database/sql, such as sql.NullString. It implements genext.Holder,
-// ext.PresenceTester and ext.NullTester.
+// ext.PresenceTester and ext.NullTester of the validator, and ext.Reacher
+// of fieldtree.
 type Sql struct{}
 
 // Name returns "database/sql".

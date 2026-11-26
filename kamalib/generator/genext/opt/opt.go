@@ -13,7 +13,8 @@ func init() { genext.RegisterTypeSupport(Support{}) }
 // Support is the genext.TypeSupport of opt.Option, und.Und, elastic.Elastic,
 // either.Either, either.Result, their untagged variants and tuple.Tuple2 to
 // tuple.Tuple16. It implements genext.Holder, genext.Container, genext.Composite,
-// ext.PresenceTester, ext.ZeroTester and ext.NullTester.
+// ext.PresenceTester, ext.ZeroTester and ext.NullTester of the validator,
+// and ext.Reacher of fieldtree.
 type Support struct{}
 
 var lang genhelper.Lang[genext.Context]

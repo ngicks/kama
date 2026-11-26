@@ -10,7 +10,7 @@ import (
 const uniquePath = "unique"
 
 // Unique is the genext.TypeSupport of unique.Handle[T]. It implements
-// genext.Holder.
+// genext.Holder and ext.Reacher of fieldtree.
 type Unique struct{}
 
 // Name returns "unique".
