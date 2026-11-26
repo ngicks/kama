@@ -52,13 +52,19 @@ func (id Id) Naming() Naming { return Naming{Name: id.Namespace + "_" + id.Name}
 // ProcKind returns the kind a workflow registry knows the proc of the
 // generator by: partial.generate for kama:partial, and
 // acme.partial.generate for acme:partial, so that a third party's
-// generator never takes the kind of a generator of kama.
-func (id Id) ProcKind() string {
+// generator never takes the kind of a generator of kama. It is
+// ProcKindVerb with the verb generate.
+func (id Id) ProcKind() string { return id.ProcKindVerb("generate") }
+
+// ProcKindVerb returns the kind of the proc of the generator ending in
+// verb instead of generate, as textmod.replace for kama:textmod. A
+// generator whose proc does more than generate files names what it does.
+func (id Id) ProcKindVerb(verb string) string {
 	if id.Namespace == ToolName {
-		return id.Name + ".generate"
+		return id.Name + "." + verb
 	}
 
-	return id.Namespace + "." + id.Name + ".generate"
+	return id.Namespace + "." + id.Name + "." + verb
 }
 
 // Validate returns an error wrapping ErrInvalidId for an Id that cannot

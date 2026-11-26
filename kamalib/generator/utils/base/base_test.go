@@ -255,6 +255,12 @@ func TestStaleCheckScopePaths(t *testing.T) {
 func TestIdProcKind(t *testing.T) {
 	assert.Equal(t, Id{Namespace: "kama", Name: "partial"}.ProcKind(), "partial.generate")
 	assert.Equal(t, Id{Namespace: "acme", Name: "partial"}.ProcKind(), "acme.partial.generate")
+	assert.Equal(
+		t,
+		Id{Namespace: "kama", Name: "textmod"}.ProcKindVerb("replace"),
+		"textmod.replace",
+	)
+	assert.Equal(t, Id{Namespace: "acme", Name: "mod"}.ProcKindVerb("replace"), "acme.mod.replace")
 }
 
 func TestIdValidate(t *testing.T) {

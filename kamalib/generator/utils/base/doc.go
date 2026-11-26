@@ -91,7 +91,8 @@
 // # Registration
 //
 // A generator registers its Id with [MustRegister] and its proc with
-// workflow.Register under [Id.ProcKind], both from an init function. The
+// workflow.Register under [Id.ProcKind], or under [Id.ProcKindVerb] for a
+// proc that names another verb, both from an init function. The
 // framework drives no generator whose Id the registry of the run does not
 // know: the registry tells the marks of the registered generators from
 // those of no generator, which the stale check, the replace check and the
