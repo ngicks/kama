@@ -31,6 +31,12 @@ import (
 // Files returns the files Run would stage, as [Prepare] returns them, and
 // stages nothing.
 //
+// With TakesOptional set, the instances also have
+//
+//	Optional(map[string]any)
+//
+// and the run finds the optional inputs of its step in [Env].Optional.
+//
 // Generator.Generate and Input are required: Instantiate returns an error
 // when one is nil.
 type Proc[Partial ParamPartial[Partial, Param], Param, X, I any] struct {
@@ -48,6 +54,9 @@ type Proc[Partial ParamPartial[Partial, Param], Param, X, I any] struct {
 	// Registry tells the generators that generated marks name. Nil means
 	// DefaultRegistry().
 	Registry *genmark.Registry
+	// TakesOptional makes the proc take optional inputs of any type, as
+	// workflow.OptionalTaker describes.
+	TakesOptional bool
 }
 
 // None is the in of a Proc whose step takes no in.
@@ -79,6 +88,16 @@ func (Proc[Partial, Param, X, I]) OutTypes() []reflect.Type {
 
 func (Proc[Partial, Param, X, I]) AsInputType() reflect.Type { return nil }
 
+// OptionalType implements workflow.OptionalTaker. It is nil unless
+// TakesOptional is set.
+func (p Proc[Partial, Param, X, I]) OptionalType() reflect.Type {
+	if !p.TakesOptional {
+		return nil
+	}
+
+	return reflect.TypeFor[any]()
+}
+
 func (p Proc[Partial, Param, X, I]) Instantiate(context.Context, bool) (workflow.Instance, error) {
 	switch {
 	case p.Generator.Generate == nil:
@@ -107,6 +126,8 @@ type procRun[Partial ParamPartial[Partial, Param], Param, X, I any] struct {
 	param Param
 	in    X
 	out   *overlayfs.Fs
+	// optional is nil unless the proc takes optional inputs.
+	optional map[string]any
 }
 
 type inInstance[Partial ParamPartial[Partial, Param], Param, X, I any] struct {
@@ -141,6 +162,8 @@ func (r *procRun[Partial, Param, X, I]) Param(partial Partial) error {
 }
 
 func (r *procRun[Partial, Param, X, I]) Out(f *overlayfs.Fs) { r.out = f }
+
+func (r *procRun[Partial, Param, X, I]) Optional(in map[string]any) { r.optional = in }
 
 func (r *procRun[Partial, Param, X, I]) Run(ctx context.Context, rep workflow.Reporter) error {
 	in, scope, err := r.proc.Input(ctx, r.param, r.in, r.out)
@@ -178,5 +201,11 @@ func (r *procRun[Partial, Param, X, I]) env(rep workflow.Reporter) Env {
 		reg = r.proc.Registry
 	}
 
-	return Env{Reporter: rep, Now: now(), Registry: reg, Out: r.out.FS()}
+	return Env{
+		Reporter: rep,
+		Now:      now(),
+		Registry: reg,
+		Out:      r.out.FS(),
+		Optional: r.optional,
+	}
 }

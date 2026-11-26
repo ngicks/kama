@@ -32,9 +32,11 @@ var ErrInvalidProc = errors.New("workflow: invalid proc")
 //   - In with the AsInput values of the steps named in the step's in list.
 //   - Out with the AsInput values of the steps named in its out list. The
 //     step writes its results into them.
+//   - Optional with the AsInput values of the steps named in its optional
+//     list, keyed by step name, when the proc implements OptionalTaker.
 //   - Run, with a Reporter for the step's warnings and progress.
 //   - AsInput, once. The result is passed to every step that names this one
-//     in its in or out list. Steps writing into it through Out mutate it, so
+//     in its in, out or optional list. Steps writing into it through Out mutate it, so
 //     a value others write into must be a pointer or another reference.
 //
 // Because the types are known before anything runs, graph formation checks
@@ -54,7 +56,8 @@ type Proc interface {
 	// OutTypes returns the argument types of the instance's Out method.
 	OutTypes() []reflect.Type
 	// AsInputType returns the result type of the instance's AsInput method.
-	// Nil means other steps cannot name this one in their in or out lists.
+	// Nil means other steps cannot name this one in their in, out or
+	// optional lists.
 	AsInputType() reflect.Type
 	// Instantiate returns a new instance.
 	//
@@ -95,6 +98,39 @@ type Proc interface {
 	// is done, such as values handed out through AsInput. An instance's own
 	// per-run state is dropped with the instance after its Run.
 	CleanUp(ctx context.Context) error
+}
+
+// OptionalTaker is implemented by a Proc whose steps take optional inputs:
+// the AsInput values of the steps a step names in its optional list. A step
+// names any number of them, and the proc tells them apart by step name.
+//
+// An instance of such a proc has one more method, called after Out:
+//
+//	Optional(in map[string]T)
+//
+// T is OptionalType. The map holds the AsInput value of each named step
+// under its name, and it is empty when the step names none. A nil
+// OptionalType means the proc takes no optional inputs, so that a proc type
+// shared by several kinds can opt in per kind.
+//
+// Graph formation fails when a step names optional inputs for a proc that
+// takes none, names a step without AsInput, names a step whose AsInputType
+// is not assignable to T, names itself, names one step twice, or names a
+// step its in or out list names too.
+type OptionalTaker interface {
+	// OptionalType returns the type every optional input must be assignable
+	// to, such as any.
+	OptionalType() reflect.Type
+}
+
+// optionalType returns the OptionalType of p, nil when p takes no optional
+// inputs.
+func optionalType(p Proc) reflect.Type {
+	if o, ok := p.(OptionalTaker); ok {
+		return o.OptionalType()
+	}
+
+	return nil
 }
 
 // Instance is a configured proc ready to run once. See Proc for the Param,

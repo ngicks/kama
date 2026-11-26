@@ -106,6 +106,9 @@ type SourceProc[Partial ParamPartial[Partial, Param], Param, O, P, T, F any] str
 	// Registry tells the generators that generated marks name. Nil means
 	// DefaultRegistry().
 	Registry *genmark.Registry
+	// TakesOptional makes the proc take optional inputs, as it does for a
+	// [Proc].
+	TakesOptional bool
 }
 
 // NewOptionLoader returns the genopt.Loader of the options of the
@@ -157,6 +160,12 @@ func (p SourceProc[Partial, Param, O, P, T, F]) AsInputType() reflect.Type {
 	return p.proc().AsInputType()
 }
 
+// OptionalType implements workflow.OptionalTaker as [Proc.OptionalType]
+// does.
+func (p SourceProc[Partial, Param, O, P, T, F]) OptionalType() reflect.Type {
+	return p.proc().OptionalType()
+}
+
 func (p SourceProc[Partial, Param, O, P, T, F]) Instantiate(
 	ctx context.Context,
 	dryRun bool,
@@ -187,9 +196,10 @@ func (p SourceProc[Partial, Param, O, P, T, F]) proc() Proc[
 			_, _, err := p.options(param)
 			return err
 		},
-		Input:    p.input,
-		Now:      p.Now,
-		Registry: p.Registry,
+		Input:         p.input,
+		Now:           p.Now,
+		Registry:      p.Registry,
+		TakesOptional: p.TakesOptional,
 	}
 }
 

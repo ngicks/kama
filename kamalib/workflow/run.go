@@ -15,7 +15,7 @@ var ErrRun = errors.New("workflow: step failed")
 // Run executes the graph once, one step at a time in execution order.
 //
 // Each step is instantiated with dryRun unset and has its Param, In, Out,
-// Run and AsInput called as Proc describes. Run stops at the first failing
+// Optional, Run and AsInput called as Proc describes. Run stops at the first failing
 // step and does not start the rest. Once no step is left to run, every proc
 // that was instantiated is cleaned up, in reverse order of first use, even
 // when a step failed. The returned error joins the step failure with any
@@ -114,6 +114,12 @@ func runNode(
 	m.in.Call(refValues(n.In, values))
 	m.out.Call(refValues(n.Out, values))
 
+	if m.optional.IsValid() {
+		m.optional.Call(
+			[]reflect.Value{optionalValues(m.optional.Type().In(0), n.Optional, values)},
+		)
+	}
+
 	r := &stepReporter{p: prog, step: n.Name}
 	err = inst.Run(ctx, r)
 	r.close()
@@ -127,6 +133,17 @@ func runNode(
 	}
 
 	return m.asInput.Call(nil)[0], nil
+}
+
+// optionalValues returns the map of type t holding the AsInput value of
+// each step refs names under its name.
+func optionalValues(t reflect.Type, refs []string, values map[string]reflect.Value) reflect.Value {
+	m := reflect.MakeMapWithSize(t, len(refs))
+	for _, ref := range refs {
+		m.SetMapIndex(reflect.ValueOf(ref), values[ref])
+	}
+
+	return m
 }
 
 func refValues(refs []string, values map[string]reflect.Value) []reflect.Value {

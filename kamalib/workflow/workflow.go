@@ -5,6 +5,12 @@
 // AsInput value. See Proc for the methods an instance has and when the
 // executor calls them.
 //
+// A step also takes optional inputs when its proc implements OptionalTaker.
+// Its optional list names steps whose AsInput values reach the proc in a map
+// keyed by step name, so the proc takes any number of them. A spec side-loads
+// a value this way, such as a text another step computed, into a proc whose
+// in and out lists are fixed.
+//
 // Build decodes every step's param into the proc's ParamType with
 // encoding/json/v2. It does so for specs in every format. Param keys match the
 // JSON names of the fields case-sensitively.
@@ -26,7 +32,7 @@
 // it used. It reports each step's start and end, and the warnings and
 // progress the instances report, to a ProgressControl.
 //
-// Order follows in, out and after edges. A step that reads a value does not
+// Order follows in, out, optional and after edges. A step that reads a value does not
 // wait for other steps writing into the same value unless it lists them in
 // after. Steps with no ordering between them come in name order.
 package workflow
@@ -66,10 +72,11 @@ type Node struct {
 	Proc Proc
 	// Param is the step's param decoded into the proc's ParamType. It is the
 	// zero Value when the proc takes no param.
-	Param reflect.Value
-	In    []string
-	Out   []string
-	After []string
+	Param    reflect.Value
+	In       []string
+	Out      []string
+	Optional []string
+	After    []string
 }
 
 // Graph is a formed, checked graph in execution order.
@@ -133,6 +140,10 @@ func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 		procs[name] = p
 	}
 
+	if err := checkOptionalNames(s.Steps); err != nil {
+		return nil, err
+	}
+
 	order, err := sortSteps(s.Steps)
 	if err != nil {
 		return nil, err
@@ -156,13 +167,18 @@ func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 			return nil, err
 		}
 
+		if err := matchOptional(name, st.Optional, p, procs); err != nil {
+			return nil, err
+		}
+
 		g.nodes = append(g.nodes, Node{
-			Name:  name,
-			Kind:  st.Proc,
-			Proc:  p,
-			In:    st.In,
-			Out:   st.Out,
-			After: st.After,
+			Name:     name,
+			Kind:     st.Proc,
+			Proc:     p,
+			In:       st.In,
+			Out:      st.Out,
+			Optional: st.Optional,
+			After:    st.After,
 		})
 	}
 
@@ -191,6 +207,69 @@ func checkProc(kind string, p Proc) error {
 
 	if foundOut.IsSome() {
 		return fmt.Errorf("%w: %q: out %d is nil", ErrInvalidProc, kind, foundOut.Value().K)
+	}
+
+	return nil
+}
+
+// checkOptionalNames checks the optional lists of steps against the other
+// lists of their steps, before sortSteps would take a step naming itself
+// for a cycle. It checks the steps in name order.
+func checkOptionalNames(steps map[string]Step) error {
+	for name, st := range opiter.MapsSorted(steps) {
+		seen := map[string]bool{}
+
+		for _, r := range st.Optional {
+			switch {
+			case r == name:
+				return fmt.Errorf("%w: optional of %q names the step itself", ErrInvalidStep, name)
+			case seen[r]:
+				return fmt.Errorf("%w: optional of %q names %q twice", ErrInvalidStep, name, r)
+			case slices.Contains(st.In, r):
+				return fmt.Errorf(
+					"%w: optional of %q names %q, which its in names too", ErrInvalidStep, name, r,
+				)
+			case slices.Contains(st.Out, r):
+				return fmt.Errorf(
+					"%w: optional of %q names %q, which its out names too", ErrInvalidStep, name, r,
+				)
+			}
+
+			seen[r] = true
+		}
+	}
+
+	return nil
+}
+
+// matchOptional checks that p takes optional inputs when refs names any,
+// and that the AsInput value of each step refs names fits its OptionalType.
+func matchOptional(name string, refs Names, p Proc, procs map[string]Proc) error {
+	if len(refs) == 0 {
+		return nil
+	}
+
+	want := optionalType(p)
+	if want == nil {
+		return fmt.Errorf(
+			"%w: optional of %q names %d steps, but its proc takes no optional inputs",
+			ErrInvalidStep, name, len(refs),
+		)
+	}
+
+	for _, r := range refs {
+		got := procs[r].AsInputType()
+		if got == nil {
+			return fmt.Errorf(
+				"%w: optional of %q names %q, which has no AsInput", ErrInvalidStep, name, r,
+			)
+		}
+
+		if !got.AssignableTo(want) {
+			return fmt.Errorf(
+				"%w: optional of %q: %q gives %v, want %v", ErrTypeMismatch, name, r, got, want,
+			)
+		}
 	}
 
 	return nil
@@ -294,13 +373,15 @@ func checkInstance(ctx context.Context, n *Node) error {
 	return nil
 }
 
-// instanceMethods are an instance's reflected Param, In, Out and AsInput.
-// asInput is the zero Value when the proc has no AsInputType.
+// instanceMethods are an instance's reflected Param, In, Out, Optional and
+// AsInput. optional is the zero Value when the proc takes no optional
+// inputs, and asInput when the proc has no AsInputType.
 type instanceMethods struct {
-	param   reflect.Value
-	in      reflect.Value
-	out     reflect.Value
-	asInput reflect.Value
+	param    reflect.Value
+	in       reflect.Value
+	out      reflect.Value
+	optional reflect.Value
+	asInput  reflect.Value
 }
 
 // methods looks up inst's methods and checks them against the types p
@@ -331,6 +412,13 @@ func methods(inst Instance, p Proc) (instanceMethods, error) {
 
 	if m.out, err = method(inst, "Out", p.OutTypes(), nil, false); err != nil {
 		return instanceMethods{}, err
+	}
+
+	if t := optionalType(p); t != nil {
+		in := []reflect.Type{reflect.MapOf(reflect.TypeFor[string](), t)}
+		if m.optional, err = method(inst, "Optional", in, nil, false); err != nil {
+			return instanceMethods{}, err
+		}
 	}
 
 	asInput, err := method(inst, "AsInput", nil, asInputOut, len(asInputOut) == 0)
@@ -430,7 +518,8 @@ func unknownKey(path []string) error {
 	return fmt.Errorf("%w: %s", ErrUnknownKey, strings.Join(path, "."))
 }
 
-// sortSteps orders steps so each comes after its in, out and after steps.
+// sortSteps orders steps so each comes after its in, out, optional and after
+// steps.
 // Among steps ready at the same time, the smaller name comes first.
 func sortSteps(steps map[string]Step) ([]string, error) {
 	pending := map[string]int{}

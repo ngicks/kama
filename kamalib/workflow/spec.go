@@ -24,6 +24,8 @@ type Spec struct {
 //
 // In and Out list step names. Each name stands for that step's AsInput value,
 // and the lists are matched to the proc's InTypes and OutTypes by position.
+// Optional lists step names too. Their AsInput values reach the proc by
+// step name, as OptionalTaker describes.
 //
 //nolint:lll // triple json/yaml/toml tags; one field per line, never wrap tags
 type Step struct {
@@ -34,6 +36,10 @@ type Step struct {
 	// Out names the steps whose AsInput values are passed to Out, for the
 	// step to write into.
 	Out Names `json:"out,omitzero" yaml:"out,omitempty" toml:"out,omitempty"`
+	// Optional names the steps whose AsInput values are passed to Optional,
+	// keyed by step name. Each of them runs first. The proc must implement
+	// OptionalTaker.
+	Optional Names `json:"optional,omitzero" yaml:"optional,omitempty" toml:"optional,omitempty"`
 	// After names steps that must run first without passing a value.
 	After Names `json:"after,omitzero" yaml:"after,omitempty" toml:"after,omitempty"`
 	// Param is decoded into the proc's ParamType and passed to Param.
@@ -55,7 +61,7 @@ func (s Spec) unknownKeys() [][]string {
 
 // deps returns every step s must run after, without duplicates.
 func (s Step) deps() []string {
-	deps := slices.Concat(s.In, s.Out, s.After)
+	deps := slices.Concat(s.In, s.Out, s.Optional, s.After)
 	slices.Sort(deps)
 
 	return slices.Compact(deps)

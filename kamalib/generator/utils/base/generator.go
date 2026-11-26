@@ -34,6 +34,9 @@ type Env struct {
 	// paths relative to its root. A generator editing a file in place reads
 	// it from there.
 	Out fs.FS
+	// Optional holds the optional inputs of the step, keyed by step name,
+	// for a proc taking them. It is nil otherwise.
+	Optional map[string]any
 }
 
 // Output is a file a run yields. Whole and Composed implement it, and so
