@@ -320,13 +320,36 @@ func oldSpellingHint(args string) string {
 		case !expr.IsName(kv.Key):
 			return ""
 		case kv.HasValue:
-			items = append(items, expr.Arg{Name: kv.Key, Value: expr.String{Value: kv.Value}})
+			items = append(items, expr.Arg{Name: kv.Key, Value: hintValue(kv)})
 		default:
 			items = append(items, expr.Arg{Value: expr.Call{Name: kv.Key}})
 		}
 	}
 
 	return "; separate items with commas and quote strings, as in " + expr.Print(items)
+}
+
+// hintValue spells the value of kv for [oldSpellingHint]. A literal, as
+// True, 1 or [1, 2], stays as written. A quoted value and any other bare
+// value become a string.
+func hintValue(kv dircmnt.KeyValue) expr.Node {
+	if kv.Quoted {
+		return expr.String{Value: kv.Value}
+	}
+
+	// A bare word parses as a call without parentheses, and a=b or 1,2
+	// parse as other items, so only a single positional literal is kept.
+	args, err := expr.Parse(kv.Value)
+	if err != nil || len(args) != 1 || args[0].Name != "" {
+		return expr.String{Value: kv.Value}
+	}
+
+	switch args[0].Value.(type) {
+	case expr.Bool, expr.Null, expr.Number, expr.List, expr.Dict:
+		return args[0].Value
+	}
+
+	return expr.String{Value: kv.Value}
 }
 
 // Word returns the name of a when a is a bare word, as ignore or file: a

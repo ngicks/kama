@@ -243,16 +243,34 @@ func (s *starts) UnmarshalExpr(_ Source, _ string, args []expr.Arg) error {
 }
 
 func TestOldSpellingHint(t *testing.T) {
-	for args, want := range map[string]string{
-		`name=b short=s usage="the b"`: `; separate items with commas and quote strings, ` +
-			`as in name="b", short="s", usage="the b"`,
-		"append overwrite":   "; separate items with commas and quote strings, as in append, overwrite",
-		`length=">=1" or(a)`: "",
-		">=1 b":              "",
-		`a="b`:               "",
-		"":                   "",
+	// Each row maps args to the suggested spelling, or to "" for no hint.
+	for args, suggested := range map[string]string{
+		`name=b short=s usage="the b"`: `name="b", short="s", usage="the b"`,
+		"append overwrite":             "append, overwrite",
+		`hook=True pre="f"`:            `hook=True, pre="f"`,
+		"name=timeout short=t":         `name="timeout", short="t"`,
+		"more=1 name=x":                `more=1, name="x"`,
+		`short="1" name=x`:             `short="1", name="x"`,
+		"a= b":                         `a="", b`,
+		`length=">=1" or(a)`:           "",
+		">=1 b":                        "",
+		`a="b`:                         "",
+		"":                             "",
 	} {
-		assert.Equal(t, oldSpellingHint(args), want, args)
+		if suggested == "" {
+			assert.Equal(t, oldSpellingHint(args), "", args)
+			continue
+		}
+
+		assert.Equal(
+			t,
+			oldSpellingHint(args),
+			"; separate items with commas and quote strings, as in "+suggested,
+			args,
+		)
+
+		_, err := expr.Parse(suggested)
+		assert.NilError(t, err, args)
 	}
 
 	_, err := testLoader.LoadPackages([]*packages.Package{

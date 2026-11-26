@@ -9,6 +9,9 @@ import (
 func TestParseArgsKeyValue(t *testing.T) {
 	key := func(k string) KeyValue { return KeyValue{Key: k} }
 	pair := func(k, v string) KeyValue { return KeyValue{Key: k, Value: v, HasValue: true} }
+	quoted := func(k, v string) KeyValue {
+		return KeyValue{Key: k, Value: v, HasValue: true, Quoted: true}
+	}
 
 	cases := []struct {
 		args string
@@ -20,19 +23,19 @@ func TestParseArgsKeyValue(t *testing.T) {
 		{"partial", []KeyValue{key("partial")}, ""},
 		{
 			`partial=a.toml validate="b c.yaml"`,
-			[]KeyValue{pair("partial", "a.toml"), pair("validate", "b c.yaml")},
+			[]KeyValue{pair("partial", "a.toml"), quoted("validate", "b c.yaml")},
 			"",
 		},
 		{"  a=1\tb  c ", []KeyValue{pair("a", "1"), key("b"), key("c")}, ""},
 		{"a= b", []KeyValue{pair("a", ""), key("b")}, ""},
-		{`a=""`, []KeyValue{pair("a", "")}, ""},
+		{`a=""`, []KeyValue{quoted("a", "")}, ""},
 		{"a=1,2 b)c f(x)", []KeyValue{pair("a", "1,2"), key("b)c"), key("f(x)")}, ""},
 		{"a=b=c", []KeyValue{pair("a", "b=c")}, ""},
 		{">=1", []KeyValue{pair(">", "1")}, ""},
 		{"=1", nil, "missing key"},
 		{"a=1 a a=2", []KeyValue{pair("a", "1"), key("a"), pair("a", "2")}, ""},
-		{`a="x\"y\né"`, []KeyValue{pair("a", "x\"y\né")}, ""},
-		{"a=`b\\ \"c\"`", []KeyValue{pair("a", `b\ "c"`)}, ""},
+		{`a="x\"y\né"`, []KeyValue{quoted("a", "x\"y\né")}, ""},
+		{"a=`b\\ \"c\"`", []KeyValue{quoted("a", `b\ "c"`)}, ""},
 		{`"a b"=1`, []KeyValue{pair("a b", "1")}, ""},
 		{`"a=b"`, []KeyValue{key("a=b")}, ""},
 		{`""=1`, []KeyValue{pair("", "1")}, ""},

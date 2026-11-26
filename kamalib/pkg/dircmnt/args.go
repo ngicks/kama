@@ -16,6 +16,9 @@ type KeyValue struct {
 	// HasValue is true for a pair written key=value or key=. It tells key
 	// from key=, which both leave Value empty.
 	HasValue bool
+	// Quoted is true for a value written as a quoted string. It tells
+	// key="1" from key=1, which both leave Value "1".
+	Quoted bool
 }
 
 // ParseArgsKeyValue parses [Comment.Args] as space-separated key=value
@@ -74,6 +77,7 @@ func parseArg(s string) (KeyValue, string, error) {
 
 	if strings.HasPrefix(rest, "=") {
 		kv.HasValue = true
+		kv.Quoted = startsQuoted(rest[1:])
 
 		kv.Value, rest, err = cutToken(rest[1:], "")
 		if err != nil {
