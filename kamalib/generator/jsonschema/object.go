@@ -150,7 +150,7 @@ func productParts(doc *jsonschema.Schema, opts Options, ptr string) (string, err
 	}
 
 	names, err := opiter.TryCollect(
-		opiter.WrapSeq(opiter.Range(0, len(productOf(doc, ptr, s)))).
+		opiter.Range(0, len(productOf(doc, ptr, s))).
 			Disassemble(func(i int) (string, error) { return memberName(doc, opts, ptr, i) }),
 	)
 	if err != nil {
@@ -213,7 +213,7 @@ func marshalSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		return []genStep{lang.DocFunc(docComment(text), sig, body...)}
 	}
 
-	values := opiter.WrapSeq(opiter.Range(0, len(productOf(doc, ptr, s)))).
+	values := opiter.Range(0, len(productOf(doc, ptr, s))).
 		Map(func(i int) genExpr { return lang.Expr("v.%s", memberField(doc, opts, ptr, i)) }).
 		CollectSlice()
 
@@ -635,7 +635,7 @@ func allowedValues(doc *jsonschema.Schema, ptr string) ([]string, error) {
 	}
 
 	return opiter.TryCollect(
-		opiter.WrapSeq(slices.Values(values)).
+		opiter.SlicesValues(values).
 			Disassemble(func(v jsontext.Value) (string, error) { return goLiteral(ptr, k[0], v) }),
 	)
 }

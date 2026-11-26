@@ -70,7 +70,7 @@ func (s *selection) marked(n *typegraph.Node) bool {
 	}
 
 	po := s.loadedOptions.Option.Packages[n.Id.PackagePath]
-	allTypes := opiter.WrapSeq(maps.Values(po.Files)).
+	allTypes := opiter.MapsValues(po.Files).
 		Any(func(p PackageOptions) bool { return p.AllTypes })
 
 	return po.Package.AllTypes || allTypes || po.Files[n.Filename()].file

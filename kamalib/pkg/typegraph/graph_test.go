@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/types"
 	"iter"
-	"maps"
 	"slices"
 	"testing"
 
@@ -35,7 +34,7 @@ func loadPackages(t *testing.T, patterns ...string) []*packages.Package {
 }
 
 func pkgNamed(pkgs []*packages.Package, name string) *packages.Package {
-	return opiter.WrapSeq(slices.Values(pkgs)).
+	return opiter.SlicesValues(pkgs).
 		Filter(func(pkg *packages.Package) bool { return pkg.Name == name }).
 		First().
 		UnwrapOrDefault()
@@ -79,7 +78,7 @@ func definedNamed(pkg *packages.Package, name string) *types.Named {
 		return ok
 	}
 
-	return opiter.WrapSeq(maps.Values(pkg.TypesInfo.Defs)).
+	return opiter.MapsValues(pkg.TypesInfo.Defs).
 		Filter(isNamedType).
 		Map(func(obj types.Object) *types.Named { return obj.Type().(*types.Named) }).
 		First().
@@ -90,7 +89,7 @@ func keysSorted[V any](m map[QualifiedType]V) []QualifiedType {
 	// Tests compare the keys of an empty map with an empty, non-nil slice.
 	keys := make([]QualifiedType, 0, len(m))
 
-	return opiter.WrapSeq2(opiter.MapsSortedFunc(m, QualifiedType.Compare)).
+	return opiter.MapsSortedFunc(m, QualifiedType.Compare).
 		OmitL().
 		AppendSeq(keys)
 }
@@ -931,7 +930,7 @@ func TestTrim_RouteFilter(t *testing.T) {
 		func(n *Node) bool { return n.Id == targetId },
 		func(e *Edge[Node]) bool { return e.Parent.Id == structId },
 		func(r *EdgeRoute) bool {
-			return opiter.WrapSeq(slices.Values(r.Nodes)).
+			return opiter.SlicesValues(r.Nodes).
 				ContainsFunc(func(n EdgeRouteNode) bool { return n.Kind == EdgeKindPointer })
 		},
 	)

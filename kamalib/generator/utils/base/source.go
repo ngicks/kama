@@ -41,7 +41,7 @@ func SourcePackages(pkgs []*packages.Package) []*packages.Package {
 	}
 
 	// The ID of any variant differs from its path.
-	return opiter.WrapSeq(slices.Values(pkgs)).
+	return opiter.SlicesValues(pkgs).
 		Filter(func(p *packages.Package) bool { return len(p.CompiledGoFiles) > 0 }).
 		Filter(func(p *packages.Package) bool {
 			return gopackages.IsTestVariant(p) || gopackages.IsExternalTest(p) ||
@@ -62,7 +62,7 @@ func DeclaringPackage(pkgs []*packages.Package, obj types.Object) *packages.Pack
 		return nil
 	}
 
-	return opiter.WrapSeq(slices.Values(pkgs)).
+	return opiter.SlicesValues(pkgs).
 		Filter(func(p *packages.Package) bool { return p.PkgPath == obj.Pkg().Path() }).
 		First().
 		UnwrapOrDefault()
@@ -145,7 +145,7 @@ func (c Composed) source() []byte {
 
 // BuildConstraint returns the //go:build line of f.
 func BuildConstraint(f *ast.File) (string, bool) {
-	return opiter.WrapSeq(slices.Values(f.Comments)).
+	return opiter.SlicesValues(f.Comments).
 		TakeWhile(false, func(cg *ast.CommentGroup) bool { return cg.Pos() < f.Package }).
 		FlatMap(func(cg *ast.CommentGroup) iter.Seq[*ast.Comment] { return slices.Values(cg.List) }).
 		Filter(func(c *ast.Comment) bool { return constraint.IsGoBuild(c.Text) }).
@@ -161,7 +161,7 @@ func BuildConstraint(f *ast.File) (string, bool) {
 func CheckPredeclared(pkg *packages.Package, files []Composed, conflict error) error {
 	objs, err := ShadowedPredeclared(
 		pkg,
-		opiter.WrapSeq(slices.Values(files)).
+		opiter.SlicesValues(files).
 			Map(Composed.source).
 			CollectSlice(),
 	)
@@ -177,7 +177,7 @@ func CheckPredeclared(pkg *packages.Package, files []Composed, conflict error) e
 	}
 
 	return errors.Join(
-		opiter.WrapSeq(slices.Values(objs)).
+		opiter.SlicesValues(objs).
 			Map(shadowErr).
 			CollectSlice()...,
 	)
@@ -267,7 +267,7 @@ func ShadowedPredeclared(pkg *packages.Package, contents [][]byte) ([]types.Obje
 		})
 	}
 
-	return opiter.WrapSeq2(opiter.MapsSorted(used)).
+	return opiter.MapsSorted(used).
 		OmitL().
 		Filter(func(ident string) bool { return types.Universe.Lookup(ident) != nil }).
 		Map(pkg.Types.Scope().Lookup).

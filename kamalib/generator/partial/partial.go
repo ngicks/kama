@@ -192,7 +192,7 @@ func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, 
 
 		// The source files declaring targets, sorted.
 		filenames := slices.Compact(
-			opiter.WrapSeq(slices.Values(targets)).
+			opiter.SlicesValues(targets).
 				Map((*typegraph.Node).Filename).
 				Collect(slices.Sorted),
 		)
@@ -437,7 +437,7 @@ func renderPackage(
 	}
 	// A helpers file declares its helpers sorted by name, that is by op and
 	// then by the hashes of their signatures.
-	callers := opiter.WrapSeq(slices.Values(files)).
+	callers := opiter.SlicesValues(files).
 		Map(func(f *partialFile) base.Caller { return f.caller(targets) }).
 		CollectSlice()
 
@@ -468,7 +468,7 @@ func renderHelpers(
 	for _, name := range hf.Names {
 		h := helpers.byName[name]
 
-		reserve = opiter.WrapSeq(slices.Values(h.typeParams())).
+		reserve = opiter.SlicesValues(h.typeParams()).
 			Map(typeParamName).
 			AppendSeq(reserve)
 
@@ -531,10 +531,8 @@ func checkHelperNames(sel *selection, pkg *packages.Package, files []*partialFil
 	}
 
 	return errors.Join(
-		opiter.WrapSeq(
-			slices.Values(
-				base.UnownedDecls(pkg, sel.reg, slices.Sorted(maps.Keys(names))),
-			),
+		opiter.SlicesValues(
+			base.UnownedDecls(pkg, sel.reg, slices.Sorted(maps.Keys(names))),
 		).
 			Map(declaredErr).
 			CollectSlice()...,

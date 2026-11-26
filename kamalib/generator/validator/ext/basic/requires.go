@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -132,7 +131,7 @@ func (r requiresOf) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error
 		siblings = append(siblings, cond)
 	}
 
-	names := opiter.WrapSeq(slices.Values(r.names)).
+	names := opiter.SlicesValues(r.names).
 		Map(strconv.Quote).
 		CollectSlice()
 

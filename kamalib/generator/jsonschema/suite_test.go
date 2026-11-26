@@ -47,7 +47,7 @@ func TestSuiteNeverPanics(t *testing.T) {
 	}
 
 	files := slices.Compact(
-		opiter.WrapSeq(slices.Values(groups)).
+		opiter.SlicesValues(groups).
 			Map(func(g suitetest.Group) string { return g.File }).
 			CollectSlice(),
 	)
@@ -94,7 +94,7 @@ func suiteMetaRemotes() []Remote {
 // externalRemotes yields a remote per external schema of g, in the order of
 // the URIs, mapping the URI to the schema inside the file of the suite.
 func externalRemotes(g suitetest.Group) iter.Seq[Remote] {
-	return opiter.WrapSeq2(opiter.MapsSorted(g.ExternalSchemas)).
+	return opiter.MapsSorted(g.ExternalSchemas).
 		OmitL().
 		Map(func(uri string) Remote { return Remote{Uri: uri, File: g.ExternalSchemaRef(uri)} }).
 		Iter()

@@ -126,7 +126,7 @@ func Run[I any](
 		return nil, r.Warnings, err
 	}
 
-	files := opiter.WrapSeq(slices.Values(plan.Files)).
+	files := opiter.SlicesValues(plan.Files).
 		Map(func(f base.File) base.File {
 			return base.File{
 				Path:    filepath.Join(out.Root(), filepath.FromSlash(f.Path)),

@@ -143,7 +143,7 @@ func partialTypes(t *testing.T, src string) []string {
 	f, err := parser.ParseFile(token.NewFileSet(), "x.go", src, 0)
 	assert.NilError(t, err)
 
-	return opiter.WrapSeq(slices.Values(f.Decls)).
+	return opiter.SlicesValues(f.Decls).
 		FlatMap(func(d ast.Decl) iter.Seq[ast.Spec] { return slices.Values(typeSpecs(d)) }).
 		Map(func(s ast.Spec) string { return s.(*ast.TypeSpec).Name.Name }).
 		CollectSlice()
@@ -715,7 +715,7 @@ type Om map[int]opt.Option[M]
 		"private":           "und.Und[int]",
 	}
 
-	got := opiter.WrapSeq2(maps.All(fieldTypes(t, src, "APartial"))).
+	got := opiter.MapsAll(fieldTypes(t, src, "APartial")).
 		Map(withoutTag).
 		Collect(maps.Collect)
 

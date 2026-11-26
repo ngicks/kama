@@ -57,7 +57,7 @@ type fixture struct {
 func TestFixtureSpecBuild(t *testing.T) {
 	gentest.BuildSpecs(
 		t,
-		opiter.WrapSeq(slices.Values(fixtures)).
+		opiter.SlicesValues(fixtures).
 			Map(func(fx fixture) string { return fx.dir }).
 			CollectSlice()...,
 	)
@@ -93,7 +93,7 @@ func TestFixtureUpToDate(t *testing.T) {
 			assert.NilError(t, i.Run(ctx, r))
 			assert.Equal(t, len(r.Warnings), 0, "%v", r.Warnings)
 
-			produced := opiter.WrapSeq(slices.Values(files)).
+			produced := opiter.SlicesValues(files).
 				Map(func(file base.File) string {
 					return filepath.Join(f.Root(), filepath.FromSlash(file.Path))
 				}).
@@ -187,7 +187,7 @@ func testFixtureFileParity(t *testing.T, fileDir string) {
 	normalize := func(src string) string {
 		rest, helpers := splitHelpers(t, src)
 
-		hidden := opiter.WrapSeq(slices.Values(helpers)).
+		hidden := opiter.SlicesValues(helpers).
 			Map(hideHash).
 			Collect(slices.Sorted)
 

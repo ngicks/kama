@@ -64,7 +64,7 @@ type Kids[T any] []L[T]
 	src := files["a.kama_partial.go"]
 
 	types := func(name string) map[string]string {
-		return opiter.WrapSeq2(maps.All(fieldTypes(t, src, name))).
+		return opiter.MapsAll(fieldTypes(t, src, name)).
 			Map(withoutTag).
 			Collect(maps.Collect)
 	}
@@ -271,7 +271,7 @@ func TestUnexportedAliasField(t *testing.T) {
 	})
 	src := files["a.kama_partial.go"]
 
-	got := opiter.WrapSeq2(maps.All(fieldTypes(t, src, "APartial"))).
+	got := opiter.MapsAll(fieldTypes(t, src, "APartial")).
 		Map(withoutTag).
 		Collect(maps.Collect)
 
@@ -547,7 +547,7 @@ func TestCycleRefPerOwner(t *testing.T) {
 	assert.NilError(t, generateAndBuild(t, src))
 
 	typesOf := func(file, name string) map[string]string {
-		return opiter.WrapSeq2(maps.All(fieldTypes(t, files[file], name))).
+		return opiter.MapsAll(fieldTypes(t, files[file], name)).
 			Map(withoutTag).
 			Collect(maps.Collect)
 	}

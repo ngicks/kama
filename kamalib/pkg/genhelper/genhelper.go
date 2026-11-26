@@ -154,7 +154,7 @@ func (e *stepError) Error() string {
 	var sb strings.Builder
 	sb.WriteString("genhelper: step ")
 
-	indices := opiter.WrapSeq(slices.Values(e.path)).
+	indices := opiter.SlicesValues(e.path).
 		Map(strconv.Itoa).
 		CollectSlice()
 

@@ -59,7 +59,7 @@ func (f Format) Extensions() []string {
 func FormatOf(name string) (Format, bool) {
 	ext := path.Ext(name)
 
-	return opiter.WrapSeq(slices.Values([]Format{FormatJson, FormatYaml, FormatToml})).
+	return opiter.SlicesValues([]Format{FormatJson, FormatYaml, FormatToml}).
 		Filter(func(f Format) bool { return slices.Contains(f.Extensions(), ext) }).
 		First().
 		Unpack()
@@ -142,7 +142,7 @@ func (p PathInput) Normalize() (PathInput, error) {
 
 // Candidates lists every file name Load probes, in order.
 func (p PathInput) Candidates() ([]string, error) {
-	unknown := opiter.WrapSeq(slices.Values(p.Formats)).
+	unknown := opiter.SlicesValues(p.Formats).
 		Filter(func(f Format) bool { return f.Extensions() == nil }).
 		First()
 
@@ -150,7 +150,7 @@ func (p PathInput) Candidates() ([]string, error) {
 		return nil, fmt.Errorf("%w: %q", ErrUnknownFormat, unknown.Value())
 	}
 
-	return opiter.WrapSeq(slices.Values(p.Formats)).
+	return opiter.SlicesValues(p.Formats).
 		FlatMap(func(f Format) iter.Seq[string] { return slices.Values(f.Extensions()) }).
 		Map(func(ext string) string { return p.Base + ext }).
 		CollectSlice(), nil

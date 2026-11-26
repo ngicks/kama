@@ -85,7 +85,7 @@ func TestImplementor(t *testing.T) {
 	// The run declares no partial variant of a type outside it.
 	assert.DeepEqual(t, partialTypes(t, src), []string{"APartial", "ListPartial"})
 
-	got := opiter.WrapSeq2(maps.All(fieldTypes(t, src, "APartial"))).
+	got := opiter.MapsAll(fieldTypes(t, src, "APartial")).
 		Map(withoutTag).
 		Collect(maps.Collect)
 
@@ -135,7 +135,7 @@ func TestImplementorOfTheRun(t *testing.T) {
 			continue
 		}
 
-		got := opiter.WrapSeq2(maps.All(fieldTypes(t, string(o.Content), "APartial"))).
+		got := opiter.MapsAll(fieldTypes(t, string(o.Content), "APartial")).
 			Map(withoutTag).
 			Collect(maps.Collect)
 

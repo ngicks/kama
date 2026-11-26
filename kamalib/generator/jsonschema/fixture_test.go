@@ -44,7 +44,7 @@ var fixtureRemotes = map[string][]Remote{
 func TestFixtureSpecBuild(t *testing.T) {
 	gentest.BuildSpecs(
 		t,
-		opiter.WrapSeq(slices.Values(fixtures)).
+		opiter.SlicesValues(fixtures).
 			Map(fixtureDir).
 			CollectSlice()...,
 	)
@@ -143,7 +143,7 @@ func generatedFiles(t *testing.T, fsys fs.FS) []string {
 	entries, err := fs.ReadDir(fsys, ".")
 	assert.NilError(t, err)
 
-	return opiter.WrapSeq(slices.Values(entries)).
+	return opiter.SlicesValues(entries).
 		Map(fs.DirEntry.Name).
 		Filter(func(n string) bool { return strings.Contains(n, ".kama_") }).
 		Collect(slices.Sorted)

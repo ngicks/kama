@@ -3,7 +3,6 @@ package basic
 import (
 	"fmt"
 	"go/types"
-	"slices"
 	"strconv"
 
 	"github.com/ngicks/opiter"
@@ -91,7 +90,7 @@ func (o RequiredOptions) Check(t types.Type) error {
 // Emit calls the helper the test of t needs, rawjson.Required for names.
 func (o RequiredOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
 	if len(o.Names) > 0 {
-		names := opiter.WrapSeq(slices.Values(o.Names)).
+		names := opiter.SlicesValues(o.Names).
 			Map(func(n string) ext.Gen { return lang.Expr("%s", strconv.Quote(n)) }).
 			CollectSlice()
 

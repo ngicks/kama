@@ -3,7 +3,6 @@ package typegraph
 import (
 	"maps"
 	"path/filepath"
-	"slices"
 	"testing"
 
 	"github.com/ngicks/opiter"
@@ -11,7 +10,7 @@ import (
 )
 
 func typeNames(nodes []*Node) []string {
-	return opiter.WrapSeq(slices.Values(nodes)).
+	return opiter.SlicesValues(nodes).
 		Map(func(n *Node) string { return n.Id.TypeName }).
 		CollectSlice()
 }

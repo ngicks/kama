@@ -206,7 +206,7 @@ func (c *collector) add(target Target, comments []*ast.Comment) {
 		}, true
 	}
 
-	c.out = opiter.WrapSeq(slices.Values(comments)).
+	c.out = opiter.SlicesValues(comments).
 		Disassemble(toLine).
 		Filter(func(_ line, ok bool) bool { return ok }).
 		OmitL().
@@ -230,7 +230,7 @@ func fieldComments(f *ast.Field) []*ast.Comment {
 
 func fieldNames(f *ast.Field) []string {
 	if len(f.Names) > 0 {
-		return opiter.WrapSeq(slices.Values(f.Names)).
+		return opiter.SlicesValues(f.Names).
 			Map((*ast.Ident).String).
 			CollectSlice()
 	}

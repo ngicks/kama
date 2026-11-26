@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
-	"slices"
 
 	"github.com/ngicks/opiter"
 
@@ -100,7 +99,7 @@ func (o PrefixOptions) Annotate(e ext.Emitter, t types.Type, v, ev ext.Gen) (ext
 	}
 
 	fs, err := opiter.TryCollect(
-		opiter.WrapSeq(slices.Values(o.Operands)).
+		opiter.SlicesValues(o.Operands).
 			Disassemble(func(op Operand) (ext.Gen, error) {
 				return valueFunc(e, []Operand{op}, t)
 			}),

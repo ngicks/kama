@@ -336,7 +336,7 @@ func TestSuiteBehavior(t *testing.T) {
 	groups := suitetest.Groups(t, os.DirFS(moduleRoot))
 
 	for _, g := range groups {
-		sets := opiter.WrapSeq(slices.Values(suiteSets)).
+		sets := opiter.SlicesValues(suiteSets).
 			Filter(func(set suiteSet) bool { return set.selects(g) }).
 			Map(func(set suiteSet) string { return set.name }).
 			CollectSlice()
@@ -425,7 +425,7 @@ func TestSuiteBehavior(t *testing.T) {
 		}
 	}
 
-	located := opiter.WrapSeq(slices.Values(keys)).
+	located := opiter.SlicesValues(keys).
 		Map(suiteKey.String).
 		Collect(slices.Sorted)
 	assert.Equal(t, len(slices.Compact(located)), len(keys), "a test of the suite is located twice")
@@ -445,7 +445,7 @@ func (k suiteKey) exception(exceptions map[string]string, valid bool) (string, b
 		keys = append(keys, k.file+": "+k.group, k.file)
 	}
 
-	return opiter.WrapSeq(slices.Values(keys)).
+	return opiter.SlicesValues(keys).
 		Filter(func(key string) bool { _, ok := exceptions[key]; return ok }).
 		First().
 		Unpack()
@@ -478,7 +478,7 @@ func checkUnsupported(t *testing.T, set suiteSet, unsupported, reasons map[strin
 	t.Helper()
 
 	files := slices.Compact(
-		opiter.WrapSeq(maps.Keys(set.unsupported)).
+		opiter.MapsKeys(set.unsupported).
 			Concat(maps.Keys(unsupported)).
 			Collect(slices.Sorted),
 	)
@@ -509,7 +509,7 @@ func checkUnsupported(t *testing.T, set suiteSet, unsupported, reasons map[strin
 // unsupported keyword is named in the reason.
 func rejectReasons(err error) []string {
 	if j, ok := err.(interface{ Unwrap() []error }); ok {
-		return opiter.WrapSeq(slices.Values(j.Unwrap())).
+		return opiter.SlicesValues(j.Unwrap()).
 			FlatMap(func(e error) iter.Seq[string] { return slices.Values(rejectReasons(e)) }).
 			CollectSlice()
 	}
@@ -543,7 +543,7 @@ func rejectReasons(err error) []string {
 var quotedString = regexp.MustCompile(`"(?:[^"\\]|\\.)*"`)
 
 func sumValues(m map[string]int) int {
-	return opiter.WrapSeq(maps.Values(m)).
+	return opiter.MapsValues(m).
 		Reduce(func(sum, n int) int { return sum + n }, 0)
 }
 
@@ -580,9 +580,9 @@ func batchSuite(batches []suiteBatch, g suitetest.Group, assertFormats bool) []s
 // agrees reports whether the external schemas of g equal those of the
 // groups of b at every URI they share.
 func (b suiteBatch) agrees(g suitetest.Group) bool {
-	return !opiter.WrapSeq(slices.Values(b.groups)).
+	return !opiter.SlicesValues(b.groups).
 		Any(func(o suitetest.Group) bool {
-			return opiter.WrapSeq2(maps.All(g.ExternalSchemas)).
+			return opiter.MapsAll(g.ExternalSchemas).
 				Any(func(uri string, v jsontext.Value) bool {
 					w, ok := o.ExternalSchemas[uri]
 					return ok && !bytes.Equal(v, w)
@@ -594,8 +594,8 @@ func (b suiteBatch) agrees(g suitetest.Group) bool {
 // the external schemas of its groups, mapped to the schema of the first
 // group naming it.
 func (b suiteBatch) remotes() []any {
-	return opiter.WrapSeq(slices.Values(suiteMetaRemotes())).
-		Concat(opiter.WrapSeq(slices.Values(b.groups)).
+	return opiter.SlicesValues(suiteMetaRemotes()).
+		Concat(opiter.SlicesValues(b.groups).
 			FlatMap(externalRemotes).
 			Iter()).
 		UniqueFunc(func(r Remote) string { return r.Uri }).
@@ -853,14 +853,14 @@ func suiteModule(t *testing.T) {
 	assert.NilError(t, err)
 
 	// A go line below that of this module would need go mod tidy.
-	goLine := opiter.WrapSeq(strings.Lines(string(gomod))).
+	goLine := opiter.StringsLines(string(gomod)).
 		Filter(func(l string) bool { return strings.HasPrefix(l, "go ") }).
 		First()
 	assert.Assert(t, goLine.IsSome())
 
 	// Generated code imports package option, which the fixtures require
 	// at the version this module does.
-	option := opiter.WrapSeq(strings.Lines(string(gomod))).
+	option := opiter.StringsLines(string(gomod)).
 		Map(strings.TrimSpace).
 		Filter(func(l string) bool { return strings.HasPrefix(l, "github.com/ngicks/option ") }).
 		First()
@@ -897,7 +897,7 @@ func suiteModule(t *testing.T) {
 func runSuiteDriver(t *testing.T) []string {
 	t.Helper()
 
-	return opiter.WrapSeq(strings.Lines(suiteGo(t, "run", "."))).
+	return opiter.StringsLines(suiteGo(t, "run", ".")).
 		Map(func(l string) string { return strings.TrimSuffix(l, "\n") }).
 		CollectSlice()
 }

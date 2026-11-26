@@ -62,7 +62,7 @@ func PrintCommentGroup(p Printer, parts []string) {
 // Plain text given to them gets "// " before each line instead, which
 // leaves a space before the tab.
 func IndentComment(text string) string {
-	lines := opiter.WrapSeq(strings.SplitSeq(text, "\n")).
+	lines := opiter.StringsSplitSeq(text, "\n").
 		Map(indentLine).
 		CollectSlice()
 

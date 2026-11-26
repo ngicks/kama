@@ -3,7 +3,6 @@ package partial
 import (
 	"fmt"
 	"go/types"
-	"maps"
 	"slices"
 	"strings"
 
@@ -45,7 +44,7 @@ func (s *selection) flagged(id typegraph.QualifiedType) bool {
 	to, _ := s.loaded.Option.Type(id)
 	fields, _ := to.Fields.Unpack()
 
-	return opiter.WrapSeq(maps.Values(fields)).
+	return opiter.MapsValues(fields).
 		Any(func(o FieldOptions) bool { return o.Flag != nil })
 }
 

@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -288,7 +287,7 @@ func (i *copyDownInstance) checkCompiles(ctx context.Context) error {
 
 	// A graph staging no Go file may run on a directory that is not a Go
 	// module, where a load fails.
-	stagesGo := opiter.WrapSeq(maps.Keys(staged)).
+	stagesGo := opiter.MapsKeys(staged).
 		Any(func(name string) bool { return strings.HasSuffix(name, ".go") })
 
 	if !stagesGo {

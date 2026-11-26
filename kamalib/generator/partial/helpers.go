@@ -611,7 +611,7 @@ func (s *helperSet) add(h *helper) (*helper, error) {
 		return len(h.typeParams()) > 0 && bytes.Equal(prevIn, in) && bytes.Equal(prevOut, out)
 	}
 
-	served := opiter.WrapSeq(slices.Values(s.groups[base])).
+	served := opiter.SlicesValues(s.groups[base]).
 		Filter(servesSignature).
 		First()
 

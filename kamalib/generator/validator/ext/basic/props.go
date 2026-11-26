@@ -170,7 +170,7 @@ func propsEntry(n expr.Node, r ext.Resolver) (PropsEntry, error) {
 
 // Check accepts raw JSON text whose members every validator applies to.
 func (o PropsOptions) Check(t types.Type) error {
-	errs := opiter.WrapSeq(slices.Values(o.Entries)).
+	errs := opiter.SlicesValues(o.Entries).
 		Map(func(en PropsEntry) error { return checkRaw("props", en.Operands, t) }).
 		CollectSlice()
 

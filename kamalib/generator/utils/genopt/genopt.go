@@ -520,7 +520,7 @@ func uniquePackages(pkgs []*packages.Package) []*packages.Package {
 		}
 	}
 
-	return opiter.WrapSeq2(opiter.MapsSorted(byPath)).
+	return opiter.MapsSorted(byPath).
 		OmitF().
 		CollectSlice()
 }

@@ -94,7 +94,7 @@ func scopeKeeps(doc *jsonschema.Schema, scope []string, target string) bool {
 		return true
 	}
 
-	return opiter.WrapSeq(slices.Values(dynamicNames(doc))).
+	return opiter.SlicesValues(dynamicNames(doc)).
 		Every(func(name string) bool {
 			return outermost(doc, entered, name) == outermost(doc, own, name)
 		})
@@ -129,7 +129,7 @@ func dynamicNames(doc *jsonschema.Schema) []string {
 // outermost returns the pointer of the schema declaring the $dynamicAnchor
 // name in the outermost resource of scope declaring it.
 func outermost(doc *jsonschema.Schema, scope []string, name string) opt.Option[string] {
-	return opiter.WrapSeq(slices.Values(scope)).
+	return opiter.SlicesValues(scope).
 		Map(func(res string) opt.Option[string] {
 			return opt.FromOk(jsonschema.DynamicAnchor(doc, res, name))
 		}).

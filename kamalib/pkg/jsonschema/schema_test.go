@@ -4,7 +4,6 @@ import (
 	"encoding/json/jsontext"
 	jsonv2 "encoding/json/v2"
 	"errors"
-	"slices"
 	"testing"
 
 	"github.com/ngicks/opiter"
@@ -19,7 +18,7 @@ func TestSchemaKeepsSourceOrder(t *testing.T) {
 	assert.NilError(t, jsonv2.Unmarshal([]byte(in), &s))
 
 	names := func(m SchemaMap) []string {
-		return opiter.WrapSeq(slices.Values(m)).
+		return opiter.SlicesValues(m).
 			Map(func(n NamedSchema) string { return n.Name }).
 			CollectSlice()
 	}

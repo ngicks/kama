@@ -188,11 +188,11 @@ func onceWarn(r workflow.Reporter) func(w error) {
 // reservedNames reports the validators of reg named by a word of
 // //kama:validate that names no validator.
 func reservedNames(reg *ext.Registry) error {
-	reserved := opiter.WrapSeq(slices.Values(reg.Names())).
+	reserved := opiter.SlicesValues(reg.Names()).
 		Filter(func(name string) bool { return slices.Contains(ext.ItemWords, name) }).
 		CollectSlice()
 
-	unnamed := opiter.WrapSeq(slices.Values(reg.Names())).
+	unnamed := opiter.SlicesValues(reg.Names()).
 		Filter(func(name string) bool { return !expr.IsName(name) }).
 		CollectSlice()
 

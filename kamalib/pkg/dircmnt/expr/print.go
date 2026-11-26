@@ -1,7 +1,6 @@
 package expr
 
 import (
-	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -21,7 +20,7 @@ import (
 // reads back otherwise.
 func Print(args []Arg) string {
 	return strings.Join(
-		opiter.WrapSeq(slices.Values(args)).
+		opiter.SlicesValues(args).
 			Map(Arg.String).
 			CollectSlice(),
 		", ",
@@ -71,7 +70,7 @@ func (Null) String() string { return "None" }
 
 func (n List) String() string {
 	return "[" + strings.Join(
-		opiter.WrapSeq(slices.Values(n.Elems)).
+		opiter.SlicesValues(n.Elems).
 			Map(Node.String).
 			CollectSlice(),
 		", ",
@@ -80,7 +79,7 @@ func (n List) String() string {
 
 func (n Dict) String() string {
 	return "{" + strings.Join(
-		opiter.WrapSeq(slices.Values(n.Entries)).
+		opiter.SlicesValues(n.Entries).
 			Map(func(e Entry) string { return e.Key.String() + ": " + e.Value.String() }).
 			CollectSlice(),
 		", ",
@@ -122,7 +121,7 @@ func group(n Node, prec int) string {
 
 func chain(ops []Node, sep string, prec int) string {
 	return strings.Join(
-		opiter.WrapSeq(slices.Values(ops)).
+		opiter.SlicesValues(ops).
 			Map(func(n Node) string { return group(n, prec) }).
 			CollectSlice(),
 		sep,

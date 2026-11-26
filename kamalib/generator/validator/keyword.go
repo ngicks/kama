@@ -43,7 +43,7 @@ func callHint(a expr.Arg) string {
 			return expr.Call{Name: a.Name, Args: args}.String()
 		}
 	case isString && slices.Contains([]string{"kind", "requires", "required"}, a.Name):
-		args := opiter.WrapSeq(slices.Values(strings.Fields(text.Value))).
+		args := opiter.SlicesValues(strings.Fields(text.Value)).
 			Map(func(w string) expr.Arg { return expr.Arg{Value: expr.String{Value: w}} }).
 			CollectSlice()
 

@@ -76,7 +76,7 @@ steps:
 	g, err := spec.Build(context.Background(), workflow.DefaultRegistry)
 	assert.NilError(t, err)
 
-	got := opiter.WrapSeq(slices.Values(g.Warnings())).
+	got := opiter.SlicesValues(g.Warnings()).
 		Map(error.Error).
 		Collect(slices.Sorted)
 
@@ -473,7 +473,7 @@ func TestProcRunStale(t *testing.T) {
 
 	r = runProc(t, f, ProcParamPartial{}, gentest.Now())
 
-	got := opiter.WrapSeq(slices.Values(r.Warnings)).
+	got := opiter.SlicesValues(r.Warnings).
 		Map(func(w error) string {
 			assert.ErrorIs(t, w, base.ErrStale)
 

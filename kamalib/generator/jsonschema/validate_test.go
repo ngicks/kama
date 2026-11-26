@@ -3,7 +3,6 @@ package jsonschema
 import (
 	jsonv2 "encoding/json/v2"
 	"errors"
-	"slices"
 	"strings"
 	"testing"
 
@@ -235,7 +234,7 @@ func TestGenerateWarnsUnenforced(t *testing.T) {
 	_, warnings, err := generateFiles(&doc, Options{Package: "p", TypeName: "Root"})
 	assert.NilError(t, err)
 
-	got := opiter.WrapSeq(slices.Values(warnings)).
+	got := opiter.SlicesValues(warnings).
 		Map(func(err error) string {
 			assert.Assert(t, errors.Is(err, ErrUnenforced), "%v", err)
 			return err.Error()

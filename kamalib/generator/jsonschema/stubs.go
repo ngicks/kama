@@ -200,7 +200,7 @@ func ownFiles(env base.Env, dir, pkg string) ([]*ast.File, error) {
 // declaresMethod reports whether files declare the method name of the type
 // recv in a declaration without a generated mark: one written by hand.
 func declaresMethod(reg *genmark.Registry, files []*ast.File, recv, name string) bool {
-	return opiter.WrapSeq(slices.Values(files)).
+	return opiter.SlicesValues(files).
 		FlatMap(func(f *ast.File) iter.Seq[ast.Decl] { return slices.Values(f.Decls) }).
 		Any(func(d ast.Decl) bool {
 			fd, ok := d.(*ast.FuncDecl)

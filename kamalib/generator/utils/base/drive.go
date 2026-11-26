@@ -319,11 +319,11 @@ func writeImports(b *bytes.Buffer, m *importdecl.Map) {
 	}
 
 	groups := [][]string{
-		opiter.WrapSeq(slices.Values(imps)).
+		opiter.SlicesValues(imps).
 			Filter(std).
 			Map(spec).
 			CollectSlice(),
-		opiter.WrapSeq(slices.Values(imps)).
+		opiter.SlicesValues(imps).
 			Filter(func(imp importdecl.Import) bool { return !std(imp) }).
 			Map(spec).
 			CollectSlice(),

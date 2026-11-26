@@ -26,7 +26,7 @@ func enumSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	consts, err := opiter.TryCollect(
-		opiter.WrapSeq(opiter.Range(0, len(s.Enum))).
+		opiter.Range(0, len(s.Enum)).
 			Disassemble(func(i int) (string, error) { return enumConst(doc, opts, ptr, i) }),
 	)
 	if err != nil {

@@ -120,7 +120,7 @@ func procProject(t *testing.T, files map[string]string) string {
 	gomod, err := os.ReadFile(filepath.Join(kamalib, "go.mod"))
 	assert.NilError(t, err)
 
-	goLine := opiter.WrapSeq(strings.Lines(string(gomod))).
+	goLine := opiter.StringsLines(string(gomod)).
 		Filter(func(l string) bool { return strings.HasPrefix(l, "go ") }).
 		First()
 	assert.Assert(t, goLine.IsSome())

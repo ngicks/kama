@@ -365,7 +365,7 @@ func (d *fileDecoder[P, T, F]) table(v any, path []string) (map[string]any, bool
 
 // unknownKeys warns of the keys of t other than known.
 func (d *fileDecoder[P, T, F]) unknownKeys(t map[string]any, path []string, known ...string) {
-	unknown := opiter.WrapSeq(maps.Keys(t)).
+	unknown := opiter.MapsKeys(t).
 		Filter(func(k string) bool { return !slices.Contains(known, k) }).
 		Collect(slices.Sorted)
 
@@ -431,7 +431,7 @@ func (d *fileDecoder[P, T, F]) normalize(v any, path []string) (any, bool) {
 // override the options of a source that comes later: a misspelt ignore
 // would otherwise turn a type the directives skip into a generated one.
 func holdsKnownKey(t map[string]any, unknown [][]string) bool {
-	top := opiter.WrapSeq(slices.Values(unknown)).
+	top := opiter.SlicesValues(unknown).
 		Filter(func(k []string) bool { return len(k) == 1 }).
 		CollectSlice()
 
@@ -475,7 +475,7 @@ var bareKey = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 // such as package import paths.
 func keyPath(path []string) string {
 	return strings.Join(
-		opiter.WrapSeq(slices.Values(path)).
+		opiter.SlicesValues(path).
 			Map(quoteKey).
 			CollectSlice(),
 		".",

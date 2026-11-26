@@ -115,7 +115,7 @@ func helpersFile(
 // that lands there refers to no helper, and neither does an unexported
 // type the generator names after a schema.
 func helperRefs(decls []ast.Decl) []string {
-	declared := opiter.WrapSeq(slices.Values(decls)).
+	declared := opiter.SlicesValues(decls).
 		FlatMap(func(d ast.Decl) iter.Seq[string] { return slices.Values(declNames(d)) }).
 		CollectSlice()
 
@@ -144,7 +144,7 @@ func helperRefs(decls []ast.Decl) []string {
 	}
 
 	return slices.Compact(
-		opiter.WrapSeq(slices.Values(used)).
+		opiter.SlicesValues(used).
 			Filter(func(name string) bool {
 				return strings.HasPrefix(name, helperPrefix) && !slices.Contains(declared, name)
 			}).
@@ -261,7 +261,7 @@ func declNames(d ast.Decl) []string {
 			return []string{d.Name.Name}
 		}
 	case *ast.GenDecl:
-		return opiter.WrapSeq(slices.Values(d.Specs)).
+		return opiter.SlicesValues(d.Specs).
 			FlatMap(func(s ast.Spec) func(func(string) bool) {
 				return slices.Values(specNames(s))
 			}).
@@ -276,7 +276,7 @@ func specNames(s ast.Spec) []string {
 	case *ast.TypeSpec:
 		return []string{s.Name.Name}
 	case *ast.ValueSpec:
-		return opiter.WrapSeq(slices.Values(s.Names)).
+		return opiter.SlicesValues(s.Names).
 			Map(func(n *ast.Ident) string { return n.Name }).
 			CollectSlice()
 	}
@@ -296,7 +296,7 @@ func pkg(path string) genExpr {
 // helper returns the declaration of a helper as the source text format,
 // whose verbs %[1]s, %[2]s, ... spell the packages at paths.
 func helper(doc, format string, paths ...string) genStep {
-	args := opiter.WrapSeq(slices.Values(paths)).
+	args := opiter.SlicesValues(paths).
 		Map(func(p string) any { return pkg(p) }).
 		CollectSlice()
 

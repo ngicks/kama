@@ -110,7 +110,7 @@ func modelCases(t *testing.T, pkg *packages.Package) []testCase {
 		cases = append(cases, testCase{name: name, ty: ty, want: buf.String()})
 	}
 
-	specs := opiter.WrapSeq(slices.Values(pkg.Syntax[0].Decls)).
+	specs := opiter.SlicesValues(pkg.Syntax[0].Decls).
 		FlatMap(func(d ast.Decl) iter.Seq[ast.Spec] { return slices.Values(genDeclSpecs(d)) })
 
 	for spec := range specs {

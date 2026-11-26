@@ -10,7 +10,6 @@ import (
 	"go/ast"
 	"go/printer"
 	"go/token"
-	"slices"
 
 	"github.com/ngicks/opiter"
 
@@ -217,7 +216,7 @@ func PrintDstDecls(decls []dst.Decl) ([]byte, error) {
 
 	// A dst node belongs to one tree. Placing the clones in the wrapper
 	// keeps decls where the caller put them.
-	cloned := opiter.WrapSeq(slices.Values(decls)).
+	cloned := opiter.SlicesValues(decls).
 		Map(func(d dst.Decl) dst.Decl { return dst.Clone(d).(dst.Decl) }).
 		CollectSlice()
 

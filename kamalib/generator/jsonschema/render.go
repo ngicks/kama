@@ -114,7 +114,7 @@ func splitDecls(text string) ([]base.Part, error) {
 		return base.Decl(src[file.Offset(start):file.Offset(d.End())])
 	}
 
-	return opiter.WrapSeq(slices.Values(f.Decls)).
+	return opiter.SlicesValues(f.Decls).
 		Map(decl).
 		CollectSlice(), nil
 }
@@ -157,9 +157,9 @@ func declSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 func newImports(pkgName string) (*importdecl.Map, error) {
 	p := types.NewPackage(pkgName, pkgName)
 	p.SetImports(slices.Concat(
-		opiter.WrapSeq(slices.Values([]string{
+		opiter.SlicesValues([]string{
 			"bytes", "errors", "fmt", "io", "iter", "slices", "strconv", "strings",
-		})).
+		}).
 			Map(func(path string) *types.Package { return types.NewPackage(path, path) }).
 			CollectSlice(),
 		[]*types.Package{
@@ -236,7 +236,7 @@ func directiveLines(args []expr.Arg) string {
 	}
 
 	return strings.Join(
-		opiter.WrapSeq(slices.Values(args)).
+		opiter.SlicesValues(args).
 			Map(func(a expr.Arg) string { return validateDirective + " " + a.String() }).
 			CollectSlice(),
 		"\n",
@@ -264,7 +264,7 @@ func commentLines(text string) string {
 
 	lines := strings.Split(strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(text), "\n")
 
-	commented := opiter.WrapSeq(slices.Values(lines)).
+	commented := opiter.SlicesValues(lines).
 		FlatMap(func(l string) iter.Seq[string] {
 			return strings.SplitSeq(
 				genhelper.WrapComment(strings.Map(printable, l), commentWidth),
@@ -387,7 +387,7 @@ func builtinTypeSeen(
 		return q(jsontextPath, "Value")(c)
 	}
 
-	nonNull := opiter.WrapSeq(slices.Values(k)).
+	nonNull := opiter.SlicesValues(k).
 		Filter(func(k string) bool { return k != "null" }).
 		CollectSlice()
 	if len(nonNull) != 1 {

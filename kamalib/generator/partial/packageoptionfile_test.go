@@ -349,7 +349,7 @@ func TestProcPackageOptionFile(t *testing.T) {
 	load := func(pkgs ...string) []*packages.Package {
 		t.Helper()
 
-		patterns := opiter.WrapSeq(slices.Values(pkgs)).
+		patterns := opiter.SlicesValues(pkgs).
 			Map(func(p string) string { return "./" + dir + "/" + p }).
 			CollectSlice()
 

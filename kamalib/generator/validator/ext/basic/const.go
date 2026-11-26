@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -142,7 +141,7 @@ func (o ConstOptions) Check(t types.Type) error {
 // Emit calls kamaValidateConst with the values.
 func (o ConstOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, error) {
 	if ext.IsRawJson(t) {
-		texts := opiter.WrapSeq(slices.Values(o.Values)).
+		texts := opiter.SlicesValues(o.Values).
 			Map(func(c ConstValue) ext.Gen { return lang.Expr("%s", strconv.Quote(string(c.Json))) }).
 			CollectSlice()
 
@@ -152,7 +151,7 @@ func (o ConstOptions) Emit(e ext.Emitter, t types.Type, v ext.Gen) (ext.Gen, err
 	e.Declare(constName, constDecl)
 	e.Declare(spellName, spellDecl)
 
-	values := opiter.WrapSeq(slices.Values(o.Values)).
+	values := opiter.SlicesValues(o.Values).
 		Map(ConstValue.Literal).
 		CollectSlice()
 

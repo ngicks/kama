@@ -41,7 +41,7 @@ func TestRunAllowTypeErrors(t *testing.T) {
 	r := &recorder{}
 	assert.NilError(t, i.Run(t.Context(), r))
 
-	paths := opiter.WrapSeq(slices.Values(i.AsInput().Pkgs)).
+	paths := opiter.SlicesValues(i.AsInput().Pkgs).
 		Map(func(p *packages.Package) string { return p.PkgPath }).
 		Collect(slices.Sorted)
 
@@ -49,7 +49,7 @@ func TestRunAllowTypeErrors(t *testing.T) {
 		"example.invalid/x/a", "example.invalid/x/b", "example.invalid/x/c",
 	})
 
-	warned := opiter.WrapSeq(slices.Values(r.warnings)).
+	warned := opiter.SlicesValues(r.warnings).
 		Map(warnedPath).
 		CollectSlice()
 

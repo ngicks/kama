@@ -2,7 +2,6 @@ package genhelper
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/ngicks/opiter"
@@ -43,7 +42,7 @@ type Shadow string
 func Expr[C Context[C]](format string, args ...any) Gen[C] {
 	return func(c C) (string, error) {
 		out, err := opiter.TryCollect(
-			opiter.WrapSeq(slices.Values(args)).
+			opiter.SlicesValues(args).
 				Disassemble(func(arg any) (any, error) { return renderArg(c, arg) }),
 		)
 		if err != nil {
@@ -94,7 +93,7 @@ func Name[C Context[C]](role string) Gen[C] {
 func Join[C Context[C]](sep string, parts ...Gen[C]) Gen[C] {
 	return func(c C) (string, error) {
 		out, err := opiter.TryCollect(
-			opiter.WrapSeq(slices.Values(parts)).
+			opiter.SlicesValues(parts).
 				Disassemble(func(part Gen[C]) (string, error) { return part(c) }),
 		)
 		if err != nil {
@@ -123,7 +122,7 @@ func FailGen[C Context[C]](err error) Gen[C] {
 func Comment[C Context[C]](parts ...Gen[C]) Gen[C] {
 	return func(c C) (string, error) {
 		texts, err := opiter.TryCollect(
-			opiter.WrapSeq(slices.Values(parts)).
+			opiter.SlicesValues(parts).
 				Filter(func(part Gen[C]) bool { return part != nil }).
 				Disassemble(func(part Gen[C]) (string, error) { return part(c) }),
 		)

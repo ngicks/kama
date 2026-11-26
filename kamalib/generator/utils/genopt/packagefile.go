@@ -284,7 +284,7 @@ func (l DocumentLoader) defaultFiles(
 		return nil, fmt.Errorf("%w: package %s: %w", ErrPackageFile, pkg.PkgPath, err)
 	}
 
-	return opiter.WrapSeq(slices.Values(slices.Sorted(slices.Values(names)))).
+	return opiter.SlicesValues(slices.Sorted(slices.Values(names))).
 		Map(func(name string) namedFile {
 			return namedFile{name: path.Join(dir, name), at: "package " + pkg.PkgPath}
 		}).
@@ -354,7 +354,7 @@ func (l DocumentLoader) namedFiles(w walked) ([]namedFile, error) {
 // target, as if they were written on one line.
 func joinArgs(lines []line) string {
 	return strings.Join(
-		opiter.WrapSeq(slices.Values(lines)).
+		opiter.SlicesValues(lines).
 			Map(func(ln line) string { return ln.args }).
 			CollectSlice(),
 		" ",

@@ -237,7 +237,7 @@ func (s *Scope) Unbound() []string {
 }
 
 func (s *Scope) appendUnbound(out []string) []string {
-	out = opiter.WrapSeq2(maps.All(s.roles)).
+	out = opiter.MapsAll(s.roles).
 		Filter(func(_ string, b binding) bool { return b.pending }).
 		OmitL().
 		AppendSeq(out)
@@ -277,6 +277,6 @@ func (s *Scope) takenBelow(name string) bool {
 		return true
 	}
 
-	return opiter.WrapSeq(slices.Values(s.children)).
+	return opiter.SlicesValues(s.children).
 		ContainsFunc(func(child *Scope) bool { return child.takenBelow(name) })
 }

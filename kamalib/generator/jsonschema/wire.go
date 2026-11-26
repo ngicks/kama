@@ -310,7 +310,7 @@ func builtinKind(doc *jsonschema.Schema, r string) (string, error) {
 		return "", err
 	}
 
-	nonNull := opiter.WrapSeq(slices.Values(k)).
+	nonNull := opiter.SlicesValues(k).
 		Filter(func(k string) bool { return k != "null" }).
 		CollectSlice()
 	if len(nonNull) != 1 {

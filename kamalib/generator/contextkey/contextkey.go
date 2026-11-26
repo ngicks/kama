@@ -286,7 +286,7 @@ func entryFile(in Input, e Entry, dup bool) (base.Output, error) {
 	c := genhelper.NewBaseContext(genhelper.NewScope(), &genhelper.Package{Imports: imports})
 
 	parts, err := opiter.TryCollect(
-		opiter.WrapSeq(slices.Values(entrySteps(in.Options, e))).
+		opiter.SlicesValues(entrySteps(in.Options, e)).
 			Disassemble(func(step genStep) (base.Part, error) { return renderDecl(c, step) }),
 	)
 	if err != nil {

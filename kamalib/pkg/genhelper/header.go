@@ -74,7 +74,7 @@ func (g GeneratorParams) Comment() (string, error) {
 	parts := []string{generatedCode(g.Name)}
 
 	if len(g.Argv) > 0 {
-		words := opiter.WrapSeq(slices.Values(g.Argv)).
+		words := opiter.SlicesValues(g.Argv).
 			Map(word).
 			CollectSlice()
 

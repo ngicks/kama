@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
-	"maps"
 	"slices"
 	"strings"
 
@@ -26,7 +25,7 @@ type maskName struct {
 // field, keyed by name.
 func maskNameFromArgs(kv map[string]string) (maskName, error) {
 	k := opiter.Min(
-		opiter.WrapSeq(maps.Keys(kv)).
+		opiter.MapsKeys(kv).
 			Filter(func(key string) bool { return key != "name" }),
 	)
 

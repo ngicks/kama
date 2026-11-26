@@ -2,7 +2,6 @@ package jsonschema
 
 import (
 	jsonv2 "encoding/json/v2"
-	"slices"
 
 	"github.com/ngicks/opiter"
 	"github.com/ngicks/option/opt"
@@ -69,7 +68,7 @@ func without(
 			return nil
 		}
 
-		return opiter.WrapSeq(slices.Values(l)).
+		return opiter.SlicesValues(l).
 			Map(one).
 			CollectSlice()
 	}
@@ -78,7 +77,7 @@ func without(
 			return nil
 		}
 
-		return opiter.WrapSeq(slices.Values(m)).
+		return opiter.SlicesValues(m).
 			Map(func(n jsonschema.NamedSchema) jsonschema.NamedSchema {
 				return jsonschema.NamedSchema{Name: n.Name, Schema: one(n.Schema)}
 			}).

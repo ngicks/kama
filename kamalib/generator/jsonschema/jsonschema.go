@@ -231,7 +231,7 @@ func unknownKeywords(doc *jsonschema.Schema) []error {
 	var warnings []error
 
 	for ptr, s := range schemas(doc) {
-		warnings = append(warnings, opiter.WrapSeq2(opiter.MapsSorted(s.Unknown)).
+		warnings = append(warnings, opiter.MapsSorted(s.Unknown).
 			OmitL().
 			Filter(func(k string) bool { return !strings.HasPrefix(k, "x-") }).
 			Map(func(k string) error { return fmt.Errorf("%w: #%s", ErrUnknownKeyword, child(ptr, k)) }).

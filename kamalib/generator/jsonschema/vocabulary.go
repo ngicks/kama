@@ -67,7 +67,7 @@ func withVocabularies(doc *jsonschema.Schema, opts Options) (*jsonschema.Schema,
 		}
 	}
 
-	dropped := opiter.WrapSeq(slices.Values([]string{"applicator", "unevaluated", "validation"})).
+	dropped := opiter.SlicesValues([]string{"applicator", "unevaluated", "validation"}).
 		Filter(func(name string) bool {
 			_, ok := meta.Vocabulary[vocabularyPrefix+name]
 			return !ok
@@ -118,7 +118,7 @@ func withoutVocabularies(s *jsonschema.Schema, dropped []string) *jsonschema.Sch
 		&c.Defs, &c.DependentSchemas, &c.Properties, &c.PatternProperties,
 	} {
 		if *m != nil {
-			*m = opiter.WrapSeq(slices.Values(*m)).
+			*m = opiter.SlicesValues(*m).
 				Map(func(n jsonschema.NamedSchema) jsonschema.NamedSchema {
 					return jsonschema.NamedSchema{Name: n.Name, Schema: without(n.Schema)}
 				}).
@@ -128,7 +128,7 @@ func withoutVocabularies(s *jsonschema.Schema, dropped []string) *jsonschema.Sch
 
 	for _, l := range []*[]*jsonschema.Schema{&c.AllOf, &c.AnyOf, &c.OneOf, &c.PrefixItems} {
 		if *l != nil {
-			*l = opiter.WrapSeq(slices.Values(*l)).
+			*l = opiter.SlicesValues(*l).
 				Map(without).
 				CollectSlice()
 		}

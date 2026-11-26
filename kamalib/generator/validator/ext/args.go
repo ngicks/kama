@@ -118,7 +118,7 @@ func (p Params) Bind(r Resolver, c expr.Call, dst any) ([]expr.Arg, error) {
 			continue
 		}
 
-		nodes := opiter.WrapSeq(slices.Values(rules)).
+		nodes := opiter.SlicesValues(rules).
 			Filter(func(a expr.Arg) bool { return a.Name == name }).
 			Map(func(a expr.Arg) expr.Node { return a.Value }).
 			CollectSlice()
@@ -201,12 +201,12 @@ func (p Params) Call(name string, src any) (expr.Call, error) {
 				name, p.Variadic, gap)
 		}
 
-		args = opiter.WrapSeq(slices.Values(rest)).
+		args = opiter.SlicesValues(rest).
 			Map(func(n expr.Node) expr.Arg { return expr.Arg{Value: n} }).
 			AppendSeq(args)
 	}
 
-	args = opiter.WrapSeq(slices.Values(slices.Concat(keywords, p.Keywords))).
+	args = opiter.SlicesValues(slices.Concat(keywords, p.Keywords)).
 		Filter(func(n string) bool { return spelled[n] != nil }).
 		Map(func(n string) expr.Arg { return expr.Arg{Name: n, Value: spelled[n][0]} }).
 		AppendSeq(args)

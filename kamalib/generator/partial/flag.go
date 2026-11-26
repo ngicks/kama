@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
-	"maps"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -78,7 +77,7 @@ func notFlagKey(k string) bool {
 // flagFromArgs validates the args of //kama:partial:flag, keyed by name.
 func flagFromArgs(kv map[string]string) (flagOption, error) {
 	k := opiter.Min(
-		opiter.WrapSeq(maps.Keys(kv)).
+		opiter.MapsKeys(kv).
 			Filter(notFlagKey),
 	)
 
@@ -480,7 +479,7 @@ func renderFlagSet(pkg *packages.Package, dir string) (base.Composed, error) {
 	parser.Reserve(pkg.Types.Scope().Names()...)
 	parser.Reserve(flagSetParams...)
 
-	usesTime := opiter.WrapSeq(maps.Values(sigs)).
+	usesTime := opiter.MapsValues(sigs).
 		Any(func(sig string) bool { return strings.Contains(sig, "$time.") })
 
 	if usesTime {
@@ -518,7 +517,7 @@ func renderFlagSet(pkg *packages.Package, dir string) (base.Composed, error) {
 		lang.Stmt("type %s interface {", flagSetName),
 	}
 
-	body = opiter.WrapSeq2(opiter.MapsSorted(sigs)).
+	body = opiter.MapsSorted(sigs).
 		OmitF().
 		Map(func(sig string) genStep { return lang.Stmt("%s", replacer.Replace(sig)) }).
 		AppendSeq(body)

@@ -9,7 +9,6 @@ import (
 	"go/scanner"
 	"go/token"
 	"regexp"
-	"slices"
 	"strings"
 	"testing"
 
@@ -416,7 +415,7 @@ func TestGenerateWarnsUnknownKeywords(t *testing.T) {
 	_, warnings, err := generateFiles(&doc, Options{Package: "p", TypeName: "Root"})
 	assert.NilError(t, err)
 
-	got := opiter.WrapSeq(slices.Values(warnings)).
+	got := opiter.SlicesValues(warnings).
 		Map(func(err error) string {
 			assert.Assert(t, errors.Is(err, ErrUnknownKeyword), "%v", err)
 			return err.Error()
@@ -494,7 +493,7 @@ func TestGenerateHostileAnnotations(t *testing.T) {
 	f, err := parser.ParseFile(fset, "", content, 0)
 	assert.NilError(t, err)
 
-	decls := opiter.WrapSeq(slices.Values(f.Decls)).
+	decls := opiter.SlicesValues(f.Decls).
 		Filter(func(d ast.Decl) bool {
 			g, ok := d.(*ast.GenDecl)
 			return !ok || g.Tok != token.IMPORT

@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
-	"slices"
 	"strings"
 	"sync"
 	"unicode"
@@ -89,7 +88,7 @@ func (r *Registry) Registered(name string) bool {
 // generator was renamed. A marker without a name counts as one naming the
 // empty name.
 func (r *Registry) Unregistered(cg *ast.CommentGroup) (name string, ok bool) {
-	return opiter.WrapSeq(slices.Values(dircmnt.Ast(cg))).
+	return opiter.SlicesValues(dircmnt.Ast(cg)).
 		Filter(r.isMarker).
 		Map(markerName).
 		Filter(func(name string) bool { return !r.Registered(name) }).
@@ -112,7 +111,7 @@ func (r *Registry) find(comments []dircmnt.Comment) (string, bool) {
 		return ok
 	}
 
-	return opiter.WrapSeq(slices.Values(comments)).
+	return opiter.SlicesValues(comments).
 		Filter(r.isMarker).
 		Map(markerName).
 		Filter(isRegistered).

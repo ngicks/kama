@@ -384,7 +384,7 @@ func TestInferName(t *testing.T) {
 }
 
 func TestInferNameKeywords(t *testing.T) {
-	keywords := opiter.WrapSeq(opiter.Range(token.BREAK, token.VAR+1)).
+	keywords := opiter.Range(token.BREAK, token.VAR+1).
 		Filter(token.Token.IsKeyword)
 
 	for tok := range keywords {

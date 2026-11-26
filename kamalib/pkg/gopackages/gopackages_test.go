@@ -50,7 +50,7 @@ func TestLoadSeesStagedFiles(t *testing.T) {
 	assert.Equal(t, len(pkgs), 1)
 	pkg := pkgs[0]
 
-	files := opiter.WrapSeq(slices.Values(pkg.GoFiles)).
+	files := opiter.SlicesValues(pkg.GoFiles).
 		Map(filepath.Base).
 		Collect(slices.Sorted)
 

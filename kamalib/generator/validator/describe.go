@@ -29,9 +29,7 @@ var descriptionWords = []string{ext.UnwrapWord, ext.IterWord, ext.Iter2Word}
 // fieldItems returns the items of the directives and the option file entry
 // of the field v of the target.
 func (w *writer) fieldItems(v *types.Var) []expr.Arg {
-	return opiter.WrapSeq(
-		slices.Values(w.sel.loadedOptions.Option.Field(w.n.Id, v.Name()).Validators),
-	).
+	return opiter.SlicesValues(w.sel.loadedOptions.Option.Field(w.n.Id, v.Name()).Validators).
 		Map(func(vo ValidatorOptions) expr.Arg { return vo.Item }).
 		CollectSlice()
 }
@@ -40,7 +38,7 @@ func (w *writer) fieldItems(v *types.Var) []expr.Arg {
 // field of the type id describe what the field holds.
 func (s *selection) described(id typegraph.QualifiedType, field string) bool {
 	word, _, _ := description(
-		opiter.WrapSeq(slices.Values(s.loadedOptions.Option.Field(id, field).Validators)).
+		opiter.SlicesValues(s.loadedOptions.Option.Field(id, field).Validators).
 			Map(func(vo ValidatorOptions) expr.Arg { return vo.Item }).
 			CollectSlice(),
 	)
@@ -98,7 +96,7 @@ func nestedOn(items []expr.Arg, on bool) (bool, error) {
 // any depth, set the nested switch or describe a value, which the nested
 // walk then follows level by level.
 func reshapes(items []expr.Arg) bool {
-	return opiter.WrapSeq(slices.Values(items)).
+	return opiter.SlicesValues(items).
 		Any(func(a expr.Arg) bool {
 			if slices.Contains(levelWords, a.Name) {
 				return true

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"go/token"
 	"reflect"
-	"slices"
 	"strconv"
 
 	"github.com/dave/dst"
@@ -211,7 +210,7 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 		return nil, nil
 	}
 
-	allSame := opiter.WrapSeq(slices.Values(keys[1:])).
+	allSame := opiter.SlicesValues(keys[1:]).
 		Every(func(k string) bool { return k == keys[0] })
 
 	if allSame {
@@ -240,7 +239,7 @@ func replaceField(f *dst.Field, fields []Field, replace Replacer) ([]*dst.Field,
 		return nf
 	}
 
-	out := opiter.WrapSeq2(slices.All(reps)).
+	out := opiter.SlicesAll(reps).
 		Assemble(splitField).
 		CollectSlice()
 

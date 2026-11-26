@@ -78,7 +78,7 @@ func (KindOptions) Check(t types.Type) error {
 
 // Emit calls rawjson.Kind.
 func (o KindOptions) Emit(e ext.Emitter, _ types.Type, v ext.Gen) (ext.Gen, error) {
-	kinds := opiter.WrapSeq(slices.Values(o.Kinds)).
+	kinds := opiter.SlicesValues(o.Kinds).
 		Map(func(k string) ext.Gen { return lang.Expr("%s", strconv.Quote(k)) }).
 		CollectSlice()
 

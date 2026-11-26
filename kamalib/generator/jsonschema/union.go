@@ -2,7 +2,6 @@ package jsonschema
 
 import (
 	"encoding/json/jsontext"
-	"iter"
 	"slices"
 	"strconv"
 	"strings"
@@ -30,14 +29,14 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 	}
 
 	names, err := opiter.TryCollect(
-		opiter.WrapSeq(opiter.Range(0, members(s))).
+		opiter.Range(0, members(s)).
 			Disassemble(func(i int) (string, error) { return memberName(doc, opts, ptr, i) }),
 	)
 	if err != nil {
 		return []genStep{lang.Fail(err)}
 	}
 
-	wrappers := opiter.WrapSeq(slices.Values(names)).
+	wrappers := opiter.SlicesValues(names).
 		Map(func(m string) string { return name + m }).
 		CollectSlice()
 
@@ -125,7 +124,7 @@ func unionSteps(doc *jsonschema.Schema, opts Options, ptr string) []genStep {
 		lang.Case(lang.Expr("%s", unknown), lang.Stmt("return enc.WriteValue(k.Value)")),
 	}
 	validateCases := append(
-		opiter.WrapSeq(slices.Values(wrappers)).
+		opiter.SlicesValues(wrappers).
 			Map(func(w string) genhelper.Case[genCtx] {
 				return lang.Case(
 					lang.Expr("%s", w),
@@ -523,7 +522,7 @@ func memberCondition(doc *jsonschema.Schema, ptr string, i int) genExpr {
 	}
 
 	if closed(rs) && !bridged(doc, r, rs, "additionalProperties") {
-		props := opiter.WrapSeq(slices.Values(rs.Properties)).
+		props := opiter.SlicesValues(rs.Properties).
 			Map(func(n jsonschema.NamedSchema) string { return n.Name }).
 			CollectSlice()
 
@@ -539,13 +538,13 @@ func memberCondition(doc *jsonschema.Schema, ptr string, i int) genExpr {
 // JSON Schema types. An integer is any number, since decoding into the Go
 // type rejects a fraction.
 func kindCondition(kinds []string) genExpr {
-	consts := opiter.WrapSeq(slices.Values(kinds)).
-		FlatMap(func(k string) iter.Seq[string] {
+	consts := opiter.SlicesValues(kinds).
+		FlatMap(func(k string) opiter.Seq[string] {
 			switch k {
 			case "null":
 				return opiter.Once("KindNull")
 			case "boolean":
-				return slices.Values([]string{"KindTrue", "KindFalse"})
+				return opiter.SlicesValues([]string{"KindTrue", "KindFalse"})
 			case "string":
 				return opiter.Once("KindString")
 			case "integer", "number":
@@ -693,7 +692,7 @@ func unionMemberConv(doc *jsonschema.Schema, opts Options, ptr string, i int) ge
 }
 
 func quoteAll(names []string) []string {
-	return opiter.WrapSeq(slices.Values(names)).
+	return opiter.SlicesValues(names).
 		Map(strconv.Quote).
 		CollectSlice()
 }

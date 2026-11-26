@@ -12,7 +12,6 @@ import (
 	"go/printer"
 	"go/scanner"
 	"go/token"
-	"slices"
 
 	"github.com/ngicks/opiter"
 )
@@ -133,7 +132,7 @@ func checkShape(fset *token.FileSet, k Kind, f *ast.File, src []byte) error {
 
 		return nil
 	default:
-		hasImport := opiter.WrapSeq(slices.Values(f.Decls)).
+		hasImport := opiter.SlicesValues(f.Decls).
 			ContainsFunc(isImportDecl)
 
 		if hasImport {

@@ -18,8 +18,6 @@ package dircmnt
 
 import (
 	"go/ast"
-	"iter"
-	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -72,18 +70,17 @@ func Ast(cg *ast.CommentGroup) []Comment {
 	return collect(astTexts(cg))
 }
 
-func astTexts(cg *ast.CommentGroup) iter.Seq[string] {
+func astTexts(cg *ast.CommentGroup) opiter.Seq[string] {
 	if cg == nil {
 		return opiter.Empty[string]()
 	}
 
-	return opiter.WrapSeq(slices.Values(cg.List)).
-		Map(func(c *ast.Comment) string { return c.Text }).
-		Iter()
+	return opiter.SlicesValues(cg.List).
+		Map(func(c *ast.Comment) string { return c.Text })
 }
 
-func collect(texts iter.Seq[string]) []Comment {
-	return opiter.WrapSeq(texts).
+func collect(texts opiter.Seq[string]) []Comment {
+	return texts.
 		Disassemble(Parse).
 		Filter(func(_ Comment, ok bool) bool { return ok }).
 		OmitL().

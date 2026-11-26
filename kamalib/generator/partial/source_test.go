@@ -2,9 +2,7 @@ package partial
 
 import (
 	"go/ast"
-	"maps"
 	"regexp"
-	"slices"
 	"strings"
 	"testing"
 
@@ -291,7 +289,7 @@ type A struct {
 	)
 	assert.NilError(t, err)
 
-	n := opiter.WrapSeq(maps.Values(sel.targets())).
+	n := opiter.MapsValues(sel.targets()).
 		First().
 		Value()
 
@@ -318,7 +316,7 @@ type A struct {
 
 	assert.Assert(
 		t,
-		opiter.WrapSeq(slices.Values(n.Detail.File.Comments)).
+		opiter.SlicesValues(n.Detail.File.Comments).
 			ContainsFunc(
 				func(cg *ast.CommentGroup) bool { return cg.List[0].Text == "//kama:partial:merge append" },
 			),
@@ -326,7 +324,7 @@ type A struct {
 }
 
 func identNames(ids []*dst.Ident) []string {
-	return opiter.WrapSeq(slices.Values(ids)).
+	return opiter.SlicesValues(ids).
 		Map(func(id *dst.Ident) string { return id.Name }).
 		CollectSlice()
 }

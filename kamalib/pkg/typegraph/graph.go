@@ -152,7 +152,7 @@ func New(
 
 func loadError(pkg *packages.Package) error {
 	if len(pkg.Errors) > 0 {
-		errs := opiter.WrapSeq(slices.Values(pkg.Errors)).
+		errs := opiter.SlicesValues(pkg.Errors).
 			Map(func(e packages.Error) error { return e }).
 			CollectSlice()
 
@@ -317,7 +317,7 @@ func (g *Graph) Trim(
 	// First pass: identify matched nodes
 	maps.Insert(
 		mg.matched,
-		opiter.WrapSeq2(maps.All(g.all)).
+		opiter.MapsAll(g.all).
 			Filter(func(_ QualifiedType, node *Node) bool { return nodeMatcher(node) }).
 			Map(newMatchedNode).
 			Iter2(),
@@ -362,7 +362,7 @@ func markDependants(
 
 			routes := edge.Routes
 			if routeFilter != nil {
-				routes = opiter.WrapSeq(slices.Values(routes)).
+				routes = opiter.SlicesValues(routes).
 					Filter(routeFilter).
 					CollectSlice()
 			}
@@ -467,9 +467,9 @@ func (g *MatchedGraph) All() iter.Seq2[QualifiedType, *MatchedNode] {
 		return !matched
 	}
 
-	return opiter.WrapSeq2(maps.All(g.matched)).
+	return opiter.MapsAll(g.matched).
 		Concat(
-			opiter.WrapSeq2(maps.All(g.dependant)).
+			opiter.MapsAll(g.dependant).
 				Filter(notMatched),
 		).
 		Iter2()

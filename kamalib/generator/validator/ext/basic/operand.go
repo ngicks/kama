@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
-	"slices"
 	"strconv"
 
 	"github.com/ngicks/opiter"
@@ -42,7 +41,7 @@ func ParseOperands(nodes []expr.Node, r ext.Resolver) ([]Operand, error) {
 
 // argValues returns the values of args.
 func argValues(args []expr.Arg) []expr.Node {
-	return opiter.WrapSeq(slices.Values(args)).
+	return opiter.SlicesValues(args).
 		Map(func(a expr.Arg) expr.Node { return a.Value }).
 		CollectSlice()
 }
@@ -79,10 +78,10 @@ func combine(
 		return nil, err
 	}
 
-	siblings := opiter.WrapSeq(slices.Values(ops)).
+	siblings := opiter.SlicesValues(ops).
 		Any(func(op Operand) bool { return isSiblingRule(op.Rule) })
 
-	whole := opiter.WrapSeq(slices.Values(ops)).
+	whole := opiter.SlicesValues(ops).
 		Any(func(op Operand) bool { return isStructRule(op.Rule) })
 
 	c := combination{nodes: nodes, reg: ext.WithWarn(r, nil), build: build}
@@ -140,7 +139,7 @@ func (c combination) rule(t types.Type) (ext.Rule, error) {
 	}
 
 	split := c.build(
-		opiter.WrapSeq(slices.Values(ops)).
+		opiter.SlicesValues(ops).
 			Map(func(op Operand) Operand {
 				return Operand{Text: op.Text, Rule: onHeld{rule: op.Rule, reg: c.reg}}
 			}).
@@ -226,7 +225,7 @@ func emitOperands(e ext.Emitter, ops []Operand, t types.Type, v ext.Gen) ([]ext.
 
 // texts returns the Text of each of ops quoted, as Go string literals.
 func texts(ops []Operand) []string {
-	return opiter.WrapSeq(slices.Values(ops)).
+	return opiter.SlicesValues(ops).
 		Map(func(op Operand) string { return strconv.Quote(op.Text) }).
 		CollectSlice()
 }

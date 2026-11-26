@@ -457,7 +457,7 @@ func allChecked(doc *jsonschema.Schema, ptr string) bool {
 // checkProduct reports a member of the product at ptr that holds the
 // product itself by value, which Go cannot lay out.
 func checkProduct(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []error {
-	return opiter.WrapSeq(opiter.Range(0, len(s.AllOf))).
+	return opiter.Range(0, len(s.AllOf)).
 		Map(func(i int) string { return child(ptr, "allOf", strconv.Itoa(i)) }).
 		Filter(func(mp string) bool { return onCycle(doc, ptr, mp) }).
 		Map(func(mp string) error { return unsupported(mp, "allOf member holds the product itself") }).

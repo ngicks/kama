@@ -6,7 +6,6 @@ import (
 	"go/format"
 	"go/types"
 	"os"
-	"slices"
 	"time"
 
 	"github.com/dave/dst/decorator"
@@ -31,7 +30,7 @@ func lookup(s *genhelper.Scope, roles ...string) ([]string, error) {
 	}
 
 	names, err := opiter.TryCollect(
-		opiter.WrapSeq(slices.Values(roles)).
+		opiter.SlicesValues(roles).
 			Disassemble(lookupRole),
 	)
 	if err != nil {
@@ -457,7 +456,7 @@ func ExampleForRange() {
 	}
 	printf := func(format string, roles ...string) genhelper.Step[ctx] {
 		return genhelper.Append(func(c ctx) (string, error) {
-			names := opiter.WrapSeq(slices.Values(roles)).
+			names := opiter.SlicesValues(roles).
 				Map(func(role string) any { return c.Scope().Use(role) }).
 				CollectSlice()
 

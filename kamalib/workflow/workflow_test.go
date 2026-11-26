@@ -159,7 +159,7 @@ func build(t *testing.T, p procs, steps map[string]Step) (*Graph, error) {
 }
 
 func names(g *Graph) []string {
-	return opiter.WrapSeq(slices.Values(g.Nodes())).
+	return opiter.SlicesValues(g.Nodes()).
 		Map(func(n Node) string { return n.Name }).
 		CollectSlice()
 }
@@ -167,7 +167,7 @@ func names(g *Graph) []string {
 func node(t *testing.T, g *Graph, name string) Node {
 	t.Helper()
 
-	found := opiter.WrapSeq(slices.Values(g.Nodes())).
+	found := opiter.SlicesValues(g.Nodes()).
 		Filter(func(n Node) bool { return n.Name == name }).
 		First()
 
@@ -409,7 +409,7 @@ func TestUnknownKeyWarnings(t *testing.T) {
 		assert.ErrorIs(t, w, ErrUnknownKey)
 	}
 
-	got := opiter.WrapSeq(slices.Values(g.Warnings())).
+	got := opiter.SlicesValues(g.Warnings()).
 		Map(error.Error).
 		CollectSlice()
 

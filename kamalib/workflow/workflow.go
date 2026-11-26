@@ -36,7 +36,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -140,7 +139,7 @@ func (s Spec) Build(ctx context.Context, reg *Registry) (*Graph, error) {
 	}
 
 	g := &Graph{
-		warnings: opiter.WrapSeq(slices.Values(s.unknownKeys())).
+		warnings: opiter.SlicesValues(s.unknownKeys()).
 			Map(unknownKey).
 			CollectSlice(),
 	}
@@ -180,14 +179,14 @@ func checkProc(kind string, p Proc) error {
 		return fmt.Errorf("%w: %q constructs nil", ErrInvalidProc, kind)
 	}
 
-	foundIn := opiter.WrapSeq(slices.Values(p.InTypes())).
+	foundIn := opiter.SlicesValues(p.InTypes()).
 		FindFunc(isNilType)
 
 	if foundIn.IsSome() {
 		return fmt.Errorf("%w: %q: in %d is nil", ErrInvalidProc, kind, foundIn.Value().K)
 	}
 
-	foundOut := opiter.WrapSeq(slices.Values(p.OutTypes())).
+	foundOut := opiter.SlicesValues(p.OutTypes()).
 		FindFunc(isNilType)
 
 	if foundOut.IsSome() {
@@ -254,7 +253,7 @@ func (g *Graph) dryRun(ctx context.Context, steps map[string]Step) error {
 
 		n.Param = param
 
-		g.warnings = opiter.WrapSeq(slices.Values(paramUnknownKeys(param))).
+		g.warnings = opiter.SlicesValues(paramUnknownKeys(param)).
 			Map(func(k []string) error {
 				return unknownKey(slices.Concat([]string{"steps", n.Name, "param"}, k))
 			}).
@@ -450,7 +449,7 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 		pending[name] = len(deps)
 	}
 
-	ready := opiter.WrapSeq2(maps.All(pending)).
+	ready := opiter.MapsAll(pending).
 		Filter(func(_ string, pending int) bool { return pending == 0 }).
 		OmitL().
 		CollectSlice()
@@ -472,7 +471,7 @@ func sortSteps(steps map[string]Step) ([]string, error) {
 	}
 
 	if len(order) != len(steps) {
-		stuck := opiter.WrapSeq2(maps.All(pending)).
+		stuck := opiter.MapsAll(pending).
 			Filter(func(_ string, pending int) bool { return pending > 0 }).
 			OmitL().
 			Collect(slices.Sorted)

@@ -226,7 +226,7 @@ func (p *Parser) Reserve(idents ...string) {
 // them.
 func (p *Parser) ParseAst(specs []*ast.ImportSpec) (*Map, error) {
 	return p.parse(
-		opiter.WrapSeq(slices.Values(specs)).
+		opiter.SlicesValues(specs).
 			Disassemble(astSpecNamePath).
 			Iter2(),
 	)
@@ -305,7 +305,7 @@ func (m *Map) lookup(pkgPath string, required []Import) Package {
 		return pkg
 	}
 
-	found := opiter.WrapSeq(slices.Values(required)).
+	found := opiter.SlicesValues(required).
 		Filter(func(imp Import) bool { return imp.Package.Path == pkgPath }).
 		First()
 

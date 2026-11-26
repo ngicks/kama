@@ -275,7 +275,7 @@ func isLiteral(x ast.Expr) bool {
 // calls to kamaValidateAll with the stop flag of e. kamaValidateAll returns
 // the first error when the flag is true and all of them joined otherwise.
 func joinCalls(e ext.Emitter, cs []Comparison, call func(c Comparison) ext.Gen) ext.Gen {
-	return joinErrors(e, opiter.WrapSeq(slices.Values(cs)).
+	return joinErrors(e, opiter.SlicesValues(cs).
 		Map(call).
 		CollectSlice())
 }
@@ -305,7 +305,7 @@ const (
 )
 
 func compareDecl(imp ext.Importer) ext.Step {
-	cases := opiter.WrapSeq(slices.Values([]string{">", ">=", "==", "!=", "<=", "<"})).
+	cases := opiter.SlicesValues([]string{">", ">=", "==", "!=", "<=", "<"}).
 		Map(func(op string) genhelper.Case[ext.Context] {
 			return lang.Case(
 				lang.Expr("%s", strconv.Quote(op)),

@@ -52,7 +52,7 @@ func renderPackage(
 		naming, helperKind, filepath.Join(dir, base.PackageFile(pkg, HelpersFile)), callers,
 	)
 
-	names := opiter.WrapSeq(slices.Values(hosts)).
+	names := opiter.SlicesValues(hosts).
 		FlatMap(func(h base.Host) iter.Seq[string] { return slices.Values(h.Names) }).
 		CollectSlice()
 

@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"runtime"
 	"runtime/debug"
-	"slices"
 	"strings"
 	"testing"
 
@@ -182,7 +181,7 @@ func probeStruct(fields []probeField, tagKey, option string) reflect.Type {
 	}
 
 	return reflect.StructOf(
-		opiter.WrapSeq2(slices.All(fields)).
+		opiter.SlicesAll(fields).
 			Assemble(toStructField).
 			CollectSlice(),
 	)
@@ -276,7 +275,7 @@ func describe(v any) string {
 			return "null"
 		}
 
-		vals := opiter.WrapSeq(slices.Values(x.Options())).
+		vals := opiter.SlicesValues(x.Options()).
 			Map(func(o opt.Option[string]) string { return describe(o) }).
 			CollectSlice()
 
@@ -336,7 +335,7 @@ func moduleVersions(t *testing.T, paths []string) string {
 
 	versions := make([]string, 0, len(paths))
 	for _, p := range paths {
-		dep := opiter.WrapSeq(slices.Values(info.Deps)).
+		dep := opiter.SlicesValues(info.Deps).
 			Filter(func(dep *debug.Module) bool { return dep.Path == p }).
 			First()
 

@@ -19,7 +19,7 @@ import (
 // as importdecl.Parser.ParseAst does.
 func Parse(p *importdecl.Parser, specs []*dst.ImportSpec) (*importdecl.Map, error) {
 	return p.ParseAst(
-		opiter.WrapSeq(slices.Values(specs)).
+		opiter.SlicesValues(specs).
 			Map(astSpec).
 			CollectSlice(),
 	)
@@ -58,7 +58,7 @@ func AddMissing(m *importdecl.Map, f *dst.File) {
 		has[spec{name, pkgPath}] = true
 	}
 
-	decl := opiter.WrapSeq(slices.Values(f.Decls)).
+	decl := opiter.SlicesValues(f.Decls).
 		Map(asGenDecl).
 		Filter(func(g *dst.GenDecl) bool { return g != nil && g.Tok == token.IMPORT }).
 		First().

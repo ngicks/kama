@@ -167,13 +167,13 @@ func (c StaleCheck) marked(f *ast.File) bool {
 		case *ast.FuncDecl:
 			return marked(d.Doc)
 		case *ast.GenDecl:
-			return marked(d.Doc) || opiter.WrapSeq(slices.Values(d.Specs)).
+			return marked(d.Doc) || opiter.SlicesValues(d.Specs).
 				ContainsFunc(markedSpec)
 		}
 
 		return false
 	}
 
-	return opiter.WrapSeq(slices.Values(f.Decls)).
+	return opiter.SlicesValues(f.Decls).
 		ContainsFunc(markedDecl)
 }

@@ -117,7 +117,7 @@ type PackageErrors map[string][]packages.Error
 
 func (e PackageErrors) Error() string {
 	return strings.Join(
-		opiter.WrapSeq2(opiter.MapsSorted(e)).
+		opiter.MapsSorted(e).
 			Assemble(packageErrorBlock).
 			CollectSlice(),
 		"\n",
@@ -145,7 +145,7 @@ func unreadable(pkgs []*packages.Package) PackageErrors {
 	for _, p := range pkgs {
 		errs.add(
 			p,
-			opiter.WrapSeq(slices.Values(p.Errors)).
+			opiter.SlicesValues(p.Errors).
 				Filter(func(e packages.Error) bool { return e.Kind != packages.TypeError }).
 				CollectSlice()...,
 		)
@@ -156,9 +156,9 @@ func unreadable(pkgs []*packages.Package) PackageErrors {
 
 func packageErrorBlock(path string, errs []packages.Error) string {
 	return strings.Join(
-		opiter.WrapSeq(opiter.Once(path+":")).
+		opiter.Once(path+":").
 			Concat(
-				opiter.WrapSeq(slices.Values(errs)).
+				opiter.SlicesValues(errs).
 					Map(packages.Error.Error),
 			).
 			CollectSlice(),

@@ -3,7 +3,6 @@ package basic
 import (
 	"encoding/json/jsontext"
 	"go/types"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -98,7 +97,7 @@ func (o ContainsOptions) Annotate(e ext.Emitter, t types.Type, v, ev ext.Gen) (e
 		return nil, err
 	}
 
-	counts := opiter.WrapSeq(slices.Values(o.Counts)).
+	counts := opiter.SlicesValues(o.Counts).
 		Map(func(c Comparison) ext.Gen {
 			n, _ := strconv.ParseInt(strings.TrimPrefix(c.Operand, "+"), 0, 64)
 

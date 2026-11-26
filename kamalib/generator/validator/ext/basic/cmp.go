@@ -9,7 +9,6 @@ import (
 	"go/types"
 	"math"
 	"math/big"
-	"slices"
 	"strconv"
 
 	"github.com/ngicks/opiter"
@@ -213,7 +212,7 @@ func compared(e ext.Emitter, reg ext.Resolver, t types.Type, v ext.Gen, cs []Com
 	e.Declare(comparedName, comparedDecl)
 	e.Declare(spellName, spellDecl)
 
-	return opiter.WrapSeq(slices.Values(cs)).
+	return opiter.SlicesValues(cs).
 		Map(func(c Comparison) ext.Gen {
 			cond, _ := ext.Compare(reg, e, t, v, c.Op, c.Operand)
 

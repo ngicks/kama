@@ -73,7 +73,7 @@ func unknownMark(reg *genmark.Registry, name string) string {
 // fileDocs returns the doc comments of every top-level declaration of f
 // and of their specs.
 func fileDocs(f *ast.File) []*ast.CommentGroup {
-	return opiter.WrapSeq(slices.Values(f.Decls)).
+	return opiter.SlicesValues(f.Decls).
 		FlatMap(func(d ast.Decl) iter.Seq[*ast.CommentGroup] { return slices.Values(AstDeclDocs(d)) }).
 		CollectSlice()
 }
@@ -107,7 +107,7 @@ func AstDeclDocs(d ast.Decl) []*ast.CommentGroup {
 // order of names. A generator reports them as conflicts with the
 // declarations it writes under those names.
 func UnownedDecls(pkg *packages.Package, reg *genmark.Registry, names []string) []types.Object {
-	return opiter.WrapSeq(slices.Values(names)).
+	return opiter.SlicesValues(names).
 		Map(pkg.Types.Scope().Lookup).
 		Filter(func(obj types.Object) bool {
 			return obj != nil && !Generated([]*packages.Package{pkg}, reg, obj)

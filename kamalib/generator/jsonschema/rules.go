@@ -144,17 +144,17 @@ func rulesOf(
 // field takes it: the args of a validator named twice move into one and,
 // in the place of the first, along with the operands of an and among them.
 func distinct(args []expr.Arg) []expr.Arg {
-	names := opiter.WrapSeq(slices.Values(args)).
+	names := opiter.SlicesValues(args).
 		Map(argName).
 		CollectSlice()
 
 	twice := func(name string) bool {
-		return opiter.WrapSeq(slices.Values(names)).
+		return opiter.SlicesValues(names).
 			Filter(func(n string) bool { return n == name }).
 			Count() > 1
 	}
 
-	repeated := opiter.WrapSeq(slices.Values(names)).
+	repeated := opiter.SlicesValues(names).
 		Any(twice)
 	if !repeated {
 		return args
@@ -170,7 +170,7 @@ func distinct(args []expr.Arg) []expr.Arg {
 
 		switch {
 		case isAnd:
-			joined = opiter.WrapSeq(slices.Values(a.Value.(expr.And).Operands)).
+			joined = opiter.SlicesValues(a.Value.(expr.And).Operands).
 				Map(func(n expr.Node) expr.Arg { return expr.Arg{Value: n} }).
 				AppendSeq(joined)
 		case twice(names[i]):
@@ -686,7 +686,7 @@ func node(a spelled) expr.Node {
 
 // values returns the values of args.
 func values(args []expr.Arg) []expr.Node {
-	return opiter.WrapSeq(slices.Values(args)).
+	return opiter.SlicesValues(args).
 		Map(func(a expr.Arg) expr.Node { return a.Value }).
 		CollectSlice()
 }

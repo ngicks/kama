@@ -163,7 +163,7 @@ func generateLoading(
 	t.Helper()
 
 	f, opts := stage(t, files)
-	opts.Patterns = opiter.WrapSeq(slices.Values(dirs)).
+	opts.Patterns = opiter.SlicesValues(dirs).
 		Map(func(d string) string { return "./" + path.Join(gentest.InlineDir(t), d) }).
 		CollectSlice()
 

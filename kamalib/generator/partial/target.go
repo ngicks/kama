@@ -116,7 +116,7 @@ func followed(r *typegraph.EdgeRoute) bool {
 		typegraph.EdgeKindPointer |
 		typegraph.EdgeKindAlias
 
-	return opiter.WrapSeq(slices.Values(r.Nodes)).
+	return opiter.SlicesValues(r.Nodes).
 		Every(func(n typegraph.EdgeRouteNode) bool { return n.Kind&allowed != 0 })
 }
 
@@ -452,7 +452,7 @@ func (s *selection) checkEmbeddedCycles(sorted []*typegraph.Node) error {
 		case visiting:
 			i := slices.Index(path, id)
 
-			names := opiter.WrapSeq(slices.Values(append(path[i:], id))).
+			names := opiter.SlicesValues(append(path[i:], id)).
 				Map(func(id typegraph.QualifiedType) string { return id.TypeName }).
 				CollectSlice()
 

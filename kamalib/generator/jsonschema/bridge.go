@@ -123,7 +123,7 @@ func scalarItems(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool 
 // bridging returns the keywords of the schema s at ptr, which is no raw
 // JSON text, that bridged tells.
 func bridging(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []string {
-	return opiter.WrapSeq(slices.Values(constraining(s))).
+	return opiter.SlicesValues(constraining(s)).
 		Filter(func(kw string) bool { return bridged(doc, ptr, s, kw) }).
 		CollectSlice()
 }
@@ -134,7 +134,7 @@ func bridging(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []string
 func undeclaredDependents(s *jsonschema.Schema) bool {
 	undeclared := func(n string) bool { _, ok := s.Properties.Get(n); return !ok }
 
-	return opiter.WrapSeq2(opiter.MapsSorted(s.DependentRequired)).
+	return opiter.MapsSorted(s.DependentRequired).
 		Any(func(key string, deps []string) bool {
 			return undeclared(key) || slices.ContainsFunc(deps, undeclared)
 		})

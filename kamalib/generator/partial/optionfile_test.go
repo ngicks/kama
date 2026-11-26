@@ -2,7 +2,6 @@ package partial
 
 import (
 	"context"
-	"maps"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -746,7 +745,7 @@ func TestProcOptionFile(t *testing.T) {
 	staged, err := f.Overlay()
 	assert.NilError(t, err)
 
-	names := opiter.WrapSeq(maps.Keys(staged)).
+	names := opiter.MapsKeys(staged).
 		Filter(func(name string) bool { return strings.HasSuffix(name, "x.kama_partial.go") }).
 		CollectSlice()
 

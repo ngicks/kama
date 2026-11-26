@@ -56,7 +56,7 @@ func placeKind(doc *jsonschema.Schema, ptr string) string {
 		return ""
 	}
 
-	nonNull := opiter.WrapSeq(slices.Values(k)).
+	nonNull := opiter.SlicesValues(k).
 		Filter(func(k string) bool { return k != "null" }).
 		CollectSlice()
 
@@ -210,7 +210,7 @@ func rawDependents(s *jsonschema.Schema) (expr.Arg, bool) {
 // and those no literal spells. check rejects a document holding a value no
 // literal spells before any rule is written.
 func rawValues(values []jsontext.Value) []jsontext.Value {
-	return opiter.WrapSeq(slices.Values(values)).
+	return opiter.SlicesValues(values).
 		Filter(func(v jsontext.Value) bool {
 			_, err := expr.FromJson(v)
 			return v != nil && err == nil
@@ -221,7 +221,7 @@ func rawValues(values []jsontext.Value) []jsontext.Value {
 // literals returns lits, Go literals of a string, a number or a bool as
 // goLiteral spells them, as the JSON values of const.
 func literals(lits []string) []jsontext.Value {
-	return opiter.WrapSeq(slices.Values(lits)).
+	return opiter.SlicesValues(lits).
 		Map(func(lit string) jsontext.Value {
 			if v, err := strconv.Unquote(lit); err == nil && strings.HasPrefix(lit, `"`) {
 				text, _ := jsonv2.Marshal(v)
@@ -253,7 +253,7 @@ func presentValidation(s *jsonschema.Schema) []string {
 		"maxProperties":     s.MaxProperties != nil,
 	}
 
-	return opiter.WrapSeq2(opiter.MapsSorted(has)).
+	return opiter.MapsSorted(has).
 		Filter(func(_ string, ok bool) bool { return ok }).
 		OmitL().
 		CollectSlice()
@@ -338,7 +338,7 @@ func fieldArgs(doc *jsonschema.Schema, opts Options, ptr, name string) ([]expr.A
 
 	// A validator named by both would be given twice. The args of the value
 	// in one and apply to the value the field holds, as each of them does.
-	clash := opiter.WrapSeq(slices.Values(deps)).
+	clash := opiter.SlicesValues(deps).
 		Map(argName).
 		Any(func(n string) bool {
 			return slices.ContainsFunc(args, func(a expr.Arg) bool { return argName(a) == n })
@@ -384,12 +384,12 @@ func dependentArgs(doc *jsonschema.Schema, ptr, name string) []expr.Arg {
 
 	if deps, ok := s.DependentRequired[name]; ok && optional(name) && declared(name) &&
 		!slices.ContainsFunc(deps, func(n string) bool { return !declared(n) }) {
-		names = opiter.WrapSeq(slices.Values(deps)).
+		names = opiter.SlicesValues(deps).
 			Filter(optional).
 			CollectSlice()
 	}
 
-	requiredBy := opiter.WrapSeq(slices.Values(slices.Sorted(maps.Keys(s.DependentRequired)))).
+	requiredBy := opiter.SlicesValues(slices.Sorted(maps.Keys(s.DependentRequired))).
 		Filter(func(k string) bool { return !optional(k) && declared(k) }).
 		Any(func(k string) bool { return slices.Contains(s.DependentRequired[k], name) })
 

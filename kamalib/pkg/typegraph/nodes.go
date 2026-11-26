@@ -38,7 +38,7 @@ func NodesIn(seq iter.Seq[*Node], filename string) []*Node {
 // package of pkgs at id.PackagePath. It returns nil when pkgs has no such
 // package or the package declares no such name.
 func LookupType(pkgs []*packages.Package, id QualifiedType) types.Object {
-	pkg := opiter.WrapSeq(slices.Values(pkgs)).
+	pkg := opiter.SlicesValues(pkgs).
 		Filter(func(pkg *packages.Package) bool { return pkg.PkgPath == id.PackagePath }).
 		First()
 

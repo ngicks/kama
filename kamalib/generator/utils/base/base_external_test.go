@@ -48,7 +48,7 @@ func TestSourcePackages(t *testing.T) {
 
 	src := base.SourcePackages(pkgs)
 
-	ids := opiter.WrapSeq(slices.Values(src)).
+	ids := opiter.SlicesValues(src).
 		Map(func(p *packages.Package) string { return p.ID }).
 		Collect(slices.Sorted)
 
@@ -163,14 +163,14 @@ func TestShadowedPredeclared(t *testing.T) {
 	names := func(contents ...string) []string {
 		t.Helper()
 
-		in := opiter.WrapSeq(slices.Values(contents)).
+		in := opiter.SlicesValues(contents).
 			Map(func(s string) []byte { return []byte(s) }).
 			CollectSlice()
 
 		objs, err := base.ShadowedPredeclared(pkgs[0], in)
 		assert.NilError(t, err)
 
-		return opiter.WrapSeq(slices.Values(objs)).
+		return opiter.SlicesValues(objs).
 			Map(func(o types.Object) string { return o.Name() }).
 			CollectSlice()
 	}

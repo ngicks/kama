@@ -250,7 +250,7 @@ func present(s *jsonschema.Schema, keywords []string) []string {
 		"maxContains":           s.MaxContains != nil,
 	}
 
-	return opiter.WrapSeq(slices.Values(keywords)).
+	return opiter.SlicesValues(keywords).
 		Filter(func(kw string) bool { return has[kw] }).
 		CollectSlice()
 }
@@ -359,7 +359,7 @@ func stepInto(s *jsonschema.Schema, kw, key string) *jsonschema.Schema {
 
 // shapesOtherThan returns the shape keywords of s outside allowed.
 func shapesOtherThan(s *jsonschema.Schema, allowed ...string) []string {
-	return opiter.WrapSeq(slices.Values(present(s, shapeKeywords))).
+	return opiter.SlicesValues(present(s, shapeKeywords)).
 		Filter(func(kw string) bool { return !slices.Contains(allowed, kw) }).
 		CollectSlice()
 }
@@ -592,7 +592,7 @@ func transparentAllOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) 
 		seen = append(seen, m)
 
 		if !refAloneAt(doc, m, ms) {
-			return !ms.Type.IsZero() && opiter.WrapSeq(slices.Values(ms.Type.Names)).
+			return !ms.Type.IsZero() && opiter.SlicesValues(ms.Type.Names).
 				Every(func(k string) bool {
 					return slices.Contains(s.Type.Names, k) ||
 						k == "integer" && slices.Contains(s.Type.Names, "number")
@@ -619,7 +619,7 @@ func unionKeyword(s *jsonschema.Schema) string {
 
 // typeKinds returns the names of the type keyword of s other than null.
 func typeKinds(s *jsonschema.Schema) []string {
-	return opiter.WrapSeq(slices.Values(s.Type.Names)).
+	return opiter.SlicesValues(s.Type.Names).
 		Filter(func(k string) bool { return k != "null" }).
 		CollectSlice()
 }
@@ -632,7 +632,7 @@ func multiKind(s *jsonschema.Schema) bool {
 	k := typeKinds(s)
 
 	return len(k) >= 2 && len(shapesOtherThan(s, "type")) == 0 && !refBeside(s) &&
-		opiter.WrapSeq(slices.Values(k)).
+		opiter.SlicesValues(k).
 			Every(func(k string) bool { return slices.Contains(scalarKinds, k) })
 }
 
@@ -684,7 +684,7 @@ func rawFrom(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) bool {
 		return len(k) != 1 || !slices.Contains(scalarKinds, k[0])
 	}
 
-	nonNull := opiter.WrapSeq(slices.Values(k)).
+	nonNull := opiter.SlicesValues(k).
 		Filter(func(k string) bool { return k != "null" }).
 		CollectSlice()
 
@@ -722,7 +722,7 @@ func nullableUnion(doc *jsonschema.Schema, ptr string) bool {
 		return false
 	}
 
-	nulls := opiter.WrapSeq(slices.Values([]int{0, 1})).
+	nulls := opiter.SlicesValues([]int{0, 1}).
 		Filter(func(i int) bool { return nullMember(doc, child(ptr, kw, strconv.Itoa(i))) }).
 		CollectSlice()
 	if len(nulls) != 1 {
@@ -808,7 +808,7 @@ func mapOnly(s *jsonschema.Schema) bool {
 // stringEnum reports whether s is an enum of strings, which makes a named
 // string type.
 func stringEnum(s *jsonschema.Schema) bool {
-	return len(s.Enum) > 0 && !refBeside(s) && opiter.WrapSeq(slices.Values(s.Enum)).
+	return len(s.Enum) > 0 && !refBeside(s) && opiter.SlicesValues(s.Enum).
 		Every(func(v jsontext.Value) bool { return v.Kind() == '"' })
 }
 
@@ -918,13 +918,13 @@ func productOf(doc *jsonschema.Schema, ptr string, s *jsonschema.Schema) []*json
 // declares no property for, which only the validators of raw JSON text
 // check.
 func requiresUndeclared(s *jsonschema.Schema) bool {
-	return opiter.WrapSeq(slices.Values(s.Required)).
+	return opiter.SlicesValues(s.Required).
 		Any(func(n string) bool { _, ok := s.Properties.Get(n); return !ok })
 }
 
 // fitsTags reports whether every property name of s fits a json tag.
 func fitsTags(s *jsonschema.Schema) bool {
-	return opiter.WrapSeq(slices.Values(s.Properties)).
+	return opiter.SlicesValues(s.Properties).
 		Every(func(n jsonschema.NamedSchema) bool {
 			return !strings.ContainsFunc(n.Name, func(r rune) bool {
 				return strings.ContainsRune(",\\'\"`", r) || unicode.IsControl(r)
@@ -977,7 +977,7 @@ func kindsSeen(
 		return []string{valueKind(s.Const)}, nil
 	case s.Enum != nil:
 		return slices.Collect(opiter.Unique(
-			opiter.WrapSeq(slices.Values(s.Enum)).
+			opiter.SlicesValues(s.Enum).
 				Map(valueKind),
 		)), nil
 	case unionKeyword(s) != "":

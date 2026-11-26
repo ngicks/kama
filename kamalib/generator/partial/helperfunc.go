@@ -3,7 +3,6 @@ package partial
 import (
 	"fmt"
 	"go/types"
-	"slices"
 	"strings"
 
 	"github.com/ngicks/opiter"
@@ -23,7 +22,7 @@ import (
 func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 	return func(c genCtx) (string, error) {
 		in, err := opiter.TryCollect(
-			opiter.WrapSeq(slices.Values(args)).
+			opiter.SlicesValues(args).
 				Disassemble(func(arg genExpr) (string, error) { return arg(c) }),
 		)
 		if err != nil {
@@ -63,7 +62,7 @@ func (p *mapper) call(h *helper, args ...genExpr) genExpr {
 		var targs string
 
 		if tps := h.typeParams(); len(tps) > 0 {
-			names := opiter.WrapSeq(slices.Values(tps)).
+			names := opiter.SlicesValues(tps).
 				Map(typeParamName).
 				CollectSlice()
 
@@ -148,14 +147,14 @@ func (p *mapper) helperFunc(h *helper) (helperFunc, error) {
 	}
 
 	tparams, err := opiter.TryCollect(
-		opiter.WrapSeq(slices.Values(tps)).
+		opiter.SlicesValues(tps).
 			Disassemble(declare),
 	)
 	if err != nil {
 		return helperFunc{}, err
 	}
 
-	names := opiter.WrapSeq(slices.Values(tps)).
+	names := opiter.SlicesValues(tps).
 		Map(typeParamName).
 		CollectSlice()
 

@@ -59,7 +59,7 @@ func generateTests(t *testing.T, f *overlayfs.Fs, opts gopackages.Options, tests
 func relPaths(t *testing.T, f *overlayfs.Fs, files []base.File) []string {
 	t.Helper()
 
-	return opiter.WrapSeq(slices.Values(files)).
+	return opiter.SlicesValues(files).
 		Map(func(file base.File) string {
 			rel, err := filepath.Rel(filepath.Join(f.Root(), gentest.InlineDir(t)), file.Path)
 			assert.NilError(t, err)
@@ -143,7 +143,7 @@ func TestTestFilesWithoutTests(t *testing.T) {
 		"zz_gen.helper.kama_partial.go",
 	})
 
-	want := opiter.WrapSeq(slices.Values(withTests)).
+	want := opiter.SlicesValues(withTests).
 		Filter(func(file base.File) bool { return !strings.HasSuffix(file.Path, "_test.go") }).
 		CollectSlice()
 

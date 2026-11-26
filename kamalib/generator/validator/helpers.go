@@ -90,7 +90,7 @@ func (e *emitter) Declare(name string, decl func(imp ext.Importer) genStep) {
 
 // missing returns the packages e was asked for that are not among require.
 func (e *emitter) missing(require []string) bool {
-	return opiter.WrapSeq(maps.Keys(e.imports)).
+	return opiter.MapsKeys(e.imports).
 		Any(func(p string) bool { return !slices.Contains(require, p) })
 }
 
