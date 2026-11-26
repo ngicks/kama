@@ -105,7 +105,7 @@ func (w *writer) nestedNamed(
 	wrap wrapFunc,
 	depth int,
 ) (genStep, error) {
-	reg := w.sel.opts.Registry
+	reg := w.registry()
 
 	if h, ok := genext.HolderOf(reg, named); ok {
 		_, held, guard, value, _ := h.Held(named, x)

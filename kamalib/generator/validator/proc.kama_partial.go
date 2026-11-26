@@ -4,7 +4,7 @@
 //	merge_nested: "recursive"
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-24T20:50:02Z
+// generated: 2026-11-26T11:49:28Z
 
 package validator
 
@@ -17,8 +17,9 @@ import (
 //
 //kama:generated kama:partial
 type ProcParamPartial struct {
-	OptionFile und.Und[fileloader.PathInput] `json:"option_file,omitzero"`
-	Unknown    map[string]any                `json:",embed"`
+	OptionFile     und.Und[fileloader.PathInput]   `json:"option_file,omitzero"`
+	ExtensionFiles und.Und[[]fileloader.PathInput] `json:"extension_files,omitzero"`
+	Unknown        map[string]any                  `json:",embed"`
 }
 
 // FromValue sets every field of p to the partial form of the field of v.
@@ -27,6 +28,7 @@ type ProcParamPartial struct {
 //kama:generated kama:partial
 func (p *ProcParamPartial) FromValue(v ProcParam) {
 	p.OptionFile = und.FromOption(v.OptionFile, true)
+	p.ExtensionFiles = und.WrapSlice(v.ExtensionFiles).CollapseToNull()
 	p.Unknown = v.Unknown
 }
 
@@ -37,6 +39,7 @@ func (p *ProcParamPartial) FromValue(v ProcParam) {
 func (p ProcParamPartial) ToValue() ProcParam {
 	var v ProcParam
 	v.OptionFile = p.OptionFile.Flatten()
+	v.ExtensionFiles = p.ExtensionFiles.Value()
 	v.Unknown = p.Unknown
 	return v
 }
@@ -48,6 +51,9 @@ func (p ProcParamPartial) ToValue() ProcParam {
 func (p ProcParamPartial) Merge(r ProcParamPartial) ProcParamPartial {
 	if !r.OptionFile.IsUndefined() {
 		p.OptionFile = r.OptionFile
+	}
+	if !r.ExtensionFiles.IsUndefined() {
+		p.ExtensionFiles = r.ExtensionFiles
 	}
 	if r.Unknown != nil {
 		p.Unknown = r.Unknown

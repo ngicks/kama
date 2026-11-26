@@ -198,12 +198,7 @@ type Struct interface {
 }
 
 // Importer spells packages by path in the file generated code lands in.
-type Importer interface {
-	// Import returns the text of the identifier the file refers to the
-	// package at path by. The file imports the package once the text
-	// renders.
-	Import(path string) Gen
-}
+type Importer = genext.Importer
 
 // Emitter is what a Rule may use while emitting.
 type Emitter interface {
@@ -328,6 +323,12 @@ func (*Registry) Warn(error) {}
 // RegisterTypeSupport adds s after the supports of r, replacing the
 // support of the same name in its place.
 func (r *Registry) RegisterTypeSupport(s genext.TypeSupport) { r.supports.RegisterTypeSupport(s) }
+
+// PrependTypeSupports puts ss, in order, before the supports of r, as
+// genext.Registry.PrependTypeSupports does.
+func (r *Registry) PrependTypeSupports(ss ...genext.TypeSupport) {
+	r.supports.PrependTypeSupports(ss...)
+}
 
 // TypeSupports returns the type supports of r in the order they were
 // registered. It implements Resolver.

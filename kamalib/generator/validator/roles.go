@@ -92,7 +92,7 @@ func (w *writer) over(
 		return w.described(t, x, word, method, role, wrap, depth, inner)
 	}
 
-	reg := w.sel.opts.Registry
+	reg := w.registry()
 
 	idx := "i"
 
@@ -232,7 +232,7 @@ func (w *writer) heldRule(
 	_, sibling := r.(ext.SiblingRule)
 	_, whole := r.(ext.StructRule)
 
-	if sibling || whole && !acceptsHeld(w.sel.opts.Registry, r, t) {
+	if sibling || whole && !acceptsHeld(w.registry(), r, t) {
 		return nil, fmt.Errorf(
 			"%w: %s: %s on %s: %s applies to a field or the doc comment of a type only",
 			ErrDirective, vo.src.origin(), vo.src.spelling(), place, n,

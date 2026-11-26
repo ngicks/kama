@@ -800,6 +800,36 @@
 // and its directives, with a warning for each. An entry giving only pre and
 // post adds them to the entry it comes before in the same way.
 //
+// # Extension files
+//
+// A text extension file describes type supports with data and
+// text/template expressions, so that a type of a package gets a support
+// without Go code. Package genext documents the format and holds a
+// complete example. ProcParam.ExtensionFiles lists the files the proc
+// reads, each named as option_file names its file, with base and formats
+// relative to the root of the out of the proc. kama runs workflow specs,
+// so a spec passes the files on the command line route:
+//
+//	generate:
+//	  proc: validate.generate
+//	  in: load
+//	  out: root
+//	  param:
+//	    extension_files:
+//	      - base: ext
+//
+// Options.ExtensionFiles names them for Generate, which reads them from
+// base.Env.Out. A file that is not present is an error. The supports of
+// the files go into a clone of the registry of the run, before its other
+// supports. The section validate of a type answers required, zero, null,
+// length, cmp and multipleof, as package validator/ext documents.
+//
+// A field asks what a value holds in this order: a description on the
+// field, unwrap, iter or iter2, first, then the supports of the extension
+// files, then the supports registered in Go. A file describes the types
+// of one project, so it overrides the support a library registers for a
+// type, and a field overrides both.
+//
 // # Output
 //
 // Each source file declaring targets gets a file of the same package next

@@ -1,7 +1,9 @@
 package validator
 
 import (
+	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/ngicks/option/opt"
 
@@ -24,6 +26,10 @@ type ProcParam struct {
 	// and formats. Empty formats mean toml, yaml, json. None means no
 	// option file. A named file that is not present is an error.
 	OptionFile opt.Option[fileloader.PathInput] `json:"option_file"`
+	// ExtensionFiles name the text extension files describing type
+	// supports, each as option_file names its file. A named file that is
+	// not present is an error.
+	ExtensionFiles []fileloader.PathInput `json:"extension_files"`
 	// Unknown captures the keys of a param that name no field.
 	Unknown map[string]any `json:",embed"`
 }
@@ -35,12 +41,20 @@ func DefaultProcParam() ProcParamPartial {
 }
 
 // UnknownKeys implements workflow.UnknownKeyer. It includes the unknown keys
-// of option_file.
+// of option_file and of each entry of extension_files.
 func (p *ProcParamPartial) UnknownKeys() [][]string {
-	return slices.Concat(
+	keys := slices.Concat(
 		unknownkey.Paths(p.Unknown),
 		unknownkey.Under(p.OptionFile.Value().UnknownKeys(), "option_file"),
 	)
+
+	for i, in := range p.ExtensionFiles.Value() {
+		keys = append(
+			keys,
+			unknownkey.Under(in.UnknownKeys(), "extension_files", strconv.Itoa(i))...)
+	}
+
+	return keys
 }
 
 // NewProc returns the proc generating the Validate methods of the packages
@@ -73,7 +87,13 @@ func procWith(reg *ext.Registry) base.SourceProc[
 		Generator: Generator(),
 		Default:   DefaultProcParam,
 		Options: func(p ProcParam) (Options, opt.Option[fileloader.PathInput], error) {
-			return Options{Registry: reg}, p.OptionFile, nil
+			for i, in := range p.ExtensionFiles {
+				if _, err := in.Normalize(); err != nil {
+					return Options{}, p.OptionFile, fmt.Errorf("extension_files.%d: %w", i, err)
+				}
+			}
+
+			return Options{Registry: reg, ExtensionFiles: p.ExtensionFiles}, p.OptionFile, nil
 		},
 		Loader:    NewLoader(nil),
 		LoadError: loadError,

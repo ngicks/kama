@@ -33,6 +33,12 @@ var fixtures = []fixture{
 		dir:   "internal/fixturefile",
 		param: ProcParamPartial{OptionFile: und.Defined(fileloader.PathInput{Base: "validate"})},
 	},
+	{
+		dir: "internal/fixtureext",
+		param: ProcParamPartial{
+			ExtensionFiles: und.Defined([]fileloader.PathInput{{Base: "ext"}}),
+		},
+	},
 }
 
 type fixture struct {

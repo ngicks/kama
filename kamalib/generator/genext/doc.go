@@ -96,4 +96,141 @@
 // by a blank import, so no import cycle arises. Package opt holds the
 // support of github.com/ngicks/option, and package std holds the supports
 // of types of the standard library.
+//
+// # Text extension files
+//
+// A text extension file describes type supports with data and
+// text/template expressions, so that a type gets a support without Go
+// code. LoadText builds supports from loaded files, one per described type
+// and one per generator section of it, and they implement the same
+// interfaces a Go support does. A generator puts them into the registry of
+// its run. The validator reads the files its proc param extension_files
+// names.
+//
+// A file is TOML, YAML or JSON, read as option files are. It holds
+// version, which is 1, and these tables:
+//
+//   - imports maps a name to the import path of a package outside the
+//     standard library. A template refers to the package by
+//     {{pkg "<name>"}}.
+//   - helpers maps a name to a helper declaration. decl is the template of
+//     exactly one package-level function, variable or constant declaration
+//     named {{.Name}}. A template calls the helper by {{helper "<name>"}},
+//     which gives the name the declaration takes.
+//   - types maps the import path of a package and the name of a type,
+//     joined by a dot, to the description of the type: holder, container,
+//     composite and generator.
+//
+// A holder describes a Holder: role, type, guard and value. A container
+// describes a Container: role, type, over, yields and segment. yields is
+// values when over yields the elements alone, as an iter.Seq does, and
+// pairs when it yields an index or a key with each element, as an
+// iter.Seq2 does. segment is index or key for pairs, what the first value
+// locates an element by. A container yielding values locates its elements
+// by their count. A composite lists its parts, each with role, type,
+// guard, value, segment and label. segment is none, index, key or field,
+// and label is the template of a Go expression of the segment, as
+// "\"left\"" for a field. An empty guard of a part stands for always.
+//
+// type names the type of a value by the name of a type parameter of the
+// described type, as T, or by .Name, the type of the field Name or of the
+// first result of the method Name. A generic type is described once, and
+// the type parameter stands for the type argument of each instance.
+//
+// generator holds a section per generator, keyed by its name. A generator
+// package registers the builder of its section with RegisterTextSection.
+// The validator registers validate, whose keys package validator/ext
+// documents.
+//
+// Templates execute with text/template while the generated code renders.
+// .V is the code of the value. Three functions reach outside it:
+//
+//   - {{std "<import path>"}} spells a package of the standard library, as
+//     {{std "strings"}}.TrimSpace({{.V}}). A path whose first element holds
+//     no dot and whose directory lies under GOROOT/src is a package of the
+//     standard library.
+//   - {{pkg "<name>"}} spells the package imports names.
+//   - {{helper "<name>"}} declares the helper of helpers and spells its
+//     name. A helper calls no other helper.
+//
+// Each package a template names resolves through the imports of the file
+// the code lands in, under an identifier no other import takes, and is
+// imported only when code naming it is emitted. A file imports a package
+// the generated package does not depend on under the last element of its
+// path. Each helper is declared once per package, in the helper file of
+// the generator, under a name the generator prefixes, as
+// kamaValidateExtCount for the helper count of the validator. A template
+// that does not parse is an error when the file loads. A template that
+// does not execute, and a name imports or helpers does not declare, is an
+// error of the run. Each error names the file and the key path of the
+// template. A key that names nothing is a warning naming its key path.
+//
+// The generator does not type-check the code of a template. A method the
+// value lacks makes the generated code fail to compile. CheckText reports
+// a described type missing from a loaded package, and a type naming no
+// type parameter, field or method.
+//
+// This file describes a generic container, a holder and a composite of two
+// parts, and tells the validator how to count and test them:
+//
+//	version = 1
+//
+//	[imports]
+//	opt = "github.com/ngicks/option/opt"
+//
+//	[helpers.count]
+//	decl = '''
+//	func {{.Name}}[T any](seq {{std "iter"}}.Seq[T]) int {
+//		n := 0
+//		for range seq {
+//			n++
+//		}
+//		return n
+//	}
+//	'''
+//
+//	[types."example.com/bag.Bag".container]
+//	role = "v"
+//	type = "T"
+//	over = "{{.V}}.Values()"
+//	yields = "values"
+//
+//	[types."example.com/bag.Bag".generator.validate.length]
+//	expr = '{{helper "count"}}({{.V}}.Values())'
+//
+//	[types."example.com/bag.Maybe".holder]
+//	role = "v"
+//	type = "T"
+//	guard = "{{.V}}.IsSome()"
+//	value = "{{.V}}.Get()"
+//
+//	[types."example.com/bag.Maybe".generator.validate.present]
+//	cond = "{{.V}}.IsSome()"
+//	words = "none"
+//
+//	[types."example.com/bag.Maybe".generator.validate.zero]
+//	cond = '{{pkg "opt"}}.FromOk({{.V}}.Get(), {{.V}}.IsSome()).IsNone()'
+//
+//	[[types."example.com/bag.Pair".composite.parts]]
+//	role = "k"
+//	type = "K"
+//	value = "{{.V}}.Key"
+//	segment = "field"
+//	label = '"key"'
+//
+//	[[types."example.com/bag.Pair".composite.parts]]
+//	role = "v"
+//	type = "V"
+//	guard = "{{.V}}.HasValue()"
+//	value = "{{.V}}.Value"
+//	segment = "field"
+//	label = '"value"'
+//
+//	[types."example.com/bag.Label".generator.validate.zero]
+//	cond = '{{std "strings"}}.TrimSpace({{.V}}.String()) == ""'
+//
+//	[types."example.com/bag.Label".generator.validate.compare]
+//	ops = ["==", "!="]
+//	operand = "string"
+//	cond = "{{.V}}.String() {{.Op}} {{.Operand}}"
 package genext

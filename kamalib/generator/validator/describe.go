@@ -130,7 +130,7 @@ func (w *writer) heldRoles(t types.Type, items []expr.Arg) ([]string, error) {
 
 	switch word {
 	case "":
-		return genext.Roles(w.sel.opts.Registry, t), nil
+		return genext.Roles(w.registry(), t), nil
 	case ext.Iter2Word:
 		if _, _, err := iterated(t, w.scope.Pkg.Types, word, method); err != nil {
 			return nil, err

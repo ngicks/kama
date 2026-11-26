@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go/types"
+	"io/fs"
 	"iter"
 	"maps"
 	"slices"
@@ -13,9 +15,11 @@ import (
 	"github.com/ngicks/opiter"
 	"golang.org/x/tools/go/packages"
 
+	"github.com/ngicks/kama/kamalib/generator/genext"
 	"github.com/ngicks/kama/kamalib/generator/utils/base"
 	"github.com/ngicks/kama/kamalib/generator/validator/ext"
 	"github.com/ngicks/kama/kamalib/pkg/dircmnt/expr"
+	"github.com/ngicks/kama/kamalib/pkg/fileloader"
 	"github.com/ngicks/kama/kamalib/workflow"
 
 	// The built-in validators and the type support of
@@ -73,6 +77,10 @@ type Options struct {
 	// Registry holds the validators directives name. It is
 	// ext.DefaultRegistry() when nil.
 	Registry *ext.Registry
+	// ExtensionFiles name the text extension files describing type
+	// supports, as genext.LoadText reads them, relative to the root of
+	// base.Env.Out. Their supports answer before those of Registry.
+	ExtensionFiles []fileloader.PathInput
 }
 
 // WithDefaults returns o with empty fields set to their defaults.
@@ -101,7 +109,17 @@ type Input = base.Input[Options, PackageOptions, TypeOptions, FieldOptions]
 // other packages.
 func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, error] {
 	return func(yield func(base.Output, error) bool) {
-		opts := in.Options.WithDefaults()
+		opts, warnings, err := withExtensions(in.Options.WithDefaults(), env.Out, in.Packages)
+		if err != nil {
+			yield(nil, err)
+			return
+		}
+
+		for _, w := range warnings {
+			if env.Reporter != nil {
+				env.Reporter.Warn(w)
+			}
+		}
 
 		if err := reservedNames(opts.Registry); err != nil {
 			yield(nil, err)
@@ -159,6 +177,63 @@ func Generate(_ context.Context, env base.Env, in Input) iter.Seq2[base.Output, 
 			}
 		}
 	}
+}
+
+// withExtensions returns opts with a clone of its registry putting the type
+// supports of its extension files, read from fsys, before the others. A
+// type a loaded package reaches that a file does not resolve is an error.
+func withExtensions(
+	opts Options,
+	fsys fs.FS,
+	pkgs []*packages.Package,
+) (Options, []error, error) {
+	if len(opts.ExtensionFiles) == 0 {
+		return opts, nil, nil
+	}
+
+	if fsys == nil {
+		return opts, nil, errors.New(
+			"validator: extension files need base.Env.Out to read them from",
+		)
+	}
+
+	var docs []genext.TextDocument
+
+	for i, in := range opts.ExtensionFiles {
+		in, err := in.Normalize()
+		if err != nil {
+			return opts, nil, fmt.Errorf("validator: extension_files.%d: %w", i, err)
+		}
+
+		var data any
+
+		name, err := fileloader.Load(fsys, in, &data)
+		if err != nil {
+			return opts, nil, fmt.Errorf("validator: extension_files.%d: %w", i, err)
+		}
+
+		docs = append(docs, genext.TextDocument{Name: name, Data: data})
+	}
+
+	supports, warnings, err := genext.LoadText(docs)
+	if err != nil {
+		return opts, warnings, fmt.Errorf("validator: %w", err)
+	}
+
+	err = genext.CheckText(
+		slices.Values(supports),
+		opiter.SlicesValues(pkgs).
+			Map(func(p *packages.Package) *types.Package { return p.Types }).
+			CollectSlice(),
+	)
+	if err != nil {
+		return opts, warnings, fmt.Errorf("validator: %w", err)
+	}
+
+	opts.Registry = opts.Registry.Clone()
+	opts.Registry.PrependTypeSupports(supports...)
+
+	return opts, warnings, nil
 }
 
 // onceWarn returns the function reporting a warning to r once. A rule is

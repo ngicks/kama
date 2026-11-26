@@ -2,7 +2,6 @@ package ext
 
 import (
 	"github.com/ngicks/kama/kamalib/generator/genext"
-	"github.com/ngicks/kama/kamalib/pkg/genhelper"
 )
 
 type (
@@ -12,5 +11,5 @@ type (
 	// returns.
 	Gen = genext.Gen
 	// Step renders code, such as the declaration Emitter.Declare takes.
-	Step = genhelper.Step[Context]
+	Step = genext.Step
 )

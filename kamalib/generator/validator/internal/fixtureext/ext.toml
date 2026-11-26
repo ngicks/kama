@@ -1,0 +1,50 @@
+version = 1
+
+[imports]
+# Declared and never used: no generated file imports it.
+unused = "example.com/never/used"
+
+[helpers.count]
+decl = '''
+func {{.Name}}[T any](seq {{std "iter"}}.Seq[T]) int {
+	n := 0
+	for range seq {
+		n++
+	}
+	return n
+}
+'''
+
+[types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.Bag".container]
+role = "v"
+type = "T"
+over = "{{.V}}.Values()"
+yields = "values"
+
+[types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.Bag".generator.validate.length]
+expr = '{{helper "count"}}({{.V}}.Values())'
+
+[types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.Maybe".holder]
+role = "v"
+type = "T"
+guard = "{{.V}}.IsSome()"
+value = "{{.V}}.Get()"
+
+[types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.Maybe".generator.validate.present]
+cond = "{{.V}}.IsSome()"
+words = "none"
+
+[types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.Pair".composite]
+parts = [
+  { role = "k", type = "K", value = "{{.V}}.Key", segment = "field", label = '"key"' },
+  { role = "v", type = "V", guard = "{{.V}}.HasValue()", value = "{{.V}}.Value", segment = "field", label = '"value"' },
+]
+
+[types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.Label".generator.validate.zero]
+cond = '{{std "strings"}}.TrimSpace({{.V}}.String()) == ""'
+words = "a label with text"
+
+[types."github.com/ngicks/kama/kamalib/generator/validator/internal/fixtureext/textext.Label".generator.validate.compare]
+ops = ["==", "!="]
+operand = "string"
+cond = "{{.V}}.String() {{.Op}} {{.Operand}}"

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"go/types"
+	"iter"
 	"slices"
 	"strconv"
 	"strings"
@@ -31,6 +32,23 @@ type writer struct {
 	n         *typegraph.Node
 	shallow   bool
 	evaluated bool
+}
+
+// registry returns the registry of the run with its type supports bound to
+// the file w writes, so that the code they tell imports into that file and
+// declares its helpers into the helper file of the package.
+func (w *writer) registry() ext.Resolver {
+	return boundRegistry{Resolver: w.sel.opts.Registry, out: w.emitter}
+}
+
+// boundRegistry is a Resolver whose type supports are bound to out.
+type boundRegistry struct {
+	ext.Resolver
+	out genext.Output
+}
+
+func (b boundRegistry) TypeSupports() iter.Seq[genext.TypeSupport] {
+	return genext.Bound(b.Resolver, b.out, ext.TextHelperPrefix).TypeSupports()
 }
 
 // tparams returns the names the method spells the type parameters of w.n
@@ -432,7 +450,7 @@ func (w *writer) validator(
 		return s, nil
 	}
 
-	if _, ok := r.(ext.StructRule); ok && !acceptsHeld(w.sel.opts.Registry, r, v.Type()) {
+	if _, ok := r.(ext.StructRule); ok && !acceptsHeld(w.registry(), r, v.Type()) {
 		return nil, fmt.Errorf(
 			"%w: %s: %s on %s validates a struct as a whole;"+
 				" write it in the doc comment of a struct type",
@@ -531,7 +549,7 @@ func (w *writer) typeValidator(u types.Type, vo ValidatorOptions) (genStep, erro
 // would repeat for the value a pointer or an option holds, so apply never
 // sees it.
 func (w *writer) resolve(vo ValidatorOptions, n expr.Node, place string) (ext.Rule, error) {
-	res := ext.WithWarn(w.sel.opts.Registry, func(err error) {
+	res := ext.WithWarn(w.registry(), func(err error) {
 		if w.sel.warn != nil {
 			w.sel.warn(fmt.Errorf(
 				"%s: %s on %s: %w", vo.src.origin(), vo.src.spelling(), place, err,
@@ -570,7 +588,7 @@ func (w *writer) apply(r ext.Rule, t types.Type, x genExpr, wrap wrapFunc) (genS
 		return w.emit(r, t, x, wrap), nil
 	}
 
-	held, guard, value, ok := genext.HeldValue(w.sel.opts.Registry, t, x)
+	held, guard, value, ok := genext.HeldValue(w.registry(), t, x)
 	if !ok || errors.Is(checkErr, ext.ErrClaimed) {
 		return nil, checkErr
 	}

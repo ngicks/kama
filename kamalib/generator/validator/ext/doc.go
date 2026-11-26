@@ -59,6 +59,18 @@
 // claiming a type answers. A rule keeps the Resolver its Parse received to
 // ask them.
 //
+// A text extension file of package genext answers these interfaces
+// through the section validate of the description of a type, which
+// TextSection decodes. present, zero and null hold the template cond of
+// the condition and words, the text telling what a value is otherwise.
+// length holds the template expr of the number of values. compare holds
+// ops, the operators the type takes, operand, string or number, the kind
+// of operand a directive must write, and the template cond, which reads
+// {{.Op}} and {{.Operand}}, the Go literal the directive wrote, beside
+// {{.V}}. An operator outside ops is left to the rule. The supports
+// declare the helpers of a file under names starting with
+// TextHelperPrefix.
+//
 // A keyword item of //kama:validate naming a role applies its rules to the
 // values of the role, as genext.RoleValue reaches them. A role name of a
 // support must not be one of ItemWords or the name of a validator of the

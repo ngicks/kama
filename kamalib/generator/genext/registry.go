@@ -56,6 +56,16 @@ func (r *Registry) RegisterTypeSupport(s TypeSupport) {
 	r.supports = append(r.supports, s)
 }
 
+// PrependTypeSupports puts ss, in order, before the supports of r, so that
+// they answer first. A support of r of the same name as one of ss is
+// dropped.
+func (r *Registry) PrependTypeSupports(ss ...TypeSupport) {
+	rest := slices.DeleteFunc(slices.Clone(r.supports), func(s TypeSupport) bool {
+		return slices.ContainsFunc(ss, func(n TypeSupport) bool { return n.Name() == s.Name() })
+	})
+	r.supports = slices.Concat(ss, rest)
+}
+
 // TypeSupports returns the type supports of r in the order they were
 // registered. It implements Supports.
 func (r *Registry) TypeSupports() iter.Seq[TypeSupport] { return slices.Values(r.supports) }
