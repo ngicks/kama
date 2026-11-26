@@ -151,3 +151,37 @@ func keys(texts Texts) []string {
 
 	return out
 }
+
+// TestDependencyPackage walks a struct of a package the load reaches only
+// as a dependency, and reads its docs.
+func TestDependencyPackage(t *testing.T) {
+	f, opts := gentest.Stage(t, crossFiles(t))
+	opts.Patterns = []string{"./" + gentest.InlineDir(t) + "/p"}
+
+	pkgs, err := pkggopackages.Load(t.Context(), f, opts)
+	assert.NilError(t, err)
+	assert.Equal(t, len(pkgs), 1)
+
+	texts, err := Generate(Input{Pkgs: pkgs}, func(w error) { t.Error(w) })
+	assert.NilError(t, err)
+	assert.Equal(t, texts["app"], "App\n"+
+		"└─ .Settings  q.Settings  #   (settings)\n"+
+		"    └─ .Level  string  # Level is the log level.  (settings.level)\n")
+}
+
+func TestDescribeKeepsAuthor(t *testing.T) {
+	texts, _, err := gen(t, map[string]string{"p/p.go": `package p
+
+//kama:fieldtree c
+type C struct {
+	// Author is the commit author. More text.
+	Author string
+	// Copyright is the notice.
+	Copyright string
+}
+`}, nil)
+	assert.NilError(t, err)
+	assert.Equal(t, texts["c"], "C\n"+
+		"├─ .Author     string  # Author is the commit author.  (Author)\n"+
+		"└─ .Copyright  string  # Copyright is the notice.      (Copyright)\n")
+}

@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"fmt"
 	"go/ast"
-	"go/doc"
 	"go/types"
 	"iter"
 	"reflect"
@@ -375,7 +374,7 @@ func (w walker) describe(f *types.Var) string {
 	case field == nil:
 		return ""
 	case field.Doc != nil:
-		if s := new(doc.Package).Synopsis(field.Doc.Text()); s != "" {
+		if s := firstSentence(field.Doc.Text()); s != "" {
 			return s
 		}
 	}
@@ -385,6 +384,20 @@ func (w walker) describe(f *types.Var) string {
 	}
 
 	return strings.Join(strings.Fields(field.Comment.Text()), " ")
+}
+
+// firstSentence returns the first sentence of the first paragraph of
+// text, its lines joined by spaces. go/doc.Synopsis is not used: it drops
+// a text starting with Author or Copyright, which a field doc may well do.
+func firstSentence(text string) string {
+	para, _, _ := strings.Cut(strings.TrimSpace(text), "\n\n")
+	s := strings.Join(strings.Fields(para), " ")
+
+	if i := strings.Index(s, ". "); i >= 0 {
+		return s[:i+1]
+	}
+
+	return s
 }
 
 // fieldSyntax returns the field of the syntax of pkg declaring f, or nil.
