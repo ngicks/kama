@@ -94,18 +94,13 @@ func (w *writer) over(
 	reg := w.sel.opts.Registry
 
 	idx := "i"
-	if _, _, _, _, segment, _, _ := ext.RoleValue(
-		reg,
-		t,
-		x,
-		role,
-		nil,
-		nil,
-	); segment == ext.SegmentKey {
+
+	_, _, over, _, segment, _, _ := ext.RoleValue(reg, t, x, role, nil, nil)
+	if segment == ext.SegmentKey {
 		idx = "k"
 	}
 
-	idx = loopName(idx, depth)
+	idx, local := loopName(idx, depth), loopName("s", depth)
 
 	_, indexable := types.Unalias(t).Underlying().(*types.Slice)
 	if _, ok := types.Unalias(t).Underlying().(*types.Array); ok {
@@ -113,8 +108,12 @@ func (w *writer) over(
 	}
 
 	elem := lang.Name("e")
-	if indexable {
-		elem = indexElem(x, idx)
+
+	switch {
+	case indexable:
+		elem = indexElem(x, idx, local)
+	case over != nil && segment == ext.SegmentIndex:
+		elem = containerElem(t, over, local, idx)
 	}
 
 	held, guard, over, value, segment, label, _ := ext.RoleValue(
@@ -136,7 +135,7 @@ func (w *writer) over(
 	}
 
 	if indexable {
-		return rangeIndexed(over, idx, s), nil
+		return rangeIndexed(over, idx, local, s), nil
 	}
 
 	m, isMap := types.Unalias(t).Underlying().(*types.Map)
@@ -158,6 +157,10 @@ func (w *writer) over(
 
 	if keyRole {
 		return lang.ForRange(idx, "", over, s), nil
+	}
+
+	if segment == ext.SegmentIndex {
+		return rangeContainer(t, over, idx, local, s), nil
 	}
 
 	return lang.ForRange(idx, "e", over, s), nil

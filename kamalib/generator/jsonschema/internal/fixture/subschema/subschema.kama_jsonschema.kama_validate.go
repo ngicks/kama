@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:16:04Z
+// generated: 2026-11-26T09:40:14Z
 
 package subschema
 
@@ -446,8 +446,9 @@ func (v *Node) Validate(stopOnFirstError bool) error {
 	}
 	var errs []error
 	if v.Kids.IsSome() {
-		for i, e := range v.Kids.Value() {
-			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "kids"); err != nil {
+		s := v.Kids.Value()
+		for i := range s {
+			if err := validator.Field(validator.Index(s[i].Validate(stopOnFirstError), i), "kids"); err != nil {
 				if stopOnFirstError {
 					return err
 				}

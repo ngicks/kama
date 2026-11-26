@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:31:03Z
+// generated: 2026-11-26T09:39:43Z
 
 package decoding
 
@@ -64,8 +64,9 @@ func (v *Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Items.IsSome() {
-		for i, e := range v.Items.Value() {
-			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "items"); err != nil {
+		s := v.Items.Value()
+		for i := range s {
+			if err := validator.Field(validator.Index(s[i].Validate(stopOnFirstError), i), "items"); err != nil {
 				if stopOnFirstError {
 					return err
 				}

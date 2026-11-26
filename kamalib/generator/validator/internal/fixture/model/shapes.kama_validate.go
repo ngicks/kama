@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:31:47Z
+// generated: 2026-11-26T09:39:36Z
 
 package model
 
@@ -24,10 +24,11 @@ func (v *Shapes[T0]) Validate(stopOnFirstError bool, validateT0 func(v T0, stopO
 		return validator.New(validator.ErrNilReceiver, "Validate on a nil *Shapes")
 	}
 	var errs []error
-	for i, e := range v.E.Options() {
-		if e.IsSome() {
+	s := v.E.Options()
+	for i := range s {
+		if s[i].IsSome() {
 			if err := validator.Field(validator.Index(func() error {
-				p := e.Value()
+				p := s[i].Value()
 				return p.Validate(stopOnFirstError)
 			}(), i), "e"); err != nil {
 				if stopOnFirstError {
@@ -108,10 +109,11 @@ func (v *Elastics) Validate(stopOnFirstError bool) error {
 	}
 	var errs []error
 	for i := range v.S {
-		for i2, e := range v.S[i].Options() {
-			if e.IsSome() {
+		s2 := v.S[i].Options()
+		for i2 := range s2 {
+			if s2[i2].IsSome() {
 				if err := validator.Field(validator.Index(validator.Index(func() error {
-					p := e.Value()
+					p := s2[i2].Value()
 					return p.Validate(stopOnFirstError)
 				}(), i2), i), "s"); err != nil {
 					if stopOnFirstError {
@@ -124,10 +126,11 @@ func (v *Elastics) Validate(stopOnFirstError bool) error {
 	}
 	for _, k := range slices.Sorted(maps.Keys(v.M)) {
 		e := v.M[k]
-		for i2, e2 := range e.Options() {
-			if e2.IsSome() {
+		s2 := e.Options()
+		for i2 := range s2 {
+			if s2[i2].IsSome() {
 				if err := validator.Field(validator.Key(validator.Index(func() error {
-					p := e2.Value()
+					p := s2[i2].Value()
 					return p.Validate(stopOnFirstError)
 				}(), i2), k), "m"); err != nil {
 					if stopOnFirstError {
@@ -139,10 +142,11 @@ func (v *Elastics) Validate(stopOnFirstError bool) error {
 		}
 	}
 	for i := range v.A {
-		for i2, e := range v.A[i].Options() {
-			if e.IsSome() {
+		s2 := v.A[i].Options()
+		for i2 := range s2 {
+			if s2[i2].IsSome() {
 				if err := validator.Field(validator.Index(validator.Index(func() error {
-					p := e.Value()
+					p := s2[i2].Value()
 					return p.Validate(stopOnFirstError)
 				}(), i2), i), "a"); err != nil {
 					if stopOnFirstError {

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:14:34Z
+// generated: 2026-11-26T09:39:36Z
 
 package model
 
@@ -75,9 +75,10 @@ func (v *Roles) Validate(stopOnFirstError bool) error {
 		}
 		errs = append(errs, err)
 	}
-	for i, e := range v.Codes.Options() {
-		if e.IsSome() {
-			if err := validator.Field(validator.Index(kamaValidateLength(len(e.Value()), "<=", 3), i), "codes"); err != nil {
+	s := v.Codes.Options()
+	for i := range s {
+		if s[i].IsSome() {
+			if err := validator.Field(validator.Index(kamaValidateLength(len(s[i].Value()), "<=", 3), i), "codes"); err != nil {
 				if stopOnFirstError {
 					return err
 				}

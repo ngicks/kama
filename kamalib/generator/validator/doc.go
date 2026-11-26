@@ -317,7 +317,9 @@
 // by its index as v.S[i].Validate(...), and the value a pointer points to
 // as (*p).Validate(...), which passes p itself. The walk reaches the
 // elements of a slice or an array by index for this reason, and copies
-// none into a range variable. A value without an address is copied into a
+// none into a range variable. A slice or an array that a method returns,
+// as elastic.Elastic.Options does, is bound to a local once and walked by
+// index too. A value without an address is copied into a
 // local first: a map value, a value an iterator yields, and the result of
 // a method such as opt.Option.Value. A function literal passed for a type
 // parameter calls the method on its parameter.

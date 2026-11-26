@@ -65,9 +65,9 @@ type A struct {
 			check(`validator.Field(kamaValidateLength(len(v.O.Value()), "<=", 64), "O")`),
 		check(`validator.Field(kamaValidateOr(kamaValidateLength(len(v.E.Options()), "==", 3),`+
 			` kamaValidateNull(v.E.IsNull())), "E")`),
-		"for i, e := range v.E.Options() {\n\t\tif e.IsSome() {\n\t\t\t"+
+		"s := v.E.Options()\n\tfor i := range s {\n\t\tif s[i].IsSome() {\n\t\t\t"+
 			check(`validator.Field(validator.Index(`+
-				`kamaValidateLength(len(e.Value()), "<=", 64), i), "E")`),
+				`kamaValidateLength(len(s[i].Value()), "<=", 64), i), "E")`),
 		"if v.L.IsLeft() {\n\t\t"+check(`validator.Field(validator.Field(`+
 			`kamaValidateLength(len(v.L.UnwrapLeft()), ">=", 1), "left"), "L")`),
 		"if v.L.IsRight() {\n\t\t"+check(`validator.Field(validator.Field(`+

@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:31:33Z
+// generated: 2026-11-26T09:40:10Z
 
 package resources
 
@@ -36,8 +36,9 @@ func (v *Order) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Lines.IsSome() {
-		for i, e := range v.Lines.Value() {
-			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "lines"); err != nil {
+		s := v.Lines.Value()
+		for i := range s {
+			if err := validator.Field(validator.Index(s[i].Validate(stopOnFirstError), i), "lines"); err != nil {
 				if stopOnFirstError {
 					return err
 				}

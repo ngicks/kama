@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:14:34Z
+// generated: 2026-11-26T09:39:36Z
 
 package model
 
@@ -79,10 +79,11 @@ func (v *Options[T]) Validate(stopOnFirstError bool, validateT func(v T, stopOnF
 			}
 		}
 	}
-	for i, e := range v.E.Options() {
-		if e.IsSome() {
+	s := v.E.Options()
+	for i := range s {
+		if s[i].IsSome() {
 			if validateT != nil {
-				if err := validator.Field(validator.Index(validateT(e.Value(), stopOnFirstError), i), "e"); err != nil {
+				if err := validator.Field(validator.Index(validateT(s[i].Value(), stopOnFirstError), i), "e"); err != nil {
 					if stopOnFirstError {
 						return err
 					}

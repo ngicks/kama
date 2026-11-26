@@ -113,7 +113,23 @@ func (w *writer) nestedNamed(
 
 	if c, ok := ext.ContainerOf(reg, named); ok {
 		_, elem, over, segment, _ := c.Elements(named, x)
-		return w.elements(w.walker(elem), over, wrap, depth, segment, nil)
+		if segment != ext.SegmentIndex {
+			return w.elements(w.walker(elem), over, wrap, depth, segment, nil)
+		}
+
+		idx, local := loopName("i", depth), loopName("s", depth)
+
+		s, err := w.nested(
+			elem,
+			containerElem(named, over, local, idx),
+			w.locate(segment, lang.Name(idx), wrap),
+			depth+1,
+		)
+		if s == nil || err != nil {
+			return nil, err
+		}
+
+		return rangeContainer(named, over, idx, local, s), nil
 	}
 
 	if c, ok := ext.CompositeOf(reg, named); ok {
@@ -266,29 +282,31 @@ func (w *writer) walker(elem types.Type) elementFunc {
 // indexed returns the loop validating each element of the slice or array
 // x by element, located by its index. The element is spelled x[i], so that
 // a Validate on the pointer receiver runs on the element in place rather
-// than on a copy in a range variable. An x calling a method is ranged over
-// with a range variable instead, so that the method runs once.
+// than on a copy in a range variable. An x calling a method is bound to a
+// local once, so that the method runs once, and the element is spelled by
+// index into the local.
 func (w *writer) indexed(
 	element elementFunc,
 	x genExpr,
 	wrap wrapFunc,
 	depth int,
 ) (genStep, error) {
-	idx := loopName("i", depth)
+	idx, local := loopName("i", depth), loopName("s", depth)
 
 	s, err := element(
-		indexElem(x, idx), w.locate(ext.SegmentIndex, lang.Name(idx), wrap), depth+1,
+		indexElem(x, idx, local), w.locate(ext.SegmentIndex, lang.Name(idx), wrap), depth+1,
 	)
 	if s == nil || err != nil {
 		return nil, err
 	}
 
-	return rangeIndexed(x, idx, s), nil
+	return rangeIndexed(x, idx, local, s), nil
 }
 
 // indexElem returns the element at idx of the slice or array x, as
-// rangeIndexed declares the loop variables.
-func indexElem(x genExpr, idx string) genExpr {
+// rangeIndexed declares the loop variables: x[idx], or local[idx] when x
+// calls a method.
+func indexElem(x genExpr, idx, local string) genExpr {
 	return func(c genCtx) (string, error) {
 		text, err := x(c)
 		if err != nil {
@@ -296,7 +314,7 @@ func indexElem(x genExpr, idx string) genExpr {
 		}
 
 		if callsMethod(text) {
-			return lang.Name("e")(c)
+			return lang.Expr("%s[%s]", lang.Name(local), lang.Name(idx))(c)
 		}
 
 		return lang.Expr("%s[%s]", text, lang.Name(idx))(c)
@@ -304,22 +322,92 @@ func indexElem(x genExpr, idx string) genExpr {
 }
 
 // rangeIndexed returns the loop over the indices of the slice or array x,
-// declaring idx, or idx and the range variable e when x calls a method, as
-// indexed spells the element.
-func rangeIndexed(x genExpr, idx string, body genStep) genStep {
+// declaring idx, as indexed spells the element. An x calling a method is
+// first bound to local, which the loop ranges over.
+func rangeIndexed(x genExpr, idx, local string, body genStep) genStep {
 	return genhelper.FuncStep[genCtx](func(c genCtx, b []byte) (genCtx, []byte, error) {
 		text, err := x(c)
 		if err != nil {
 			return c, nil, err
 		}
 
-		value := ""
-		if callsMethod(text) {
-			value = "e"
+		if !callsMethod(text) {
+			return lang.ForRange(idx, "", x, body).Render(c, b)
 		}
 
-		return lang.ForRange(idx, value, x, body).Render(c, b)
+		return genSteps{
+			lang.Stmt("%[2]s := %[1]s", x, decl(local)),
+			lang.ForRange(idx, "", lang.Name(local), body),
+		}.Render(c, b)
 	})
+}
+
+// containerElem returns the element at idx of the elements over yields for
+// a container of type t, as rangeContainer declares the loop variables:
+// local[idx] when over calls a method of t returning a slice or an array,
+// else the range variable e.
+func containerElem(t types.Type, over genExpr, local, idx string) genExpr {
+	return func(c genCtx) (string, error) {
+		text, err := over(c)
+		if err != nil {
+			return "", err
+		}
+
+		if indexedResult(t, text) {
+			return lang.Expr("%s[%s]", lang.Name(local), lang.Name(idx))(c)
+		}
+
+		return lang.Name("e")(c)
+	}
+}
+
+// rangeContainer returns the loop over the elements over yields for a
+// container of type t, declaring idx and e, or binding over to local and
+// ranging over its indices when indexedResult tells, as containerElem
+// spells the element.
+func rangeContainer(t types.Type, over genExpr, idx, local string, body genStep) genStep {
+	return genhelper.FuncStep[genCtx](func(c genCtx, b []byte) (genCtx, []byte, error) {
+		text, err := over(c)
+		if err != nil {
+			return c, nil, err
+		}
+
+		if !indexedResult(t, text) {
+			return lang.ForRange(idx, "e", over, body).Render(c, b)
+		}
+
+		return genSteps{
+			lang.Stmt("%[2]s := %[1]s", over, decl(local)),
+			lang.ForRange(idx, "", lang.Name(local), body),
+		}.Render(c, b)
+	})
+}
+
+// indexedResult reports whether text, the range expression a type support
+// gives for a value of type t, calls a method of t taking no args whose
+// result is a slice or an array. Ranging over such a result with a range
+// variable would copy each element, so the walk indexes it instead.
+func indexedResult(t types.Type, text string) bool {
+	head, ok := strings.CutSuffix(text, "()")
+	if !ok {
+		return false
+	}
+
+	name := head[strings.LastIndex(head, ".")+1:]
+
+	obj, _, _ := types.LookupFieldOrMethod(t, true, nil, name)
+
+	fn, ok := obj.(*types.Func)
+	if !ok || fn.Signature().Params().Len() != 0 || fn.Signature().Results().Len() != 1 {
+		return false
+	}
+
+	switch fn.Signature().Results().At(0).Type().Underlying().(type) {
+	case *types.Slice, *types.Array:
+		return true
+	}
+
+	return false
 }
 
 // callsMethod reports whether the expression text calls a method. The

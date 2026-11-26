@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:15:28Z
+// generated: 2026-11-26T09:39:45Z
 
 package dynamicref
 
@@ -83,8 +83,9 @@ func (v *Tree) Validate(stopOnFirstError bool) error {
 	}
 	var errs []error
 	if v.Children.IsSome() {
-		for i, e := range v.Children.Value() {
-			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "children"); err != nil {
+		s := v.Children.Value()
+		for i := range s {
+			if err := validator.Field(validator.Index(s[i].Validate(stopOnFirstError), i), "children"); err != nil {
 				if stopOnFirstError {
 					return err
 				}

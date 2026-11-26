@@ -70,10 +70,10 @@ type Inner struct{ X int }
 		"if v.O.IsSome() {",
 		"p := v.O.Value()\n\t\t\treturn p.Validate(stopOnFirstError)",
 		"if v.U.IsDefined() {",
-		"for i, e := range v.U.Value() {",
-		"for i, e := range v.E.Options() {",
-		"if e.IsSome() {",
-		"p := e.Value()\n\t\t\t\treturn p.Validate(stopOnFirstError)\n\t\t\t}(), i), \"E\")",
+		"s := v.U.Value()\n\t\tfor i := range s {",
+		"s2 := v.E.Options()\n\tfor i := range s2 {",
+		"if s2[i].IsSome() {",
+		"p := s2[i].Value()\n\t\t\t\treturn p.Validate(stopOnFirstError)\n\t\t\t}(), i), \"E\")",
 	)
 	// Fields holding nothing to validate get no step.
 	assertNotContains(t, fn, "v.N", "v.Ints", "v.Plain")
@@ -285,12 +285,14 @@ type Inner struct{ X int }
 	assertContains(
 		t,
 		fn,
-		"for i := range v.S {\n\t\tfor i2, e := range v.S[i].Options() {\n\t\t\tif e.IsSome() {",
-		"p := e.Value()\n\t\t\t\t\treturn p.Validate(stopOnFirstError)\n\t\t\t\t}(), i2), i), \"S\")",
-		"e := v.M[k]\n\t\tfor i2, e2 := range e.Options() {",
+		"for i := range v.S {\n\t\ts2 := v.S[i].Options()\n\t\tfor i2 := range s2 {\n"+
+			"\t\t\tif s2[i2].IsSome() {",
+		"p := s2[i2].Value()\n\t\t\t\t\treturn p.Validate(stopOnFirstError)\n"+
+			"\t\t\t\t}(), i2), i), \"S\")",
+		"e := v.M[k]\n\t\ts2 := e.Options()\n\t\tfor i2 := range s2 {",
 		"}(), i2), k), \"M\")",
-		"for i := range v.R {\n\t\tfor i2, e := range v.R[i].Options() {",
-		"for i, e := range v.E.Options() {\n\t\tif e.IsSome() {",
+		"for i := range v.R {\n\t\ts2 := v.R[i].Options()\n\t\tfor i2 := range s2 {",
+		"s := v.E.Options()\n\tfor i := range s {\n\t\tif s[i].IsSome() {",
 	)
 	assertNotContains(t, fn, "if e.IsSome() {\n\t\t\tfor")
 }

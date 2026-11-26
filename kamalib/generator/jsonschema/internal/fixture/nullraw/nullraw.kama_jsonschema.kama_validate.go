@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:15:44Z
+// generated: 2026-11-26T09:39:58Z
 
 package nullraw
 
@@ -108,8 +108,9 @@ func (v *Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.L.IsSome() {
-		for i, e := range v.L.Value() {
-			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "l"); err != nil {
+		s := v.L.Value()
+		for i := range s {
+			if err := validator.Field(validator.Index(s[i].Validate(stopOnFirstError), i), "l"); err != nil {
 				if stopOnFirstError {
 					return err
 				}

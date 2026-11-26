@@ -361,7 +361,7 @@ func (s *selection) checkConflicts() error {
 			errs = append(errs, base.ExplainConflict(
 				fmt.Errorf(
 					"%w: %s: %s declares Validate on its %s receiver with signature %s;"+
-						" want %s on the value receiver, or ignore the type with //kama:validate ignore",
+						" want %s or func() error, or ignore the type with //kama:validate ignore",
 					ErrConflict, pos(m.Pos()), n.Id, recv, m.Type(), wantValidate(named),
 				),
 				s.markers,

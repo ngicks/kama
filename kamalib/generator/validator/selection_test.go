@@ -209,7 +209,7 @@ func TestSelectionErrors(t *testing.T) {
 			is: ErrConflict,
 			msgs: []string{
 				"P declares Validate on its value receiver with signature func(n int) error;" +
-					" want func(bool) error on the value receiver",
+					" want func(bool) error or func() error",
 			},
 		},
 		{

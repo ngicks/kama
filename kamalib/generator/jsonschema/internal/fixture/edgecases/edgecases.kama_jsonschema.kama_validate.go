@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:31:07Z
+// generated: 2026-11-26T09:39:47Z
 
 package edgecases
 
@@ -54,8 +54,9 @@ func (v *Root) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.ObjectUnique.IsSome() {
-		for i, e := range v.ObjectUnique.Value() {
-			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "objectUnique"); err != nil {
+		s := v.ObjectUnique.Value()
+		for i := range s {
+			if err := validator.Field(validator.Index(s[i].Validate(stopOnFirstError), i), "objectUnique"); err != nil {
 				if stopOnFirstError {
 					return err
 				}

@@ -1,6 +1,7 @@
 package ext
 
 import (
+	"errors"
 	"go/types"
 	"iter"
 )
@@ -159,16 +160,34 @@ type Comparer interface {
 }
 
 // Comparable returns what the first Comparer of r claiming t tells about
-// the comparison by op with operand. r may be nil.
+// the comparison by op with operand. r may be nil. Its error wraps
+// ErrClaimed.
 func Comparable(r Resolver, t types.Type, op, operand string) (ok bool, err error) {
 	for c := range supportsOf[Comparer](r) {
 		if ok, err := c.Comparable(t, op, operand); ok {
+			if err != nil {
+				err = claimedErr{err}
+			}
+
 			return true, err
 		}
 	}
 
 	return false, nil
 }
+
+// ErrClaimed marks the error of a type support claiming a type and
+// rejecting what a rule asks of it, as a Comparer rejects an operand. The
+// type support decides for its type, so the generator reports the error
+// alone and does not apply the rule to the value the type holds, as it
+// does for a pointer.
+var ErrClaimed = errors.New("validator: rejected by the type support claiming the type")
+
+type claimedErr struct{ error }
+
+func (e claimedErr) Unwrap() error { return e.error }
+
+func (claimedErr) Is(target error) bool { return target == ErrClaimed }
 
 // Compare returns the condition the first Comparer of r claiming t gives
 // for the value v. r may be nil.

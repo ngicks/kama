@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -43,6 +44,8 @@ func TestStdOperandErrors(t *testing.T) {
 			}, testRun{})
 			assert.ErrorIs(t, err, ErrUnsupported)
 			assert.ErrorContains(t, err, tc.msg)
+			assert.ErrorIs(t, err, ext.ErrClaimed)
+			assert.Assert(t, !strings.Contains(err.Error(), "for the value it holds"), err.Error())
 
 			if tc.name != "time multiple" && tc.name != "big float multiple" {
 				assert.ErrorIs(t, err, ext.ErrArgs)

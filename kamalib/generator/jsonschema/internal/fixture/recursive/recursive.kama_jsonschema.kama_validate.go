@@ -2,7 +2,7 @@
 // params:
 //	option_file: null
 //	package_option_file: null
-// generated: 2026-11-26T08:31:29Z
+// generated: 2026-11-26T09:40:07Z
 
 package recursive
 
@@ -26,8 +26,9 @@ func (v *Forest) Validate(stopOnFirstError bool) error {
 		}
 	}
 	if v.Groves.IsSome() {
-		for i, e := range v.Groves.Value() {
-			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "groves"); err != nil {
+		s := v.Groves.Value()
+		for i := range s {
+			if err := validator.Field(validator.Index(s[i].Validate(stopOnFirstError), i), "groves"); err != nil {
 				if stopOnFirstError {
 					return err
 				}
@@ -79,8 +80,9 @@ func (v *Tree) Validate(stopOnFirstError bool) error {
 	}
 	var errs []error
 	if v.Children.IsSome() {
-		for i, e := range v.Children.Value() {
-			if err := validator.Field(validator.Index(e.Validate(stopOnFirstError), i), "children"); err != nil {
+		s := v.Children.Value()
+		for i := range s {
+			if err := validator.Field(validator.Index(s[i].Validate(stopOnFirstError), i), "children"); err != nil {
 				if stopOnFirstError {
 					return err
 				}

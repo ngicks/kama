@@ -570,7 +570,7 @@ func (w *writer) apply(r ext.Rule, t types.Type, x genExpr, wrap wrapFunc) (genS
 	}
 
 	held, guard, value, ok := ext.HeldValue(w.sel.opts.Registry, t, x)
-	if !ok {
+	if !ok || errors.Is(checkErr, ext.ErrClaimed) {
 		return nil, checkErr
 	}
 
